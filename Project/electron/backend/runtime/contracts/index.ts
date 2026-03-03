@@ -1,6 +1,8 @@
 import { type as arktype } from 'arktype';
 import { randomUUID } from 'node:crypto';
 
+import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
+
 export type EntityIdPrefix =
     | 'ws'
     | 'thr'
@@ -52,6 +54,21 @@ export type StreamEventType = (typeof streamEventTypes)[number];
 
 export const runtimeResetTargets = ['workspace', 'workspace_all', 'profile_settings', 'full'] as const;
 export type RuntimeResetTarget = (typeof runtimeResetTargets)[number];
+
+export const providerIds = ['kilo', 'openai'] as const;
+export type RuntimeProviderId = FirstPartyProviderId;
+
+export const providerAuthMethods = ['api_key', 'device_code', 'oauth_pkce', 'oauth_device'] as const;
+export type ProviderAuthMethod = (typeof providerAuthMethods)[number];
+
+export const providerAuthStates = ['logged_out', 'pending', 'configured', 'authenticated', 'error', 'expired'] as const;
+export type ProviderAuthState = (typeof providerAuthStates)[number];
+
+export const providerAuthFlowTypes = ['device_code', 'oauth_pkce', 'oauth_device'] as const;
+export type ProviderAuthFlowType = (typeof providerAuthFlowTypes)[number];
+
+export const providerAuthFlowStatuses = ['pending', 'completed', 'cancelled', 'expired', 'failed'] as const;
+export type ProviderAuthFlowStatus = (typeof providerAuthFlowStatuses)[number];
 
 export interface ModeDefinition {
     id: string;
@@ -130,7 +147,7 @@ export interface KiloAccountContext {
 export interface SecretReference {
     id: string;
     profileId: string;
-    providerId: string;
+    providerId: RuntimeProviderId;
     secretKeyRef: string;
     secretKind: string;
     status: string;
@@ -165,14 +182,14 @@ export interface SessionPromptInput extends SessionByIdInput {
 }
 
 export interface ProviderSetDefaultInput extends ProfileInput {
-    providerId: string;
+    providerId: RuntimeProviderId;
     modelId: string;
 }
 
 export type ProviderListProvidersInput = ProfileInput;
 
 export interface ProviderByIdInput extends ProfileInput {
-    providerId: string;
+    providerId: RuntimeProviderId;
 }
 
 export type ProviderListModelsInput = ProviderByIdInput;
@@ -185,6 +202,34 @@ export type ProviderClearAuthInput = ProviderByIdInput;
 
 export interface ProviderSyncCatalogInput extends ProviderByIdInput {
     force?: boolean;
+}
+
+export type ProviderListAuthMethodsInput = ProfileInput;
+
+export interface ProviderStartAuthInput extends ProfileInput {
+    providerId: RuntimeProviderId;
+    method: ProviderAuthMethod;
+}
+
+export interface ProviderFlowInput extends ProviderByIdInput {
+    flowId: string;
+}
+
+export type ProviderPollAuthInput = ProviderFlowInput;
+
+export interface ProviderCompleteAuthInput extends ProviderFlowInput {
+    code?: string;
+}
+
+export type ProviderCancelAuthInput = ProviderFlowInput;
+
+export type ProviderRefreshAuthInput = ProviderByIdInput;
+
+export type ProviderGetAccountContextInput = ProviderByIdInput;
+
+export interface ProviderSetOrganizationInput extends ProfileInput {
+    providerId: 'kilo';
+    organizationId?: string | null;
 }
 
 export interface PermissionRequestInput {
@@ -240,7 +285,7 @@ export interface RuntimeResetCounts {
     kiloOrgSnapshots: number;
     secretReferences: number;
     providerAuthStates: number;
-    providerOAuthSessions: number;
+    providerAuthFlows: number;
     providerCatalogModels: number;
     providerDiscoverySnapshots: number;
 }
@@ -345,6 +390,14 @@ function readProfileId(source: Record<string, unknown>): string {
     return readString(source.profileId, 'profileId');
 }
 
+function readProviderId(value: unknown, field: string): RuntimeProviderId {
+    return readEnumValue(value, field, providerIds);
+}
+
+function readProviderAuthMethod(value: unknown, field: string): ProviderAuthMethod {
+    return readEnumValue(value, field, providerAuthMethods);
+}
+
 export function parseProfileInput(input: unknown): ProfileInput {
     const source = readObject(input, 'input');
     return {
@@ -396,7 +449,7 @@ export function parseProviderSetDefaultInput(input: unknown): ProviderSetDefault
 
     return {
         profileId: readProfileId(source),
-        providerId: readString(source.providerId, 'providerId'),
+        providerId: readProviderId(source.providerId, 'providerId'),
         modelId: readString(source.modelId, 'modelId'),
     };
 }
@@ -414,7 +467,7 @@ export function parseProviderByIdInput(input: unknown): ProviderByIdInput {
 
     return {
         profileId: readProfileId(source),
-        providerId: readString(source.providerId, 'providerId'),
+        providerId: readProviderId(source.providerId, 'providerId'),
     };
 }
 
@@ -427,7 +480,7 @@ export function parseProviderSetApiKeyInput(input: unknown): ProviderSetApiKeyIn
 
     return {
         profileId: readProfileId(source),
-        providerId: readString(source.providerId, 'providerId'),
+        providerId: readProviderId(source.providerId, 'providerId'),
         apiKey: readString(source.apiKey, 'apiKey'),
     };
 }
@@ -442,8 +495,76 @@ export function parseProviderSyncCatalogInput(input: unknown): ProviderSyncCatal
 
     return {
         profileId: readProfileId(source),
-        providerId: readString(source.providerId, 'providerId'),
+        providerId: readProviderId(source.providerId, 'providerId'),
         ...(force !== undefined ? { force } : {}),
+    };
+}
+
+export function parseProviderListAuthMethodsInput(input: unknown): ProviderListAuthMethodsInput {
+    return parseProfileInput(input);
+}
+
+export function parseProviderStartAuthInput(input: unknown): ProviderStartAuthInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        providerId: readProviderId(source.providerId, 'providerId'),
+        method: readProviderAuthMethod(source.method, 'method'),
+    };
+}
+
+export function parseProviderFlowInput(input: unknown): ProviderFlowInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        providerId: readProviderId(source.providerId, 'providerId'),
+        flowId: readString(source.flowId, 'flowId'),
+    };
+}
+
+export function parseProviderPollAuthInput(input: unknown): ProviderPollAuthInput {
+    return parseProviderFlowInput(input);
+}
+
+export function parseProviderCompleteAuthInput(input: unknown): ProviderCompleteAuthInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        providerId: readProviderId(source.providerId, 'providerId'),
+        flowId: readString(source.flowId, 'flowId'),
+        ...(source.code !== undefined ? { code: readString(source.code, 'code') } : {}),
+    };
+}
+
+export function parseProviderCancelAuthInput(input: unknown): ProviderCancelAuthInput {
+    return parseProviderFlowInput(input);
+}
+
+export function parseProviderRefreshAuthInput(input: unknown): ProviderRefreshAuthInput {
+    return parseProviderByIdInput(input);
+}
+
+export function parseProviderGetAccountContextInput(input: unknown): ProviderGetAccountContextInput {
+    return parseProviderByIdInput(input);
+}
+
+export function parseProviderSetOrganizationInput(input: unknown): ProviderSetOrganizationInput {
+    const source = readObject(input, 'input');
+    const providerId = readProviderId(source.providerId, 'providerId');
+    if (providerId !== 'kilo') {
+        throw new Error('Invalid "providerId": organization selection is supported only for "kilo".');
+    }
+
+    const organizationId =
+        source.organizationId === null ? null : readOptionalString(source.organizationId, 'organizationId');
+
+    return {
+        profileId: readProfileId(source),
+        providerId,
+        ...(organizationId !== undefined ? { organizationId } : {}),
     };
 }
 
@@ -549,6 +670,14 @@ export const providerByIdInputSchema = createParser(parseProviderByIdInput);
 export const providerSetApiKeyInputSchema = createParser(parseProviderSetApiKeyInput);
 export const providerClearAuthInputSchema = createParser(parseProviderClearAuthInput);
 export const providerSyncCatalogInputSchema = createParser(parseProviderSyncCatalogInput);
+export const providerListAuthMethodsInputSchema = createParser(parseProviderListAuthMethodsInput);
+export const providerStartAuthInputSchema = createParser(parseProviderStartAuthInput);
+export const providerPollAuthInputSchema = createParser(parseProviderPollAuthInput);
+export const providerCompleteAuthInputSchema = createParser(parseProviderCompleteAuthInput);
+export const providerCancelAuthInputSchema = createParser(parseProviderCancelAuthInput);
+export const providerRefreshAuthInputSchema = createParser(parseProviderRefreshAuthInput);
+export const providerGetAccountContextInputSchema = createParser(parseProviderGetAccountContextInput);
+export const providerSetOrganizationInputSchema = createParser(parseProviderSetOrganizationInput);
 export const permissionRequestInputSchema = createParser(parsePermissionRequestInput);
 export const permissionDecisionInputSchema = createParser(parsePermissionDecisionInput);
 export const toolInvokeInputSchema = createParser(parseToolInvokeInput);

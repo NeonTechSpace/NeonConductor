@@ -26,7 +26,7 @@ const EMPTY_COUNTS: RuntimeResetCounts = {
     kiloOrgSnapshots: 0,
     secretReferences: 0,
     providerAuthStates: 0,
-    providerOAuthSessions: 0,
+    providerAuthFlows: 0,
     providerCatalogModels: 0,
     providerDiscoverySnapshots: 0,
 };
@@ -276,7 +276,7 @@ async function resolveProfileSettingsCounts(
         kiloOrgSnapshots,
         secretReferences,
         providerAuthStates,
-        providerOAuthSessions,
+        providerAuthFlows,
         providerCatalogModels,
         providerDiscoverySnapshots,
     ] = await Promise.all([
@@ -321,7 +321,7 @@ async function resolveProfileSettingsCounts(
             .where('profile_id', '=', profileId)
             .executeTakeFirst(),
         db
-            .selectFrom('provider_oauth_sessions')
+            .selectFrom('provider_auth_flows')
             .select((eb) => eb.fn.count<number>('id').as('count'))
             .where('profile_id', '=', profileId)
             .executeTakeFirst(),
@@ -347,7 +347,7 @@ async function resolveProfileSettingsCounts(
         kiloOrgSnapshots: kiloOrgSnapshots?.count ?? 0,
         secretReferences: secretReferences?.count ?? 0,
         providerAuthStates: providerAuthStates?.count ?? 0,
-        providerOAuthSessions: providerOAuthSessions?.count ?? 0,
+        providerAuthFlows: providerAuthFlows?.count ?? 0,
         providerCatalogModels: providerCatalogModels?.count ?? 0,
         providerDiscoverySnapshots: providerDiscoverySnapshots?.count ?? 0,
     };
@@ -374,7 +374,7 @@ async function resolveFullCounts(db: Kysely<DatabaseSchema>): Promise<RuntimeRes
         kiloOrgSnapshots,
         secretReferences,
         providerAuthStates,
-        providerOAuthSessions,
+        providerAuthFlows,
         providerCatalogModels,
         providerDiscoverySnapshots,
     ] = await Promise.all([
@@ -455,7 +455,7 @@ async function resolveFullCounts(db: Kysely<DatabaseSchema>): Promise<RuntimeRes
             .select((eb) => eb.fn.count<number>('provider_id').as('count'))
             .executeTakeFirst(),
         db
-            .selectFrom('provider_oauth_sessions')
+            .selectFrom('provider_auth_flows')
             .select((eb) => eb.fn.count<number>('id').as('count'))
             .executeTakeFirst(),
         db
@@ -488,7 +488,7 @@ async function resolveFullCounts(db: Kysely<DatabaseSchema>): Promise<RuntimeRes
         kiloOrgSnapshots: kiloOrgSnapshots?.count ?? 0,
         secretReferences: secretReferences?.count ?? 0,
         providerAuthStates: providerAuthStates?.count ?? 0,
-        providerOAuthSessions: providerOAuthSessions?.count ?? 0,
+        providerAuthFlows: providerAuthFlows?.count ?? 0,
         providerCatalogModels: providerCatalogModels?.count ?? 0,
         providerDiscoverySnapshots: providerDiscoverySnapshots?.count ?? 0,
     };
@@ -532,7 +532,7 @@ class RuntimeResetServiceImpl implements RuntimeResetService {
                 await db.deleteFrom('kilo_org_snapshots').where('profile_id', '=', profileId).execute();
                 await db.deleteFrom('secret_references').where('profile_id', '=', profileId).execute();
                 await db.deleteFrom('provider_auth_states').where('profile_id', '=', profileId).execute();
-                await db.deleteFrom('provider_oauth_sessions').where('profile_id', '=', profileId).execute();
+                await db.deleteFrom('provider_auth_flows').where('profile_id', '=', profileId).execute();
                 await db.deleteFrom('provider_model_catalog').where('profile_id', '=', profileId).execute();
                 await db.deleteFrom('provider_discovery_snapshots').where('profile_id', '=', profileId).execute();
                 await removeSecretsByReferences(secretRefs.map((secretRef) => secretRef.secretKeyRef));
@@ -563,7 +563,7 @@ class RuntimeResetServiceImpl implements RuntimeResetService {
             await db.deleteFrom('kilo_org_snapshots').execute();
             await db.deleteFrom('secret_references').execute();
             await db.deleteFrom('provider_auth_states').execute();
-            await db.deleteFrom('provider_oauth_sessions').execute();
+            await db.deleteFrom('provider_auth_flows').execute();
             await db.deleteFrom('provider_model_catalog').execute();
             await db.deleteFrom('provider_discovery_snapshots').execute();
             await db.deleteFrom('marketplace_packages').execute();

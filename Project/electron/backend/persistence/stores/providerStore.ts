@@ -2,6 +2,7 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { providerCatalogStore } from '@/app/backend/persistence/stores/providerCatalogStore';
 import { settingsStore } from '@/app/backend/persistence/stores/settingsStore';
 import type { ProviderModelRecord, ProviderRecord } from '@/app/backend/persistence/types';
+import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 export class ProviderStore {
     async listProviders(): Promise<ProviderRecord[]> {
@@ -14,13 +15,13 @@ export class ProviderStore {
             .execute();
 
         return rows.map((row) => ({
-            id: row.id,
+            id: row.id as RuntimeProviderId,
             label: row.label,
             supportsByok: row.supports_byok === 1,
         }));
     }
 
-    async listModels(profileId: string, providerId: string): Promise<ProviderModelRecord[]> {
+    async listModels(profileId: string, providerId: RuntimeProviderId): Promise<ProviderModelRecord[]> {
         return providerCatalogStore.listModels(profileId, providerId);
     }
 
@@ -40,21 +41,21 @@ export class ProviderStore {
         };
     }
 
-    async setDefaults(profileId: string, providerId: string, modelId: string): Promise<void> {
+    async setDefaults(profileId: string, providerId: RuntimeProviderId, modelId: string): Promise<void> {
         await Promise.all([
             settingsStore.setString(profileId, 'default_provider_id', providerId),
             settingsStore.setString(profileId, 'default_model_id', modelId),
         ]);
     }
 
-    async providerExists(providerId: string): Promise<boolean> {
+    async providerExists(providerId: RuntimeProviderId): Promise<boolean> {
         const { db } = getPersistence();
         const row = await db.selectFrom('providers').select('id').where('id', '=', providerId).executeTakeFirst();
 
         return Boolean(row);
     }
 
-    async modelExists(profileId: string, providerId: string, modelId: string): Promise<boolean> {
+    async modelExists(profileId: string, providerId: RuntimeProviderId, modelId: string): Promise<boolean> {
         return providerCatalogStore.modelExists(profileId, providerId, modelId);
     }
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import type { Context } from '@/app/backend/trpc/context';
@@ -15,6 +15,10 @@ function createCaller() {
 
 beforeEach(() => {
     resetPersistenceForTests();
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
 });
 
 describe('runtime contracts', () => {
@@ -154,7 +158,7 @@ describe('runtime contracts', () => {
         expect(providersBefore.providers.some((item) => item.id === 'kilo')).toBe(true);
     });
 
-    it('supports provider auth control plane and sync failure is explicit for unimplemented adapter paths', async () => {
+    it('supports provider auth control plane and sync failures are explicit', async () => {
         const caller = createCaller();
 
         const before = await caller.provider.getAuthState({ profileId, providerId: 'openai' });
@@ -183,7 +187,7 @@ describe('runtime contracts', () => {
             providerId: 'openai',
         });
         expect(syncResult.ok).toBe(false);
-        expect(syncResult.reason).toBe('not_implemented');
+        expect(syncResult.reason).toBe('sync_failed');
 
         const cleared = await caller.provider.clearAuth({
             profileId,
@@ -199,16 +203,107 @@ describe('runtime contracts', () => {
         expect(snapshotAfterClear.secretReferences.some((ref) => ref.providerId === 'openai')).toBe(false);
     });
 
-    it('rejects unsupported provider ids and allows anthropic models through supported providers', async () => {
+    it('supports openai oauth device auth start and pending polling', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    json: () => ({
+                        device_code: 'device-code-1',
+                        user_code: 'USER-CODE',
+                        verification_uri: 'https://openai.example/verify',
+                        interval: 5,
+                        expires_in: 900,
+                    }),
+                })
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 400,
+                    json: () => ({
+                        error: 'authorization_pending',
+                    }),
+                })
+        );
+
+        const started = await caller.provider.startAuth({
+            profileId,
+            providerId: 'openai',
+            method: 'oauth_device',
+        });
+
+        expect(started.flow.flowType).toBe('oauth_device');
+        expect(started.flow.status).toBe('pending');
+
+        const polled = await caller.provider.pollAuth({
+            profileId,
+            providerId: 'openai',
+            flowId: started.flow.id,
+        });
+
+        expect(polled.flow.status).toBe('pending');
+        expect(polled.state.authState).toBe('pending');
+    });
+
+    it('supports openai oauth pkce completion and refresh', async () => {
+        const caller = createCaller();
+        const fetchMock = vi.fn();
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () => ({
+                access_token: 'aaa.bbb.ccc',
+                refresh_token: 'refresh-token-1',
+                expires_in: 1200,
+            }),
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () => ({
+                access_token: 'ddd.eee.fff',
+                refresh_token: 'refresh-token-2',
+                expires_in: 1300,
+            }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const started = await caller.provider.startAuth({
+            profileId,
+            providerId: 'openai',
+            method: 'oauth_pkce',
+        });
+
+        const completed = await caller.provider.completeAuth({
+            profileId,
+            providerId: 'openai',
+            flowId: started.flow.id,
+            code: 'authorization-code',
+        });
+        expect(completed.flow.status).toBe('completed');
+        expect(completed.state.authState).toBe('authenticated');
+
+        const refreshed = await caller.provider.refreshAuth({
+            profileId,
+            providerId: 'openai',
+        });
+        expect(refreshed.state.authState).toBe('authenticated');
+    });
+
+    it('rejects unsupported provider ids at contract boundaries and allows anthropic models through supported providers', async () => {
         const caller = createCaller();
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
 
-        const unsupported = await caller.provider.listModels({
-            profileId,
-            providerId: 'anthropic',
-        });
-        expect(unsupported.reason).toBe('provider_not_found');
+        await expect(
+            caller.provider.listModels({
+                profileId,
+                providerId: 'anthropic' as unknown as 'kilo',
+            })
+        ).rejects.toThrow('Invalid "providerId"');
 
         sqlite
             .prepare(

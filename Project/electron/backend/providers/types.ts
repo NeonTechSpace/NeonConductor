@@ -1,4 +1,5 @@
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
+import type { ProviderAuthMethod } from '@/app/backend/runtime/contracts';
 
 export interface ProviderCatalogModel {
     modelId: string;
@@ -14,6 +15,7 @@ export interface ProviderCatalogModel {
 
 export interface ProviderCatalogSyncSuccess {
     ok: true;
+    status: 'synced' | 'unchanged';
     providerId: FirstPartyProviderId;
     models: ProviderCatalogModel[];
     providerPayload: Record<string, unknown>;
@@ -22,8 +24,9 @@ export interface ProviderCatalogSyncSuccess {
 
 export interface ProviderCatalogSyncFailure {
     ok: false;
+    status: 'error';
     providerId: FirstPartyProviderId;
-    reason: 'not_implemented' | 'sync_failed';
+    reason: 'auth_required' | 'sync_failed';
     detail?: string;
 }
 
@@ -33,7 +36,9 @@ export interface ProviderAdapter {
     readonly id: FirstPartyProviderId;
     syncCatalog(input: {
         profileId: string;
+        authMethod: ProviderAuthMethod | 'none';
         apiKey?: string;
+        accessToken?: string;
         organizationId?: string;
         force?: boolean;
     }): Promise<ProviderCatalogSyncResult>;

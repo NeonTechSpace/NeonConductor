@@ -3,7 +3,12 @@ import type {
     KiloAccountContext,
     MarketplacePackage,
     ModeDefinition,
+    ProviderAuthFlowStatus,
+    ProviderAuthFlowType,
+    ProviderAuthMethod,
+    ProviderAuthState,
     PermissionPolicy,
+    RuntimeProviderId,
     RulesetDefinition,
     RunStatus,
     SecretReference,
@@ -32,28 +37,51 @@ export interface PermissionRecord {
 }
 
 export interface ProviderRecord {
-    id: string;
+    id: RuntimeProviderId;
     label: string;
     supportsByok: boolean;
 }
 
 export interface ProviderModelRecord {
     id: string;
-    providerId: string;
+    providerId: RuntimeProviderId;
     label: string;
 }
 
 export interface ProviderAuthStateRecord {
     profileId: string;
-    providerId: string;
-    authMethod: string;
-    authState: string;
+    providerId: RuntimeProviderId;
+    authMethod: ProviderAuthMethod | 'none';
+    authState: ProviderAuthState;
     accountId?: string;
     organizationId?: string;
     tokenExpiresAt?: string;
     lastErrorCode?: string;
     lastErrorMessage?: string;
     updatedAt: string;
+}
+
+export interface ProviderAuthFlowRecord {
+    id: string;
+    profileId: string;
+    providerId: RuntimeProviderId;
+    flowType: ProviderAuthFlowType;
+    authMethod: Extract<ProviderAuthMethod, 'device_code' | 'oauth_pkce' | 'oauth_device'>;
+    nonce?: string;
+    state?: string;
+    codeVerifier?: string;
+    redirectUri?: string;
+    deviceCode?: string;
+    userCode?: string;
+    verificationUri?: string;
+    pollIntervalSeconds?: number;
+    expiresAt: string;
+    status: ProviderAuthFlowStatus;
+    lastErrorCode?: string;
+    lastErrorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+    consumedAt?: string;
 }
 
 export interface ProviderDiscoverySnapshotRecord {
@@ -164,6 +192,7 @@ export interface RuntimeSnapshotV1 {
     providers: Array<ProviderRecord & { isDefault: boolean }>;
     providerModels: ProviderModelRecord[];
     providerAuthStates: ProviderAuthStateRecord[];
+    providerAuthFlows: ProviderAuthFlowRecord[];
     providerDiscoverySnapshots: ProviderDiscoverySnapshotRecord[];
     tools: ToolRecord[];
     mcpServers: McpServerRecord[];

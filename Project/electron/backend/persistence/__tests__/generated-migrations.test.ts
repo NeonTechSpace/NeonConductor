@@ -11,6 +11,7 @@ describe('generated migrations', () => {
             '003_p1c_runtime_foundation.sql',
             '004_p1d_kilo_parity.sql',
             '005_p2a_provider_auth_foundation.sql',
+            '006_p2b_auth_flow_rebuild.sql',
         ]);
     });
 });

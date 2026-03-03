@@ -21,5 +21,11 @@
 - Do not preserve slop because it already exists.
 - Keep the codebase sharp, explicit, and maintainable.
 
+### 4) Keep Files Small and Focused
+- Do not introduce massive "god files"; split by responsibility.
+- If a file starts growing into multiple concerns, stop and extract modules immediately.
+- Prefer clear, composable units over central dumping grounds to reduce cognitive load.
+- Treat oversized files as a DX bug and refactor before merging.
+
 ## Practical Rule
 - Every PR should leave the touched area clearer than it was.

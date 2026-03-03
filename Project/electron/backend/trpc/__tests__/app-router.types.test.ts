@@ -32,8 +32,33 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
 
     expectTypeOf<Inputs['provider']['setApiKey']>().toExtend<{
         profileId: string;
-        providerId: string;
+        providerId: 'kilo' | 'openai';
         apiKey: string;
+    }>();
+
+    expectTypeOf<Inputs['provider']['startAuth']>().toExtend<{
+        profileId: string;
+        providerId: 'kilo' | 'openai';
+        method: 'api_key' | 'device_code' | 'oauth_pkce' | 'oauth_device';
+    }>();
+
+    expectTypeOf<Inputs['provider']['pollAuth']>().toExtend<{
+        profileId: string;
+        providerId: 'kilo' | 'openai';
+        flowId: string;
+    }>();
+
+    expectTypeOf<Inputs['provider']['completeAuth']>().toExtend<{
+        profileId: string;
+        providerId: 'kilo' | 'openai';
+        flowId: string;
+        code?: string;
+    }>();
+
+    expectTypeOf<Inputs['provider']['setOrganization']>().toExtend<{
+        profileId: string;
+        providerId: 'kilo';
+        organizationId?: string | null;
     }>();
 
     expectTypeOf<Inputs['permission']['request']>().toExtend<{

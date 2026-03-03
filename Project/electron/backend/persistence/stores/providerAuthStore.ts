@@ -1,6 +1,37 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/utils';
 import type { ProviderAuthStateRecord } from '@/app/backend/persistence/types';
+import { assertSupportedProviderId } from '@/app/backend/providers/registry';
+import { providerAuthMethods, providerAuthStates } from '@/app/backend/runtime/contracts';
+import type { ProviderAuthMethod, ProviderAuthState, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+
+function isOneOf<T extends string>(value: string, allowed: readonly T[]): value is T {
+    return allowed.some((candidate) => candidate === value);
+}
+
+function parseProviderId(value: string): RuntimeProviderId {
+    return assertSupportedProviderId(value);
+}
+
+function parseAuthMethod(value: string): ProviderAuthMethod | 'none' {
+    if (value === 'none') {
+        return 'none';
+    }
+
+    if (isOneOf(value, providerAuthMethods)) {
+        return value;
+    }
+
+    throw new Error(`Invalid provider auth method in persistence row: "${value}".`);
+}
+
+function parseAuthState(value: string): ProviderAuthState {
+    if (isOneOf(value, providerAuthStates)) {
+        return value;
+    }
+
+    throw new Error(`Invalid provider auth state in persistence row: "${value}".`);
+}
 
 function mapAuthState(row: {
     profile_id: string;
@@ -16,9 +47,9 @@ function mapAuthState(row: {
 }): ProviderAuthStateRecord {
     return {
         profileId: row.profile_id,
-        providerId: row.provider_id,
-        authMethod: row.auth_method,
-        authState: row.auth_state,
+        providerId: parseProviderId(row.provider_id),
+        authMethod: parseAuthMethod(row.auth_method),
+        authState: parseAuthState(row.auth_state),
         ...(row.account_id ? { accountId: row.account_id } : {}),
         ...(row.organization_id ? { organizationId: row.organization_id } : {}),
         ...(row.token_expires_at ? { tokenExpiresAt: row.token_expires_at } : {}),
@@ -30,9 +61,9 @@ function mapAuthState(row: {
 
 export interface UpsertProviderAuthStateInput {
     profileId: string;
-    providerId: string;
-    authMethod: string;
-    authState: string;
+    providerId: RuntimeProviderId;
+    authMethod: ProviderAuthMethod | 'none';
+    authState: ProviderAuthState;
     accountId?: string;
     organizationId?: string;
     tokenExpiresAt?: string;
@@ -64,7 +95,10 @@ export class ProviderAuthStore {
         return rows.map(mapAuthState);
     }
 
-    async getByProfileAndProvider(profileId: string, providerId: string): Promise<ProviderAuthStateRecord | null> {
+    async getByProfileAndProvider(
+        profileId: string,
+        providerId: RuntimeProviderId
+    ): Promise<ProviderAuthStateRecord | null> {
         const { db } = getPersistence();
         const row = await db
             .selectFrom('provider_auth_states')

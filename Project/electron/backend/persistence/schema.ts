@@ -237,16 +237,26 @@ export interface ProviderAuthStatesTable {
     updated_at: string;
 }
 
-export interface ProviderOauthSessionsTable {
+export interface ProviderAuthFlowsTable {
     id: string;
     profile_id: string;
     provider_id: string;
-    flow_kind: string;
-    state: string;
-    code_verifier: string;
-    redirect_uri: string;
+    flow_type: string;
+    auth_method: string;
+    nonce: string | null;
+    state: string | null;
+    code_verifier: string | null;
+    redirect_uri: string | null;
+    device_code: string | null;
+    user_code: string | null;
+    verification_uri: string | null;
+    poll_interval_seconds: number | null;
     expires_at: string;
+    status: string;
+    last_error_code: string | null;
+    last_error_message: string | null;
     created_at: string;
+    updated_at: string;
     consumed_at: string | null;
 }
 
@@ -302,7 +312,7 @@ export interface DatabaseSchema {
     kilo_org_snapshots: KiloOrgSnapshotsTable;
     secret_references: SecretReferencesTable;
     provider_auth_states: ProviderAuthStatesTable;
-    provider_oauth_sessions: ProviderOauthSessionsTable;
+    provider_auth_flows: ProviderAuthFlowsTable;
     provider_model_catalog: ProviderModelCatalogTable;
     provider_discovery_snapshots: ProviderDiscoverySnapshotsTable;
 }

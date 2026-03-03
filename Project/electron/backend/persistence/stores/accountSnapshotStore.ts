@@ -1,8 +1,27 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-import { parseJsonValue } from '@/app/backend/persistence/stores/utils';
+import { nowIso, parseJsonValue } from '@/app/backend/persistence/stores/utils';
 import type { KiloAccountContextRecord } from '@/app/backend/persistence/types';
 
 const EMPTY_SNAPSHOT_UPDATED_AT = '1970-01-01T00:00:00.000Z';
+
+export interface UpsertKiloAccountSnapshotInput {
+    profileId: string;
+    accountId?: string;
+    displayName: string;
+    emailMasked: string;
+    authState: string;
+    tokenExpiresAt?: string;
+}
+
+export interface ReplaceKiloOrganizationsInput {
+    profileId: string;
+    organizations: Array<{
+        organizationId: string;
+        name: string;
+        isActive: boolean;
+        entitlement?: Record<string, unknown>;
+    }>;
+}
 
 export class AccountSnapshotStore {
     async getByProfile(profileId: string): Promise<KiloAccountContextRecord> {
@@ -63,6 +82,60 @@ export class AccountSnapshotStore {
             })),
             updatedAt: accountRow.updated_at,
         };
+    }
+
+    async upsertAccount(input: UpsertKiloAccountSnapshotInput): Promise<void> {
+        const { db } = getPersistence();
+        const updatedAt = nowIso();
+
+        await db
+            .insertInto('kilo_account_snapshots')
+            .values({
+                profile_id: input.profileId,
+                account_id: input.accountId ?? null,
+                display_name: input.displayName,
+                email_masked: input.emailMasked,
+                auth_state: input.authState,
+                token_expires_at: input.tokenExpiresAt ?? null,
+                updated_at: updatedAt,
+            })
+            .onConflict((oc) =>
+                oc.column('profile_id').doUpdateSet({
+                    account_id: input.accountId ?? null,
+                    display_name: input.displayName,
+                    email_masked: input.emailMasked,
+                    auth_state: input.authState,
+                    token_expires_at: input.tokenExpiresAt ?? null,
+                    updated_at: updatedAt,
+                })
+            )
+            .execute();
+    }
+
+    async replaceOrganizations(input: ReplaceKiloOrganizationsInput): Promise<void> {
+        const { db } = getPersistence();
+        const updatedAt = nowIso();
+
+        await db.deleteFrom('kilo_org_snapshots').where('profile_id', '=', input.profileId).execute();
+
+        if (input.organizations.length === 0) {
+            return;
+        }
+
+        await db
+            .insertInto('kilo_org_snapshots')
+            .values(
+                input.organizations.map((organization) => ({
+                    id: `kilo_org_${input.profileId}_${organization.organizationId}`,
+                    profile_id: input.profileId,
+                    organization_id: organization.organizationId,
+                    name: organization.name,
+                    is_active: organization.isActive ? 1 : 0,
+                    entitlement_json: JSON.stringify(organization.entitlement ?? {}),
+                    updated_at: updatedAt,
+                }))
+            )
+            .execute();
     }
 }
 

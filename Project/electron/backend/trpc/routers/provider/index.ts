@@ -1,11 +1,19 @@
 import { providerManagementService } from '@/app/backend/providers/service';
 import {
     providerByIdInputSchema,
+    providerCancelAuthInputSchema,
     providerClearAuthInputSchema,
-    providerListProvidersInputSchema,
+    providerCompleteAuthInputSchema,
+    providerGetAccountContextInputSchema,
+    providerListAuthMethodsInputSchema,
     providerListModelsInputSchema,
+    providerListProvidersInputSchema,
+    providerPollAuthInputSchema,
+    providerRefreshAuthInputSchema,
     providerSetApiKeyInputSchema,
     providerSetDefaultInputSchema,
+    providerSetOrganizationInputSchema,
+    providerStartAuthInputSchema,
     providerSyncCatalogInputSchema,
 } from '@/app/backend/runtime/contracts';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
@@ -41,6 +49,11 @@ export const providerRouter = router({
             throw error;
         }
     }),
+    listAuthMethods: publicProcedure.input(providerListAuthMethodsInputSchema).query(({ input }) => {
+        return {
+            methods: providerManagementService.listAuthMethods(input.profileId),
+        };
+    }),
     getAuthState: publicProcedure.input(providerByIdInputSchema).query(async ({ input }) => {
         try {
             const state = await providerManagementService.getAuthState(input.profileId, input.providerId);
@@ -58,6 +71,108 @@ export const providerRouter = router({
 
             throw error;
         }
+    }),
+    startAuth: publicProcedure.input(providerStartAuthInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.startAuth(input);
+        await runtimeEventLogService.append({
+            entityType: 'provider',
+            entityId: input.providerId,
+            eventType: 'provider.auth.started',
+            payload: {
+                profileId: input.profileId,
+                providerId: input.providerId,
+                method: input.method,
+                flowId: result.flow.id,
+            },
+        });
+
+        return result;
+    }),
+    pollAuth: publicProcedure.input(providerPollAuthInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.pollAuth(input);
+        await runtimeEventLogService.append({
+            entityType: 'provider',
+            entityId: input.providerId,
+            eventType: 'provider.auth.polled',
+            payload: {
+                profileId: input.profileId,
+                providerId: input.providerId,
+                flowId: input.flowId,
+                flowStatus: result.flow.status,
+                authState: result.state.authState,
+            },
+        });
+
+        return result;
+    }),
+    completeAuth: publicProcedure.input(providerCompleteAuthInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.completeAuth(input);
+        await runtimeEventLogService.append({
+            entityType: 'provider',
+            entityId: input.providerId,
+            eventType: 'provider.auth.completed',
+            payload: {
+                profileId: input.profileId,
+                providerId: input.providerId,
+                flowId: input.flowId,
+                flowStatus: result.flow.status,
+                authState: result.state.authState,
+            },
+        });
+
+        return result;
+    }),
+    cancelAuth: publicProcedure.input(providerCancelAuthInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.cancelAuth(input);
+        await runtimeEventLogService.append({
+            entityType: 'provider',
+            entityId: input.providerId,
+            eventType: 'provider.auth.cancelled',
+            payload: {
+                profileId: input.profileId,
+                providerId: input.providerId,
+                flowId: input.flowId,
+            },
+        });
+
+        return result;
+    }),
+    refreshAuth: publicProcedure.input(providerRefreshAuthInputSchema).mutation(async ({ input }) => {
+        const state = await providerManagementService.refreshAuth(input.profileId, input.providerId);
+        await runtimeEventLogService.append({
+            entityType: 'provider',
+            entityId: input.providerId,
+            eventType: 'provider.auth.refreshed',
+            payload: {
+                profileId: input.profileId,
+                providerId: input.providerId,
+                authState: state.authState,
+            },
+        });
+
+        return { state };
+    }),
+    getAccountContext: publicProcedure.input(providerGetAccountContextInputSchema).query(async ({ input }) => {
+        return providerManagementService.getAccountContext(input.profileId, input.providerId);
+    }),
+    setOrganization: publicProcedure.input(providerSetOrganizationInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.setOrganization(
+            input.profileId,
+            input.providerId,
+            input.organizationId
+        );
+        await runtimeEventLogService.append({
+            entityType: 'provider',
+            entityId: input.providerId,
+            eventType: 'provider.organization.set',
+            payload: {
+                profileId: input.profileId,
+                providerId: input.providerId,
+                organizationId: input.organizationId ?? null,
+            },
+        });
+
+        return result;
     }),
     setApiKey: publicProcedure.input(providerSetApiKeyInputSchema).mutation(async ({ input }) => {
         try {
@@ -128,6 +243,7 @@ export const providerRouter = router({
                     profileId: input.profileId,
                     providerId: input.providerId,
                     ok: result.ok,
+                    status: result.status,
                     reason: result.reason ?? null,
                     modelCount: result.modelCount,
                 },
@@ -137,6 +253,7 @@ export const providerRouter = router({
             if (isProviderNotFoundError(error)) {
                 return {
                     ok: false as const,
+                    status: 'error' as const,
                     providerId: input.providerId,
                     reason: 'provider_not_found' as const,
                     modelCount: 0,

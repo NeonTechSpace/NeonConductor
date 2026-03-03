@@ -1,9 +1,9 @@
 // Adapted from Kilo-Org/kilocode packages/kilo-gateway/src/cloud-sessions.ts
-import { buildKiloHeaders } from '@/app/backend/providers/kilo-vendor/headers';
-
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const INGEST_BASE = process.env['KILO_SESSION_INGEST_URL'] ?? 'https://ingest.kilosessions.ai';
+const HEADER_EDITOR_NAME = 'X-KILOCODE-EDITORNAME';
+const DEFAULT_EDITOR_NAME = 'NeonConductor';
 
 function exportUrl(sessionId: string): string {
     return UUID_RE.test(sessionId)
@@ -22,7 +22,7 @@ export async function fetchCloudSession(token: string, sessionId: string): Promi
     const response = await fetch(exportUrl(sessionId), {
         headers: {
             Authorization: `Bearer ${token}`,
-            ...buildKiloHeaders(),
+            [HEADER_EDITOR_NAME]: DEFAULT_EDITOR_NAME,
         },
     });
 

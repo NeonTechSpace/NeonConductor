@@ -6,6 +6,7 @@ export { mcpStore } from '@/app/backend/persistence/stores/mcpStore';
 export { modeStore } from '@/app/backend/persistence/stores/modeStore';
 export { permissionStore } from '@/app/backend/persistence/stores/permissionStore';
 export { providerAuthStore } from '@/app/backend/persistence/stores/providerAuthStore';
+export { providerAuthFlowStore } from '@/app/backend/persistence/stores/providerAuthFlowStore';
 export { providerCatalogStore } from '@/app/backend/persistence/stores/providerCatalogStore';
 export { providerStore } from '@/app/backend/persistence/stores/providerStore';
 export { runStore } from '@/app/backend/persistence/stores/runStore';
