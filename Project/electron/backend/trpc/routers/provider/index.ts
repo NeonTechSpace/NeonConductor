@@ -1,16 +1,17 @@
+import { providerStore } from '@/app/backend/persistence/stores';
 import {
+    providerListProvidersInputSchema,
     providerListModelsInputSchema,
     providerSetDefaultInputSchema,
 } from '@/app/backend/runtime/contracts';
-import { providerStore } from '@/app/backend/persistence/stores';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 
 export const providerRouter = router({
-    listProviders: publicProcedure.query(async () => {
+    listProviders: publicProcedure.input(providerListProvidersInputSchema).query(async ({ input }) => {
         const [providers, defaults] = await Promise.all([
             providerStore.listProviders(),
-            providerStore.getDefaults(),
+            providerStore.getDefaults(input.profileId),
         ]);
 
         return {
@@ -26,7 +27,7 @@ export const providerRouter = router({
     setDefault: publicProcedure.input(providerSetDefaultInputSchema).mutation(async ({ input }) => {
         const hasProvider = await providerStore.providerExists(input.providerId);
         if (!hasProvider) {
-            const defaults = await providerStore.getDefaults();
+            const defaults = await providerStore.getDefaults(input.profileId);
             return {
                 success: false as const,
                 reason: 'provider_not_found' as const,
@@ -37,7 +38,7 @@ export const providerRouter = router({
 
         const hasModel = await providerStore.modelExists(input.providerId, input.modelId);
         if (!hasModel) {
-            const defaults = await providerStore.getDefaults();
+            const defaults = await providerStore.getDefaults(input.profileId);
             return {
                 success: false as const,
                 reason: 'model_not_found' as const,
@@ -46,14 +47,15 @@ export const providerRouter = router({
             };
         }
 
-        await providerStore.setDefaults(input.providerId, input.modelId);
-        const defaults = await providerStore.getDefaults();
+        await providerStore.setDefaults(input.profileId, input.providerId, input.modelId);
+        const defaults = await providerStore.getDefaults(input.profileId);
 
         await runtimeEventLogService.append({
             entityType: 'provider',
             entityId: input.providerId,
             eventType: 'provider.default-set',
             payload: {
+                profileId: input.profileId,
                 providerId: input.providerId,
                 modelId: input.modelId,
             },

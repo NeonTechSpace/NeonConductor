@@ -1,4 +1,4 @@
-import { initializePersistence } from '../electron/backend/persistence/db';
+import { initializePersistence } from '@/app/backend/persistence/db';
 
 const dbPath = process.env['NEONCONDUCTOR_DB_PATH'];
 

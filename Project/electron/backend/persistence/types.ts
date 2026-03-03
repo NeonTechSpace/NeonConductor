@@ -4,6 +4,7 @@ export interface SessionSummaryRecord {
     id: EntityId<'sess'>;
     scope: 'detached' | 'workspace';
     kind: 'local' | 'worktree' | 'cloud';
+    workspaceFingerprint?: string;
     runStatus: RunStatus;
     turnCount: number;
     createdAt: string;
@@ -54,6 +55,7 @@ export type RuntimeEntityType =
     | 'provider'
     | 'tool'
     | 'mcp'
+    | 'runtime'
     | 'conversation'
     | 'thread'
     | 'tag'
@@ -72,6 +74,7 @@ export interface RuntimeEventRecordV1 {
 export interface ConversationRecord {
     id: string;
     scope: 'detached' | 'workspace';
+    workspaceFingerprint?: string;
     title: string;
     createdAt: string;
     updatedAt: string;

@@ -1,5 +1,5 @@
-import { toolInvokeInputSchema } from '@/app/backend/runtime/contracts';
 import { toolStore } from '@/app/backend/persistence/stores';
+import { toolInvokeInputSchema } from '@/app/backend/runtime/contracts';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 
 export const toolRouter = router({
@@ -17,12 +17,11 @@ export const toolRouter = router({
         }
 
         return {
-            ok: true as const,
+            ok: false as const,
             toolId: tool.id,
-            output: {
-                summary: `Stub invocation completed for "${tool.id}".`,
-                args: input.args ?? {},
-            },
+            error: 'not_implemented' as const,
+            message: `Tool "${tool.id}" is not implemented yet.`,
+            args: input.args ?? {},
             at: new Date().toISOString(),
         };
     }),

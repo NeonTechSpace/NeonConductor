@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/utils';
-
 import type { ConversationRecord, ThreadRecord } from '@/app/backend/persistence/types';
 import type { ConversationScope } from '@/app/backend/runtime/contracts';
 
@@ -17,6 +16,7 @@ function createThreadId(): string {
 function mapConversationRecord(row: {
     id: string;
     scope: string;
+    workspace_fingerprint: string | null;
     title: string;
     created_at: string;
     updated_at: string;
@@ -24,6 +24,7 @@ function mapConversationRecord(row: {
     return {
         id: row.id,
         scope: row.scope as ConversationScope,
+        ...(row.workspace_fingerprint ? { workspaceFingerprint: row.workspace_fingerprint } : {}),
         title: row.title,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -47,7 +48,19 @@ function mapThreadRecord(row: {
 }
 
 export class ConversationStore {
-    async createConversation(scope: ConversationScope, title: string): Promise<ConversationRecord> {
+    async createConversation(
+        scope: ConversationScope,
+        title: string,
+        workspaceFingerprint?: string
+    ): Promise<ConversationRecord> {
+        if (scope === 'workspace' && !workspaceFingerprint) {
+            throw new Error('workspaceFingerprint is required when creating workspace conversations.');
+        }
+
+        if (scope !== 'workspace' && workspaceFingerprint) {
+            throw new Error('workspaceFingerprint is allowed only for workspace conversations.');
+        }
+
         const { db } = getPersistence();
         const now = nowIso();
 
@@ -56,11 +69,12 @@ export class ConversationStore {
             .values({
                 id: createConversationId(),
                 scope,
+                workspace_fingerprint: workspaceFingerprint ?? null,
                 title,
                 created_at: now,
                 updated_at: now,
             })
-            .returning(['id', 'scope', 'title', 'created_at', 'updated_at'])
+            .returning(['id', 'scope', 'workspace_fingerprint', 'title', 'created_at', 'updated_at'])
             .executeTakeFirstOrThrow();
 
         return mapConversationRecord(inserted);
@@ -70,7 +84,7 @@ export class ConversationStore {
         const { db } = getPersistence();
         const rows = await db
             .selectFrom('conversations')
-            .select(['id', 'scope', 'title', 'created_at', 'updated_at'])
+            .select(['id', 'scope', 'workspace_fingerprint', 'title', 'created_at', 'updated_at'])
             .orderBy('updated_at', 'desc')
             .orderBy('id', 'asc')
             .execute();

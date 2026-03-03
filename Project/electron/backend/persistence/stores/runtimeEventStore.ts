@@ -1,8 +1,7 @@
-import { createEntityId } from '@/app/backend/runtime/contracts';
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso, parseJsonValue } from '@/app/backend/persistence/stores/utils';
-
 import type { RuntimeEntityType, RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
+import { createEntityId } from '@/app/backend/runtime/contracts';
 import type { EntityId } from '@/app/backend/runtime/contracts';
 
 export class RuntimeEventStore {
@@ -26,15 +25,7 @@ export class RuntimeEventStore {
                 payload_json: JSON.stringify(event.payload),
                 created_at: createdAt,
             })
-            .returning([
-                'sequence',
-                'event_id',
-                'entity_type',
-                'entity_id',
-                'event_type',
-                'payload_json',
-                'created_at',
-            ])
+            .returning(['sequence', 'event_id', 'entity_type', 'entity_id', 'event_type', 'payload_json', 'created_at'])
             .executeTakeFirstOrThrow();
 
         return {
@@ -53,15 +44,7 @@ export class RuntimeEventStore {
 
         let query = db
             .selectFrom('runtime_events')
-            .select([
-                'sequence',
-                'event_id',
-                'entity_type',
-                'entity_id',
-                'event_type',
-                'payload_json',
-                'created_at',
-            ])
+            .select(['sequence', 'event_id', 'entity_type', 'entity_id', 'event_type', 'payload_json', 'created_at'])
             .orderBy('sequence', 'asc')
             .limit(limit);
 

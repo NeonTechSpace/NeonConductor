@@ -1,8 +1,5 @@
-import {
-    permissionDecisionInputSchema,
-    permissionRequestInputSchema,
-} from '@/app/backend/runtime/contracts';
 import { permissionStore } from '@/app/backend/persistence/stores';
+import { permissionDecisionInputSchema, permissionRequestInputSchema } from '@/app/backend/runtime/contracts';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 

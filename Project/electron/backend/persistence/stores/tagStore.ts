@@ -2,19 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/utils';
-
 import type { TagRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
 
 function createTagId(): string {
     return `tag_${randomUUID()}`;
 }
 
-function mapTagRecord(row: {
-    id: string;
-    label: string;
-    created_at: string;
-    updated_at: string;
-}): TagRecord {
+function mapTagRecord(row: { id: string; label: string; created_at: string; updated_at: string }): TagRecord {
     return {
         id: row.id,
         label: row.label,

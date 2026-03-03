@@ -1,9 +1,8 @@
-import { createEntityId } from '@/app/backend/runtime/contracts';
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/utils';
-
-import type { EntityId, PermissionPolicy } from '@/app/backend/runtime/contracts';
 import type { PermissionRecord } from '@/app/backend/persistence/types';
+import type { EntityId, PermissionPolicy } from '@/app/backend/runtime/contracts';
+import { createEntityId } from '@/app/backend/runtime/contracts';
 
 function mapPermissionRecord(row: {
     id: string;
@@ -26,11 +25,7 @@ function mapPermissionRecord(row: {
 }
 
 export class PermissionStore {
-    async create(input: {
-        policy: PermissionPolicy;
-        resource: string;
-        rationale?: string;
-    }): Promise<PermissionRecord> {
+    async create(input: { policy: PermissionPolicy; resource: string; rationale?: string }): Promise<PermissionRecord> {
         const { db } = getPersistence();
         const now = nowIso();
 

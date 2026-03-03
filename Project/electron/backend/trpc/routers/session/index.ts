@@ -1,15 +1,15 @@
+import { sessionStore } from '@/app/backend/persistence/stores';
 import {
     sessionByIdInputSchema,
     sessionCreateInputSchema,
     sessionPromptInputSchema,
 } from '@/app/backend/runtime/contracts';
-import { sessionStore } from '@/app/backend/persistence/stores';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 
 export const sessionRouter = router({
     create: publicProcedure.input(sessionCreateInputSchema).mutation(async ({ input }) => {
-        const session = await sessionStore.create(input.scope, input.kind);
+        const session = await sessionStore.create(input.scope, input.kind, input.workspaceFingerprint);
         await runtimeEventLogService.append({
             entityType: 'session',
             entityId: session.id,

@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso, parseJsonValue } from '@/app/backend/persistence/stores/utils';
-
 import type { DiffRecord } from '@/app/backend/persistence/types';
 import type { EntityId } from '@/app/backend/runtime/contracts';
 

@@ -1,6 +1,5 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import { settingsStore } from '@/app/backend/persistence/stores/settingsStore';
-
 import type { ProviderModelRecord, ProviderRecord } from '@/app/backend/persistence/types';
 
 const DEFAULT_PROVIDER_FALLBACK = 'kilo';
@@ -26,10 +25,7 @@ export class ProviderStore {
     async listModels(providerId?: string): Promise<ProviderModelRecord[]> {
         const { db } = getPersistence();
 
-        let query = db
-            .selectFrom('provider_models')
-            .select(['id', 'provider_id', 'label'])
-            .orderBy('label', 'asc');
+        let query = db.selectFrom('provider_models').select(['id', 'provider_id', 'label']).orderBy('label', 'asc');
 
         if (providerId) {
             query = query.where('provider_id', '=', providerId);
@@ -44,10 +40,10 @@ export class ProviderStore {
         }));
     }
 
-    async getDefaults(): Promise<{ providerId: string; modelId: string }> {
+    async getDefaults(profileId: string): Promise<{ providerId: string; modelId: string }> {
         const [providerId, modelId] = await Promise.all([
-            settingsStore.getString('default_provider_id', DEFAULT_PROVIDER_FALLBACK),
-            settingsStore.getString('default_model_id', DEFAULT_MODEL_FALLBACK),
+            settingsStore.getString(profileId, 'default_provider_id', DEFAULT_PROVIDER_FALLBACK),
+            settingsStore.getString(profileId, 'default_model_id', DEFAULT_MODEL_FALLBACK),
         ]);
 
         return {
@@ -56,20 +52,16 @@ export class ProviderStore {
         };
     }
 
-    async setDefaults(providerId: string, modelId: string): Promise<void> {
+    async setDefaults(profileId: string, providerId: string, modelId: string): Promise<void> {
         await Promise.all([
-            settingsStore.setString('default_provider_id', providerId),
-            settingsStore.setString('default_model_id', modelId),
+            settingsStore.setString(profileId, 'default_provider_id', providerId),
+            settingsStore.setString(profileId, 'default_model_id', modelId),
         ]);
     }
 
     async providerExists(providerId: string): Promise<boolean> {
         const { db } = getPersistence();
-        const row = await db
-            .selectFrom('providers')
-            .select('id')
-            .where('id', '=', providerId)
-            .executeTakeFirst();
+        const row = await db.selectFrom('providers').select('id').where('id', '=', providerId).executeTakeFirst();
 
         return Boolean(row);
     }
@@ -88,4 +80,3 @@ export class ProviderStore {
 }
 
 export const providerStore = new ProviderStore();
-

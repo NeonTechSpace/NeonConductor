@@ -1,12 +1,13 @@
 import BetterSqlite3 from 'better-sqlite3';
 import { Kysely, SqliteDialect } from 'kysely';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { runtimeSqlMigrations } from '@/app/backend/persistence/generatedMigrations';
+import type { DatabaseSchema } from '@/app/backend/persistence/schema';
 
 import type { Database as BetterSqliteDatabase } from 'better-sqlite3';
-import type { DatabaseSchema } from '@/app/backend/persistence/schema';
 
 export interface PersistenceContext {
     sqlite: BetterSqliteDatabase;
@@ -23,8 +24,8 @@ export interface InitializePersistenceOptions {
 
 const DEFAULT_DB_FILENAME = 'neonconductor.db';
 const TEST_MEMORY_PATH = ':memory:';
-
-const GLOBAL_PROFILE_ID = '__global__';
+const DEFAULT_PROFILE_ID = 'profile_local_default';
+const DB_FILE_EXTENSIONS = new Set(['.db', '.sqlite']);
 
 const PROVIDER_SEED = [
     { id: 'kilo', label: 'Kilo', supportsByok: 0 },
@@ -95,16 +96,49 @@ function resolveDefaultDbPath(): string {
     return path.join(fallbackDir, DEFAULT_DB_FILENAME);
 }
 
+function resolveSafeFileDbPath(dbPath: string): string {
+    const trimmed = dbPath.trim();
+    if (trimmed.length === 0) {
+        throw new Error('Persistence DB path must be a non-empty string.');
+    }
+
+    if (!path.isAbsolute(trimmed)) {
+        throw new Error(`Persistence DB path must be absolute. Received: "${trimmed}"`);
+    }
+
+    const normalized = path.resolve(trimmed);
+    const extension = path.extname(normalized).toLowerCase();
+
+    if (!DB_FILE_EXTENSIONS.has(extension)) {
+        throw new Error(
+            `Persistence DB path must use one of: ${Array.from(DB_FILE_EXTENSIONS).join(', ')}. Received: "${normalized}"`
+        );
+    }
+
+    const directory = path.dirname(normalized);
+    const parsedDirectory = path.parse(directory);
+    if (directory === parsedDirectory.root) {
+        throw new Error(`Persistence DB path directory cannot be filesystem root: "${normalized}"`);
+    }
+
+    return normalized;
+}
+
 function resolveDbPath(options: InitializePersistenceOptions): string {
-    if (options.dbPath) {
-        return options.dbPath;
+    const explicitDbPath = options.dbPath?.trim();
+    if (explicitDbPath) {
+        return isMemoryDbPath(explicitDbPath) ? TEST_MEMORY_PATH : resolveSafeFileDbPath(explicitDbPath);
     }
 
-    if (options.dataDir) {
-        return path.join(options.dataDir, DEFAULT_DB_FILENAME);
+    if (options.dataDir?.trim()) {
+        if (!path.isAbsolute(options.dataDir)) {
+            throw new Error(`Persistence dataDir must be absolute. Received: "${options.dataDir}"`);
+        }
+
+        return resolveSafeFileDbPath(path.join(path.resolve(options.dataDir), DEFAULT_DB_FILENAME));
     }
 
-    return resolveDefaultDbPath();
+    return resolveSafeFileDbPath(resolveDefaultDbPath());
 }
 
 function ensureParentDirectory(dbPath: string): void {
@@ -125,9 +159,7 @@ function applySqlMigrations(sqlite: BetterSqliteDatabase): void {
     `);
 
     const isAppliedStatement = sqlite.prepare('SELECT 1 FROM schema_migrations WHERE name = ? LIMIT 1');
-    const recordAppliedStatement = sqlite.prepare(
-        'INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)'
-    );
+    const recordAppliedStatement = sqlite.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)');
 
     for (const migration of runtimeSqlMigrations) {
         const wasApplied = isAppliedStatement.get(migration.name);
@@ -149,6 +181,12 @@ function applySqlMigrations(sqlite: BetterSqliteDatabase): void {
 function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
     const now = new Date().toISOString();
 
+    const insertProfile = sqlite.prepare(
+        `
+            INSERT OR IGNORE INTO profiles (id, name, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+        `
+    );
     const insertProvider = sqlite.prepare(
         `
             INSERT OR IGNORE INTO providers (id, label, supports_byok, created_at, updated_at)
@@ -181,6 +219,8 @@ function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
         `
     );
 
+    insertProfile.run(DEFAULT_PROFILE_ID, 'Local Default', now, now);
+
     for (const provider of PROVIDER_SEED) {
         insertProvider.run(provider.id, provider.label, provider.supportsByok, now, now);
     }
@@ -207,18 +247,23 @@ function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
 
     insertSettingIfMissing.run(
         'setting_default_provider',
-        GLOBAL_PROFILE_ID,
+        DEFAULT_PROFILE_ID,
         'default_provider_id',
         JSON.stringify(DEFAULT_PROVIDER_ID),
         now
     );
     insertSettingIfMissing.run(
         'setting_default_model',
-        GLOBAL_PROFILE_ID,
+        DEFAULT_PROFILE_ID,
         'default_model_id',
         JSON.stringify(DEFAULT_MODEL_ID),
         now
     );
+}
+
+export function reseedRuntimeData(): void {
+    const context = getPersistence();
+    seedRuntimeData(context.sqlite);
 }
 
 function createPersistenceContext(dbPath: string): PersistenceContext {
@@ -258,15 +303,11 @@ export function closePersistence(): void {
 export function initializePersistence(options: InitializePersistenceOptions = {}): PersistenceContext {
     const dbPath = resolveDbPath(options);
 
-    if (options.resetDb && !isMemoryDbPath(dbPath) && existsSync(dbPath)) {
+    if (options.resetDb && !isMemoryDbPath(dbPath)) {
         rmSync(dbPath, { force: true });
     }
 
-    if (
-        persistenceContext &&
-        !options.forceReinitialize &&
-        persistenceContext.dbPath === dbPath
-    ) {
+    if (persistenceContext && !options.forceReinitialize && persistenceContext.dbPath === dbPath) {
         return persistenceContext;
     }
 
@@ -295,6 +336,6 @@ export function resetPersistenceForTests(dbPath = TEST_MEMORY_PATH): Persistence
     });
 }
 
-export function getGlobalProfileId(): string {
-    return GLOBAL_PROFILE_ID;
+export function getDefaultProfileId(): string {
+    return DEFAULT_PROFILE_ID;
 }

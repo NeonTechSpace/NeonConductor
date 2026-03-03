@@ -27,6 +27,7 @@ export interface SessionsTable {
     id: string;
     scope: string;
     kind: string;
+    workspace_fingerprint: string | null;
     run_status: string;
     pending_completion_run_id: string | null;
     created_at: string;
@@ -97,6 +98,7 @@ export interface SchemaMigrationsTable {
 export interface ConversationsTable {
     id: string;
     scope: string;
+    workspace_fingerprint: string | null;
     title: string;
     created_at: string;
     updated_at: string;

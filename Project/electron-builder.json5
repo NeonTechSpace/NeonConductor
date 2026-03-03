@@ -4,14 +4,7 @@
     appId: 'com.neonsy.neonconductor',
     productName: 'NeonConductor',
 
-    files: [
-        'dist/**',
-        'dist-electron/**',
-        '!**/__tests__/**',
-        '!**/*.test.*',
-        '!Research/**',
-        '!Markdown/**',
-    ],
+    files: ['dist/**', 'dist-electron/**', '!**/__tests__/**', '!**/*.test.*', '!Research/**', '!Markdown/**'],
     asar: true,
     asarUnpack: ['**/node_modules/better-sqlite3/**', '**/node_modules/keytar/**'],
 

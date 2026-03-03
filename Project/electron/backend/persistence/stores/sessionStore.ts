@@ -1,11 +1,11 @@
-import { createEntityId } from '@/app/backend/runtime/contracts';
 import { getPersistence } from '@/app/backend/persistence/db';
-import { nowIso } from '@/app/backend/persistence/stores/utils';
-
-import type { ConversationScope, EntityId, RunStatus, SessionKind } from '@/app/backend/runtime/contracts';
-import type { SessionSummaryRecord } from '@/app/backend/persistence/types';
-import type { Selectable } from 'kysely';
 import type { RunsTable, SessionsTable } from '@/app/backend/persistence/schema';
+import { nowIso } from '@/app/backend/persistence/stores/utils';
+import type { SessionSummaryRecord } from '@/app/backend/persistence/types';
+import { createEntityId } from '@/app/backend/runtime/contracts';
+import type { ConversationScope, EntityId, RunStatus, SessionKind } from '@/app/backend/runtime/contracts';
+
+import type { Selectable } from 'kysely';
 
 type SessionRow = Selectable<SessionsTable>;
 type RunRow = Selectable<RunsTable>;
@@ -15,6 +15,7 @@ function mapSessionSummary(row: SessionRow, turnCount: number): SessionSummaryRe
         id: row.id as EntityId<'sess'>,
         scope: row.scope as ConversationScope,
         kind: row.kind as SessionKind,
+        ...(row.workspace_fingerprint ? { workspaceFingerprint: row.workspace_fingerprint } : {}),
         runStatus: row.run_status as RunStatus,
         turnCount,
         createdAt: row.created_at,
@@ -40,17 +41,13 @@ export class SessionStore {
             .where('session_id', '=', sessionId)
             .executeTakeFirst();
 
-        return Number(result?.count ?? 0);
+        return result?.count ?? 0;
     }
 
     private async getSessionById(sessionId: string): Promise<SessionRow | null> {
         const { db } = getPersistence();
 
-        const row = await db
-            .selectFrom('sessions')
-            .selectAll()
-            .where('id', '=', sessionId)
-            .executeTakeFirst();
+        const row = await db.selectFrom('sessions').selectAll().where('id', '=', sessionId).executeTakeFirst();
 
         return row ?? null;
     }
@@ -58,11 +55,7 @@ export class SessionStore {
     private async getRunById(runId: string): Promise<RunRow | null> {
         const { db } = getPersistence();
 
-        const row = await db
-            .selectFrom('runs')
-            .selectAll()
-            .where('id', '=', runId)
-            .executeTakeFirst();
+        const row = await db.selectFrom('runs').selectAll().where('id', '=', runId).executeTakeFirst();
 
         return row ?? null;
     }
@@ -128,7 +121,19 @@ export class SessionStore {
         return updatedSession;
     }
 
-    async create(scope: ConversationScope, kind: SessionKind): Promise<SessionSummaryRecord> {
+    async create(
+        scope: ConversationScope,
+        kind: SessionKind,
+        workspaceFingerprint?: string
+    ): Promise<SessionSummaryRecord> {
+        if (scope === 'workspace' && !workspaceFingerprint) {
+            throw new Error('workspaceFingerprint is required when creating workspace sessions.');
+        }
+
+        if (scope !== 'workspace' && workspaceFingerprint) {
+            throw new Error('workspaceFingerprint is allowed only for workspace sessions.');
+        }
+
         const { db } = getPersistence();
         const now = nowIso();
 
@@ -138,6 +143,7 @@ export class SessionStore {
                 id: createEntityId('sess'),
                 scope,
                 kind,
+                workspace_fingerprint: workspaceFingerprint ?? null,
                 run_status: 'idle',
                 pending_completion_run_id: null,
                 created_at: now,
@@ -239,8 +245,7 @@ export class SessionStore {
     async abort(
         sessionId: EntityId<'sess'>
     ): Promise<
-        | { aborted: false; reason: 'not_found' | 'not_running' }
-        | { aborted: true; session: SessionSummaryRecord }
+        { aborted: false; reason: 'not_found' | 'not_running' } | { aborted: true; session: SessionSummaryRecord }
     > {
         const { db } = getPersistence();
         const session = await this.getSessionById(sessionId);
@@ -284,8 +289,7 @@ export class SessionStore {
     async revert(
         sessionId: EntityId<'sess'>
     ): Promise<
-        | { reverted: false; reason: 'not_found' | 'no_turns' }
-        | { reverted: true; session: SessionSummaryRecord }
+        { reverted: false; reason: 'not_found' | 'no_turns' } | { reverted: true; session: SessionSummaryRecord }
     > {
         const { db } = getPersistence();
         const session = await this.getSessionById(sessionId);
@@ -324,4 +328,3 @@ export class SessionStore {
 }
 
 export const sessionStore = new SessionStore();
-

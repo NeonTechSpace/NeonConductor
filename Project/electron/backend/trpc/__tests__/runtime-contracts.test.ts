@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { resetPersistenceForTests } from '@/app/backend/persistence/db';
-import { appRouter } from '@/app/backend/trpc/router';
-
+import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import type { Context } from '@/app/backend/trpc/context';
+import { appRouter } from '@/app/backend/trpc/router';
 
 function createCaller() {
     const context: Context = {
@@ -19,12 +18,14 @@ beforeEach(() => {
 });
 
 describe('runtime contracts', () => {
+    const profileId = getDefaultProfileId();
+
     it('exposes all new runtime domains in root router', async () => {
         const caller = createCaller();
 
         const snapshot = await caller.runtime.getSnapshot();
         const sessions = await caller.session.list();
-        const providers = await caller.provider.listProviders();
+        const providers = await caller.provider.listProviders({ profileId });
         const pendingPermissions = await caller.permission.listPending();
         const tools = await caller.tool.list();
         const mcpServers = await caller.mcp.listServers();
@@ -129,24 +130,25 @@ describe('runtime contracts', () => {
     it('persists provider default in memory and lists models', async () => {
         const caller = createCaller();
 
-        const providersBefore = await caller.provider.listProviders();
+        const providersBefore = await caller.provider.listProviders({ profileId });
         const models = await caller.provider.listModels({ providerId: 'openai' });
         expect(models.models.length).toBeGreaterThan(0);
 
         const changed = await caller.provider.setDefault({
+            profileId,
             providerId: 'openai',
             modelId: 'openai/gpt-5',
         });
         expect(changed.success).toBe(true);
 
-        const providersAfter = await caller.provider.listProviders();
+        const providersAfter = await caller.provider.listProviders({ profileId });
         const defaultProvider = providersAfter.providers.find((item) => item.isDefault);
 
         expect(defaultProvider?.id).toBe('openai');
         expect(providersBefore.providers.some((item) => item.id === 'kilo')).toBe(true);
     });
 
-    it('returns deterministic tool and mcp behavior for stub calls', async () => {
+    it('fails closed for unimplemented tool and mcp mutations', async () => {
         const caller = createCaller();
 
         const tools = await caller.tool.list();
@@ -158,55 +160,57 @@ describe('runtime contracts', () => {
                 path: '/tmp/file.txt',
             },
         });
-        expect(toolInvocation.ok).toBe(true);
+        expect(toolInvocation.ok).toBe(false);
+        expect(toolInvocation.error).toBe('not_implemented');
 
         const mcpServers = await caller.mcp.listServers();
         expect(mcpServers.servers.map((item) => item.id)).toContain('github');
 
         const connected = await caller.mcp.connect({ serverId: 'github' });
-        expect(connected.connected).toBe(true);
+        expect(connected.connected).toBe(false);
+        expect(connected.reason).toBe('not_implemented');
 
         const authStatus = await caller.mcp.authStatus({ serverId: 'github' });
         expect(authStatus.found).toBe(true);
         if (!authStatus.found) {
             throw new Error('Expected MCP auth status result.');
         }
-        expect(authStatus.connectionState).toBe('connected');
+        expect(authStatus.connectionState).toBe('disconnected');
 
         const disconnected = await caller.mcp.disconnect({ serverId: 'github' });
-        expect(disconnected.disconnected).toBe(true);
+        expect(disconnected.disconnected).toBe(false);
+        expect(disconnected.reason).toBe('not_implemented');
     });
 
-    it('returns runtime events and supports replay query', async () => {
+    it('supports workspace-scoped runtime reset dry-run and apply', async () => {
         const caller = createCaller();
 
         const created = await caller.session.create({
-            scope: 'detached',
+            scope: 'workspace',
             kind: 'local',
+            workspaceFingerprint: 'wsf_runtime_contracts',
         });
 
-        await caller.permission.request({
-            policy: 'ask',
-            resource: 'tool:read_file',
+        const dryRun = await caller.runtime.reset({
+            target: 'workspace',
+            workspaceFingerprint: 'wsf_runtime_contracts',
+            dryRun: true,
         });
+        expect(dryRun.applied).toBe(false);
+        expect(dryRun.counts.sessions).toBe(1);
+
+        const applied = await caller.runtime.reset({
+            target: 'workspace',
+            workspaceFingerprint: 'wsf_runtime_contracts',
+            confirm: true,
+        });
+        expect(applied.applied).toBe(true);
+        expect(applied.counts.sessions).toBe(1);
+
+        const sessions = await caller.session.list();
+        expect(sessions.sessions.some((item) => item.id === created.session.id)).toBe(false);
 
         const snapshot = await caller.runtime.getSnapshot();
-        expect(snapshot.sessions.some((item) => item.id === created.session.id)).toBe(true);
         expect(snapshot.lastSequence).toBeGreaterThan(0);
-        expect(Array.isArray(snapshot.conversations)).toBe(true);
-        expect(Array.isArray(snapshot.diffs)).toBe(true);
-
-        const firstBatch = await caller.runtime.getEvents({
-            limit: 2,
-        });
-        expect(firstBatch.events.length).toBe(2);
-
-        const afterFirst = firstBatch.events[0]?.sequence ?? 0;
-        const deltaBatch = await caller.runtime.getEvents({
-            afterSequence: afterFirst,
-            limit: 10,
-        });
-        expect(deltaBatch.events.length).toBeGreaterThan(0);
-        expect(deltaBatch.events.every((event) => event.sequence > afterFirst)).toBe(true);
     });
 });

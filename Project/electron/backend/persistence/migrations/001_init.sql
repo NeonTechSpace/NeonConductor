@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_permissions_decision_created_at ON permissions(de
 
 CREATE TABLE IF NOT EXISTS settings (
     id TEXT PRIMARY KEY,
-    profile_id TEXT NOT NULL DEFAULT '__global__',
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     key TEXT NOT NULL,
     value_json TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -101,4 +101,3 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
-

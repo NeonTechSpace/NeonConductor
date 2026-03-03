@@ -124,6 +124,15 @@ beforeEach(() => {
 });
 
 describe('updater channel switching', () => {
+    it('resolves persisted channel for startup consumers', async () => {
+        const harness = await loadUpdaterHarness({
+            appVersion: '9.9.9-beta.2',
+            persistedChannel: 'alpha',
+        });
+
+        expect(harness.updater.resolvePersistedUpdateChannel()).toBe('alpha');
+    });
+
     it('uses persisted channel on startup without overwriting from installed suffix', async () => {
         const harness = await loadUpdaterHarness({
             appVersion: '9.9.9-beta.2',
@@ -138,7 +147,7 @@ describe('updater channel switching', () => {
         expect(harness.resolverMock).toHaveBeenCalledWith('alpha');
     });
 
-    it('seeds persisted channel from installed suffix on first run', async () => {
+    it('seeds persisted channel from stable default on first run', async () => {
         const harness = await loadUpdaterHarness({
             appVersion: '1.4.0-beta.8',
         });
@@ -146,9 +155,9 @@ describe('updater channel switching', () => {
         harness.updater.initAutoUpdater();
         await flushTasks();
 
-        expect(harness.updater.getCurrentChannel()).toBe('beta');
-        expect(harness.storeState.channel).toBe('beta');
-        expect(harness.resolverMock).toHaveBeenCalledWith('beta');
+        expect(harness.updater.getCurrentChannel()).toBe('stable');
+        expect(harness.storeState.channel).toBe('stable');
+        expect(harness.resolverMock).toHaveBeenCalledWith('stable');
     });
 
     it('resolves feed before update check when switching channel', async () => {

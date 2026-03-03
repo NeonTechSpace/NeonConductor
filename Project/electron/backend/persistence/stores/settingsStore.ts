@@ -1,15 +1,16 @@
-import { createEntityId } from '@/app/backend/runtime/contracts';
-import { getGlobalProfileId, getPersistence } from '@/app/backend/persistence/db';
+import { randomUUID } from 'node:crypto';
+
+import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso, parseJsonValue } from '@/app/backend/persistence/stores/utils';
 
 export class SettingsStore {
-    async getString(key: string, fallback: string): Promise<string> {
+    async getString(profileId: string, key: string, fallback: string): Promise<string> {
         const { db } = getPersistence();
 
         const row = await db
             .selectFrom('settings')
             .select(['value_json'])
-            .where('profile_id', '=', getGlobalProfileId())
+            .where('profile_id', '=', profileId)
             .where('key', '=', key)
             .executeTakeFirst();
 
@@ -20,14 +21,14 @@ export class SettingsStore {
         return parseJsonValue(row.value_json, fallback);
     }
 
-    async setString(key: string, value: string): Promise<void> {
+    async setString(profileId: string, key: string, value: string): Promise<void> {
         const { db } = getPersistence();
 
         await db
             .insertInto('settings')
             .values({
-                id: createEntityId('tag'),
-                profile_id: getGlobalProfileId(),
+                id: `setting_${randomUUID()}`,
+                profile_id: profileId,
                 key,
                 value_json: JSON.stringify(value),
                 updated_at: nowIso(),
@@ -40,7 +41,19 @@ export class SettingsStore {
             )
             .execute();
     }
+
+    async deleteByProfile(profileId: string): Promise<number> {
+        const { db } = getPersistence();
+
+        const rows = await db.deleteFrom('settings').where('profile_id', '=', profileId).returning('id').execute();
+        return rows.length;
+    }
+
+    async deleteAll(): Promise<number> {
+        const { db } = getPersistence();
+        const rows = await db.deleteFrom('settings').returning('id').execute();
+        return rows.length;
+    }
 }
 
 export const settingsStore = new SettingsStore();
-

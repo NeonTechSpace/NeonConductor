@@ -1,11 +1,7 @@
-import {
-    createKeytarSecretStore,
-    SecretStoreUnavailableError,
-} from '@/app/backend/secrets/keytarStore';
-
+import { createKeytarSecretStore, SecretStoreUnavailableError } from '@/app/backend/secrets/keytarStore';
 import type { SecretStoreInfo, SecretStoreLike } from '@/app/backend/secrets/keytarStore';
 
-export interface SecretStore extends SecretStoreLike {}
+export type SecretStore = SecretStoreLike;
 export { SecretStoreUnavailableError };
 export type { SecretStoreInfo };
 

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu } from 'electron';
 import { createIPCHandler, type CreateContextOptions } from 'electron-trpc-experimental/main';
+import path from 'node:path';
 
 import { closePersistence, initializePersistence } from '@/app/backend/persistence/db';
 import { getSecretStoreInfo, initializeSecretStore } from '@/app/backend/secrets/store';
@@ -14,10 +15,11 @@ interface BootstrapDeps {
     createContext: (opts: CreateContextOptions) => Promise<Context>;
     appRouter: AppRouter;
     initAutoUpdater: () => void;
+    resolvePersistenceChannel: () => 'stable' | 'beta' | 'alpha';
 }
 
 export function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: string): void {
-    const { createContext, appRouter, initAutoUpdater } = deps;
+    const { createContext, appRouter, initAutoUpdater, resolvePersistenceChannel } = deps;
     const mainDirname = getMainDirname(importMetaUrl);
 
     let mainWindow: BrowserWindow | null = null;
@@ -38,8 +40,12 @@ export function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: string)
             version: app.getVersion(),
         });
 
+        const persistenceChannel = resolvePersistenceChannel();
+        const persistenceDbPath = path.join(app.getPath('userData'), 'runtime', persistenceChannel, 'neonconductor.db');
+        console.info(`[runtime] channel=${persistenceChannel} dbPath=${persistenceDbPath}`);
+
         initializePersistence({
-            dataDir: app.getPath('userData'),
+            dbPath: persistenceDbPath,
         });
         initializeSecretStore();
         const secretStoreInfo = getSecretStoreInfo();

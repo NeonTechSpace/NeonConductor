@@ -5,12 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     closePersistence,
+    getDefaultProfileId,
     getPersistence,
     initializePersistence,
 } from '@/app/backend/persistence/db';
-import { appRouter } from '@/app/backend/trpc/router';
-
 import type { Context } from '@/app/backend/trpc/context';
+import { appRouter } from '@/app/backend/trpc/router';
 
 function createCaller() {
     const context: Context = {
@@ -31,6 +31,24 @@ afterEach(() => {
 });
 
 describe('persistence bootstrap and durability', () => {
+    it('rejects relative db path inputs', () => {
+        expect(() =>
+            initializePersistence({
+                dbPath: 'relative/runtime.sqlite',
+                forceReinitialize: true,
+            })
+        ).toThrow(/must be absolute/i);
+    });
+
+    it('rejects relative dataDir inputs', () => {
+        expect(() =>
+            initializePersistence({
+                dataDir: 'relative/runtime',
+                forceReinitialize: true,
+            })
+        ).toThrow(/must be absolute/i);
+    });
+
     it('applies migrations and remains idempotent across reinitialization', async () => {
         const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-persistence-'));
         tempDirs.push(tempDir);
@@ -42,11 +60,11 @@ describe('persistence bootstrap and durability', () => {
             forceReinitialize: true,
         });
 
-        const firstCountRow = getPersistence().sqlite
-            .prepare('SELECT COUNT(*) AS count FROM schema_migrations')
+        const firstCountRow = getPersistence()
+            .sqlite.prepare('SELECT COUNT(*) AS count FROM schema_migrations')
             .get() as { count: number };
-        const firstTables = getPersistence().sqlite
-            .prepare(
+        const firstTables = getPersistence()
+            .sqlite.prepare(
                 `
                     SELECT COUNT(*) AS count
                     FROM sqlite_master
@@ -63,8 +81,8 @@ describe('persistence bootstrap and durability', () => {
             forceReinitialize: true,
         });
 
-        const secondCountRow = getPersistence().sqlite
-            .prepare('SELECT COUNT(*) AS count FROM schema_migrations')
+        const secondCountRow = getPersistence()
+            .sqlite.prepare('SELECT COUNT(*) AS count FROM schema_migrations')
             .get() as { count: number };
 
         expect(firstCountRow.count).toBeGreaterThan(0);
@@ -72,7 +90,9 @@ describe('persistence bootstrap and durability', () => {
         expect(firstTables.count).toBe(5);
 
         const caller = createCaller();
-        const providers = await caller.provider.listProviders();
+        const providers = await caller.provider.listProviders({
+            profileId: getDefaultProfileId(),
+        });
         expect(providers.providers.length).toBeGreaterThan(0);
     });
 

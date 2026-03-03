@@ -50,6 +50,9 @@ export type RunStatus = (typeof runStatuses)[number];
 export const streamEventTypes = ['status', 'message-part', 'tool-call', 'error'] as const;
 export type StreamEventType = (typeof streamEventTypes)[number];
 
+export const runtimeResetTargets = ['workspace', 'workspace_all', 'profile_settings', 'full'] as const;
+export type RuntimeResetTarget = (typeof runtimeResetTargets)[number];
+
 export interface StreamEventEnvelope {
     id: EntityId<'evt'>;
     sessionId: EntityId<'sess'>;
@@ -59,9 +62,14 @@ export interface StreamEventEnvelope {
     payload: Record<string, unknown>;
 }
 
+export interface ProfileInput {
+    profileId: string;
+}
+
 export interface SessionCreateInput {
     scope: ConversationScope;
     kind: SessionKind;
+    workspaceFingerprint?: string;
 }
 
 export interface SessionByIdInput {
@@ -72,10 +80,12 @@ export interface SessionPromptInput extends SessionByIdInput {
     prompt: string;
 }
 
-export interface ProviderSetDefaultInput {
+export interface ProviderSetDefaultInput extends ProfileInput {
     providerId: string;
     modelId: string;
 }
+
+export type ProviderListProvidersInput = ProfileInput;
 
 export interface ProviderListModelsInput {
     providerId?: string;
@@ -100,9 +110,36 @@ export interface McpByServerInput {
     serverId: string;
 }
 
-export interface RuntimeEventsQueryInput {
+export interface RuntimeEventsSubscriptionInput {
     afterSequence?: number;
-    limit?: number;
+}
+
+export interface RuntimeResetInput {
+    target: RuntimeResetTarget;
+    profileId?: string;
+    workspaceFingerprint?: string;
+    dryRun?: boolean;
+    confirm?: boolean;
+}
+
+export interface RuntimeResetCounts {
+    settings: number;
+    runtimeEvents: number;
+    sessions: number;
+    runs: number;
+    permissions: number;
+    conversations: number;
+    threads: number;
+    threadTags: number;
+    tags: number;
+    diffs: number;
+}
+
+export interface RuntimeResetResult {
+    dryRun: boolean;
+    target: RuntimeResetTarget;
+    applied: boolean;
+    counts: RuntimeResetCounts;
 }
 
 export interface ContextBudgetInput {
@@ -139,11 +176,23 @@ function readOptionalString(value: unknown, field: string): string | undefined {
     return readString(value, field);
 }
 
-function readEnumValue<const T extends readonly string[]>(
-    value: unknown,
-    field: string,
-    allowedValues: T
-): T[number] {
+function readBoolean(value: unknown, field: string): boolean {
+    if (typeof value !== 'boolean') {
+        throw new Error(`Invalid "${field}": expected boolean.`);
+    }
+
+    return value;
+}
+
+function readOptionalBoolean(value: unknown, field: string): boolean | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    return readBoolean(value, field);
+}
+
+function readEnumValue<const T extends readonly string[]>(value: unknown, field: string, allowedValues: T): T[number] {
     const text = readString(value, field);
     if ((allowedValues as readonly string[]).includes(text)) {
         return text as T[number];
@@ -182,12 +231,36 @@ function readObject(value: unknown, field: string): Record<string, unknown> {
     return value;
 }
 
+function readProfileId(source: Record<string, unknown>): string {
+    return readString(source.profileId, 'profileId');
+}
+
+export function parseProfileInput(input: unknown): ProfileInput {
+    const source = readObject(input, 'input');
+    return {
+        profileId: readProfileId(source),
+    };
+}
+
 export function parseSessionCreateInput(input: unknown): SessionCreateInput {
     const source = readObject(input, 'input');
 
+    const scope = readEnumValue(source.scope, 'scope', conversationScopes);
+    const kind = readEnumValue(source.kind, 'kind', sessionKinds);
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+
+    if (scope === 'workspace' && !workspaceFingerprint) {
+        throw new Error('Invalid "workspaceFingerprint": required when scope is "workspace".');
+    }
+
+    if (scope !== 'workspace' && workspaceFingerprint) {
+        throw new Error('Invalid "workspaceFingerprint": allowed only when scope is "workspace".');
+    }
+
     return {
-        scope: readEnumValue(source.scope, 'scope', conversationScopes),
-        kind: readEnumValue(source.kind, 'kind', sessionKinds),
+        scope,
+        kind,
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
     };
 }
 
@@ -212,8 +285,17 @@ export function parseProviderSetDefaultInput(input: unknown): ProviderSetDefault
     const source = readObject(input, 'input');
 
     return {
+        profileId: readProfileId(source),
         providerId: readString(source.providerId, 'providerId'),
         modelId: readString(source.modelId, 'modelId'),
+    };
+}
+
+export function parseProviderListProvidersInput(input: unknown): ProviderListProvidersInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
     };
 }
 
@@ -268,26 +350,50 @@ export function parseMcpByServerInput(input: unknown): McpByServerInput {
     };
 }
 
-export function parseRuntimeEventsQueryInput(input: unknown): RuntimeEventsQueryInput {
+export function parseRuntimeEventsSubscriptionInput(input: unknown): RuntimeEventsSubscriptionInput {
     if (input === undefined) {
         return {};
     }
 
     const source = readObject(input, 'input');
     const afterSequence = readOptionalNumber(source.afterSequence, 'afterSequence');
-    const limit = readOptionalNumber(source.limit, 'limit');
 
     if (afterSequence !== undefined && (!Number.isInteger(afterSequence) || afterSequence < 0)) {
         throw new Error('Invalid "afterSequence": expected non-negative integer.');
     }
 
-    if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
-        throw new Error('Invalid "limit": expected positive integer.');
+    return {
+        ...(afterSequence !== undefined ? { afterSequence } : {}),
+    };
+}
+
+export function parseRuntimeResetInput(input: unknown): RuntimeResetInput {
+    const source = readObject(input, 'input');
+
+    const target = readEnumValue(source.target, 'target', runtimeResetTargets);
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    const dryRun = readOptionalBoolean(source.dryRun, 'dryRun') ?? false;
+    const confirm = readOptionalBoolean(source.confirm, 'confirm');
+
+    if (target === 'workspace' && !workspaceFingerprint) {
+        throw new Error('Invalid "workspaceFingerprint": required when target is "workspace".');
+    }
+
+    if ((target === 'profile_settings' || target === 'full') && !profileId) {
+        throw new Error('Invalid "profileId": required when target is "profile_settings" or "full".');
+    }
+
+    if (!dryRun && confirm !== true) {
+        throw new Error('Invalid "confirm": expected true when dryRun is false.');
     }
 
     return {
-        ...(afterSequence !== undefined ? { afterSequence } : {}),
-        ...(limit !== undefined ? { limit } : {}),
+        target,
+        ...(profileId ? { profileId } : {}),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        ...(dryRun ? { dryRun } : {}),
+        ...(confirm !== undefined ? { confirm } : {}),
     };
 }
 
@@ -298,14 +404,17 @@ export function parseContextBudgetInput(input: unknown): ContextBudgetInput {
     };
 }
 
+export const profileInputSchema = createParser(parseProfileInput);
 export const sessionCreateInputSchema = createParser(parseSessionCreateInput);
 export const sessionByIdInputSchema = createParser(parseSessionByIdInput);
 export const sessionPromptInputSchema = createParser(parseSessionPromptInput);
 export const providerSetDefaultInputSchema = createParser(parseProviderSetDefaultInput);
+export const providerListProvidersInputSchema = createParser(parseProviderListProvidersInput);
 export const providerListModelsInputSchema = createParser(parseProviderListModelsInput);
 export const permissionRequestInputSchema = createParser(parsePermissionRequestInput);
 export const permissionDecisionInputSchema = createParser(parsePermissionDecisionInput);
 export const toolInvokeInputSchema = createParser(parseToolInvokeInput);
 export const mcpByServerInputSchema = createParser(parseMcpByServerInput);
-export const runtimeEventsQueryInputSchema = createParser(parseRuntimeEventsQueryInput);
+export const runtimeEventsSubscriptionInputSchema = createParser(parseRuntimeEventsSubscriptionInput);
+export const runtimeResetInputSchema = createParser(parseRuntimeResetInput);
 export const contextBudgetInputSchema = createParser(parseContextBudgetInput);

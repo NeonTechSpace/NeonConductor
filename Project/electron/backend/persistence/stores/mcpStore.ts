@@ -1,6 +1,5 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/utils';
-
 import type { McpServerRecord } from '@/app/backend/persistence/types';
 
 function mapMcpRecord(row: {
@@ -82,4 +81,3 @@ export class McpStore {
 }
 
 export const mcpStore = new McpStore();
-

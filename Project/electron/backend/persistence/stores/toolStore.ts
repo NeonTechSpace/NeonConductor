@@ -1,13 +1,7 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-
 import type { ToolRecord } from '@/app/backend/persistence/types';
 
-function mapToolRecord(row: {
-    id: string;
-    label: string;
-    description: string;
-    permission_policy: string;
-}): ToolRecord {
+function mapToolRecord(row: { id: string; label: string; description: string; permission_policy: string }): ToolRecord {
     return {
         id: row.id,
         label: row.label,
@@ -30,4 +24,3 @@ export class ToolStore {
 }
 
 export const toolStore = new ToolStore();
-

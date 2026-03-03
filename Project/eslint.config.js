@@ -92,6 +92,13 @@ const importOrderRule = [
 ];
 
 const noRestrictedImportsRule = ['error', { patterns: ['../*', '../../*', '../../../*', '../../../../*'] }];
+const noSecretsRule = [
+    'warn',
+    {
+        // Migration filenames look high-entropy to the rule but are deterministic versioned artifacts.
+        ignoreContent: [/^\d{3}_[a-z0-9_]+\.sql$/i],
+    },
+];
 
 const vitestGlobals = {
     afterAll: 'readonly',
@@ -170,7 +177,7 @@ export default [
             'import/newline-after-import': 'warn',
             'import/no-unresolved': 'off',
             'no-restricted-imports': noRestrictedImportsRule,
-            'no-secrets/no-secrets': 'warn',
+            'no-secrets/no-secrets': noSecretsRule,
             'no-alert': 'error',
             ...tanstackQueryRules,
             '@tanstack/query/exhaustive-deps': 'error',
@@ -198,7 +205,7 @@ export default [
             'import/newline-after-import': 'warn',
             'import/no-unresolved': 'off',
             'no-restricted-imports': noRestrictedImportsRule,
-            'no-secrets/no-secrets': 'warn',
+            'no-secrets/no-secrets': noSecretsRule,
             'n/no-missing-import': 'off',
             'n/no-process-exit': 'off',
             'security/detect-child-process': 'warn',
@@ -224,6 +231,14 @@ export default [
         files: ['scripts/**/*.ts'],
         rules: {
             'no-secrets/no-secrets': 'off',
+            'security/detect-non-literal-fs-filename': 'off',
+        },
+    },
+
+    {
+        files: ['electron/backend/persistence/db.ts'],
+        rules: {
+            // This file validates and normalizes db paths before filesystem use.
             'security/detect-non-literal-fs-filename': 'off',
         },
     },

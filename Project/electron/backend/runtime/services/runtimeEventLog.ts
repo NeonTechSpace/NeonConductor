@@ -1,6 +1,6 @@
 import { runtimeEventStore } from '@/app/backend/persistence/stores';
-
 import type { RuntimeEntityType, RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
+import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
 
 export interface RuntimeEventLogService {
     append(event: {
@@ -13,13 +13,15 @@ export interface RuntimeEventLogService {
 }
 
 class RuntimeEventLogServiceImpl implements RuntimeEventLogService {
-    append(event: {
+    async append(event: {
         entityType: RuntimeEntityType;
         entityId: string;
         eventType: string;
         payload: Record<string, unknown>;
     }): Promise<RuntimeEventRecordV1> {
-        return runtimeEventStore.append(event);
+        const appended = await runtimeEventStore.append(event);
+        runtimeEventBus.publish(appended);
+        return appended;
     }
 
     getEvents(afterSequence: number | null, limit: number): Promise<RuntimeEventRecordV1[]> {

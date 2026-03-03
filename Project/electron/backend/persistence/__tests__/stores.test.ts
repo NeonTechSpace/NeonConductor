@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { resetPersistenceForTests } from '@/app/backend/persistence/db';
+import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import {
     conversationStore,
     diffStore,
@@ -50,13 +50,14 @@ describe('persistence stores', () => {
     });
 
     it('supports provider defaults and seeded catalogs', async () => {
+        const profileId = getDefaultProfileId();
         const providers = await providerStore.listProviders();
         const models = await providerStore.listModels('openai');
         expect(providers.length).toBeGreaterThan(0);
         expect(models.length).toBeGreaterThan(0);
 
-        await providerStore.setDefaults('openai', 'openai/gpt-5');
-        const defaults = await providerStore.getDefaults();
+        await providerStore.setDefaults(profileId, 'openai', 'openai/gpt-5');
+        const defaults = await providerStore.getDefaults(profileId);
         expect(defaults.providerId).toBe('openai');
     });
 
@@ -72,12 +73,16 @@ describe('persistence stores', () => {
     });
 
     it('supports conversations, threads, tags, and diffs', async () => {
-        const conversation = await conversationStore.createConversation('workspace', 'Workspace Chat');
+        const conversation = await conversationStore.createConversation(
+            'workspace',
+            'Workspace Chat',
+            'wsf_workspace_a'
+        );
         const thread = await conversationStore.createThread(conversation.id, 'Thread A');
         const tag = await tagStore.create('backend');
         const linked = await tagStore.attachToThread(thread.id, tag.id);
 
-        const session = await sessionStore.create('workspace', 'local');
+        const session = await sessionStore.create('workspace', 'local', 'wsf_workspace_a');
         const prompt = await sessionStore.prompt(session.id, 'first');
         if (!prompt.accepted) {
             throw new Error('Expected prompt to be accepted.');
@@ -99,9 +104,7 @@ describe('persistence stores', () => {
         expect(conversations.some((item) => item.id === conversation.id)).toBe(true);
         expect(threads.some((item) => item.id === thread.id)).toBe(true);
         expect(tags.some((item) => item.id === tag.id)).toBe(true);
-        expect(threadTags.some((item) => item.threadId === linked.threadId && item.tagId === linked.tagId)).toBe(
-            true
-        );
+        expect(threadTags.some((item) => item.threadId === linked.threadId && item.tagId === linked.tagId)).toBe(true);
         expect(diffs.some((item) => item.id === diff.id)).toBe(true);
     });
 });

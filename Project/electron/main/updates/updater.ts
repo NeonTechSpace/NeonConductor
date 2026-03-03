@@ -146,7 +146,7 @@ function loadPersistedChannel(): PersistedChannelState {
             return { channel: persisted, exists: true };
         }
 
-        console.error('[updater] Persisted channel is invalid. Re-seeding from installed build.');
+        console.error('[updater] Persisted channel is invalid. Re-seeding from stable default.');
         return { channel: DEFAULT_CHANNEL, exists: false };
     } catch (error) {
         console.error('[updater] Failed to read persisted channel:', error);
@@ -155,11 +155,8 @@ function loadPersistedChannel(): PersistedChannelState {
     return { channel: DEFAULT_CHANNEL, exists: false };
 }
 
-function inferInstalledChannel(version: string): UpdateChannel {
-    const normalized = version.toLowerCase();
-    if (normalized.includes('-alpha')) return 'alpha';
-    if (normalized.includes('-beta')) return 'beta';
-    return 'stable';
+export function resolvePersistedUpdateChannel(): UpdateChannel {
+    return loadPersistedChannel().channel;
 }
 
 function persistChannel(channel: UpdateChannel): void {
@@ -432,9 +429,8 @@ export function initAutoUpdater(): void {
     const persistedChannel = loadPersistedChannel();
 
     if (!persistedChannel.exists) {
-        const installedChannel = inferInstalledChannel(app.getVersion());
-        persistChannel(installedChannel);
-        currentChannel = installedChannel;
+        persistChannel(DEFAULT_CHANNEL);
+        currentChannel = DEFAULT_CHANNEL;
     } else {
         currentChannel = persistedChannel.channel;
     }

@@ -7,32 +7,32 @@ This document tracks the P1B implementation in `Project/electron/backend`.
 1. Keytar-backed secret storage integration with backend selection and status introspection.
 2. Typed secret backend-unavailable error surface.
 3. Core runtime migration `002_core_runtime.sql`:
-   - conversations
-   - threads
-   - tags
-   - thread_tags
-   - diffs
+    - conversations
+    - threads
+    - tags
+    - thread_tags
+    - diffs
 4. Generated migration bundle (`generatedMigrations.ts`) consumed by runtime migration execution.
 5. New persistence stores:
-   - `conversationStore`
-   - `tagStore`
-   - `diffStore`
+    - `conversationStore`
+    - `tagStore`
+    - `diffStore`
 6. Runtime snapshot extension with:
-   - `conversations`
-   - `threads`
-   - `tags`
-   - `threadTags`
-   - `diffs`
+    - `conversations`
+    - `threads`
+    - `tags`
+    - `threadTags`
+    - `diffs`
 7. Runtime contract addition:
-   - `ContextBudget`
+    - `ContextBudget`
 
 ## Packaging-Safe Decisions
 
 1. Runtime no longer reads migration SQL from filesystem paths.
 2. Migration SQL is bundled in compiled code via generated module.
 3. `electron-builder` now explicitly unpacks native runtime modules:
-   - `better-sqlite3`
-   - `keytar`
+    - `better-sqlite3`
+    - `keytar`
 4. Packaging file list excludes tests and non-runtime docs folders.
 
 ## Build Guardrails

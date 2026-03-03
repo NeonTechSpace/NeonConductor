@@ -1,3 +1,4 @@
+import { getDefaultProfileId } from '@/app/backend/persistence/db';
 import {
     conversationStore,
     diffStore,
@@ -9,7 +10,6 @@ import {
     tagStore,
     toolStore,
 } from '@/app/backend/persistence/stores';
-
 import type { RuntimeSnapshotV1 } from '@/app/backend/persistence/types';
 
 export interface RuntimeSnapshotService {
@@ -39,7 +39,7 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
             providerStore.listModels(),
             toolStore.list(),
             mcpStore.listServers(),
-            providerStore.getDefaults(),
+            providerStore.getDefaults(getDefaultProfileId()),
             runtimeEventStore.getLastSequence(),
             conversationStore.listConversations(),
             conversationStore.listThreads(),
