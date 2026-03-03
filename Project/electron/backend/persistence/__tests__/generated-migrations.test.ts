@@ -10,6 +10,7 @@ describe('generated migrations', () => {
             '002_core_runtime.sql',
             '003_p1c_runtime_foundation.sql',
             '004_p1d_kilo_parity.sql',
+            '005_p2a_provider_auth_foundation.sql',
         ]);
     });
 });

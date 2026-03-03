@@ -264,6 +264,45 @@ function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
             VALUES (?, ?, ?, ?, ?)
         `
     );
+    const insertCatalogModel = sqlite.prepare(
+        `
+            INSERT OR IGNORE INTO provider_model_catalog
+                (
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    label,
+                    upstream_provider,
+                    is_free,
+                    supports_tools,
+                    supports_reasoning,
+                    context_length,
+                    pricing_json,
+                    raw_json,
+                    source,
+                    updated_at
+                )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+    );
+    const insertProviderAuthState = sqlite.prepare(
+        `
+            INSERT OR IGNORE INTO provider_auth_states
+                (
+                    profile_id,
+                    provider_id,
+                    auth_method,
+                    auth_state,
+                    account_id,
+                    organization_id,
+                    token_expires_at,
+                    last_error_code,
+                    last_error_message,
+                    updated_at
+                )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+    );
     const insertTool = sqlite.prepare(
         `
             INSERT OR IGNORE INTO tools_catalog (id, label, description, permission_policy, created_at, updated_at)
@@ -302,10 +341,37 @@ function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
 
     for (const provider of PROVIDER_SEED) {
         insertProvider.run(provider.id, provider.label, provider.supportsByok, now, now);
+        insertProviderAuthState.run(
+            DEFAULT_PROFILE_ID,
+            provider.id,
+            'none',
+            'logged_out',
+            null,
+            null,
+            null,
+            null,
+            null,
+            now
+        );
     }
 
     for (const model of MODEL_SEED) {
         insertModel.run(model.id, model.providerId, model.label, now, now);
+        insertCatalogModel.run(
+            DEFAULT_PROFILE_ID,
+            model.providerId,
+            model.id,
+            model.label,
+            model.providerId,
+            0,
+            0,
+            0,
+            null,
+            '{}',
+            '{}',
+            'seed',
+            now
+        );
     }
 
     for (const tool of TOOL_SEED) {

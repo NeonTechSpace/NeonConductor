@@ -41,6 +41,7 @@ describe('runtime contracts', () => {
             true
         );
         expect(snapshot.kiloAccountContext.authState).toBe('logged_out');
+        expect(snapshot.providerAuthStates.length).toBeGreaterThan(0);
         expect(snapshot.secretReferences).toEqual([]);
         expect(providers.providers.length).toBeGreaterThan(0);
         expect(pendingPermissions.requests).toEqual([]);
@@ -136,7 +137,7 @@ describe('runtime contracts', () => {
         const caller = createCaller();
 
         const providersBefore = await caller.provider.listProviders({ profileId });
-        const models = await caller.provider.listModels({ providerId: 'openai' });
+        const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
         expect(models.models.length).toBeGreaterThan(0);
 
         const changed = await caller.provider.setDefault({
@@ -151,6 +152,94 @@ describe('runtime contracts', () => {
 
         expect(defaultProvider?.id).toBe('openai');
         expect(providersBefore.providers.some((item) => item.id === 'kilo')).toBe(true);
+    });
+
+    it('supports provider auth control plane and sync failure is explicit for unimplemented adapter paths', async () => {
+        const caller = createCaller();
+
+        const before = await caller.provider.getAuthState({ profileId, providerId: 'openai' });
+        expect(before.found).toBe(true);
+        if (!before.found) {
+            throw new Error('Expected auth state lookup to succeed.');
+        }
+        expect(before.state.authState).toBe('logged_out');
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'test-openai-key',
+        });
+        expect(configured.success).toBe(true);
+        if (!configured.success) {
+            throw new Error('Expected setApiKey to succeed.');
+        }
+        expect(configured.state.authState).toBe('configured');
+
+        const snapshotAfterSet = await caller.runtime.getSnapshot({ profileId });
+        expect(snapshotAfterSet.secretReferences.some((ref) => ref.providerId === 'openai')).toBe(true);
+
+        const syncResult = await caller.provider.syncCatalog({
+            profileId,
+            providerId: 'openai',
+        });
+        expect(syncResult.ok).toBe(false);
+        expect(syncResult.reason).toBe('not_implemented');
+
+        const cleared = await caller.provider.clearAuth({
+            profileId,
+            providerId: 'openai',
+        });
+        expect(cleared.success).toBe(true);
+        if (!cleared.success) {
+            throw new Error('Expected clearAuth to succeed.');
+        }
+        expect(cleared.authState.authState).toBe('logged_out');
+
+        const snapshotAfterClear = await caller.runtime.getSnapshot({ profileId });
+        expect(snapshotAfterClear.secretReferences.some((ref) => ref.providerId === 'openai')).toBe(false);
+    });
+
+    it('rejects unsupported provider ids and allows anthropic models through supported providers', async () => {
+        const caller = createCaller();
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+
+        const unsupported = await caller.provider.listModels({
+            profileId,
+            providerId: 'anthropic',
+        });
+        expect(unsupported.reason).toBe('provider_not_found');
+
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_model_catalog
+                        (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, context_length, pricing_json, raw_json, source, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'kilo',
+                'anthropic/claude-sonnet-4.5',
+                'Claude Sonnet 4.5',
+                'anthropic',
+                0,
+                1,
+                1,
+                200000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const setDefault = await caller.provider.setDefault({
+            profileId,
+            providerId: 'kilo',
+            modelId: 'anthropic/claude-sonnet-4.5',
+        });
+        expect(setDefault.success).toBe(true);
     });
 
     it('fails closed for unimplemented tool and mcp mutations', async () => {

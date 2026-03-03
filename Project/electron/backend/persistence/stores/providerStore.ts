@@ -1,9 +1,7 @@
 import { getPersistence } from '@/app/backend/persistence/db';
+import { providerCatalogStore } from '@/app/backend/persistence/stores/providerCatalogStore';
 import { settingsStore } from '@/app/backend/persistence/stores/settingsStore';
 import type { ProviderModelRecord, ProviderRecord } from '@/app/backend/persistence/types';
-
-const DEFAULT_PROVIDER_FALLBACK = 'kilo';
-const DEFAULT_MODEL_FALLBACK = 'kilo/auto';
 
 export class ProviderStore {
     async listProviders(): Promise<ProviderRecord[]> {
@@ -22,28 +20,18 @@ export class ProviderStore {
         }));
     }
 
-    async listModels(providerId?: string): Promise<ProviderModelRecord[]> {
-        const { db } = getPersistence();
+    async listModels(profileId: string, providerId: string): Promise<ProviderModelRecord[]> {
+        return providerCatalogStore.listModels(profileId, providerId);
+    }
 
-        let query = db.selectFrom('provider_models').select(['id', 'provider_id', 'label']).orderBy('label', 'asc');
-
-        if (providerId) {
-            query = query.where('provider_id', '=', providerId);
-        }
-
-        const rows = await query.execute();
-
-        return rows.map((row) => ({
-            id: row.id,
-            providerId: row.provider_id,
-            label: row.label,
-        }));
+    async listModelsByProfile(profileId: string): Promise<ProviderModelRecord[]> {
+        return providerCatalogStore.listByProfile(profileId);
     }
 
     async getDefaults(profileId: string): Promise<{ providerId: string; modelId: string }> {
         const [providerId, modelId] = await Promise.all([
-            settingsStore.getString(profileId, 'default_provider_id', DEFAULT_PROVIDER_FALLBACK),
-            settingsStore.getString(profileId, 'default_model_id', DEFAULT_MODEL_FALLBACK),
+            settingsStore.getStringRequired(profileId, 'default_provider_id'),
+            settingsStore.getStringRequired(profileId, 'default_model_id'),
         ]);
 
         return {
@@ -66,16 +54,8 @@ export class ProviderStore {
         return Boolean(row);
     }
 
-    async modelExists(providerId: string, modelId: string): Promise<boolean> {
-        const { db } = getPersistence();
-        const row = await db
-            .selectFrom('provider_models')
-            .select('id')
-            .where('provider_id', '=', providerId)
-            .where('id', '=', modelId)
-            .executeTakeFirst();
-
-        return Boolean(row);
+    async modelExists(profileId: string, providerId: string, modelId: string): Promise<boolean> {
+        return providerCatalogStore.modelExists(profileId, providerId, modelId);
     }
 }
 

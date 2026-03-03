@@ -25,6 +25,10 @@ const EMPTY_COUNTS: RuntimeResetCounts = {
     kiloAccountSnapshots: 0,
     kiloOrgSnapshots: 0,
     secretReferences: 0,
+    providerAuthStates: 0,
+    providerOAuthSessions: 0,
+    providerCatalogModels: 0,
+    providerDiscoverySnapshots: 0,
 };
 
 interface WorkspaceResolvedCounts {
@@ -263,44 +267,75 @@ async function resolveProfileSettingsCounts(
     db: Kysely<DatabaseSchema>,
     profileId: string
 ): Promise<RuntimeResetCounts> {
-    const [settings, modeDefinitions, rulesets, skillfiles, kiloAccountSnapshots, kiloOrgSnapshots, secretReferences] =
-        await Promise.all([
-            db
-                .selectFrom('settings')
-                .select((eb) => eb.fn.count<number>('id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-            db
-                .selectFrom('mode_definitions')
-                .select((eb) => eb.fn.count<number>('id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-            db
-                .selectFrom('rulesets')
-                .select((eb) => eb.fn.count<number>('id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-            db
-                .selectFrom('skillfiles')
-                .select((eb) => eb.fn.count<number>('id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-            db
-                .selectFrom('kilo_account_snapshots')
-                .select((eb) => eb.fn.count<number>('profile_id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-            db
-                .selectFrom('kilo_org_snapshots')
-                .select((eb) => eb.fn.count<number>('id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-            db
-                .selectFrom('secret_references')
-                .select((eb) => eb.fn.count<number>('id').as('count'))
-                .where('profile_id', '=', profileId)
-                .executeTakeFirst(),
-        ]);
+    const [
+        settings,
+        modeDefinitions,
+        rulesets,
+        skillfiles,
+        kiloAccountSnapshots,
+        kiloOrgSnapshots,
+        secretReferences,
+        providerAuthStates,
+        providerOAuthSessions,
+        providerCatalogModels,
+        providerDiscoverySnapshots,
+    ] = await Promise.all([
+        db
+            .selectFrom('settings')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('mode_definitions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('rulesets')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('skillfiles')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('kilo_account_snapshots')
+            .select((eb) => eb.fn.count<number>('profile_id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('kilo_org_snapshots')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('secret_references')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_auth_states')
+            .select((eb) => eb.fn.count<number>('provider_id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_oauth_sessions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_model_catalog')
+            .select((eb) => eb.fn.count<number>('model_id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_discovery_snapshots')
+            .select((eb) => eb.fn.count<number>('kind').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+    ]);
 
     return {
         ...EMPTY_COUNTS,
@@ -311,6 +346,10 @@ async function resolveProfileSettingsCounts(
         kiloAccountSnapshots: kiloAccountSnapshots?.count ?? 0,
         kiloOrgSnapshots: kiloOrgSnapshots?.count ?? 0,
         secretReferences: secretReferences?.count ?? 0,
+        providerAuthStates: providerAuthStates?.count ?? 0,
+        providerOAuthSessions: providerOAuthSessions?.count ?? 0,
+        providerCatalogModels: providerCatalogModels?.count ?? 0,
+        providerDiscoverySnapshots: providerDiscoverySnapshots?.count ?? 0,
     };
 }
 
@@ -334,25 +373,99 @@ async function resolveFullCounts(db: Kysely<DatabaseSchema>): Promise<RuntimeRes
         kiloAccountSnapshots,
         kiloOrgSnapshots,
         secretReferences,
+        providerAuthStates,
+        providerOAuthSessions,
+        providerCatalogModels,
+        providerDiscoverySnapshots,
     ] = await Promise.all([
-        db.selectFrom('settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('runtime_events').select((eb) => eb.fn.count<number>('sequence').as('count')).executeTakeFirst(),
-        db.selectFrom('sessions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('runs').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('permissions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('conversations').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('threads').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('thread_tags').select((eb) => eb.fn.count<number>('thread_id').as('count')).executeTakeFirst(),
-        db.selectFrom('tags').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('diffs').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('mode_definitions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('rulesets').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('skillfiles').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('marketplace_packages').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('marketplace_assets').select((eb) => eb.fn.count<number>('package_id').as('count')).executeTakeFirst(),
-        db.selectFrom('kilo_account_snapshots').select((eb) => eb.fn.count<number>('profile_id').as('count')).executeTakeFirst(),
-        db.selectFrom('kilo_org_snapshots').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('secret_references').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('settings')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('runtime_events')
+            .select((eb) => eb.fn.count<number>('sequence').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('sessions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('runs')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('permissions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('conversations')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('threads')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('thread_tags')
+            .select((eb) => eb.fn.count<number>('thread_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('tags')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('diffs')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('mode_definitions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('rulesets')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('skillfiles')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('marketplace_packages')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('marketplace_assets')
+            .select((eb) => eb.fn.count<number>('package_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('kilo_account_snapshots')
+            .select((eb) => eb.fn.count<number>('profile_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('kilo_org_snapshots')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('secret_references')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_auth_states')
+            .select((eb) => eb.fn.count<number>('provider_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_oauth_sessions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_model_catalog')
+            .select((eb) => eb.fn.count<number>('model_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_discovery_snapshots')
+            .select((eb) => eb.fn.count<number>('kind').as('count'))
+            .executeTakeFirst(),
     ]);
 
     return {
@@ -374,6 +487,10 @@ async function resolveFullCounts(db: Kysely<DatabaseSchema>): Promise<RuntimeRes
         kiloAccountSnapshots: kiloAccountSnapshots?.count ?? 0,
         kiloOrgSnapshots: kiloOrgSnapshots?.count ?? 0,
         secretReferences: secretReferences?.count ?? 0,
+        providerAuthStates: providerAuthStates?.count ?? 0,
+        providerOAuthSessions: providerOAuthSessions?.count ?? 0,
+        providerCatalogModels: providerCatalogModels?.count ?? 0,
+        providerDiscoverySnapshots: providerDiscoverySnapshots?.count ?? 0,
     };
 }
 
@@ -414,6 +531,10 @@ class RuntimeResetServiceImpl implements RuntimeResetService {
                 await db.deleteFrom('kilo_account_snapshots').where('profile_id', '=', profileId).execute();
                 await db.deleteFrom('kilo_org_snapshots').where('profile_id', '=', profileId).execute();
                 await db.deleteFrom('secret_references').where('profile_id', '=', profileId).execute();
+                await db.deleteFrom('provider_auth_states').where('profile_id', '=', profileId).execute();
+                await db.deleteFrom('provider_oauth_sessions').where('profile_id', '=', profileId).execute();
+                await db.deleteFrom('provider_model_catalog').where('profile_id', '=', profileId).execute();
+                await db.deleteFrom('provider_discovery_snapshots').where('profile_id', '=', profileId).execute();
                 await removeSecretsByReferences(secretRefs.map((secretRef) => secretRef.secretKeyRef));
             }
 
@@ -441,6 +562,10 @@ class RuntimeResetServiceImpl implements RuntimeResetService {
             await db.deleteFrom('kilo_account_snapshots').execute();
             await db.deleteFrom('kilo_org_snapshots').execute();
             await db.deleteFrom('secret_references').execute();
+            await db.deleteFrom('provider_auth_states').execute();
+            await db.deleteFrom('provider_oauth_sessions').execute();
+            await db.deleteFrom('provider_model_catalog').execute();
+            await db.deleteFrom('provider_discovery_snapshots').execute();
             await db.deleteFrom('marketplace_packages').execute();
             await db.deleteFrom('provider_models').execute();
             await db.deleteFrom('providers').execute();

@@ -6,7 +6,6 @@ import {
     mcpStore,
     modeStore,
     permissionStore,
-    providerStore,
     rulesetStore,
     runtimeEventStore,
     secretReferenceStore,
@@ -16,6 +15,7 @@ import {
     toolStore,
 } from '@/app/backend/persistence/stores';
 import type { RuntimeSnapshotV1 } from '@/app/backend/persistence/types';
+import { providerManagementService } from '@/app/backend/providers/service';
 
 export interface RuntimeSnapshotService {
     getSnapshot(profileId: string): Promise<RuntimeSnapshotV1>;
@@ -28,6 +28,8 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
             permissions,
             providers,
             providerModels,
+            providerAuthStates,
+            providerDiscoverySnapshots,
             tools,
             mcpServers,
             defaults,
@@ -46,11 +48,13 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
         ] = await Promise.all([
             sessionStore.list(),
             permissionStore.listAll(),
-            providerStore.listProviders(),
-            providerStore.listModels(),
+            providerManagementService.listProviders(profileId),
+            providerManagementService.listModelsByProfile(profileId),
+            providerManagementService.listAuthStates(profileId),
+            providerManagementService.listDiscoverySnapshots(profileId),
             toolStore.list(),
             mcpStore.listServers(),
-            providerStore.getDefaults(profileId),
+            providerManagementService.getDefaults(profileId),
             runtimeEventStore.getLastSequence(),
             conversationStore.listConversations(),
             conversationStore.listThreads(),
@@ -70,11 +74,10 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
             lastSequence,
             sessions,
             permissions,
-            providers: providers.map((provider) => ({
-                ...provider,
-                isDefault: provider.id === defaults.providerId,
-            })),
+            providers,
             providerModels,
+            providerAuthStates,
+            providerDiscoverySnapshots,
             tools,
             mcpServers,
             conversations,

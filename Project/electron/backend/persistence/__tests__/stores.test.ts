@@ -57,7 +57,7 @@ describe('persistence stores', () => {
     it('supports provider defaults and seeded catalogs', async () => {
         const profileId = getDefaultProfileId();
         const providers = await providerStore.listProviders();
-        const models = await providerStore.listModels('openai');
+        const models = await providerStore.listModels(profileId, 'openai');
         expect(providers.length).toBeGreaterThan(0);
         expect(models.length).toBeGreaterThan(0);
 

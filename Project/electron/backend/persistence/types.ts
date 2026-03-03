@@ -43,6 +43,29 @@ export interface ProviderModelRecord {
     label: string;
 }
 
+export interface ProviderAuthStateRecord {
+    profileId: string;
+    providerId: string;
+    authMethod: string;
+    authState: string;
+    accountId?: string;
+    organizationId?: string;
+    tokenExpiresAt?: string;
+    lastErrorCode?: string;
+    lastErrorMessage?: string;
+    updatedAt: string;
+}
+
+export interface ProviderDiscoverySnapshotRecord {
+    profileId: string;
+    providerId: string;
+    kind: 'models' | 'providers';
+    status: 'ok' | 'error';
+    etag?: string;
+    payload: Record<string, unknown>;
+    fetchedAt: string;
+}
+
 export interface ToolRecord {
     id: string;
     label: string;
@@ -140,6 +163,8 @@ export interface RuntimeSnapshotV1 {
     permissions: PermissionRecord[];
     providers: Array<ProviderRecord & { isDefault: boolean }>;
     providerModels: ProviderModelRecord[];
+    providerAuthStates: ProviderAuthStateRecord[];
+    providerDiscoverySnapshots: ProviderDiscoverySnapshotRecord[];
     tools: ToolRecord[];
     mcpServers: McpServerRecord[];
     conversations: ConversationRecord[];

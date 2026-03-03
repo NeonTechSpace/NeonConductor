@@ -25,6 +25,17 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         modelId: string;
     }>();
 
+    expectTypeOf<Inputs['provider']['listModels']>().toExtend<{
+        profileId: string;
+        providerId: string;
+    }>();
+
+    expectTypeOf<Inputs['provider']['setApiKey']>().toExtend<{
+        profileId: string;
+        providerId: string;
+        apiKey: string;
+    }>();
+
     expectTypeOf<Inputs['permission']['request']>().toExtend<{
         policy: 'ask' | 'allow' | 'deny';
         resource: string;

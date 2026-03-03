@@ -4,7 +4,7 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso, parseJsonValue } from '@/app/backend/persistence/stores/utils';
 
 export class SettingsStore {
-    async getString(profileId: string, key: string, fallback: string): Promise<string> {
+    async getStringOptional(profileId: string, key: string): Promise<string | undefined> {
         const { db } = getPersistence();
 
         const row = await db
@@ -15,10 +15,24 @@ export class SettingsStore {
             .executeTakeFirst();
 
         if (!row) {
-            return fallback;
+            return undefined;
         }
 
-        return parseJsonValue(row.value_json, fallback);
+        return parseJsonValue<string | undefined>(row.value_json, undefined);
+    }
+
+    async getString(profileId: string, key: string, fallback: string): Promise<string> {
+        const value = await this.getStringOptional(profileId, key);
+        return value ?? fallback;
+    }
+
+    async getStringRequired(profileId: string, key: string): Promise<string> {
+        const value = await this.getStringOptional(profileId, key);
+        if (!value) {
+            throw new Error(`Missing required setting "${key}" for profile "${profileId}".`);
+        }
+
+        return value;
     }
 
     async setString(profileId: string, key: string, value: string): Promise<void> {

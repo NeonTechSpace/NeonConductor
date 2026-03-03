@@ -171,8 +171,20 @@ export interface ProviderSetDefaultInput extends ProfileInput {
 
 export type ProviderListProvidersInput = ProfileInput;
 
-export interface ProviderListModelsInput {
-    providerId?: string;
+export interface ProviderByIdInput extends ProfileInput {
+    providerId: string;
+}
+
+export type ProviderListModelsInput = ProviderByIdInput;
+
+export interface ProviderSetApiKeyInput extends ProviderByIdInput {
+    apiKey: string;
+}
+
+export type ProviderClearAuthInput = ProviderByIdInput;
+
+export interface ProviderSyncCatalogInput extends ProviderByIdInput {
+    force?: boolean;
 }
 
 export interface PermissionRequestInput {
@@ -227,6 +239,10 @@ export interface RuntimeResetCounts {
     kiloAccountSnapshots: number;
     kiloOrgSnapshots: number;
     secretReferences: number;
+    providerAuthStates: number;
+    providerOAuthSessions: number;
+    providerCatalogModels: number;
+    providerDiscoverySnapshots: number;
 }
 
 export interface RuntimeResetResult {
@@ -393,18 +409,42 @@ export function parseProviderListProvidersInput(input: unknown): ProviderListPro
     };
 }
 
-export function parseProviderListModelsInput(input: unknown): ProviderListModelsInput {
-    if (input === undefined) {
-        return {};
-    }
-
+export function parseProviderByIdInput(input: unknown): ProviderByIdInput {
     const source = readObject(input, 'input');
-    const providerId = readOptionalString(source.providerId, 'providerId');
-    if (!providerId) {
-        return {};
-    }
 
-    return { providerId };
+    return {
+        profileId: readProfileId(source),
+        providerId: readString(source.providerId, 'providerId'),
+    };
+}
+
+export function parseProviderListModelsInput(input: unknown): ProviderListModelsInput {
+    return parseProviderByIdInput(input);
+}
+
+export function parseProviderSetApiKeyInput(input: unknown): ProviderSetApiKeyInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        providerId: readString(source.providerId, 'providerId'),
+        apiKey: readString(source.apiKey, 'apiKey'),
+    };
+}
+
+export function parseProviderClearAuthInput(input: unknown): ProviderClearAuthInput {
+    return parseProviderByIdInput(input);
+}
+
+export function parseProviderSyncCatalogInput(input: unknown): ProviderSyncCatalogInput {
+    const source = readObject(input, 'input');
+    const force = readOptionalBoolean(source.force, 'force');
+
+    return {
+        profileId: readProfileId(source),
+        providerId: readString(source.providerId, 'providerId'),
+        ...(force !== undefined ? { force } : {}),
+    };
 }
 
 export function parsePermissionRequestInput(input: unknown): PermissionRequestInput {
@@ -505,6 +545,10 @@ export const sessionPromptInputSchema = createParser(parseSessionPromptInput);
 export const providerSetDefaultInputSchema = createParser(parseProviderSetDefaultInput);
 export const providerListProvidersInputSchema = createParser(parseProviderListProvidersInput);
 export const providerListModelsInputSchema = createParser(parseProviderListModelsInput);
+export const providerByIdInputSchema = createParser(parseProviderByIdInput);
+export const providerSetApiKeyInputSchema = createParser(parseProviderSetApiKeyInput);
+export const providerClearAuthInputSchema = createParser(parseProviderClearAuthInput);
+export const providerSyncCatalogInputSchema = createParser(parseProviderSyncCatalogInput);
 export const permissionRequestInputSchema = createParser(parsePermissionRequestInput);
 export const permissionDecisionInputSchema = createParser(parsePermissionDecisionInput);
 export const toolInvokeInputSchema = createParser(parseToolInvokeInput);

@@ -224,6 +224,58 @@ export interface SecretReferencesTable {
     updated_at: string;
 }
 
+export interface ProviderAuthStatesTable {
+    profile_id: string;
+    provider_id: string;
+    auth_method: string;
+    auth_state: string;
+    account_id: string | null;
+    organization_id: string | null;
+    token_expires_at: string | null;
+    last_error_code: string | null;
+    last_error_message: string | null;
+    updated_at: string;
+}
+
+export interface ProviderOauthSessionsTable {
+    id: string;
+    profile_id: string;
+    provider_id: string;
+    flow_kind: string;
+    state: string;
+    code_verifier: string;
+    redirect_uri: string;
+    expires_at: string;
+    created_at: string;
+    consumed_at: string | null;
+}
+
+export interface ProviderModelCatalogTable {
+    profile_id: string;
+    provider_id: string;
+    model_id: string;
+    label: string;
+    upstream_provider: string | null;
+    is_free: 0 | 1;
+    supports_tools: 0 | 1;
+    supports_reasoning: 0 | 1;
+    context_length: number | null;
+    pricing_json: string;
+    raw_json: string;
+    source: string;
+    updated_at: string;
+}
+
+export interface ProviderDiscoverySnapshotsTable {
+    profile_id: string;
+    provider_id: string;
+    kind: string;
+    etag: string | null;
+    payload_json: string;
+    fetched_at: string;
+    status: string;
+}
+
 export interface DatabaseSchema {
     profiles: ProfilesTable;
     providers: ProvidersTable;
@@ -249,4 +301,8 @@ export interface DatabaseSchema {
     kilo_account_snapshots: KiloAccountSnapshotsTable;
     kilo_org_snapshots: KiloOrgSnapshotsTable;
     secret_references: SecretReferencesTable;
+    provider_auth_states: ProviderAuthStatesTable;
+    provider_oauth_sessions: ProviderOauthSessionsTable;
+    provider_model_catalog: ProviderModelCatalogTable;
+    provider_discovery_snapshots: ProviderDiscoverySnapshotsTable;
 }

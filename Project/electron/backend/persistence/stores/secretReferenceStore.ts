@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
+
 import { getPersistence } from '@/app/backend/persistence/db';
+import { nowIso } from '@/app/backend/persistence/stores/utils';
 import type { SecretReferenceRecord } from '@/app/backend/persistence/types';
 
 function mapSecretReference(row: {
@@ -46,6 +49,73 @@ export class SecretReferenceStore {
             .execute();
 
         return rows.map(mapSecretReference);
+    }
+
+    async listByProfileAndProvider(profileId: string, providerId: string): Promise<SecretReferenceRecord[]> {
+        const { db } = getPersistence();
+        const rows = await db
+            .selectFrom('secret_references')
+            .select(['id', 'profile_id', 'provider_id', 'secret_key_ref', 'secret_kind', 'status', 'updated_at'])
+            .where('profile_id', '=', profileId)
+            .where('provider_id', '=', providerId)
+            .orderBy('secret_kind', 'asc')
+            .execute();
+
+        return rows.map(mapSecretReference);
+    }
+
+    async upsert(input: {
+        profileId: string;
+        providerId: string;
+        secretKind: string;
+        secretKeyRef: string;
+        status: string;
+    }): Promise<SecretReferenceRecord> {
+        const { db } = getPersistence();
+        const updatedAt = nowIso();
+        const id = `secret_ref_${randomUUID()}`;
+
+        await db
+            .insertInto('secret_references')
+            .values({
+                id,
+                profile_id: input.profileId,
+                provider_id: input.providerId,
+                secret_key_ref: input.secretKeyRef,
+                secret_kind: input.secretKind,
+                status: input.status,
+                updated_at: updatedAt,
+            })
+            .onConflict((oc) =>
+                oc.columns(['profile_id', 'provider_id', 'secret_kind']).doUpdateSet({
+                    secret_key_ref: input.secretKeyRef,
+                    status: input.status,
+                    updated_at: updatedAt,
+                })
+            )
+            .execute();
+
+        const row = await db
+            .selectFrom('secret_references')
+            .select(['id', 'profile_id', 'provider_id', 'secret_key_ref', 'secret_kind', 'status', 'updated_at'])
+            .where('profile_id', '=', input.profileId)
+            .where('provider_id', '=', input.providerId)
+            .where('secret_kind', '=', input.secretKind)
+            .executeTakeFirstOrThrow();
+
+        return mapSecretReference(row);
+    }
+
+    async deleteByProfileAndProvider(profileId: string, providerId: string): Promise<number> {
+        const { db } = getPersistence();
+        const rows = await db
+            .deleteFrom('secret_references')
+            .where('profile_id', '=', profileId)
+            .where('provider_id', '=', providerId)
+            .returning('id')
+            .execute();
+
+        return rows.length;
     }
 }
 
