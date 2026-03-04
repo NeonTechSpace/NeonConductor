@@ -2,7 +2,12 @@ import { sql } from 'kysely';
 
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/utils';
-import type { ProviderUsageSummary, RunUsageRecord } from '@/app/backend/persistence/types';
+import type {
+    OpenAISubscriptionUsageSummary,
+    OpenAISubscriptionUsageWindowSummary,
+    ProviderUsageSummary,
+    RunUsageRecord,
+} from '@/app/backend/persistence/types';
 import { assertSupportedProviderId } from '@/app/backend/providers/registry';
 import type { EntityId, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
@@ -60,6 +65,69 @@ function mapRunUsageRecord(row: {
     if (costMicrounits !== undefined) record.costMicrounits = costMicrounits;
 
     return record;
+}
+
+function readAggregateNumber(value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) {
+            return parsed;
+        }
+    }
+
+    throw new Error(`Invalid numeric aggregate value: ${String(value)}`);
+}
+
+interface OpenAISubscriptionAggregateRow {
+    run_count: unknown;
+    input_tokens: unknown;
+    output_tokens: unknown;
+    cached_tokens: unknown;
+    reasoning_tokens: unknown;
+    total_tokens: unknown;
+    total_cost_microunits: unknown;
+    latency_sum_ms: unknown;
+    latency_samples: unknown;
+}
+
+function buildOpenAISubscriptionWindowSummary(input: {
+    row: OpenAISubscriptionAggregateRow;
+    windowLabel: OpenAISubscriptionUsageWindowSummary['windowLabel'];
+    windowStart: string;
+    windowEnd: string;
+}): OpenAISubscriptionUsageWindowSummary {
+    const runCount = readAggregateNumber(input.row.run_count);
+    const inputTokens = readAggregateNumber(input.row.input_tokens);
+    const outputTokens = readAggregateNumber(input.row.output_tokens);
+    const cachedTokens = readAggregateNumber(input.row.cached_tokens);
+    const reasoningTokens = readAggregateNumber(input.row.reasoning_tokens);
+    const totalTokens = readAggregateNumber(input.row.total_tokens);
+    const totalCostMicrounits = readAggregateNumber(input.row.total_cost_microunits);
+    const latencySumMs = readAggregateNumber(input.row.latency_sum_ms);
+    const latencySamples = readAggregateNumber(input.row.latency_samples);
+
+    const summary: OpenAISubscriptionUsageWindowSummary = {
+        windowLabel: input.windowLabel,
+        windowStart: input.windowStart,
+        windowEnd: input.windowEnd,
+        runCount,
+        inputTokens,
+        outputTokens,
+        cachedTokens,
+        reasoningTokens,
+        totalTokens,
+        totalCostMicrounits,
+    };
+
+    if (latencySamples > 0) {
+        summary.averageLatencyMs = Math.round(latencySumMs / latencySamples);
+    }
+
+    return summary;
 }
 
 export interface UpsertRunUsageInput {
@@ -173,6 +241,75 @@ export class RunUsageStore {
             totalTokens: row.total_tokens,
             totalCostMicrounits: row.total_cost_microunits,
         }));
+    }
+
+    private async summarizeOpenAISubscriptionWindow(input: {
+        profileId: string;
+        windowStart: string;
+        windowEnd: string;
+        windowLabel: OpenAISubscriptionUsageWindowSummary['windowLabel'];
+    }): Promise<OpenAISubscriptionUsageWindowSummary> {
+        const { db } = getPersistence();
+        const row = await db
+            .selectFrom('run_usage')
+            .innerJoin('runs', 'runs.id', 'run_usage.run_id')
+            .select((eb) => [
+                eb.fn.count<number>('run_usage.run_id').as('run_count'),
+                eb.fn.coalesce(eb.fn.sum<number>('run_usage.input_tokens'), sql<number>`0`).as('input_tokens'),
+                eb.fn.coalesce(eb.fn.sum<number>('run_usage.output_tokens'), sql<number>`0`).as('output_tokens'),
+                eb.fn.coalesce(eb.fn.sum<number>('run_usage.cached_tokens'), sql<number>`0`).as('cached_tokens'),
+                eb.fn.coalesce(eb.fn.sum<number>('run_usage.reasoning_tokens'), sql<number>`0`).as('reasoning_tokens'),
+                eb.fn.coalesce(eb.fn.sum<number>('run_usage.total_tokens'), sql<number>`0`).as('total_tokens'),
+                eb.fn
+                    .coalesce(eb.fn.sum<number>('run_usage.cost_microunits'), sql<number>`0`)
+                    .as('total_cost_microunits'),
+                eb.fn.coalesce(eb.fn.sum<number>('run_usage.latency_ms'), sql<number>`0`).as('latency_sum_ms'),
+                eb.fn.count<number>('run_usage.latency_ms').as('latency_samples'),
+            ])
+            .where('runs.profile_id', '=', input.profileId)
+            .where('run_usage.provider_id', '=', 'openai')
+            .where('run_usage.billed_via', '=', 'openai_subscription')
+            .where('run_usage.recorded_at', '>=', input.windowStart)
+            .where('run_usage.recorded_at', '<=', input.windowEnd)
+            .executeTakeFirstOrThrow();
+
+        return buildOpenAISubscriptionWindowSummary({
+            row,
+            windowLabel: input.windowLabel,
+            windowStart: input.windowStart,
+            windowEnd: input.windowEnd,
+        });
+    }
+
+    async summarizeOpenAISubscriptionUsage(
+        profileId: string,
+        now = new Date()
+    ): Promise<OpenAISubscriptionUsageSummary> {
+        const windowEnd = now.toISOString();
+        const fiveHourStart = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
+        const weeklyStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        const [fiveHour, weekly] = await Promise.all([
+            this.summarizeOpenAISubscriptionWindow({
+                profileId,
+                windowStart: fiveHourStart,
+                windowEnd,
+                windowLabel: 'last_5_hours',
+            }),
+            this.summarizeOpenAISubscriptionWindow({
+                profileId,
+                windowStart: weeklyStart,
+                windowEnd,
+                windowLabel: 'last_7_days',
+            }),
+        ]);
+
+        return {
+            providerId: 'openai',
+            billedVia: 'openai_subscription',
+            fiveHour,
+            weekly,
+        };
     }
 }
 

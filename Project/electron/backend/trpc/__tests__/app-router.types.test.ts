@@ -111,6 +111,12 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         profileId: string;
         providerId: string;
     }>();
+    expectTypeOf<Inputs['provider']['getOpenAISubscriptionUsage']>().toExtend<{
+        profileId: string;
+    }>();
+    expectTypeOf<Inputs['provider']['getOpenAISubscriptionRateLimits']>().toExtend<{
+        profileId: string;
+    }>();
     expectTypeOf<Outputs['provider']['listModels']>().toExtend<{
         models: Array<{
             id: string;
@@ -122,6 +128,37 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
             outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
             promptFamily?: string;
         }>;
+    }>();
+    expectTypeOf<Outputs['provider']['getOpenAISubscriptionUsage']>().toExtend<{
+        usage: {
+            providerId: 'openai';
+            billedVia: 'openai_subscription';
+            fiveHour: {
+                windowLabel: 'last_5_hours' | 'last_7_days';
+                runCount: number;
+                totalTokens: number;
+            };
+            weekly: {
+                windowLabel: 'last_5_hours' | 'last_7_days';
+                runCount: number;
+                totalTokens: number;
+            };
+        };
+    }>();
+    expectTypeOf<Outputs['provider']['getOpenAISubscriptionRateLimits']>().toExtend<{
+        rateLimits: {
+            providerId: 'openai';
+            source: 'chatgpt_wham' | 'unavailable';
+            limits: Array<{
+                limitId: string;
+                primary?: {
+                    usedPercent: number;
+                };
+                secondary?: {
+                    usedPercent: number;
+                };
+            }>;
+        };
     }>();
 
     expectTypeOf<Inputs['provider']['setApiKey']>().toExtend<{

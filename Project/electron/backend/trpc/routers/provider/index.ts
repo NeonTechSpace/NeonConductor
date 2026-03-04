@@ -38,6 +38,14 @@ export const providerRouter = router({
     getUsageSummary: publicProcedure.input(providerListProvidersInputSchema).query(async ({ input }) => {
         return { summaries: await providerManagementService.listUsageSummaries(input.profileId) };
     }),
+    getOpenAISubscriptionUsage: publicProcedure.input(providerListProvidersInputSchema).query(async ({ input }) => {
+        return { usage: await providerManagementService.getOpenAISubscriptionUsage(input.profileId) };
+    }),
+    getOpenAISubscriptionRateLimits: publicProcedure
+        .input(providerListProvidersInputSchema)
+        .query(async ({ input }) => {
+            return { rateLimits: await providerManagementService.getOpenAISubscriptionRateLimits(input.profileId) };
+        }),
     listModels: publicProcedure.input(providerListModelsInputSchema).query(async ({ input }) => {
         try {
             return {

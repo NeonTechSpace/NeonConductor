@@ -372,6 +372,52 @@ export interface ProviderUsageSummary {
     totalCostMicrounits: number;
 }
 
+export interface OpenAISubscriptionUsageWindowSummary {
+    windowLabel: 'last_5_hours' | 'last_7_days';
+    windowStart: string;
+    windowEnd: string;
+    runCount: number;
+    inputTokens: number;
+    outputTokens: number;
+    cachedTokens: number;
+    reasoningTokens: number;
+    totalTokens: number;
+    totalCostMicrounits: number;
+    averageLatencyMs?: number;
+}
+
+export interface OpenAISubscriptionUsageSummary {
+    providerId: 'openai';
+    billedVia: 'openai_subscription';
+    fiveHour: OpenAISubscriptionUsageWindowSummary;
+    weekly: OpenAISubscriptionUsageWindowSummary;
+}
+
+export interface OpenAISubscriptionRateLimitWindow {
+    usedPercent: number;
+    windowMinutes?: number;
+    resetsAt?: number;
+}
+
+export interface OpenAISubscriptionRateLimitEntry {
+    limitId: string;
+    limitName?: string;
+    primary?: OpenAISubscriptionRateLimitWindow;
+    secondary?: OpenAISubscriptionRateLimitWindow;
+}
+
+export interface OpenAISubscriptionRateLimitsSummary {
+    providerId: 'openai';
+    source: 'chatgpt_wham' | 'unavailable';
+    fetchedAt: number;
+    planType?: string;
+    primary?: OpenAISubscriptionRateLimitWindow;
+    secondary?: OpenAISubscriptionRateLimitWindow;
+    limits: OpenAISubscriptionRateLimitEntry[];
+    reason?: 'oauth_required' | 'not_authenticated' | 'missing_access_token' | 'fetch_failed' | 'invalid_payload';
+    detail?: string;
+}
+
 export type ModeDefinitionRecord = ModeDefinition;
 
 export type RulesetDefinitionRecord = RulesetDefinition;

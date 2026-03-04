@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
+import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import {
     accountSnapshotStore,
     conversationStore,
@@ -13,6 +13,7 @@ import {
     providerCatalogStore,
     providerStore,
     runStore,
+    runUsageStore,
     secretReferenceStore,
     sessionStore,
     skillfileStore,
@@ -118,6 +119,156 @@ describe('persistence stores', () => {
         await providerStore.setDefaults(profileId, 'openai', 'openai/gpt-5');
         const defaults = await providerStore.getDefaults(profileId);
         expect(defaults.providerId).toBe('openai');
+    });
+
+    it('summarizes OpenAI subscription usage in 5h and 7d rolling windows', async () => {
+        const profileId = getDefaultProfileId();
+        const { db } = getPersistence();
+        const now = new Date('2026-03-04T12:00:00.000Z');
+
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'detached',
+            title: 'Usage Test',
+        });
+        const thread = await threadStore.create({
+            profileId,
+            conversationId: conversation.id,
+            title: 'Usage Thread',
+        });
+        const session = await sessionStore.create(profileId, thread.id, 'local');
+
+        async function createRun(prompt: string) {
+            return runStore.create({
+                profileId,
+                sessionId: session.id,
+                prompt,
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+                authMethod: 'oauth_device',
+                runtimeOptions: {
+                    reasoning: {
+                        effort: 'none',
+                        summary: 'none',
+                        includeEncrypted: false,
+                    },
+                    cache: {
+                        strategy: 'auto',
+                    },
+                    transport: {
+                        openai: 'auto',
+                    },
+                },
+                cache: {
+                    applied: false,
+                    key: 'usage-window-test',
+                    reason: 'unsupported_transport',
+                },
+                transport: {
+                    selected: 'responses',
+                },
+            });
+        }
+
+        const recentRun = await createRun('recent');
+        await runUsageStore.upsert({
+            runId: recentRun.id,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            inputTokens: 100,
+            outputTokens: 50,
+            cachedTokens: 10,
+            reasoningTokens: 5,
+            totalTokens: 165,
+            latencyMs: 1200,
+            costMicrounits: 0,
+            billedVia: 'openai_subscription',
+        });
+        await db
+            .updateTable('run_usage')
+            .set({ recorded_at: '2026-03-04T11:00:00.000Z' })
+            .where('run_id', '=', recentRun.id)
+            .execute();
+
+        const weeklyRun = await createRun('weekly');
+        await runUsageStore.upsert({
+            runId: weeklyRun.id,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            inputTokens: 200,
+            outputTokens: 70,
+            cachedTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: 270,
+            latencyMs: 800,
+            costMicrounits: 0,
+            billedVia: 'openai_subscription',
+        });
+        await db
+            .updateTable('run_usage')
+            .set({ recorded_at: '2026-03-04T04:00:00.000Z' })
+            .where('run_id', '=', weeklyRun.id)
+            .execute();
+
+        const staleRun = await createRun('stale');
+        await runUsageStore.upsert({
+            runId: staleRun.id,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            inputTokens: 300,
+            outputTokens: 80,
+            cachedTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: 380,
+            latencyMs: 900,
+            costMicrounits: 0,
+            billedVia: 'openai_subscription',
+        });
+        await db
+            .updateTable('run_usage')
+            .set({ recorded_at: '2026-02-24T12:00:00.000Z' })
+            .where('run_id', '=', staleRun.id)
+            .execute();
+
+        const byokRun = await createRun('byok');
+        await runUsageStore.upsert({
+            runId: byokRun.id,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            inputTokens: 400,
+            outputTokens: 90,
+            cachedTokens: 0,
+            reasoningTokens: 0,
+            totalTokens: 490,
+            latencyMs: 700,
+            costMicrounits: 0,
+            billedVia: 'openai_api',
+        });
+        await db
+            .updateTable('run_usage')
+            .set({ recorded_at: '2026-03-04T10:00:00.000Z' })
+            .where('run_id', '=', byokRun.id)
+            .execute();
+
+        const summary = await runUsageStore.summarizeOpenAISubscriptionUsage(profileId, now);
+
+        expect(summary.providerId).toBe('openai');
+        expect(summary.billedVia).toBe('openai_subscription');
+        expect(summary.fiveHour.runCount).toBe(1);
+        expect(summary.fiveHour.totalTokens).toBe(165);
+        expect(summary.fiveHour.inputTokens).toBe(100);
+        expect(summary.fiveHour.outputTokens).toBe(50);
+        expect(summary.fiveHour.cachedTokens).toBe(10);
+        expect(summary.fiveHour.reasoningTokens).toBe(5);
+        expect(summary.fiveHour.averageLatencyMs).toBe(1200);
+
+        expect(summary.weekly.runCount).toBe(2);
+        expect(summary.weekly.totalTokens).toBe(435);
+        expect(summary.weekly.inputTokens).toBe(300);
+        expect(summary.weekly.outputTokens).toBe(120);
+        expect(summary.weekly.cachedTokens).toBe(10);
+        expect(summary.weekly.reasoningTokens).toBe(5);
+        expect(summary.weekly.averageLatencyMs).toBe(1000);
     });
 
     it('supports profile lifecycle with last-profile delete guard and secure duplication baseline', async () => {

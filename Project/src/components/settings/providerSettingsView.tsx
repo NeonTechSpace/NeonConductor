@@ -34,6 +34,65 @@ function formatMetric(value: number | undefined, fallback = '-'): string {
     return String(value);
 }
 
+function formatInteger(value: number | undefined): string {
+    if (value === undefined || !Number.isFinite(value)) {
+        return '-';
+    }
+
+    return Math.round(value).toLocaleString();
+}
+
+function formatPercent(value: number | undefined): string {
+    if (value === undefined || !Number.isFinite(value)) {
+        return '-';
+    }
+
+    return `${Math.round(value)}%`;
+}
+
+function formatWindowLabel(minutes: number | undefined): string {
+    if (!minutes || !Number.isFinite(minutes)) {
+        return 'Window';
+    }
+
+    if (minutes === 5 * 60) {
+        return '5h window';
+    }
+
+    if (minutes === 7 * 24 * 60) {
+        return 'Weekly window';
+    }
+
+    if (minutes % (24 * 60) === 0) {
+        return `${String(minutes / (24 * 60))}d window`;
+    }
+
+    if (minutes % 60 === 0) {
+        return `${String(minutes / 60)}h window`;
+    }
+
+    return `${String(minutes)}m window`;
+}
+
+function formatResetCountdown(resetAtMs: number | undefined): string {
+    if (resetAtMs === undefined || !Number.isFinite(resetAtMs)) {
+        return '-';
+    }
+
+    const diff = Math.round((resetAtMs - Date.now()) / 1000);
+    if (diff <= 0) {
+        return 'now';
+    }
+
+    const hours = Math.floor(diff / 3600);
+    const minutes = Math.floor((diff % 3600) / 60);
+    if (hours > 0) {
+        return `in ${String(hours)}h ${String(minutes)}m`;
+    }
+
+    return `in ${String(minutes)}m`;
+}
+
 interface ProviderSettingsViewProps {
     profileId: string;
 }
@@ -104,6 +163,26 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
         }
     );
 
+    const openAISubscriptionUsageQuery = trpc.provider.getOpenAISubscriptionUsage.useQuery(
+        {
+            profileId,
+        },
+        {
+            enabled: selectedProviderId === 'openai',
+            refetchOnWindowFocus: false,
+        }
+    );
+
+    const openAISubscriptionRateLimitsQuery = trpc.provider.getOpenAISubscriptionRateLimits.useQuery(
+        {
+            profileId,
+        },
+        {
+            enabled: selectedProviderId === 'openai',
+            refetchOnWindowFocus: false,
+        }
+    );
+
     const setDefaultMutation = trpc.provider.setDefault.useMutation({
         onSuccess: (result) => {
             if (!result.success) {
@@ -128,6 +207,9 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
             setStatusMessage('API key saved. Provider is ready.');
             void providersQuery.refetch();
             void authStateQuery.refetch();
+            if (selectedProviderId === 'openai') {
+                void openAISubscriptionRateLimitsQuery.refetch();
+            }
         },
     });
 
@@ -156,6 +238,9 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
             });
             void authStateQuery.refetch();
             void providersQuery.refetch();
+            if (variables.providerId === 'openai') {
+                void openAISubscriptionRateLimitsQuery.refetch();
+            }
         },
     });
 
@@ -173,6 +258,9 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
             if (selectedProviderId === 'kilo') {
                 void accountContextQuery.refetch();
             }
+            if (selectedProviderId === 'openai') {
+                void openAISubscriptionRateLimitsQuery.refetch();
+            }
         },
     });
 
@@ -182,6 +270,9 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
             setActiveAuthFlow(undefined);
             void authStateQuery.refetch();
             void providersQuery.refetch();
+            if (selectedProviderId === 'openai') {
+                void openAISubscriptionRateLimitsQuery.refetch();
+            }
         },
     });
 
@@ -237,6 +328,8 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
     const selectedAuthState = authStateQuery.data?.found ? authStateQuery.data.state : undefined;
     const selectedIsDefaultProvider = defaults?.providerId === selectedProviderId;
     const selectedIsDefaultModel = selectedIsDefaultProvider && defaults?.modelId === selectedModelId;
+    const openAISubscriptionUsage = openAISubscriptionUsageQuery.data?.usage;
+    const openAISubscriptionRateLimits = openAISubscriptionRateLimitsQuery.data?.rateLimits;
 
     return (
         <section className='grid min-h-full grid-cols-[260px_1fr]'>
@@ -477,6 +570,143 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                                 <p className='text-muted-foreground text-xs'>
                                     Account state: {accountContextQuery.data?.authState.authState ?? selectedProvider.authState}
                                 </p>
+                            </section>
+                        ) : null}
+
+                        {selectedProvider.id === 'openai' ? (
+                            <section className='space-y-2'>
+                                <p className='text-sm font-semibold'>OpenAI Subscription Limits (Account)</p>
+                                <p className='text-muted-foreground text-xs'>
+                                    Pulled from OpenAI ChatGPT usage windows when OAuth is active. This reflects account-level limits, not only this app.
+                                </p>
+                                {openAISubscriptionRateLimitsQuery.isLoading ? (
+                                    <p className='text-muted-foreground text-xs'>Loading subscription limits...</p>
+                                ) : null}
+                                {openAISubscriptionRateLimits?.source === 'chatgpt_wham' ? (
+                                    <div className='space-y-2'>
+                                        <p className='text-muted-foreground text-xs'>
+                                            Plan: {openAISubscriptionRateLimits.planType ?? 'unknown'}
+                                        </p>
+                                        <div className='grid gap-2 md:grid-cols-2'>
+                                            <div className='border-border bg-background rounded-md border p-3'>
+                                                <p className='text-xs font-semibold'>
+                                                    {formatWindowLabel(openAISubscriptionRateLimits.primary?.windowMinutes)}
+                                                </p>
+                                                <p className='text-muted-foreground mt-1 text-xs'>
+                                                    Used: {formatPercent(openAISubscriptionRateLimits.primary?.usedPercent)}
+                                                </p>
+                                                <div className='bg-border mt-1 h-1.5 w-full overflow-hidden rounded'>
+                                                    <div
+                                                        className='bg-primary h-full'
+                                                        style={{
+                                                            width: `${String(
+                                                                Math.max(
+                                                                    0,
+                                                                    Math.min(
+                                                                        100,
+                                                                        openAISubscriptionRateLimits.primary?.usedPercent ?? 0
+                                                                    )
+                                                                )
+                                                            )}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                <p className='text-muted-foreground mt-1 text-xs'>
+                                                    Resets: {formatResetCountdown(openAISubscriptionRateLimits.primary?.resetsAt)}
+                                                </p>
+                                            </div>
+                                            <div className='border-border bg-background rounded-md border p-3'>
+                                                <p className='text-xs font-semibold'>
+                                                    {formatWindowLabel(openAISubscriptionRateLimits.secondary?.windowMinutes)}
+                                                </p>
+                                                <p className='text-muted-foreground mt-1 text-xs'>
+                                                    Used: {formatPercent(openAISubscriptionRateLimits.secondary?.usedPercent)}
+                                                </p>
+                                                <div className='bg-border mt-1 h-1.5 w-full overflow-hidden rounded'>
+                                                    <div
+                                                        className='bg-primary h-full'
+                                                        style={{
+                                                            width: `${String(
+                                                                Math.max(
+                                                                    0,
+                                                                    Math.min(
+                                                                        100,
+                                                                        openAISubscriptionRateLimits.secondary?.usedPercent ?? 0
+                                                                    )
+                                                                )
+                                                            )}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                <p className='text-muted-foreground mt-1 text-xs'>
+                                                    Resets: {formatResetCountdown(openAISubscriptionRateLimits.secondary?.resetsAt)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : null}
+                                {openAISubscriptionRateLimits?.source === 'unavailable' ? (
+                                    <p className='text-muted-foreground text-xs'>
+                                        {openAISubscriptionRateLimits.detail ??
+                                            'Subscription limits unavailable. Sign in with OpenAI OAuth for account-level windows.'}
+                                    </p>
+                                ) : null}
+                            </section>
+                        ) : null}
+
+                        {selectedProvider.id === 'openai' ? (
+                            <section className='space-y-2'>
+                                <p className='text-sm font-semibold'>OpenAI Subscription Usage (Local)</p>
+                                <p className='text-muted-foreground text-xs'>
+                                    Rolling windows from local `openai_subscription` run telemetry captured by this app only.
+                                </p>
+                                {openAISubscriptionUsageQuery.isLoading ? (
+                                    <p className='text-muted-foreground text-xs'>Loading subscription usage...</p>
+                                ) : null}
+                                {openAISubscriptionUsage ? (
+                                    <div className='grid gap-2 md:grid-cols-2'>
+                                        <div className='border-border bg-background rounded-md border p-3'>
+                                            <p className='text-xs font-semibold'>Last 5 Hours</p>
+                                            <p className='text-muted-foreground mt-1 text-xs'>
+                                                Runs: {formatInteger(openAISubscriptionUsage.fiveHour.runCount)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Total tokens: {formatInteger(openAISubscriptionUsage.fiveHour.totalTokens)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Input/Output: {formatInteger(openAISubscriptionUsage.fiveHour.inputTokens)} /{' '}
+                                                {formatInteger(openAISubscriptionUsage.fiveHour.outputTokens)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Cached/Reasoning: {formatInteger(openAISubscriptionUsage.fiveHour.cachedTokens)} /{' '}
+                                                {formatInteger(openAISubscriptionUsage.fiveHour.reasoningTokens)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Avg latency: {formatInteger(openAISubscriptionUsage.fiveHour.averageLatencyMs)} ms
+                                            </p>
+                                        </div>
+                                        <div className='border-border bg-background rounded-md border p-3'>
+                                            <p className='text-xs font-semibold'>Last 7 Days</p>
+                                            <p className='text-muted-foreground mt-1 text-xs'>
+                                                Runs: {formatInteger(openAISubscriptionUsage.weekly.runCount)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Total tokens: {formatInteger(openAISubscriptionUsage.weekly.totalTokens)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Input/Output: {formatInteger(openAISubscriptionUsage.weekly.inputTokens)} /{' '}
+                                                {formatInteger(openAISubscriptionUsage.weekly.outputTokens)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Cached/Reasoning: {formatInteger(openAISubscriptionUsage.weekly.cachedTokens)} /{' '}
+                                                {formatInteger(openAISubscriptionUsage.weekly.reasoningTokens)}
+                                            </p>
+                                            <p className='text-muted-foreground text-xs'>
+                                                Avg latency: {formatInteger(openAISubscriptionUsage.weekly.averageLatencyMs)} ms
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </section>
                         ) : null}
                     </div>

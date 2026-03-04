@@ -1081,6 +1081,99 @@ describe('runtime contracts', () => {
         expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
     });
 
+    it('reads openai subscription rate limits from wham usage for oauth sessions', async () => {
+        const caller = createCaller();
+        const fetchMock = vi.fn();
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () => ({
+                device_code: 'device-code-2',
+                user_code: 'USER-DEVICE',
+                verification_uri: 'https://openai.example/verify',
+                interval: 5,
+                expires_in: 900,
+            }),
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () => ({
+                access_token: 'aaa.bbb.ccc',
+                refresh_token: 'refresh-token-wham',
+                expires_in: 1200,
+                account_id: 'account_wham',
+            }),
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                plan_type: 'pro',
+                rate_limit: {
+                    primary_window: {
+                        used_percent: 42,
+                        limit_window_seconds: 18_000,
+                        reset_at: 1_763_000_000,
+                    },
+                    secondary_window: {
+                        used_percent: 68,
+                        limit_window_seconds: 604_800,
+                        reset_at: 1_763_500_000,
+                    },
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const started = await caller.provider.startAuth({
+            profileId,
+            providerId: 'openai',
+            method: 'oauth_device',
+        });
+        const completed = await caller.provider.pollAuth({
+            profileId,
+            providerId: 'openai',
+            flowId: started.flow.id,
+        });
+        expect(completed.flow.status).toBe('completed');
+        expect(completed.state.authState).toBe('authenticated');
+
+        const result = await caller.provider.getOpenAISubscriptionRateLimits({ profileId });
+        expect(result.rateLimits.source).toBe('chatgpt_wham');
+        expect(result.rateLimits.planType).toBe('pro');
+        expect(result.rateLimits.primary?.windowMinutes).toBe(300);
+        expect(result.rateLimits.secondary?.windowMinutes).toBe(10080);
+        expect(result.rateLimits.primary?.usedPercent).toBe(42);
+        expect(result.rateLimits.secondary?.usedPercent).toBe(68);
+
+        const whamCall = fetchMock.mock.calls.at(2);
+        expect(whamCall).toBeDefined();
+        if (!whamCall) {
+            throw new Error('Expected WHAM usage fetch call.');
+        }
+        const init = whamCall[1] as RequestInit;
+        const headers = init.headers as Record<string, string>;
+        expect(headers['Authorization']).toContain('Bearer');
+        expect(headers['ChatGPT-Account-Id']).toBe('account_wham');
+    });
+
+    it('returns unavailable openai subscription rate limits for api-key auth', async () => {
+        const caller = createCaller();
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-api-key-only',
+        });
+        expect(configured.success).toBe(true);
+
+        const result = await caller.provider.getOpenAISubscriptionRateLimits({ profileId });
+        expect(result.rateLimits.source).toBe('unavailable');
+        expect(result.rateLimits.reason).toBe('oauth_required');
+        expect(result.rateLimits.limits).toEqual([]);
+    });
+
     it('rejects unsupported provider ids at contract boundaries and allows anthropic models through supported providers', async () => {
         const caller = createCaller();
         const { sqlite } = getPersistence();

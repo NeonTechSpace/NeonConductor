@@ -2,6 +2,8 @@ import type { ProviderAuthStateRecord } from '@/app/backend/persistence/types';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
 import { syncCatalog } from '@/app/backend/providers/service/catalogSync';
 import {
+    getOpenAISubscriptionRateLimits,
+    getOpenAISubscriptionUsage,
     listAuthStates,
     listDiscoverySnapshots,
     listModelsByProfile,
@@ -49,6 +51,14 @@ class ProviderManagementService {
 
     async listUsageSummaries(profileId: string) {
         return listUsageSummaries(profileId);
+    }
+
+    async getOpenAISubscriptionUsage(profileId: string) {
+        return getOpenAISubscriptionUsage(profileId);
+    }
+
+    async getOpenAISubscriptionRateLimits(profileId: string) {
+        return getOpenAISubscriptionRateLimits(profileId);
     }
 
     listAuthMethods(profileId: string) {

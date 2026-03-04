@@ -5,10 +5,13 @@ import {
     runUsageStore,
 } from '@/app/backend/persistence/stores';
 import type {
+    OpenAISubscriptionRateLimitsSummary,
+    OpenAISubscriptionUsageSummary,
     ProviderAuthStateRecord,
     ProviderModelRecord,
     ProviderUsageSummary,
 } from '@/app/backend/persistence/types';
+import { getOpenAISubscriptionRateLimits as getOpenAISubscriptionRateLimitsFromWham } from '@/app/backend/providers/service/openaiSubscriptionRateLimits';
 import { defaultAuthState, ensureSupportedProvider } from '@/app/backend/providers/service/helpers';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
@@ -98,4 +101,12 @@ export async function listDiscoverySnapshots(profileId: string) {
 
 export async function listUsageSummaries(profileId: string): Promise<ProviderUsageSummary[]> {
     return runUsageStore.summarizeByProfile(profileId);
+}
+
+export async function getOpenAISubscriptionUsage(profileId: string): Promise<OpenAISubscriptionUsageSummary> {
+    return runUsageStore.summarizeOpenAISubscriptionUsage(profileId);
+}
+
+export async function getOpenAISubscriptionRateLimits(profileId: string): Promise<OpenAISubscriptionRateLimitsSummary> {
+    return getOpenAISubscriptionRateLimitsFromWham(profileId);
 }
