@@ -260,8 +260,8 @@ function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
 
     const insertProfile = sqlite.prepare(
         `
-            INSERT OR IGNORE INTO profiles (id, name, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
+            INSERT OR IGNORE INTO profiles (id, name, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
         `
     );
     const insertProvider = sqlite.prepare(
@@ -349,7 +349,7 @@ function seedRuntimeData(sqlite: BetterSqliteDatabase): void {
         `
     );
 
-    insertProfile.run(DEFAULT_PROFILE_ID, 'Local Default', now, now);
+    insertProfile.run(DEFAULT_PROFILE_ID, 'Local Default', 1, now, now);
 
     for (const provider of PROVIDER_SEED) {
         insertProvider.run(provider.id, provider.label, provider.supportsByok, now, now);

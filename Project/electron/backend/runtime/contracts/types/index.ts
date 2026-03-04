@@ -1,4 +1,5 @@
 export * from '@/app/backend/runtime/contracts/types/common';
+export * from '@/app/backend/runtime/contracts/types/profile';
 export * from '@/app/backend/runtime/contracts/types/session';
 export * from '@/app/backend/runtime/contracts/types/conversation';
 export * from '@/app/backend/runtime/contracts/types/provider';

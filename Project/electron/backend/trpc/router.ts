@@ -10,6 +10,7 @@ import { modeRouter } from '@/app/backend/trpc/routers/mode';
 import { orchestratorRouter } from '@/app/backend/trpc/routers/orchestrator';
 import { permissionRouter } from '@/app/backend/trpc/routers/permission';
 import { planRouter } from '@/app/backend/trpc/routers/plan';
+import { profileRouter } from '@/app/backend/trpc/routers/profile';
 import { providerRouter } from '@/app/backend/trpc/routers/provider';
 import { runtimeRouter } from '@/app/backend/trpc/routers/runtime';
 import { sessionRouter } from '@/app/backend/trpc/routers/session';
@@ -28,6 +29,7 @@ export const appRouter = router({
     mode: modeRouter,
     plan: planRouter,
     orchestrator: orchestratorRouter,
+    profile: profileRouter,
     system: systemRouter,
     updates: updatesRouter,
 });

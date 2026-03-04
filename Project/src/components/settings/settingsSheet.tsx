@@ -1,20 +1,24 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
+import { ProfileSettingsView } from '@/web/components/settings/profileSettingsView';
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 
 interface SettingsSheetProps {
     open: boolean;
+    profileId: string;
     onClose: () => void;
+    onProfileActivated: (profileId: string) => void;
 }
 
-type SettingsSection = 'providers';
+type SettingsSection = 'providers' | 'profiles';
 
 const SECTION_LABELS: Record<SettingsSection, string> = {
     providers: 'Providers',
+    profiles: 'Profiles',
 };
 
-export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
+export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: SettingsSheetProps) {
     const [activeSection, setActiveSection] = useState<SettingsSection>('providers');
 
     if (!open) {
@@ -24,21 +28,24 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
     return (
         <>
             <div className='bg-background/70 fixed inset-0 z-40 backdrop-blur-sm' onClick={onClose} />
-            <section className='border-border bg-card text-card-foreground fixed inset-y-0 right-0 z-50 flex w-[min(980px,95vw)] border-l shadow-2xl'>
-                <aside className='border-border bg-background/50 flex w-48 flex-col gap-2 border-r p-3'>
+            <section className='border-border bg-card text-card-foreground fixed inset-y-0 right-0 z-50 flex w-[min(1040px,95vw)] border-l shadow-2xl'>
+                <aside className='border-border bg-background/50 flex w-52 flex-col gap-2 border-r p-3'>
                     <h2 className='text-sm font-semibold tracking-wide uppercase'>Settings</h2>
-                    <button
-                        type='button'
-                        className={`rounded-md border px-2 py-1.5 text-left text-sm ${
-                            activeSection === 'providers'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-border bg-background hover:bg-accent'
-                        }`}
-                        onClick={() => {
-                            setActiveSection('providers');
-                        }}>
-                        {SECTION_LABELS.providers}
-                    </button>
+                    {(Object.keys(SECTION_LABELS) as SettingsSection[]).map((section) => (
+                        <button
+                            key={section}
+                            type='button'
+                            className={`rounded-md border px-2 py-1.5 text-left text-sm ${
+                                activeSection === section
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-border bg-background hover:bg-accent'
+                            }`}
+                            onClick={() => {
+                                setActiveSection(section);
+                            }}>
+                            {SECTION_LABELS[section]}
+                        </button>
+                    ))}
                 </aside>
 
                 <div className='flex min-w-0 flex-1 flex-col'>
@@ -59,7 +66,10 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
                     </header>
 
                     <div className='min-h-0 flex-1 overflow-auto'>
-                        {activeSection === 'providers' ? <ProviderSettingsView /> : null}
+                        {activeSection === 'providers' ? <ProviderSettingsView profileId={profileId} /> : null}
+                        {activeSection === 'profiles' ? (
+                            <ProfileSettingsView activeProfileId={profileId} onProfileActivated={onProfileActivated} />
+                        ) : null}
                     </div>
                 </div>
             </section>

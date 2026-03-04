@@ -2,7 +2,6 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/web/components/ui/button';
-import { DEFAULT_PROFILE_ID } from '@/web/lib/runtime/profile';
 import { trpc } from '@/web/trpc/client';
 
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
@@ -35,9 +34,11 @@ function formatMetric(value: number | undefined, fallback = '-'): string {
     return String(value);
 }
 
-export function ProviderSettingsView() {
-    const profileId = DEFAULT_PROFILE_ID;
+interface ProviderSettingsViewProps {
+    profileId: string;
+}
 
+export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
     const providersQuery = trpc.provider.listProviders.useQuery({ profileId }, { refetchOnWindowFocus: false });
     const authMethodsQuery = trpc.provider.listAuthMethods.useQuery({ profileId }, { refetchOnWindowFocus: false });
     const snapshotQuery = trpc.runtime.getSnapshot.useQuery({ profileId }, { refetchOnWindowFocus: false });
@@ -50,6 +51,12 @@ export function ProviderSettingsView() {
     const [apiKeyInput, setApiKeyInput] = useState('');
     const [activeAuthFlow, setActiveAuthFlow] = useState<ActiveAuthFlow | undefined>(undefined);
     const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        setActiveAuthFlow(undefined);
+        setApiKeyInput('');
+        setStatusMessage(undefined);
+    }, [profileId]);
 
     useEffect(() => {
         if (selectedProviderId && providers.some((provider) => provider.id === selectedProviderId)) {

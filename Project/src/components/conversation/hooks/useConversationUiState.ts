@@ -74,8 +74,29 @@ export function useConversationUiState(profileId: string): ConversationUiState {
     const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(stored.selectedSessionId);
     const [selectedRunId, setSelectedRunId] = useState<string | undefined>(stored.selectedRunId);
     const [selectedTagId, setSelectedTagId] = useState<string | undefined>(stored.selectedTagId);
+    const [hydratedProfileId, setHydratedProfileId] = useState(profileId);
 
     useEffect(() => {
+        if (profileId === hydratedProfileId) {
+            return;
+        }
+
+        const nextStored = readStoredState(profileId);
+        setScopeFilter(nextStored.scopeFilter ?? 'all');
+        setWorkspaceFilter(nextStored.workspaceFilter);
+        setSort(nextStored.sort ?? null);
+        setSelectedThreadId(nextStored.selectedThreadId);
+        setSelectedSessionId(nextStored.selectedSessionId);
+        setSelectedRunId(nextStored.selectedRunId);
+        setSelectedTagId(nextStored.selectedTagId);
+        setHydratedProfileId(profileId);
+    }, [hydratedProfileId, profileId]);
+
+    useEffect(() => {
+        if (hydratedProfileId !== profileId) {
+            return;
+        }
+
         persistState(profileId, {
             scopeFilter,
             ...(workspaceFilter ? { workspaceFilter } : {}),
@@ -94,6 +115,7 @@ export function useConversationUiState(profileId: string): ConversationUiState {
         selectedSessionId,
         selectedRunId,
         selectedTagId,
+        hydratedProfileId,
     ]);
 
     return {

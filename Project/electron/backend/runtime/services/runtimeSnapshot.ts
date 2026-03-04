@@ -7,6 +7,7 @@ import {
     mcpStore,
     modeStore,
     permissionStore,
+    profileStore,
     providerAuthFlowStore,
     rulesetStore,
     runStore,
@@ -29,6 +30,8 @@ export interface RuntimeSnapshotService {
 class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
     async getSnapshot(profileId: string): Promise<RuntimeSnapshotV1> {
         const [
+            profiles,
+            activeProfile,
             sessions,
             runs,
             messages,
@@ -57,6 +60,8 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
             kiloAccountContext,
             secretReferences,
         ] = await Promise.all([
+            profileStore.list(),
+            profileStore.getActive(),
             sessionStore.list(profileId),
             runStore.listByProfile(profileId),
             messageStore.listMessagesByProfile(profileId),
@@ -92,6 +97,8 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
         return {
             generatedAt: new Date().toISOString(),
             lastSequence,
+            profiles,
+            activeProfileId: activeProfile.activeProfileId,
             sessions,
             runs,
             messages,

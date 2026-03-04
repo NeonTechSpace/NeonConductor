@@ -75,6 +75,28 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         workspaceFingerprint?: string;
     }>();
 
+    expectTypeOf<Inputs['profile']['setActive']>().toExtend<{
+        profileId: string;
+    }>();
+
+    expectTypeOf<Inputs['profile']['create']>().toExtend<{
+        name?: string;
+    }>();
+
+    expectTypeOf<Inputs['profile']['rename']>().toExtend<{
+        profileId: string;
+        name: string;
+    }>();
+
+    expectTypeOf<Inputs['profile']['duplicate']>().toExtend<{
+        profileId: string;
+        name?: string;
+    }>();
+
+    expectTypeOf<Inputs['profile']['delete']>().toExtend<{
+        profileId: string;
+    }>();
+
     expectTypeOf<Inputs['session']['list']>().toExtend<{
         profileId: string;
     }>();
@@ -215,6 +237,11 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     expectTypeOf<Outputs['runtime']['getSnapshot']>().toExtend<{
         generatedAt: string;
         lastSequence: number;
+        activeProfileId: string;
+        profiles: Array<{
+            id: string;
+            isActive: boolean;
+        }>;
         sessions: Array<{
             id: string;
             runStatus: 'idle' | 'running' | 'completed' | 'aborted' | 'error';

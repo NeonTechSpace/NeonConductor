@@ -9,6 +9,7 @@ import {
     mcpStore,
     modeStore,
     permissionStore,
+    profileStore,
     providerCatalogStore,
     providerStore,
     runStore,
@@ -117,6 +118,54 @@ describe('persistence stores', () => {
         await providerStore.setDefaults(profileId, 'openai', 'openai/gpt-5');
         const defaults = await providerStore.getDefaults(profileId);
         expect(defaults.providerId).toBe('openai');
+    });
+
+    it('supports profile lifecycle with last-profile delete guard and secure duplication baseline', async () => {
+        const profileId = getDefaultProfileId();
+
+        const created = await profileStore.create('Workspace Profile');
+        expect(created.isActive).toBe(false);
+
+        const renamed = await profileStore.rename(created.id, 'Workspace Profile Renamed');
+        expect(renamed?.name).toBe('Workspace Profile Renamed');
+
+        await secretReferenceStore.upsert({
+            profileId,
+            providerId: 'openai',
+            secretKind: 'api_key',
+            secretKeyRef: 'secret://openai/source',
+            status: 'configured',
+        });
+
+        const duplicated = await profileStore.duplicate(profileId, 'Profile Duplicate');
+        expect(duplicated).not.toBeNull();
+        if (!duplicated) {
+            throw new Error('Expected profile duplication to succeed.');
+        }
+
+        const duplicatedSecrets = await secretReferenceStore.listByProfile(duplicated.id);
+        expect(duplicatedSecrets).toEqual([]);
+
+        const activated = await profileStore.setActive(duplicated.id);
+        expect(activated?.id).toBe(duplicated.id);
+        expect(activated?.isActive).toBe(true);
+
+        const deletedDuplicate = await profileStore.delete(duplicated.id);
+        expect(deletedDuplicate.deleted).toBe(true);
+        if (!deletedDuplicate.deleted) {
+            throw new Error('Expected duplicate profile deletion to succeed.');
+        }
+        expect(deletedDuplicate.activeProfileId).toBeDefined();
+
+        const deletedCreated = await profileStore.delete(created.id);
+        expect(deletedCreated.deleted).toBe(true);
+
+        const lastProfileDelete = await profileStore.delete(profileId);
+        expect(lastProfileDelete.deleted).toBe(false);
+        if (lastProfileDelete.deleted) {
+            throw new Error('Expected last profile deletion to be rejected.');
+        }
+        expect(lastProfileDelete.reason).toBe('last_profile');
     });
 
     it('applies Kilo-only ranking policy when ranking metadata exists', async () => {

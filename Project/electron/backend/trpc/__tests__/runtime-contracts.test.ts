@@ -129,6 +129,8 @@ describe('runtime contracts', () => {
         const mcpServers = await caller.mcp.listServers();
 
         expect(snapshot.lastSequence).toBeGreaterThanOrEqual(0);
+        expect(snapshot.activeProfileId).toBe(profileId);
+        expect(snapshot.profiles.some((profile) => profile.id === profileId && profile.isActive)).toBe(true);
         expect(sessions.sessions).toEqual([]);
         expect(snapshot.conversations).toEqual([]);
         expect(snapshot.threads).toEqual([]);
@@ -147,6 +149,88 @@ describe('runtime contracts', () => {
         expect(pendingPermissions.requests).toEqual([]);
         expect(tools.tools.length).toBeGreaterThan(0);
         expect(mcpServers.servers.length).toBeGreaterThan(0);
+    });
+
+    it('supports profile lifecycle with active switching, secure duplication, and last-profile guard', async () => {
+        const caller = createCaller();
+
+        const initialActive = await caller.profile.getActive();
+        expect(initialActive.activeProfileId).toBe(profileId);
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-profile-source-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const created = await caller.profile.create({
+            name: 'Workspace Profile',
+        });
+
+        const renamed = await caller.profile.rename({
+            profileId: created.profile.id,
+            name: 'Workspace Profile Renamed',
+        });
+        expect(renamed.updated).toBe(true);
+        if (!renamed.updated) {
+            throw new Error('Expected profile rename to succeed.');
+        }
+        expect(renamed.profile.name).toBe('Workspace Profile Renamed');
+
+        const duplicated = await caller.profile.duplicate({
+            profileId,
+            name: 'Source Duplicate',
+        });
+        expect(duplicated.duplicated).toBe(true);
+        if (!duplicated.duplicated) {
+            throw new Error('Expected profile duplication to succeed.');
+        }
+
+        const duplicatedSnapshot = await caller.runtime.getSnapshot({
+            profileId: duplicated.profile.id,
+        });
+        expect(duplicatedSnapshot.secretReferences).toEqual([]);
+        const duplicatedOpenAiAuth = duplicatedSnapshot.providerAuthStates.find(
+            (state) => state.providerId === 'openai'
+        );
+        expect(duplicatedOpenAiAuth?.authState).toBe('logged_out');
+        expect(duplicatedOpenAiAuth?.authMethod).toBe('none');
+
+        const activated = await caller.profile.setActive({
+            profileId: duplicated.profile.id,
+        });
+        expect(activated.updated).toBe(true);
+        if (!activated.updated) {
+            throw new Error('Expected profile activation to succeed.');
+        }
+        expect(activated.profile.id).toBe(duplicated.profile.id);
+
+        const activeAfterSwitch = await caller.profile.getActive();
+        expect(activeAfterSwitch.activeProfileId).toBe(duplicated.profile.id);
+
+        const deleteDuplicate = await caller.profile.delete({
+            profileId: duplicated.profile.id,
+        });
+        expect(deleteDuplicate.deleted).toBe(true);
+        if (!deleteDuplicate.deleted) {
+            throw new Error('Expected duplicated profile delete to succeed.');
+        }
+        expect(deleteDuplicate.activeProfileId).toBeDefined();
+
+        const deleteCreated = await caller.profile.delete({
+            profileId: created.profile.id,
+        });
+        expect(deleteCreated.deleted).toBe(true);
+
+        const deleteLast = await caller.profile.delete({
+            profileId,
+        });
+        expect(deleteLast.deleted).toBe(false);
+        if (deleteLast.deleted) {
+            throw new Error('Expected last profile deletion to fail.');
+        }
+        expect(deleteLast.reason).toBe('last_profile');
     });
 
     it('supports session lifecycle with run execution, abort, and revert', async () => {

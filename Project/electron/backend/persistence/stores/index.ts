@@ -9,6 +9,7 @@ export { orchestratorStore } from '@/app/backend/persistence/stores/orchestrator
 export { permissionStore } from '@/app/backend/persistence/stores/permissionStore';
 export { permissionPolicyOverrideStore } from '@/app/backend/persistence/stores/permissionPolicyOverrideStore';
 export { planStore } from '@/app/backend/persistence/stores/planStore';
+export { profileStore } from '@/app/backend/persistence/stores/profileStore';
 export { providerAuthStore } from '@/app/backend/persistence/stores/providerAuthStore';
 export { providerAuthFlowStore } from '@/app/backend/persistence/stores/providerAuthFlowStore';
 export { providerCatalogStore } from '@/app/backend/persistence/stores/providerCatalogStore';

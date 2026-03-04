@@ -3,6 +3,7 @@ import type { Generated } from 'kysely';
 export interface ProfilesTable {
     id: string;
     name: string;
+    is_active: 0 | 1;
     created_at: string;
     updated_at: string;
 }

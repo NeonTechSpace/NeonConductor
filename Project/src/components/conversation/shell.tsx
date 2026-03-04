@@ -7,7 +7,6 @@ import { useThreadSidebarState } from '@/web/components/conversation/hooks/useTh
 import { SessionWorkspacePanel } from '@/web/components/conversation/sessionWorkspacePanel';
 import { ConversationSidebar } from '@/web/components/conversation/sidebar';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
-import { DEFAULT_PROFILE_ID } from '@/web/lib/runtime/profile';
 import { useRuntimeSnapshot } from '@/web/lib/runtime/useRuntimeSnapshot';
 import { trpc } from '@/web/trpc/client';
 
@@ -97,12 +96,12 @@ function toActionableRunError(message: string, providerLabel: string): string {
 }
 
 interface ConversationShellProps {
+    profileId: string;
     topLevelTab: TopLevelTab;
     modeKey: string;
 }
 
-export function ConversationShell({ topLevelTab, modeKey }: ConversationShellProps) {
-    const profileId = DEFAULT_PROFILE_ID;
+export function ConversationShell({ profileId, topLevelTab, modeKey }: ConversationShellProps) {
     const [prompt, setPrompt] = useState('');
     const [runSubmitError, setRunSubmitError] = useState<string | undefined>(undefined);
     const [sessionTargetBySessionId, setSessionTargetBySessionId] = useState<
@@ -134,6 +133,12 @@ export function ConversationShell({ topLevelTab, modeKey }: ConversationShellPro
     const planApproveMutation = trpc.plan.approve.useMutation();
     const planImplementMutation = trpc.plan.implement.useMutation();
     const orchestratorAbortMutation = trpc.orchestrator.abort.useMutation();
+
+    useEffect(() => {
+        setPrompt('');
+        setRunSubmitError(undefined);
+        setSessionTargetBySessionId({});
+    }, [profileId]);
 
     useEffect(() => {
         if (uiState.sort || !listThreadsQuery.data?.sort) {
@@ -250,7 +255,7 @@ export function ConversationShell({ topLevelTab, modeKey }: ConversationShellPro
     const selectedRunId = uiState.selectedRunId;
     const selectedTagId = uiState.selectedTagId;
     const workspaceFilter = uiState.workspaceFilter;
-    const fallbackSessionId = 'sess_missing' as EntityId<'sess'>;
+    const fallbackSessionId = 'sess_missing';
     const selectedSessionIdForQueries = isEntityId(selectedSessionId, 'sess') ? selectedSessionId : fallbackSessionId;
     const isPlanningMode = modeKey === 'plan' && (topLevelTab === 'agent' || topLevelTab === 'orchestrator');
 

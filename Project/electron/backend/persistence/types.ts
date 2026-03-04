@@ -31,6 +31,26 @@ export interface SessionSummaryRecord {
     updatedAt: string;
 }
 
+export interface ProfileRecord {
+    id: string;
+    name: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ActiveProfileState {
+    activeProfileId: string;
+    profile: ProfileRecord;
+}
+
+export interface ProfileDeletionGuardResult {
+    deleted: boolean;
+    reason?: 'last_profile' | 'profile_not_found';
+    activeProfileId?: string;
+    promotedProfileId?: string;
+}
+
 export interface PermissionRecord {
     id: EntityId<'perm'>;
     policy: PermissionPolicy;
@@ -129,6 +149,7 @@ export interface McpServerRecord {
 export type RuntimeEntityType =
     | 'session'
     | 'run'
+    | 'profile'
     | 'permission'
     | 'provider'
     | 'tool'
@@ -366,6 +387,8 @@ export type SecretReferenceRecord = SecretReference;
 export interface RuntimeSnapshotV1 {
     generatedAt: string;
     lastSequence: number;
+    profiles: ProfileRecord[];
+    activeProfileId: string;
     sessions: SessionSummaryRecord[];
     runs: RunRecord[];
     messages: MessageRecord[];

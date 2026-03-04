@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ConversationShell } from '@/web/components/conversation/shell';
 import { SettingsSheet } from '@/web/components/settings/settingsSheet';
-import { DEFAULT_PROFILE_ID } from '@/web/lib/runtime/profile';
 import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/app/backend/runtime/contracts';
@@ -19,26 +18,80 @@ const FALLBACK_MODE_BY_TAB: Record<TopLevelTab, string> = {
     orchestrator: 'plan',
 };
 
+const MISSING_PROFILE_ID = 'profile_missing';
+
 export function WorkspaceSurface() {
-    const profileId = DEFAULT_PROFILE_ID;
+    const [activeProfileId, setActiveProfileId] = useState<string | undefined>(undefined);
     const [topLevelTab, setTopLevelTab] = useState<TopLevelTab>('chat');
     const [showSettings, setShowSettings] = useState(false);
 
+    const profileListQuery = trpc.profile.list.useQuery(undefined, {
+        refetchOnWindowFocus: false,
+    });
+    const activeProfileQuery = trpc.profile.getActive.useQuery(undefined, {
+        refetchOnWindowFocus: false,
+    });
+
+    const profiles = profileListQuery.data?.profiles ?? [];
+
+    const resolvedProfileId = useMemo(() => {
+        const hasActiveProfile = activeProfileId ? profiles.some((profile) => profile.id === activeProfileId) : false;
+        if (hasActiveProfile && activeProfileId) {
+            return activeProfileId;
+        }
+
+        const serverActiveProfileId = activeProfileQuery.data?.activeProfileId;
+        if (serverActiveProfileId && profiles.some((profile) => profile.id === serverActiveProfileId)) {
+            return serverActiveProfileId;
+        }
+
+        const flaggedActiveProfileId = profiles.find((profile) => profile.isActive)?.id;
+        if (flaggedActiveProfileId) {
+            return flaggedActiveProfileId;
+        }
+
+        return profiles[0]?.id;
+    }, [activeProfileId, activeProfileQuery.data?.activeProfileId, profiles]);
+
+    useEffect(() => {
+        if (!resolvedProfileId || resolvedProfileId === activeProfileId) {
+            return;
+        }
+
+        setActiveProfileId(resolvedProfileId);
+    }, [activeProfileId, resolvedProfileId]);
+
+    const profileSetActiveMutation = trpc.profile.setActive.useMutation({
+        onSuccess: async (result) => {
+            if (!result.updated) {
+                return;
+            }
+
+            setActiveProfileId(result.profile.id);
+            setTopLevelTab('chat');
+            await Promise.all([profileListQuery.refetch(), activeProfileQuery.refetch()]);
+        },
+    });
+
+    const profileIdForMode = resolvedProfileId ?? MISSING_PROFILE_ID;
+
     const modeListQuery = trpc.mode.list.useQuery(
         {
-            profileId,
+            profileId: profileIdForMode,
             topLevelTab,
         },
         {
+            enabled: Boolean(resolvedProfileId),
             refetchOnWindowFocus: false,
         }
     );
     const modeActiveQuery = trpc.mode.getActive.useQuery(
         {
-            profileId,
+            profileId: profileIdForMode,
             topLevelTab,
         },
         {
+            enabled: Boolean(resolvedProfileId),
             refetchOnWindowFocus: false,
         }
     );
@@ -74,6 +127,28 @@ export function WorkspaceSurface() {
                 </div>
 
                 <div className='flex items-center gap-2'>
+                    <span className='text-muted-foreground text-xs font-medium'>Profile</span>
+                    <select
+                        className='border-border bg-background h-8 min-w-[220px] rounded-md border px-2 text-sm'
+                        value={resolvedProfileId ?? ''}
+                        disabled={!resolvedProfileId || profileSetActiveMutation.isPending}
+                        onChange={(event) => {
+                            const nextProfileId = event.target.value.trim();
+                            if (!nextProfileId || nextProfileId === resolvedProfileId) {
+                                return;
+                            }
+
+                            void profileSetActiveMutation.mutateAsync({
+                                profileId: nextProfileId,
+                            });
+                        }}>
+                        {profiles.map((profile) => (
+                            <option key={profile.id} value={profile.id}>
+                                {profile.name}
+                            </option>
+                        ))}
+                    </select>
+
                     <button
                         type='button'
                         className='border-border bg-background hover:bg-accent rounded-md border px-2.5 py-1 text-sm'
@@ -86,14 +161,15 @@ export function WorkspaceSurface() {
                     <select
                         className='border-border bg-background h-8 min-w-[180px] rounded-md border px-2 text-sm'
                         value={activeModeKey}
+                        disabled={!resolvedProfileId}
                         onChange={(event) => {
                             const nextModeKey = event.target.value.trim();
-                            if (!nextModeKey || setActiveModeMutation.isPending) {
+                            if (!nextModeKey || setActiveModeMutation.isPending || !resolvedProfileId) {
                                 return;
                             }
 
                             void setActiveModeMutation.mutateAsync({
-                                profileId,
+                                profileId: resolvedProfileId,
                                 topLevelTab,
                                 modeKey: nextModeKey,
                             });
@@ -108,14 +184,29 @@ export function WorkspaceSurface() {
             </header>
 
             <div className='min-h-0 flex-1'>
-                <ConversationShell topLevelTab={topLevelTab} modeKey={activeModeKey} />
+                {resolvedProfileId ? (
+                    <ConversationShell profileId={resolvedProfileId} topLevelTab={topLevelTab} modeKey={activeModeKey} />
+                ) : (
+                    <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>
+                        Loading profile state...
+                    </div>
+                )}
             </div>
-            <SettingsSheet
-                open={showSettings}
-                onClose={() => {
-                    setShowSettings(false);
-                }}
-            />
+            {resolvedProfileId ? (
+                <SettingsSheet
+                    open={showSettings}
+                    profileId={resolvedProfileId}
+                    onClose={() => {
+                        setShowSettings(false);
+                    }}
+                    onProfileActivated={(profileId) => {
+                        setActiveProfileId(profileId);
+                        setTopLevelTab('chat');
+                        void profileListQuery.refetch();
+                        void activeProfileQuery.refetch();
+                    }}
+                />
+            ) : null}
         </section>
     );
 }
