@@ -304,11 +304,27 @@ export class SessionStore {
         runId: EntityId<'run'>
     ): Promise<
         | { branched: false; reason: 'session_not_found' | 'run_not_found' }
-        | { branched: true; session: SessionSummaryRecord; sourceRunCount: number; clonedRunCount: number }
+        | {
+              branched: true;
+              session: SessionSummaryRecord;
+              sourceRunCount: number;
+              clonedRunCount: number;
+              sourceThreadId: string;
+              thread: {
+                  id: string;
+                  topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                  parentThreadId?: string;
+                  rootThreadId: string;
+              };
+          }
     > {
         const { db } = getPersistence();
         const sourceSession = await this.getSessionById(profileId, sessionId);
         if (!sourceSession) {
+            return { branched: false, reason: 'session_not_found' };
+        }
+        const sourceThread = await threadStore.getById(profileId, sourceSession.thread_id);
+        if (!sourceThread) {
             return { branched: false, reason: 'session_not_found' };
         }
 
@@ -319,7 +335,16 @@ export class SessionStore {
         }
         const prefixRuns = sourceRuns.slice(0, targetIndex);
         const branchSessionId = createEntityId('sess');
+        const branchThread = await threadStore.create({
+            profileId,
+            conversationId: sourceSession.conversation_id,
+            title: `${sourceThread.title} (Branch)`,
+            topLevelTab: sourceThread.topLevelTab,
+            parentThreadId: sourceThread.id,
+            rootThreadId: sourceThread.rootThreadId,
+        });
         const now = nowIso();
+        let latestAssistantAt: string | undefined;
 
         await db.transaction().execute(async (trx) => {
             await trx
@@ -328,7 +353,7 @@ export class SessionStore {
                     id: branchSessionId,
                     profile_id: profileId,
                     conversation_id: sourceSession.conversation_id,
-                    thread_id: sourceSession.thread_id,
+                    thread_id: branchThread.id,
                     kind: sourceSession.kind,
                     run_status: 'idle',
                     pending_completion_run_id: null,
@@ -418,6 +443,13 @@ export class SessionStore {
                             updated_at: sourceMessage.updated_at,
                         })
                         .execute();
+                    if (sourceMessage.role === 'assistant') {
+                        latestAssistantAt = latestAssistantAt
+                            ? latestAssistantAt > sourceMessage.updated_at
+                                ? latestAssistantAt
+                                : sourceMessage.updated_at
+                            : sourceMessage.updated_at;
+                    }
 
                     const sourceParts = await trx
                         .selectFrom('message_parts')
@@ -445,12 +477,23 @@ export class SessionStore {
 
         const summary = await this.syncSessionStatus(profileId, branchSessionId);
         await threadStore.touchByThread(profileId, sourceSession.thread_id);
+        await threadStore.touchByThread(profileId, branchThread.id);
+        if (latestAssistantAt) {
+            await threadStore.markAssistantActivity(profileId, branchThread.id, latestAssistantAt);
+        }
 
         return {
             branched: true,
             session: summary,
             sourceRunCount: sourceRuns.length,
             clonedRunCount: prefixRuns.length,
+            sourceThreadId: sourceThread.id,
+            thread: {
+                id: branchThread.id,
+                topLevelTab: branchThread.topLevelTab,
+                ...(branchThread.parentThreadId ? { parentThreadId: branchThread.parentThreadId } : {}),
+                rootThreadId: branchThread.rootThreadId,
+            },
         };
     }
 

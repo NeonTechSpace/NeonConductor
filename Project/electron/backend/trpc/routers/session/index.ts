@@ -1,4 +1,4 @@
-import { messageStore, runStore, sessionStore } from '@/app/backend/persistence/stores';
+import { messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import {
     profileInputSchema,
     sessionByIdInputSchema,
@@ -94,6 +94,20 @@ export const sessionRouter = router({
                 message: 'Checkpoint-style revert is only supported in agent and orchestrator tabs.',
             };
         }
+        const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
+        if (!sessionThread) {
+            return {
+                reverted: false as const,
+                reason: 'not_found' as const,
+            };
+        }
+        if (sessionThread.thread.topLevelTab !== input.topLevelTab) {
+            return {
+                reverted: false as const,
+                reason: 'thread_tab_mismatch' as const,
+                message: `Thread belongs to "${sessionThread.thread.topLevelTab}" tab.`,
+            };
+        }
 
         const result = await sessionStore.revert(input.profileId, input.sessionId);
         if (result.reverted) {
@@ -111,6 +125,20 @@ export const sessionRouter = router({
         return result;
     }),
     edit: publicProcedure.input(sessionEditInputSchema).mutation(async ({ input }) => {
+        const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
+        if (!sessionThread) {
+            return {
+                edited: false as const,
+                reason: 'session_not_found' as const,
+            };
+        }
+        if (sessionThread.thread.topLevelTab !== input.topLevelTab) {
+            return {
+                edited: false as const,
+                reason: 'thread_tab_mismatch' as const,
+            };
+        }
+
         const result = await sessionEditService.edit(input);
         if (result.edited) {
             await runtimeEventLogService.append({

@@ -4,6 +4,7 @@ import {
     providerStore,
     runStore,
     sessionStore,
+    threadStore,
 } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeInput, ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
@@ -67,6 +68,27 @@ export class RunExecutionService {
                 accepted: false,
                 reason: runnable.reason,
             };
+        }
+        const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
+        if (!sessionThread) {
+            return {
+                accepted: false,
+                reason: 'not_found',
+            };
+        }
+        if (sessionThread.thread.topLevelTab !== input.topLevelTab) {
+            appLog.warn({
+                tag: 'run-execution',
+                message: 'Rejected run start because session thread mode does not match selected tab.',
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                expectedTopLevelTab: sessionThread.thread.topLevelTab,
+                requestedTopLevelTab: input.topLevelTab,
+            });
+            throw toRunExecutionError({
+                code: 'invalid_mode',
+                message: `Thread mode "${sessionThread.thread.topLevelTab}" does not match tab "${input.topLevelTab}".`,
+            });
         }
 
         const resolvedModeResult = await resolveModeExecution({

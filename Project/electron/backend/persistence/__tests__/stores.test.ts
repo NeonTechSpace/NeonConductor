@@ -38,6 +38,7 @@ describe('persistence stores', () => {
             profileId,
             conversationId: bucket.id,
             title: 'Main',
+            topLevelTab: 'chat',
         });
         const session = await sessionStore.create(profileId, thread.id, 'local');
         expect(session.turnCount).toBe(0);
@@ -135,6 +136,7 @@ describe('persistence stores', () => {
             profileId,
             conversationId: conversation.id,
             title: 'Usage Thread',
+            topLevelTab: 'chat',
         });
         const session = await sessionStore.create(profileId, thread.id, 'local');
 
@@ -395,6 +397,7 @@ describe('persistence stores', () => {
             profileId,
             conversationId: conversation.id,
             title: 'Thread A',
+            topLevelTab: 'chat',
         });
         const tag = await tagStore.upsert(profileId, 'backend');
         const linked = await tagStore.setThreadTags(profileId, thread.id, [tag.id]);
@@ -444,6 +447,9 @@ describe('persistence stores', () => {
         const conversations = await conversationStore.listBuckets(profileId);
         const threads = await threadStore.list({
             profileId,
+            activeTab: 'chat',
+            showAllModes: true,
+            groupView: 'workspace',
             scope: 'workspace',
             workspaceFingerprint: 'wsf_workspace_a',
             sort: 'latest',

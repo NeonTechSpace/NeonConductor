@@ -199,6 +199,10 @@ export interface ThreadRecord {
     profileId: string;
     conversationId: string;
     title: string;
+    topLevelTab: 'chat' | 'agent' | 'orchestrator';
+    parentThreadId?: string;
+    rootThreadId: string;
+    lastAssistantAt?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -206,6 +210,8 @@ export interface ThreadRecord {
 export interface ThreadListRecord extends ThreadRecord {
     scope: 'detached' | 'workspace';
     workspaceFingerprint?: string;
+    anchorKind: 'workspace' | 'playground';
+    anchorId?: string;
     sessionCount: number;
     latestSessionUpdatedAt?: string;
 }

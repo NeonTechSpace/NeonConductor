@@ -1,4 +1,4 @@
-import { runStore, runUsageStore, sessionStore } from '@/app/backend/persistence/stores';
+import { runStore, runUsageStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import { getProviderAdapter } from '@/app/backend/providers/adapters';
 import { getProviderRuntimeBehavior } from '@/app/backend/providers/behaviors';
 import type { ProviderRuntimeTransportSelection, ProviderRuntimeUsage } from '@/app/backend/providers/types';
@@ -12,6 +12,7 @@ import type {
 import { mergeUsage } from '@/app/backend/runtime/services/runExecution/usage';
 import type { UsageAccumulator } from '@/app/backend/runtime/services/runExecution/usage';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import { threadTitleService } from '@/app/backend/runtime/services/threadTitle/service';
 
 interface RunUsageWriteInput {
     runId: string;
@@ -128,6 +129,17 @@ export async function executeRun(input: ExecuteRunInput): Promise<void> {
         status: 'completed',
     });
     await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'completed');
+    const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
+    if (sessionThread) {
+        await threadStore.markAssistantActivity(input.profileId, sessionThread.thread.id, new Date().toISOString());
+    }
+    await threadTitleService.maybeApply({
+        profileId: input.profileId,
+        sessionId: input.sessionId,
+        prompt: input.prompt,
+        providerId: input.providerId,
+        modelId: input.modelId,
+    });
 
     await runtimeEventLogService.append({
         entityType: 'run',

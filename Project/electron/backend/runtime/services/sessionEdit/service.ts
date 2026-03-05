@@ -29,7 +29,8 @@ type SessionEditFailureReason =
     | 'run_not_found'
     | 'no_turns'
     | 'auto_start_required'
-    | 'run_start_rejected';
+    | 'run_start_rejected'
+    | 'thread_tab_mismatch';
 
 export type SessionEditResult =
     | {
@@ -42,6 +43,9 @@ export type SessionEditResult =
           editMode: SessionEditInput['editMode'];
           sourceSessionId: EntityId<'sess'>;
           sessionId: EntityId<'sess'>;
+          sourceThreadId?: string;
+          threadId?: string;
+          topLevelTab?: 'chat' | 'agent' | 'orchestrator';
           started: boolean;
           runId?: EntityId<'run'>;
           runStatus?: 'running' | 'completed' | 'aborted' | 'error' | 'idle';
@@ -62,6 +66,9 @@ export class SessionEditService {
         }
 
         let workingSessionId: EntityId<'sess'>;
+        let sourceThreadId: string | undefined;
+        let threadId: string | undefined;
+        let threadTopLevelTab: 'chat' | 'agent' | 'orchestrator' | undefined;
         if (input.editMode === 'truncate') {
             const truncated = await sessionStore.truncateFromRun(input.profileId, input.sessionId, target.runId);
             if (!truncated.truncated) {
@@ -85,6 +92,9 @@ export class SessionEditService {
                 };
             }
             workingSessionId = branched.session.id;
+            sourceThreadId = branched.sourceThreadId;
+            threadId = branched.thread.id;
+            threadTopLevelTab = branched.thread.topLevelTab;
         }
 
         const autoStartRun = input.autoStartRun ?? true;
@@ -120,6 +130,9 @@ export class SessionEditService {
             editMode: input.editMode,
             sourceSessionId: input.sessionId,
             sessionId: workingSessionId,
+            ...(sourceThreadId ? { sourceThreadId } : {}),
+            ...(threadId ? { threadId } : {}),
+            ...(threadTopLevelTab ? { topLevelTab: threadTopLevelTab } : {}),
             started: true,
             runId: started.runId,
             runStatus: started.runStatus,

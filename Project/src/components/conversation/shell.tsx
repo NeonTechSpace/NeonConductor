@@ -24,6 +24,7 @@ interface ConversationShellProps {
     profileId: string;
     topLevelTab: TopLevelTab;
     modeKey: string;
+    onTopLevelTabChange: (nextTab: TopLevelTab) => void;
 }
 
 interface PendingMessageEdit {
@@ -54,12 +55,16 @@ function toEditFailureMessage(reason: string): string {
     if (reason === 'run_start_rejected') {
         return 'The edited run could not be started.';
     }
+    if (reason === 'thread_tab_mismatch') {
+        return 'Edit is not allowed from this tab because the thread belongs to another mode.';
+    }
     return `Edit failed: ${reason}`;
 }
 
-export function ConversationShell({ profileId, topLevelTab, modeKey }: ConversationShellProps) {
+export function ConversationShell({ profileId, topLevelTab, modeKey, onTopLevelTabChange }: ConversationShellProps) {
     const [prompt, setPrompt] = useState('');
     const [runSubmitError, setRunSubmitError] = useState<string | undefined>(undefined);
+    const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
     const [pendingMessageEdit, setPendingMessageEdit] = useState<PendingMessageEdit | undefined>(undefined);
     const [sessionTargetBySessionId, setSessionTargetBySessionId] = useState<
         Record<string, { providerId?: RuntimeProviderId; modelId?: string }>
@@ -78,6 +83,7 @@ export function ConversationShell({ profileId, topLevelTab, modeKey }: Conversat
     useEffect(() => {
         setPrompt('');
         setRunSubmitError(undefined);
+        setTabSwitchNotice(undefined);
         setSessionTargetBySessionId({});
     }, [profileId]);
 
@@ -88,6 +94,27 @@ export function ConversationShell({ profileId, topLevelTab, modeKey }: Conversat
 
         uiState.setSort(queries.listThreadsQuery.data.sort);
     }, [queries.listThreadsQuery.data?.sort, uiState]);
+
+    useEffect(() => {
+        if (queries.listThreadsQuery.data?.showAllModes === undefined) {
+            return;
+        }
+        if (uiState.showAllModes === queries.listThreadsQuery.data.showAllModes) {
+            return;
+        }
+        uiState.setShowAllModes(queries.listThreadsQuery.data.showAllModes);
+    }, [queries.listThreadsQuery.data?.showAllModes, uiState]);
+
+    useEffect(() => {
+        const nextGroupView = queries.listThreadsQuery.data?.groupView;
+        if (!nextGroupView) {
+            return;
+        }
+        if (uiState.groupView === nextGroupView) {
+            return;
+        }
+        uiState.setGroupView(nextGroupView);
+    }, [queries.listThreadsQuery.data?.groupView, uiState]);
 
     useEffect(() => {
         const selectedTagId = uiState.selectedTagId;
@@ -237,14 +264,27 @@ export function ConversationShell({ profileId, topLevelTab, modeKey }: Conversat
                 threads={sidebarState.visibleThreads}
                 tags={queries.listTagsQuery.data?.tags ?? []}
                 threadTagIdsByThread={sidebarState.threadTagIdsByThread}
+                topLevelTab={topLevelTab}
                 {...(selectedThreadId ? { selectedThreadId } : {})}
                 {...(selectedTagId ? { selectedTagId } : {})}
                 scopeFilter={uiState.scopeFilter}
                 {...(workspaceFilter ? { workspaceFilter } : {})}
                 sort={uiState.sort ?? 'latest'}
+                showAllModes={uiState.showAllModes}
+                groupView={uiState.groupView}
                 isCreatingThread={mutations.createThreadMutation.isPending}
                 isAddingTag={mutations.upsertTagMutation.isPending || mutations.setThreadTagsMutation.isPending}
                 onSelectThread={(threadId) => {
+                    const targetThread = sidebarState.visibleThreads.find((thread) => thread.id === threadId);
+                    if (targetThread && targetThread.topLevelTab !== topLevelTab) {
+                        onTopLevelTabChange(targetThread.topLevelTab);
+                        setTabSwitchNotice(`Switched to ${targetThread.topLevelTab} to open this thread.`);
+                        window.setTimeout(() => {
+                            setTabSwitchNotice(undefined);
+                        }, 2200);
+                    } else {
+                        setTabSwitchNotice(undefined);
+                    }
                     uiState.setSelectedThreadId(threadId);
                 }}
                 onToggleTagFilter={(tagId) => {
@@ -260,9 +300,16 @@ export function ConversationShell({ profileId, topLevelTab, modeKey }: Conversat
                 onSortChange={(nextSort) => {
                     uiState.setSort(nextSort);
                 }}
+                onShowAllModesChange={(nextShowAllModes) => {
+                    uiState.setShowAllModes(nextShowAllModes);
+                }}
+                onGroupViewChange={(nextGroupView) => {
+                    uiState.setGroupView(nextGroupView);
+                }}
                 onCreateThread={async (input) => {
                     const result = await mutations.createThreadMutation.mutateAsync({
                         profileId,
+                        topLevelTab,
                         ...input,
                     });
                     uiState.setSelectedThreadId(result.thread.id);
@@ -307,6 +354,7 @@ export function ConversationShell({ profileId, topLevelTab, modeKey }: Conversat
                         <p className='text-muted-foreground text-xs'>
                             Stream: {streamState} · Events: {runtimeSnapshot.data?.lastSequence ?? 0}
                         </p>
+                        {tabSwitchNotice ? <p className='text-primary text-xs'>{tabSwitchNotice}</p> : null}
                     </div>
                 </header>
 
@@ -516,6 +564,12 @@ export function ConversationShell({ profileId, topLevelTab, modeKey }: Conversat
                                 void editPreferenceQuery.refetch();
                             }
 
+                            if (result.threadId && isEntityId(result.threadId, 'thr')) {
+                                uiState.setSelectedThreadId(result.threadId);
+                            }
+                            if (result.topLevelTab && result.topLevelTab !== topLevelTab) {
+                                onTopLevelTabChange(result.topLevelTab);
+                            }
                             uiState.setSelectedSessionId(result.sessionId);
                             if (result.runId) {
                                 uiState.setSelectedRunId(result.runId);

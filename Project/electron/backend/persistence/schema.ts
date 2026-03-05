@@ -165,6 +165,10 @@ export interface ThreadsTable {
     profile_id: string;
     conversation_id: string;
     title: string;
+    top_level_tab: string;
+    parent_thread_id: string | null;
+    root_thread_id: string;
+    last_assistant_at: string | null;
     created_at: string;
     updated_at: string;
 }

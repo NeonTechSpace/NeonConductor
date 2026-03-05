@@ -107,6 +107,9 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
             loadSlice('threads', () =>
                 threadStore.list({
                     profileId,
+                    activeTab: 'chat',
+                    showAllModes: true,
+                    groupView: 'workspace',
                     sort: 'latest',
                 })
             ),

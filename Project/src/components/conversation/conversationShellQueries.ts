@@ -26,6 +26,9 @@ export function useConversationShellQueries(input: UseConversationShellQueriesIn
     const listThreadsQuery = trpc.conversation.listThreads.useQuery(
         {
             profileId: input.profileId,
+            activeTab: input.topLevelTab,
+            showAllModes: input.uiState.showAllModes,
+            groupView: input.uiState.groupView,
             ...(input.uiState.scopeFilter !== 'all' ? { scope: input.uiState.scopeFilter } : {}),
             ...(input.uiState.workspaceFilter ? { workspaceFingerprint: input.uiState.workspaceFilter } : {}),
             ...(input.uiState.sort ? { sort: input.uiState.sort } : {}),

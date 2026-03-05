@@ -10,7 +10,7 @@ function createConversationId(): string {
 }
 
 function defaultConversationTitle(scope: ConversationScope): string {
-    return scope === 'workspace' ? 'Workspace' : 'Detached';
+    return scope === 'workspace' ? 'Workspace' : 'Playground';
 }
 
 function mapConversationRecord(row: {

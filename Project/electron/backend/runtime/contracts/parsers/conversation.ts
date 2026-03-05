@@ -1,10 +1,14 @@
 import {
     conversationEditResolutions,
     conversationScopes,
+    conversationThreadGroupViews,
     conversationThreadSorts,
+    threadTitleGenerationModes,
+    topLevelTabs,
 } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
+    readBoolean,
     readEntityId,
     readEnumValue,
     readObject,
@@ -17,11 +21,13 @@ import { parseProfileInput } from '@/app/backend/runtime/contracts/parsers/profi
 import type {
     ConversationCreateThreadInput,
     ConversationGetEditPreferenceInput,
+    ConversationGetThreadTitlePreferenceInput,
     ConversationListBucketsInput,
     ConversationListTagsInput,
     ConversationListThreadsInput,
     ConversationRenameThreadInput,
     ConversationSetEditPreferenceInput,
+    ConversationSetThreadTitlePreferenceInput,
     ConversationSetThreadTagsInput,
     ConversationUpsertTagInput,
 } from '@/app/backend/runtime/contracts/types';
@@ -32,6 +38,14 @@ export function parseConversationListBucketsInput(input: unknown): ConversationL
 
 export function parseConversationListThreadsInput(input: unknown): ConversationListThreadsInput {
     const source = readObject(input, 'input');
+    const activeTab =
+        source.activeTab !== undefined ? readEnumValue(source.activeTab, 'activeTab', topLevelTabs) : undefined;
+    const showAllModes =
+        source.showAllModes !== undefined ? readBoolean(source.showAllModes, 'showAllModes') : undefined;
+    const groupView =
+        source.groupView !== undefined
+            ? readEnumValue(source.groupView, 'groupView', conversationThreadGroupViews)
+            : undefined;
     const scope = source.scope !== undefined ? readEnumValue(source.scope, 'scope', conversationScopes) : undefined;
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
 
@@ -41,6 +55,9 @@ export function parseConversationListThreadsInput(input: unknown): ConversationL
 
     return {
         profileId: readProfileId(source),
+        ...(activeTab ? { activeTab } : {}),
+        ...(showAllModes !== undefined ? { showAllModes } : {}),
+        ...(groupView ? { groupView } : {}),
         ...(scope ? { scope } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
         ...(source.sort !== undefined ? { sort: readEnumValue(source.sort, 'sort', conversationThreadSorts) } : {}),
@@ -49,6 +66,8 @@ export function parseConversationListThreadsInput(input: unknown): ConversationL
 
 export function parseConversationCreateThreadInput(input: unknown): ConversationCreateThreadInput {
     const source = readObject(input, 'input');
+    const topLevelTab =
+        source.topLevelTab !== undefined ? readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs) : undefined;
     const scope = readEnumValue(source.scope, 'scope', conversationScopes);
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
 
@@ -62,6 +81,7 @@ export function parseConversationCreateThreadInput(input: unknown): Conversation
 
     return {
         profileId: readProfileId(source),
+        ...(topLevelTab ? { topLevelTab } : {}),
         scope,
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
         title: readString(source.title, 'title'),
@@ -115,6 +135,33 @@ export function parseConversationSetEditPreferenceInput(input: unknown): Convers
     };
 }
 
+export function parseConversationGetThreadTitlePreferenceInput(
+    input: unknown
+): ConversationGetThreadTitlePreferenceInput {
+    return parseProfileInput(input);
+}
+
+export function parseConversationSetThreadTitlePreferenceInput(
+    input: unknown
+): ConversationSetThreadTitlePreferenceInput {
+    const source = readObject(input, 'input');
+    const mode = readEnumValue(source.mode, 'mode', threadTitleGenerationModes);
+    const aiModel = readOptionalString(source.aiModel, 'aiModel');
+
+    if (mode === 'template' && aiModel) {
+        throw new Error('Invalid "aiModel": allowed only when mode is "ai_optional".');
+    }
+    if (mode === 'ai_optional' && !aiModel) {
+        throw new Error('Invalid "aiModel": required when mode is "ai_optional".');
+    }
+
+    return {
+        profileId: readProfileId(source),
+        mode,
+        ...(aiModel ? { aiModel } : {}),
+    };
+}
+
 export const conversationListBucketsInputSchema = createParser(parseConversationListBucketsInput);
 export const conversationListThreadsInputSchema = createParser(parseConversationListThreadsInput);
 export const conversationCreateThreadInputSchema = createParser(parseConversationCreateThreadInput);
@@ -124,3 +171,9 @@ export const conversationUpsertTagInputSchema = createParser(parseConversationUp
 export const conversationSetThreadTagsInputSchema = createParser(parseConversationSetThreadTagsInput);
 export const conversationGetEditPreferenceInputSchema = createParser(parseConversationGetEditPreferenceInput);
 export const conversationSetEditPreferenceInputSchema = createParser(parseConversationSetEditPreferenceInput);
+export const conversationGetThreadTitlePreferenceInputSchema = createParser(
+    parseConversationGetThreadTitlePreferenceInput
+);
+export const conversationSetThreadTitlePreferenceInputSchema = createParser(
+    parseConversationSetThreadTitlePreferenceInput
+);

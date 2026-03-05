@@ -27,6 +27,9 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
 
     expectTypeOf<Inputs['conversation']['listThreads']>().toExtend<{
         profileId: string;
+        activeTab?: 'chat' | 'agent' | 'orchestrator';
+        showAllModes?: boolean;
+        groupView?: 'workspace' | 'branch';
         scope?: 'detached' | 'workspace';
         workspaceFingerprint?: string;
         sort?: 'latest' | 'alphabetical';
@@ -34,6 +37,7 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
 
     expectTypeOf<Inputs['conversation']['createThread']>().toExtend<{
         profileId: string;
+        topLevelTab?: 'chat' | 'agent' | 'orchestrator';
         scope: 'detached' | 'workspace';
         workspaceFingerprint?: string;
         title: string;
@@ -44,6 +48,14 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     expectTypeOf<Inputs['conversation']['setEditPreference']>().toExtend<{
         profileId: string;
         value: 'ask' | 'truncate' | 'branch';
+    }>();
+    expectTypeOf<Inputs['conversation']['getThreadTitlePreference']>().toExtend<{
+        profileId: string;
+    }>();
+    expectTypeOf<Inputs['conversation']['setThreadTitlePreference']>().toExtend<{
+        profileId: string;
+        mode: 'template' | 'ai_optional';
+        aiModel?: string;
     }>();
 
     expectTypeOf<Inputs['session']['startRun']>().toExtend<{

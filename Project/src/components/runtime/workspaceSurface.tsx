@@ -189,6 +189,7 @@ export function WorkspaceSurface() {
                         profileId={resolvedProfileId}
                         topLevelTab={topLevelTab}
                         modeKey={activeModeKey}
+                        onTopLevelTabChange={setTopLevelTab}
                     />
                 ) : (
                     <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>

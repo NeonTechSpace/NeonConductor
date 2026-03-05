@@ -13,6 +13,7 @@ export function ProfileSettingsView({ activeProfileId, onProfileActivated }: Pro
     const [selectedProfileId, setSelectedProfileId] = useState<string | undefined>(undefined);
     const [newProfileName, setNewProfileName] = useState('');
     const [renameValue, setRenameValue] = useState('');
+    const [threadTitleAiModelInput, setThreadTitleAiModelInput] = useState('');
     const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -35,6 +36,20 @@ export function ProfileSettingsView({ activeProfileId, onProfileActivated }: Pro
     const setEditPreferenceMutation = trpc.conversation.setEditPreference.useMutation({
         onSuccess: () => {
             void editPreferenceQuery.refetch();
+        },
+    });
+    const threadTitlePreferenceQuery = trpc.conversation.getThreadTitlePreference.useQuery(
+        {
+            profileId: selectedProfileIdForSettings,
+        },
+        {
+            enabled: Boolean(selectedProfileIdForSettings),
+            refetchOnWindowFocus: false,
+        }
+    );
+    const setThreadTitlePreferenceMutation = trpc.conversation.setThreadTitlePreference.useMutation({
+        onSuccess: () => {
+            void threadTitlePreferenceQuery.refetch();
         },
     });
 
@@ -66,6 +81,11 @@ export function ProfileSettingsView({ activeProfileId, onProfileActivated }: Pro
     useEffect(() => {
         setRenameValue(selectedProfile?.name ?? '');
     }, [selectedProfile?.id, selectedProfile?.name]);
+
+    useEffect(() => {
+        const aiModel = threadTitlePreferenceQuery.data?.aiModel ?? '';
+        setThreadTitleAiModelInput(aiModel);
+    }, [threadTitlePreferenceQuery.data?.aiModel, threadTitlePreferenceQuery.data?.mode]);
 
     const cannotDeleteLastProfile = profiles.length <= 1;
 
@@ -270,6 +290,78 @@ export function ProfileSettingsView({ activeProfileId, onProfileActivated }: Pro
                                     <option value='truncate'>Always truncate</option>
                                     <option value='branch'>Always branch</option>
                                 </select>
+                            </div>
+
+                            <div className='space-y-1 pt-2'>
+                                <p className='text-sm font-semibold'>Thread Title Generation</p>
+                                <p className='text-muted-foreground text-xs'>
+                                    Controls how new thread titles are generated from provider/model and prompt context.
+                                </p>
+                                <select
+                                    className='border-border bg-background h-9 w-full max-w-sm rounded-md border px-2 text-sm'
+                                    value={threadTitlePreferenceQuery.data?.mode ?? 'template'}
+                                    disabled={setThreadTitlePreferenceMutation.isPending}
+                                    onChange={(event) => {
+                                        const nextMode = event.target.value;
+                                        if (nextMode !== 'template' && nextMode !== 'ai_optional') {
+                                            return;
+                                        }
+
+                                        if (nextMode === 'ai_optional' && threadTitleAiModelInput.trim().length === 0) {
+                                            setStatusMessage(
+                                                'Set a title AI model (for example "openai/gpt-5-mini") before enabling AI optional mode.'
+                                            );
+                                            return;
+                                        }
+
+                                        void setThreadTitlePreferenceMutation
+                                            .mutateAsync({
+                                                profileId: selectedProfile.id,
+                                                mode: nextMode,
+                                                ...(nextMode === 'ai_optional'
+                                                    ? { aiModel: threadTitleAiModelInput.trim() }
+                                                    : {}),
+                                            })
+                                            .then(() => {
+                                                setStatusMessage('Updated thread title generation settings.');
+                                            });
+                                    }}>
+                                    <option value='template'>Template only</option>
+                                    <option value='ai_optional'>Template + optional AI refine</option>
+                                </select>
+                                <input
+                                    type='text'
+                                    value={threadTitleAiModelInput}
+                                    onChange={(event) => {
+                                        setThreadTitleAiModelInput(event.target.value);
+                                    }}
+                                    className='border-border bg-background h-9 w-full max-w-sm rounded-md border px-2 text-sm'
+                                    placeholder='Title AI model id (e.g. openai/gpt-5-mini)'
+                                />
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={
+                                        setThreadTitlePreferenceMutation.isPending ||
+                                        threadTitleAiModelInput.trim().length === 0
+                                    }
+                                    onClick={() => {
+                                        if (threadTitleAiModelInput.trim().length === 0) {
+                                            return;
+                                        }
+                                        void setThreadTitlePreferenceMutation
+                                            .mutateAsync({
+                                                profileId: selectedProfile.id,
+                                                mode: 'ai_optional',
+                                                aiModel: threadTitleAiModelInput.trim(),
+                                            })
+                                            .then(() => {
+                                                setStatusMessage('Updated title AI model.');
+                                            });
+                                    }}>
+                                    Save AI Model
+                                </Button>
                             </div>
                         </section>
                     ) : null}

@@ -242,7 +242,6 @@ export class MessageStore {
             currentText: text,
         };
     }
-
 }
 
 export const messageStore = new MessageStore();

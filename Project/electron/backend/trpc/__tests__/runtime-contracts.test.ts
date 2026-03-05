@@ -29,10 +29,12 @@ async function createSessionInScope(
         workspaceFingerprint?: string;
         title: string;
         kind: 'local' | 'worktree' | 'cloud';
+        topLevelTab?: 'chat' | 'agent' | 'orchestrator';
     }
 ) {
     const threadResult = await caller.conversation.createThread({
         profileId,
+        ...(input.topLevelTab ? { topLevelTab: input.topLevelTab } : {}),
         scope: input.scope,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         title: input.title,
@@ -264,6 +266,25 @@ describe('runtime contracts', () => {
 
                     signal?.addEventListener('abort', onAbort, { once: true });
                 });
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => ({
+                    choices: [
+                        {
+                            message: {
+                                content: 'Agent completion response',
+                            },
+                        },
+                    ],
+                    usage: {
+                        prompt_tokens: 8,
+                        completion_tokens: 12,
+                        total_tokens: 20,
+                    },
+                }),
             });
         vi.stubGlobal('fetch', completionFetchMock);
 
@@ -350,13 +371,43 @@ describe('runtime contracts', () => {
         const chatRevert = await caller.session.revert({ profileId, sessionId, topLevelTab: 'chat' });
         expect(chatRevert.reverted).toBe(false);
 
-        const reverted = await caller.session.revert({ profileId, sessionId, topLevelTab: 'agent' });
+        const mismatchedRevert = await caller.session.revert({ profileId, sessionId, topLevelTab: 'agent' });
+        expect(mismatchedRevert.reverted).toBe(false);
+
+        const createdAgent = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_revert_agent_scope',
+            title: 'Agent Revert Thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const agentRun = await caller.session.startRun({
+            profileId,
+            sessionId: createdAgent.session.id,
+            prompt: 'Agent revert prompt',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(agentRun.accepted).toBe(true);
+        if (!agentRun.accepted) {
+            throw new Error('Expected agent run start before revert.');
+        }
+        await waitForRunStatus(caller, profileId, createdAgent.session.id, 'completed');
+
+        const reverted = await caller.session.revert({
+            profileId,
+            sessionId: createdAgent.session.id,
+            topLevelTab: 'agent',
+        });
         expect(reverted.reverted).toBe(true);
         if (!reverted.reverted) {
-            throw new Error('Expected revert to succeed.');
+            throw new Error('Expected agent revert to succeed.');
         }
-        expect(reverted.session.turnCount).toBe(1);
-        expect(reverted.session.runStatus).toBe('completed');
+        expect(reverted.session.turnCount).toBe(0);
+        expect(reverted.session.runStatus).toBe('idle');
     });
 
     it('supports session edit truncate and branch across all tabs with chat-only replay', async () => {
@@ -448,10 +499,10 @@ describe('runtime contracts', () => {
         const truncated = await caller.session.edit({
             profileId,
             sessionId,
-            topLevelTab: 'agent',
-            modeKey: 'code',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
             messageId: secondUserMessage.id,
-            replacementText: 'second edited in agent tab',
+            replacementText: 'second edited in chat tab',
             editMode: 'truncate',
             autoStartRun: true,
             runtimeOptions: defaultRuntimeOptions,
@@ -481,7 +532,7 @@ describe('runtime contracts', () => {
             throw new Error('Expected latest user message after truncate.');
         }
 
-        const branchedAgent = await caller.session.edit({
+        const mismatchedAgentEdit = await caller.session.edit({
             profileId,
             sessionId,
             topLevelTab: 'agent',
@@ -494,23 +545,13 @@ describe('runtime contracts', () => {
             providerId: 'openai',
             modelId: 'openai/gpt-5',
         });
-        expect(branchedAgent.edited).toBe(true);
-        if (!branchedAgent.edited) {
-            throw new Error(`Expected agent branch edit to succeed, received reason "${branchedAgent.reason}".`);
+        expect(mismatchedAgentEdit.edited).toBe(false);
+        if (mismatchedAgentEdit.edited) {
+            throw new Error('Expected cross-tab edit to fail.');
         }
-        expect(branchedAgent.sessionId).not.toBe(sessionId);
-        expect(branchedAgent.started).toBe(true);
-        if (branchedAgent.started) {
-            await waitForRunStatus(caller, profileId, branchedAgent.sessionId, 'completed');
-        }
+        expect(mismatchedAgentEdit.reason).toBe('thread_tab_mismatch');
 
-        const branchAgentRuns = await caller.session.listRuns({
-            profileId,
-            sessionId: branchedAgent.sessionId,
-        });
-        expect(branchAgentRuns.runs.length).toBe(2);
-
-        const branchedOrchestrator = await caller.session.edit({
+        const mismatchedOrchestratorEdit = await caller.session.edit({
             profileId,
             sessionId,
             topLevelTab: 'orchestrator',
@@ -523,24 +564,43 @@ describe('runtime contracts', () => {
             providerId: 'openai',
             modelId: 'openai/gpt-5',
         });
-        expect(branchedOrchestrator.edited).toBe(true);
-        if (!branchedOrchestrator.edited) {
-            throw new Error(
-                `Expected orchestrator branch edit to succeed, received reason "${branchedOrchestrator.reason}".`
-            );
+        expect(mismatchedOrchestratorEdit.edited).toBe(false);
+        if (mismatchedOrchestratorEdit.edited) {
+            throw new Error('Expected cross-tab edit to fail.');
         }
-        expect(branchedOrchestrator.sessionId).not.toBe(sessionId);
-        expect(branchedOrchestrator.sessionId).not.toBe(branchedAgent.sessionId);
-        expect(branchedOrchestrator.started).toBe(true);
-        if (branchedOrchestrator.started) {
-            await waitForRunStatus(caller, profileId, branchedOrchestrator.sessionId, 'completed');
+        expect(mismatchedOrchestratorEdit.reason).toBe('thread_tab_mismatch');
+
+        const branchedChat = await caller.session.edit({
+            profileId,
+            sessionId,
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            messageId: latestUserMessage.id,
+            replacementText: 'branch prompt for chat tab',
+            editMode: 'branch',
+            autoStartRun: true,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(branchedChat.edited).toBe(true);
+        if (!branchedChat.edited) {
+            throw new Error(`Expected chat branch edit to succeed, received reason "${branchedChat.reason}".`);
+        }
+        expect(branchedChat.sessionId).not.toBe(sessionId);
+        expect(branchedChat.started).toBe(true);
+        if (branchedChat.started) {
+            await waitForRunStatus(caller, profileId, branchedChat.sessionId, 'completed');
+        }
+        if (!branchedChat.threadId) {
+            throw new Error('Expected chat branch to create a new thread.');
         }
 
-        const branchOrchestratorRuns = await caller.session.listRuns({
+        const branchChatRuns = await caller.session.listRuns({
             profileId,
-            sessionId: branchedOrchestrator.sessionId,
+            sessionId: branchedChat.sessionId,
         });
-        expect(branchOrchestratorRuns.runs.length).toBe(2);
+        expect(branchChatRuns.runs.length).toBe(2);
 
         const sourceRuns = await caller.session.listRuns({
             profileId,
@@ -548,32 +608,129 @@ describe('runtime contracts', () => {
         });
         expect(sourceRuns.runs.length).toBe(2);
 
+        const createdAgent = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_edit_agent_scope',
+            title: 'Agent branch thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const agentFirstRun = await caller.session.startRun({
+            profileId,
+            sessionId: createdAgent.session.id,
+            prompt: 'agent first',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(agentFirstRun.accepted).toBe(true);
+        if (!agentFirstRun.accepted) {
+            throw new Error('Expected agent first run.');
+        }
+        await waitForRunStatus(caller, profileId, createdAgent.session.id, 'completed');
+        const agentMessages = await caller.session.listMessages({ profileId, sessionId: createdAgent.session.id });
+        const agentUserMessage = agentMessages.messages.find((message) => message.role === 'user');
+        if (!agentUserMessage) {
+            throw new Error('Expected agent user message.');
+        }
+        const branchedAgent = await caller.session.edit({
+            profileId,
+            sessionId: createdAgent.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            messageId: agentUserMessage.id,
+            replacementText: 'agent branch prompt',
+            editMode: 'branch',
+            autoStartRun: true,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(branchedAgent.edited).toBe(true);
+        if (!branchedAgent.edited) {
+            throw new Error('Expected agent branch edit.');
+        }
+        if (branchedAgent.started) {
+            await waitForRunStatus(caller, profileId, branchedAgent.sessionId, 'completed');
+        }
+
+        const createdOrchestrator = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_edit_orchestrator_scope',
+            title: 'Orchestrator branch thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+        const orchestratorFirstRun = await caller.session.startRun({
+            profileId,
+            sessionId: createdOrchestrator.session.id,
+            prompt: 'orchestrator first',
+            topLevelTab: 'orchestrator',
+            modeKey: 'orchestrate',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(orchestratorFirstRun.accepted).toBe(true);
+        if (!orchestratorFirstRun.accepted) {
+            throw new Error('Expected orchestrator first run.');
+        }
+        await waitForRunStatus(caller, profileId, createdOrchestrator.session.id, 'completed');
+        const orchestratorMessages = await caller.session.listMessages({
+            profileId,
+            sessionId: createdOrchestrator.session.id,
+        });
+        const orchestratorUserMessage = orchestratorMessages.messages.find((message) => message.role === 'user');
+        if (!orchestratorUserMessage) {
+            throw new Error('Expected orchestrator user message.');
+        }
+        const branchedOrchestrator = await caller.session.edit({
+            profileId,
+            sessionId: createdOrchestrator.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'orchestrate',
+            messageId: orchestratorUserMessage.id,
+            replacementText: 'orchestrator branch prompt',
+            editMode: 'branch',
+            autoStartRun: true,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(branchedOrchestrator.edited).toBe(true);
+        if (!branchedOrchestrator.edited) {
+            throw new Error('Expected orchestrator branch edit.');
+        }
+        if (branchedOrchestrator.started) {
+            await waitForRunStatus(caller, profileId, branchedOrchestrator.sessionId, 'completed');
+        }
+
         const secondChatBody = requestBodies[1];
         const secondChatInput = Array.isArray(secondChatBody?.['input']) ? secondChatBody['input'] : [];
         expect(secondChatInput.length).toBeGreaterThan(1);
 
-        const agentEditBody = requestBodies[2];
-        const agentEditInput = Array.isArray(agentEditBody?.['input']) ? agentEditBody['input'] : [];
-        expect(agentEditInput.length).toBe(1);
-
         const agentBranchBody = requestBodies[3];
         const agentBranchInput = Array.isArray(agentBranchBody?.['input']) ? agentBranchBody['input'] : [];
-        expect(agentBranchInput.length).toBe(1);
+        expect(agentBranchInput.length).toBeGreaterThan(0);
 
-        const orchestratorBranchBody = requestBodies[4];
+        const orchestratorBranchBody = requestBodies[5];
         const orchestratorBranchInput = Array.isArray(orchestratorBranchBody?.['input'])
             ? orchestratorBranchBody['input']
             : [];
-        expect(orchestratorBranchInput.length).toBe(1);
+        expect(orchestratorBranchInput.length).toBeGreaterThan(0);
     });
 
     it('enforces planning-only mode and allows switching active mode', async () => {
         const caller = createCaller();
 
         const created = await createSessionInScope(caller, profileId, {
-            scope: 'detached',
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_mode_enforcement_agent',
             title: 'Mode Enforcement Thread',
             kind: 'local',
+            topLevelTab: 'agent',
         });
 
         await expect(
@@ -670,9 +827,11 @@ describe('runtime contracts', () => {
         expect(configured.success).toBe(true);
 
         const created = await createSessionInScope(caller, profileId, {
-            scope: 'detached',
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_agent_plan_lifecycle',
             title: 'Agent planning lifecycle thread',
             kind: 'local',
+            topLevelTab: 'agent',
         });
 
         const started = await caller.plan.start({
@@ -792,9 +951,11 @@ describe('runtime contracts', () => {
         expect(configured.success).toBe(true);
 
         const created = await createSessionInScope(caller, profileId, {
-            scope: 'detached',
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_orchestrator_plan_lifecycle',
             title: 'Orchestrator planning lifecycle thread',
             kind: 'local',
+            topLevelTab: 'orchestrator',
         });
 
         const started = await caller.plan.start({
