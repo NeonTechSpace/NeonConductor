@@ -38,6 +38,13 @@
 - When IDs cross renderer/service boundaries, validate prefix/shape before mutation calls instead of casting.
 - Keep stable internal IDs immutable and separate from user-facing names (rename display fields, not identity keys).
 
+### 6) Keep Test Context Isolated from Source
+- Production/source files must not depend on test context (`__tests__`, test fixtures, test helpers, mocks).
+- Do not import test frameworks (`vitest`, `jest`, test globals) into runtime/source modules.
+- Do not add test-only runtime branches in source code (for example `NODE_ENV === 'test'` behavior gates) unless explicitly required by architecture and documented.
+- Keep fixtures, stubs, and mocks in test-only paths.
+- If code is genuinely shared by runtime and tests, place it in a neutral source module and keep test-specific behavior out of it.
+
 ## Repository Documentation Status
 - Root `README.md` is intentionally empty; it serves as a pointer target to `Markdown/README`.
 - `Project/README.md` is intentionally not filled yet.
