@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,18 @@ function requireEntityId<P extends string>(value: string | undefined, prefix: P,
     }
 
     return value;
+}
+
+function createGitWorkspace(prefix: string): string {
+    const workspacePath = mkdtempSync(path.join(os.tmpdir(), prefix));
+    execFileSync('git', ['init'], { cwd: workspacePath, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: workspacePath, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Neon Conductor Tests'], { cwd: workspacePath, stdio: 'ignore' });
+    execFileSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: workspacePath, stdio: 'ignore' });
+    writeFileSync(path.join(workspacePath, 'README.md'), 'base\n');
+    execFileSync('git', ['add', 'README.md'], { cwd: workspacePath, stdio: 'ignore' });
+    execFileSync('git', ['commit', '--no-gpg-sign', '-m', 'initial'], { cwd: workspacePath, stdio: 'ignore' });
+    return workspacePath;
 }
 
 async function createSessionInScope(
@@ -2677,6 +2690,270 @@ name: Docs Lookup
             throw new Error('Expected yolo preset to still ask for unseen shell prefixes.');
         }
         expect(yoloAsk.error).toBe('permission_required');
+    });
+
+    it('captures git diff artifacts and rolls checkpoints back for mutating agent runs', async () => {
+        const caller = createCaller();
+        const workspacePath = createGitWorkspace('neonconductor-diff-checkpoint-');
+        let resolveFetch: (() => void) | undefined;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                () =>
+                    new Promise((resolve) => {
+                        resolveFetch = () => {
+                            resolve({
+                                ok: true,
+                                status: 200,
+                                statusText: 'OK',
+                                json: () => ({
+                                    choices: [
+                                        {
+                                            message: {
+                                                content: 'mutation complete',
+                                            },
+                                        },
+                                    ],
+                                    usage: {
+                                        prompt_tokens: 10,
+                                        completion_tokens: 20,
+                                        total_tokens: 30,
+                                    },
+                                }),
+                            });
+                        };
+                    })
+            )
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-diff-test-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Diff Checkpoint Thread',
+        });
+        const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected workspace agent thread id.');
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === threadId);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for git-backed thread.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'local',
+        });
+        expect(created.created).toBe(true);
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Change README',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: workspaceThread.workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected mutating agent run to start.');
+        }
+
+        writeFileSync(path.join(workspacePath, 'README.md'), 'changed by checkpoint\n');
+        resolveFetch?.();
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const diffs = await caller.diff.listByRun({
+            profileId,
+            runId: started.runId,
+        });
+        expect(diffs.diffs).toHaveLength(1);
+        const diff = diffs.diffs[0];
+        if (!diff) {
+            throw new Error('Expected diff artifact for mutating run.');
+        }
+        expect(diff.artifact.kind).toBe('git');
+        if (diff.artifact.kind !== 'git') {
+            throw new Error('Expected git diff artifact.');
+        }
+        const readmePath = diff.artifact.files.find((file) => file.path.endsWith('README.md'))?.path;
+        expect(Boolean(readmePath)).toBe(true);
+        if (!readmePath) {
+            throw new Error('Expected README diff entry.');
+        }
+
+        const patch = await caller.diff.getFilePatch({
+            profileId,
+            diffId: diff.id,
+            path: readmePath,
+        });
+        expect(patch.found).toBe(true);
+        if (!patch.found) {
+            throw new Error('Expected README patch preview.');
+        }
+        expect(patch.patch).toContain('+changed by checkpoint');
+
+        const checkpoints = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(checkpoints.checkpoints).toHaveLength(1);
+        const checkpoint = checkpoints.checkpoints[0];
+        if (!checkpoint) {
+            throw new Error('Expected auto-created checkpoint for mutating run.');
+        }
+
+        writeFileSync(path.join(workspacePath, 'README.md'), 'drifted\n');
+        const rollback = await caller.checkpoint.rollback({
+            profileId,
+            checkpointId: checkpoint.id,
+            confirm: true,
+        });
+        expect(rollback.rolledBack).toBe(true);
+        expect(readFileSync(path.join(workspacePath, 'README.md'), 'utf8').replace(/\r\n/g, '\n')).toBe(
+            'changed by checkpoint\n'
+        );
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    });
+
+    it('records unsupported diff artifacts for non-git mutation runs and skips checkpoints', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-diff-unsupported-'));
+        let resolveFetch: (() => void) | undefined;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                () =>
+                    new Promise((resolve) => {
+                        resolveFetch = () => {
+                            resolve({
+                                ok: true,
+                                status: 200,
+                                statusText: 'OK',
+                                json: () => ({
+                                    choices: [
+                                        {
+                                            message: {
+                                                content: 'mutation complete',
+                                            },
+                                        },
+                                    ],
+                                    usage: {
+                                        prompt_tokens: 10,
+                                        completion_tokens: 20,
+                                        total_tokens: 30,
+                                    },
+                                }),
+                            });
+                        };
+                    })
+            )
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-diff-unsupported-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Unsupported Diff Thread',
+        });
+        const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected unsupported workspace thread id.');
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === threadId);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for non-git thread.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'local',
+        });
+        expect(created.created).toBe(true);
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Change notes',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: workspaceThread.workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected non-git mutating run to start.');
+        }
+
+        writeFileSync(path.join(workspacePath, 'notes.txt'), 'new content\n');
+        resolveFetch?.();
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const diffs = await caller.diff.listByRun({
+            profileId,
+            runId: started.runId,
+        });
+        expect(diffs.diffs).toHaveLength(1);
+        const diff = diffs.diffs[0];
+        if (!diff) {
+            throw new Error('Expected diff artifact even when git capture is unsupported.');
+        }
+        expect(diff.artifact.kind).toBe('unsupported');
+        if (diff.artifact.kind !== 'unsupported') {
+            throw new Error('Expected unsupported diff artifact.');
+        }
+        expect(diff.artifact.reason).toBe('workspace_not_git');
+
+        const checkpoints = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(checkpoints.checkpoints).toEqual([]);
+
+        rmSync(workspacePath, { recursive: true, force: true });
     });
 
     it('supports workspace-scoped runtime reset dry-run and apply', async () => {

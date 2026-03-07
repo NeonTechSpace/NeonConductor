@@ -139,6 +139,8 @@ export class RunExecutionService {
             profileId: input.profileId,
             sessionId: input.sessionId,
             runId: persisted.run.id,
+            topLevelTab: input.topLevelTab,
+            modeKey: input.modeKey,
             prompt: input.prompt,
             providerId: prepared.activeTarget.providerId,
             modelId: prepared.activeTarget.modelId,
@@ -153,6 +155,7 @@ export class RunExecutionService {
                 : {}),
             ...(prepared.kiloRouting ? { kiloRouting: prepared.kiloRouting } : {}),
             ...(prepared.runContext ? { contextMessages: prepared.runContext.messages } : {}),
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             assistantMessageId: persisted.assistantMessageId,
             signal: controller.signal,
         }).finally(() => {

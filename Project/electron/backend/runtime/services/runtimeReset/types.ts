@@ -19,6 +19,7 @@ export const EMPTY_COUNTS: RuntimeResetCounts = {
     threadTags: 0,
     tags: 0,
     diffs: 0,
+    checkpoints: 0,
     modeDefinitions: 0,
     rulesets: 0,
     skillfiles: 0,

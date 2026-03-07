@@ -20,6 +20,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         threadTags,
         tags,
         diffs,
+        checkpoints,
         modeDefinitions,
         rulesets,
         skillfiles,
@@ -47,6 +48,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         db.selectFrom('thread_tags').select((eb) => eb.fn.count<number>('thread_id').as('count')).executeTakeFirst(),
         db.selectFrom('tags').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
         db.selectFrom('diffs').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db.selectFrom('checkpoints').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
         db.selectFrom('mode_definitions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
         db.selectFrom('rulesets').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
         db.selectFrom('skillfiles').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
@@ -97,6 +99,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         threadTags: threadTags?.count ?? 0,
         tags: tags?.count ?? 0,
         diffs: diffs?.count ?? 0,
+        checkpoints: checkpoints?.count ?? 0,
         modeDefinitions: modeDefinitions?.count ?? 0,
         rulesets: rulesets?.count ?? 0,
         skillfiles: skillfiles?.count ?? 0,
@@ -117,6 +120,7 @@ async function applyFullReset(db: RuntimeResetDatabase): Promise<void> {
     await db.deleteFrom('runtime_events').execute();
     await db.deleteFrom('permissions').execute();
     await db.deleteFrom('sessions').execute();
+    await db.deleteFrom('checkpoints').execute();
     await db.deleteFrom('conversations').execute();
     await db.deleteFrom('tags').execute();
     await db.deleteFrom('settings').execute();

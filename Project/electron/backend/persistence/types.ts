@@ -21,6 +21,7 @@ import type {
     RunStatus,
     SecretReference,
     SkillfileDefinition,
+    TopLevelTab,
     ToolCapability,
     WorkspaceRootRecord as RuntimeWorkspaceRootRecord,
 } from '@/app/backend/runtime/contracts';
@@ -213,6 +214,7 @@ export const runtimeEntityTypes = [
     'thread',
     'tag',
     'diff',
+    'checkpoint',
     'plan',
     'orchestrator',
     'message',
@@ -230,7 +232,9 @@ export const runtimeEventDomains = [
     'messagePart',
     'tag',
     'provider',
+    'diff',
     'plan',
+    'checkpoint',
     'orchestrator',
     'profile',
     'permission',
@@ -312,7 +316,48 @@ export interface DiffRecord {
     sessionId: string;
     runId: string | null;
     summary: string;
-    payload: Record<string, unknown>;
+    artifact: DiffArtifact;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface DiffFileArtifact {
+    path: string;
+    status: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'type_changed' | 'untracked';
+    previousPath?: string;
+}
+
+export interface GitDiffArtifact {
+    kind: 'git';
+    workspaceRootPath: string;
+    workspaceLabel: string;
+    baseRef: 'HEAD';
+    fileCount: number;
+    files: DiffFileArtifact[];
+    fullPatch: string;
+    patchesByPath: Record<string, string>;
+}
+
+export interface UnsupportedDiffArtifact {
+    kind: 'unsupported';
+    workspaceRootPath: string;
+    workspaceLabel: string;
+    reason: 'workspace_not_git' | 'git_unavailable' | 'workspace_unresolved' | 'capture_failed';
+    detail: string;
+}
+
+export type DiffArtifact = GitDiffArtifact | UnsupportedDiffArtifact;
+
+export interface CheckpointRecord {
+    id: EntityId<'ckpt'>;
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    runId: EntityId<'run'>;
+    diffId: string;
+    workspaceFingerprint: string;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    summary: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -555,6 +600,7 @@ export interface RuntimeSnapshotV1 {
     tags: TagRecord[];
     threadTags: ThreadTagRecord[];
     diffs: DiffRecord[];
+    checkpoints: CheckpointRecord[];
     modeDefinitions: ModeDefinitionRecord[];
     rulesets: RulesetDefinitionRecord[];
     skillfiles: SkillfileDefinitionRecord[];

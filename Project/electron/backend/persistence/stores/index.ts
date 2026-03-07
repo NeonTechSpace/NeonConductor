@@ -1,4 +1,5 @@
 export { accountSnapshotStore } from '@/app/backend/persistence/stores/accountSnapshotStore';
+export { checkpointStore } from '@/app/backend/persistence/stores/checkpointStore';
 export { conversationStore } from '@/app/backend/persistence/stores/conversationStore';
 export { diffStore } from '@/app/backend/persistence/stores/diffStore';
 export { kiloRoutingPreferenceStore } from '@/app/backend/persistence/stores/kiloRoutingPreferenceStore';

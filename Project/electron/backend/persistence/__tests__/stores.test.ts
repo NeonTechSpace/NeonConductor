@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import {
     accountSnapshotStore,
+    checkpointStore,
     conversationStore,
     diffStore,
     marketplaceStore,
@@ -526,7 +527,7 @@ describe('persistence stores', () => {
         expect(secretReferences).toEqual([]);
     });
 
-    it('supports conversations, threads, tags, and diffs', async () => {
+    it('supports conversations, threads, tags, diffs, and checkpoints', async () => {
         const profileId = getDefaultProfileId();
         const conversation = await conversationStore.createOrGetBucket({
             profileId,
@@ -601,7 +602,28 @@ describe('persistence stores', () => {
             sessionId: session.session.id,
             runId: run.id,
             summary: 'created patch',
-            payload: { files: ['README.md'] },
+            artifact: {
+                kind: 'git',
+                workspaceRootPath: 'M:\\workspace',
+                workspaceLabel: 'workspace',
+                baseRef: 'HEAD',
+                fileCount: 1,
+                files: [{ path: 'README.md', status: 'modified' }],
+                fullPatch: 'diff --git a/README.md b/README.md\n',
+                patchesByPath: {
+                    'README.md': 'diff --git a/README.md b/README.md\n',
+                },
+            },
+        });
+        const checkpoint = await checkpointStore.create({
+            profileId,
+            sessionId: session.session.id,
+            runId: run.id,
+            diffId: diff.id,
+            workspaceFingerprint: 'wsf_workspace_a',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            summary: 'created checkpoint',
         });
 
         const conversations = await conversationStore.listBuckets(profileId);
@@ -617,6 +639,7 @@ describe('persistence stores', () => {
         const tags = await tagStore.listByProfile(profileId);
         const threadTags = await tagStore.listThreadTagsByProfile(profileId);
         const diffs = await diffStore.listBySession(profileId, session.session.id);
+        const checkpoints = await checkpointStore.listBySession(profileId, session.session.id);
         const firstLinked = linked[0];
         if (!firstLinked) {
             throw new Error('Expected at least one linked thread tag.');
@@ -629,5 +652,6 @@ describe('persistence stores', () => {
             threadTags.some((item) => item.threadId === firstLinked.threadId && item.tagId === firstLinked.tagId)
         ).toBe(true);
         expect(diffs.some((item) => item.id === diff.id)).toBe(true);
+        expect(checkpoints.some((item) => item.id === checkpoint.id)).toBe(true);
     });
 });

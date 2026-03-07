@@ -13,6 +13,7 @@ describe('generated migrations', () => {
             '005_registry_precedence_indexes.sql',
             '006_session_attached_skills.sql',
             '007_run_command_shell_approvals.sql',
+            '008_diff_checkpoints.sql',
         ]);
     });
 });

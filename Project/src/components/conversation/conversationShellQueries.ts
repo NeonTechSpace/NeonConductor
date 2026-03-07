@@ -43,6 +43,7 @@ export function useConversationShellQueries(input: UseConversationShellQueriesIn
         ? input.selectedSessionId
         : fallbackSessionId;
     const selectedRunIdForQueries = isEntityId(input.selectedRunId, 'run') ? input.selectedRunId : undefined;
+    const fallbackRunId = 'run_missing' as const;
 
     const sessionsQuery = trpc.session.list.useQuery(
         { profileId: input.profileId },
@@ -83,6 +84,26 @@ export function useConversationShellQueries(input: UseConversationShellQueriesIn
         { profileId: input.profileId },
         { refetchOnWindowFocus: false }
     );
+    const runDiffsQuery = trpc.diff.listByRun.useQuery(
+        {
+            profileId: input.profileId,
+            runId: selectedRunIdForQueries ?? fallbackRunId,
+        },
+        {
+            enabled: isEntityId(input.selectedRunId, 'run'),
+            refetchOnWindowFocus: false,
+        }
+    );
+    const checkpointsQuery = trpc.checkpoint.list.useQuery(
+        {
+            profileId: input.profileId,
+            sessionId: selectedSessionIdForQueries,
+        },
+        {
+            enabled: isEntityId(input.selectedSessionId, 'sess') && input.topLevelTab !== 'chat',
+            refetchOnWindowFocus: false,
+        }
+    );
     const pendingPermissionsQuery = trpc.permission.listPending.useQuery(undefined, { refetchOnWindowFocus: false });
 
     const activePlanQuery = trpc.plan.getActive.useQuery(
@@ -120,6 +141,8 @@ export function useConversationShellQueries(input: UseConversationShellQueriesIn
         messagesQuery,
         attachedSkillsQuery,
         usageSummaryQuery,
+        runDiffsQuery,
+        checkpointsQuery,
         pendingPermissionsQuery,
         activePlanQuery,
         orchestratorLatestQuery,

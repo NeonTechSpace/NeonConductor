@@ -79,6 +79,7 @@ interface ConversationShellWorkspaceSectionProps {
     runErrorMessage: string | undefined;
     modePanel: ReactNode;
     attachedSkillsPanel?: ReactNode;
+    diffCheckpointPanel?: ReactNode;
     onSelectSession: (sessionId: string) => void;
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
@@ -128,6 +129,7 @@ export function ConversationShellWorkspaceSection({
     runErrorMessage,
     modePanel,
     attachedSkillsPanel,
+    diffCheckpointPanel,
     onSelectSession,
     onSelectRun,
     onProviderChange,
@@ -190,6 +192,7 @@ export function ConversationShellWorkspaceSection({
                 onBranchFromMessage={onBranchFromMessage}
                 modePanel={modePanel}
                 {...(attachedSkillsPanel ? { attachedSkillsPanel } : {})}
+                {...(diffCheckpointPanel ? { diffCheckpointPanel } : {})}
             />
         </section>
     );

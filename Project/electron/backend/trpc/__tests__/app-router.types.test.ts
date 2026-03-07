@@ -105,6 +105,28 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         sessionId: string;
         assetKeys: string[];
     }>();
+    expectTypeOf<Inputs['diff']['listByRun']>().toExtend<{
+        profileId: string;
+        runId: string;
+    }>();
+    expectTypeOf<Inputs['diff']['getFilePatch']>().toExtend<{
+        profileId: string;
+        diffId: string;
+        path: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['create']>().toExtend<{
+        profileId: string;
+        runId: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['list']>().toExtend<{
+        profileId: string;
+        sessionId: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['rollback']>().toExtend<{
+        profileId: string;
+        checkpointId: string;
+        confirm: boolean;
+    }>();
 
     expectTypeOf<Inputs['mode']['list']>().toExtend<{
         profileId: string;
@@ -388,6 +410,9 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     expectTypeOf<Inputs['runtime']['getShellBootstrap']>().toExtend<{
         profileId: string;
     }>();
+    expectTypeOf<Inputs['system']['openPath']>().toExtend<{
+        path: string;
+    }>();
     expectTypeOf<Inputs['registry']['refresh']>().toExtend<{
         profileId: string;
         workspaceFingerprint?: string;
@@ -475,6 +500,27 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
                 detail?: string;
             }>;
             selectedApprovalResource?: string;
+        }>;
+    }>();
+    expectTypeOf<Outputs['diff']['listByRun']>().toExtend<{
+        diffs: Array<{
+            artifact:
+                | {
+                      kind: 'git';
+                      files: Array<{
+                          path: string;
+                      }>;
+                  }
+                | {
+                      kind: 'unsupported';
+                      detail: string;
+                  };
+        }>;
+    }>();
+    expectTypeOf<Outputs['checkpoint']['list']>().toExtend<{
+        checkpoints: Array<{
+            id: string;
+            diffId: string;
         }>;
     }>();
 

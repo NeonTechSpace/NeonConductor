@@ -16,6 +16,7 @@ import { useConversationUiState } from '@/web/components/conversation/hooks/useC
 import { useSessionRunSelection } from '@/web/components/conversation/hooks/useSessionRunSelection';
 import { useThreadSidebarState } from '@/web/components/conversation/hooks/useThreadSidebarState';
 import { AttachedSkillsPanel } from '@/web/components/conversation/panels/attachedSkillsPanel';
+import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
 import { MessageEditDialog } from '@/web/components/conversation/panels/messageEditDialog';
 import { ModeExecutionPanel } from '@/web/components/conversation/panels/modeExecutionPanel';
 import { DEFAULT_RUN_OPTIONS, isEntityId, isProviderId } from '@/web/components/conversation/shellHelpers';
@@ -421,6 +422,18 @@ export function ConversationShell({
                                 : {})}
                             attachedSkills={attachedSkills}
                             missingAssetKeys={missingAttachedSkillKeys}
+                        />
+                    ) : undefined
+                }
+                diffCheckpointPanel={
+                    topLevelTab !== 'chat' ? (
+                        <DiffCheckpointPanel
+                            profileId={profileId}
+                            {...(isEntityId(selectedRunId, 'run') ? { selectedRunId } : {})}
+                            {...(isEntityId(selectedSessionId, 'sess') ? { selectedSessionId } : {})}
+                            diffs={queries.runDiffsQuery.data?.diffs ?? []}
+                            checkpoints={queries.checkpointsQuery.data?.checkpoints ?? []}
+                            disabled={mutations.startRunMutation.isPending || mutations.planStartMutation.isPending}
                         />
                     ) : undefined
                 }

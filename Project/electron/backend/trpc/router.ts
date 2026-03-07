@@ -4,7 +4,9 @@
  */
 
 import { router } from '@/app/backend/trpc/init';
+import { checkpointRouter } from '@/app/backend/trpc/routers/checkpoint';
 import { conversationRouter } from '@/app/backend/trpc/routers/conversation';
+import { diffRouter } from '@/app/backend/trpc/routers/diff';
 import { mcpRouter } from '@/app/backend/trpc/routers/mcp';
 import { modeRouter } from '@/app/backend/trpc/routers/mode';
 import { orchestratorRouter } from '@/app/backend/trpc/routers/orchestrator';
@@ -21,7 +23,9 @@ import { updatesRouter } from '@/app/backend/trpc/routers/updates';
 
 export const appRouter = router({
     runtime: runtimeRouter,
+    checkpoint: checkpointRouter,
     conversation: conversationRouter,
+    diff: diffRouter,
     session: sessionRouter,
     provider: providerRouter,
     registry: registryRouter,

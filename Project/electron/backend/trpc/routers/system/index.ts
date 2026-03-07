@@ -3,7 +3,10 @@
  * Handles window management and other system tasks.
  */
 
+import { shell } from 'electron';
+
 import { windowStateSubscriptionInputSchema } from '@/app/backend/runtime/contracts';
+import { readObject, readString } from '@/app/backend/runtime/contracts/parsers/helpers';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { signalReady } from '@/app/backend/trpc/routers/system/signalReady';
 import {
@@ -78,4 +81,20 @@ export const systemRouter = router({
     minimizeWindow: publicProcedure.mutation(({ ctx }) => minimizeWindow(ctx.win)),
     toggleMaximizeWindow: publicProcedure.mutation(({ ctx }) => toggleMaximizeWindow(ctx.win)),
     closeWindow: publicProcedure.mutation(({ ctx }) => closeWindow(ctx.win)),
+    openPath: publicProcedure
+        .input({
+            parse: (input) => {
+                const source = readObject(input, 'input');
+                return {
+                    path: readString(source.path, 'path'),
+                };
+            },
+        })
+        .mutation(async ({ input }) => {
+            const result = await shell.openPath(input.path);
+            return {
+                opened: result.length === 0,
+                ...(result.length > 0 ? { message: result } : {}),
+            };
+        }),
 });

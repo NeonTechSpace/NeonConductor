@@ -224,6 +224,21 @@ export interface DiffsTable {
     run_id: string | null;
     summary: string;
     payload_json: string;
+    artifact_json: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CheckpointsTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    run_id: string;
+    diff_id: string;
+    workspace_fingerprint: string;
+    top_level_tab: string;
+    mode_key: string;
+    summary: string;
     created_at: string;
     updated_at: string;
 }
@@ -508,6 +523,7 @@ export interface DatabaseSchema {
     tags: TagsTable;
     thread_tags: ThreadTagsTable;
     diffs: DiffsTable;
+    checkpoints: CheckpointsTable;
     mode_definitions: ModeDefinitionsTable;
     rulesets: RulesetsTable;
     skillfiles: SkillfilesTable;

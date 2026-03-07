@@ -77,6 +77,7 @@ interface SessionWorkspacePanelProps {
     runErrorMessage: string | undefined;
     modePanel?: ReactNode;
     attachedSkillsPanel?: ReactNode;
+    diffCheckpointPanel?: ReactNode;
     onSelectSession: (sessionId: string) => void;
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
@@ -122,6 +123,7 @@ export function SessionWorkspacePanel({
     runErrorMessage,
     modePanel,
     attachedSkillsPanel,
+    diffCheckpointPanel,
     onSelectSession,
     onSelectRun,
     onProviderChange,
@@ -212,6 +214,8 @@ export function SessionWorkspacePanel({
                     busy={isResolvingPermission}
                     onResolve={onResolvePermission}
                 />
+
+                {diffCheckpointPanel}
 
                 <MessageTimelinePanel
                     messages={messages}

@@ -10,11 +10,13 @@ export { readConversationSelectionState } from '@/web/lib/runtime/invalidation/s
 export {
     addInvalidation,
     invalidateBucketList,
+    invalidateRunDiffs,
     invalidateOrchestratorLatest,
     invalidatePlanActive,
     invalidateProfileQueries,
     invalidateRuntimeResetQueries,
     invalidateSelectedMessages,
+    invalidateSessionCheckpoints,
     invalidateSessionList,
     invalidateSessionMessages,
     invalidateSessionRuns,

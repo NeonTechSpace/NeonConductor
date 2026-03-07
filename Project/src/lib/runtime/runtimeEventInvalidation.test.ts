@@ -41,6 +41,13 @@ function createUtilsMock(calls: InvalidationCall[]) {
             listRuns: createInvalidateLeaf(calls, 'session.listRuns'),
             listMessages: createInvalidateLeaf(calls, 'session.listMessages'),
         },
+        diff: {
+            listByRun: createInvalidateLeaf(calls, 'diff.listByRun'),
+            getFilePatch: createInvalidateLeaf(calls, 'diff.getFilePatch'),
+        },
+        checkpoint: {
+            list: createInvalidateLeaf(calls, 'checkpoint.list'),
+        },
         provider: {
             listProviders: createInvalidateLeaf(calls, 'provider.listProviders'),
             getDefaults: createInvalidateLeaf(calls, 'provider.getDefaults'),

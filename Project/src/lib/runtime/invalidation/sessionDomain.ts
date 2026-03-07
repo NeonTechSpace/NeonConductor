@@ -3,6 +3,8 @@ import {
     addInvalidation,
     hasSelectedWorkspaceImpact,
     invalidateSelectedMessages,
+    invalidateRunDiffs,
+    invalidateSessionCheckpoints,
     invalidateSessionList,
     invalidateSessionRuns,
     invalidateSessionStatus,
@@ -14,6 +16,7 @@ export async function invalidateSessionQueries(utils: TrpcUtils, context: Runtim
         invalidateSessionList(utils, context.profileId),
         invalidateSessionStatus(utils, context.profileId, context.sessionId),
         invalidateThreadList(utils, context.profileId),
+        invalidateSessionCheckpoints(utils, context.profileId, context.sessionId),
     ];
 
     if (hasSelectedWorkspaceImpact(context)) {
@@ -30,6 +33,8 @@ export async function invalidateRunQueries(utils: TrpcUtils, context: RuntimeEve
         invalidateSessionStatus(utils, context.profileId, context.sessionId),
         invalidateThreadList(utils, context.profileId),
         invalidateSessionRuns(utils, context.profileId, context.sessionId),
+        invalidateRunDiffs(utils, context.profileId, context.runId),
+        invalidateSessionCheckpoints(utils, context.profileId, context.sessionId),
     ];
 
     if (hasSelectedWorkspaceImpact(context)) {

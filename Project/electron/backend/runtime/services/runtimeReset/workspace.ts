@@ -10,6 +10,7 @@ interface WorkspaceResolvedCounts {
     sessionIds: string[];
     conversationIds: string[];
     tagIds: string[];
+    checkpointIds: string[];
     rulesetIds: string[];
     skillfileIds: string[];
     entityIds: string[];
@@ -87,6 +88,15 @@ async function listDiffIds(db: RuntimeResetDatabase, sessionIds: string[]): Prom
     }
 
     const rows = await db.selectFrom('diffs').select('id').where('session_id', 'in', sessionIds).execute();
+    return rows.map((row) => row.id);
+}
+
+async function listCheckpointIds(db: RuntimeResetDatabase, sessionIds: string[]): Promise<string[]> {
+    if (sessionIds.length === 0) {
+        return [];
+    }
+
+    const rows = await db.selectFrom('checkpoints').select('id').where('session_id', 'in', sessionIds).execute();
     return rows.map((row) => row.id);
 }
 
@@ -186,6 +196,7 @@ async function resolveWorkspaceCounts(
     const threadIds = await listThreadIds(db, conversationIds);
     const runIds = await listRunIds(db, sessionIds);
     const diffIds = await listDiffIds(db, sessionIds);
+    const checkpointIds = await listCheckpointIds(db, sessionIds);
     const rulesetIds = await listWorkspaceParityIds(db, 'rulesets', target, workspaceFingerprint);
     const skillfileIds = await listWorkspaceParityIds(db, 'skillfiles', target, workspaceFingerprint);
 
@@ -204,6 +215,7 @@ async function resolveWorkspaceCounts(
         ...conversationIds,
         ...threadIds,
         ...diffIds,
+        ...checkpointIds,
         ...tagIds,
         ...rulesetIds,
         ...skillfileIds,
@@ -223,12 +235,14 @@ async function resolveWorkspaceCounts(
             threadTags: threadTagRows.length,
             tags: tagIds.length,
             diffs: diffIds.length,
+            checkpoints: checkpointIds.length,
             rulesets: rulesetIds.length,
             skillfiles: skillfileIds.length,
         },
         sessionIds,
         conversationIds,
         tagIds,
+        checkpointIds,
         rulesetIds,
         skillfileIds,
         entityIds,
@@ -242,6 +256,10 @@ async function applyWorkspaceDelete(db: RuntimeResetDatabase, resolved: Workspac
 
     if (resolved.sessionIds.length > 0) {
         await db.deleteFrom('sessions').where('id', 'in', resolved.sessionIds).execute();
+    }
+
+    if (resolved.checkpointIds.length > 0) {
+        await db.deleteFrom('checkpoints').where('id', 'in', resolved.checkpointIds).execute();
     }
 
     if (resolved.conversationIds.length > 0) {

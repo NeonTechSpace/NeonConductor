@@ -28,7 +28,13 @@ const runtimeEventInvalidators: Record<
         await invalidateMessageQueries(utils, context);
     },
     provider: invalidateProviderQueries,
+    diff: async (utils, _event, context) => {
+        await invalidateRunQueries(utils, context);
+    },
     plan: invalidatePlanQueries,
+    checkpoint: async (utils, _event, context) => {
+        await invalidateSessionQueries(utils, context);
+    },
     orchestrator: async (utils, _event, context) => {
         await invalidateOrchestratorQueries(utils, context);
     },

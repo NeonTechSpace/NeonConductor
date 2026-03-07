@@ -10,6 +10,7 @@ export type EntityIdPrefix =
     | 'tag'
     | 'sess'
     | 'perm'
+    | 'ckpt'
     | 'plan'
     | 'orch'
     | 'step'

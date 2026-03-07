@@ -1,7 +1,9 @@
 import { type as arktype } from 'arktype';
 
 export * from '@/app/backend/runtime/contracts/parsers/helpers';
+export * from '@/app/backend/runtime/contracts/parsers/checkpoint';
 export * from '@/app/backend/runtime/contracts/parsers/profile';
+export * from '@/app/backend/runtime/contracts/parsers/diff';
 export * from '@/app/backend/runtime/contracts/parsers/session';
 export * from '@/app/backend/runtime/contracts/parsers/conversation';
 export * from '@/app/backend/runtime/contracts/parsers/provider';

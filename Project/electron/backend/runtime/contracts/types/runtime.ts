@@ -86,6 +86,7 @@ export interface RuntimeResetCounts {
     threadTags: number;
     tags: number;
     diffs: number;
+    checkpoints: number;
     modeDefinitions: number;
     rulesets: number;
     skillfiles: number;

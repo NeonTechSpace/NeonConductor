@@ -61,6 +61,30 @@ export function invalidateSessionRuns(
     return utils.session.listRuns.invalidate();
 }
 
+export function invalidateRunDiffs(
+    utils: TrpcUtils,
+    profileId: string | undefined,
+    runId: EntityId<'run'> | undefined
+): Promise<unknown> {
+    if (profileId && runId) {
+        return utils.diff.listByRun.invalidate({ profileId, runId });
+    }
+
+    return utils.diff.listByRun.invalidate();
+}
+
+export function invalidateSessionCheckpoints(
+    utils: TrpcUtils,
+    profileId: string | undefined,
+    sessionId: EntityId<'sess'> | undefined
+): Promise<unknown> {
+    if (profileId && sessionId) {
+        return utils.checkpoint.list.invalidate({ profileId, sessionId });
+    }
+
+    return utils.checkpoint.list.invalidate();
+}
+
 export function invalidateSessionMessages(
     utils: TrpcUtils,
     profileId: string | undefined,
@@ -129,6 +153,9 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
         utils.session.status.invalidate(),
         utils.session.listRuns.invalidate(),
         utils.session.listMessages.invalidate(),
+        utils.diff.listByRun.invalidate(),
+        utils.diff.getFilePatch.invalidate(),
+        utils.checkpoint.list.invalidate(),
         utils.provider.listProviders.invalidate(),
         utils.provider.getDefaults.invalidate(),
         utils.provider.listModels.invalidate(),

@@ -77,6 +77,7 @@ export interface ExecuteRunInput {
           };
     assistantMessageId: string;
     signal: AbortSignal;
+    onBeforeFinalize?: () => Promise<void>;
 }
 
 export function isAbortError(error: unknown): boolean {
@@ -152,6 +153,10 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
             code: streamResult.error.code,
             message: streamResult.error.message,
         });
+    }
+
+    if (input.onBeforeFinalize) {
+        await input.onBeforeFinalize();
     }
 
     await runStore.finalize(input.runId, {
