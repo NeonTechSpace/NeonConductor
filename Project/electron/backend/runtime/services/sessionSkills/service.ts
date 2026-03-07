@@ -6,22 +6,30 @@ import type {
     SessionSetAttachedSkillsInput,
 } from '@/app/backend/runtime/contracts';
 import { resolveSkillfilesByAssetKeys } from '@/app/backend/runtime/services/registry/service';
+import {
+    errSessionSkills,
+    forwardSessionSkillsError,
+    missingSessionError,
+    missingSessionThreadError,
+    okSessionSkills,
+    type SessionSkillsResult,
+} from '@/app/backend/runtime/services/sessionSkills/errors';
 
 async function resolveSessionWorkspace(input: {
     profileId: string;
     sessionId: SessionGetAttachedSkillsInput['sessionId'];
-}): Promise<string | undefined> {
+}): Promise<SessionSkillsResult<string | undefined>> {
     const sessionStatus = await sessionStore.status(input.profileId, input.sessionId);
     if (!sessionStatus.found) {
-        throw new Error(`Session "${input.sessionId}" was not found.`);
+        return missingSessionError(input.sessionId);
     }
 
     const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
     if (!sessionThread) {
-        throw new Error(`Thread for session "${input.sessionId}" was not found.`);
+        return missingSessionThreadError(input.sessionId);
     }
 
-    return sessionThread.workspaceFingerprint;
+    return okSessionSkills(sessionThread.workspaceFingerprint);
 }
 
 function mapAttachedSkillsResult(input: {
@@ -38,8 +46,13 @@ function mapAttachedSkillsResult(input: {
 
 export async function getAttachedSkills(
     input: SessionGetAttachedSkillsInput
-): Promise<SessionAttachedSkillsResult> {
-    const workspaceFingerprint = await resolveSessionWorkspace(input);
+): Promise<SessionSkillsResult<SessionAttachedSkillsResult>> {
+    const workspaceFingerprintResult = await resolveSessionWorkspace(input);
+    if (workspaceFingerprintResult.isErr()) {
+        return forwardSessionSkillsError(workspaceFingerprintResult.error);
+    }
+
+    const workspaceFingerprint = workspaceFingerprintResult.value;
     const attachedSkills = await sessionAttachedSkillStore.listBySession(input.profileId, input.sessionId);
     const resolved = await resolveSkillfilesByAssetKeys({
         profileId: input.profileId,
@@ -47,17 +60,24 @@ export async function getAttachedSkills(
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
     });
 
-    return mapAttachedSkillsResult({
-        sessionId: input.sessionId,
-        skillfiles: resolved.skillfiles,
-        missingAssetKeys: resolved.missingAssetKeys,
-    });
+    return okSessionSkills(
+        mapAttachedSkillsResult({
+            sessionId: input.sessionId,
+            skillfiles: resolved.skillfiles,
+            missingAssetKeys: resolved.missingAssetKeys,
+        })
+    );
 }
 
 export async function setAttachedSkills(
     input: SessionSetAttachedSkillsInput
-): Promise<SessionAttachedSkillsResult> {
-    const workspaceFingerprint = await resolveSessionWorkspace(input);
+): Promise<SessionSkillsResult<SessionAttachedSkillsResult>> {
+    const workspaceFingerprintResult = await resolveSessionWorkspace(input);
+    if (workspaceFingerprintResult.isErr()) {
+        return forwardSessionSkillsError(workspaceFingerprintResult.error);
+    }
+
+    const workspaceFingerprint = workspaceFingerprintResult.value;
     const resolved = await resolveSkillfilesByAssetKeys({
         profileId: input.profileId,
         assetKeys: input.assetKeys,
@@ -66,8 +86,13 @@ export async function setAttachedSkills(
 
     if (resolved.missingAssetKeys.length > 0) {
         const label = resolved.missingAssetKeys.length === 1 ? 'skill' : 'skills';
-        throw new Error(
-            `Cannot attach unresolved ${label}: ${resolved.missingAssetKeys.map((assetKey) => `"${assetKey}"`).join(', ')}.`
+        return errSessionSkills(
+            'invalid_payload',
+            `Cannot attach unresolved ${label}: ${resolved.missingAssetKeys.map((assetKey) => `"${assetKey}"`).join(', ')}.`,
+            {
+                sessionId: input.sessionId,
+                missingAssetKeys: resolved.missingAssetKeys,
+            }
         );
     }
 
@@ -77,9 +102,11 @@ export async function setAttachedSkills(
         assetKeys: resolved.skillfiles.map((skillfile) => skillfile.assetKey),
     });
 
-    return mapAttachedSkillsResult({
-        sessionId: input.sessionId,
-        skillfiles: resolved.skillfiles,
-        missingAssetKeys: [],
-    });
+    return okSessionSkills(
+        mapAttachedSkillsResult({
+            sessionId: input.sessionId,
+            skillfiles: resolved.skillfiles,
+            missingAssetKeys: [],
+        })
+    );
 }

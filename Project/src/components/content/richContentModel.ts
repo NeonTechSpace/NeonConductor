@@ -138,6 +138,8 @@ const LANGUAGE_ALIASES: Record<string, string> = {
 
 const OPERATOR_PATTERN = /^(=>|===|!==|==|!=|<=|>=|\+\+|--|&&|\|\||[{}[\]().,:;<>+\-*/=%!?|&])$/;
 const NUMBER_PATTERN = /^(0x[\da-f]+|\d+(?:\.\d+)?)$/i;
+const DEFAULT_JAVASCRIPT_KEYWORDS: Set<string> = KEYWORDS_BY_LANGUAGE['javascript'] ?? new Set<string>();
+const TYPESCRIPT_KEYWORDS: Set<string> = KEYWORDS_BY_LANGUAGE['typescript'] ?? new Set<string>();
 
 function normalizeLanguage(value: string | undefined): string | undefined {
     if (!value) {
@@ -153,17 +155,15 @@ function normalizeLanguage(value: string | undefined): string | undefined {
 }
 
 function getKeywordSet(language: string | undefined): Set<string> {
-    const javascriptKeywords = KEYWORDS_BY_LANGUAGE['javascript']!;
-
     if (!language) {
-        return javascriptKeywords;
+        return DEFAULT_JAVASCRIPT_KEYWORDS;
     }
 
     if (language === 'typescript') {
-        return new Set([...javascriptKeywords, ...KEYWORDS_BY_LANGUAGE['typescript']!]);
+        return new Set([...DEFAULT_JAVASCRIPT_KEYWORDS, ...TYPESCRIPT_KEYWORDS]);
     }
 
-    return KEYWORDS_BY_LANGUAGE[language] ?? javascriptKeywords;
+    return KEYWORDS_BY_LANGUAGE[language] ?? DEFAULT_JAVASCRIPT_KEYWORDS;
 }
 
 function readCommentStart(line: string, language: string | undefined): number {
@@ -215,7 +215,7 @@ function tokenizeCodeLine(line: string, language: string | undefined): RichConte
     let lastIndex = 0;
     for (const match of content.matchAll(pattern)) {
         const matched = match[0];
-        const index = match.index ?? 0;
+        const index = match.index;
 
         if (index > lastIndex) {
             tokens.push(...tokenizeTextSegment(content.slice(lastIndex, index), keywordSet));

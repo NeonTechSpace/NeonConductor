@@ -45,14 +45,16 @@ export function buildShellApprovalContext(command: string): ShellApprovalContext
     const normalized = normalizeCommand(command);
     const tokens = tokenizeCommand(normalized);
     const executable = tokens[0] ?? '';
-    const verbPrefix = tokens.length >= 2 ? `${executable} ${tokens[1]}` : undefined;
+    const verb = tokens[1];
+    const verbPrefix = executable.length > 0 && verb ? `${executable} ${verb}` : undefined;
 
     const approvalCandidates: PermissionApprovalCandidate[] = [];
     if (verbPrefix) {
+        const prefix = verbPrefix;
         approvalCandidates.push({
-            label: verbPrefix,
-            resource: buildPrefixResource(verbPrefix),
-            detail: `Allow commands that start with "${verbPrefix}".`,
+            label: prefix,
+            resource: buildPrefixResource(prefix),
+            detail: `Allow commands that start with "${prefix}".`,
         });
     }
     if (executable) {

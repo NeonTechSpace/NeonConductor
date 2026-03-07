@@ -3,8 +3,8 @@ import { ProviderDefaultModelSection } from '@/web/components/settings/providerS
 import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
 import { KiloAccountSection } from '@/web/components/settings/providerSettings/kiloAccountSection';
 import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
-import { ProviderStatusSection } from '@/web/components/settings/providerSettings/providerStatusSection';
 import { ProviderSidebar } from '@/web/components/settings/providerSettings/providerSidebar';
+import { ProviderStatusSection } from '@/web/components/settings/providerSettings/providerStatusSection';
 
 interface ProviderSettingsViewProps {
     profileId: string;

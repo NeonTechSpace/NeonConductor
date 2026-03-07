@@ -190,7 +190,7 @@ export class ProviderAuthExecutionService {
             providerId,
             context: undefined,
             failureMessage: 'Failed to set provider organization.',
-            execute: async () => okAuthExecution(await setOrganizationContext(profileId, providerId, organizationId)),
+            execute: async () => setOrganizationContext(profileId, providerId, organizationId),
         });
     }
 }

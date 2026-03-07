@@ -1,5 +1,6 @@
 import { accountSnapshotStore, providerAuthStore } from '@/app/backend/persistence/stores';
 import { getAuthState } from '@/app/backend/providers/auth/authStateService';
+import { errAuthExecution, okAuthExecution, type AuthExecutionResult } from '@/app/backend/providers/auth/errors';
 import { syncKiloAccountContext } from '@/app/backend/providers/auth/kiloAccountSync';
 import { readSecretValue } from '@/app/backend/providers/auth/secretRefs';
 import type { ProviderAccountContextResult } from '@/app/backend/providers/auth/types';
@@ -26,7 +27,7 @@ export async function setOrganization(
     profileId: string,
     providerId: 'kilo',
     organizationId?: string | null
-): Promise<ProviderAccountContextResult> {
+): Promise<AuthExecutionResult<ProviderAccountContextResult>> {
     const authState = await getAuthState(profileId, providerId);
     await providerAuthStore.upsert({
         profileId,
@@ -44,13 +45,16 @@ export async function setOrganization(
         (await readSecretValue(profileId, providerId, 'access_token')) ??
         (await readSecretValue(profileId, providerId, 'api_key'));
     if (accessToken) {
-        await syncKiloAccountContext({
+        const syncResult = await syncKiloAccountContext({
             profileId,
             accessToken,
             ...(organizationId ? { organizationId } : {}),
             ...(authState.tokenExpiresAt ? { tokenExpiresAt: authState.tokenExpiresAt } : {}),
         });
+        if (syncResult.isErr()) {
+            return errAuthExecution(syncResult.error.code, syncResult.error.message);
+        }
     }
 
-    return getAccountContext(profileId, providerId);
+    return okAuthExecution(await getAccountContext(profileId, providerId));
 }

@@ -19,6 +19,7 @@ import { sessionEditService } from '@/app/backend/runtime/services/sessionEdit/s
 import { sessionHistoryService } from '@/app/backend/runtime/services/sessionHistory/service';
 import { getAttachedSkills, setAttachedSkills } from '@/app/backend/runtime/services/sessionSkills/service';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
+import { toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
 export const sessionRouter = router({
     create: publicProcedure.input(sessionCreateInputSchema).mutation(async ({ input, ctx }) => {
@@ -55,10 +56,18 @@ export const sessionRouter = router({
         return sessionStore.status(input.profileId, input.sessionId);
     }),
     getAttachedSkills: publicProcedure.input(sessionGetAttachedSkillsInputSchema).query(async ({ input }) => {
-        return getAttachedSkills(input);
+        const result = await getAttachedSkills(input);
+        if (result.isErr()) {
+            throw toTrpcError(result.error);
+        }
+        return result.value;
     }),
     setAttachedSkills: publicProcedure.input(sessionSetAttachedSkillsInputSchema).mutation(async ({ input, ctx }) => {
         const result = await setAttachedSkills(input);
+        if (result.isErr()) {
+            throw toTrpcError(result.error);
+        }
+        const attachedSkills = result.value;
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
                 entityType: 'session',
@@ -68,8 +77,8 @@ export const sessionRouter = router({
                 payload: {
                     profileId: input.profileId,
                     sessionId: input.sessionId,
-                    assetKeys: result.skillfiles.map((skillfile) => skillfile.assetKey),
-                    ...(result.missingAssetKeys ? { missingAssetKeys: result.missingAssetKeys } : {}),
+                    assetKeys: attachedSkills.skillfiles.map((skillfile) => skillfile.assetKey),
+                    ...(attachedSkills.missingAssetKeys ? { missingAssetKeys: attachedSkills.missingAssetKeys } : {}),
                 },
                 ...eventMetadata({
                     requestId: ctx.requestId,
@@ -79,7 +88,7 @@ export const sessionRouter = router({
             })
         );
 
-        return result;
+        return attachedSkills;
     }),
     startRun: publicProcedure.input(sessionStartRunInputSchema).mutation(async ({ input, ctx }) => {
         const result = await runExecutionService.startRun({

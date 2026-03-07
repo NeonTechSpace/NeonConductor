@@ -1,13 +1,13 @@
-import { cn } from '@/web/lib/utils';
-
-import type { ReactNode } from 'react';
-
 import type {
     RichContentBlock,
     RichContentCodeLine,
     RichContentInlineSegment,
     RichContentToken,
 } from '@/web/components/content/richContentModel';
+import { cn } from '@/web/lib/utils';
+
+import type { ReactNode } from 'react';
+
 
 interface RichContentBlocksProps {
     blocks: RichContentBlock[];

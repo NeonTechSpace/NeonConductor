@@ -53,6 +53,7 @@ export function DiffCheckpointPanel({
     const selectedDiff = diffs[0];
     const firstSelectablePath = selectedDiff?.artifact.kind === 'git' ? selectedDiff.artifact.files[0]?.path : undefined;
     const [selectedPath, setSelectedPath] = useState<string | undefined>(firstSelectablePath);
+    const [confirmRollbackId, setConfirmRollbackId] = useState<CheckpointRecord['id'] | undefined>(undefined);
     const [rollbackTargetId, setRollbackTargetId] = useState<CheckpointRecord['id'] | undefined>(undefined);
     const patchQuery = trpc.diff.getFilePatch.useQuery(
         selectedDiff && selectedPath
@@ -91,7 +92,7 @@ export function DiffCheckpointPanel({
                     <p className='text-sm font-semibold'>Diffs and Checkpoints</p>
                     <p className='text-muted-foreground text-xs'>
                         {selectedRunId ? `Run ${selectedRunId}` : 'Select a run to inspect changes'}
-                        {selectedSessionId ? ` · ${checkpoints.length} checkpoints` : ''}
+                        {selectedSessionId ? ` · ${String(checkpoints.length)} checkpoints` : ''}
                     </p>
                 </div>
             </div>
@@ -171,26 +172,55 @@ export function DiffCheckpointPanel({
                                                         className='h-11'
                                                         disabled={disabled || rollbackMutation.isPending}
                                                         onClick={() => {
-                                                            if (
-                                                                !window.confirm(
-                                                                    `Rollback workspace to checkpoint ${checkpoint.id}? This resets tracked and untracked files inside the workspace.`
-                                                                )
-                                                            ) {
-                                                                return;
-                                                            }
-
-                                                            setRollbackTargetId(checkpoint.id);
-                                                            void rollbackMutation.mutateAsync({
-                                                                profileId,
-                                                                checkpointId: checkpoint.id,
-                                                                confirm: true,
-                                                            });
+                                                            setConfirmRollbackId((current) =>
+                                                                current === checkpoint.id ? undefined : checkpoint.id
+                                                            );
                                                         }}>
                                                         {rollbackMutation.isPending && rollbackTargetId === checkpoint.id
                                                             ? 'Rolling Back'
-                                                            : 'Rollback'}
+                                                            : confirmRollbackId === checkpoint.id
+                                                              ? 'Cancel'
+                                                              : 'Rollback'}
                                                     </Button>
                                                 </div>
+                                                {confirmRollbackId === checkpoint.id ? (
+                                                    <div className='border-border bg-background/60 mt-3 rounded-md border p-3'>
+                                                        <p className='text-sm'>
+                                                            Roll back this workspace to <span className='font-medium'>{checkpoint.id}</span>?
+                                                        </p>
+                                                        <p className='text-muted-foreground mt-1 text-xs'>
+                                                            This resets tracked and untracked files inside the active workspace.
+                                                        </p>
+                                                        <div className='mt-3 flex flex-wrap gap-2'>
+                                                            <Button
+                                                                type='button'
+                                                                size='sm'
+                                                                className='h-11'
+                                                                disabled={rollbackMutation.isPending}
+                                                                onClick={() => {
+                                                                    setRollbackTargetId(checkpoint.id);
+                                                                    void rollbackMutation.mutateAsync({
+                                                                        profileId,
+                                                                        checkpointId: checkpoint.id,
+                                                                        confirm: true,
+                                                                    });
+                                                                }}>
+                                                                Confirm Rollback
+                                                            </Button>
+                                                            <Button
+                                                                type='button'
+                                                                size='sm'
+                                                                variant='outline'
+                                                                className='h-11'
+                                                                disabled={rollbackMutation.isPending}
+                                                                onClick={() => {
+                                                                    setConfirmRollbackId(undefined);
+                                                                }}>
+                                                                Keep Current State
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         ))}
                                     </div>
@@ -207,7 +237,7 @@ export function DiffCheckpointPanel({
                                     {patchQuery.data?.found ? 'Unified diff preview' : selectedDiff.summary}
                                 </p>
                             </div>
-                            {selectedDiff?.artifact.kind === 'git' && selectedPath ? (
+                            {selectedDiff.artifact.kind === 'git' && selectedPath ? (
                                 <Button
                                     type='button'
                                     size='sm'
@@ -227,10 +257,10 @@ export function DiffCheckpointPanel({
                                 <p className='text-muted-foreground text-sm'>Loading patch…</p>
                             ) : patchQuery.data?.found ? (
                                 <RichContentBlocks blocks={patchBlocks} />
-                            ) : selectedDiff?.artifact.kind === 'git' ? (
+                            ) : selectedDiff.artifact.kind === 'git' ? (
                                 <p className='text-muted-foreground text-sm'>Select a changed file to inspect its patch.</p>
                             ) : (
-                                <p className='text-muted-foreground text-sm'>{selectedDiff?.artifact.detail ?? 'No patch available.'}</p>
+                                <p className='text-muted-foreground text-sm'>{selectedDiff.artifact.detail}</p>
                             )}
                         </div>
                     </section>

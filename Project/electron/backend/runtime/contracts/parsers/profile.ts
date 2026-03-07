@@ -1,3 +1,4 @@
+import { executionPresets } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
     readEnumValue,
@@ -6,7 +7,6 @@ import {
     readProfileId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
-import { executionPresets } from '@/app/backend/runtime/contracts/enums';
 import type {
     ProfileCreateInput,
     ProfileDeleteInput,

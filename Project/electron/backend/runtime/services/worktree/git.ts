@@ -1,15 +1,22 @@
+import { err, ok, type Result } from 'neverthrow';
+import { spawn } from 'node:child_process';
 import { mkdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
-
-import { err, ok, type Result } from 'neverthrow';
 
 import { getPersistence } from '@/app/backend/persistence/db';
 
 interface GitFailure {
     reason: 'git_unavailable' | 'workspace_not_git' | 'command_failed';
     detail: string;
+}
+
+function okResult<T, E>(value: T): Result<T, E> {
+    return ok(value);
+}
+
+function errResult<T, E>(error: E): Result<T, E> {
+    return err(error);
 }
 
 async function runGit(input: {
@@ -25,16 +32,16 @@ async function runGit(input: {
         let stdout = '';
         let stderr = '';
 
-        child.stdout.on('data', (chunk) => {
-            stdout += chunk.toString();
+        child.stdout.on('data', (chunk: Buffer | string) => {
+            stdout += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
         });
-        child.stderr.on('data', (chunk) => {
-            stderr += chunk.toString();
+        child.stderr.on('data', (chunk: Buffer | string) => {
+            stderr += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
         });
 
         child.on('error', (error) => {
             resolve(
-                err({
+                errResult({
                     reason: error.message.includes('ENOENT') ? 'git_unavailable' : 'command_failed',
                     detail: error.message,
                 })
@@ -43,13 +50,13 @@ async function runGit(input: {
 
         child.on('close', (code) => {
             if (code === 0) {
-                resolve(ok({ stdout, stderr }));
+                resolve(okResult({ stdout, stderr }));
                 return;
             }
 
             const detail = stderr.trim().length > 0 ? stderr.trim() : stdout.trim();
             resolve(
-                err({
+                errResult({
                     reason: detail.includes('not a git repository') ? 'workspace_not_git' : 'command_failed',
                     detail: detail.length > 0 ? detail : `git exited with code ${String(code)}.`,
                 })

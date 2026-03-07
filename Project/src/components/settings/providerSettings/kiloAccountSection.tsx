@@ -1,5 +1,5 @@
-import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 import { Button } from '@/web/components/ui/button';
+import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
 
 import type { KiloAccountContext } from '@/app/backend/runtime/contracts';

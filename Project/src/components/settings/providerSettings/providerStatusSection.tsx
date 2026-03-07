@@ -1,4 +1,3 @@
-import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 import {
     formatDateTime,
     formatInteger,
@@ -6,6 +5,7 @@ import {
     methodLabel,
 } from '@/web/components/settings/providerSettings/helpers';
 import type { ProviderAuthStateView, ProviderListItem } from '@/web/components/settings/providerSettings/types';
+import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 
 import type {
     OpenAISubscriptionRateLimitsSummary,

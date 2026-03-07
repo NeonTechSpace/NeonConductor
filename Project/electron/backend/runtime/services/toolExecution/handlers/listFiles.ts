@@ -31,7 +31,6 @@ export async function listFilesToolHandler(
                 continue;
             }
 
-            // eslint-disable-next-line security/detect-non-literal-fs-filename -- current is normalized absolute path from validated tool args.
             const dirents = await readdir(current, { withFileTypes: true });
             for (const dirent of dirents) {
                 if (!includeHidden && dirent.name.startsWith('.')) {

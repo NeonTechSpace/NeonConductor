@@ -1,5 +1,5 @@
-import type { ExecutionPreset } from '@/app/backend/runtime/contracts';
 import { settingsStore } from '@/app/backend/persistence/stores';
+import type { ExecutionPreset } from '@/app/backend/runtime/contracts';
 
 const EXECUTION_PRESET_SETTING_KEY = 'profile_execution_preset';
 const DEFAULT_EXECUTION_PRESET: ExecutionPreset = 'standard';

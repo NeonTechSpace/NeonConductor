@@ -1,9 +1,9 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
-import { RegistrySettingsView } from '@/web/components/settings/registrySettingsView';
 import { ProfileSettingsView } from '@/web/components/settings/profileSettingsView';
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
+import { RegistrySettingsView } from '@/web/components/settings/registrySettingsView';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
 
 interface SettingsSheetProps {

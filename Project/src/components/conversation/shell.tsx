@@ -12,8 +12,8 @@ import { useConversationShellComposer } from '@/web/components/conversation/hook
 import { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
 import { useConversationShellRoutingBadge } from '@/web/components/conversation/hooks/useConversationShellRoutingBadge';
 import { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
+import { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
-import { useSessionRunSelection } from '@/web/components/conversation/hooks/useSessionRunSelection';
 import { useThreadSidebarState } from '@/web/components/conversation/hooks/useThreadSidebarState';
 import { AttachedSkillsPanel } from '@/web/components/conversation/panels/attachedSkillsPanel';
 import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
@@ -22,7 +22,6 @@ import { MessageEditDialog } from '@/web/components/conversation/panels/messageE
 import { ModeExecutionPanel } from '@/web/components/conversation/panels/modeExecutionPanel';
 import { DEFAULT_RUN_OPTIONS, isEntityId, isProviderId } from '@/web/components/conversation/shellHelpers';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
-import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/app/backend/runtime/contracts';
 
@@ -43,7 +42,6 @@ export function ConversationShell({
 }: ConversationShellProps) {
     const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
     const uiState = useConversationUiState(profileId);
-
     const queries = useConversationShellQueries({
         profileId,
         uiState,
@@ -53,25 +51,10 @@ export function ConversationShell({
     });
     const mutations = useConversationShellMutations();
     const refetch = useConversationShellRefetch({ queries });
-    const resetForProfile = useEffectEvent(() => {
-        setTabSwitchNotice(undefined);
-        composer.resetComposer();
-        sessionActions.resetSessionActions();
-        editFlow.resetEditFlow();
-    });
-
-    useConversationShellSync({
-        profileId,
-        uiState,
-        threads: queries.listThreadsQuery.data,
-        tags: queries.listTagsQuery.data?.tags,
-        buckets: queries.listBucketsQuery.data?.buckets,
-        onProfileReset: resetForProfile,
-    });
-
     const streamState = useRuntimeEventStreamStore((state) => state.connectionState);
     const selectedSessionId = uiState.selectedSessionId;
     const selectedRunId = uiState.selectedRunId;
+
     const sessionActions = useConversationShellSessionActions({
         profileId,
         selectedThreadId: uiState.selectedThreadId,
@@ -103,105 +86,42 @@ export function ConversationShell({
         },
     });
 
-    const selectedThread = uiState.selectedThreadId
-        ? sidebarState.visibleThreads.find((thread) => thread.id === uiState.selectedThreadId)
-        : undefined;
-    const selectedWorkspaceRoot = selectedThread?.workspaceFingerprint
-        ? queries.shellBootstrapQuery.data?.workspaceRoots.find(
-              (workspaceRoot) => workspaceRoot.fingerprint === selectedThread.workspaceFingerprint
-          )
-        : undefined;
-    const registryResolvedQuery = trpc.registry.listResolved.useQuery(
-        {
-            profileId,
-            ...(selectedThread?.workspaceFingerprint
-                ? { workspaceFingerprint: selectedThread.workspaceFingerprint }
-                : {}),
-            ...(selectedThread?.worktreeId
-                ? { worktreeId: selectedThread.worktreeId }
-                : {}),
-        },
-        {
-            enabled: topLevelTab === 'agent',
-            refetchOnWindowFocus: false,
-        }
-    );
-    const pendingPermissions =
-        queries.pendingPermissionsQuery.data?.requests.filter((request) => request.profileId === profileId) ?? [];
-    const permissionWorkspaces = Object.fromEntries(
-        (queries.shellBootstrapQuery.data?.workspaceRoots ?? []).map((workspaceRoot) => [
-            workspaceRoot.fingerprint,
-            {
-                label: workspaceRoot.label,
-                absolutePath: workspaceRoot.absolutePath,
-            },
-        ])
-    );
-
-    useEffect(() => {
-        onSelectedWorkspaceFingerprintChange?.(selectedThread?.workspaceFingerprint);
-    }, [onSelectedWorkspaceFingerprintChange, selectedThread?.workspaceFingerprint]);
-
-    const visibleManagedWorktrees = selectedThread?.workspaceFingerprint
-        ? (queries.shellBootstrapQuery.data?.worktrees ?? []).filter(
-              (worktree) => worktree.workspaceFingerprint === selectedThread.workspaceFingerprint
-          )
-        : [];
-
-    const sessionRunSelection = useSessionRunSelection({
-        allSessions: queries.sessionsQuery.data?.sessions ?? [],
-        allRuns: queries.runsQuery.data?.runs ?? [],
-        allMessages: queries.messagesQuery.data?.messages ?? [],
-        allMessageParts: queries.messagesQuery.data?.messageParts ?? [],
-        selectedThreadId: uiState.selectedThreadId,
-        selectedSessionId: uiState.selectedSessionId,
-        selectedRunId: uiState.selectedRunId,
-        onSelectedSessionInvalid: () => {
-            uiState.setSelectedSessionId(undefined);
-        },
-        onSelectFallbackSession: (sessionId) => {
-            uiState.setSelectedSessionId(sessionId);
-        },
-        onSelectedRunInvalid: () => {
-            uiState.setSelectedRunId(undefined);
-        },
-        onSelectFallbackRun: (runId) => {
-            uiState.setSelectedRunId(runId);
-        },
-    });
-    const selectedSession = selectedSessionId
-        ? sessionRunSelection.sessions.find((session) => session.id === selectedSessionId)
-        : undefined;
-    const selectedManagedWorktree =
-        selectedThread?.workspaceFingerprint &&
-        (selectedSession?.worktreeId ?? selectedThread.worktreeId)
-            ? queries.shellBootstrapQuery.data?.worktrees.find(
-                  (worktree) => worktree.id === (selectedSession?.worktreeId ?? selectedThread.worktreeId)
-              )
-            : undefined;
-    const selectedThreadWorktreeId = isEntityId(selectedThread?.worktreeId, 'wt') ? selectedThread.worktreeId : undefined;
-    const selectedSessionWorktreeId = isEntityId(selectedSession?.worktreeId, 'wt')
-        ? selectedSession.worktreeId
-        : undefined;
-    const effectiveSelectedWorktreeId = selectedSessionWorktreeId ?? selectedThreadWorktreeId;
-
     const runTargetState = useConversationShellRunTarget({
         providers: queries.shellBootstrapQuery.data?.providers ?? [],
         providerModels: queries.shellBootstrapQuery.data?.providerModels ?? [],
         defaults: queries.shellBootstrapQuery.data?.defaults,
-        runs: sessionRunSelection.runs,
+        runs: [],
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
     });
+    const shellViewModel = useConversationShellViewModel({
+        profileId,
+        topLevelTab,
+        modeKey,
+        queries,
+        uiState,
+        sidebarState,
+        runTargetState,
+    });
+    const runTargetStateWithRuns = useConversationShellRunTarget({
+        providers: queries.shellBootstrapQuery.data?.providers ?? [],
+        providerModels: queries.shellBootstrapQuery.data?.providerModels ?? [],
+        defaults: queries.shellBootstrapQuery.data?.defaults,
+        runs: shellViewModel.sessionRunSelection.runs,
+        ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
+    });
+
     const composer = useConversationShellComposer({
         profileId,
         selectedSessionId,
         isPlanningMode: modeKey === 'plan' && (topLevelTab === 'agent' || topLevelTab === 'orchestrator'),
         topLevelTab,
         modeKey,
-        workspaceFingerprint: selectedThread?.workspaceFingerprint,
-        ...(effectiveSelectedWorktreeId ? { worktreeId: effectiveSelectedWorktreeId } : {}),
-        resolvedRunTarget: runTargetState.resolvedRunTarget,
-        providerById: runTargetState.providerById,
+        workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
+        ...(shellViewModel.effectiveSelectedWorktreeId
+            ? { worktreeId: shellViewModel.effectiveSelectedWorktreeId }
+            : {}),
+        resolvedRunTarget: runTargetStateWithRuns.resolvedRunTarget,
+        providerById: runTargetStateWithRuns.providerById,
         runtimeOptions: DEFAULT_RUN_OPTIONS,
         isStartingRun: mutations.startRunMutation.isPending,
         startPlan: mutations.planStartMutation.mutateAsync,
@@ -213,38 +133,13 @@ export function ConversationShell({
             void refetch.refetchSessionWorkspace();
         },
     });
-    const routingBadge = useConversationShellRoutingBadge({
-        profileId,
-        providerId: runTargetState.selectedProviderIdForComposer,
-        modelId: runTargetState.selectedModelIdForComposer,
-    });
-    const selectedProviderStatus = runTargetState.selectedProviderIdForComposer
-        ? runTargetState.providerById.get(runTargetState.selectedProviderIdForComposer)
-        : undefined;
-    const selectedModelLabel =
-        runTargetState.selectedProviderIdForComposer && runTargetState.selectedModelIdForComposer
-            ? runTargetState.modelsByProvider
-                  .get(runTargetState.selectedProviderIdForComposer)
-                  ?.find((model) => model.id === runTargetState.selectedModelIdForComposer)?.label
-            : undefined;
-    const selectedUsageSummary = queries.usageSummaryQuery.data?.summaries.find(
-        (summary) => summary.providerId === runTargetState.selectedProviderIdForComposer
-    );
-    const attachedSkills = queries.attachedSkillsQuery.data?.skillfiles ?? [];
-    const missingAttachedSkillKeys = queries.attachedSkillsQuery.data?.missingAssetKeys ?? [];
-    const activeModeLabel =
-        topLevelTab === 'agent'
-            ? registryResolvedQuery.data?.resolved.modes.find(
-                  (resolvedMode) => resolvedMode.topLevelTab === 'agent' && resolvedMode.modeKey === modeKey
-              )?.label ?? modeKey
-            : undefined;
     const editFlow = useConversationShellEditFlow({
         profileId,
         topLevelTab,
         modeKey,
         selectedSessionId,
-        selectedThread,
-        resolvedRunTarget: runTargetState.resolvedRunTarget,
+        selectedThread: shellViewModel.selectedThread,
+        resolvedRunTarget: runTargetStateWithRuns.resolvedRunTarget,
         editSession: mutations.editSessionMutation.mutateAsync,
         setEditPreference: mutations.setEditPreferenceMutation.mutateAsync,
         uiState,
@@ -258,19 +153,53 @@ export function ConversationShell({
             void refetch.refetchSessionWorkspace();
         },
     });
+    const resetForProfile = useEffectEvent(() => {
+        setTabSwitchNotice(undefined);
+        composer.resetComposer();
+        sessionActions.resetSessionActions();
+        editFlow.resetEditFlow();
+    });
 
+    useConversationShellSync({
+        profileId,
+        uiState,
+        threads: queries.listThreadsQuery.data,
+        tags: queries.listTagsQuery.data?.tags,
+        buckets: queries.listBucketsQuery.data?.buckets,
+        onProfileReset: resetForProfile,
+    });
+
+    useEffect(() => {
+        onSelectedWorkspaceFingerprintChange?.(shellViewModel.selectedThread?.workspaceFingerprint);
+    }, [onSelectedWorkspaceFingerprintChange, shellViewModel.selectedThread?.workspaceFingerprint]);
+
+    const routingBadge = useConversationShellRoutingBadge({
+        profileId,
+        providerId: runTargetStateWithRuns.selectedProviderIdForComposer,
+        modelId: runTargetStateWithRuns.selectedModelIdForComposer,
+    });
+    const selectedProviderStatus = runTargetStateWithRuns.selectedProviderIdForComposer
+        ? runTargetStateWithRuns.providerById.get(runTargetStateWithRuns.selectedProviderIdForComposer)
+        : undefined;
+    const selectedModelLabel =
+        runTargetStateWithRuns.selectedProviderIdForComposer && runTargetStateWithRuns.selectedModelIdForComposer
+            ? runTargetStateWithRuns.modelsByProvider
+                  .get(runTargetStateWithRuns.selectedProviderIdForComposer)
+                  ?.find((model) => model.id === runTargetStateWithRuns.selectedModelIdForComposer)?.label
+            : undefined;
+    const selectedUsageSummary = queries.usageSummaryQuery.data?.summaries.find(
+        (summary) => summary.providerId === runTargetStateWithRuns.selectedProviderIdForComposer
+    );
     const planOrchestrator = buildConversationShellPlanOrchestrator({
         profileId,
         activePlanRefetch: queries.activePlanQuery.refetch,
         orchestratorLatestRefetch: queries.orchestratorLatestQuery.refetch,
         sessionRunsRefetch: queries.runsQuery.refetch,
         onError: composer.setRunSubmitError,
-        resolvedRunTarget: runTargetState.resolvedRunTarget,
-        workspaceFingerprint: selectedThread?.workspaceFingerprint,
+        resolvedRunTarget: runTargetStateWithRuns.resolvedRunTarget,
+        workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
         activePlan: queries.activePlanQuery.data?.found ? queries.activePlanQuery.data.plan : undefined,
-        orchestratorView: queries.orchestratorLatestQuery.data?.found
-            ? queries.orchestratorLatestQuery.data
-            : undefined,
+        orchestratorView: queries.orchestratorLatestQuery.data?.found ? queries.orchestratorLatestQuery.data : undefined,
         planStartMutation: mutations.planStartMutation,
         planAnswerMutation: mutations.planAnswerMutation,
         planReviseMutation: mutations.planReviseMutation,
@@ -318,71 +247,27 @@ export function ConversationShell({
             />
 
             <ConversationShellWorkspaceSection
-                selectedThread={selectedThread}
+                selectedThread={shellViewModel.selectedThread}
                 selectedSessionId={selectedSessionId}
                 selectedRunId={selectedRunId}
                 streamState={streamState}
                 lastSequence={queries.shellBootstrapQuery.data?.lastSequence ?? 0}
                 tabSwitchNotice={tabSwitchNotice}
-                sessions={sessionRunSelection.sessions}
-                runs={sessionRunSelection.runs}
-                messages={sessionRunSelection.messages}
-                partsByMessageId={sessionRunSelection.partsByMessageId}
+                sessions={shellViewModel.sessionRunSelection.sessions}
+                runs={shellViewModel.sessionRunSelection.runs}
+                messages={shellViewModel.sessionRunSelection.messages}
+                partsByMessageId={shellViewModel.sessionRunSelection.partsByMessageId}
                 executionPreset={queries.shellBootstrapQuery.data?.executionPreset ?? 'standard'}
-                workspaceScope={
-                    selectedThread?.workspaceFingerprint
-                        ? selectedManagedWorktree
-                            ? {
-                                  kind: 'worktree' as const,
-                                  label: selectedManagedWorktree.label,
-                                  absolutePath: selectedManagedWorktree.absolutePath,
-                                  branch: selectedManagedWorktree.branch,
-                                  baseBranch: selectedManagedWorktree.baseBranch,
-                                  baseWorkspaceLabel: selectedWorkspaceRoot?.label ?? selectedThread.workspaceFingerprint,
-                                  baseWorkspacePath:
-                                      selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
-                                  worktreeId: selectedManagedWorktree.id,
-                              }
-                            : selectedWorkspaceRoot
-                            ? {
-                                  kind: 'workspace',
-                                  label: selectedWorkspaceRoot.label,
-                                  absolutePath: selectedWorkspaceRoot.absolutePath,
-                                  executionEnvironmentMode:
-                                      selectedThread.executionEnvironmentMode === 'worktree'
-                                          ? 'local'
-                                          : selectedThread.executionEnvironmentMode,
-                                  ...(selectedThread.executionBranch
-                                      ? { executionBranch: selectedThread.executionBranch }
-                                      : {}),
-                                  ...(selectedThread.baseBranch ? { baseBranch: selectedThread.baseBranch } : {}),
-                              }
-                            : {
-                                  kind: 'workspace',
-                                  label: selectedThread.workspaceFingerprint,
-                                  absolutePath: 'Unresolved workspace root',
-                                  executionEnvironmentMode:
-                                      selectedThread.executionEnvironmentMode === 'worktree'
-                                          ? 'local'
-                                          : selectedThread.executionEnvironmentMode,
-                                  ...(selectedThread.executionBranch
-                                      ? { executionBranch: selectedThread.executionBranch }
-                                      : {}),
-                                  ...(selectedThread.baseBranch ? { baseBranch: selectedThread.baseBranch } : {}),
-                              }
-                        : {
-                              kind: 'detached',
-                          }
-                }
-                pendingPermissions={pendingPermissions}
-                permissionWorkspaces={permissionWorkspaces}
+                workspaceScope={shellViewModel.workspaceScope}
+                pendingPermissions={shellViewModel.pendingPermissions}
+                permissionWorkspaces={shellViewModel.permissionWorkspaces}
                 prompt={composer.prompt}
                 isCreatingSession={mutations.createSessionMutation.isPending}
                 isStartingRun={mutations.startRunMutation.isPending || mutations.planStartMutation.isPending}
                 isResolvingPermission={mutations.resolvePermissionMutation.isPending}
                 canCreateSession={Boolean(uiState.selectedThreadId)}
-                selectedProviderId={runTargetState.selectedProviderIdForComposer}
-                selectedModelId={runTargetState.selectedModelIdForComposer}
+                selectedProviderId={runTargetStateWithRuns.selectedProviderIdForComposer}
+                selectedModelId={runTargetStateWithRuns.selectedModelIdForComposer}
                 routingBadge={routingBadge}
                 {...(selectedProviderStatus
                     ? {
@@ -395,28 +280,28 @@ export function ConversationShell({
                     : {})}
                 {...(selectedModelLabel ? { selectedModelLabel } : {})}
                 {...(selectedUsageSummary ? { selectedUsageSummary } : {})}
-                {...(topLevelTab === 'agent' && registryResolvedQuery.data
+                {...(topLevelTab === 'agent' && shellViewModel.registryResolvedQuery.data
                     ? {
                           registrySummary: {
-                              modes: registryResolvedQuery.data.resolved.modes.filter(
+                              modes: shellViewModel.registryResolvedQuery.data.resolved.modes.filter(
                                   (resolvedMode) => resolvedMode.topLevelTab === 'agent'
                               ).length,
-                              rulesets: registryResolvedQuery.data.resolved.rulesets.length,
-                              skillfiles: registryResolvedQuery.data.resolved.skillfiles.length,
+                              rulesets: shellViewModel.registryResolvedQuery.data.resolved.rulesets.length,
+                              skillfiles: shellViewModel.registryResolvedQuery.data.resolved.skillfiles.length,
                           },
                       }
                     : {})}
-                {...(topLevelTab === 'agent' && activeModeLabel
+                {...(topLevelTab === 'agent' && shellViewModel.activeModeLabel
                     ? {
                           agentContextSummary: {
-                              modeLabel: activeModeLabel,
-                              rulesetCount: registryResolvedQuery.data?.resolved.rulesets.length ?? 0,
-                              attachedSkillCount: attachedSkills.length,
+                              modeLabel: shellViewModel.activeModeLabel,
+                              rulesetCount: shellViewModel.registryResolvedQuery.data?.resolved.rulesets.length ?? 0,
+                              attachedSkillCount: shellViewModel.attachedSkills.length,
                           },
                       }
                     : {})}
-                providerOptions={runTargetState.providerOptions}
-                modelOptions={runTargetState.modelOptions}
+                providerOptions={runTargetStateWithRuns.providerOptions}
+                modelOptions={runTargetStateWithRuns.modelOptions}
                 runErrorMessage={composer.runSubmitError}
                 onSelectSession={sessionActions.onSelectSession}
                 onSelectRun={uiState.setSelectedRunId}
@@ -424,14 +309,13 @@ export function ConversationShell({
                     if (!isProviderId(providerId)) {
                         return;
                     }
-
                     sessionActions.onProviderChange(
                         providerId,
-                        runTargetState.modelsByProvider.get(providerId)?.at(0)?.id
+                        runTargetStateWithRuns.modelsByProvider.get(providerId)?.at(0)?.id
                     );
                 }}
                 onModelChange={(modelId) => {
-                    sessionActions.onModelChange(runTargetState.selectedProviderIdForComposer, modelId);
+                    sessionActions.onModelChange(runTargetStateWithRuns.selectedProviderIdForComposer, modelId);
                 }}
                 onCreateSession={sessionActions.onCreateSession}
                 onPromptChange={composer.onPromptChange}
@@ -469,43 +353,9 @@ export function ConversationShell({
                 executionEnvironmentPanel={
                     <ExecutionEnvironmentPanel
                         topLevelTab={topLevelTab}
-                        selectedThread={selectedThread}
-                        workspaceScope={
-                            selectedThread?.workspaceFingerprint
-                                ? selectedManagedWorktree
-                                    ? {
-                                          kind: 'worktree' as const,
-                                          label: selectedManagedWorktree.label,
-                                          absolutePath: selectedManagedWorktree.absolutePath,
-                                          branch: selectedManagedWorktree.branch,
-                                          baseBranch: selectedManagedWorktree.baseBranch,
-                                          baseWorkspaceLabel:
-                                              selectedWorkspaceRoot?.label ?? selectedThread.workspaceFingerprint,
-                                          baseWorkspacePath:
-                                              selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
-                                          worktreeId: selectedManagedWorktree.id,
-                                      }
-                                    : {
-                                          kind: 'workspace' as const,
-                                          label: selectedWorkspaceRoot?.label ?? selectedThread.workspaceFingerprint,
-                                          absolutePath:
-                                              selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
-                                          executionEnvironmentMode:
-                                              selectedThread.executionEnvironmentMode === 'worktree'
-                                                  ? 'local'
-                                                  : selectedThread.executionEnvironmentMode,
-                                          ...(selectedThread.executionBranch
-                                              ? { executionBranch: selectedThread.executionBranch }
-                                              : {}),
-                                          ...(selectedThread.baseBranch
-                                              ? { baseBranch: selectedThread.baseBranch }
-                                              : {}),
-                                      }
-                                : {
-                                      kind: 'detached' as const,
-                                  }
-                        }
-                        worktrees={visibleManagedWorktrees}
+                        selectedThread={shellViewModel.selectedThread}
+                        workspaceScope={shellViewModel.workspaceScope}
+                        worktrees={shellViewModel.visibleManagedWorktrees}
                         busy={
                             mutations.configureThreadWorktreeMutation.isPending ||
                             mutations.refreshWorktreeMutation.isPending ||
@@ -513,24 +363,20 @@ export function ConversationShell({
                             mutations.removeOrphanedWorktreesMutation.isPending
                         }
                         onConfigureThread={(executionInput) => {
-                            if (!selectedThread || !isEntityId(selectedThread.id, 'thr')) {
+                            if (!shellViewModel.selectedThread || !isEntityId(shellViewModel.selectedThread.id, 'thr')) {
                                 return;
                             }
-                            if (
-                                executionInput.mode === 'worktree' &&
-                                !isEntityId(executionInput.worktreeId, 'wt')
-                            ) {
+                            if (executionInput.mode === 'worktree' && !isEntityId(executionInput.worktreeId, 'wt')) {
                                 return;
                             }
                             const selectedWorktreeId =
                                 executionInput.mode === 'worktree' && isEntityId(executionInput.worktreeId, 'wt')
                                     ? executionInput.worktreeId
                                     : undefined;
-
                             void mutations.configureThreadWorktreeMutation
                                 .mutateAsync({
                                     profileId,
-                                    threadId: selectedThread.id,
+                                    threadId: shellViewModel.selectedThread.id,
                                     mode: executionInput.mode,
                                     ...(executionInput.executionBranch
                                         ? { executionBranch: executionInput.executionBranch }
@@ -570,7 +416,12 @@ export function ConversationShell({
                         }}
                         onRemoveOrphaned={() => {
                             void mutations.removeOrphanedWorktreesMutation
-                                .mutateAsync({ profileId, ...(selectedThread?.workspaceFingerprint ? { workspaceFingerprint: selectedThread.workspaceFingerprint } : {}) })
+                                .mutateAsync({
+                                    profileId,
+                                    ...(shellViewModel.selectedThread?.workspaceFingerprint
+                                        ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
+                                        : {}),
+                                })
                                 .then(() => {
                                     void queries.shellBootstrapQuery.refetch();
                                 });
@@ -582,14 +433,14 @@ export function ConversationShell({
                         <AttachedSkillsPanel
                             profileId={profileId}
                             sessionId={selectedSessionId}
-                            {...(selectedThread?.workspaceFingerprint
-                                ? { workspaceFingerprint: selectedThread.workspaceFingerprint }
+                            {...(shellViewModel.selectedThread?.workspaceFingerprint
+                                ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
                                 : {})}
-                            {...(effectiveSelectedWorktreeId
-                                ? { worktreeId: effectiveSelectedWorktreeId }
+                            {...(shellViewModel.effectiveSelectedWorktreeId
+                                ? { worktreeId: shellViewModel.effectiveSelectedWorktreeId }
                                 : {})}
-                            attachedSkills={attachedSkills}
-                            missingAssetKeys={missingAttachedSkillKeys}
+                            attachedSkills={shellViewModel.attachedSkills}
+                            missingAssetKeys={shellViewModel.missingAttachedSkillKeys}
                         />
                     ) : undefined
                 }

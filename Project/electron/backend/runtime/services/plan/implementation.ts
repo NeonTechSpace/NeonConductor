@@ -101,7 +101,7 @@ export async function implementApprovedPlan(input: {
     }
 
     if (input.plan.topLevelTab === 'orchestrator') {
-        const started = await orchestratorExecutionService.start({
+        const startedResult = await orchestratorExecutionService.start({
             profileId: input.profileId,
             planId: input.plan.id,
             runtimeOptions: input.implementationInput.runtimeOptions,
@@ -111,6 +111,13 @@ export async function implementApprovedPlan(input: {
                 ? { workspaceFingerprint: input.implementationInput.workspaceFingerprint }
                 : {}),
         });
+        if (startedResult.isErr()) {
+            return {
+                code: 'run_start_failed',
+                message: `Plan implementation failed to start: ${startedResult.error.message}`,
+            };
+        }
+        const started = startedResult.value;
         const implementing = await planStore.markImplementing(input.plan.id, undefined, started.run.id);
         const items = await planStore.listItems(input.plan.id);
 

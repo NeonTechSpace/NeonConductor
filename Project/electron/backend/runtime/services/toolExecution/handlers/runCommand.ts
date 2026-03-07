@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process';
-
 import { err, ok, type Result } from 'neverthrow';
+import { spawn } from 'node:child_process';
 
 import { readNumberArg, readStringArg } from '@/app/backend/runtime/services/toolExecution/args';
 import type { ToolExecutionFailure, ToolExecutionOutput } from '@/app/backend/runtime/services/toolExecution/types';
@@ -59,6 +58,14 @@ function resolveShellInvocation(command: string): { file: string; args: string[]
     };
 }
 
+function okResult<T, E>(value: T): Result<T, E> {
+    return ok(value);
+}
+
+function errResult<T, E>(error: E): Result<T, E> {
+    return err(error);
+}
+
 export async function runCommandToolHandler(
     args: Record<string, unknown>,
     context: {
@@ -114,7 +121,7 @@ export async function runCommandToolHandler(
             settled = true;
             clearTimeout(timeout);
             resolve(
-                err({
+                errResult({
                     code: 'execution_failed',
                     message: error.message,
                 })
@@ -129,7 +136,7 @@ export async function runCommandToolHandler(
             clearTimeout(timeout);
 
             resolve(
-                ok({
+                okResult({
                     command,
                     cwd: context.cwd,
                     exitCode,

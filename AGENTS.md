@@ -2,73 +2,72 @@
 
 ## Engineering Standard
 
-### 1) Optimize for Clarity, Speed, and Changeability
-- Code must be easy to read and fast to understand.
-- Establish patterns early that make contribution paths obvious.
+### 1) Optimize for Clarity and Changeability
+- Write code that is easy to read, easy to trace, and easy to change.
+- Establish obvious patterns early so contribution paths stay clear.
 - Prefer designs where small changes touch few files.
-- Accept that large changes will touch many files, but only when the change is truly large.
 - Avoid cleverness that hides intent.
 
-### 2) Tolerate Nothing
-- "Convenient" code often looks like "bad" code. Treat it as suspect.
-- Stop quality decay immediately; do not defer known problems.
-- "Later" is usually never. If you see a structural issue, fix it now.
-- Do not ship known messes as temporary shortcuts.
+### 2) Do Not Tolerate Quality Decay
+- Treat suspicious "convenient" code as a defect, not a shortcut.
+- Fix structural problems when found; do not defer known messes.
+- Do not ship temporary slop.
 
-### 3) If It Smells, Remove It
-- When code smells, remove or refactor it decisively.
-- Do not justify weak patterns by history or precedent.
-- Do not preserve slop because it already exists.
-- Keep the codebase sharp, explicit, and maintainable.
+### 3) Remove Smells Immediately
+- If code smells, refactor or delete the smell.
+- Do not justify weak patterns by history, precedent, or existing debt.
+- Keep touched areas sharper than you found them.
 
-### 4) Keep Files Small and Focused
-- Do not introduce massive "god files"; split by responsibility.
-- If a file starts growing into multiple concerns, stop and extract modules immediately.
-- Prefer clear, composable units over central dumping grounds to reduce cognitive load.
-- There is no hard line limit; files can exceed 500 LOC when still coherent.
-- Preferred target is to keep files under 1000 LOC.
-- Treat oversized or multi-concern files as a DX bug and refactor before merging.
+### 4) Keep Files, Modules, and Folders Focused
+- Do not create god files; split by responsibility as soon as a file carries multiple concerns.
+- Files may exceed 500 LOC when still coherent, but the preferred target is under 1000 LOC.
+- Treat oversized or multi-concern files as a DX bug.
+- Do not let folders become dumping grounds.
+- Group by responsibility, not convenience.
+- Keep folder fan-out reasonable: a folder with too many unrelated files increases cognitive load and should be split into clearer subfolders.
 
-### 5) Type Safety at Boundaries (No Blind Casts)
-- Do not use broad `as SomeType` assertions to silence type errors.
-- Avoid `as SomeType` assertions in application code when a runtime/type guard can prove correctness.
-- Prefer typed parser/validator boundaries and explicit narrowing helpers (fail-closed on invalid data).
+### 5) Keep Boundaries Type-Safe
+- Do not use broad `as SomeType` casts to silence type errors.
+- Prefer parser/validator boundaries, runtime guards, and explicit narrowing.
 - Use `as const` only for literal narrowing.
-- If a cast is unavoidable, keep it at a validated parser/guard boundary, not at mutation call sites.
-- When IDs cross renderer/service boundaries, validate prefix/shape before mutation calls instead of casting.
-- Keep stable internal IDs immutable and separate from user-facing names (rename display fields, not identity keys).
+- If a cast is unavoidable, keep it at a validated boundary, never at mutation call sites.
+- Validate ID prefix and shape across renderer/service boundaries before use.
+- Keep stable internal IDs separate from user-facing names.
 
-### 6) Keep Test Context Isolated from Source
-- Production/source files must not depend on test context (`__tests__`, test fixtures, test helpers, mocks).
-- Do not import test frameworks (`vitest`, `jest`, test globals) into runtime/source modules.
-- Do not add test-only runtime branches in source code (for example `NODE_ENV === 'test'` behavior gates) unless explicitly required by architecture and documented.
-- Keep fixtures, stubs, and mocks in test-only paths.
-- If code is genuinely shared by runtime and tests, place it in a neutral source module and keep test-specific behavior out of it.
+### 6) Keep Test Context Out of Source
+- Source code must not depend on `__tests__`, fixtures, mocks, or test helpers.
+- Do not import test frameworks into runtime/source modules.
+- Do not add test-only runtime branches unless architecture explicitly requires them and the reason is documented.
+- Shared runtime/test utilities must live in neutral source modules with no test-specific behavior.
 
-### 7) Use `evlog` + `neverthrow` by Default
-- Use `evlog` for debugging/diagnostic logging in application code; do not introduce ad-hoc logging patterns.
-- Logging must be development-only and must not be enabled in packaged production builds.
-- Prefer structured log events over free-form strings so issues are traceable.
-- Use `neverthrow` `Result` flows for recoverable failures to improve DX and explicit error handling.
-- Do not add new throw-based control flow for expected runtime errors; return typed error results instead.
-- Reserve `throw` for parser-boundary validation failures, persisted-data corruption/invariant failures, impossible post-write readback failures, and missing required baseline-seeded configuration.
-- Treat missing user-owned data, invalid runtime/business-state transitions, and unsupported-but-expected operational outcomes as `Result` cases, not throw cases.
+### 7) Use `evlog` and `neverthrow` by Default
+- Use `evlog`-backed application logging; do not add ad-hoc logging patterns.
+- Logging must stay development-only and disabled in packaged production builds.
+- Prefer structured events over free-form strings.
+- Use `neverthrow` `Result` flows for recoverable failures.
+- Do not use `throw` for expected runtime or business-state failures.
+- Reserve `throw` for parser validation failures, invariant/data-corruption failures, impossible post-write readback failures, and missing required seeded configuration.
 
-### 8) Trust React Compiler First
-- React Compiler is enabled; prefer plain React code and let the compiler optimize it.
-- Add manual memoization (`useMemo`, `useCallback`, `memo`) only where compiler coverage is known to miss or profiling proves a real regression.
-- Do not add defensive/manual memo wrappers by default.
+### 8) Do Not Use Inline Lint Suppressions in Handwritten Source
+- Do not use `eslint-disable`, `eslint-disable-next-line`, or `eslint-disable-line` in handwritten source files.
+- Fix the code or scope the exception in `eslint.config.js`.
+- Generated files are the only allowed exception.
+
+### 9) Trust React Compiler First
+- React Compiler is enabled; write plain React first.
+- Add `useMemo`, `useCallback`, or `memo` only when compiler coverage is known to miss or profiling proves a real regression.
+- Do not add defensive memoization by default.
 
 ## Repository Documentation Status
-- Root `README.md` is intentionally empty; it serves as a pointer target to `Markdown/README`.
+- Root `README.md` is intentionally empty and points to `Markdown/README`.
 - `Project/README.md` is intentionally not filled yet.
 
 ## Theming System (Locked)
-- The canonical theming system is token-based (semantic CSS variables), compatible with Tailwind v4.
+- The theming system is token-based with semantic CSS variables and Tailwind v4 compatibility.
 - Supported modes are `light`, `dark`, and `auto`; default is `auto`.
-- Theme switching is done at the root (class/data-attribute), while components consume semantic tokens only.
-- Do not hardcode per-component palette values where a semantic token exists.
-- Future built-in/custom themes must extend the same token contract, not replace it with ad-hoc style branches.
+- Theme switching happens at the root; components consume semantic tokens only.
+- Do not hardcode palette values where a semantic token exists.
+- Built-in and custom themes must extend the same token contract.
 
 ## Practical Rule
-- Every PR should leave the touched area clearer than it was.
+- Every PR must leave the touched area clearer than it was.

@@ -3,8 +3,8 @@ import type { OrchestratorRunRecord, OrchestratorStepRecord, PlanItemRecord, Pla
 import type { OrchestratorStartInput } from '@/app/backend/runtime/contracts';
 import {
     errOrchestrator,
+    okOrchestrator,
     type OrchestratorExecutionError,
-    toOrchestratorException,
     validateOrchestratorStart,
 } from '@/app/backend/runtime/services/orchestrator/errors';
 import { appendOrchestratorStartedEvent } from '@/app/backend/runtime/services/orchestrator/events';
@@ -38,15 +38,15 @@ export async function prepareOrchestratorStart(
         stepDescriptions,
     });
 
-    return validation.map(() => ({
-            plan,
-            planItems,
-            run: created.run,
-            steps: created.steps,
-        }));
+    return okOrchestrator({
+        plan,
+        planItems,
+        run: created.run,
+        steps: created.steps,
+    });
 }
 
-export function logRejectedOrchestratorStart(input: OrchestratorStartInput, error: OrchestratorExecutionError): never {
+export function logRejectedOrchestratorStart(input: OrchestratorStartInput, error: OrchestratorExecutionError): void {
     appLog.warn({
         tag: 'orchestrator',
         message: 'Rejected orchestrator.start request.',
@@ -55,7 +55,6 @@ export function logRejectedOrchestratorStart(input: OrchestratorStartInput, erro
         code: error.code,
         error: error.message,
     });
-    throw toOrchestratorException(error);
 }
 
 export async function appendAndLogOrchestratorStarted(input: {

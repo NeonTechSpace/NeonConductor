@@ -9,6 +9,18 @@ import type { PollAuthResult } from '@/app/backend/providers/auth/types';
 import { kiloGatewayClient } from '@/app/backend/providers/kiloGatewayClient';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
+function toGatewayAuthExecutionError(input: {
+    code: 'timeout' | 'http_error' | 'schema_error' | 'network_error';
+    message: string;
+}) {
+    return errAuthExecution(
+        input.code === 'timeout' || input.code === 'network_error'
+            ? 'provider_request_unavailable'
+            : 'provider_request_failed',
+        input.message
+    );
+}
+
 export async function requireFlow(
     profileId: string,
     providerId: RuntimeProviderId,
@@ -23,7 +35,11 @@ export async function requireFlow(
 }
 
 export async function handleKiloDevicePoll(flow: ProviderAuthFlowRecord): Promise<AuthExecutionResult<PollAuthResult>> {
-    const status = await kiloGatewayClient.getDeviceCodeStatus(flow.deviceCode ?? '');
+    const statusResult = await kiloGatewayClient.getDeviceCodeStatus(flow.deviceCode ?? '');
+    if (statusResult.isErr()) {
+        return toGatewayAuthExecutionError(statusResult.error);
+    }
+    const status = statusResult.value;
     if (status.status === 'pending') {
         return okAuthExecution({ flow, state: await getAuthState(flow.profileId, flow.providerId) });
     }
@@ -67,12 +83,15 @@ export async function handleKiloDevicePoll(flow: ProviderAuthFlowRecord): Promis
         status: 'completed',
         consumedAt: nowIso(),
     });
-    await syncKiloAccountContext({
+    const syncResult = await syncKiloAccountContext({
         profileId: flow.profileId,
         accessToken: status.accessToken,
         ...(status.organizationId ? { organizationId: status.organizationId } : {}),
         ...(status.expiresAt ? { tokenExpiresAt: status.expiresAt } : {}),
     });
+    if (syncResult.isErr()) {
+        return errAuthExecution(syncResult.error.code, syncResult.error.message);
+    }
 
     return okAuthExecution({ flow: completedFlow ?? flow, state });
 }

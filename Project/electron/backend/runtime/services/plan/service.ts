@@ -8,15 +8,17 @@ import type {
     PlanStartInput,
 } from '@/app/backend/runtime/contracts';
 import { approvePlan } from '@/app/backend/runtime/services/plan/approval';
-import { type PlanServiceError, toPlanException } from '@/app/backend/runtime/services/plan/errors';
+import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { implementApprovedPlan } from '@/app/backend/runtime/services/plan/implementation';
 import { answerPlanQuestion, revisePlan } from '@/app/backend/runtime/services/plan/lifecycle';
 import { startPlanFlow } from '@/app/backend/runtime/services/plan/start';
 import { refreshActivePlanView, refreshPlanViewById } from '@/app/backend/runtime/services/plan/status';
 import { appLog } from '@/app/main/logging';
 
+import type { Result } from 'neverthrow';
+
 export class PlanService {
-    async start(input: PlanStartInput): Promise<{ plan: PlanRecordView }> {
+    async start(input: PlanStartInput): Promise<Result<{ plan: PlanRecordView }, PlanServiceError>> {
         const result = await startPlanFlow(input);
         if (result.isErr()) {
             appLog.warn({
@@ -29,10 +31,10 @@ export class PlanService {
                 code: result.error.code,
                 error: result.error.message,
             });
-            throw toPlanException(result.error);
+            return result;
         }
 
-        return result.value;
+        return okPlan(result.value);
     }
 
     async getById(
@@ -66,7 +68,7 @@ export class PlanService {
     async approve(
         profileId: string,
         planId: EntityId<'plan'>
-    ): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
         const result = await approvePlan(profileId, planId);
         if (result.isErr()) {
             appLog.warn({
@@ -77,26 +79,29 @@ export class PlanService {
                 code: result.error.code,
                 error: result.error.message,
             });
-            throw toPlanException(result.error);
+            return result;
         }
 
-        return result.value;
+        return okPlan(result.value);
     }
 
     async implement(input: PlanImplementInput): Promise<
-        | { found: false }
-        | { found: true; started: true; mode: 'agent.code'; runId: EntityId<'run'>; plan: PlanRecordView }
-        | {
-              found: true;
-              started: true;
-              mode: 'orchestrator.orchestrate';
-              orchestratorRunId: EntityId<'orch'>;
-              plan: PlanRecordView;
-          }
+        Result<
+            | { found: false }
+            | { found: true; started: true; mode: 'agent.code'; runId: EntityId<'run'>; plan: PlanRecordView }
+            | {
+                  found: true;
+                  started: true;
+                  mode: 'orchestrator.orchestrate';
+                  orchestratorRunId: EntityId<'orch'>;
+                  plan: PlanRecordView;
+              },
+            PlanServiceError
+        >
     > {
         const plan = await planStore.getById(input.profileId, input.planId);
         if (!plan) {
-            return { found: false };
+            return okPlan({ found: false });
         }
         if (plan.status !== 'approved' && plan.status !== 'implementing') {
             const validation: PlanServiceError = {
@@ -111,7 +116,7 @@ export class PlanService {
                 code: validation.code,
                 error: validation.message,
             });
-            throw toPlanException(validation);
+            return errPlan(validation.code, validation.message);
         }
         const implementation = await implementApprovedPlan({
             profileId: input.profileId,
@@ -128,13 +133,13 @@ export class PlanService {
                 error: implementation.message,
                 topLevelTab: plan.topLevelTab,
             });
-            throw toPlanException(implementation);
+            return errPlan(implementation.code, implementation.message);
         }
 
-        return {
+        return okPlan({
             found: true,
             ...implementation,
-        };
+        });
     }
 }
 

@@ -1,7 +1,10 @@
+import { err, type Result } from 'neverthrow';
+
 import type { OrchestratorRunRecord, OrchestratorStepRecord, PlanItemRecord, PlanRecord } from '@/app/backend/persistence/types';
 import type { EntityId, OrchestratorStartInput } from '@/app/backend/runtime/contracts';
 import { abortOrchestratorRun } from '@/app/backend/runtime/services/orchestrator/abort';
 import { ActiveOrchestratorRunRegistry } from '@/app/backend/runtime/services/orchestrator/activeRunRegistry';
+import type { OrchestratorExecutionError } from '@/app/backend/runtime/services/orchestrator/errors';
 import { executeOrchestratorSteps } from '@/app/backend/runtime/services/orchestrator/executionLoop';
 import {
     appendAndLogOrchestratorStarted,
@@ -10,15 +13,17 @@ import {
 } from '@/app/backend/runtime/services/orchestrator/start';
 import { getLatestOrchestratorBySession, getOrchestratorStatus } from '@/app/backend/runtime/services/orchestrator/status';
 
+
 export class OrchestratorExecutionService {
     private readonly activeRuns = new ActiveOrchestratorRunRegistry();
 
     async start(
         input: OrchestratorStartInput
-    ): Promise<{ started: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }> {
+    ): Promise<Result<{ started: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }, OrchestratorExecutionError>> {
         const prepared = await prepareOrchestratorStart(input);
         if (prepared.isErr()) {
-            return logRejectedOrchestratorStart(input, prepared.error);
+            logRejectedOrchestratorStart(input, prepared.error);
+            return err(prepared.error);
         }
         const { plan, planItems, run, steps } = prepared.value;
 
@@ -44,11 +49,11 @@ export class OrchestratorExecutionService {
             this.activeRuns.finish(run.id);
         });
 
-        return {
+        return prepared.map(() => ({
             started: true,
             run,
             steps,
-        };
+        }));
     }
 
     async getStatus(

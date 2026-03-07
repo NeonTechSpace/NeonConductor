@@ -1,9 +1,12 @@
-import { permissionStore } from '@/app/backend/persistence/stores';
 import type { ToolInvokeInput } from '@/app/backend/runtime/contracts';
 import { getExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
-import { resolveEffectivePermissionPolicy } from '@/app/backend/runtime/services/permissions/policyResolver';
+import { buildBlockedToolResult } from '@/app/backend/runtime/services/toolExecution/blocked';
 import {
-    emitPermissionRequestedEvent,
+    boundaryDefaultPolicy,
+    boundaryResource,
+    resolveToolDecision,
+} from '@/app/backend/runtime/services/toolExecution/decision';
+import {
     emitToolBlockedEvent,
     emitToolCompletedEvent,
     emitToolFailedEvent,
@@ -11,8 +14,8 @@ import {
 import { invokeToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers';
 import { findToolById } from '@/app/backend/runtime/services/toolExecution/lookup';
 import { errorToolResult, okToolResult } from '@/app/backend/runtime/services/toolExecution/results';
-import { buildShellApprovalContext } from '@/app/backend/runtime/services/toolExecution/shellApproval';
 import { isIgnoredWorkspacePath, isPathInsideWorkspace, resolveWorkspaceToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
+import { buildShellApprovalContext } from '@/app/backend/runtime/services/toolExecution/shellApproval';
 import type { ToolExecutionResult } from '@/app/backend/runtime/services/toolExecution/types';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import { appLog } from '@/app/main/logging';
@@ -25,50 +28,6 @@ function toolLogContext(input: ToolInvokeInput, toolId: string, source?: string)
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
     };
-}
-
-type ToolDecision =
-    | {
-          kind: 'allow';
-          policy: { effective: 'allow'; source: string };
-          resource: string;
-      }
-    | {
-          kind: 'deny';
-          policy: { effective: 'deny'; source: string };
-          resource: string;
-          reason:
-              | 'policy_denied'
-              | 'detached_scope'
-              | 'workspace_unresolved'
-              | 'outside_workspace'
-              | 'ignored_path';
-          message: string;
-      }
-    | {
-          kind: 'ask';
-          policy: { effective: 'ask'; source: string };
-          resource: string;
-          scopeKind: 'tool' | 'boundary';
-          summary: {
-              title: string;
-              detail: string;
-          };
-          approvalCandidates?: NonNullable<Awaited<ReturnType<typeof permissionStore.create>>['approvalCandidates']>;
-          commandText?: string;
-          message: string;
-      };
-
-function boundaryResource(toolId: string, boundary: 'workspace_required' | 'outside_workspace' | 'ignored_path'): string {
-    return `tool:${toolId}:boundary:${boundary}`;
-}
-
-function boundaryDefaultPolicy(executionPreset: 'privacy' | 'standard' | 'yolo'): 'ask' | 'deny' {
-    if (executionPreset === 'yolo') {
-        return 'deny';
-    }
-
-    return 'ask';
 }
 
 export class ToolExecutionService {
@@ -95,89 +54,6 @@ export class ToolExecutionService {
         const executionPreset = await getExecutionPreset(input.profileId);
         let workspaceRootPath: string | undefined;
         let workspaceLabel: string | undefined;
-        const resolveDecision = async (decisionInput: {
-            resource: string;
-            resourceCandidates?: string[];
-            onceResource?: string;
-            scopeKind: 'tool' | 'boundary';
-            defaultPolicy: 'ask' | 'allow' | 'deny';
-            summary: {
-                title: string;
-                detail: string;
-            };
-            approvalCandidates?: NonNullable<Awaited<ReturnType<typeof permissionStore.create>>['approvalCandidates']>;
-            commandText?: string;
-            denyMessage: string;
-            askMessage: string;
-            denyReason?: 'policy_denied' | 'outside_workspace' | 'ignored_path';
-        }): Promise<ToolDecision> => {
-            const resolvedPolicy = await resolveEffectivePermissionPolicy({
-                profileId: input.profileId,
-                resource: decisionInput.resource,
-                ...(decisionInput.resourceCandidates ? { resourceCandidates: decisionInput.resourceCandidates } : {}),
-                topLevelTab: input.topLevelTab,
-                modeKey: input.modeKey,
-                executionPreset,
-                capabilities: definition.tool.capabilities,
-                toolDefaultPolicy: decisionInput.defaultPolicy,
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-            });
-
-            if (resolvedPolicy.policy === 'ask') {
-                const onceApproval = await permissionStore.consumeGrantedOnce({
-                    profileId: input.profileId,
-                    resource: decisionInput.onceResource ?? decisionInput.resource,
-                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                });
-                if (onceApproval) {
-                    return {
-                        kind: 'allow',
-                        policy: {
-                            effective: 'allow',
-                            source: 'one_time_approval',
-                        },
-                        resource: decisionInput.onceResource ?? decisionInput.resource,
-                    };
-                }
-
-                return {
-                    kind: 'ask',
-                    policy: {
-                        effective: 'ask',
-                        source: resolvedPolicy.source,
-                    },
-                    resource: decisionInput.onceResource ?? decisionInput.resource,
-                    scopeKind: decisionInput.scopeKind,
-                    summary: decisionInput.summary,
-                    ...(decisionInput.approvalCandidates ? { approvalCandidates: decisionInput.approvalCandidates } : {}),
-                    ...(decisionInput.commandText ? { commandText: decisionInput.commandText } : {}),
-                    message: decisionInput.askMessage,
-                };
-            }
-
-            if (resolvedPolicy.policy === 'deny') {
-                return {
-                    kind: 'deny',
-                    policy: {
-                        effective: 'deny',
-                        source: resolvedPolicy.source,
-                    },
-                    resource: resolvedPolicy.resource,
-                    reason: decisionInput.denyReason ?? 'policy_denied',
-                    message: decisionInput.denyMessage,
-                };
-            }
-
-            return {
-                kind: 'allow',
-                policy: {
-                    effective: 'allow',
-                    source: resolvedPolicy.source,
-                },
-                resource: resolvedPolicy.resource,
-            };
-        };
-
         let executionArgs = args;
         if (definition.tool.requiresWorkspace) {
             if (!input.workspaceFingerprint) {
@@ -253,13 +129,19 @@ export class ToolExecutionService {
                     !definition.tool.allowsExternalPaths &&
                     !isPathInsideWorkspace(resolvedPath.absolutePath, resolvedPath.workspaceRootPath)
                 ) {
-                    const decision = await resolveDecision({
+                    const decision = await resolveToolDecision({
+                        profileId: input.profileId,
+                        topLevelTab: input.topLevelTab,
+                        modeKey: input.modeKey,
+                        executionPreset,
+                        capabilities: definition.tool.capabilities,
+                        workspaceFingerprint: input.workspaceFingerprint,
                         resource: boundaryResource(definition.tool.id, 'outside_workspace'),
                         scopeKind: 'boundary',
-                        defaultPolicy: boundaryDefaultPolicy(executionPreset),
+                        toolDefaultPolicy: boundaryDefaultPolicy(executionPreset),
                         summary: {
                             title: 'Outside Workspace Access',
-                            detail: `${definition.tool.label} wants to access a path outside ${workspaceLabel ?? 'the active workspace'}.`,
+                            detail: `${definition.tool.label} wants to access a path outside ${workspaceLabel}.`,
                         },
                         denyMessage: `Tool "${definition.tool.id}" cannot access paths outside the registered workspace root in the current safety preset.`,
                         askMessage: `Tool "${definition.tool.id}" needs approval to access a path outside the registered workspace root.`,
@@ -267,55 +149,13 @@ export class ToolExecutionService {
                     });
 
                     if (decision.kind !== 'allow') {
-                        if (decision.kind === 'ask') {
-                            const request = await permissionStore.create({
-                                profileId: input.profileId,
-                                policy: 'ask',
-                                resource: decision.resource,
-                                toolId: definition.tool.id,
-                                scopeKind: decision.scopeKind,
-                                summary: decision.summary,
-                                workspaceFingerprint: input.workspaceFingerprint,
-                                rationale: decision.message,
-                            });
-                            await emitPermissionRequestedEvent({ request, toolId: definition.tool.id });
-                            await emitToolBlockedEvent({
-                                toolId: definition.tool.id,
-                                profileId: input.profileId,
-                                resource: decision.resource,
-                                policy: 'ask',
-                                source: decision.policy.source,
-                                reason: 'permission_required',
-                                requestId: request.id,
-                            });
-
-                            return errorToolResult({
-                                toolId: definition.tool.id,
-                                error: 'permission_required',
-                                message: decision.message,
-                                args,
-                                at,
-                                requestId: request.id,
-                                policy: decision.policy,
-                            });
-                        }
-
-                        await emitToolBlockedEvent({
-                            toolId: definition.tool.id,
+                        return buildBlockedToolResult({
+                            decision,
                             profileId: input.profileId,
-                            resource: decision.resource,
-                            policy: 'deny',
-                            source: decision.policy.source,
-                            reason: decision.reason,
-                        });
-
-                        return errorToolResult({
                             toolId: definition.tool.id,
-                            error: 'policy_denied',
-                            message: decision.message,
                             args,
                             at,
-                            policy: decision.policy,
+                            workspaceFingerprint: input.workspaceFingerprint,
                         });
                     }
                 }
@@ -324,13 +164,19 @@ export class ToolExecutionService {
                     !definition.tool.allowsIgnoredPaths &&
                     isIgnoredWorkspacePath(resolvedPath.absolutePath, resolvedPath.workspaceRootPath)
                 ) {
-                    const decision = await resolveDecision({
+                    const decision = await resolveToolDecision({
+                        profileId: input.profileId,
+                        topLevelTab: input.topLevelTab,
+                        modeKey: input.modeKey,
+                        executionPreset,
+                        capabilities: definition.tool.capabilities,
+                        workspaceFingerprint: input.workspaceFingerprint,
                         resource: boundaryResource(definition.tool.id, 'ignored_path'),
                         scopeKind: 'boundary',
-                        defaultPolicy: boundaryDefaultPolicy(executionPreset),
+                        toolDefaultPolicy: boundaryDefaultPolicy(executionPreset),
                         summary: {
                             title: 'Ignored Path Access',
-                            detail: `${definition.tool.label} wants to access an ignored path inside ${workspaceLabel ?? 'the active workspace'}.`,
+                            detail: `${definition.tool.label} wants to access an ignored path inside ${workspaceLabel}.`,
                         },
                         denyMessage: `Tool "${definition.tool.id}" cannot access ignored paths in the current safety preset.`,
                         askMessage: `Tool "${definition.tool.id}" needs approval to access an ignored path.`,
@@ -338,55 +184,13 @@ export class ToolExecutionService {
                     });
 
                     if (decision.kind !== 'allow') {
-                        if (decision.kind === 'ask') {
-                            const request = await permissionStore.create({
-                                profileId: input.profileId,
-                                policy: 'ask',
-                                resource: decision.resource,
-                                toolId: definition.tool.id,
-                                scopeKind: decision.scopeKind,
-                                summary: decision.summary,
-                                workspaceFingerprint: input.workspaceFingerprint,
-                                rationale: decision.message,
-                            });
-                            await emitPermissionRequestedEvent({ request, toolId: definition.tool.id });
-                            await emitToolBlockedEvent({
-                                toolId: definition.tool.id,
-                                profileId: input.profileId,
-                                resource: decision.resource,
-                                policy: 'ask',
-                                source: decision.policy.source,
-                                reason: 'permission_required',
-                                requestId: request.id,
-                            });
-
-                            return errorToolResult({
-                                toolId: definition.tool.id,
-                                error: 'permission_required',
-                                message: decision.message,
-                                args,
-                                at,
-                                requestId: request.id,
-                                policy: decision.policy,
-                            });
-                        }
-
-                        await emitToolBlockedEvent({
-                            toolId: definition.tool.id,
+                        return buildBlockedToolResult({
+                            decision,
                             profileId: input.profileId,
-                            resource: decision.resource,
-                            policy: 'deny',
-                            source: decision.policy.source,
-                            reason: decision.reason,
-                        });
-
-                        return errorToolResult({
                             toolId: definition.tool.id,
-                            error: 'policy_denied',
-                            message: decision.message,
                             args,
                             at,
-                            policy: decision.policy,
+                            workspaceFingerprint: input.workspaceFingerprint,
                         });
                     }
                 }
@@ -415,14 +219,20 @@ export class ToolExecutionService {
             });
         }
 
-        const decision = await resolveDecision({
+        const decision = await resolveToolDecision({
+            profileId: input.profileId,
+            topLevelTab: input.topLevelTab,
+            modeKey: input.modeKey,
+            executionPreset,
+            capabilities: definition.tool.capabilities,
             resource: shellApprovalContext?.commandResource ?? definition.resource,
             ...(shellApprovalContext?.overrideResources.length
                 ? { resourceCandidates: shellApprovalContext.overrideResources }
                 : {}),
             ...(shellApprovalContext?.commandResource ? { onceResource: shellApprovalContext.commandResource } : {}),
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             scopeKind: 'tool',
-            defaultPolicy: definition.tool.permissionPolicy,
+            toolDefaultPolicy: definition.tool.permissionPolicy,
             summary: {
                 title:
                     definition.tool.id === 'run_command'
@@ -447,74 +257,25 @@ export class ToolExecutionService {
                     : `Tool "${definition.tool.id}" requires permission approval.`,
         });
 
-        if (decision.kind === 'deny') {
-            await emitToolBlockedEvent({
-                toolId: definition.tool.id,
+        if (decision.kind !== 'allow') {
+            const blockedResult = await buildBlockedToolResult({
+                decision,
                 profileId: input.profileId,
-                resource: decision.resource,
-                policy: 'deny',
-                source: decision.policy.source,
-                reason: decision.reason,
-            });
-
-            appLog.warn({
-                tag: 'tool-execution',
-                message: 'Blocked tool invocation by deny policy.',
-                ...toolLogContext(input, definition.tool.id, decision.policy.source),
-            });
-            return errorToolResult({
                 toolId: definition.tool.id,
-                error: 'policy_denied',
-                message: decision.message,
                 args,
                 at,
-                policy: decision.policy,
-            });
-        }
-
-        if (decision.kind === 'ask') {
-            const request = await permissionStore.create({
-                profileId: input.profileId,
-                policy: 'ask',
-                resource: decision.resource,
-                toolId: definition.tool.id,
-                scopeKind: decision.scopeKind,
-                summary: decision.summary,
-                ...(decision.commandText ? { commandText: decision.commandText } : {}),
-                ...(decision.approvalCandidates ? { approvalCandidates: decision.approvalCandidates } : {}),
                 ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                rationale: decision.message,
             });
-
-            await emitPermissionRequestedEvent({
-                request,
-                toolId: definition.tool.id,
-            });
-            await emitToolBlockedEvent({
-                toolId: definition.tool.id,
-                profileId: input.profileId,
-                resource: decision.resource,
-                policy: 'ask',
-                source: decision.policy.source,
-                reason: 'permission_required',
-                requestId: request.id,
-            });
-
-            appLog.info({
+            appLog[decision.kind === 'deny' ? 'warn' : 'info']({
                 tag: 'tool-execution',
-                message: 'Tool invocation requires permission approval.',
+                message:
+                    decision.kind === 'deny'
+                        ? 'Blocked tool invocation by deny policy.'
+                        : 'Tool invocation requires permission approval.',
                 ...toolLogContext(input, definition.tool.id, decision.policy.source),
-                requestId: request.id,
+                ...('requestId' in blockedResult && blockedResult.requestId ? { requestId: blockedResult.requestId } : {}),
             });
-            return errorToolResult({
-                toolId: definition.tool.id,
-                error: 'permission_required',
-                message: decision.message,
-                args,
-                at,
-                requestId: request.id,
-                policy: decision.policy,
-            });
+            return blockedResult;
         }
 
         const execution = await invokeToolHandler(definition.tool, executionArgs, {

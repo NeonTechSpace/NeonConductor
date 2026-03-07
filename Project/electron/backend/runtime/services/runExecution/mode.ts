@@ -1,10 +1,10 @@
 import type { ModeDefinition, TopLevelTab } from '@/app/backend/runtime/contracts';
+import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
-import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 
 interface ResolveModeExecutionInput {
     profileId: string;

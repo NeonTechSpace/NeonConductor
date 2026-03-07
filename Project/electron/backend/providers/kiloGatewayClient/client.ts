@@ -1,3 +1,5 @@
+import { err, ok, type Result } from 'neverthrow';
+
 import {
     KILO_API_BASE_URL,
     KILO_GATEWAY_BASE_URL,
@@ -35,6 +37,8 @@ import type {
     KiloProfileResponse,
 } from '@/app/backend/providers/kiloGatewayClient/types';
 
+export type KiloGatewayResult<T> = Result<T, GatewayErrorShape>;
+
 export class KiloGatewayClient {
     private readonly gatewayBaseUrl: string;
     private readonly apiBaseUrl: string;
@@ -46,16 +50,35 @@ export class KiloGatewayClient {
         this.timeoutMs = input?.timeoutMs ?? KILO_GATEWAY_TIMEOUT_MS;
     }
 
-    private toGatewayException(error: GatewayErrorShape): KiloGatewayError {
-        return new KiloGatewayError({
-            message: error.message,
-            category: error.category,
-            endpoint: error.endpoint,
-            ...(error.statusCode !== undefined ? { statusCode: error.statusCode } : {}),
-        });
+    private toGatewayError(error: unknown, endpoint: string): GatewayErrorShape {
+        if (error instanceof KiloGatewayError) {
+            return {
+                code: error.category === 'network' ? 'network_error' : 'schema_error',
+                category: error.category,
+                message: error.message,
+                endpoint: error.endpoint || endpoint,
+                ...(error.statusCode !== undefined ? { statusCode: error.statusCode } : {}),
+            };
+        }
+
+        if (error instanceof Error) {
+            return {
+                code: 'schema_error',
+                category: 'schema',
+                message: error.message,
+                endpoint,
+            };
+        }
+
+        return {
+            code: 'schema_error',
+            category: 'schema',
+            message: 'Unknown gateway parse failure.',
+            endpoint,
+        };
     }
 
-    private async fetchGateway(path: string, headers?: RequestHeadersInput): Promise<Record<string, unknown>> {
+    private async fetchGateway(path: string, headers?: RequestHeadersInput): Promise<KiloGatewayResult<Record<string, unknown>>> {
         const endpoint = `${this.gatewayBaseUrl}${path}`;
         const requestInput = {
             endpoint,
@@ -64,15 +87,15 @@ export class KiloGatewayClient {
         };
         const result = await executeJsonRequest(requestInput);
         if (result.isErr()) {
-            throw this.toGatewayException(result.error);
+            return err(result.error);
         }
-        return result.value.payload;
+        return ok(result.value.payload);
     }
 
     private async fetchApi(
         path: string,
         input?: { method?: 'GET' | 'POST'; headers?: RequestHeadersInput; body?: unknown }
-    ): Promise<Record<string, unknown>> {
+    ): Promise<KiloGatewayResult<Record<string, unknown>>> {
         const endpoint = `${this.apiBaseUrl}${path}`;
         const requestInput = {
             endpoint,
@@ -83,59 +106,106 @@ export class KiloGatewayClient {
         };
         const result = await executeJsonRequest(requestInput);
         if (result.isErr()) {
-            throw this.toGatewayException(result.error);
+            return err(result.error);
         }
-        return result.value.payload;
+        return ok(result.value.payload);
     }
 
-    async getModels(headers?: RequestHeadersInput): Promise<KiloGatewayModel[]> {
-        const payload = await this.fetchGateway('/models', headers);
-        return parseModelsPayload(payload);
+    private parsePayload<T>(input: {
+        endpoint: string;
+        payloadResult: KiloGatewayResult<Record<string, unknown>>;
+        parse: (payload: Record<string, unknown>) => T;
+    }): KiloGatewayResult<T> {
+        if (input.payloadResult.isErr()) {
+            return err(input.payloadResult.error);
+        }
+
+        try {
+            return ok(input.parse(input.payloadResult.value));
+        } catch (error) {
+            return err(this.toGatewayError(error, input.endpoint));
+        }
     }
 
-    async getProviders(headers?: RequestHeadersInput): Promise<KiloGatewayProvider[]> {
-        const payload = await this.fetchGateway('/providers', headers);
-        return parseProvidersPayload(payload);
-    }
-
-    async getModelsByProvider(headers?: RequestHeadersInput): Promise<KiloGatewayModelsByProvider[]> {
-        const payload = await this.fetchGateway('/models-by-provider', headers);
-        return parseModelsByProviderPayload(payload);
-    }
-
-    async getProfile(headers: RequestHeadersInput): Promise<KiloProfileResponse> {
-        const payload = await this.fetchApi('/api/profile', { headers });
-        return parseProfilePayload(payload);
-    }
-
-    async getProfileBalance(headers: RequestHeadersInput): Promise<KiloProfileBalanceResponse> {
-        const payload = await this.fetchApi('/api/profile/balance', { headers });
-        return parseBalancePayload(payload);
-    }
-
-    async getDefaults(headers: RequestHeadersInput): Promise<KiloDefaultsResponse> {
-        const payload = await this.fetchApi('/api/defaults', { headers });
-        return parseDefaultsPayload(payload);
-    }
-
-    async getOrganizationDefaults(orgId: string, headers: RequestHeadersInput): Promise<KiloDefaultsResponse> {
-        const payload = await this.fetchApi(`/api/organizations/${orgId}/defaults`, { headers });
-        return parseDefaultsPayload(payload);
-    }
-
-    async createDeviceCode(): Promise<KiloDeviceCodeResponse> {
-        const payload = await this.fetchApi('/api/device-auth/codes', {
-            method: 'POST',
-            body: {},
+    async getModels(headers?: RequestHeadersInput): Promise<KiloGatewayResult<KiloGatewayModel[]>> {
+        return this.parsePayload({
+            endpoint: `${this.gatewayBaseUrl}/models`,
+            payloadResult: await this.fetchGateway('/models', headers),
+            parse: parseModelsPayload,
         });
-
-        return parseDeviceCodePayload(payload);
     }
 
-    async getDeviceCodeStatus(code: string): Promise<KiloDeviceCodeStatusResponse> {
+    async getProviders(headers?: RequestHeadersInput): Promise<KiloGatewayResult<KiloGatewayProvider[]>> {
+        return this.parsePayload({
+            endpoint: `${this.gatewayBaseUrl}/providers`,
+            payloadResult: await this.fetchGateway('/providers', headers),
+            parse: parseProvidersPayload,
+        });
+    }
+
+    async getModelsByProvider(headers?: RequestHeadersInput): Promise<KiloGatewayResult<KiloGatewayModelsByProvider[]>> {
+        return this.parsePayload({
+            endpoint: `${this.gatewayBaseUrl}/models-by-provider`,
+            payloadResult: await this.fetchGateway('/models-by-provider', headers),
+            parse: parseModelsByProviderPayload,
+        });
+    }
+
+    async getProfile(headers: RequestHeadersInput): Promise<KiloGatewayResult<KiloProfileResponse>> {
+        return this.parsePayload({
+            endpoint: `${this.apiBaseUrl}/api/profile`,
+            payloadResult: await this.fetchApi('/api/profile', { headers }),
+            parse: parseProfilePayload,
+        });
+    }
+
+    async getProfileBalance(headers: RequestHeadersInput): Promise<KiloGatewayResult<KiloProfileBalanceResponse>> {
+        return this.parsePayload({
+            endpoint: `${this.apiBaseUrl}/api/profile/balance`,
+            payloadResult: await this.fetchApi('/api/profile/balance', { headers }),
+            parse: parseBalancePayload,
+        });
+    }
+
+    async getDefaults(headers: RequestHeadersInput): Promise<KiloGatewayResult<KiloDefaultsResponse>> {
+        return this.parsePayload({
+            endpoint: `${this.apiBaseUrl}/api/defaults`,
+            payloadResult: await this.fetchApi('/api/defaults', { headers }),
+            parse: parseDefaultsPayload,
+        });
+    }
+
+    async getOrganizationDefaults(
+        orgId: string,
+        headers: RequestHeadersInput
+    ): Promise<KiloGatewayResult<KiloDefaultsResponse>> {
+        const path = `/api/organizations/${orgId}/defaults`;
+        return this.parsePayload({
+            endpoint: `${this.apiBaseUrl}${path}`,
+            payloadResult: await this.fetchApi(path, { headers }),
+            parse: parseDefaultsPayload,
+        });
+    }
+
+    async createDeviceCode(): Promise<KiloGatewayResult<KiloDeviceCodeResponse>> {
+        return this.parsePayload({
+            endpoint: `${this.apiBaseUrl}/api/device-auth/codes`,
+            payloadResult: await this.fetchApi('/api/device-auth/codes', {
+                method: 'POST',
+                body: {},
+            }),
+            parse: parseDeviceCodePayload,
+        });
+    }
+
+    async getDeviceCodeStatus(code: string): Promise<KiloGatewayResult<KiloDeviceCodeStatusResponse>> {
         const safeCode = encodeURIComponent(code);
-        const payload = await this.fetchApi(`/api/device-auth/codes/${safeCode}`);
-        return parseDeviceCodeStatusPayload(payload);
+        const path = `/api/device-auth/codes/${safeCode}`;
+        return this.parsePayload({
+            endpoint: `${this.apiBaseUrl}${path}`,
+            payloadResult: await this.fetchApi(path),
+            parse: parseDeviceCodeStatusPayload,
+        });
     }
 }
 

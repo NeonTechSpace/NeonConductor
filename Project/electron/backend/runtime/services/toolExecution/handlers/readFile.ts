@@ -23,7 +23,6 @@ export async function readFileToolHandler(
 
     const targetPath = targetPathResult.value;
     try {
-        // eslint-disable-next-line security/detect-non-literal-fs-filename -- targetPath is normalized absolute path from validated tool args.
         const buffer = await readFile(targetPath);
         const truncated = buffer.byteLength > maxBytes;
         const content = buffer.subarray(0, maxBytes).toString('utf8');

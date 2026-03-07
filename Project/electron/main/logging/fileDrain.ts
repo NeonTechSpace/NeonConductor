@@ -34,7 +34,6 @@ async function writeBatch(contexts: DrainContext[]): Promise<void> {
     }
 
     const logsDirectory = resolveLogsDirectory();
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Constrained to app userData/logs directory.
     await mkdir(logsDirectory, { recursive: true });
 
     const groupedLines = new Map<string, string[]>();
@@ -54,7 +53,6 @@ async function writeBatch(contexts: DrainContext[]): Promise<void> {
     const writes: Promise<void>[] = [];
 
     for (const [filePath, lines] of groupedLines.entries()) {
-        // eslint-disable-next-line security/detect-non-literal-fs-filename -- File path is derived from trusted userData path + ISO date.
         writes.push(appendFile(filePath, lines.join(''), 'utf8'));
     }
 

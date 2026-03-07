@@ -7,6 +7,10 @@ import type { StartAuthResult } from '@/app/backend/providers/auth/types';
 import { kiloGatewayClient } from '@/app/backend/providers/kiloGatewayClient';
 import type { ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
+function toGatewayAuthError(input: { message: string; code: 'provider_request_failed' | 'provider_request_unavailable' }) {
+    return errAuthExecution(input.code, input.message);
+}
+
 function assertMethodAllowed(providerId: RuntimeProviderId, method: ProviderAuthMethod): AuthExecutionResult<void> {
     if (!getAuthMethodsForProvider(providerId).includes(method)) {
         return errAuthExecution(
@@ -30,7 +34,17 @@ export async function startAuthFlow(input: {
     await providerAuthFlowStore.cancelPendingByProvider(input.profileId, input.providerId);
 
     if (input.providerId === 'kilo' && input.method === 'device_code') {
-        const device = await kiloGatewayClient.createDeviceCode();
+        const deviceResult = await kiloGatewayClient.createDeviceCode();
+        if (deviceResult.isErr()) {
+            return toGatewayAuthError({
+                code:
+                    deviceResult.error.code === 'timeout' || deviceResult.error.code === 'network_error'
+                        ? 'provider_request_unavailable'
+                        : 'provider_request_failed',
+                message: deviceResult.error.message,
+            });
+        }
+        const device = deviceResult.value;
         const flow = await providerAuthFlowStore.create({
             profileId: input.profileId,
             providerId: input.providerId,

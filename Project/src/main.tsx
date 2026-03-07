@@ -3,8 +3,8 @@ import { initLogger, log } from 'evlog';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { initializePrivacyMode } from '@/web/lib/privacy/privacy';
 import DevTools from '@/web/components/utils/devtools';
+import { initializePrivacyMode } from '@/web/lib/privacy/privacy';
 import Providers from '@/web/lib/providers';
 import { initializeThemeClass } from '@/web/lib/theme/theme';
 import { trpcClient } from '@/web/lib/trpcClient';

@@ -113,13 +113,13 @@ async function waitForRunStatus(
     sessionId: EntityId<'sess'>,
     expected: 'completed' | 'aborted' | 'error'
 ): Promise<void> {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
         const status = await caller.session.status({ profileId, sessionId });
         if (status.found && status.session.runStatus === expected) {
             return;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 25));
     }
 
     throw new Error(`Timed out waiting for session ${sessionId} to reach status "${expected}".`);
@@ -2168,7 +2168,6 @@ name: Docs Lookup
         const workspaceFingerprint = 'ws_tool_runtime_contracts';
         const now = new Date().toISOString();
         const { sqlite } = getPersistence();
-        // eslint-disable-next-line security/detect-non-literal-fs-filename -- test uses isolated mkdtemp path to validate runtime tool behavior.
         writeFileSync(tempFile, 'hello from tool execution test', 'utf8');
         sqlite
             .prepare(

@@ -41,6 +41,22 @@ const testGlobs = [
 ];
 
 const neverthrowWorkflowGlobs = ['electron/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}', 'scripts/**/*.ts'];
+const generatedGlobs = ['src/routeTree.gen.ts'];
+const validatedFsAuthorityGlobs = [
+    'electron/backend/persistence/db.ts',
+    'electron/backend/persistence/runtimeBaseline.ts',
+    'electron/backend/runtime/services/registry/filesystem.ts',
+    'electron/backend/runtime/services/toolExecution/handlers/listFiles.ts',
+    'electron/backend/runtime/services/toolExecution/handlers/readFile.ts',
+    'electron/backend/runtime/services/worktree/git.ts',
+    'electron/main/logging/fileDrain.ts',
+];
+const processBridgeGlobs = [
+    'electron/backend/runtime/services/checkpoint/gitWorkspace.ts',
+    'electron/backend/runtime/services/toolExecution/handlers/runCommand.ts',
+    'electron/backend/runtime/services/worktree/git.ts',
+];
+const validatedFsTestGlobs = ['electron/backend/trpc/__tests__/runtime-contracts.test.ts'];
 
 const sharedTypeLanguageOptions = {
     parser: tseslint.parser,
@@ -131,6 +147,7 @@ export default [
         'eslint.config.js',
         'prettier.config.js',
         'electron-builder.json5',
+        ...generatedGlobs,
     ]),
 
     js.configs.recommended,
@@ -177,6 +194,7 @@ export default [
             'no-restricted-imports': noRestrictedImportsRule,
             'no-secrets/no-secrets': noSecretsRule,
             'no-alert': 'error',
+            'no-console': 'error',
             ...tanstackQueryRules,
             '@tanstack/query/exhaustive-deps': 'error',
             '@tanstack/query/no-unstable-deps': 'error',
@@ -227,6 +245,13 @@ export default [
     },
 
     {
+        files: processBridgeGlobs,
+        rules: {
+            'neverthrow/must-use-result': 'off',
+        },
+    },
+
+    {
         files: ['scripts/**/*.ts'],
         rules: {
             'no-secrets/no-secrets': 'off',
@@ -235,16 +260,14 @@ export default [
     },
 
     {
-        files: ['electron/backend/persistence/db.ts'],
+        files: validatedFsAuthorityGlobs,
         rules: {
-            // This file validates and normalizes db paths before filesystem use.
             'security/detect-non-literal-fs-filename': 'off',
         },
     },
     {
-        files: ['electron/backend/persistence/runtimeBaseline.ts'],
+        files: validatedFsTestGlobs,
         rules: {
-            // This file reads and writes only the validated runtime baseline marker next to the resolved DB path.
             'security/detect-non-literal-fs-filename': 'off',
         },
     },

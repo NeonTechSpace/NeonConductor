@@ -1,7 +1,7 @@
+import type { SensitiveFieldCategory } from '@/web/lib/privacy/privacy';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
 import { cn } from '@/web/lib/utils';
 
-import type { SensitiveFieldCategory } from '@/web/lib/privacy/privacy';
 import type { ReactNode } from 'react';
 
 interface SensitiveValueProps {

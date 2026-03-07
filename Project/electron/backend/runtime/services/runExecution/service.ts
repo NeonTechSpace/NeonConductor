@@ -7,8 +7,8 @@ import { persistRunStart } from '@/app/backend/runtime/services/runExecution/per
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
 import { runToTerminalState } from '@/app/backend/runtime/services/runExecution/runToTerminalState';
 import { moveRunToAbortedState } from '@/app/backend/runtime/services/runExecution/terminalState';
-import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import type { StartRunInput, StartRunResult } from '@/app/backend/runtime/services/runExecution/types';
+import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import { appLog } from '@/app/main/logging';
 
 interface ActiveRun {

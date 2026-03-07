@@ -2,8 +2,8 @@ import { mkdir, readdir, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { RegistryScope, RegistrySourceKind } from '@/app/backend/runtime/contracts';
 import { getPersistence } from '@/app/backend/persistence/db';
+import type { RegistryScope, RegistrySourceKind } from '@/app/backend/runtime/contracts';
 import type { RegistryPaths } from '@/app/backend/runtime/services/registry/types';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 

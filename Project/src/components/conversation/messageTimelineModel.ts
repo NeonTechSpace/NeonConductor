@@ -1,8 +1,8 @@
 import { parseRichContentBlocks } from '@/web/components/content/richContentModel';
+import type { RichContentBlock } from '@/web/components/content/richContentModel';
 import { projectConversationParts } from '@/web/lib/runtime/reasoningProjection';
 
 import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
-import type { RichContentBlock } from '@/web/components/content/richContentModel';
 
 export interface MessageTimelineBodyEntry {
     id: string;

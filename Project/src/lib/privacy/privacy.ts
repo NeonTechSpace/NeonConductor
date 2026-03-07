@@ -28,7 +28,12 @@ function hashString(value: string): number {
 
 function pickPlaceholder<T extends readonly string[]>(value: string, placeholders: T): T[number] {
     const index = hashString(value) % placeholders.length;
-    return placeholders[index] ?? placeholders[0]!;
+    const fallback = placeholders[0];
+    if (fallback === undefined) {
+        throw new Error('Privacy placeholders must not be empty.');
+    }
+
+    return placeholders[index] ?? fallback;
 }
 
 function formatAccountPlaceholder(value: string): string {

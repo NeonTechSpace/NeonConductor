@@ -32,11 +32,32 @@ export async function syncKiloCatalog(input: SyncKiloCatalogInput): Promise<Prov
             ...(input.organizationId ? { organizationId: input.organizationId } : {}),
         };
 
-        const [models, providers, modelsByProvider] = await Promise.all([
+        const [modelsResult, providersResult, modelsByProviderResult] = await Promise.all([
             kiloGatewayClient.getModels(requestHeaders),
             kiloGatewayClient.getProviders(requestHeaders),
-            kiloGatewayClient.getModelsByProvider(requestHeaders).catch(() => []),
+            kiloGatewayClient.getModelsByProvider(requestHeaders),
         ]);
+        if (modelsResult.isErr()) {
+            return {
+                ok: false,
+                status: 'error',
+                providerId: 'kilo',
+                reason: 'sync_failed',
+                detail: modelsResult.error.message,
+            };
+        }
+        if (providersResult.isErr()) {
+            return {
+                ok: false,
+                status: 'error',
+                providerId: 'kilo',
+                reason: 'sync_failed',
+                detail: providersResult.error.message,
+            };
+        }
+        const models = modelsResult.value;
+        const providers = providersResult.value;
+        const modelsByProvider = modelsByProviderResult.isOk() ? modelsByProviderResult.value : [];
 
         const modelsByProviderIndex = buildModelsByProviderIndex(modelsByProvider);
         const normalizedModels = models.map((model) => {

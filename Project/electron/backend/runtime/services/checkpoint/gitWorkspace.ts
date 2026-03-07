@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process';
-
 import { err, ok, type Result } from 'neverthrow';
+import { spawn } from 'node:child_process';
 
 import type { DiffArtifact, DiffFileArtifact, GitDiffArtifact } from '@/app/backend/persistence/types';
 import { appLog } from '@/app/main/logging';
@@ -8,6 +7,14 @@ import { appLog } from '@/app/main/logging';
 interface GitCommandFailure {
     kind: 'git_unavailable' | 'workspace_not_git' | 'command_failed';
     detail: string;
+}
+
+function okResult<T, E>(value: T): Result<T, E> {
+    return ok(value);
+}
+
+function errResult<T, E>(error: E): Result<T, E> {
+    return err(error);
 }
 
 function mapStatusCode(statusCode: string): DiffFileArtifact['status'] {
@@ -125,17 +132,17 @@ async function runGitCommand(input: {
         let stdout = '';
         let stderr = '';
 
-        child.stdout.on('data', (chunk) => {
-            stdout += chunk.toString();
+        child.stdout.on('data', (chunk: Buffer | string) => {
+            stdout += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
         });
 
-        child.stderr.on('data', (chunk) => {
-            stderr += chunk.toString();
+        child.stderr.on('data', (chunk: Buffer | string) => {
+            stderr += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
         });
 
         child.on('error', (error) => {
             resolve(
-                err({
+                errResult({
                     kind: error.message.includes('ENOENT') ? 'git_unavailable' : 'command_failed',
                     detail: error.message,
                 })
@@ -144,14 +151,14 @@ async function runGitCommand(input: {
 
         child.on('close', (code) => {
             if (code === 0) {
-                resolve(ok({ stdout, stderr }));
+                resolve(okResult({ stdout, stderr }));
                 return;
             }
 
             const detail = stderr.trim().length > 0 ? stderr.trim() : stdout.trim();
             if (detail.includes('not a git repository')) {
                 resolve(
-                    err({
+                    errResult({
                         kind: 'workspace_not_git',
                         detail,
                     })
@@ -160,7 +167,7 @@ async function runGitCommand(input: {
             }
 
             resolve(
-                err({
+                errResult({
                     kind: 'command_failed',
                     detail: detail.length > 0 ? detail : `git exited with code ${String(code)}.`,
                 })
