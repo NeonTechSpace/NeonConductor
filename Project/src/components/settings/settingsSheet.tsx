@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
+import { ContextSettingsView } from '@/web/components/settings/contextSettingsView';
 import { ProfileSettingsView } from '@/web/components/settings/profileSettingsView';
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 import { RegistrySettingsView } from '@/web/components/settings/registrySettingsView';
@@ -13,14 +14,15 @@ interface SettingsSheetProps {
     onProfileActivated: (profileId: string) => void;
 }
 
-type SettingsSection = 'providers' | 'profiles' | 'agents';
+type SettingsSection = 'providers' | 'profiles' | 'context' | 'agents';
 
 const SECTION_LABELS: Record<SettingsSection, string> = {
     providers: 'Providers',
     profiles: 'Profiles',
+    context: 'Context',
     agents: 'Agents',
 };
-const SETTINGS_SECTIONS: ReadonlyArray<SettingsSection> = ['providers', 'profiles', 'agents'];
+const SETTINGS_SECTIONS: ReadonlyArray<SettingsSection> = ['providers', 'profiles', 'context', 'agents'];
 
 export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: SettingsSheetProps) {
     const [activeSection, setActiveSection] = useState<SettingsSection>('providers');
@@ -80,6 +82,7 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                         {activeSection === 'profiles' ? (
                             <ProfileSettingsView activeProfileId={profileId} onProfileActivated={onProfileActivated} />
                         ) : null}
+                        {activeSection === 'context' ? <ContextSettingsView activeProfileId={profileId} /> : null}
                         {activeSection === 'agents' ? <RegistrySettingsView profileId={profileId} /> : null}
                     </div>
                 </div>

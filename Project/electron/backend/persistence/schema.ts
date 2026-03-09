@@ -134,6 +134,43 @@ export interface SettingsTable {
     updated_at: string;
 }
 
+export interface AppContextSettingsTable {
+    id: string;
+    enabled: 0 | 1;
+    mode: 'percent';
+    percent: number;
+    updated_at: string;
+}
+
+export interface ProfileContextSettingsTable {
+    profile_id: string;
+    override_mode: 'inherit' | 'percent' | 'fixed_tokens';
+    percent: number | null;
+    fixed_input_tokens: number | null;
+    updated_at: string;
+}
+
+export interface SessionContextCompactionsTable {
+    session_id: string;
+    profile_id: string;
+    cutoff_message_id: string;
+    summary_text: string;
+    source: 'auto' | 'manual';
+    threshold_tokens: number;
+    estimated_input_tokens: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ModelLimitOverridesTable {
+    provider_id: string;
+    model_id: string;
+    context_length: number | null;
+    max_output_tokens: number | null;
+    reason: string;
+    updated_at: string;
+}
+
 export interface RuntimeEventsTable {
     sequence: Generated<number>;
     event_id: string;
@@ -533,6 +570,10 @@ export interface DatabaseSchema {
     run_usage: RunUsageTable;
     permissions: PermissionsTable;
     settings: SettingsTable;
+    app_context_settings: AppContextSettingsTable;
+    profile_context_settings: ProfileContextSettingsTable;
+    session_context_compactions: SessionContextCompactionsTable;
+    model_limit_overrides: ModelLimitOverridesTable;
     runtime_events: RuntimeEventsTable;
     tools_catalog: ToolsCatalogTable;
     mcp_servers: McpServersTable;

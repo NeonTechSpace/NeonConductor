@@ -55,6 +55,21 @@ export type ToolCapability = (typeof toolCapabilities)[number];
 export const contextBudgets = ['low', 'balanced', 'high'] as const;
 export type ContextBudget = (typeof contextBudgets)[number];
 
+export const contextSettingModes = ['percent'] as const;
+export type ContextSettingMode = (typeof contextSettingModes)[number];
+
+export const contextProfileOverrideModes = ['inherit', 'percent', 'fixed_tokens'] as const;
+export type ContextProfileOverrideMode = (typeof contextProfileOverrideModes)[number];
+
+export const contextCompactionSources = ['auto', 'manual'] as const;
+export type ContextCompactionSource = (typeof contextCompactionSources)[number];
+
+export const contextLimitSources = ['override', 'discovery', 'static', 'unknown', 'mixed'] as const;
+export type ContextLimitSource = (typeof contextLimitSources)[number];
+
+export const tokenCountModes = ['exact', 'estimated'] as const;
+export type TokenCountMode = (typeof tokenCountModes)[number];
+
 export const runStatuses = ['idle', 'running', 'completed', 'aborted', 'error'] as const;
 export type RunStatus = (typeof runStatuses)[number];
 

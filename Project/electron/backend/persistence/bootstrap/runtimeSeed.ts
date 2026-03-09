@@ -16,24 +16,73 @@ const MODEL_SEED: Array<{
     label: string;
     supportsTools: boolean;
     supportsReasoning: boolean;
+    contextLength?: number;
+    maxOutputTokens?: number;
 }> = [
     { id: 'kilo/auto', providerId: 'kilo', label: 'Kilo Auto', supportsTools: true, supportsReasoning: true },
     { id: 'kilo/code', providerId: 'kilo', label: 'Kilo Code', supportsTools: true, supportsReasoning: true },
-    { id: 'openai/gpt-5', providerId: 'openai', label: 'GPT-5', supportsTools: true, supportsReasoning: true },
+    {
+        id: 'openai/gpt-5',
+        providerId: 'openai',
+        label: 'GPT-5',
+        supportsTools: true,
+        supportsReasoning: true,
+        contextLength: 400000,
+        maxOutputTokens: 128000,
+    },
     {
         id: 'openai/gpt-5-mini',
         providerId: 'openai',
         label: 'GPT-5 Mini',
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 400000,
+        maxOutputTokens: 128000,
     },
-    { id: 'zai/glm-4.5', providerId: 'zai', label: 'GLM 4.5', supportsTools: true, supportsReasoning: true },
+    {
+        id: 'openai/gpt-5-codex',
+        providerId: 'openai',
+        label: 'GPT-5 Codex',
+        supportsTools: true,
+        supportsReasoning: true,
+        contextLength: 400000,
+        maxOutputTokens: 128000,
+    },
+    {
+        id: 'openai/codex-mini',
+        providerId: 'openai',
+        label: 'Codex Mini',
+        supportsTools: true,
+        supportsReasoning: true,
+        contextLength: 400000,
+        maxOutputTokens: 128000,
+    },
+    {
+        id: 'zai/glm-4.5',
+        providerId: 'zai',
+        label: 'GLM 4.5',
+        supportsTools: true,
+        supportsReasoning: true,
+        contextLength: 128000,
+        maxOutputTokens: 96000,
+    },
     {
         id: 'zai/glm-4.5-air',
         providerId: 'zai',
         label: 'GLM 4.5 Air',
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 128000,
+        maxOutputTokens: 96000,
+    },
+    {
+        id: 'zai/glm-4.5-flash',
+        providerId: 'zai',
+        label: 'GLM 4.5 Flash',
+        supportsTools: true,
+        supportsReasoning: true,
+        contextLength: 128000,
+        maxOutputTokens: 96000,
     },
     {
         id: 'moonshot/kimi-k2',
@@ -41,6 +90,7 @@ const MODEL_SEED: Array<{
         label: 'Kimi K2',
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 262144,
     },
     {
         id: 'moonshot/kimi-for-coding',
@@ -48,6 +98,15 @@ const MODEL_SEED: Array<{
         label: 'Kimi for Coding',
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 262144,
+    },
+    {
+        id: 'moonshot/kimi-latest',
+        providerId: 'moonshot',
+        label: 'Kimi Latest',
+        supportsTools: true,
+        supportsReasoning: true,
+        contextLength: 128000,
     },
 ] as const;
 
@@ -283,7 +342,18 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
 
     for (const provider of PROVIDER_SEED) {
         insertProvider.run(provider.id, provider.label, provider.supportsByok, now, now);
-        insertProviderAuthState.run(defaultProfileId, provider.id, 'none', 'logged_out', null, null, null, null, null, now);
+        insertProviderAuthState.run(
+            defaultProfileId,
+            provider.id,
+            'none',
+            'logged_out',
+            null,
+            null,
+            null,
+            null,
+            null,
+            now
+        );
     }
 
     for (const model of MODEL_SEED) {
@@ -297,9 +367,9 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
             0,
             model.supportsTools ? 1 : 0,
             model.supportsReasoning ? 1 : 0,
-            null,
+            model.contextLength ?? null,
             '{}',
-            '{}',
+            JSON.stringify(model.maxOutputTokens !== undefined ? { max_output_tokens: model.maxOutputTokens } : {}),
             'seed',
             now
         );
@@ -310,7 +380,15 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
     }
 
     for (const server of MCP_SERVER_SEED) {
-        insertMcpServer.run(server.id, server.label, server.authMode, server.connectionState, server.authState, now, now);
+        insertMcpServer.run(
+            server.id,
+            server.label,
+            server.authMode,
+            server.connectionState,
+            server.authState,
+            now,
+            now
+        );
     }
 
     for (const mode of MODE_SEED) {

@@ -16,11 +16,12 @@ import { ConversationWorkspaceSection } from '@/web/components/conversation/shel
 import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { useConversationRefetch } from '@/web/components/conversation/shell/queries/useConversationRefetch';
 import { useConversationSync } from '@/web/components/conversation/shell/queries/useConversationSync';
-import { DEFAULT_RUN_OPTIONS, isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
+import { DEFAULT_RUN_OPTIONS, isEntityId, isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 import { ConversationSidebarPane } from '@/web/components/conversation/sidebar/conversationSidebarPane';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
+import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/app/backend/runtime/contracts';
 
@@ -106,6 +107,32 @@ export function ConversationShell({
         runs: shellViewModel.sessionRunSelection.runs,
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
     });
+    const fallbackContextSessionId = 'sess_missing';
+    const hasSelectedSession = isEntityId(selectedSessionId, 'sess');
+    const contextSessionId = hasSelectedSession ? selectedSessionId : fallbackContextSessionId;
+    const contextProviderId = runTargetState.selectedProviderIdForComposer ?? 'openai';
+    const contextModelId = runTargetState.selectedModelIdForComposer ?? 'openai/gpt-5';
+    const contextStateQuery = trpc.context.getResolvedState.useQuery(
+        {
+            profileId,
+            sessionId: contextSessionId,
+            providerId: contextProviderId,
+            modelId: contextModelId,
+            topLevelTab,
+            modeKey,
+            ...(shellViewModel.selectedThread?.workspaceFingerprint
+                ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
+                : {}),
+        },
+        {
+            enabled:
+                hasSelectedSession &&
+                topLevelTab !== 'orchestrator' &&
+                Boolean(runTargetState.selectedProviderIdForComposer) &&
+                Boolean(runTargetState.selectedModelIdForComposer),
+            refetchOnWindowFocus: false,
+        }
+    );
     const composer = useConversationShellComposer({
         profileId,
         selectedSessionId,
@@ -127,6 +154,7 @@ export function ConversationShell({
         },
         refetchSessionWorkspace: () => {
             void refetch.refetchSessionWorkspace();
+            void contextStateQuery.refetch();
         },
     });
     const editFlow = useConversationShellEditFlow({
@@ -181,7 +209,9 @@ export function ConversationShell({
         resolvedRunTarget: runTargetState.resolvedRunTarget,
         workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
         activePlan: queries.activePlanQuery.data?.found ? queries.activePlanQuery.data.plan : undefined,
-        orchestratorView: queries.orchestratorLatestQuery.data?.found ? queries.orchestratorLatestQuery.data : undefined,
+        orchestratorView: queries.orchestratorLatestQuery.data?.found
+            ? queries.orchestratorLatestQuery.data
+            : undefined,
         planStartMutation: mutations.planStartMutation,
         planAnswerMutation: mutations.planAnswerMutation,
         planReviseMutation: mutations.planReviseMutation,
@@ -281,6 +311,16 @@ export function ConversationShell({
                 providerOptions={runTargetState.providerOptions}
                 modelOptions={runTargetState.modelOptions}
                 runErrorMessage={composer.runSubmitError}
+                {...(contextStateQuery.data ? { contextState: contextStateQuery.data } : {})}
+                {...(mutations.compactSessionMutation.error?.message
+                    ? { contextErrorMessage: mutations.compactSessionMutation.error.message }
+                    : {})}
+                canCompactContext={
+                    topLevelTab !== 'orchestrator' &&
+                    hasSelectedSession &&
+                    Boolean(contextStateQuery.data?.compactable)
+                }
+                isCompactingContext={mutations.compactSessionMutation.isPending}
                 onSelectSession={sessionActions.onSelectSession}
                 onSelectRun={uiState.setSelectedRunId}
                 onProviderChange={(providerId) => {
@@ -298,6 +338,26 @@ export function ConversationShell({
                 onCreateSession={sessionActions.onCreateSession}
                 onPromptChange={composer.onPromptChange}
                 onSubmitPrompt={composer.onSubmitPrompt}
+                onCompactContext={() => {
+                    if (!hasSelectedSession) {
+                        return;
+                    }
+
+                    void mutations.compactSessionMutation
+                        .mutateAsync({
+                            profileId,
+                            sessionId: contextSessionId,
+                            providerId: contextProviderId,
+                            modelId: contextModelId,
+                            topLevelTab,
+                            ...(shellViewModel.selectedThread?.workspaceFingerprint
+                                ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
+                                : {}),
+                        })
+                        .then(() => {
+                            void contextStateQuery.refetch();
+                        });
+                }}
                 onResolvePermission={(requestId, resolution, selectedApprovalResource) => {
                     void workspaceActions.resolvePermission(
                         selectedApprovalResource

@@ -850,4 +850,103 @@ DROP INDEX IF EXISTS idx_secret_references_profile_provider_kind;
 DROP TABLE IF EXISTS secret_references;
 `,
     },
+    {
+        name: '012_context_management.sql',
+        sql: `
+CREATE TABLE app_context_settings (
+    id TEXT PRIMARY KEY,
+    enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+    mode TEXT NOT NULL CHECK (mode IN ('percent')),
+    percent INTEGER NOT NULL CHECK (percent BETWEEN 1 AND 100),
+    updated_at TEXT NOT NULL
+);
+
+INSERT INTO app_context_settings (id, enabled, mode, percent, updated_at)
+VALUES ('global', 1, 'percent', 90, CURRENT_TIMESTAMP);
+
+CREATE TABLE profile_context_settings (
+    profile_id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+    override_mode TEXT NOT NULL CHECK (override_mode IN ('inherit', 'percent', 'fixed_tokens')),
+    percent INTEGER NULL CHECK (percent IS NULL OR percent BETWEEN 1 AND 100),
+    fixed_input_tokens INTEGER NULL CHECK (fixed_input_tokens IS NULL OR fixed_input_tokens > 0),
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE session_context_compactions (
+    session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    cutoff_message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    summary_text TEXT NOT NULL,
+    source TEXT NOT NULL CHECK (source IN ('auto', 'manual')),
+    threshold_tokens INTEGER NOT NULL,
+    estimated_input_tokens INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_session_context_compactions_profile_session
+    ON session_context_compactions(profile_id, session_id);
+`,
+    },
+    {
+        name: '013_static_model_limits.sql',
+        sql: `
+UPDATE provider_model_catalog
+SET
+    context_length = CASE model_id
+        WHEN 'openai/gpt-5' THEN 400000
+        WHEN 'openai/gpt-5-mini' THEN 400000
+        WHEN 'openai/gpt-5-codex' THEN 400000
+        WHEN 'openai/codex-mini' THEN 400000
+        WHEN 'zai/glm-4.5' THEN 128000
+        WHEN 'zai/glm-4.5-air' THEN 128000
+        WHEN 'zai/glm-4.5-flash' THEN 128000
+        WHEN 'moonshot/kimi-for-coding' THEN 262144
+        WHEN 'moonshot/kimi-k2' THEN 262144
+        WHEN 'moonshot/kimi-latest' THEN 128000
+        ELSE context_length
+    END,
+    raw_json = CASE model_id
+        WHEN 'openai/gpt-5' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 128000)
+        WHEN 'openai/gpt-5-mini' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 128000)
+        WHEN 'openai/gpt-5-codex' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 128000)
+        WHEN 'openai/codex-mini' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 128000)
+        WHEN 'zai/glm-4.5' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 96000)
+        WHEN 'zai/glm-4.5-air' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 96000)
+        WHEN 'zai/glm-4.5-flash' THEN json_set(COALESCE(raw_json, '{}'), '$.max_output_tokens', 96000)
+        ELSE raw_json
+    END,
+    updated_at = CURRENT_TIMESTAMP
+WHERE model_id IN (
+    'openai/gpt-5',
+    'openai/gpt-5-mini',
+    'openai/gpt-5-codex',
+    'openai/codex-mini',
+    'zai/glm-4.5',
+    'zai/glm-4.5-air',
+    'zai/glm-4.5-flash',
+    'moonshot/kimi-for-coding',
+    'moonshot/kimi-k2',
+    'moonshot/kimi-latest'
+);
+`,
+    },
+    {
+        name: '014_model_limit_overrides.sql',
+        sql: `
+CREATE TABLE model_limit_overrides (
+    provider_id TEXT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    model_id TEXT NOT NULL,
+    context_length INTEGER NULL CHECK (context_length IS NULL OR context_length > 0),
+    max_output_tokens INTEGER NULL CHECK (max_output_tokens IS NULL OR max_output_tokens > 0),
+    reason TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (provider_id, model_id),
+    CHECK (context_length IS NOT NULL OR max_output_tokens IS NOT NULL)
+);
+
+CREATE INDEX idx_model_limit_overrides_provider_updated_at
+    ON model_limit_overrides(provider_id, updated_at DESC);
+`,
+    },
 ];

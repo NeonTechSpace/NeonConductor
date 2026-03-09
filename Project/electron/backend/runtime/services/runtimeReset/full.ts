@@ -7,6 +7,10 @@ import type {
 async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeResetCounts> {
     const [
         settings,
+        appContextSettings,
+        profileContextSettings,
+        sessionContextCompactions,
+        modelLimitOverrides,
         runtimeEvents,
         sessions,
         runs,
@@ -38,6 +42,10 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         worktrees,
     ] = await Promise.all([
         db.selectFrom('settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db.selectFrom('app_context_settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db.selectFrom('profile_context_settings').select((eb) => eb.fn.count<number>('profile_id').as('count')).executeTakeFirst(),
+        db.selectFrom('session_context_compactions').select((eb) => eb.fn.count<number>('session_id').as('count')).executeTakeFirst(),
+        db.selectFrom('model_limit_overrides').select((eb) => eb.fn.count<number>('model_id').as('count')).executeTakeFirst(),
         db.selectFrom('runtime_events').select((eb) => eb.fn.count<number>('sequence').as('count')).executeTakeFirst(),
         db.selectFrom('sessions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
         db.selectFrom('runs').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
@@ -95,6 +103,10 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
 
     return {
         settings: settings?.count ?? 0,
+        appContextSettings: appContextSettings?.count ?? 0,
+        profileContextSettings: profileContextSettings?.count ?? 0,
+        sessionContextCompactions: sessionContextCompactions?.count ?? 0,
+        modelLimitOverrides: modelLimitOverrides?.count ?? 0,
         runtimeEvents: runtimeEvents?.count ?? 0,
         sessions: sessions?.count ?? 0,
         runs: runs?.count ?? 0,
@@ -135,6 +147,10 @@ async function applyFullReset(db: RuntimeResetDatabase): Promise<void> {
     await db.deleteFrom('conversations').execute();
     await db.deleteFrom('tags').execute();
     await db.deleteFrom('settings').execute();
+    await db.deleteFrom('profile_context_settings').execute();
+    await db.deleteFrom('session_context_compactions').execute();
+    await db.deleteFrom('app_context_settings').execute();
+    await db.deleteFrom('model_limit_overrides').execute();
     await db.deleteFrom('mode_definitions').execute();
     await db.deleteFrom('rulesets').execute();
     await db.deleteFrom('skillfiles').execute();

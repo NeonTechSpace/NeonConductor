@@ -17,6 +17,9 @@ describe('generated migrations', () => {
             '009_managed_worktrees.sql',
             '010_provider_secrets.sql',
             '011_drop_legacy_secret_references.sql',
+            '012_context_management.sql',
+            '013_static_model_limits.sql',
+            '014_model_limit_overrides.sql',
         ]);
     });
 });

@@ -34,6 +34,8 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         availabilityByEndpointProfile: { default: true },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 400_000,
+        maxOutputTokens: 128_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -44,6 +46,8 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         availabilityByEndpointProfile: { default: true },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 400_000,
+        maxOutputTokens: 128_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -56,6 +60,8 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         promptFamily: 'codex',
+        contextLength: 400_000,
+        maxOutputTokens: 128_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -67,6 +73,8 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         promptFamily: 'codex',
+        contextLength: 400_000,
+        maxOutputTokens: 128_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -83,6 +91,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 128_000,
+        maxOutputTokens: 96_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -96,6 +106,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 128_000,
+        maxOutputTokens: 96_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -109,6 +121,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 128_000,
+        maxOutputTokens: 96_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -129,6 +143,7 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         promptFamily: 'codex',
+        contextLength: 262_144,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -142,6 +157,7 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 262_144,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -155,6 +171,7 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        contextLength: 128_000,
         sourceNote: 'curated_static_registry',
         updatedAt: '2026-03-05',
     },
@@ -191,6 +208,14 @@ export function listStaticModelDefinitions(
 
             return left.label.localeCompare(right.label);
         });
+}
+
+export function findStaticModelDefinition(
+    providerId: Exclude<FirstPartyProviderId, 'kilo'>,
+    endpointProfile: string,
+    modelId: string
+): StaticProviderModelDefinition | undefined {
+    return listStaticModelDefinitions(providerId, endpointProfile).find((definition) => definition.modelId === modelId);
 }
 
 function toPricing(definition: StaticProviderModelDefinition): Record<string, unknown> {

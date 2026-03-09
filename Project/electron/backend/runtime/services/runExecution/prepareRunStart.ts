@@ -10,7 +10,11 @@ import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/reso
 import { resolveFirstRunnableRunTarget } from '@/app/backend/runtime/services/runExecution/resolveRunnableTarget';
 import { resolveRunTarget } from '@/app/backend/runtime/services/runExecution/resolveRunTarget';
 import { resolveInitialRunTransport } from '@/app/backend/runtime/services/runExecution/transport';
-import type { PreparedRunStart, ResolvedRunAuth, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+import type {
+    PreparedRunStart,
+    ResolvedRunAuth,
+    StartRunInput,
+} from '@/app/backend/runtime/services/runExecution/types';
 
 export async function prepareRunStart(input: StartRunInput): Promise<RunExecutionResult<PreparedRunStart>> {
     const resolvedModeResult = await resolveModeExecution({
@@ -90,6 +94,8 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
         sessionId: input.sessionId,
         prompt: input.prompt,
         topLevelTab: input.topLevelTab,
+        providerId: activeTarget.providerId,
+        modelId: activeTarget.modelId,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         resolvedMode: resolvedModeResult.value,
     });
@@ -138,12 +144,12 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
                 };
 
     return okRunExecution({
-            resolvedMode: resolvedModeResult.value,
-            activeTarget,
-            resolvedAuth,
-            resolvedCache: resolvedCacheResult.value,
-            initialTransport,
-            ...(runContext ? { runContext } : {}),
-            ...(kiloRouting ? { kiloRouting } : {}),
-        });
+        resolvedMode: resolvedModeResult.value,
+        activeTarget,
+        resolvedAuth,
+        resolvedCache: resolvedCacheResult.value,
+        initialTransport,
+        ...(runContext ? { runContext } : {}),
+        ...(kiloRouting ? { kiloRouting } : {}),
+    });
 }

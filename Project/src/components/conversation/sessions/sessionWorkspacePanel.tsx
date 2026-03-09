@@ -15,6 +15,7 @@ import type {
     SessionSummaryRecord,
 } from '@/app/backend/persistence/types';
 import type { DiffOverview } from '@/app/backend/runtime/contracts';
+import type { ResolvedContextState } from '@/app/backend/runtime/contracts';
 
 import type { ReactNode } from 'react';
 
@@ -91,6 +92,10 @@ interface SessionWorkspacePanelProps {
     providerOptions: Array<{ id: string; label: string; authState: string }>;
     modelOptions: Array<{ id: string; label: string; price?: number; latency?: number; tps?: number }>;
     runErrorMessage: string | undefined;
+    contextState?: ResolvedContextState;
+    contextErrorMessage?: string;
+    canCompactContext?: boolean;
+    isCompactingContext?: boolean;
     modePanel?: ReactNode;
     executionEnvironmentPanel?: ReactNode;
     attachedSkillsPanel?: ReactNode;
@@ -102,6 +107,7 @@ interface SessionWorkspacePanelProps {
     onCreateSession: () => void;
     onPromptChange: (nextPrompt: string) => void;
     onSubmitPrompt: () => void;
+    onCompactContext?: () => void;
     onResolvePermission: (
         requestId: PermissionRecord['id'],
         resolution: 'deny' | 'allow_once' | 'allow_profile' | 'allow_workspace',
@@ -139,6 +145,10 @@ export function SessionWorkspacePanel({
     providerOptions,
     modelOptions,
     runErrorMessage,
+    contextState,
+    contextErrorMessage,
+    canCompactContext,
+    isCompactingContext,
     modePanel,
     executionEnvironmentPanel,
     attachedSkillsPanel,
@@ -150,6 +160,7 @@ export function SessionWorkspacePanel({
     onCreateSession,
     onPromptChange,
     onSubmitPrompt,
+    onCompactContext,
     onResolvePermission,
     onEditMessage,
     onBranchFromMessage,
@@ -182,7 +193,11 @@ export function SessionWorkspacePanel({
                             }}>
                             <p className='text-sm font-medium'>{session.id}</p>
                             <p className='text-muted-foreground text-xs'>
-                                {session.kind === 'worktree' ? 'managed worktree' : session.kind === 'local' ? 'local workspace' : session.kind}
+                                {session.kind === 'worktree'
+                                    ? 'managed worktree'
+                                    : session.kind === 'local'
+                                      ? 'local workspace'
+                                      : session.kind}
                                 {' · '}
                                 {session.runStatus} · turns {session.turnCount}
                             </p>
@@ -262,10 +277,15 @@ export function SessionWorkspacePanel({
                     providerOptions={providerOptions}
                     modelOptions={modelOptions}
                     runErrorMessage={runErrorMessage}
+                    {...(contextState ? { contextState } : {})}
+                    {...(contextErrorMessage ? { contextErrorMessage } : {})}
+                    {...(canCompactContext !== undefined ? { canCompactContext } : {})}
+                    {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
                     onProviderChange={onProviderChange}
                     onModelChange={onModelChange}
                     onPromptChange={onPromptChange}
                     onSubmitPrompt={onSubmitPrompt}
+                    {...(onCompactContext ? { onCompactContext } : {})}
                 />
             </div>
         </div>

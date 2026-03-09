@@ -10,7 +10,7 @@ import type {
     SessionSummaryRecord,
     ThreadListRecord,
 } from '@/app/backend/persistence/types';
-import type { DiffOverview, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import type { DiffOverview, ResolvedContextState, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 import type { ReactNode } from 'react';
 
@@ -91,6 +91,10 @@ interface ConversationWorkspaceSectionProps {
     providerOptions: Array<{ id: string; label: string; authState: string }>;
     modelOptions: Array<{ id: string; label: string; price?: number; latency?: number; tps?: number }>;
     runErrorMessage: string | undefined;
+    contextState?: ResolvedContextState;
+    contextErrorMessage?: string;
+    canCompactContext?: boolean;
+    isCompactingContext?: boolean;
     modePanel: ReactNode;
     executionEnvironmentPanel?: ReactNode;
     attachedSkillsPanel?: ReactNode;
@@ -102,6 +106,7 @@ interface ConversationWorkspaceSectionProps {
     onCreateSession: () => void;
     onPromptChange: (prompt: string) => void;
     onSubmitPrompt: () => void;
+    onCompactContext?: () => void;
     onResolvePermission: (
         requestId: PermissionRecord['id'],
         resolution: 'deny' | 'allow_once' | 'allow_profile' | 'allow_workspace',
@@ -143,6 +148,10 @@ export function ConversationWorkspaceSection({
     providerOptions,
     modelOptions,
     runErrorMessage,
+    contextState,
+    contextErrorMessage,
+    canCompactContext,
+    isCompactingContext,
     modePanel,
     executionEnvironmentPanel,
     attachedSkillsPanel,
@@ -154,6 +163,7 @@ export function ConversationWorkspaceSection({
     onCreateSession,
     onPromptChange,
     onSubmitPrompt,
+    onCompactContext,
     onResolvePermission,
     onEditMessage,
     onBranchFromMessage,
@@ -198,6 +208,10 @@ export function ConversationWorkspaceSection({
                 providerOptions={providerOptions}
                 modelOptions={modelOptions}
                 runErrorMessage={runErrorMessage}
+                {...(contextState ? { contextState } : {})}
+                {...(contextErrorMessage ? { contextErrorMessage } : {})}
+                {...(canCompactContext !== undefined ? { canCompactContext } : {})}
+                {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
                 {...(executionEnvironmentPanel ? { executionEnvironmentPanel } : {})}
                 onSelectSession={onSelectSession}
                 onSelectRun={onSelectRun}
@@ -206,6 +220,7 @@ export function ConversationWorkspaceSection({
                 onCreateSession={onCreateSession}
                 onPromptChange={onPromptChange}
                 onSubmitPrompt={onSubmitPrompt}
+                {...(onCompactContext ? { onCompactContext } : {})}
                 onResolvePermission={onResolvePermission}
                 onEditMessage={onEditMessage}
                 onBranchFromMessage={onBranchFromMessage}

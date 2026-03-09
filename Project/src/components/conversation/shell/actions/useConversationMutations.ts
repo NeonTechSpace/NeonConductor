@@ -2,6 +2,7 @@ import { trpc } from '@/web/trpc/client';
 
 export function useConversationMutations() {
     return {
+        compactSessionMutation: trpc.context.compactSession.useMutation(),
         createThreadMutation: trpc.conversation.createThread.useMutation(),
         upsertTagMutation: trpc.conversation.upsertTag.useMutation(),
         setThreadTagsMutation: trpc.conversation.setThreadTags.useMutation(),

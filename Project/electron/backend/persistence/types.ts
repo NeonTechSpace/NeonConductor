@@ -1,4 +1,8 @@
 import type {
+    ContextCompactionSource,
+    ModelLimitOverrideRecord as RuntimeModelLimitOverrideRecord,
+    ContextProfileSettings,
+    ContextGlobalSettings,
     EntityId,
     ExecutionEnvironmentMode,
     ExecutionPreset,
@@ -184,6 +188,24 @@ export interface ProviderDiscoverySnapshotRecord {
     etag?: string;
     payload: Record<string, unknown>;
     fetchedAt: string;
+}
+
+export type AppContextSettingsRecord = ContextGlobalSettings;
+
+export type ProfileContextSettingsRecord = ContextProfileSettings;
+
+export type ModelLimitOverrideRecord = RuntimeModelLimitOverrideRecord;
+
+export interface SessionContextCompactionRecord {
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    cutoffMessageId: EntityId<'msg'>;
+    summaryText: string;
+    source: ContextCompactionSource;
+    thresholdTokens: number;
+    estimatedInputTokens: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ToolRecord {

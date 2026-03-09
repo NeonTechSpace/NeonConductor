@@ -111,6 +111,41 @@ export class ProviderCatalogStore {
         return Boolean(row);
     }
 
+    async getModel(
+        profileId: string,
+        providerId: RuntimeProviderId,
+        modelId: string
+    ): Promise<ProviderModelRecord | null> {
+        const { db } = getPersistence();
+        const row = await db
+            .selectFrom('provider_model_catalog')
+            .select([
+                'model_id',
+                'provider_id',
+                'label',
+                'upstream_provider',
+                'supports_tools',
+                'supports_reasoning',
+                'supports_vision',
+                'supports_audio_input',
+                'supports_audio_output',
+                'pricing_json',
+                'raw_json',
+                'input_modalities_json',
+                'output_modalities_json',
+                'prompt_family',
+                'context_length',
+                'source',
+                'updated_at',
+            ])
+            .where('profile_id', '=', profileId)
+            .where('provider_id', '=', providerId)
+            .where('model_id', '=', modelId)
+            .executeTakeFirst();
+
+        return row ? mapProviderCatalogModel(row) : null;
+    }
+
     async getModelCapabilities(
         profileId: string,
         providerId: RuntimeProviderId,

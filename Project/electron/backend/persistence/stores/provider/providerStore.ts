@@ -61,6 +61,10 @@ export class ProviderStore {
         return providerCatalogStore.modelExists(profileId, providerId, modelId);
     }
 
+    async getModel(profileId: string, providerId: RuntimeProviderId, modelId: string): Promise<ProviderModelRecord | null> {
+        return providerCatalogStore.getModel(profileId, providerId, modelId);
+    }
+
     async getModelCapabilities(profileId: string, providerId: RuntimeProviderId, modelId: string) {
         return providerCatalogStore.getModelCapabilities(profileId, providerId, modelId);
     }

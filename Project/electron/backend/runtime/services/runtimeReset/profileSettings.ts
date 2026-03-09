@@ -11,6 +11,8 @@ async function resolveProfileSettingsCounts(
 ): Promise<RuntimeResetCounts> {
     const [
         settings,
+        profileContextSettings,
+        sessionContextCompactions,
         modeDefinitions,
         rulesets,
         skillfiles,
@@ -26,6 +28,16 @@ async function resolveProfileSettingsCounts(
         db
             .selectFrom('settings')
             .select((eb) => eb.fn.count<number>('id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('profile_context_settings')
+            .select((eb) => eb.fn.count<number>('profile_id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('session_context_compactions')
+            .select((eb) => eb.fn.count<number>('session_id').as('count'))
             .where('profile_id', '=', profileId)
             .executeTakeFirst(),
         db
@@ -88,6 +100,8 @@ async function resolveProfileSettingsCounts(
     return {
         ...EMPTY_COUNTS,
         settings: settings?.count ?? 0,
+        profileContextSettings: profileContextSettings?.count ?? 0,
+        sessionContextCompactions: sessionContextCompactions?.count ?? 0,
         modeDefinitions: modeDefinitions?.count ?? 0,
         rulesets: rulesets?.count ?? 0,
         skillfiles: skillfiles?.count ?? 0,
@@ -104,6 +118,8 @@ async function resolveProfileSettingsCounts(
 
 async function applyProfileSettingsDelete(db: RuntimeResetDatabase, profileId: string): Promise<void> {
     await db.deleteFrom('settings').where('profile_id', '=', profileId).execute();
+    await db.deleteFrom('profile_context_settings').where('profile_id', '=', profileId).execute();
+    await db.deleteFrom('session_context_compactions').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('mode_definitions').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('rulesets').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('skillfiles').where('profile_id', '=', profileId).execute();
