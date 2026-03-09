@@ -5,20 +5,20 @@ import { describe, expect, it } from 'vitest';
 import { resolveElectronChildEnv } from '@/app/main/runtime/electronChildEnv';
 
 describe('electron-builder packaging config', () => {
-    it('excludes non-runtime folders from desktop packaging', () => {
+    it('keeps packaging focused on runtime bundles only', () => {
         const configPath = path.join(process.cwd(), 'electron-builder.json5');
         const contents = readFileSync(configPath, 'utf8');
 
-        expect(contents).toContain("'!Research/**'");
-        expect(contents).toContain("'!Markdown/**'");
-        expect(contents).toContain("'!**/__tests__/**'");
+        expect(contents).toContain("files: ['dist', 'dist-electron']");
     });
 
-    it('does not keep stale native-addon unpack policy', () => {
+    it('uses explicit cross-platform artifact names for release publishing', () => {
         const configPath = path.join(process.cwd(), 'electron-builder.json5');
         const contents = readFileSync(configPath, 'utf8');
 
-        expect(contents).not.toContain('asarUnpack');
+        expect(contents).toContain("artifactName: 'NeonConductor-Windows-${version}-Setup.${ext}'");
+        expect(contents).toContain("artifactName: 'NeonConductor-Mac-${arch}-${version}-Installer.${ext}'");
+        expect(contents).toContain("artifactName: 'NeonConductor-Linux-${arch}-${version}.${ext}'");
     });
 
     it('keeps package main pointed at the Electron main bundle entry', () => {

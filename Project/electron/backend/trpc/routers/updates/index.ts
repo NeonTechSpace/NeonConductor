@@ -3,8 +3,10 @@ import { type as arktype } from 'arktype';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import {
     checkForUpdatesManually,
+    dismissUpdateStatus,
     getCurrentChannel,
     getSwitchStatusSnapshot,
+    restartToApplyUpdate,
     switchChannel,
 } from '@/app/main/updates/updater';
 
@@ -14,7 +16,7 @@ export const updatesRouter = router({
     getChannel: publicProcedure.query(() => {
         return { channel: getCurrentChannel() };
     }),
-    setChannel: publicProcedure.input(updateChannelSchema).mutation(async ({ input }) => {
+    setChannel: publicProcedure.input(updateChannelSchema).mutation(({ input }) => {
         return switchChannel(input);
     }),
     getSwitchStatus: publicProcedure.query(() => {
@@ -22,5 +24,12 @@ export const updatesRouter = router({
     }),
     checkForUpdates: publicProcedure.mutation(() => {
         return checkForUpdatesManually();
+    }),
+    dismissStatus: publicProcedure.mutation(() => {
+        dismissUpdateStatus();
+        return { ok: true };
+    }),
+    restartToApplyUpdate: publicProcedure.mutation(() => {
+        return restartToApplyUpdate();
     }),
 });

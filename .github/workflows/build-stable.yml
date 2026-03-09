@@ -250,6 +250,11 @@ jobs:
       name: stable-release
       url: https://github.com/${{ github.repository }}/releases/tag/${{ needs.notes.outputs.tag }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 1
+
       - name: Download built assets
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
@@ -262,6 +267,21 @@ jobs:
         with:
           name: release-notes-${{ needs.notes.outputs.tag }}
           path: release-notes
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
+        with:
+          node-version: 24.13.1
+          cache: pnpm
+          cache-dependency-path: Project/pnpm-lock.yaml
+
+      - name: Install workflow script dependencies
+        run: pnpm -C Project install --frozen-lockfile
 
       - name: Create GitHub App token
         id: app_token
@@ -374,6 +394,15 @@ jobs:
           mapfile -d '' upload_files < <(find "$UPLOAD_DIR" -type f -print0)
           gh release upload "$TAG_NAME" "${upload_files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
 
+      - name: Validate updater metadata against uploaded release assets
+        env:
+          RELEASE_ID: ${{ steps.ensure_release.outputs.release_id }}
+          TAG_NAME: ${{ needs.notes.outputs.tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
+        run: node .github/scripts/validate-update-metadata.mjs
+
       - name: Publish release with final notes
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         env:
@@ -403,3 +432,14 @@ jobs:
               draft: false,
             });
             core.info(`Published ${tag} with grouped assets.`);
+
+      - name: Publish updater metadata to GitHub Pages
+        env:
+          CHANNEL: stable
+          TAG_NAME: ${{ needs.notes.outputs.tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
+          PAGES_BOT_NAME: ${{ vars.PAGES_BOT_NAME }}
+          PAGES_BOT_EMAIL: ${{ vars.PAGES_BOT_EMAIL }}
+        run: node .github/scripts/publish-update-site.mjs

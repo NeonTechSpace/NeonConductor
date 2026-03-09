@@ -4,8 +4,10 @@
     appId: 'com.neonsy.neonconductor',
     productName: 'NeonConductor',
 
-    files: ['dist/**', 'dist-electron/**', '!**/__tests__/**', '!**/*.test.*', '!Research/**', '!Markdown/**'],
+    files: ['dist', 'dist-electron'],
     asar: true,
+    asarUnpack: [],
+
     // Single icon source - electron-builder converts to .ico/.icns automatically
     icon: 'src/assets/appicon.png',
 
@@ -19,11 +21,11 @@
             { target: 'dmg', arch: ['arm64', 'x64'] },
             { target: 'zip', arch: ['arm64', 'x64'] },
         ],
-        artifactName: '${productName}-Mac-${arch}-${version}-Installer.${ext}',
+        artifactName: 'NeonConductor-Mac-${arch}-${version}-Installer.${ext}',
     },
     win: {
         target: [{ target: 'nsis', arch: ['x64'] }],
-        artifactName: '${productName}-Windows-${version}-Setup.${ext}',
+        artifactName: 'NeonConductor-Windows-${version}-Setup.${ext}',
         executableName: 'NeonConductor',
         signAndEditExecutable: true,
     },
@@ -41,7 +43,7 @@
             { target: 'deb', arch: ['x64'] },
             { target: 'rpm', arch: ['x64'] },
         ],
-        artifactName: '${productName}-Linux-${arch}-${version}.${ext}',
+        artifactName: 'NeonConductor-Linux-${arch}-${version}.${ext}',
     },
     publish: [
         {

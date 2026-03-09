@@ -36,6 +36,7 @@ release/
 
 # Vite / TanStack Router
 **/routeTree.gen.ts
+.tanstack/
 
 ###############################################################################
 # Environment / Secrets
