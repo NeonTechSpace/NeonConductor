@@ -1,8 +1,8 @@
 import { X } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 
-import { Button } from '@/web/components/ui/button';
 import type { ImagePreviewState } from '@/web/components/conversation/messages/imagePreviewState';
+import { Button } from '@/web/components/ui/button';
 
 interface ImageLightboxModalProps {
     open: boolean;

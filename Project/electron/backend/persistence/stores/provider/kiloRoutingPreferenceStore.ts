@@ -4,8 +4,8 @@ import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { KiloModelRoutingPreferenceRecord } from '@/app/backend/persistence/types';
 import { kiloDynamicSorts, kiloRoutingModes } from '@/app/backend/runtime/contracts';
 import type { KiloModelRoutingPreference } from '@/app/backend/runtime/contracts';
-import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { DataCorruptionError, InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
+import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 
 interface KiloRoutingPreferenceRow {
     profile_id: string;

@@ -12,7 +12,7 @@ import {
 } from '@/web/lib/runtime/invalidation/shared';
 
 export async function invalidateSessionQueries(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [
+    const invalidations: Promise<void>[] = [
         invalidateSessionList(utils, context.profileId),
         invalidateSessionStatus(utils, context.profileId, context.sessionId),
         invalidateThreadList(utils, context.profileId),
@@ -28,7 +28,7 @@ export async function invalidateSessionQueries(utils: TrpcUtils, context: Runtim
 }
 
 export async function invalidateRunQueries(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [
+    const invalidations: Promise<void>[] = [
         invalidateSessionList(utils, context.profileId),
         invalidateSessionStatus(utils, context.profileId, context.sessionId),
         invalidateThreadList(utils, context.profileId),

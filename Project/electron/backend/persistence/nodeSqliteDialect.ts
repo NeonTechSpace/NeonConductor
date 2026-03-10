@@ -1,7 +1,8 @@
+import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
+
 import type { SqliteDatabase, SqliteStatement } from 'kysely';
 import type { DatabaseSync, SQLInputValue, StatementSync } from 'node:sqlite';
 
-import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 
 type NodeSqliteInputValue = SQLInputValue;
 

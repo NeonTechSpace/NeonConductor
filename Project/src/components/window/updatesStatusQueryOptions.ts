@@ -2,17 +2,20 @@ import { SECONDARY_QUERY_OPTIONS } from '@/web/lib/query/secondaryQueryOptions';
 
 const ACTIVE_UPDATE_PHASES = new Set(['checking', 'downloading', 'downloaded']);
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
 export function isActiveUpdatePhase(phase: string | undefined): boolean {
     return typeof phase === 'string' && ACTIVE_UPDATE_PHASES.has(phase);
 }
 
 function readQueryPhase(value: unknown): string | undefined {
-    if (typeof value !== 'object' || value === null) {
+    if (!isRecord(value)) {
         return undefined;
     }
 
-    const candidate = value as { phase?: unknown };
-    return typeof candidate.phase === 'string' ? candidate.phase : undefined;
+    return typeof value['phase'] === 'string' ? value['phase'] : undefined;
 }
 
 export function getUpdatesStatusRefetchInterval(data: unknown): number | false {

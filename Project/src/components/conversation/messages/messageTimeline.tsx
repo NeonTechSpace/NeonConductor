@@ -2,10 +2,10 @@ import { Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
-import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 import { getImagePreviewStatusLabel, getRemoteImagePreviewState } from '@/web/components/conversation/messages/imagePreviewState';
-import { useMessageMediaUrl } from '@/web/components/conversation/messages/useMessageMediaUrl';
 import type { MessageTimelineBodyEntry, MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import { useMessageMediaUrl } from '@/web/components/conversation/messages/useMessageMediaUrl';
+import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 import { Button } from '@/web/components/ui/button';
 import { copyText } from '@/web/lib/copy';
 
@@ -60,7 +60,7 @@ function TimelineImagePart({
         mediaId: item.mediaId,
         enabled: isNearViewport || isLightboxOpen,
     });
-    const detail = `${item.width} × ${item.height}`;
+    const detail = `${String(item.width)} × ${String(item.height)}`;
     const previewState = getRemoteImagePreviewState({
         enabled: isNearViewport || isLightboxOpen,
         hasObjectUrl: Boolean(imageUrl),

@@ -76,7 +76,7 @@ export function DiffCheckpointPanel({
     );
     const openPathMutation = trpc.system.openPath.useMutation();
     const rollbackMutation = trpc.checkpoint.rollback.useMutation({
-        onSuccess: async (result) => {
+        onSuccess: (result) => {
             if (!result.rolledBack) {
                 setFeedbackMessage(result.message ?? 'Rollback could not be completed.');
                 return;
@@ -297,7 +297,7 @@ export function DiffCheckpointPanel({
                             ) : null}
                         </header>
                         <div className='max-h-[32rem] overflow-auto p-3'>
-                            {patchQuery.isPending && !patchQuery.data ? (
+                            {patchQuery.isPending ? (
                                 <p className='text-muted-foreground text-sm'>Loading patch…</p>
                             ) : patchQuery.data?.found ? (
                                 <>

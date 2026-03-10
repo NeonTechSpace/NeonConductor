@@ -9,5 +9,5 @@ export function setResolvedContextStateCache(input: {
     queryInput: ResolvedContextStateInput;
     state: ResolvedContextStateData;
 }) {
-    void input.utils.context.getResolvedState.setData(input.queryInput, input.state);
+    input.utils.context.getResolvedState.setData(input.queryInput, input.state);
 }

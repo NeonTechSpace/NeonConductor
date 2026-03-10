@@ -20,8 +20,8 @@ export function createProviderSettingsActions(input: {
     setStatusMessage: (value: string | undefined) => void;
     onPreviewProvider: (providerId: RuntimeProviderId) => void;
     mutations: {
-        setDefaultMutation: { mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; modelId: string }) => Promise<unknown> };
-        syncCatalogMutation: { mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; force: boolean }) => Promise<unknown> };
+        setDefaultMutation: { mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; modelId: string }) => Promise<void> };
+        syncCatalogMutation: { mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; force: boolean }) => Promise<void> };
         setModelRoutingPreferenceMutation: {
             mutateAsync: (input: {
                 profileId: string;
@@ -30,29 +30,29 @@ export function createProviderSettingsActions(input: {
                 routingMode: 'dynamic' | 'pinned';
                 sort?: 'default' | 'price' | 'throughput' | 'latency';
                 pinnedProviderId?: string;
-            }) => Promise<unknown>;
+            }) => Promise<void>;
         };
         setEndpointProfileMutation: {
-            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; value: string }) => Promise<unknown>;
+            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; value: string }) => Promise<void>;
         };
         setOrganizationMutation: {
-            mutateAsync: (input: { profileId: string; providerId: 'kilo'; organizationId?: string | null }) => Promise<unknown>;
+            mutateAsync: (input: { profileId: string; providerId: 'kilo'; organizationId?: string | null }) => Promise<void>;
         };
         setApiKeyMutation: {
-            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; apiKey: string }) => Promise<unknown>;
+            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; apiKey: string }) => Promise<void>;
         };
         startAuthMutation: {
             mutateAsync: (input: {
                 profileId: string;
                 providerId: RuntimeProviderId;
                 method: 'oauth_device' | 'device_code';
-            }) => Promise<unknown>;
+            }) => Promise<void>;
         };
         pollAuthMutation: {
-            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; flowId: string }) => Promise<unknown>;
+            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; flowId: string }) => Promise<void>;
         };
         cancelAuthMutation: {
-            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; flowId: string }) => Promise<unknown>;
+            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; flowId: string }) => Promise<void>;
         };
     };
 }) {

@@ -13,7 +13,7 @@ import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
-import { toTrpcError, unwrapResultOrThrow } from '@/app/backend/trpc/trpcErrorMap';
+import { raiseMappedTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
 function waitForNextRuntimeEvent(cursor: number, signal: AbortSignal): Promise<RuntimeEventRecordV1 | null> {
     return new Promise((resolve) => {
@@ -43,8 +43,10 @@ function waitForNextRuntimeEvent(cursor: number, signal: AbortSignal): Promise<R
 export const runtimeRouter = router({
     // Diagnostic-only whole-runtime inspection. Normal app rendering should use scoped reads.
     getDiagnosticSnapshot: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
-        const result = await runtimeSnapshotService.getSnapshot(input.profileId);
-        return unwrapResultOrThrow(result, toTrpcError);
+        return (await runtimeSnapshotService.getSnapshot(input.profileId)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
     }),
     getShellBootstrap: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
         return runtimeShellBootstrapService.getShellBootstrap(input.profileId);
@@ -85,8 +87,10 @@ export const runtimeRouter = router({
         }
     }),
     factoryReset: publicProcedure.input(runtimeFactoryResetInputSchema).mutation(async ({ input }) => {
-        const result = await runtimeFactoryResetService.reset(input);
-        const factoryResetResult = unwrapResultOrThrow(result, toTrpcError);
+        const factoryResetResult = (await runtimeFactoryResetService.reset(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
         await runtimeEventLogService.append(
             runtimeResetEvent({
                 entityType: 'runtime',
@@ -106,8 +110,10 @@ export const runtimeRouter = router({
         return factoryResetResult;
     }),
     reset: publicProcedure.input(runtimeResetInputSchema).mutation(async ({ input }) => {
-        const result = await runtimeResetService.reset(input);
-        const resetResult = unwrapResultOrThrow(result, toTrpcError);
+        const resetResult = (await runtimeResetService.reset(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
 
         if (resetResult.applied) {
             await runtimeEventLogService.append(

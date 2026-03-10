@@ -8,7 +8,7 @@ import {
 } from '@/app/backend/runtime/contracts';
 import { worktreeService } from '@/app/backend/runtime/services/worktree/service';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
-import { toTrpcError, unwrapResultOrThrow } from '@/app/backend/trpc/trpcErrorMap';
+import { raiseMappedTrpcError, toTrpcError, unwrapResultOrThrow } from '@/app/backend/trpc/trpcErrorMap';
 
 export const worktreeRouter = router({
     list: publicProcedure.input(worktreeListInputSchema).query(async ({ input }) => {
@@ -32,8 +32,10 @@ export const worktreeRouter = router({
         return worktreeService.removeOrphaned(input.profileId);
     }),
     configureThread: publicProcedure.input(worktreeConfigureThreadInputSchema).mutation(async ({ input }) => {
-        const result = await worktreeService.configureThread(input);
-        const thread = unwrapResultOrThrow(result, toTrpcError);
+        const thread = (await worktreeService.configureThread(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
         const worktree =
             input.mode === 'worktree' && input.worktreeId
                 ? await worktreeStore.getById(input.profileId, input.worktreeId)

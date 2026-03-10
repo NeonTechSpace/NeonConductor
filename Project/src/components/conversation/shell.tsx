@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
+import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
 import { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
 import { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
 import { useConversationShellRoutingBadge } from '@/web/components/conversation/hooks/useConversationShellRoutingBadge';
@@ -7,7 +8,6 @@ import { useConversationShellSessionActions } from '@/web/components/conversatio
 import { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import { useThreadSidebarState } from '@/web/components/conversation/hooks/useThreadSidebarState';
-import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
 import { MessageEditDialog } from '@/web/components/conversation/panels/messageEditDialog';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { buildConversationPlanOrchestrator } from '@/web/components/conversation/shell/composition/buildConversationPlanOrchestrator';
@@ -22,13 +22,13 @@ import { DEFAULT_RUN_OPTIONS, isEntityId, isProviderId } from '@/web/components/
 import { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 import { ConversationSidebarPane } from '@/web/components/conversation/sidebar/conversationSidebarPane';
+import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 import { trpc } from '@/web/trpc/client';
 
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 import type { PlanRecordView, TopLevelTab } from '@/app/backend/runtime/contracts';
-import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
 
 interface ConversationShellProps {
     profileId: string;
@@ -63,6 +63,9 @@ export function ConversationShell({
     type PlanStartResult = Awaited<ReturnType<typeof mutations.planStartMutation.mutateAsync>>;
     type RunStartResult = Awaited<ReturnType<typeof mutations.startRunMutation.mutateAsync>>;
     type AcceptedRunStartResult = Extract<RunStartResult, { accepted: true }>;
+    const setEditPreference = async (input: { profileId: string; value: 'truncate' | 'branch' }): Promise<void> => {
+        await mutations.setEditPreferenceMutation.mutateAsync(input);
+    };
     const streamState = useRuntimeEventStreamStore((state) => state.connectionState);
     const selectedSessionId = uiState.selectedSessionId;
     const selectedRunId = uiState.selectedRunId;
@@ -113,7 +116,7 @@ export function ConversationShell({
         onSelectSessionId: uiState.setSelectedSessionId,
         onSelectRunId: uiState.setSelectedRunId,
         onSessionCreated: ({ sessionId, session, thread }) => {
-            void utils.session.listRuns.setData(
+            utils.session.listRuns.setData(
                 {
                     profileId,
                     sessionId,
@@ -246,7 +249,7 @@ export function ConversationShell({
         selectedThread: shellViewModel.selectedThread,
         resolvedRunTarget: runTargetState.resolvedRunTarget,
         editSession: mutations.editSessionMutation.mutateAsync,
-        setEditPreference: mutations.setEditPreferenceMutation.mutateAsync,
+        setEditPreference,
         uiState,
         onTopLevelTabChange,
         onClearError: composer.clearRunSubmitError,

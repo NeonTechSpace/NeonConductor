@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 
 import { createProfileSettingsActions } from '@/web/components/settings/profileSettings/actions';
 import { resolveSelectedProfileId } from '@/web/components/settings/profileSettings/selection';
-import { invalidateRuntimeResetQueries } from '@/web/lib/runtime/invalidation/queryInvalidation';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { invalidateRuntimeResetQueries } from '@/web/lib/runtime/invalidation/queryInvalidation';
 import { trpc } from '@/web/trpc/client';
 
 import type { ProfileRecord } from '@/app/backend/persistence/types';
@@ -183,6 +183,19 @@ export function useProfileSettingsController(input: {
             );
         },
     });
+    const setEditPreference = async (input: {
+        profileId: string;
+        value: 'ask' | 'truncate' | 'branch';
+    }): Promise<void> => {
+        await setEditPreferenceMutation.mutateAsync(input);
+    };
+    const setThreadTitlePreference = async (input: {
+        profileId: string;
+        mode: 'template' | 'ai_optional';
+        aiModel?: string;
+    }): Promise<void> => {
+        await setThreadTitlePreferenceMutation.mutateAsync(input);
+    };
     const executionPresetQuery = trpc.profile.getExecutionPreset.useQuery(
         {
             profileId: selectedProfileIdForSettings,
@@ -267,8 +280,12 @@ export function useProfileSettingsController(input: {
         duplicateMutation,
         deleteMutation,
         setActiveMutation,
-        setEditPreferenceMutation,
-        setThreadTitlePreferenceMutation,
+        setEditPreferenceMutation: {
+            mutateAsync: setEditPreference,
+        },
+        setThreadTitlePreferenceMutation: {
+            mutateAsync: setThreadTitlePreference,
+        },
         setNewProfileName,
         setSelectedProfileId,
         setStatusMessage,

@@ -16,7 +16,7 @@ describe('tokenizerRuntime', () => {
         }));
 
         vi.doMock('node:fs/promises', () => ({
-            readFile: vi.fn(async () => Uint8Array.from([0, 97, 115, 109])),
+            readFile: vi.fn(() => Promise.resolve(Uint8Array.from([0, 97, 115, 109]))),
         }));
         vi.doMock('tiktoken/init', () => ({
             get_encoding: getEncodingSpy,
@@ -52,7 +52,7 @@ describe('tokenizerRuntime', () => {
 
     it('returns a recoverable error when tokenizer initialization fails', async () => {
         vi.doMock('node:fs/promises', () => ({
-            readFile: vi.fn(async () => Uint8Array.from([0, 97, 115, 109])),
+            readFile: vi.fn(() => Promise.resolve(Uint8Array.from([0, 97, 115, 109]))),
         }));
         vi.doMock('tiktoken/init', () => ({
             get_encoding: vi.fn(),

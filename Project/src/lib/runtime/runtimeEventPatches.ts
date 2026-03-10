@@ -1,4 +1,3 @@
-import { patchProviderCache } from '@/web/components/settings/providerSettings/providerSettingsCache';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import {
     patchThreadListRecord,
@@ -8,40 +7,73 @@ import {
     upsertTagRecord,
     upsertThreadListRecord,
 } from '@/web/components/conversation/sidebar/sidebarCache';
+import { patchProviderCache } from '@/web/components/settings/providerSettings/providerSettingsCache';
 import { queryClient } from '@/web/lib/providers/trpcCore';
+import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
 
-import type { ProviderListItem, ProviderEndpointProfileResult, KiloModelProviderOption } from '@/app/backend/providers/service/types';
 import type {
     CheckpointRecord,
     ConversationRecord,
     DiffRecord,
     ProviderAuthStateRecord,
     ProviderModelRecord,
+    RuntimeEventRecordV1,
     SessionSummaryRecord,
     TagRecord,
     ThreadRecord,
     ThreadTagRecord,
 } from '@/app/backend/persistence/types';
-import type {
-    KiloModelRoutingPreference,
+import type { KiloModelProviderOption, ProviderEndpointProfileResult, ProviderListItem } from '@/app/backend/providers/service/types';
+import {
+    executionEnvironmentModes,
+    kiloDynamicSorts,
+    kiloRoutingModes,
+    providerAuthMethods,
+    providerAuthStates,
+    providerIds,
+    topLevelTabs,
 } from '@/app/backend/runtime/contracts';
-import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
-import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
+import type { KiloModelRoutingPreference } from '@/app/backend/runtime/contracts';
+
+const conversationScopes = ['detached', 'workspace'] as const;
+const providerCatalogStrategies = ['dynamic', 'static'] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function assumeValidated<TValue>(value: unknown): TValue {
-    return value as TValue;
 }
 
 function readString(value: unknown): string | undefined {
     return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+function readBoolean(value: unknown): boolean | undefined {
+    return typeof value === 'boolean' ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readLiteral<TValue extends string>(value: unknown, allowedValues: readonly TValue[]): TValue | undefined {
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+
+    for (const allowedValue of allowedValues) {
+        if (allowedValue === value) {
+            return allowedValue;
+        }
+    }
+
+    return undefined;
+}
+
 function readStringArray(value: unknown): string[] | undefined {
     return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? value : undefined;
+}
+
+function hasRequiredStringFields(value: Record<string, unknown>, fields: readonly string[]): boolean {
+    return fields.every((field) => readString(value[field]));
 }
 
 function queryKeyContainsSegments(value: unknown, segments: readonly string[]): boolean {
@@ -64,84 +96,483 @@ function updateMatchingQueryData<TData>(
     pathSegments: readonly string[],
     updater: (current: TData | undefined) => TData | undefined
 ): void {
-    queryClient.setQueriesData(
+    queryClient.setQueriesData<TData>(
         {
             predicate: (query) => queryKeyContainsSegments(query.queryKey, pathSegments),
         },
-        (current) => updater(current as TData | undefined)
+        updater
     );
 }
 
 function readThreadRecord(value: unknown): ThreadRecord | undefined {
-    if (!isRecord(value) || !readString(value['id']) || !readString(value['profileId']) || !readString(value['conversationId'])) {
+    if (!isRecord(value)) {
         return undefined;
     }
 
-    return assumeValidated<ThreadRecord>(value);
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const conversationId = readString(value['conversationId']);
+    const title = readString(value['title']);
+    const topLevelTab = readLiteral(value['topLevelTab'], topLevelTabs);
+    const rootThreadId = readString(value['rootThreadId']);
+    const isFavorite = readBoolean(value['isFavorite']);
+    const executionEnvironmentMode = readLiteral(value['executionEnvironmentMode'], executionEnvironmentModes);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    if (
+        !id ||
+        !profileId ||
+        !conversationId ||
+        !title ||
+        !topLevelTab ||
+        !rootThreadId ||
+        isFavorite === undefined ||
+        !executionEnvironmentMode ||
+        !createdAt ||
+        !updatedAt
+    ) {
+        return undefined;
+    }
+
+    const parentThreadId = readString(value['parentThreadId']);
+    const executionBranch = readString(value['executionBranch']);
+    const baseBranch = readString(value['baseBranch']);
+    const worktreeId = readString(value['worktreeId']);
+    const lastAssistantAt = readString(value['lastAssistantAt']);
+
+    return {
+        id,
+        profileId,
+        conversationId,
+        title,
+        topLevelTab,
+        ...(parentThreadId ? { parentThreadId } : {}),
+        rootThreadId,
+        isFavorite,
+        executionEnvironmentMode,
+        ...(executionBranch ? { executionBranch } : {}),
+        ...(baseBranch ? { baseBranch } : {}),
+        ...(worktreeId && isEntityId(worktreeId, 'wt') ? { worktreeId } : {}),
+        ...(lastAssistantAt ? { lastAssistantAt } : {}),
+        createdAt,
+        updatedAt,
+    };
 }
 
 function readConversationRecord(value: unknown): ConversationRecord | undefined {
-    if (!isRecord(value) || !readString(value['id']) || !readString(value['profileId']) || !readString(value['scope'])) {
+    if (!isRecord(value)) {
         return undefined;
     }
 
-    return assumeValidated<ConversationRecord>(value);
-}
-
-function readTagRecord(value: unknown): TagRecord | undefined {
-    if (!isRecord(value) || !readString(value['id']) || !readString(value['profileId']) || !readString(value['label'])) {
-        return undefined;
-    }
-
-    return assumeValidated<TagRecord>(value);
-}
-
-function readCheckpointRecord(value: unknown): CheckpointRecord | undefined {
-    if (!isRecord(value) || !readString(value['id']) || !readString(value['sessionId'])) {
-        return undefined;
-    }
-
-    return assumeValidated<CheckpointRecord>(value);
-}
-
-function readDiffRecord(value: unknown): DiffRecord | undefined {
-    if (!isRecord(value) || !readString(value['id']) || !readString(value['sessionId'])) {
-        return undefined;
-    }
-
-    return assumeValidated<DiffRecord>(value);
-}
-
-function readProviderListItem(value: unknown): ProviderListItem | undefined {
-    if (!isRecord(value) || !readString(value['id']) || !readString(value['label'])) {
-        return undefined;
-    }
-
-    return assumeValidated<ProviderListItem>(value);
-}
-
-function readProviderAuthState(value: unknown): ProviderAuthStateRecord | undefined {
-    if (!isRecord(value) || !readString(value['profileId']) || !readString(value['providerId']) || !readString(value['authState'])) {
-        return undefined;
-    }
-
-    return assumeValidated<ProviderAuthStateRecord>(value);
-}
-
-function readEndpointProfile(value: unknown): ProviderEndpointProfileResult | undefined {
-    return isRecord(value) && readString(value['value'])
-        ? assumeValidated<ProviderEndpointProfileResult>(value)
-        : undefined;
-}
-
-function readProviderDefaults(value: unknown): { providerId: string; modelId: string } | undefined {
-    if (!isRecord(value) || !readString(value['providerId']) || !readString(value['modelId'])) {
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const scope = readLiteral(value['scope'], conversationScopes);
+    const title = readString(value['title']);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    const workspaceFingerprint = readString(value['workspaceFingerprint']);
+    if (!id || !profileId || !scope || !title || !createdAt || !updatedAt) {
         return undefined;
     }
 
     return {
-        providerId: readString(value['providerId'])!,
-        modelId: readString(value['modelId'])!,
+        id,
+        profileId,
+        scope,
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        title,
+        createdAt,
+        updatedAt,
+    };
+}
+
+function readTagRecord(value: unknown): TagRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const label = readString(value['label']);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    if (!id || !profileId || !label || !createdAt || !updatedAt) {
+        return undefined;
+    }
+
+    return {
+        id,
+        profileId,
+        label,
+        createdAt,
+        updatedAt,
+    };
+}
+
+function readCheckpointRecord(value: unknown): CheckpointRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const sessionId = readString(value['sessionId']);
+    const runId = readString(value['runId']);
+    const diffId = readString(value['diffId']);
+    const workspaceFingerprint = readString(value['workspaceFingerprint']);
+    const topLevelTab = readLiteral(value['topLevelTab'], topLevelTabs);
+    const modeKey = readString(value['modeKey']);
+    const summary = readString(value['summary']);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    const worktreeId = readString(value['worktreeId']);
+    if (
+        !id ||
+        !isEntityId(id, 'ckpt') ||
+        !profileId ||
+        !sessionId ||
+        !isEntityId(sessionId, 'sess') ||
+        !runId ||
+        !isEntityId(runId, 'run') ||
+        !diffId ||
+        !workspaceFingerprint ||
+        !topLevelTab ||
+        !modeKey ||
+        !summary ||
+        !createdAt ||
+        !updatedAt
+    ) {
+        return undefined;
+    }
+
+    return {
+        id,
+        profileId,
+        sessionId,
+        runId,
+        diffId,
+        workspaceFingerprint,
+        ...(worktreeId && isEntityId(worktreeId, 'wt') ? { worktreeId } : {}),
+        topLevelTab,
+        modeKey,
+        summary,
+        createdAt,
+        updatedAt,
+    };
+}
+
+function readDiffRecord(value: unknown): DiffRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const sessionId = readString(value['sessionId']);
+    const runId = value['runId'] === null ? null : readString(value['runId']);
+    const summary = readString(value['summary']);
+    const artifact = readDiffArtifact(value['artifact']);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    if (!id || !profileId || !sessionId || summary === undefined || !artifact || !createdAt || !updatedAt) {
+        return undefined;
+    }
+
+    return {
+        id,
+        profileId,
+        sessionId,
+        runId: runId ?? null,
+        summary,
+        artifact,
+        createdAt,
+        updatedAt,
+    };
+}
+
+function readProviderListItem(value: unknown): ProviderListItem | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readLiteral(value['id'], providerIds);
+    const label = readString(value['label']);
+    const supportsByok = readBoolean(value['supportsByok']);
+    const isDefault = readBoolean(value['isDefault']);
+    const authMethod = readLiteral(value['authMethod'], [...providerAuthMethods, 'none'] as const);
+    const authState = readLiteral(value['authState'], providerAuthStates);
+    const availableAuthMethods = Array.isArray(value['availableAuthMethods'])
+        ? value['availableAuthMethods']
+              .map((entry) => readLiteral(entry, providerAuthMethods))
+              .filter((entry): entry is (typeof providerAuthMethods)[number] => entry !== undefined)
+        : undefined;
+    const endpointProfileValue = value['endpointProfile'];
+    const endpointProfilesValue = value['endpointProfiles'];
+    const apiKeyCtaValue = value['apiKeyCta'];
+    const featuresValue = value['features'];
+    if (
+        !id ||
+        !label ||
+        supportsByok === undefined ||
+        isDefault === undefined ||
+        !authMethod ||
+        !authState ||
+        !availableAuthMethods ||
+        !isRecord(endpointProfileValue) ||
+        !isRecord(apiKeyCtaValue) ||
+        !isRecord(featuresValue) ||
+        !Array.isArray(endpointProfilesValue)
+    ) {
+        return undefined;
+    }
+
+    const endpointProfileLabel = readString(endpointProfileValue['label']);
+    const endpointProfileOptionValue = readString(endpointProfileValue['value']);
+    const endpointProfiles = endpointProfilesValue
+        .map((entry) => {
+            if (!isRecord(entry)) {
+                return undefined;
+            }
+
+            const optionValue = readString(entry['value']);
+            const optionLabel = readString(entry['label']);
+            return optionValue && optionLabel
+                ? {
+                      value: optionValue,
+                      label: optionLabel,
+                  }
+                : undefined;
+        })
+        .filter((entry): entry is { value: string; label: string } => entry !== undefined);
+    const apiKeyCtaLabel = readString(apiKeyCtaValue['label']);
+    const apiKeyCtaUrl = readString(apiKeyCtaValue['url']);
+    const catalogStrategy = readLiteral(featuresValue['catalogStrategy'], providerCatalogStrategies);
+    const supportsKiloRouting = readBoolean(featuresValue['supportsKiloRouting']);
+    const supportsModelProviderListing = readBoolean(featuresValue['supportsModelProviderListing']);
+    const supportsEndpointProfiles = readBoolean(featuresValue['supportsEndpointProfiles']);
+    if (
+        !endpointProfileOptionValue ||
+        !endpointProfileLabel ||
+        endpointProfiles.length !== endpointProfilesValue.length ||
+        !apiKeyCtaLabel ||
+        !apiKeyCtaUrl ||
+        !catalogStrategy ||
+        supportsKiloRouting === undefined ||
+        supportsModelProviderListing === undefined ||
+        supportsEndpointProfiles === undefined
+    ) {
+        return undefined;
+    }
+
+    return {
+        id,
+        label,
+        supportsByok,
+        isDefault,
+        authMethod,
+        authState,
+        availableAuthMethods,
+        endpointProfile: {
+            value: endpointProfileOptionValue,
+            label: endpointProfileLabel,
+        },
+        endpointProfiles,
+        apiKeyCta: {
+            label: apiKeyCtaLabel,
+            url: apiKeyCtaUrl,
+        },
+        features: {
+            catalogStrategy,
+            supportsKiloRouting,
+            supportsModelProviderListing,
+            supportsEndpointProfiles,
+        },
+    };
+}
+
+function readProviderAuthState(value: unknown): ProviderAuthStateRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const profileId = readString(value['profileId']);
+    const providerId = readLiteral(value['providerId'], providerIds);
+    const authMethod = readLiteral(value['authMethod'], [...providerAuthMethods, 'none'] as const);
+    const authState = readLiteral(value['authState'], providerAuthStates);
+    const updatedAt = readString(value['updatedAt']);
+    const accountId = readString(value['accountId']);
+    const organizationId = readString(value['organizationId']);
+    const tokenExpiresAt = readString(value['tokenExpiresAt']);
+    const lastErrorCode = readString(value['lastErrorCode']);
+    const lastErrorMessage = readString(value['lastErrorMessage']);
+    if (!profileId || !providerId || !authMethod || !authState || !updatedAt) {
+        return undefined;
+    }
+
+    return {
+        profileId,
+        providerId,
+        authMethod,
+        authState,
+        ...(accountId ? { accountId } : {}),
+        ...(organizationId ? { organizationId } : {}),
+        ...(tokenExpiresAt ? { tokenExpiresAt } : {}),
+        ...(lastErrorCode ? { lastErrorCode } : {}),
+        ...(lastErrorMessage ? { lastErrorMessage } : {}),
+        updatedAt,
+    };
+}
+
+function readEndpointProfile(value: unknown): ProviderEndpointProfileResult | undefined {
+    if (!isRecord(value) || !Array.isArray(value['options'])) {
+        return undefined;
+    }
+
+    const providerId = readLiteral(value['providerId'], providerIds);
+    const optionValue = readString(value['value']);
+    const label = readString(value['label']);
+    const options = value['options']
+        .map((entry) => {
+            if (!isRecord(entry)) {
+                return undefined;
+            }
+
+            const value = readString(entry['value']);
+            const label = readString(entry['label']);
+            return value && label
+                ? {
+                      value,
+                      label,
+                  }
+                : undefined;
+        })
+        .filter((entry): entry is { value: string; label: string } => entry !== undefined);
+    if (!providerId || !optionValue || !label || options.length !== value['options'].length) {
+        return undefined;
+    }
+
+    return {
+        providerId,
+        value: optionValue,
+        label,
+        options,
+    };
+}
+
+function readDiffArtifact(value: unknown): DiffRecord['artifact'] | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const kind = readLiteral(value['kind'], ['git', 'unsupported'] as const);
+    const workspaceRootPath = readString(value['workspaceRootPath']);
+    const workspaceLabel = readString(value['workspaceLabel']);
+    if (!kind || !workspaceRootPath || !workspaceLabel) {
+        return undefined;
+    }
+
+    if (kind === 'git') {
+        const baseRef = readLiteral(value['baseRef'], ['HEAD'] as const);
+        const fileCount = readNumber(value['fileCount']);
+        const fullPatch = readString(value['fullPatch']);
+        const filesValue = value['files'];
+        const patchesByPathValue = value['patchesByPath'];
+        if (!baseRef || fileCount === undefined || !fullPatch || !Array.isArray(filesValue) || !isRecord(patchesByPathValue)) {
+            return undefined;
+        }
+
+        const files = filesValue
+            .map((entry) => {
+                if (!isRecord(entry)) {
+                    return undefined;
+                }
+
+                const path = readString(entry['path']);
+                const status = readLiteral(
+                    entry['status'],
+                    ['added', 'modified', 'deleted', 'renamed', 'copied', 'type_changed', 'untracked'] as const
+                );
+                const previousPath = readString(entry['previousPath']);
+                const addedLines = readNumber(entry['addedLines']);
+                const deletedLines = readNumber(entry['deletedLines']);
+                if (!path || !status) {
+                    return undefined;
+                }
+
+                return {
+                    path,
+                    status,
+                    ...(previousPath ? { previousPath } : {}),
+                    ...(addedLines !== undefined ? { addedLines } : {}),
+                    ...(deletedLines !== undefined ? { deletedLines } : {}),
+                };
+            })
+            .filter(
+                (
+                    entry
+                ): entry is {
+                    path: string;
+                    status: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'type_changed' | 'untracked';
+                    previousPath?: string;
+                    addedLines?: number;
+                    deletedLines?: number;
+                } => entry !== undefined
+            );
+        const patchEntries = Object.entries(patchesByPathValue).filter(
+            (entry): entry is [string, string] => typeof entry[0] === 'string' && typeof entry[1] === 'string'
+        );
+        if (files.length !== filesValue.length || patchEntries.length !== Object.keys(patchesByPathValue).length) {
+            return undefined;
+        }
+
+        const totalAddedLines = readNumber(value['totalAddedLines']);
+        const totalDeletedLines = readNumber(value['totalDeletedLines']);
+        return {
+            kind,
+            workspaceRootPath,
+            workspaceLabel,
+            baseRef,
+            fileCount,
+            ...(totalAddedLines !== undefined ? { totalAddedLines } : {}),
+            ...(totalDeletedLines !== undefined ? { totalDeletedLines } : {}),
+            files,
+            fullPatch,
+            patchesByPath: Object.fromEntries(patchEntries),
+        };
+    }
+
+    const reason = readLiteral(
+        value['reason'],
+        ['workspace_not_git', 'git_unavailable', 'workspace_unresolved', 'capture_failed'] as const
+    );
+    const detail = readString(value['detail']);
+    if (!reason || !detail) {
+        return undefined;
+    }
+
+    return {
+        kind,
+        workspaceRootPath,
+        workspaceLabel,
+        reason,
+        detail,
+    };
+}
+
+function readProviderDefaults(value: unknown): { providerId: string; modelId: string } | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const providerId = readString(value['providerId']);
+    const modelId = readString(value['modelId']);
+    if (!providerId || !modelId) {
+        return undefined;
+    }
+
+    return {
+        providerId,
+        modelId,
     };
 }
 
@@ -150,15 +581,35 @@ function readProviderModels(value: unknown): ProviderModelRecord[] | undefined {
         return undefined;
     }
 
-    return value
-        .filter((entry) => isRecord(entry) && readString(entry['id']))
-        .map((entry) => assumeValidated<ProviderModelRecord>(entry));
+    return value.filter(
+        (entry): entry is ProviderModelRecord =>
+            isRecord(entry) && hasRequiredStringFields(entry, ['id', 'providerId'])
+    );
 }
 
 function readRoutingPreference(value: unknown): KiloModelRoutingPreference | undefined {
-    return isRecord(value) && readString(value['modelId'])
-        ? assumeValidated<KiloModelRoutingPreference>(value)
-        : undefined;
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const profileId = readString(value['profileId']);
+    const providerId = readLiteral(value['providerId'], ['kilo'] as const);
+    const modelId = readString(value['modelId']);
+    const routingMode = readLiteral(value['routingMode'], kiloRoutingModes);
+    const sort = readLiteral(value['sort'], kiloDynamicSorts);
+    const pinnedProviderId = readString(value['pinnedProviderId']);
+    if (!profileId || !providerId || !modelId || !routingMode) {
+        return undefined;
+    }
+
+    return {
+        profileId,
+        providerId,
+        modelId,
+        routingMode,
+        ...(sort ? { sort } : {}),
+        ...(pinnedProviderId ? { pinnedProviderId } : {}),
+    };
 }
 
 function readModelProviderOptions(value: unknown): KiloModelProviderOption[] | undefined {
@@ -166,9 +617,10 @@ function readModelProviderOptions(value: unknown): KiloModelProviderOption[] | u
         return undefined;
     }
 
-    return value
-        .filter((entry) => isRecord(entry) && readString(entry['providerId']))
-        .map((entry) => assumeValidated<KiloModelProviderOption>(entry));
+    return value.filter(
+        (entry): entry is KiloModelProviderOption =>
+            isRecord(entry) && hasRequiredStringFields(entry, ['providerId'])
+    );
 }
 
 function replaceProviderModels(currentModels: ProviderModelRecord[], nextModels: ProviderModelRecord[]): ProviderModelRecord[] {
@@ -180,11 +632,11 @@ function replaceProviderModels(currentModels: ProviderModelRecord[], nextModels:
     return [...currentModels.filter((model) => model.providerId !== providerId), ...nextModels];
 }
 
-export async function applyRuntimeEventPatches(
+export function applyRuntimeEventPatches(
     utils: TrpcUtils,
     event: RuntimeEventRecordV1,
     context: RuntimeEventContext
-): Promise<boolean> {
+): boolean {
     if (!context.profileId) {
         return false;
     }
@@ -261,7 +713,7 @@ export async function applyRuntimeEventPatches(
         const profileId = context.profileId;
         const threadId = context.threadId;
         if (profileId && threadId && tagIds) {
-            void utils.runtime.getShellBootstrap.setData({ profileId: context.profileId }, (current) => {
+            utils.runtime.getShellBootstrap.setData({ profileId: context.profileId }, (current) => {
                 if (!current) {
                     return current;
                 }
@@ -313,7 +765,7 @@ export async function applyRuntimeEventPatches(
                       }
                     : current
             );
-            void utils.runtime.getShellBootstrap.setData({ profileId: context.profileId }, (current) => {
+            utils.runtime.getShellBootstrap.setData({ profileId: context.profileId }, (current) => {
                 if (!current) {
                     return current;
                 }
@@ -354,7 +806,7 @@ export async function applyRuntimeEventPatches(
     if (event.domain === 'checkpoint') {
         const checkpoint = readCheckpointRecord(event.payload['checkpoint']);
         if (checkpoint) {
-            void utils.checkpoint.list.setData(
+            utils.checkpoint.list.setData(
                 {
                     profileId: context.profileId,
                     sessionId: checkpoint.sessionId,
@@ -366,7 +818,7 @@ export async function applyRuntimeEventPatches(
             const diff = readDiffRecord(event.payload['diff']);
             const runId = diff ? readString(diff.runId) : undefined;
             if (diff && isEntityId(runId, 'run')) {
-                void utils.diff.listByRun.setData(
+                utils.diff.listByRun.setData(
                     {
                         profileId: context.profileId,
                         runId,
@@ -416,7 +868,7 @@ export async function applyRuntimeEventPatches(
             ...(modelId ? { routingModelId: modelId } : {}),
         });
 
-        void utils.runtime.getShellBootstrap.setData({ profileId }, (current) => {
+        utils.runtime.getShellBootstrap.setData({ profileId }, (current) => {
             if (!current) {
                 return current;
             }

@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, vi } from 'vitest';
 
-import { providerCatalogStore } from '@/app/backend/persistence/stores';
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
+import { providerCatalogStore } from '@/app/backend/persistence/stores';
 import type { EntityId } from '@/app/backend/runtime/contracts';
 import { initializeSecretStore } from '@/app/backend/secrets/store';
 import type { Context } from '@/app/backend/trpc/context';

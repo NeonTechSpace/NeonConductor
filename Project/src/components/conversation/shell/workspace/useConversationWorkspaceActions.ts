@@ -53,7 +53,7 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
                     ? { selectedApprovalResource: payload.selectedApprovalResource }
                     : {}),
             });
-            void utils.permission.listPending.setData(undefined, (current) => {
+            utils.permission.listPending.setData(undefined, (current) => {
                 if (!current) {
                     return current;
                 }
@@ -114,14 +114,12 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
                     setFeedbackMessage(message);
                     return;
                 }
-                if (result.worktree) {
-                    patchWorktreeCaches({
-                        utils,
-                        profileId: input.profileId,
-                        listThreadsInput: input.listThreadsInput,
-                        worktree: result.worktree,
-                    });
-                }
+                patchWorktreeCaches({
+                    utils,
+                    profileId: input.profileId,
+                    listThreadsInput: input.listThreadsInput,
+                    worktree: result.worktree,
+                });
                 setFeedbackTone('success');
                 setFeedbackMessage('Managed worktree status refreshed.');
             } catch (error: unknown) {
@@ -142,14 +140,12 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
                     setFeedbackMessage(result.message ?? 'Managed worktree removal failed.');
                     return;
                 }
-                if (result.removed && result.worktreeId) {
-                    patchWorktreeCaches({
-                        utils,
-                        profileId: input.profileId,
-                        listThreadsInput: input.listThreadsInput,
-                        removedWorktreeIds: [result.worktreeId],
-                    });
-                }
+                patchWorktreeCaches({
+                    utils,
+                    profileId: input.profileId,
+                    listThreadsInput: input.listThreadsInput,
+                    removedWorktreeIds: [result.worktreeId],
+                });
                 setFeedbackTone('success');
                 setFeedbackMessage('Managed worktree removed.');
             } catch (error: unknown) {

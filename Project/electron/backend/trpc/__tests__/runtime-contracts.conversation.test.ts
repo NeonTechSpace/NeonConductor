@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { Buffer } from 'node:buffer';
+import { describe, expect, it, vi } from 'vitest';
 
 
 import {

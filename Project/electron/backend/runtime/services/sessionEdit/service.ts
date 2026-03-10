@@ -146,7 +146,7 @@ export class SessionEditService {
             ...(threadTopLevelTab ? { topLevelTab: threadTopLevelTab } : {}),
             started: true,
             runId: started.runId,
-            ...(started.run ? { run: started.run } : {}),
+            run: started.run,
             runStatus: started.runStatus,
         };
     }

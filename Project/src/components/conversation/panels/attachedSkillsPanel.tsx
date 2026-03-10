@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
 import { Button } from '@/web/components/ui/button';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { useDebouncedQueryValue } from '@/web/lib/hooks/useDebouncedQueryValue';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
 import type { EntityId, SkillfileDefinition } from '@/app/backend/runtime/contracts';
@@ -47,7 +47,7 @@ export function AttachedSkillsPanel({
         PROGRESSIVE_QUERY_OPTIONS
     );
     const setAttachedSkillsMutation = trpc.session.setAttachedSkills.useMutation({
-        onMutate: async ({ assetKeys }) => {
+        onMutate: ({ assetKeys }) => {
             setMutationError(undefined);
             const previousAttachedSkills = utils.session.getAttachedSkills.getData({
                 profileId,
@@ -62,7 +62,7 @@ export function AttachedSkillsPanel({
             });
             const nextMissingAssetKeys = assetKeys.filter((assetKey) => !skillfilesByAssetKey.has(assetKey));
 
-            void utils.session.getAttachedSkills.setData(
+            utils.session.getAttachedSkills.setData(
                 {
                     profileId,
                     sessionId,
@@ -80,7 +80,7 @@ export function AttachedSkillsPanel({
         },
         onSuccess: (nextAttachedSkills) => {
             setMutationError(undefined);
-            void utils.session.getAttachedSkills.setData(
+            utils.session.getAttachedSkills.setData(
                 {
                     profileId,
                     sessionId,
@@ -90,7 +90,7 @@ export function AttachedSkillsPanel({
         },
         onError: (error, _variables, context) => {
             if (context?.previousAttachedSkills) {
-                void utils.session.getAttachedSkills.setData(
+                utils.session.getAttachedSkills.setData(
                     {
                         profileId,
                         sessionId,

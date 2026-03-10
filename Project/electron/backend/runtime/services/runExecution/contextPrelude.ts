@@ -2,12 +2,12 @@ import { sessionAttachedSkillStore } from '@/app/backend/persistence/stores';
 import type { RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/app/backend/runtime/contracts';
 import type { ModeDefinition } from '@/app/backend/runtime/contracts';
 import { listResolvedRegistry, resolveSkillfilesByAssetKeys } from '@/app/backend/runtime/services/registry/service';
+import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
-import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 
 function readModeInstructions(mode: ModeDefinition): string | undefined {

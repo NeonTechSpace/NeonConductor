@@ -228,12 +228,14 @@ describe('bootstrapMainProcess', () => {
             splashWindow: { id: 'window-splash' },
             onDelayedSplash: expect.any(Function),
         });
-        const delayedSplashRegistration = registerBootWindowsSpy.mock.calls[0]?.[0] as
-            | {
-                  onDelayedSplash: () => void;
-              }
+        const delayedSplashRegistrationCall = registerBootWindowsSpy.mock.calls[0] as
+            | [{ onDelayedSplash: () => void }]
             | undefined;
-        delayedSplashRegistration?.onDelayedSplash();
+        if (!delayedSplashRegistrationCall) {
+            throw new Error('Expected registerBootWindows to be called.');
+        }
+        const [delayedSplashRegistration] = delayedSplashRegistrationCall;
+        delayedSplashRegistration.onDelayedSplash();
         expect(updateSplashWindowPhaseSpy).toHaveBeenCalledWith(
             { id: 'window-splash' },
             {

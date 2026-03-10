@@ -20,11 +20,11 @@ export function patchRegistryRefreshCaches(input: {
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
     };
 
-    void input.utils.registry.listResolved.setData(registryQueryInput, input.refreshResult.resolvedRegistry);
-    void input.utils.mode.list.setData(modeQueryInput, {
+    input.utils.registry.listResolved.setData(registryQueryInput, input.refreshResult.resolvedRegistry);
+    input.utils.mode.list.setData(modeQueryInput, {
         modes: input.refreshResult.agentModes,
     });
-    void input.utils.mode.getActive.setData(modeQueryInput, {
+    input.utils.mode.getActive.setData(modeQueryInput, {
         activeMode: input.refreshResult.activeAgentMode,
         modes: input.refreshResult.agentModes,
     });

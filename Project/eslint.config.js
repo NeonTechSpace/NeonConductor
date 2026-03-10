@@ -27,11 +27,12 @@ const typeCheckedGlobs = [
 const rendererGlobs = ['src/**/*.{js,jsx,ts,tsx}'];
 
 const nodeGlobs = [
-    'electron/**/*.{js,mjs,cjs,ts,tsx}',
+    'electron/**/*.{js,cjs,ts,tsx}',
     'scripts/**/*.{js,mjs,cjs,ts,tsx}',
     'vite.config.ts',
     'vitest.config.ts',
 ];
+const nodeUntypedGlobs = ['electron/**/*.mjs'];
 
 const testGlobs = [
     'electron/**/*.{test,spec}.ts',
@@ -239,6 +240,37 @@ export default [
     },
 
     {
+        files: nodeUntypedGlobs,
+        plugins: nodePlugins,
+        languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'module',
+            globals: globals.node,
+        },
+        settings: {
+            'import/resolver': {
+                node: true,
+            },
+        },
+        rules: {
+            'import/order': importOrderRule,
+            'import/newline-after-import': 'warn',
+            'import/no-unresolved': 'off',
+            'no-restricted-imports': noRestrictedImportsRule,
+            'no-secrets/no-secrets': noSecretsRule,
+            'no-console': 'error',
+            'n/no-missing-import': 'off',
+            'n/no-process-exit': 'off',
+            'security/detect-child-process': 'warn',
+            'security/detect-non-literal-fs-filename': 'warn',
+            'security/detect-non-literal-regexp': 'warn',
+            'security/detect-unsafe-regex': 'warn',
+            'no-empty': 'off',
+            'no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+        },
+    },
+
+    {
         files: neverthrowWorkflowGlobs,
         plugins: {
             neverthrow: fixupPluginRules(neverthrowPlugin),
@@ -260,6 +292,12 @@ export default [
         rules: {
             'no-secrets/no-secrets': 'off',
             'security/detect-non-literal-fs-filename': 'off',
+        },
+    },
+    {
+        files: ['scripts/**/__tests__/**/*.ts', 'src/router.ts', 'src/splash/main.ts'],
+        rules: {
+            'no-restricted-imports': 'off',
         },
     },
     {
@@ -295,6 +333,10 @@ export default [
         },
         rules: {
             ...vitestRules,
+            '@typescript-eslint/no-unsafe-assignment': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-member-access': 'off',
+            '@typescript-eslint/no-unsafe-return': 'off',
             'vitest/no-disabled-tests': 'warn',
             'vitest/no-focused-tests': 'error',
         },

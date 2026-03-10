@@ -369,7 +369,7 @@ export function ComposerActionPanel({
                                                     title: image.fileName,
                                                     ...(image.attachment
                                                         ? {
-                                                              detail: `${image.attachment.width} × ${image.attachment.height}`,
+                                                              detail: `${String(image.attachment.width)} × ${String(image.attachment.height)}`,
                                                           }
                                                         : {}),
                                                 });

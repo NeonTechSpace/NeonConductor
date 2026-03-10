@@ -19,7 +19,7 @@ import { eventMetadata } from '@/app/backend/runtime/services/common/logContext'
 import { runtimeRemoveEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
-import { raiseTrpcError, toTrpcError, unwrapResultOrThrow } from '@/app/backend/trpc/trpcErrorMap';
+import { raiseMappedTrpcError, raiseTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
 const THREAD_SORT_SETTING_KEY = 'conversation_thread_sort';
 const DEFAULT_THREAD_SORT = 'latest' as const;
@@ -119,7 +119,7 @@ export const conversationRouter = router({
             });
         }
 
-        const bucket = await conversationStore.createOrGetBucket({
+        const resolvedBucket = (await conversationStore.createOrGetBucket({
             profileId: input.profileId,
             scope: input.scope,
             ...(input.workspacePath
@@ -129,9 +129,8 @@ export const conversationRouter = router({
                       ).fingerprint,
                   }
                 : {}),
-        });
-        const resolvedBucket = unwrapResultOrThrow(bucket, toTrpcError);
-        const thread = await threadStore.create({
+        })).match((value) => value, (error) => raiseMappedTrpcError(error, toTrpcError));
+        const createdThread = (await threadStore.create({
             profileId: input.profileId,
             conversationId: resolvedBucket.id,
             title: input.title,
@@ -140,8 +139,7 @@ export const conversationRouter = router({
             ...(input.executionBranch ? { executionBranch: input.executionBranch } : {}),
             ...(input.baseBranch ? { baseBranch: input.baseBranch } : {}),
             ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
-        });
-        const createdThread = unwrapResultOrThrow(thread, toTrpcError);
+        })).match((value) => value, (error) => raiseMappedTrpcError(error, toTrpcError));
 
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
@@ -168,8 +166,10 @@ export const conversationRouter = router({
         };
     }),
     renameThread: publicProcedure.input(conversationRenameThreadInputSchema).mutation(async ({ input, ctx }) => {
-        const thread = await threadStore.rename(input.profileId, input.threadId, input.title);
-        const renamedThread = unwrapResultOrThrow(thread, toTrpcError);
+        const renamedThread = (await threadStore.rename(input.profileId, input.threadId, input.title)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
         if (!renamedThread) {
             return {
                 renamed: false as const,
@@ -203,8 +203,10 @@ export const conversationRouter = router({
     setThreadFavorite: publicProcedure
         .input(conversationSetThreadFavoriteInputSchema)
         .mutation(async ({ input, ctx }) => {
-            const updated = await threadStore.setFavorite(input.profileId, input.threadId, input.isFavorite);
-            const updatedThread = unwrapResultOrThrow(updated, toTrpcError);
+            const updatedThread = (await threadStore.setFavorite(input.profileId, input.threadId, input.isFavorite)).match(
+                (value) => value,
+                (error) => raiseMappedTrpcError(error, toTrpcError)
+            );
             if (!updatedThread) {
                 return {
                     updated: false as const,
@@ -243,8 +245,10 @@ export const conversationRouter = router({
         };
     }),
     upsertTag: publicProcedure.input(conversationUpsertTagInputSchema).mutation(async ({ input }) => {
-        const result = await tagStore.upsert(input.profileId, input.label);
-        const tag = unwrapResultOrThrow(result, toTrpcError);
+        const tag = (await tagStore.upsert(input.profileId, input.label)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
                 entityType: 'tag',
@@ -260,8 +264,10 @@ export const conversationRouter = router({
         return { tag };
     }),
     setThreadTags: publicProcedure.input(conversationSetThreadTagsInputSchema).mutation(async ({ input, ctx }) => {
-        const result = await tagStore.setThreadTags(input.profileId, input.threadId, input.tagIds);
-        const threadTags = unwrapResultOrThrow(result, toTrpcError);
+        const threadTags = (await tagStore.setThreadTags(input.profileId, input.threadId, input.tagIds)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
                 entityType: 'thread',

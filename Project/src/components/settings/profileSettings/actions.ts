@@ -39,14 +39,14 @@ export function createProfileSettingsActions(input: {
         >;
     };
     setEditPreferenceMutation: {
-        mutateAsync: (input: { profileId: string; value: 'ask' | 'truncate' | 'branch' }) => Promise<unknown>;
+        mutateAsync: (input: { profileId: string; value: 'ask' | 'truncate' | 'branch' }) => Promise<void>;
     };
     setThreadTitlePreferenceMutation: {
         mutateAsync: (input: {
             profileId: string;
             mode: 'template' | 'ai_optional';
             aiModel?: string;
-        }) => Promise<unknown>;
+        }) => Promise<void>;
     };
     setNewProfileName: (value: string) => void;
     setSelectedProfileId: (value: string | undefined) => void;

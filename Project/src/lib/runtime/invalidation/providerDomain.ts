@@ -38,7 +38,7 @@ export async function invalidateProviderQueries(
     event: RuntimeEventRecordV1,
     context: RuntimeEventContext
 ): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [];
+    const invalidations: Promise<void>[] = [];
 
     if (context.profileId && context.providerId && isProviderAuthEvent(event)) {
         addInvalidation(

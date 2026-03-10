@@ -2,87 +2,99 @@ import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidat
 
 import type { EntityId } from '@/app/backend/runtime/contracts';
 
+function toVoidPromise<TResult>(task: Promise<TResult>): Promise<void> {
+    return task.then(() => undefined);
+}
+
 export function addInvalidation(
-    invalidations: Array<Promise<unknown>>,
-    task: Promise<unknown> | undefined
+    invalidations: Promise<void>[],
+    task: Promise<void> | undefined
 ): void {
     if (task) {
         invalidations.push(task);
     }
 }
 
-export function invalidateThreadList(utils: TrpcUtils, profileId: string | undefined): Promise<unknown> {
-    return profileId
-        ? utils.conversation.listThreads.invalidate({ profileId })
-        : utils.conversation.listThreads.invalidate();
+export function invalidateThreadList(utils: TrpcUtils, profileId: string | undefined): Promise<void> {
+    return toVoidPromise(
+        profileId
+            ? utils.conversation.listThreads.invalidate({ profileId })
+            : utils.conversation.listThreads.invalidate()
+    );
 }
 
-export function invalidateBucketList(utils: TrpcUtils, profileId: string | undefined): Promise<unknown> {
-    return profileId
-        ? utils.conversation.listBuckets.invalidate({ profileId })
-        : utils.conversation.listBuckets.invalidate();
+export function invalidateBucketList(utils: TrpcUtils, profileId: string | undefined): Promise<void> {
+    return toVoidPromise(
+        profileId
+            ? utils.conversation.listBuckets.invalidate({ profileId })
+            : utils.conversation.listBuckets.invalidate()
+    );
 }
 
-export function invalidateTagList(utils: TrpcUtils, profileId: string | undefined): Promise<unknown> {
-    return profileId ? utils.conversation.listTags.invalidate({ profileId }) : utils.conversation.listTags.invalidate();
+export function invalidateTagList(utils: TrpcUtils, profileId: string | undefined): Promise<void> {
+    return toVoidPromise(
+        profileId ? utils.conversation.listTags.invalidate({ profileId }) : utils.conversation.listTags.invalidate()
+    );
 }
 
-export function invalidateShellBootstrap(utils: TrpcUtils, profileId: string | undefined): Promise<unknown> {
-    return profileId
-        ? utils.runtime.getShellBootstrap.invalidate({ profileId })
-        : utils.runtime.getShellBootstrap.invalidate();
+export function invalidateShellBootstrap(utils: TrpcUtils, profileId: string | undefined): Promise<void> {
+    return toVoidPromise(
+        profileId
+            ? utils.runtime.getShellBootstrap.invalidate({ profileId })
+            : utils.runtime.getShellBootstrap.invalidate()
+    );
 }
 
-export function invalidateSessionList(utils: TrpcUtils, profileId: string | undefined): Promise<unknown> {
-    return profileId ? utils.session.list.invalidate({ profileId }) : utils.session.list.invalidate();
+export function invalidateSessionList(utils: TrpcUtils, profileId: string | undefined): Promise<void> {
+    return toVoidPromise(profileId ? utils.session.list.invalidate({ profileId }) : utils.session.list.invalidate());
 }
 
 export function invalidateSessionStatus(
     utils: TrpcUtils,
     profileId: string | undefined,
     sessionId: EntityId<'sess'> | undefined
-): Promise<unknown> {
+): Promise<void> {
     if (profileId && sessionId) {
-        return utils.session.status.invalidate({ profileId, sessionId });
+        return toVoidPromise(utils.session.status.invalidate({ profileId, sessionId }));
     }
 
-    return utils.session.status.invalidate();
+    return toVoidPromise(utils.session.status.invalidate());
 }
 
 export function invalidateSessionRuns(
     utils: TrpcUtils,
     profileId: string | undefined,
     sessionId: EntityId<'sess'> | undefined
-): Promise<unknown> {
+): Promise<void> {
     if (profileId && sessionId) {
-        return utils.session.listRuns.invalidate({ profileId, sessionId });
+        return toVoidPromise(utils.session.listRuns.invalidate({ profileId, sessionId }));
     }
 
-    return utils.session.listRuns.invalidate();
+    return toVoidPromise(utils.session.listRuns.invalidate());
 }
 
 export function invalidateRunDiffs(
     utils: TrpcUtils,
     profileId: string | undefined,
     runId: EntityId<'run'> | undefined
-): Promise<unknown> {
+): Promise<void> {
     if (profileId && runId) {
-        return utils.diff.listByRun.invalidate({ profileId, runId });
+        return toVoidPromise(utils.diff.listByRun.invalidate({ profileId, runId }));
     }
 
-    return utils.diff.listByRun.invalidate();
+    return toVoidPromise(utils.diff.listByRun.invalidate());
 }
 
 export function invalidateSessionCheckpoints(
     utils: TrpcUtils,
     profileId: string | undefined,
     sessionId: EntityId<'sess'> | undefined
-): Promise<unknown> {
+): Promise<void> {
     if (profileId && sessionId) {
-        return utils.checkpoint.list.invalidate({ profileId, sessionId });
+        return toVoidPromise(utils.checkpoint.list.invalidate({ profileId, sessionId }));
     }
 
-    return utils.checkpoint.list.invalidate();
+    return toVoidPromise(utils.checkpoint.list.invalidate());
 }
 
 export function invalidateSessionMessages(
@@ -90,19 +102,21 @@ export function invalidateSessionMessages(
     profileId: string | undefined,
     sessionId: EntityId<'sess'> | undefined,
     runId?: EntityId<'run'>
-): Promise<unknown> {
+): Promise<void> {
     if (profileId && sessionId) {
-        return utils.session.listMessages.invalidate({
-            profileId,
-            sessionId,
-            ...(runId ? { runId } : {}),
-        });
+        return toVoidPromise(
+            utils.session.listMessages.invalidate({
+                profileId,
+                sessionId,
+                ...(runId ? { runId } : {}),
+            })
+        );
     }
 
-    return utils.session.listMessages.invalidate();
+    return toVoidPromise(utils.session.listMessages.invalidate());
 }
 
-export function invalidateSelectedMessages(utils: TrpcUtils, context: RuntimeEventContext): Promise<unknown> {
+export function invalidateSelectedMessages(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
     return invalidateSessionMessages(
         utils,
         context.profileId,
@@ -111,27 +125,31 @@ export function invalidateSelectedMessages(utils: TrpcUtils, context: RuntimeEve
     );
 }
 
-export function invalidatePlanActive(utils: TrpcUtils, context: RuntimeEventContext): Promise<unknown> {
+export function invalidatePlanActive(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
     if (context.profileId && context.sessionId && context.topLevelTab) {
-        return utils.plan.getActive.invalidate({
-            profileId: context.profileId,
-            sessionId: context.sessionId,
-            topLevelTab: context.topLevelTab,
-        });
+        return toVoidPromise(
+            utils.plan.getActive.invalidate({
+                profileId: context.profileId,
+                sessionId: context.sessionId,
+                topLevelTab: context.topLevelTab,
+            })
+        );
     }
 
-    return utils.plan.getActive.invalidate();
+    return toVoidPromise(utils.plan.getActive.invalidate());
 }
 
-export function invalidateOrchestratorLatest(utils: TrpcUtils, context: RuntimeEventContext): Promise<unknown> {
+export function invalidateOrchestratorLatest(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
     if (context.profileId && context.sessionId) {
-        return utils.orchestrator.latestBySession.invalidate({
-            profileId: context.profileId,
-            sessionId: context.sessionId,
-        });
+        return toVoidPromise(
+            utils.orchestrator.latestBySession.invalidate({
+                profileId: context.profileId,
+                sessionId: context.sessionId,
+            })
+        );
     }
 
-    return utils.orchestrator.latestBySession.invalidate();
+    return toVoidPromise(utils.orchestrator.latestBySession.invalidate());
 }
 
 export function invalidateProfileQueries(utils: TrpcUtils, profileId: string | undefined): Promise<void> {
@@ -143,7 +161,7 @@ export function invalidateProfileQueries(utils: TrpcUtils, profileId: string | u
 }
 
 export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [
+    const invalidations: Promise<void>[] = [
         utils.runtime.getShellBootstrap.invalidate(),
         utils.runtime.getDiagnosticSnapshot.invalidate(),
         utils.conversation.listBuckets.invalidate(),
@@ -178,14 +196,14 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
         utils.permission.listPending.invalidate(),
         utils.tool.list.invalidate(),
         utils.mcp.listServers.invalidate(),
-    ];
+    ].map(toVoidPromise);
 
-    invalidations.push(utils.profile.getExecutionPreset.invalidate());
-    invalidations.push(utils.runtime.listWorkspaceRoots.invalidate());
-    invalidations.push(utils.worktree.list.invalidate());
-    invalidations.push(utils.session.getAttachedSkills.invalidate());
-    invalidations.push(utils.conversation.getEditPreference.invalidate());
-    invalidations.push(utils.conversation.getThreadTitlePreference.invalidate());
+    invalidations.push(toVoidPromise(utils.profile.getExecutionPreset.invalidate()));
+    invalidations.push(toVoidPromise(utils.runtime.listWorkspaceRoots.invalidate()));
+    invalidations.push(toVoidPromise(utils.worktree.list.invalidate()));
+    invalidations.push(toVoidPromise(utils.session.getAttachedSkills.invalidate()));
+    invalidations.push(toVoidPromise(utils.conversation.getEditPreference.invalidate()));
+    invalidations.push(toVoidPromise(utils.conversation.getThreadTitlePreference.invalidate()));
 
     await Promise.all(invalidations);
 }

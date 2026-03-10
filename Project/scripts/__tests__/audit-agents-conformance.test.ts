@@ -16,7 +16,7 @@ describe('auditAgentsConformance', () => {
         const rootDir = mkdtempSync(path.join(os.tmpdir(), 'agents-audit-'));
 
         try {
-            writeFixture(rootDir, 'src/tooLarge.ts', `${'const value = 1;\n'.repeat(1000)}`);
+            writeFixture(rootDir, 'src/tooLarge.ts', 'const value = 1;\n'.repeat(1000));
             writeFixture(
                 rootDir,
                 'src/withDisable.ts',

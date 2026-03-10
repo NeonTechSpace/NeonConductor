@@ -1,10 +1,11 @@
-import type { DatabaseSync } from 'node:sqlite';
 
 import {
     listStaticModelDefinitions,
     toStaticProviderCatalogModel,
 } from '@/app/backend/providers/metadata/staticCatalog/registry';
 import { getDefaultEndpointProfile } from '@/app/backend/providers/registry';
+
+import type { DatabaseSync } from 'node:sqlite';
 
 const DEFAULT_PROVIDER_ID = 'kilo';
 const DEFAULT_MODEL_ID = 'kilo/auto';

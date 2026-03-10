@@ -1,5 +1,6 @@
-import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
 import { compressComposerImageInWorker } from '@/web/components/conversation/hooks/composerImageCompressionClient';
+
+import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
 import { readImageMimeType } from '@/app/shared/imageMimeType';
 
 const MAX_IMAGE_EDGE_PX = 2048;
@@ -283,20 +284,25 @@ async function prepareComposerImageAttachmentOnMainThread(
         const preservePng = hasTransparentPixels(initialRender.context, dimensions.width, dimensions.height);
         releaseCanvas(initialRender);
 
-        while (true) {
+        for (;;) {
             const surface = renderToCanvas(loadedImage.source, dimensions.width, dimensions.height);
 
             try {
                 if (preservePng) {
                     const pngBlob = await canvasToBlob(surface, 'image/png');
                     if (pngBlob.size <= MAX_COMPRESSED_IMAGE_BYTES) {
-                        return finalizePreparedAttachment(pngBlob, dimensions.width, dimensions.height, clientId);
+                        return await finalizePreparedAttachment(pngBlob, dimensions.width, dimensions.height, clientId);
                     }
                 } else {
                     for (const quality of JPEG_QUALITY_STEPS) {
                         const jpegBlob = await canvasToBlob(surface, 'image/jpeg', quality);
                         if (jpegBlob.size <= MAX_COMPRESSED_IMAGE_BYTES) {
-                            return finalizePreparedAttachment(jpegBlob, dimensions.width, dimensions.height, clientId);
+                            return await finalizePreparedAttachment(
+                                jpegBlob,
+                                dimensions.width,
+                                dimensions.height,
+                                clientId
+                            );
                         }
                     }
                 }

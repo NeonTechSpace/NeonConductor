@@ -1,7 +1,7 @@
 import { providerStore, runStore, settingsStore, threadStore } from '@/app/backend/persistence/stores';
 import { getProviderAdapter } from '@/app/backend/providers/adapters';
-import type { ProviderRuntimeInput, ProviderRuntimePart } from '@/app/backend/providers/types';
 import { isSupportedProviderId } from '@/app/backend/providers/registry';
+import type { ProviderRuntimeInput, ProviderRuntimePart } from '@/app/backend/providers/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
 import { appLog } from '@/app/main/logging';

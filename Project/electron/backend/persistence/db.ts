@@ -155,10 +155,6 @@ function readPragmaTableInfoRows(sqlite: DatabaseSync, tableName: string): Array
 
     const tableInfoRows: Array<{ name?: SQLOutputValue }> = [];
     for (const row of rows) {
-        if (typeof row !== 'object' || row === null) {
-            continue;
-        }
-
         tableInfoRows.push({
             ...('name' in row ? { name: row.name } : {}),
         });

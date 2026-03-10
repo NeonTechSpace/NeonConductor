@@ -95,7 +95,7 @@ export interface ContextPolicyInput {
     modelId: string;
 }
 
-export interface ContextPreviewTargetInput extends ContextPolicyInput {}
+export type ContextPreviewTargetInput = ContextPolicyInput;
 
 export interface SetContextGlobalSettingsInput {
     enabled: boolean;

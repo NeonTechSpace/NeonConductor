@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 
+import { normalizeCatalogMetadata, toProviderCatalogUpsert } from '@/app/backend/providers/metadata/normalize';
+import {
+    listStaticModelDefinitions,
+    toStaticProviderCatalogModel,
+} from '@/app/backend/providers/metadata/staticCatalog/registry';
 import {
     providerCatalogStore,
     runtimeContractProfileId,
@@ -11,11 +16,6 @@ import {
     getPersistence,
     waitForRunStatus,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
-import {
-    listStaticModelDefinitions,
-    toStaticProviderCatalogModel,
-} from '@/app/backend/providers/metadata/staticCatalog/registry';
-import { normalizeCatalogMetadata, toProviderCatalogUpsert } from '@/app/backend/providers/metadata/normalize';
 
 registerRuntimeContractHooks();
 

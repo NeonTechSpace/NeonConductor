@@ -10,6 +10,7 @@ import {
     resolvePackagedRuntimeNamespaceFromEnv,
     type RuntimeStorageNamespace,
 } from '@/app/main/runtime/storage';
+
 import { scriptLog } from '@/scripts/logger';
 
 interface PackageJsonSnapshot {
@@ -85,7 +86,7 @@ export function resolveDesktopDoctorPaths(scope: DesktopDoctorScope): DesktopDoc
 
 function readPackageJson(): PackageJsonSnapshot {
     const packageJsonPath = path.join(process.cwd(), 'package.json');
-    const parsedPackageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    const parsedPackageJson: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
     if (!isRecord(parsedPackageJson)) {
         throw new Error('package.json must parse to an object.');
     }

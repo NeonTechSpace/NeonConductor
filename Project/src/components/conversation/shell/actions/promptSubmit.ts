@@ -10,8 +10,9 @@ import type {
     ComposerImageAttachmentInput,
     EntityId,
     PlanStartInput,
-    SessionStartRunInput,
+    PlanRecordView,
     RuntimeProviderId,
+    SessionStartRunInput,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 
@@ -21,15 +22,14 @@ interface ProviderAuthView {
     authMethod: string;
 }
 
-type PlanStartSuccessResult = { plan: unknown };
+type PlanStartSuccessResult = { plan: PlanRecordView };
 type RunStartAcceptedResult = { accepted: true };
 type RunStartRejectedResult = { accepted: false; message?: string };
 
 function isAcceptedRunResult<
     TRunStartAcceptedResult extends RunStartAcceptedResult,
-    TRunStartRejectedResult extends RunStartRejectedResult,
 >(
-    result: TRunStartAcceptedResult | TRunStartRejectedResult
+    result: TRunStartAcceptedResult | RunStartRejectedResult
 ): result is TRunStartAcceptedResult {
     return result.accepted;
 }
@@ -37,7 +37,6 @@ function isAcceptedRunResult<
 interface SubmitPromptInput<
     TPlanStartResult extends PlanStartSuccessResult,
     TRunStartAcceptedResult extends RunStartAcceptedResult,
-    TRunStartRejectedResult extends RunStartRejectedResult,
 > {
     prompt: string;
     attachments?: ComposerImageAttachmentInput[];
@@ -53,7 +52,7 @@ interface SubmitPromptInput<
     runtimeOptions: RuntimeRunOptions;
     providerById: Map<RuntimeProviderId, ProviderAuthView>;
     startPlan: (input: PlanStartInput) => Promise<TPlanStartResult>;
-    startRun: (input: SessionStartRunInput) => Promise<TRunStartAcceptedResult | TRunStartRejectedResult>;
+    startRun: (input: SessionStartRunInput) => Promise<TRunStartAcceptedResult | RunStartRejectedResult>;
     onPromptCleared: () => void;
     onPlanStarted: (result: TPlanStartResult) => void;
     onRunStarted: (result: TRunStartAcceptedResult) => void;
@@ -63,9 +62,8 @@ interface SubmitPromptInput<
 export async function submitPrompt<
     TPlanStartResult extends PlanStartSuccessResult,
     TRunStartAcceptedResult extends RunStartAcceptedResult,
-    TRunStartRejectedResult extends RunStartRejectedResult,
 >(
-    input: SubmitPromptInput<TPlanStartResult, TRunStartAcceptedResult, TRunStartRejectedResult>
+    input: SubmitPromptInput<TPlanStartResult, TRunStartAcceptedResult>
 ): Promise<void> {
     const trimmedPrompt = input.prompt.trim();
     const attachments = input.attachments ?? [];

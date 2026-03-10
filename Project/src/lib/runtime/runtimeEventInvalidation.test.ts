@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const { setQueriesDataMock } = vi.hoisted(() => ({
+    setQueriesDataMock: vi.fn(),
+}));
+
+vi.mock('@/web/lib/providers/trpcCore', () => ({
+    queryClient: {
+        setQueriesData: setQueriesDataMock,
+    },
+}));
+
 import { invalidateQueriesForRuntimeEvent } from '@/web/lib/runtime/runtimeEventInvalidation';
 
 import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
@@ -135,10 +145,11 @@ function setSelectionState(profileId: string, state: { selectedSessionId?: strin
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    setQueriesDataMock.mockReset();
 });
 
 describe('invalidateQueriesForRuntimeEvent', () => {
-    it('narrows thread relation events to thread chrome queries', async () => {
+    it('patches thread relation cache updates before falling back to invalidation', async () => {
         const calls: InvalidationCall[] = [];
         const utils = createUtilsMock(calls);
 
@@ -157,11 +168,9 @@ describe('invalidateQueriesForRuntimeEvent', () => {
             })
         );
 
-        expect(calls).toEqual([
-            { key: 'conversation.listThreads', args: { profileId: 'profile_default' } },
-            { key: 'conversation.listTags', args: { profileId: 'profile_default' } },
-            { key: 'runtime.getShellBootstrap', args: { profileId: 'profile_default' } },
-        ]);
+        expect(calls).toEqual([]);
+        expect(utils.runtime.getShellBootstrap.setData).toHaveBeenCalledTimes(1);
+        expect(setQueriesDataMock).not.toHaveBeenCalled();
     });
 
     it('invalidates only selected message queries for message part updates', async () => {

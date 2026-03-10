@@ -12,7 +12,7 @@ export function setActivePlanCache(input: {
     topLevelTab: TopLevelTab;
     planResult: { found: false } | { found: true; plan: PlanRecordView };
 }) {
-    void input.utils.plan.getActive.setData(
+    input.utils.plan.getActive.setData(
         {
             profileId: input.profileId,
             sessionId: input.sessionId,
@@ -28,7 +28,7 @@ export function setOrchestratorLatestCache(input: {
     sessionId: EntityId<'sess'>;
     latest: OrchestratorLatestData;
 }) {
-    void input.utils.orchestrator.latestBySession.setData(
+    input.utils.orchestrator.latestBySession.setData(
         {
             profileId: input.profileId,
             sessionId: input.sessionId,

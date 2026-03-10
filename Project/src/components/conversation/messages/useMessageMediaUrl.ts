@@ -6,20 +6,23 @@ import { trpc } from '@/web/trpc/client';
 
 import type { EntityId, SessionMessageMediaPayload } from '@/app/backend/runtime/contracts';
 
+function isIndexedRecord(value: unknown): value is Record<PropertyKey, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isArrayLikeByteSource(value: unknown): value is Record<PropertyKey, unknown> & { length: number } {
+    return isIndexedRecord(value) && typeof value['length'] === 'number';
+}
+
 function normalizeMediaBytes(value: unknown): Uint8Array | undefined {
     if (value instanceof Uint8Array) {
         return Uint8Array.from(value);
     }
 
-    if (
-        typeof value === 'object' &&
-        value !== null &&
-        'length' in value &&
-        typeof (value as { length?: unknown }).length === 'number'
-    ) {
-        const length = (value as { length: number }).length;
+    if (isArrayLikeByteSource(value)) {
+        const { length } = value;
         const bytes = Array.from({ length }, (_unused, index) => {
-            const candidate = (value as Record<number, unknown>)[index];
+            const candidate = value[index];
             return typeof candidate === 'number' ? candidate : 0;
         });
 

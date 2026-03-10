@@ -39,7 +39,7 @@ interface UseConversationShellEditFlowInput {
               topLevelTab?: TopLevelTab;
           }
     >;
-    setEditPreference: (input: { profileId: string; value: 'truncate' | 'branch' }) => Promise<unknown>;
+    setEditPreference: (input: { profileId: string; value: 'truncate' | 'branch' }) => Promise<void>;
     uiState: ConversationUiState;
     onTopLevelTabChange: (nextTab: TopLevelTab) => void;
     onClearError: () => void;
@@ -137,7 +137,7 @@ export function useConversationShellEditFlow(input: UseConversationShellEditFlow
                                 profileId: input.profileId,
                                 value: dialogInput.editMode,
                             });
-                            void utils.conversation.getEditPreference.setData(
+                            utils.conversation.getEditPreference.setData(
                                 {
                                     profileId: input.profileId,
                                 },

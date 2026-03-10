@@ -92,7 +92,7 @@ export class ComposerImageCompressionClient {
         const worker = this.workerFactory();
         worker.onmessage = (event) => {
             const message = event.data;
-            if (!message || !this.activeRequest || message.requestId !== this.activeRequest.requestId) {
+            if (!this.activeRequest || message.requestId !== this.activeRequest.requestId) {
                 return;
             }
 

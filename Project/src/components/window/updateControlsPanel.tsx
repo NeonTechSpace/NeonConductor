@@ -1,14 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { RefObject } from 'react';
+
 
 import { Button } from '@/web/components/ui/button';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import {
     getUpdatesStatusRefetchInterval,
     UPDATES_STATUS_QUERY_OPTIONS,
 } from '@/web/components/window/updatesStatusQueryOptions';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
+
+import type { RefObject } from 'react';
 
 type UpdateChannel = 'stable' | 'beta' | 'alpha';
 
@@ -52,10 +54,10 @@ export function UpdateControlsPanel({ open, onClose, anchorRef }: UpdateControls
         },
     });
     const setChannelMutation = trpc.updates.setChannel.useMutation({
-        onMutate: async (nextChannel) => {
+        onMutate: (nextChannel) => {
             setFeedbackMessage(undefined);
             const previousChannelState = utils.updates.getChannel.getData(undefined);
-            void utils.updates.getChannel.setData(undefined, {
+            utils.updates.getChannel.setData(undefined, {
                 channel: nextChannel,
             });
             return {
@@ -63,7 +65,7 @@ export function UpdateControlsPanel({ open, onClose, anchorRef }: UpdateControls
             };
         },
         onSuccess: (result) => {
-            void utils.updates.getChannel.setData(undefined, {
+            utils.updates.getChannel.setData(undefined, {
                 channel: result.channel,
             });
             setFeedbackTone(result.changed ? 'success' : 'info');
@@ -74,7 +76,7 @@ export function UpdateControlsPanel({ open, onClose, anchorRef }: UpdateControls
         },
         onError: (error, _variables, context) => {
             if (context?.previousChannelState) {
-                void utils.updates.getChannel.setData(undefined, context.previousChannelState);
+                utils.updates.getChannel.setData(undefined, context.previousChannelState);
             }
             setFeedbackTone('error');
             setFeedbackMessage(error.message);

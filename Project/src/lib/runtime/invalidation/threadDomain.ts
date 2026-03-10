@@ -31,7 +31,7 @@ export async function invalidateThreadQueries(
     event: RuntimeEventRecordV1,
     context: RuntimeEventContext
 ): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [invalidateThreadList(utils, context.profileId)];
+    const invalidations: Promise<void>[] = [invalidateThreadList(utils, context.profileId)];
     if (isBucketAffectingThreadEvent(event)) {
         addInvalidation(invalidations, invalidateBucketList(utils, context.profileId));
     }
@@ -48,7 +48,7 @@ export async function invalidateTagQueries(
     event: RuntimeEventRecordV1,
     context: RuntimeEventContext
 ): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [invalidateTagList(utils, context.profileId)];
+    const invalidations: Promise<void>[] = [invalidateTagList(utils, context.profileId)];
     if (isTagRelationEvent(event, context)) {
         addInvalidation(invalidations, invalidateThreadList(utils, context.profileId));
         addInvalidation(invalidations, invalidateBucketList(utils, context.profileId));

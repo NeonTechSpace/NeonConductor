@@ -55,7 +55,7 @@ export async function invalidateQueriesForRuntimeEvent(
     event: RuntimeEventRecordV1
 ): Promise<void> {
     const context = getRuntimeEventContext(event);
-    const patched = await applyRuntimeEventPatches(utils, event, context);
+    const patched = applyRuntimeEventPatches(utils, event, context);
     if (patched) {
         return;
     }

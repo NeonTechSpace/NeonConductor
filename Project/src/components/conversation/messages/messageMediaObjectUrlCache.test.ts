@@ -8,8 +8,8 @@ import {
 import type { SessionMessageMediaPayload } from '@/app/backend/runtime/contracts';
 
 describe('messageMediaObjectUrlCache', () => {
-    const originalCreateObjectUrl = URL.createObjectURL;
-    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    const originalCreateObjectUrl = URL.createObjectURL.bind(URL);
+    const originalRevokeObjectUrl = URL.revokeObjectURL.bind(URL);
     const createObjectUrl = vi.fn(() => 'blob:test-url');
     const revokeObjectUrl = vi.fn();
 

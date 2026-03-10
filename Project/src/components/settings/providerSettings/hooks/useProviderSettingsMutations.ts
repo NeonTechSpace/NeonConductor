@@ -24,7 +24,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
         providerId: RuntimeProviderId,
         updater: (provider: ProviderListQueryData['providers'][number]) => ProviderListQueryData['providers'][number]
     ) => {
-        void utils.provider.listProviders.setData({ profileId: input.profileId }, (current) => {
+        utils.provider.listProviders.setData({ profileId: input.profileId }, (current) => {
             if (!current) {
                 return current;
             }
@@ -43,7 +43,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             state,
         };
 
-        void utils.provider.getAuthState.setData(
+        utils.provider.getAuthState.setData(
             {
                 profileId: input.profileId,
                 providerId,
@@ -67,7 +67,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             }
 
             input.setStatusMessage('Default provider/model updated.');
-            void utils.provider.getDefaults.setData(
+            utils.provider.getDefaults.setData(
                 { profileId: input.profileId },
                 {
                     defaults: {
@@ -76,7 +76,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                     },
                 }
             );
-            void utils.provider.listProviders.setData({ profileId: input.profileId }, (current) => {
+            utils.provider.listProviders.setData({ profileId: input.profileId }, (current) => {
                 if (!current) {
                     return current;
                 }
@@ -100,7 +100,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
 
             input.setApiKeyInput('');
             input.setStatusMessage('API key saved. Provider is ready.');
-            void utils.provider.getAuthState.setData(
+            utils.provider.getAuthState.setData(
                 {
                     profileId: input.profileId,
                     providerId: variables.providerId,

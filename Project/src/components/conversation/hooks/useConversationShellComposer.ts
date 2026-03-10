@@ -14,6 +14,7 @@ import { submitPrompt as submitPromptFromComposer } from '@/web/components/conve
 import type {
     EntityId,
     PlanStartInput,
+    PlanRecordView,
     RuntimeProviderId,
     RuntimeRunOptions,
     SessionStartRunInput,
@@ -27,7 +28,7 @@ interface ProviderAuthView {
 }
 
 interface UseConversationShellComposerInput<
-    TPlanStartResult extends { plan: unknown },
+    TPlanStartResult extends { plan: PlanRecordView },
     TRunStartAcceptedResult extends { accepted: true },
     TRunStartRejectedResult extends { accepted: false; message?: string },
 > {
@@ -56,7 +57,7 @@ interface UseConversationShellComposerInput<
 }
 
 export function useConversationShellComposer<
-    TPlanStartResult extends { plan: unknown },
+    TPlanStartResult extends { plan: PlanRecordView },
     TRunStartAcceptedResult extends { accepted: true },
     TRunStartRejectedResult extends { accepted: false; message?: string },
 >(
@@ -276,8 +277,7 @@ export function useConversationShellComposer<
 
             void submitPromptFromComposer<
                 TPlanStartResult,
-                TRunStartAcceptedResult,
-                TRunStartRejectedResult
+                TRunStartAcceptedResult
             >({
                 prompt,
                 ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),

@@ -16,7 +16,7 @@ export async function invalidatePlanQueries(
     event: RuntimeEventRecordV1,
     context: RuntimeEventContext
 ): Promise<void> {
-    const invalidations: Array<Promise<unknown>> = [invalidatePlanActive(utils, context)];
+    const invalidations: Promise<void>[] = [invalidatePlanActive(utils, context)];
     if (hasPayloadKey(event, 'runId') || hasPayloadKey(event, 'orchestratorRunId')) {
         addInvalidation(invalidations, invalidateSessionRuns(utils, context.profileId, context.sessionId));
     }

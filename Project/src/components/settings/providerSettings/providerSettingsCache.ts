@@ -1,11 +1,11 @@
 import { trpc } from '@/web/trpc/client';
 
+import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type {
     KiloModelProviderOption,
     ProviderEndpointProfileResult,
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
-import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type {
     KiloModelRoutingPreference,
     RuntimeProviderId,
@@ -49,14 +49,15 @@ export function patchProviderCache(input: {
     routingModelId?: string;
 }) {
     if (input.provider) {
-        void input.utils.provider.listProviders.setData(
+        const provider = input.provider;
+        input.utils.provider.listProviders.setData(
             { profileId: input.profileId },
-            (current: ProviderListData | undefined) => replaceProvider(current, input.provider!)
+            (current: ProviderListData | undefined) => replaceProvider(current, provider)
         );
     }
 
     if (input.defaults) {
-        void input.utils.provider.getDefaults.setData(
+        input.utils.provider.getDefaults.setData(
             { profileId: input.profileId },
             {
                 defaults: input.defaults,
@@ -65,7 +66,7 @@ export function patchProviderCache(input: {
     }
 
     if (input.models) {
-        void input.utils.provider.listModels.setData(
+        input.utils.provider.listModels.setData(
             {
                 profileId: input.profileId,
                 providerId: input.providerId,
@@ -78,7 +79,7 @@ export function patchProviderCache(input: {
     }
 
     if (input.authState) {
-        void input.utils.provider.getAuthState.setData(
+        input.utils.provider.getAuthState.setData(
             {
                 profileId: input.profileId,
                 providerId: input.providerId,
@@ -91,7 +92,7 @@ export function patchProviderCache(input: {
     }
 
     if (input.accountContext && input.providerId === 'kilo') {
-        void input.utils.provider.getAccountContext.setData(
+        input.utils.provider.getAccountContext.setData(
             {
                 profileId: input.profileId,
                 providerId: 'kilo',
@@ -101,7 +102,7 @@ export function patchProviderCache(input: {
     }
 
     if (input.endpointProfile) {
-        void input.utils.provider.getEndpointProfile.setData(
+        input.utils.provider.getEndpointProfile.setData(
             {
                 profileId: input.profileId,
                 providerId: input.providerId,
@@ -113,7 +114,7 @@ export function patchProviderCache(input: {
     }
 
     if (input.routingPreference && input.routingModelId) {
-        void input.utils.provider.getModelRoutingPreference.setData(
+        input.utils.provider.getModelRoutingPreference.setData(
             {
                 profileId: input.profileId,
                 providerId: 'kilo',
@@ -126,7 +127,7 @@ export function patchProviderCache(input: {
     }
 
     if (input.routingProviders && input.routingModelId) {
-        void input.utils.provider.listModelProviders.setData(
+        input.utils.provider.listModelProviders.setData(
             {
                 profileId: input.profileId,
                 providerId: 'kilo',

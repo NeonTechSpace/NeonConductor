@@ -1,6 +1,4 @@
-import {
-    upsertThreadListRecord,
-} from '@/web/components/conversation/sidebar/sidebarCache';
+import { upsertThreadListRecord } from '@/web/components/conversation/sidebar/sidebarCache';
 import { trpc } from '@/web/trpc/client';
 
 import type {
@@ -68,7 +66,7 @@ export function applyConversationSessionCacheUpdate(input: {
 }) {
     const nextRun = input.run;
     const nextThread = input.thread;
-    void input.utils.session.list.setData(
+    input.utils.session.list.setData(
         {
             profileId: input.profileId,
         },
@@ -77,7 +75,7 @@ export function applyConversationSessionCacheUpdate(input: {
         })
     );
 
-    void input.utils.session.status.setData(
+    input.utils.session.status.setData(
         {
             profileId: input.profileId,
             sessionId: input.session.id,
@@ -90,7 +88,7 @@ export function applyConversationSessionCacheUpdate(input: {
     );
 
     if (nextRun) {
-        void input.utils.session.listRuns.setData(
+        input.utils.session.listRuns.setData(
             {
                 profileId: input.profileId,
                 sessionId: input.session.id,
@@ -102,7 +100,7 @@ export function applyConversationSessionCacheUpdate(input: {
     }
 
     if (input.seedEmptyMessagesForRun) {
-        void input.utils.session.listMessages.setData(
+        input.utils.session.listMessages.setData(
             {
                 profileId: input.profileId,
                 sessionId: input.session.id,
@@ -121,7 +119,7 @@ export function applyConversationSessionCacheUpdate(input: {
     }
 
     if (nextThread) {
-        void input.utils.conversation.listThreads.setData(
+        input.utils.conversation.listThreads.setData(
             input.listThreadsInput,
             (current: ThreadListData | undefined) => {
                 const existingThreads = current?.threads ?? [];

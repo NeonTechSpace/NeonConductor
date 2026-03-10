@@ -1,11 +1,11 @@
 import { providerCatalogStore, providerStore } from '@/app/backend/persistence/stores';
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import { getProviderMetadataAdapter } from '@/app/backend/providers/metadata/adapters';
+import { normalizeCatalogMetadata, toProviderCatalogUpsert } from '@/app/backend/providers/metadata/normalize';
 import {
     listStaticModelDefinitions,
     toStaticProviderCatalogModel,
 } from '@/app/backend/providers/metadata/staticCatalog/registry';
-import { normalizeCatalogMetadata, toProviderCatalogUpsert } from '@/app/backend/providers/metadata/normalize';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
 import { resolveEndpointProfile } from '@/app/backend/providers/service/endpointProfiles';
 import {

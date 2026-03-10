@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
+import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
-import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
-import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
@@ -71,7 +71,7 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
             setFeedbackMessage('Saved global context defaults.');
             setGlobalEnabled(settings.enabled);
             setGlobalPercent(String(settings.percent));
-            void utils.context.getGlobalSettings.setData(undefined, {
+            utils.context.getGlobalSettings.setData(undefined, {
                 settings,
             });
             if (resolvedState) {
@@ -96,7 +96,7 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
             setProfileFixedInputTokens(
                 settings.fixedInputTokens !== undefined ? String(settings.fixedInputTokens) : ''
             );
-            void utils.context.getProfileSettings.setData(
+            utils.context.getProfileSettings.setData(
                 {
                     profileId: selectedProfileId,
                 },

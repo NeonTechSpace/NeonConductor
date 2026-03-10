@@ -1,9 +1,8 @@
+import { err, ok, type Result } from 'neverthrow';
 import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { err, ok, type Result } from 'neverthrow';
 import { get_encoding, init, type TiktokenEncoding } from 'tiktoken/init';
 import tiktokenWasmUrl from 'tiktoken/tiktoken_bg.wasm?url';
 
@@ -51,7 +50,13 @@ async function initializeTokenizerRuntime(): Promise<Result<void, TokenizerRunti
         const wasmBytes = await loadTokenizerWasmBytes();
         const webAssemblyApi = globalThis as typeof globalThis & {
             WebAssembly: {
-                instantiate: (bytes: Uint8Array, imports?: Record<string, unknown>) => Promise<unknown>;
+                instantiate: (
+                    bytes: Uint8Array,
+                    imports?: Record<string, unknown>
+                ) => Promise<{
+                    instance: object;
+                    module: object;
+                }>;
             };
         };
         await init((imports) => webAssemblyApi.WebAssembly.instantiate(wasmBytes, imports));

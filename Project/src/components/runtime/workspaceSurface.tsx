@@ -1,3 +1,5 @@
+import { startTransition, useState } from 'react';
+
 import { ConversationShell } from '@/web/components/conversation/shell';
 import {
     INITIAL_CONVERSATION_SHELL_BOOT_CHROME_READINESS,
@@ -6,10 +8,9 @@ import {
 import { useRendererBootReadySignal } from '@/web/components/runtime/useRendererBootReadySignal';
 import { useWorkspaceSurfaceController } from '@/web/components/runtime/workspaceSurfaceController';
 import { WorkspaceSurfaceHeader } from '@/web/components/runtime/workspaceSurfaceHeader';
-import { SettingsSheet } from '@/web/components/settings/settingsSheet';
 import { prefetchSettingsData } from '@/web/components/settings/settingsPrefetch';
+import { SettingsSheet } from '@/web/components/settings/settingsSheet';
 import { trpc } from '@/web/trpc/client';
-import { startTransition, useState } from 'react';
 
 export function WorkspaceSurface() {
     const controller = useWorkspaceSurfaceController();

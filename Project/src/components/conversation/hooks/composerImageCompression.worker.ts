@@ -118,7 +118,7 @@ async function compressImage(file: File, clientId: string): Promise<CompressionS
         const initialImageData = initialContext.getImageData(0, 0, dimensions.width, dimensions.height);
         const preservePng = initialImageData.data.some((value, index) => index % 4 === 3 && value !== 255);
 
-        while (true) {
+        for (;;) {
             const canvas = new OffscreenCanvas(dimensions.width, dimensions.height);
             const context = canvas.getContext('2d');
             if (!context) {

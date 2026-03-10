@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import { tokenCountingService } from '@/app/backend/runtime/services/context/tokenCountingService';
+import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 
 describe('tokenCountingService', () => {
     it('uses estimated counting for providers without a native counter', async () => {

@@ -42,7 +42,7 @@ export function patchWorktreeCaches(input: {
     const removedWorktreeIds = input.removedWorktreeIds ?? [];
 
     if (nextThread) {
-        void input.utils.conversation.listThreads.setData(
+        input.utils.conversation.listThreads.setData(
             input.listThreadsInput,
             (current: ThreadListData | undefined) =>
                 current
@@ -55,13 +55,13 @@ export function patchWorktreeCaches(input: {
     }
 
     if (nextWorktree) {
-        void input.utils.worktree.list.setData(
+        input.utils.worktree.list.setData(
             { profileId: input.profileId },
             (current: WorktreeListData | undefined) => ({
                 worktrees: upsertWorktree(current?.worktrees ?? [], nextWorktree),
             })
         );
-        void input.utils.runtime.getShellBootstrap.setData(
+        input.utils.runtime.getShellBootstrap.setData(
             { profileId: input.profileId },
             (current: ShellBootstrapData | undefined) =>
                 current
@@ -74,7 +74,7 @@ export function patchWorktreeCaches(input: {
     }
 
     if (removedWorktreeIds.length > 0) {
-        void input.utils.worktree.list.setData(
+        input.utils.worktree.list.setData(
             { profileId: input.profileId },
             (current: WorktreeListData | undefined) =>
                 current
@@ -83,7 +83,7 @@ export function patchWorktreeCaches(input: {
                       }
                     : current
         );
-        void input.utils.runtime.getShellBootstrap.setData(
+        input.utils.runtime.getShellBootstrap.setData(
             { profileId: input.profileId },
             (current: ShellBootstrapData | undefined) =>
                 current

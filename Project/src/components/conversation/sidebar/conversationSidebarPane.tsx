@@ -1,6 +1,8 @@
 import { startTransition, useState, useTransition } from 'react';
 
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import { resolveTabSwitchNotice } from '@/web/components/conversation/shell/workspace/tabSwitch';
+import { ConversationSidebar } from '@/web/components/conversation/sidebar/sidebar';
 import {
     patchThreadListRecord,
     removeDeletedSidebarRecords,
@@ -10,8 +12,6 @@ import {
     upsertTagRecord,
     upsertThreadListRecord,
 } from '@/web/components/conversation/sidebar/sidebarCache';
-import { resolveTabSwitchNotice } from '@/web/components/conversation/shell/workspace/tabSwitch';
-import { ConversationSidebar } from '@/web/components/conversation/sidebar/sidebar';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import { SECONDARY_QUERY_OPTIONS } from '@/web/lib/query/secondaryQueryOptions';
 import { trpc } from '@/web/trpc/client';
@@ -139,7 +139,7 @@ export function ConversationSidebarPane({
         groupView,
         ...(scopeFilter !== 'all' ? { scope: scopeFilter } : {}),
         ...(workspaceFilter ? { workspaceFingerprint: workspaceFilter } : {}),
-        ...(sort ? { sort } : {}),
+        sort,
     };
     const workspaceDeletePreviewQuery = trpc.conversation.getWorkspaceThreadDeletePreview.useQuery(
         {
@@ -227,7 +227,7 @@ export function ConversationSidebarPane({
                         }
 
                         const previousThreadList = utils.conversation.listThreads.getData(threadListQueryInput);
-                        void utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
+                        utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
                             if (!current) {
                                 return current;
                             }
@@ -250,13 +250,13 @@ export function ConversationSidebarPane({
                             if (!result.updated || !result.thread) {
                                 setFeedbackMessage('Favorite status could not be updated.');
                                 if (previousThreadList) {
-                                    void utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
+                                    utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
                                 }
                                 return;
                             }
                             const updatedThread = result.thread;
 
-                            void utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
+                            utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
                                 if (!current) {
                                     return current;
                                 }
@@ -268,7 +268,7 @@ export function ConversationSidebarPane({
                             });
                         } catch (error) {
                             if (previousThreadList) {
-                                void utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
+                                utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
                             }
                             setFeedbackMessage(
                                 error instanceof Error ? error.message : 'Favorite status could not be updated.'
@@ -315,7 +315,7 @@ export function ConversationSidebarPane({
                         ...input,
                     });
                     const createdThread = toThreadListRecord(result);
-                    void utils.conversation.listBuckets.setData({ profileId }, (current) => {
+                    utils.conversation.listBuckets.setData({ profileId }, (current) => {
                         if (!current) {
                             return current;
                         }
@@ -324,7 +324,7 @@ export function ConversationSidebarPane({
                             buckets: upsertBucketRecord(current.buckets, result.bucket),
                         };
                     });
-                    void utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
+                    utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
                         if (!current) {
                             return current;
                         }
@@ -362,7 +362,7 @@ export function ConversationSidebarPane({
                             return;
                         }
 
-                        void utils.conversation.listTags.setData({ profileId }, (current) => {
+                        utils.conversation.listTags.setData({ profileId }, (current) => {
                             if (!current) {
                                 return current;
                             }
@@ -371,7 +371,7 @@ export function ConversationSidebarPane({
                                 tags: upsertTagRecord(current.tags, upserted.tag),
                             };
                         });
-                        void utils.runtime.getShellBootstrap.setData({ profileId }, (current) => {
+                        utils.runtime.getShellBootstrap.setData({ profileId }, (current) => {
                             if (!current) {
                                 return current;
                             }
@@ -394,7 +394,7 @@ export function ConversationSidebarPane({
                             threadId,
                             tagIds: validTagIds,
                         });
-                        void utils.runtime.getShellBootstrap.setData({ profileId }, (current) => {
+                        utils.runtime.getShellBootstrap.setData({ profileId }, (current) => {
                             if (!current) {
                                 return current;
                             }
@@ -406,10 +406,10 @@ export function ConversationSidebarPane({
                         });
                     } catch (error) {
                         if (previousTags) {
-                            void utils.conversation.listTags.setData({ profileId }, previousTags);
+                            utils.conversation.listTags.setData({ profileId }, previousTags);
                         }
                         if (previousShellBootstrap) {
-                            void utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
+                            utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
                         }
                         setFeedbackMessage(error instanceof Error ? error.message : 'Thread tags could not be updated.');
                     }
@@ -477,10 +477,10 @@ export function ConversationSidebarPane({
                                 deletedTagIds: result.deletedTagIds,
                                 deletedConversationIds: result.deletedConversationIds,
                             });
-                            void utils.conversation.listBuckets.setData({ profileId }, {
+                            utils.conversation.listBuckets.setData({ profileId }, {
                                 buckets: deletedSidebarRecords.buckets,
                             });
-                            void utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
+                            utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
                                 if (!current) {
                                     return current;
                                 }
@@ -490,17 +490,17 @@ export function ConversationSidebarPane({
                                     threads: deletedSidebarRecords.threads,
                                 };
                             });
-                            void utils.conversation.listTags.setData({ profileId }, {
+                            utils.conversation.listTags.setData({ profileId }, {
                                 tags: deletedSidebarRecords.tags,
                             });
                             if (previousShellBootstrap) {
-                                void utils.runtime.getShellBootstrap.setData({ profileId }, {
+                                utils.runtime.getShellBootstrap.setData({ profileId }, {
                                     ...previousShellBootstrap,
                                     threadTags: deletedSidebarRecords.threadTags,
                                 });
                             }
                             if (previousSessionList) {
-                                void utils.session.list.setData(
+                                utils.session.list.setData(
                                     { profileId },
                                     {
                                         sessions: previousSessionList.sessions.filter(
@@ -514,19 +514,19 @@ export function ConversationSidebarPane({
                             setIncludeFavoriteThreads(false);
                         } catch (error) {
                             if (previousBucketList) {
-                                void utils.conversation.listBuckets.setData({ profileId }, previousBucketList);
+                                utils.conversation.listBuckets.setData({ profileId }, previousBucketList);
                             }
                             if (previousThreadList) {
-                                void utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
+                                utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
                             }
                             if (previousTagList) {
-                                void utils.conversation.listTags.setData({ profileId }, previousTagList);
+                                utils.conversation.listTags.setData({ profileId }, previousTagList);
                             }
                             if (previousShellBootstrap) {
-                                void utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
+                                utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
                             }
                             if (previousSessionList) {
-                                void utils.session.list.setData({ profileId }, previousSessionList);
+                                utils.session.list.setData({ profileId }, previousSessionList);
                             }
                             setFeedbackMessage(
                                 error instanceof Error

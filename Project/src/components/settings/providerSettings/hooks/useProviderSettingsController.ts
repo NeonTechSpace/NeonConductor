@@ -59,12 +59,17 @@ export function useProviderSettingsController(profileId: string) {
         setApiKeyInput,
         setActiveAuthFlow,
     });
+    const ignoreMutationResult = <TInput, TResult>(mutateAsync: (input: TInput) => Promise<TResult>) => {
+        return async (input: TInput): Promise<void> => {
+            await mutateAsync(input);
+        };
+    };
 
     useProviderSettingsAuthPolling({
         profileId,
         activeAuthFlow,
         isPolling: mutations.pollAuthMutation.isPending,
-        pollAuth: async (payload) => mutations.pollAuthMutation.mutateAsync(payload),
+        pollAuth: ignoreMutationResult(mutations.pollAuthMutation.mutateAsync),
     });
 
     useEffect(() => {
@@ -115,7 +120,35 @@ export function useProviderSettingsController(profileId: string) {
         kiloRoutingDraft,
         setSelectedProviderId,
         setStatusMessage,
-        mutations,
+        mutations: {
+            setDefaultMutation: {
+                mutateAsync: ignoreMutationResult(mutations.setDefaultMutation.mutateAsync),
+            },
+            syncCatalogMutation: {
+                mutateAsync: ignoreMutationResult(mutations.syncCatalogMutation.mutateAsync),
+            },
+            setModelRoutingPreferenceMutation: {
+                mutateAsync: ignoreMutationResult(mutations.setModelRoutingPreferenceMutation.mutateAsync),
+            },
+            setEndpointProfileMutation: {
+                mutateAsync: ignoreMutationResult(mutations.setEndpointProfileMutation.mutateAsync),
+            },
+            setOrganizationMutation: {
+                mutateAsync: ignoreMutationResult(mutations.setOrganizationMutation.mutateAsync),
+            },
+            setApiKeyMutation: {
+                mutateAsync: ignoreMutationResult(mutations.setApiKeyMutation.mutateAsync),
+            },
+            startAuthMutation: {
+                mutateAsync: ignoreMutationResult(mutations.startAuthMutation.mutateAsync),
+            },
+            pollAuthMutation: {
+                mutateAsync: ignoreMutationResult(mutations.pollAuthMutation.mutateAsync),
+            },
+            cancelAuthMutation: {
+                mutateAsync: ignoreMutationResult(mutations.cancelAuthMutation.mutateAsync),
+            },
+        },
         onPreviewProvider: (providerId) => {
             prefetchProviderSettingsData({
                 profileId,
