@@ -2,10 +2,16 @@ import { X } from 'lucide-react';
 import { startTransition, useRef, useState } from 'react';
 
 import { ContextSettingsView } from '@/web/components/settings/contextSettingsView';
+import { KiloSettingsView } from '@/web/components/settings/kiloSettingsView';
 import { ProfileSettingsView } from '@/web/components/settings/profileSettingsView';
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 import { RegistrySettingsView } from '@/web/components/settings/registrySettingsView';
-import { getNextSettingsSection, SETTINGS_SECTIONS, type SettingsSection } from '@/web/components/settings/settingsSheetNavigation';
+import {
+    getNextSettingsSection,
+    SETTINGS_SECTIONS,
+    type SettingsSection,
+} from '@/web/components/settings/settingsSheetNavigation';
+import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
 
 interface SettingsSheetProps {
@@ -16,25 +22,32 @@ interface SettingsSheetProps {
 }
 
 const SECTION_LABELS: Record<SettingsSection, string> = {
+    kilo: 'Kilo',
     providers: 'Providers',
     profiles: 'Profiles',
     context: 'Context',
     agents: 'Agents',
 };
 
+const SECTION_DESCRIPTIONS: Record<SettingsSection, string> = {
+    kilo: 'Account, login, balance, and Kilo routing.',
+    providers: 'Default models and provider-wide runtime settings.',
+    profiles: 'Execution presets and profile selection.',
+    context: 'Workspace and context budgeting settings.',
+    agents: 'Registry-backed agents and skills.',
+};
+
 export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: SettingsSheetProps) {
     const [activeSection, setActiveSection] = useState<SettingsSection>('providers');
     const sectionButtonRefs = useRef<Record<SettingsSection, HTMLButtonElement | null>>({
+        kilo: null,
         providers: null,
         profiles: null,
         context: null,
         agents: null,
     });
+    const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const privacyMode = usePrivacyMode();
-
-    if (!open) {
-        return null;
-    }
 
     function moveToSection(section: SettingsSection) {
         startTransition(() => {
@@ -44,16 +57,28 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
     }
 
     return (
-        <>
-            <div className='bg-background/70 fixed inset-0 z-40 backdrop-blur-sm' onClick={onClose} />
-            <section
-                aria-labelledby='settings-sheet-title'
-                className='border-border bg-card text-card-foreground fixed inset-y-0 right-0 z-50 flex w-[min(1080px,95vw)] border-l shadow-2xl'>
-                <aside className='border-border bg-background/55 flex w-56 flex-col gap-2 border-r p-3'>
-                    <h2 id='settings-sheet-title' className='text-sm font-semibold tracking-[0.18em] uppercase'>
-                        Settings
-                    </h2>
-                    <nav role='tablist' aria-orientation='vertical' aria-label='Settings sections' className='space-y-2'>
+        <DialogSurface
+            open={open}
+            titleId='settings-sheet-title'
+            descriptionId='settings-sheet-description'
+            initialFocusRef={closeButtonRef}
+            onClose={onClose}>
+            <div className='border-border bg-card text-card-foreground flex h-[min(820px,calc(100vh-1.5rem))] w-[min(1180px,calc(100vw-1.5rem))] max-w-full flex-col overflow-hidden rounded-[30px] border shadow-[0_28px_90px_rgba(0,0,0,0.35)] lg:flex-row'>
+                <aside className='border-border/80 bg-background/70 flex w-full shrink-0 flex-col gap-3 border-b p-4 lg:w-64 lg:border-r lg:border-b-0'>
+                    <div className='space-y-1'>
+                        <h2 id='settings-sheet-title' className='text-sm font-semibold tracking-[0.18em] uppercase'>
+                            Settings
+                        </h2>
+                        <p id='settings-sheet-description' className='text-muted-foreground text-xs leading-5'>
+                            Provider-neutral runtime controls, plus a dedicated Kilo account surface.
+                        </p>
+                    </div>
+
+                    <nav
+                        role='tablist'
+                        aria-orientation='vertical'
+                        aria-label='Settings sections'
+                        className='space-y-2'>
                         {SETTINGS_SECTIONS.map((section) => (
                             <button
                                 key={section}
@@ -66,10 +91,10 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                                 aria-selected={activeSection === section}
                                 aria-controls={`settings-panel-${section}`}
                                 tabIndex={activeSection === section ? 0 : -1}
-                                className={`focus-visible:ring-ring w-full rounded-2xl border px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 ${
+                                className={`focus-visible:ring-ring w-full rounded-[22px] border px-3 py-3 text-left transition-colors focus-visible:ring-2 ${
                                     activeSection === section
                                         ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                                        : 'border-border bg-background hover:bg-accent'
+                                        : 'border-border bg-card/80 hover:bg-accent'
                                 }`}
                                 onKeyDown={(event) => {
                                     const nextSection = getNextSettingsSection({
@@ -88,28 +113,32 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                                         setActiveSection(section);
                                     });
                                 }}>
-                                {SECTION_LABELS[section]}
+                                <div className='space-y-1'>
+                                    <p className='text-sm font-medium'>{SECTION_LABELS[section]}</p>
+                                    <p className='text-muted-foreground text-[11px] leading-4'>
+                                        {SECTION_DESCRIPTIONS[section]}
+                                    </p>
+                                </div>
                             </button>
                         ))}
                     </nav>
                 </aside>
 
-                <div className='flex min-w-0 flex-1 flex-col'>
-                    <header className='border-border flex items-center justify-between border-b px-5 py-4'>
-                        <div>
-                            <h3 className='text-balance text-base font-semibold'>{SECTION_LABELS[activeSection]}</h3>
-                            <p className='text-muted-foreground text-xs'>
-                                Core runtime is provider-neutral. Kilo-only features stay gated until Kilo login.
-                            </p>
+                <div className='flex min-w-0 flex-1 flex-col overflow-hidden'>
+                    <header className='border-border/80 bg-background/40 flex items-start justify-between gap-4 border-b px-5 py-4 md:px-6'>
+                        <div className='space-y-1'>
+                            <h3 className='text-lg font-semibold text-balance'>{SECTION_LABELS[activeSection]}</h3>
+                            <p className='text-muted-foreground text-sm'>{SECTION_DESCRIPTIONS[activeSection]}</p>
                             {privacyMode.enabled ? (
-                                <p className='text-primary mt-1 text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                <p className='text-primary text-[11px] font-semibold tracking-[0.12em] uppercase'>
                                     Privacy mode active
                                 </p>
                             ) : null}
                         </div>
                         <button
+                            ref={closeButtonRef}
                             type='button'
-                            className='hover:bg-accent focus-visible:ring-ring inline-flex h-8 w-8 items-center justify-center rounded-md focus-visible:ring-2'
+                            className='hover:bg-accent focus-visible:ring-ring border-border/70 bg-background/70 inline-flex h-10 w-10 items-center justify-center rounded-xl border focus-visible:ring-2'
                             onClick={onClose}
                             aria-label='Close settings'>
                             <X className='h-4 w-4' />
@@ -120,7 +149,8 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                         id={`settings-panel-${activeSection}`}
                         role='tabpanel'
                         aria-labelledby={`settings-tab-${activeSection}`}
-                        className='min-h-0 flex-1 overflow-auto'>
+                        className='bg-background/20 min-h-0 flex-1 overflow-auto'>
+                        {activeSection === 'kilo' ? <KiloSettingsView profileId={profileId} /> : null}
                         {activeSection === 'providers' ? <ProviderSettingsView profileId={profileId} /> : null}
                         {activeSection === 'profiles' ? (
                             <ProfileSettingsView activeProfileId={profileId} onProfileActivated={onProfileActivated} />
@@ -129,7 +159,7 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                         {activeSection === 'agents' ? <RegistrySettingsView profileId={profileId} /> : null}
                     </div>
                 </div>
-            </section>
-        </>
+            </div>
+        </DialogSurface>
     );
 }

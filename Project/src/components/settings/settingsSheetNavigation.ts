@@ -1,6 +1,6 @@
-export type SettingsSection = 'providers' | 'profiles' | 'context' | 'agents';
+export type SettingsSection = 'kilo' | 'providers' | 'profiles' | 'context' | 'agents';
 
-export const SETTINGS_SECTIONS: ReadonlyArray<SettingsSection> = ['providers', 'profiles', 'context', 'agents'];
+export const SETTINGS_SECTIONS: ReadonlyArray<SettingsSection> = ['kilo', 'providers', 'profiles', 'context', 'agents'];
 
 export function getNextSettingsSection(input: {
     currentSection: SettingsSection;

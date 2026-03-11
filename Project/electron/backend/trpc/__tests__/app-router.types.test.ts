@@ -446,6 +446,9 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     expectTypeOf<Inputs['system']['openPath']>().toExtend<{
         path: string;
     }>();
+    expectTypeOf<Inputs['system']['openExternalUrl']>().toExtend<{
+        url: string;
+    }>();
     expectTypeOf<Inputs['registry']['refresh']>().toExtend<{
         profileId: string;
         workspaceFingerprint?: string;

@@ -1,7 +1,6 @@
 import { ProviderAuthenticationSection } from '@/web/components/settings/providerSettings/authenticationSection';
 import { ProviderDefaultModelSection } from '@/web/components/settings/providerSettings/defaultModelSection';
 import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
-import { KiloAccountSection } from '@/web/components/settings/providerSettings/kiloAccountSection';
 import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
 import { ProviderSidebar } from '@/web/components/settings/providerSettings/providerSidebar';
 import { ProviderStatusSection } from '@/web/components/settings/providerSettings/providerStatusSection';
@@ -26,12 +25,11 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
             <div className='min-h-0 overflow-y-auto p-4'>
                 {controller.selectedProvider ? (
                     <div className='space-y-5'>
-                        <SettingsFeedbackBanner
-                            message={controller.feedbackMessage}
-                            tone={controller.feedbackTone}
-                        />
+                        <SettingsFeedbackBanner message={controller.feedbackMessage} tone={controller.feedbackTone} />
                         <div>
-                            <h4 className='text-balance text-base font-semibold'>{controller.selectedProvider.label}</h4>
+                            <h4 className='text-base font-semibold text-balance'>
+                                {controller.selectedProvider.label}
+                            </h4>
                             <p className='text-muted-foreground text-sm'>
                                 Local runtime works with any configured provider. Kilo login is only required for
                                 Kilo-specific extras.
@@ -92,6 +90,7 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                             isStartingAuth={controller.mutations.startAuthMutation.isPending}
                             isPollingAuth={controller.mutations.pollAuthMutation.isPending}
                             isCancellingAuth={controller.mutations.cancelAuthMutation.isPending}
+                            isOpeningVerificationPage={controller.mutations.openExternalUrlMutation.isPending}
                             onApiKeyInputChange={controller.setApiKeyInput}
                             onEndpointProfileChange={(value) => {
                                 void controller.changeEndpointProfile(value);
@@ -111,6 +110,9 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                             onCancelFlow={() => {
                                 void controller.cancelFlow();
                             }}
+                            onOpenVerificationPage={() => {
+                                void controller.openVerificationPage();
+                            }}
                         />
 
                         <ProviderStatusSection
@@ -125,17 +127,6 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                             isLoadingOpenAIUsage={controller.queries.openAISubscriptionUsageQuery.isLoading}
                             isLoadingOpenAIRateLimits={controller.queries.openAISubscriptionRateLimitsQuery.isLoading}
                         />
-
-                        {controller.selectedProvider.id === 'kilo' ? (
-                            <KiloAccountSection
-                                accountContext={controller.kiloAccountContext}
-                                isLoading={controller.queries.accountContextQuery.isLoading}
-                                isSavingOrganization={controller.mutations.setOrganizationMutation.isPending}
-                                onOrganizationChange={(organizationId) => {
-                                    void controller.changeOrganization(organizationId);
-                                }}
-                            />
-                        ) : null}
                     </div>
                 ) : (
                     <p className='text-muted-foreground text-sm'>No providers available.</p>

@@ -6,7 +6,10 @@ import { useKiloRoutingDraft } from '@/web/components/settings/providerSettings/
 import { useProviderSettingsAuthPolling } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsAuthPolling';
 import { useProviderSettingsMutations } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsMutations';
 import { prefetchProviderSettingsData } from '@/web/components/settings/providerSettings/providerSettingsPrefetch';
-import { resolveSelectedModelId, resolveSelectedProviderId } from '@/web/components/settings/providerSettings/selection';
+import {
+    resolveSelectedModelId,
+    resolveSelectedProviderId,
+} from '@/web/components/settings/providerSettings/selection';
 import type {
     ActiveAuthFlow,
     ProviderAuthStateView,
@@ -17,22 +20,22 @@ import { trpc } from '@/web/trpc/client';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
 
-export function useProviderSettingsController(profileId: string) {
+interface ProviderSettingsControllerOptions {
+    initialProviderId?: RuntimeProviderId;
+}
+
+export function useProviderSettingsController(profileId: string, options?: ProviderSettingsControllerOptions) {
     const utils = trpc.useUtils();
-    const [requestedProviderId, setRequestedProviderId] = useState<RuntimeProviderId | undefined>(undefined);
+    const [requestedProviderId, setRequestedProviderId] = useState<RuntimeProviderId | undefined>(
+        () => options?.initialProviderId
+    );
     const [requestedModelId, setRequestedModelId] = useState('');
     const [apiKeyInput, setApiKeyInput] = useState('');
     const [activeAuthFlow, setActiveAuthFlow] = useState<ActiveAuthFlow | undefined>(undefined);
     const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
 
-    const providersQuery = trpc.provider.listProviders.useQuery(
-        { profileId },
-        PROGRESSIVE_QUERY_OPTIONS
-    );
-    const defaultsQuery = trpc.provider.getDefaults.useQuery(
-        { profileId },
-        PROGRESSIVE_QUERY_OPTIONS
-    );
+    const providersQuery = trpc.provider.listProviders.useQuery({ profileId }, PROGRESSIVE_QUERY_OPTIONS);
+    const defaultsQuery = trpc.provider.getDefaults.useQuery({ profileId }, PROGRESSIVE_QUERY_OPTIONS);
     const providers = providersQuery.data?.providers ?? [];
     const defaults = defaultsQuery.data?.defaults;
     const selectedProviderId = resolveSelectedProviderId(providers, requestedProviderId);
@@ -148,7 +151,8 @@ export function useProviderSettingsController(profileId: string) {
             setApiKeyInput,
             setStatusMessage,
         });
-    }, [profileId]);
+        setRequestedProviderId(options?.initialProviderId);
+    }, [options?.initialProviderId, profileId]);
 
     const mutations = useProviderSettingsMutations({
         profileId,
@@ -174,9 +178,7 @@ export function useProviderSettingsController(profileId: string) {
         ? authStateQuery.data.state
         : undefined;
     const kiloAccountContext =
-        accountContextQuery.data?.providerId === 'kilo'
-            ? accountContextQuery.data.kiloAccountContext
-            : undefined;
+        accountContextQuery.data?.providerId === 'kilo' ? accountContextQuery.data.kiloAccountContext : undefined;
     const selectedProviderUsageSummary = usageSummaryQuery.data?.summaries.find(
         (summary) => summary.providerId === selectedProviderId
     );
@@ -234,6 +236,9 @@ export function useProviderSettingsController(profileId: string) {
             cancelAuthMutation: {
                 mutateAsync: ignoreMutationResult(mutations.cancelAuthMutation.mutateAsync),
             },
+            openExternalUrlMutation: {
+                mutateAsync: ignoreMutationResult(mutations.openExternalUrlMutation.mutateAsync),
+            },
         },
         onPreviewProvider: (providerId) => {
             prefetchProviderSettingsData({
@@ -257,7 +262,7 @@ export function useProviderSettingsController(profileId: string) {
             mutations.cancelAuthMutation.error?.message ??
             statusMessage,
         feedbackTone:
-            mutations.setDefaultMutation.error ??
+            (mutations.setDefaultMutation.error ??
             mutations.setApiKeyMutation.error ??
             mutations.setEndpointProfileMutation.error ??
             mutations.syncCatalogMutation.error ??
@@ -265,7 +270,7 @@ export function useProviderSettingsController(profileId: string) {
             mutations.setOrganizationMutation.error ??
             mutations.startAuthMutation.error ??
             mutations.pollAuthMutation.error ??
-            mutations.cancelAuthMutation.error
+            mutations.cancelAuthMutation.error)
                 ? ('error' as const)
                 : statusMessage
                   ? ('success' as const)
@@ -302,4 +307,3 @@ export function useProviderSettingsController(profileId: string) {
         setStatusMessage,
     };
 }
-

@@ -8,6 +8,15 @@ interface SettingsPrefetchInput {
             getDefaults: {
                 prefetch: (input: { profileId: string }) => Promise<void>;
             };
+            listModels: {
+                prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
+            };
+            getAuthState: {
+                prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
+            };
+            getAccountContext: {
+                prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
+            };
         };
         profile: {
             list: {
@@ -39,6 +48,9 @@ export function prefetchSettingsData(input: SettingsPrefetchInput): void {
     void Promise.all([
         input.trpcUtils.provider.listProviders.prefetch({ profileId: input.profileId }),
         input.trpcUtils.provider.getDefaults.prefetch({ profileId: input.profileId }),
+        input.trpcUtils.provider.listModels.prefetch({ profileId: input.profileId, providerId: 'kilo' }),
+        input.trpcUtils.provider.getAuthState.prefetch({ profileId: input.profileId, providerId: 'kilo' }),
+        input.trpcUtils.provider.getAccountContext.prefetch({ profileId: input.profileId, providerId: 'kilo' }),
         input.trpcUtils.profile.list.prefetch(undefined),
         input.trpcUtils.context.getGlobalSettings.prefetch(undefined),
         input.trpcUtils.context.getProfileSettings.prefetch({ profileId: input.profileId }),

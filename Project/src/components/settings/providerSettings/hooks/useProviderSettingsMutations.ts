@@ -187,6 +187,14 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
         },
     });
 
+    const openExternalUrlMutation = trpc.system.openExternalUrl.useMutation({
+        onError: () => {
+            input.setStatusMessage(
+                'Sign-in started. Open the verification page from the auth card if your browser did not open.'
+            );
+        },
+    });
+
     const startAuthMutation = trpc.provider.startAuth.useMutation({
         onSuccess: (result, variables) => {
             input.setStatusMessage(`${methodLabel(variables.method)} flow started.`);
@@ -204,6 +212,9 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 authState: 'pending',
                 updatedAt: new Date().toISOString(),
             });
+            if (variables.providerId === 'kilo' && result.verificationUri) {
+                void openExternalUrlMutation.mutateAsync({ url: result.verificationUri }).catch(() => undefined);
+            }
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
@@ -251,9 +262,9 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
         syncCatalogMutation,
         setModelRoutingPreferenceMutation,
         setOrganizationMutation,
+        openExternalUrlMutation,
         startAuthMutation,
         pollAuthMutation,
         cancelAuthMutation,
     };
 }
-

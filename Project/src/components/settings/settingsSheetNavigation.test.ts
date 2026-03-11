@@ -6,16 +6,16 @@ describe('settingsSheetNavigation', () => {
     it('moves down through vertical settings tabs', () => {
         expect(
             getNextSettingsSection({
-                currentSection: 'providers',
+                currentSection: 'kilo',
                 key: 'ArrowDown',
             })
-        ).toBe('profiles');
+        ).toBe('providers');
     });
 
     it('wraps upward and supports home/end keys', () => {
         expect(
             getNextSettingsSection({
-                currentSection: 'providers',
+                currentSection: 'kilo',
                 key: 'ArrowUp',
             })
         ).toBe('agents');
@@ -24,10 +24,10 @@ describe('settingsSheetNavigation', () => {
                 currentSection: 'context',
                 key: 'Home',
             })
-        ).toBe('providers');
+        ).toBe('kilo');
         expect(
             getNextSettingsSection({
-                currentSection: 'providers',
+                currentSection: 'kilo',
                 key: 'End',
             })
         ).toBe('agents');
@@ -36,7 +36,7 @@ describe('settingsSheetNavigation', () => {
     it('ignores unrelated keys', () => {
         expect(
             getNextSettingsSection({
-                currentSection: 'providers',
+                currentSection: 'kilo',
                 key: 'Enter',
             })
         ).toBeUndefined();
