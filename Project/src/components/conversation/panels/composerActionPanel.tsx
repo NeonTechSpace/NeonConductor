@@ -3,10 +3,11 @@ import { useRef, useState } from 'react';
 
 import { getImagePreviewStatusLabel, getPendingImagePreviewState } from '@/web/components/conversation/messages/imagePreviewState';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
+import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
 import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
-import type { ResolvedContextState } from '@/shared/contracts';
+import type { ResolvedContextState, TopLevelTab } from '@/shared/contracts';
 
 interface ProviderOption {
     id: string;
@@ -17,6 +18,9 @@ interface ProviderOption {
 interface ModelOption {
     id: string;
     label: string;
+    sourceProvider?: string;
+    source?: string;
+    promptFamily?: string;
     price?: number;
     latency?: number;
     tps?: number;
@@ -43,6 +47,9 @@ interface ComposerActionPanelProps {
     isSubmitting: boolean;
     selectedProviderId: string | undefined;
     selectedModelId: string | undefined;
+    topLevelTab: TopLevelTab;
+    activeModeKey: string;
+    modes: Array<{ id: string; modeKey: string; label: string }>;
     canAttachImages: boolean;
     imageAttachmentBlockedReason?: string;
     routingBadge?: string;
@@ -56,6 +63,7 @@ interface ComposerActionPanelProps {
     isCompactingContext?: boolean;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onModeChange: (modeKey: string) => void;
     onPromptChange: (nextPrompt: string) => void;
     onAddImageFiles: (files: FileList | File[]) => void;
     onRemovePendingImage: (clientId: string) => void;
@@ -110,6 +118,9 @@ export function ComposerActionPanel({
     isSubmitting,
     selectedProviderId,
     selectedModelId,
+    topLevelTab,
+    activeModeKey,
+    modes,
     canAttachImages,
     imageAttachmentBlockedReason,
     routingBadge,
@@ -123,6 +134,7 @@ export function ComposerActionPanel({
     isCompactingContext = false,
     onProviderChange,
     onModelChange,
+    onModeChange,
     onPromptChange,
     onAddImageFiles,
     onRemovePendingImage,
@@ -147,6 +159,7 @@ export function ComposerActionPanel({
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
     const hasSubmittableContent = prompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
     const hasUnsupportedPendingImages = pendingImages.length > 0 && !canAttachImages;
+    const shouldShowModePicker = topLevelTab !== 'chat';
     const attachmentStatusMessage = hasUnsupportedPendingImages
         ? imageAttachmentBlockedReason ?? 'Select a vision-capable model to send attached images.'
         : hasBlockingPendingImages
@@ -162,7 +175,7 @@ export function ComposerActionPanel({
     return (
         <>
             <form
-                className='border-border mt-3 space-y-2 border-t pt-3'
+                className='space-y-3'
                 onDragOver={(event) => {
                     event.preventDefault();
                     if (!canAttachImages || disabled) {
@@ -209,49 +222,76 @@ export function ComposerActionPanel({
                         }
                     }}
                 />
-                <div className='grid grid-cols-2 gap-2'>
-                    <label className='sr-only' htmlFor='composer-provider-select'>
-                        Provider
-                    </label>
-                    <select
-                        id='composer-provider-select'
-                        name='composerProvider'
-                        value={selectedProviderId ?? ''}
-                        onChange={(event) => {
-                            onProviderChange(event.target.value);
-                        }}
-                        className='border-border bg-background h-9 rounded-md border px-2 text-xs'
-                        disabled={disabled || providerOptions.length === 0}>
-                        <option value='' disabled>
-                            Select provider
-                        </option>
-                        {providerOptions.map((provider) => (
-                            <option key={provider.id} value={provider.id}>
-                                {provider.label} ({provider.authState})
+                <div
+                    className={`grid gap-3 ${
+                        shouldShowModePicker
+                            ? 'xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1.2fr)]'
+                            : 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'
+                    }`}>
+                    {shouldShowModePicker ? (
+                        <div className='space-y-1'>
+                            <label className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                Mode
+                            </label>
+                            <select
+                                aria-label='Execution mode'
+                                value={activeModeKey}
+                                onChange={(event) => {
+                                    onModeChange(event.target.value);
+                                }}
+                                className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                                disabled={disabled || modes.length === 0}>
+                                {modes.map((mode) => (
+                                    <option key={mode.id} value={mode.modeKey}>
+                                        {mode.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : null}
+                    <div className='space-y-1'>
+                        <label
+                            className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'
+                            htmlFor='composer-provider-select'>
+                            Provider
+                        </label>
+                        <select
+                            id='composer-provider-select'
+                            name='composerProvider'
+                            value={selectedProviderId ?? ''}
+                            onChange={(event) => {
+                                onProviderChange(event.target.value);
+                            }}
+                            className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                            disabled={disabled || providerOptions.length === 0}>
+                            <option value='' disabled>
+                                Select provider
                             </option>
-                        ))}
-                    </select>
-                    <label className='sr-only' htmlFor='composer-model-select'>
-                        Model
-                    </label>
-                    <select
-                        id='composer-model-select'
-                        name='composerModel'
-                        value={selectedModelId ?? ''}
-                        onChange={(event) => {
-                            onModelChange(event.target.value);
-                        }}
-                        className='border-border bg-background h-9 rounded-md border px-2 text-xs'
-                        disabled={disabled || modelOptions.length === 0}>
-                        <option value='' disabled>
-                            Select model
-                        </option>
-                        {modelOptions.map((model) => (
-                            <option key={model.id} value={model.id}>
-                                {model.label}
-                            </option>
-                        ))}
-                    </select>
+                            {providerOptions.map((provider) => (
+                                <option key={provider.id} value={provider.id}>
+                                    {provider.label} ({provider.authState})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className='space-y-1'>
+                        <label
+                            className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'
+                            htmlFor='composer-model-select'>
+                            Model
+                        </label>
+                        <ModelPicker
+                            id='composer-model-select'
+                            name='composerModel'
+                            providerId={selectedProviderId}
+                            selectedModelId={selectedModelId ?? ''}
+                            models={modelOptions}
+                            disabled={disabled || modelOptions.length === 0}
+                            ariaLabel='Model'
+                            placeholder='Select model'
+                            onSelectModel={onModelChange}
+                        />
+                    </div>
                 </div>
                 {routingBadge ? <p className='text-muted-foreground text-xs'>{routingBadge}</p> : null}
                 {runErrorMessage ? (
@@ -331,7 +371,7 @@ export function ComposerActionPanel({
                     className={`border-border bg-card/30 relative overflow-hidden rounded-2xl border transition ${
                         isDragActive ? 'border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]' : ''
                     }`}>
-                    <div className='border-border flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2'>
+                    <div className='border-border flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3'>
                         <div>
                             <p className='text-sm font-semibold'>Prompt</p>
                             <p className='text-muted-foreground text-xs'>
@@ -349,12 +389,12 @@ export function ComposerActionPanel({
                         </Button>
                     </div>
                     {imageAttachmentBlockedReason && !canAttachImages ? (
-                        <p className='text-muted-foreground border-border border-b px-3 py-2 text-xs'>
+                        <p className='text-muted-foreground border-border border-b px-4 py-3 text-xs'>
                             {imageAttachmentBlockedReason}
                         </p>
                     ) : null}
                     {pendingImages.length > 0 ? (
-                        <div className='border-border grid gap-2 border-b px-3 py-3 sm:grid-cols-2 xl:grid-cols-4'>
+                        <div className='border-border grid gap-2 border-b px-4 py-4 sm:grid-cols-2 xl:grid-cols-4'>
                             {pendingImages.map((image) => {
                                 const previewState = getPendingImagePreviewState(image.status);
 
@@ -470,7 +510,7 @@ export function ComposerActionPanel({
                             }
                         }}
                         rows={4}
-                        className='border-border bg-background/70 focus-visible:ring-ring focus-visible:border-ring min-h-[112px] w-full resize-y border-t px-3 py-3 text-sm focus-visible:ring-2 focus-visible:outline-none'
+                        className='border-border bg-background/70 focus-visible:ring-ring focus-visible:border-ring min-h-[160px] w-full resize-y border-t px-4 py-4 text-sm leading-6 focus-visible:ring-2 focus-visible:outline-none'
                         autoComplete='off'
                         spellCheck
                         placeholder='Prompt for the selected session…'
@@ -481,7 +521,7 @@ export function ComposerActionPanel({
                         </div>
                     ) : null}
                 </div>
-                <div className='flex items-center justify-between gap-2'>
+                <div className='flex flex-wrap items-center justify-between gap-3'>
                     <p aria-live='polite' className='text-muted-foreground text-xs'>
                         {attachmentStatusMessage}
                     </p>

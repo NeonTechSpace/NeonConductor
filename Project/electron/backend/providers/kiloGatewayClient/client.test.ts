@@ -69,4 +69,47 @@ describe('KiloGatewayClient', () => {
         });
         expect(result.error.message).toContain('missing required fields');
     });
+
+    it('accepts nested device-auth payload aliases used by newer kilo responses', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        result: {
+                            deviceAuth: {
+                                deviceCode: 'device-code-123',
+                                userCode: 'USER-CODE-123',
+                                verificationUrl: 'https://kilo.example/verify',
+                                poll_interval_seconds: 7,
+                                expiresIn: 600,
+                            },
+                        },
+                    }),
+                })
+            )
+        );
+
+        const client = new KiloGatewayClient({
+            gatewayBaseUrl: 'https://gateway.test',
+            apiBaseUrl: 'https://api.test',
+            timeoutMs: 100,
+        });
+        const result = await client.createDeviceCode();
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error('Expected aliased device-auth payload to parse.');
+        }
+
+        expect(result.value).toMatchObject({
+            code: 'device-code-123',
+            userCode: 'USER-CODE-123',
+            verificationUri: 'https://kilo.example/verify',
+            pollIntervalSeconds: 7,
+        });
+    });
 });

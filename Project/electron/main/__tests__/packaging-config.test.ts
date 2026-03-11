@@ -40,10 +40,8 @@ describe('electron-builder packaging config', () => {
         expect(readFileSync(splashHtmlPath, 'utf8')).toContain('/src/splash/main.ts');
         expect(contents).toContain("buildPreloadOptions('electron/main/preload/index.ts', 'mainWindow')");
         expect(contents).toContain("buildPreloadOptions('electron/main/preload/splash.ts', 'splashWindow')");
-        expect(contents).toContain("const sandboxedPreloadFormats: LibraryFormats[] = ['cjs'];");
-        expect(contents).toContain('formats: sandboxedPreloadFormats');
-        expect(contents).toContain('entryFileNames: `${outputFileName}.js`');
-        expect(contents).toContain('chunkFileNames: `${outputFileName}.js`');
+        expect(contents).toContain('createPreloadBuildConfig');
+        expect(contents).toContain("splash: 'splash.html'");
         expect(contents).not.toContain('.mjs');
     });
 

@@ -1,6 +1,7 @@
 import { providerManagementService } from '@/app/backend/providers/service';
 import {
     providerByIdInputSchema,
+    providerGetCredentialInputSchema,
     providerGetAccountContextInputSchema,
     providerGetEndpointProfileInputSchema,
     providerGetModelRoutingPreferenceInputSchema,
@@ -57,6 +58,26 @@ export const providerQueryProcedures = {
         return {
             found: true as const,
             state,
+        };
+    }),
+    getCredentialSummary: publicProcedure.input(providerGetCredentialInputSchema).query(async ({ input }) => {
+        const result = await providerManagementService.getCredentialSummary(input.profileId, input.providerId);
+        if (result.isErr()) {
+            throwWithCode(result.error.code, result.error.message);
+        }
+
+        return {
+            credential: result.value,
+        };
+    }),
+    getCredentialValue: publicProcedure.input(providerGetCredentialInputSchema).query(async ({ input }) => {
+        const result = await providerManagementService.getCredentialValue(input.profileId, input.providerId);
+        if (result.isErr()) {
+            throwWithCode(result.error.code, result.error.message);
+        }
+
+        return {
+            credential: result.value,
         };
     }),
     getAccountContext: publicProcedure.input(providerGetAccountContextInputSchema).query(async ({ input }) => {

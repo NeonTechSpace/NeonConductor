@@ -63,6 +63,8 @@ export interface ProviderSetApiKeyInput extends ProviderByIdInput {
     apiKey: string;
 }
 
+export type ProviderGetCredentialInput = ProviderByIdInput;
+
 export type ProviderClearAuthInput = ProviderByIdInput;
 
 export interface ProviderSyncCatalogInput extends ProviderByIdInput {
@@ -150,4 +152,17 @@ export interface ProviderSecret {
     providerId: RuntimeProviderId;
     secretKind: ProviderSecretKind;
     updatedAt: string;
+}
+
+export interface ProviderCredentialSummary {
+    providerId: RuntimeProviderId;
+    hasStoredCredential: boolean;
+    credentialSource: 'api_key' | 'access_token' | null;
+    maskedValue?: string;
+}
+
+export interface ProviderCredentialValue {
+    providerId: RuntimeProviderId;
+    credentialSource: 'api_key' | 'access_token';
+    value: string;
 }

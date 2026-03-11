@@ -27,19 +27,37 @@ vi.mock('electron', () => ({
 }));
 
 describe('splash preload bridge', () => {
+    const originalProcessArgv = [...process.argv];
+
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
         ipcPhaseHandlerState.handler = undefined;
+        process.argv = originalProcessArgv.filter(
+            (argument) => !argument.startsWith('--neon-splash-mascot-source=')
+        );
     });
 
-    it('exposes an onStatusChange bridge that replays the latest boot status', async () => {
+    it('exposes bootstrap payload and an onStatusChange bridge that replays the latest boot status', async () => {
+        process.argv.push('--neon-splash-mascot-source=https%3A%2F%2Flocalhost%3A5173%2Fsrc%2Fassets%2Fappicon.png');
+
         await import('@/app/main/preload/splash');
 
         expect(exposeInMainWorldSpy).toHaveBeenCalledTimes(1);
         const splashBridge = exposeInMainWorldSpy.mock.calls[0]?.[1] as {
+            getBootstrapPayload: () => {
+                mascotSource: string | null;
+                status: BootStatusSnapshot;
+            };
             onStatusChange: (listener: (status: BootStatusSnapshot) => void) => () => void;
         };
+
+        expect(splashBridge.getBootstrapPayload()).toMatchObject({
+            mascotSource: 'https://localhost:5173/src/assets/appicon.png',
+            status: expect.objectContaining({
+                stage: 'main_initializing',
+            }),
+        });
 
         const statusListener = vi.fn();
         splashBridge.onStatusChange(statusListener);

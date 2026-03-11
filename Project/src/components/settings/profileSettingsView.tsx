@@ -16,7 +16,7 @@ export function ProfileSettingsView({ activeProfileId, onProfileActivated }: Pro
     });
 
     return (
-        <section className='grid min-h-full grid-cols-[280px_1fr]'>
+        <section className='grid h-full min-h-0 min-w-0 overflow-hidden grid-cols-[280px_1fr]'>
             <SettingsSelectionRail
                 title='Profiles'
                 ariaLabel='Profile list'
@@ -32,7 +32,7 @@ export function ProfileSettingsView({ activeProfileId, onProfileActivated }: Pro
                 }))}
             />
 
-            <div className='min-h-0 overflow-y-auto p-4'>
+            <div className='min-h-0 min-w-0 overflow-y-auto p-4'>
                 <div className='space-y-5'>
                     <SettingsFeedbackBanner
                         message={controller.feedbackMessage}

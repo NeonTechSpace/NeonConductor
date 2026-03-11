@@ -8,6 +8,7 @@ import {
     type BootBlockingPrerequisite,
     type BootStage,
     createBootStatusSnapshot,
+    getBootStatusDisplaySignature,
     getBootStatusSignature,
     type BootStatusSnapshot,
 } from '@/app/shared/splashContract';
@@ -23,6 +24,7 @@ interface BootWindowState {
     bootStartedAtMs: number;
     latestStatus: BootStatusSnapshot;
     latestStatusSignature: string;
+    latestStatusDisplaySignature: string;
 }
 
 interface BootStatusUpdateInput {
@@ -50,6 +52,7 @@ const bootWindowState: BootWindowState = {
         elapsedMs: 0,
     }),
     latestStatusSignature: '',
+    latestStatusDisplaySignature: '',
 };
 
 function ensureBootStart(): void {
@@ -88,6 +91,7 @@ function resetBootWindowState(): void {
         elapsedMs: 0,
     });
     bootWindowState.latestStatusSignature = '';
+    bootWindowState.latestStatusDisplaySignature = '';
 }
 
 function isSameWindow(left: BrowserWindow | null, right: BrowserWindow | null): boolean {
@@ -114,14 +118,19 @@ function logBootStatusTransition(status: BootStatusSnapshot): void {
 
 function publishBootStatus(status: BootStatusSnapshot): void {
     const statusSignature = getBootStatusSignature(status);
-    if (statusSignature === bootWindowState.latestStatusSignature) {
+    const statusDisplaySignature = getBootStatusDisplaySignature(status);
+    if (statusDisplaySignature === bootWindowState.latestStatusDisplaySignature) {
         bootWindowState.latestStatus = status;
         return;
     }
 
+    const didTransition = statusSignature !== bootWindowState.latestStatusSignature;
     bootWindowState.latestStatus = status;
     bootWindowState.latestStatusSignature = statusSignature;
-    logBootStatusTransition(status);
+    bootWindowState.latestStatusDisplaySignature = statusDisplaySignature;
+    if (didTransition) {
+        logBootStatusTransition(status);
+    }
 
     if (bootWindowState.splashWindow && !bootWindowState.splashWindow.isDestroyed()) {
         void updateSplashWindowStatus(bootWindowState.splashWindow, status);

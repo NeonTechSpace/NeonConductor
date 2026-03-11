@@ -73,14 +73,12 @@ export function WorkspaceSurface() {
     }, [bootStartedAtMs, readySignal.readySignalState]);
 
     return (
-        <section className='flex min-h-0 flex-1 flex-col'>
+        <section className='flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
             {showBootDiagnostics ? <WorkspaceBootDiagnosticsPanel status={bootDiagnostics.status} /> : null}
             <WorkspaceSurfaceHeader
                 profiles={controller.profiles}
                 resolvedProfileId={controller.resolvedProfileId}
                 topLevelTab={controller.topLevelTab}
-                modes={controller.modes}
-                activeModeKey={controller.activeModeKey}
                 isSwitchingProfile={controller.profileSetActiveMutation.isPending}
                 onTopLevelTabChange={(nextTab) => {
                     startTransition(() => {
@@ -124,18 +122,19 @@ export function WorkspaceSurface() {
                         controller.setShowSettings(true);
                     });
                 }}
-                onModeChange={(modeKey) => {
-                    void controller.selectMode(modeKey);
-                }}
             />
 
-            <div className='min-h-0 flex-1'>
+            <div className='min-h-0 min-w-0 flex-1 overflow-hidden'>
                 {controller.resolvedProfileId ? (
                     <ConversationShell
                         key={controller.resolvedProfileId}
                         profileId={controller.resolvedProfileId}
                         topLevelTab={controller.topLevelTab}
                         modeKey={controller.activeModeKey}
+                        modes={controller.modes}
+                        onModeChange={(modeKey) => {
+                            void controller.selectMode(modeKey);
+                        }}
                         onTopLevelTabChange={controller.setTopLevelTab}
                         onSelectedWorkspaceFingerprintChange={controller.setCurrentWorkspaceFingerprint}
                         onBootChromeReadyChange={setConversationShellBootReadiness}

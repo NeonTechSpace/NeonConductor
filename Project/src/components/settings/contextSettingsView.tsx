@@ -148,7 +148,7 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
     });
 
     return (
-        <section className='grid min-h-full grid-cols-[260px_1fr]'>
+        <section className='grid h-full min-h-0 min-w-0 overflow-hidden grid-cols-[260px_1fr]'>
             <SettingsSelectionRail
                 title='Profiles'
                 ariaLabel='Context settings profiles'
@@ -164,7 +164,7 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
                 }))}
             />
 
-            <div className='min-h-0 overflow-y-auto p-4'>
+            <div className='min-h-0 min-w-0 overflow-y-auto p-4'>
                 <div className='space-y-6'>
                     <SettingsFeedbackBanner message={feedbackMessage} tone={feedbackTone} />
                     <section className='space-y-3'>

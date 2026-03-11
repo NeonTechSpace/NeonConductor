@@ -3,7 +3,11 @@ import { useEffect, useRef } from 'react';
 
 import { trpcClient } from '@/web/lib/trpcClient';
 
-import { getBootStatusSignature, type BootStatusSnapshot } from '@/app/shared/splashContract';
+import {
+    getBootStatusDisplaySignature,
+    getBootStatusSignature,
+    type BootStatusSnapshot,
+} from '@/app/shared/splashContract';
 
 const isDev = import.meta.env.DEV;
 
@@ -13,13 +17,16 @@ function getErrorMessage(error: unknown): string {
 
 export function useRendererBootStatusReporter(status: BootStatusSnapshot): void {
     const latestStatusRef = useRef(status);
+    const latestLoggedStatusSignatureRef = useRef<string | null>(null);
     latestStatusRef.current = status;
     const statusSignature = getBootStatusSignature(status);
+    const statusDisplaySignature = getBootStatusDisplaySignature(status);
 
     useEffect(() => {
         const nextStatus = latestStatusRef.current;
 
-        if (isDev) {
+        if (isDev && latestLoggedStatusSignatureRef.current !== statusSignature) {
+            latestLoggedStatusSignatureRef.current = statusSignature;
             log.info({
                 tag: 'window.boot',
                 message: 'Reporting renderer boot status.',
@@ -43,5 +50,5 @@ export function useRendererBootStatusReporter(status: BootStatusSnapshot): void 
                 error: getErrorMessage(error),
             });
         });
-    }, [statusSignature]);
+    }, [statusDisplaySignature, statusSignature]);
 }

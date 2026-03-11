@@ -101,7 +101,9 @@ export function MessageTimelinePanel({
         <div className='relative min-h-0 flex-1'>
             <div ref={scrollContainerRef} className='h-full min-h-0 overflow-y-auto pr-1' onScroll={syncScrollState}>
                 {entries.length === 0 ? (
-                    <MessageTimelineEmptyState />
+                    <div className='flex h-full min-h-0'>
+                        <MessageTimelineEmptyState />
+                    </div>
                 ) : (
                     <div className='relative w-full' style={{ height: `${String(virtualizer.getTotalSize())}px` }}>
                         {virtualizer.getVirtualItems().map((virtualRow) => {

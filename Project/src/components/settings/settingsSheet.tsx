@@ -30,8 +30,8 @@ const SECTION_LABELS: Record<SettingsSection, string> = {
 };
 
 const SECTION_DESCRIPTIONS: Record<SettingsSection, string> = {
-    kilo: 'Account, login, balance, and Kilo routing.',
-    providers: 'Default models and provider-wide runtime settings.',
+    kilo: 'Account identity, organization membership, and balance snapshots.',
+    providers: 'Provider auth, credentials, default models, and runtime configuration.',
     profiles: 'Execution presets and profile selection.',
     context: 'Workspace and context budgeting settings.',
     agents: 'Registry-backed agents and skills.',
@@ -63,14 +63,14 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
             descriptionId='settings-sheet-description'
             initialFocusRef={closeButtonRef}
             onClose={onClose}>
-            <div className='border-border bg-card text-card-foreground flex h-[min(820px,calc(100vh-1.5rem))] w-[min(1180px,calc(100vw-1.5rem))] max-w-full flex-col overflow-hidden rounded-[30px] border shadow-[0_28px_90px_rgba(0,0,0,0.35)] lg:flex-row'>
-                <aside className='border-border/80 bg-background/70 flex w-full shrink-0 flex-col gap-3 border-b p-4 lg:w-64 lg:border-r lg:border-b-0'>
+            <div className='border-border bg-card text-card-foreground flex h-[min(900px,calc(100vh-1rem))] w-[min(1400px,calc(100vw-1rem))] max-w-full flex-col overflow-hidden rounded-[30px] border shadow-[0_28px_90px_rgba(0,0,0,0.35)] lg:flex-row'>
+                <aside className='border-border/80 bg-background/70 flex w-full shrink-0 flex-col gap-3 border-b p-4 lg:w-[272px] lg:border-r lg:border-b-0'>
                     <div className='space-y-1'>
                         <h2 id='settings-sheet-title' className='text-sm font-semibold tracking-[0.18em] uppercase'>
                             Settings
                         </h2>
                         <p id='settings-sheet-description' className='text-muted-foreground text-xs leading-5'>
-                            Provider-neutral runtime controls, plus a dedicated Kilo account surface.
+                            Provider configuration stays in Providers. Kilo is a separate account profile surface.
                         </p>
                     </div>
 
@@ -149,7 +149,7 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                         id={`settings-panel-${activeSection}`}
                         role='tabpanel'
                         aria-labelledby={`settings-tab-${activeSection}`}
-                        className='bg-background/20 min-h-0 flex-1 overflow-auto'>
+                        className='bg-background/20 h-full min-h-0 min-w-0 flex-1 overflow-hidden'>
                         {activeSection === 'kilo' ? <KiloSettingsView profileId={profileId} /> : null}
                         {activeSection === 'providers' ? <ProviderSettingsView profileId={profileId} /> : null}
                         {activeSection === 'profiles' ? (

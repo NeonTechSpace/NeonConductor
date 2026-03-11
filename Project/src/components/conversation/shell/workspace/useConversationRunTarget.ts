@@ -125,6 +125,9 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         : (modelsByProvider.get(selectedProviderIdForComposer) ?? []).map((model) => ({
               id: model.id,
               label: model.label,
+              ...(model.sourceProvider ? { sourceProvider: model.sourceProvider } : {}),
+              ...(model.source ? { source: model.source } : {}),
+              ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
               ...(model.price !== undefined ? { price: model.price } : {}),
               ...(model.latency !== undefined ? { latency: model.latency } : {}),
               ...(model.tps !== undefined ? { tps: model.tps } : {}),

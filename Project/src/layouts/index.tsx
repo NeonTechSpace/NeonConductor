@@ -5,9 +5,9 @@ import UpdateSwitchModal from '@/web/components/window/updateSwitchModal';
 
 export default function RootLayout() {
     return (
-        <div className='flex min-h-screen flex-col'>
+        <div className='flex h-screen min-h-0 min-w-0 flex-col overflow-hidden'>
             <TitleBar />
-            <div className='flex min-h-0 flex-1'>
+            <div className='flex min-h-0 min-w-0 flex-1 overflow-hidden'>
                 <Outlet />
             </div>
             <UpdateSwitchModal />

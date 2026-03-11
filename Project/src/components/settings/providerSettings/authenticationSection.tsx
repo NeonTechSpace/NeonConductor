@@ -15,6 +15,12 @@ interface ProviderAuthenticationSectionProps {
     endpointProfileOptions: Array<{ value: string; label: string }>;
     apiKeyCta?: { label: string; url: string };
     apiKeyInput: string;
+    credentialSummary?: {
+        hasStoredCredential: boolean;
+        credentialSource: 'api_key' | 'access_token' | null;
+        maskedValue?: string;
+    };
+    isCredentialVisible: boolean;
     activeAuthFlow: ActiveAuthFlow | undefined;
     isSavingApiKey: boolean;
     isSavingEndpointProfile: boolean;
@@ -25,6 +31,9 @@ interface ProviderAuthenticationSectionProps {
     onApiKeyInputChange: (value: string) => void;
     onEndpointProfileChange: (value: string) => void;
     onSaveApiKey: () => void;
+    onRevealStoredCredential: () => void;
+    onHideStoredCredential: () => void;
+    onCopyStoredCredential: () => void;
     onStartOAuthDevice: () => void;
     onStartDeviceCode: () => void;
     onPollNow: () => void;
@@ -83,6 +92,15 @@ function ApiKeyField(input: {
     onApiKeyInputChange: (value: string) => void;
     onSaveApiKey: () => void;
     compactIntro: string;
+    credentialSummary?: {
+        hasStoredCredential: boolean;
+        credentialSource: 'api_key' | 'access_token' | null;
+        maskedValue?: string;
+    };
+    isCredentialVisible: boolean;
+    onRevealStoredCredential: () => void;
+    onHideStoredCredential: () => void;
+    onCopyStoredCredential: () => void;
 }) {
     return (
         <div className='border-border/70 bg-background/75 space-y-3 rounded-2xl border p-4'>
@@ -98,14 +116,14 @@ function ApiKeyField(input: {
                 <input
                     id='provider-api-key-input'
                     name='providerApiKey'
-                    type='password'
+                    type={input.isCredentialVisible ? 'text' : 'password'}
                     value={input.apiKeyInput}
                     onChange={(event) => {
                         input.onApiKeyInputChange(event.target.value);
                     }}
                     className='border-border bg-card h-10 rounded-xl border px-3 text-sm'
                     autoComplete='off'
-                    placeholder='Paste API key'
+                    placeholder={input.credentialSummary?.maskedValue ?? 'Paste API key'}
                 />
                 <Button
                     type='button'
@@ -118,6 +136,25 @@ function ApiKeyField(input: {
                     {input.isSavingApiKey ? 'Saving…' : 'Save API Key'}
                 </Button>
             </div>
+
+            {input.credentialSummary?.hasStoredCredential ? (
+                <div className='flex flex-wrap items-center gap-2 text-xs'>
+                    <span className='text-muted-foreground'>
+                        Stored {input.credentialSummary.credentialSource === 'access_token' ? 'session token' : 'API key'}{' '}
+                        {input.credentialSummary.maskedValue ? `(${input.credentialSummary.maskedValue})` : ''}
+                    </span>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='ghost'
+                        onClick={input.isCredentialVisible ? input.onHideStoredCredential : input.onRevealStoredCredential}>
+                        {input.isCredentialVisible ? 'Hide' : 'Reveal'}
+                    </Button>
+                    <Button type='button' size='sm' variant='ghost' onClick={input.onCopyStoredCredential}>
+                        Copy
+                    </Button>
+                </div>
+            ) : null}
 
             {input.apiKeyCta ? (
                 <Button size='sm' variant='ghost' asChild>
@@ -141,6 +178,8 @@ export function ProviderAuthenticationSection({
     endpointProfileOptions,
     apiKeyCta,
     apiKeyInput,
+    credentialSummary,
+    isCredentialVisible,
     activeAuthFlow,
     isSavingApiKey,
     isSavingEndpointProfile,
@@ -151,6 +190,9 @@ export function ProviderAuthenticationSection({
     onApiKeyInputChange,
     onEndpointProfileChange,
     onSaveApiKey,
+    onRevealStoredCredential,
+    onHideStoredCredential,
+    onCopyStoredCredential,
     onStartOAuthDevice,
     onStartDeviceCode,
     onPollNow,
@@ -169,7 +211,7 @@ export function ProviderAuthenticationSection({
     return (
         <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
             <div className='flex flex-col gap-3 md:flex-row md:items-start md:justify-between'>
-                <div className='space-y-1'>
+                <div className='min-w-0 space-y-1'>
                     <p className='text-sm font-semibold'>{isKilo ? 'Kilo Access' : 'Authentication'}</p>
                     <p className='text-muted-foreground text-xs leading-5'>
                         {isKilo
@@ -177,151 +219,165 @@ export function ProviderAuthenticationSection({
                             : 'Connect the provider once, then keep model selection local to the active profile.'}
                     </p>
                 </div>
-                <AuthStateBadge authState={effectiveAuthState} authMethod={effectiveAuthMethod} />
+                <div className='self-start'>
+                    <AuthStateBadge authState={effectiveAuthState} authMethod={effectiveAuthMethod} />
+                </div>
             </div>
 
-            <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]'>
-                <div className='space-y-4'>
-                    {isKilo ? (
-                        <div className='border-primary/20 bg-primary/5 space-y-4 rounded-[24px] border p-4'>
-                            <div className='space-y-1'>
-                                <p className='text-sm font-semibold'>Sign in with Kilo</p>
-                                <p className='text-muted-foreground text-xs leading-5'>
-                                    Press the login button and finish the authorization in your browser. Neon Conductor
-                                    keeps the account session and syncs your Kilo account context after approval.
-                                </p>
-                            </div>
+            <div className='space-y-4'>
+                {isKilo ? (
+                    <div className='border-primary/20 bg-primary/5 space-y-4 rounded-[24px] border p-4'>
+                        <div className='space-y-1'>
+                            <p className='text-sm font-semibold'>Sign in with Kilo</p>
+                            <p className='text-muted-foreground text-xs leading-5'>
+                                Press the login button and finish the authorization in your browser. Neon Conductor
+                                keeps the account session and syncs your Kilo account context after approval.
+                            </p>
+                        </div>
 
-                            <div className='flex flex-wrap gap-2'>
-                                {canStartDeviceCode ? (
-                                    <Button
-                                        type='button'
-                                        size='sm'
-                                        disabled={isStartingAuth || !selectedProviderId}
-                                        onClick={onStartDeviceCode}>
-                                        {isStartingAuth ? 'Opening browser…' : 'Log In to Kilo'}
-                                    </Button>
-                                ) : null}
-                                {activeFlowForSelectedProvider?.verificationUri ? (
-                                    <Button
-                                        type='button'
-                                        size='sm'
-                                        variant='outline'
-                                        disabled={isOpeningVerificationPage}
-                                        onClick={onOpenVerificationPage}>
-                                        {isOpeningVerificationPage ? 'Opening…' : 'Open Browser Again'}
-                                    </Button>
-                                ) : null}
-                            </div>
-
-                            {activeFlowForSelectedProvider ? (
-                                <div className='border-border/70 bg-background/80 rounded-2xl border p-4'>
-                                    <p className='text-sm font-semibold'>Authorization in progress</p>
-                                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
-                                        Enter code{' '}
-                                        <span className='text-foreground font-semibold'>
-                                            {activeFlowForSelectedProvider.userCode ?? '-'}
-                                        </span>{' '}
-                                        in the Kilo website, then return here. Polling continues in the background.
-                                    </p>
-                                    <div className='mt-3 flex flex-wrap gap-2'>
-                                        <Button
-                                            type='button'
-                                            size='sm'
-                                            variant='outline'
-                                            disabled={isPollingAuth}
-                                            onClick={onPollNow}>
-                                            {isPollingAuth ? 'Polling…' : 'Check Login Status'}
-                                        </Button>
-                                        <Button
-                                            type='button'
-                                            size='sm'
-                                            variant='ghost'
-                                            disabled={isCancellingAuth}
-                                            onClick={onCancelFlow}>
-                                            {isCancellingAuth ? 'Cancelling…' : 'Cancel'}
-                                        </Button>
-                                    </div>
-                                </div>
+                        <div className='flex flex-wrap gap-2'>
+                            {canStartDeviceCode ? (
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    disabled={isStartingAuth || !selectedProviderId}
+                                    onClick={onStartDeviceCode}>
+                                    {isStartingAuth ? 'Opening browser…' : 'Log In to Kilo'}
+                                </Button>
+                            ) : null}
+                            {activeFlowForSelectedProvider?.verificationUri ? (
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={isOpeningVerificationPage}
+                                    onClick={onOpenVerificationPage}>
+                                    {isOpeningVerificationPage ? 'Opening…' : 'Open Browser Again'}
+                                </Button>
                             ) : null}
                         </div>
-                    ) : (
-                        <div className='border-border/70 bg-background/75 space-y-3 rounded-2xl border p-4'>
-                            <div className='flex flex-wrap gap-2'>
-                                {canStartOAuthDevice ? (
+
+                        {activeFlowForSelectedProvider ? (
+                            <div className='border-border/70 bg-background/80 rounded-2xl border p-4'>
+                                <p className='text-sm font-semibold'>Authorization in progress</p>
+                                <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                    Enter code{' '}
+                                    <span className='text-foreground font-semibold'>
+                                        {activeFlowForSelectedProvider.userCode ?? '-'}
+                                    </span>{' '}
+                                    in the Kilo website, then return here. Polling continues in the background.
+                                </p>
+                                <div className='mt-3 flex flex-wrap gap-2'>
                                     <Button
                                         type='button'
                                         size='sm'
                                         variant='outline'
-                                        disabled={isStartingAuth || !selectedProviderId}
-                                        onClick={onStartOAuthDevice}>
-                                        {isStartingAuth ? 'Starting…' : 'Start OAuth Device'}
+                                        disabled={isPollingAuth}
+                                        onClick={onPollNow}>
+                                        {isPollingAuth ? 'Polling…' : 'Check Login Status'}
                                     </Button>
-                                ) : null}
-                                {canStartDeviceCode ? (
-                                    <Button
-                                        type='button'
-                                        size='sm'
-                                        variant='outline'
-                                        disabled={isStartingAuth || !selectedProviderId}
-                                        onClick={onStartDeviceCode}>
-                                        {isStartingAuth ? 'Starting…' : 'Start Device Code'}
-                                    </Button>
-                                ) : null}
-                                {activeFlowForSelectedProvider?.verificationUri ? (
                                     <Button
                                         type='button'
                                         size='sm'
                                         variant='ghost'
-                                        disabled={isOpeningVerificationPage}
-                                        onClick={onOpenVerificationPage}>
-                                        {isOpeningVerificationPage ? 'Opening…' : 'Open Verification Page'}
-                                        <ExternalLink className='h-3.5 w-3.5' />
+                                        disabled={isCancellingAuth}
+                                        onClick={onCancelFlow}>
+                                        {isCancellingAuth ? 'Cancelling…' : 'Cancel'}
                                     </Button>
-                                ) : null}
-                            </div>
-
-                            {activeFlowForSelectedProvider ? (
-                                <div className='border-border/70 bg-card/80 rounded-xl border p-3'>
-                                    <p className='text-xs font-semibold'>Auth flow in progress</p>
-                                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
-                                        Enter code{' '}
-                                        <span className='text-foreground font-semibold'>
-                                            {activeFlowForSelectedProvider.userCode ?? '-'}
-                                        </span>{' '}
-                                        and confirm in browser.
-                                    </p>
-                                    <div className='mt-2 flex flex-wrap gap-2'>
-                                        <Button
-                                            type='button'
-                                            size='sm'
-                                            variant='outline'
-                                            disabled={isPollingAuth}
-                                            onClick={onPollNow}>
-                                            {isPollingAuth ? 'Polling…' : 'Poll Now'}
-                                        </Button>
-                                        <Button
-                                            type='button'
-                                            size='sm'
-                                            variant='outline'
-                                            disabled={isCancellingAuth}
-                                            onClick={onCancelFlow}>
-                                            {isCancellingAuth ? 'Cancelling…' : 'Cancel'}
-                                        </Button>
-                                    </div>
                                 </div>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : (
+                    <div className='border-border/70 bg-background/75 space-y-3 rounded-2xl border p-4'>
+                        <div className='space-y-1'>
+                            <p className='text-sm font-semibold'>Interactive sign-in</p>
+                            <p className='text-muted-foreground text-xs leading-5'>
+                                Use a browser-based auth flow when you want account-backed access and local session
+                                reuse.
+                            </p>
+                        </div>
+                        <div className='flex flex-wrap gap-2'>
+                            {canStartOAuthDevice ? (
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={isStartingAuth || !selectedProviderId}
+                                    onClick={onStartOAuthDevice}>
+                                    {isStartingAuth ? 'Starting…' : 'Start OAuth Device'}
+                                </Button>
+                            ) : null}
+                            {canStartDeviceCode ? (
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={isStartingAuth || !selectedProviderId}
+                                    onClick={onStartDeviceCode}>
+                                    {isStartingAuth ? 'Starting…' : 'Start Device Code'}
+                                </Button>
+                            ) : null}
+                            {activeFlowForSelectedProvider?.verificationUri ? (
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='ghost'
+                                    disabled={isOpeningVerificationPage}
+                                    onClick={onOpenVerificationPage}>
+                                    {isOpeningVerificationPage ? 'Opening…' : 'Open Verification Page'}
+                                    <ExternalLink className='h-3.5 w-3.5' />
+                                </Button>
                             ) : null}
                         </div>
-                    )}
 
+                        {activeFlowForSelectedProvider ? (
+                            <div className='border-border/70 bg-card/80 rounded-xl border p-3'>
+                                <p className='text-xs font-semibold'>Auth flow in progress</p>
+                                <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                    Enter code{' '}
+                                    <span className='text-foreground font-semibold'>
+                                        {activeFlowForSelectedProvider.userCode ?? '-'}
+                                    </span>{' '}
+                                    and confirm in browser.
+                                </p>
+                                <div className='mt-2 flex flex-wrap gap-2'>
+                                    <Button
+                                        type='button'
+                                        size='sm'
+                                        variant='outline'
+                                        disabled={isPollingAuth}
+                                        onClick={onPollNow}>
+                                        {isPollingAuth ? 'Polling…' : 'Poll Now'}
+                                    </Button>
+                                    <Button
+                                        type='button'
+                                        size='sm'
+                                        variant='outline'
+                                        disabled={isCancellingAuth}
+                                        onClick={onCancelFlow}>
+                                        {isCancellingAuth ? 'Cancelling…' : 'Cancel'}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                )}
+
+                <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]'>
                     {canUseApiKey ? (
                         <ApiKeyField
                             selectedProviderId={selectedProviderId}
                             apiKeyInput={apiKeyInput}
+                            isCredentialVisible={isCredentialVisible}
                             isSavingApiKey={isSavingApiKey}
-                            apiKeyCta={apiKeyCta}
                             onApiKeyInputChange={onApiKeyInputChange}
                             onSaveApiKey={onSaveApiKey}
+                            onRevealStoredCredential={onRevealStoredCredential}
+                            onHideStoredCredential={onHideStoredCredential}
+                            onCopyStoredCredential={onCopyStoredCredential}
+                            {...(credentialSummary ? { credentialSummary } : {})}
+                            {...(apiKeyCta ? { apiKeyCta } : {})}
                             compactIntro={
                                 isKilo
                                     ? 'Keep this for manual or support-driven setups. The normal Kilo path is browser login.'
@@ -329,21 +385,21 @@ export function ProviderAuthenticationSection({
                             }
                         />
                     ) : null}
-                </div>
 
-                <div className='border-border/70 bg-background/70 space-y-4 rounded-[24px] border p-4'>
-                    <div className='space-y-1'>
-                        <p className='text-sm font-semibold'>Connection details</p>
-                        <p className='text-muted-foreground text-xs leading-5'>
-                            Endpoint and auth details that affect how this provider session is resolved locally.
-                        </p>
+                    <div className='border-border/70 bg-background/70 space-y-4 rounded-[24px] border p-4'>
+                        <div className='space-y-1'>
+                            <p className='text-sm font-semibold'>Connection details</p>
+                            <p className='text-muted-foreground text-xs leading-5'>
+                                Endpoint and auth details that affect how this provider session is resolved locally.
+                            </p>
+                        </div>
+                        <EndpointProfileField
+                            endpointProfileValue={endpointProfileValue}
+                            endpointProfileOptions={endpointProfileOptions}
+                            isSavingEndpointProfile={isSavingEndpointProfile}
+                            onEndpointProfileChange={onEndpointProfileChange}
+                        />
                     </div>
-                    <EndpointProfileField
-                        endpointProfileValue={endpointProfileValue}
-                        endpointProfileOptions={endpointProfileOptions}
-                        isSavingEndpointProfile={isSavingEndpointProfile}
-                        onEndpointProfileChange={onEndpointProfileChange}
-                    />
                 </div>
             </div>
         </section>

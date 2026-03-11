@@ -16,6 +16,7 @@ import type {
     ProviderCancelAuthInput,
     ProviderClearAuthInput,
     ProviderCompleteAuthInput,
+    ProviderGetCredentialInput,
     ProviderGetEndpointProfileInput,
     ProviderGetAccountContextInput,
     ProviderListAuthMethodsInput,
@@ -74,6 +75,10 @@ export function parseProviderSetApiKeyInput(input: unknown): ProviderSetApiKeyIn
         providerId: readProviderId(source.providerId, 'providerId'),
         apiKey: readString(source.apiKey, 'apiKey'),
     };
+}
+
+export function parseProviderGetCredentialInput(input: unknown): ProviderGetCredentialInput {
+    return parseProviderByIdInput(input);
 }
 
 export function parseProviderClearAuthInput(input: unknown): ProviderClearAuthInput {
@@ -238,6 +243,7 @@ export const providerListProvidersInputSchema = createParser(parseProviderListPr
 export const providerListModelsInputSchema = createParser(parseProviderListModelsInput);
 export const providerByIdInputSchema = createParser(parseProviderByIdInput);
 export const providerSetApiKeyInputSchema = createParser(parseProviderSetApiKeyInput);
+export const providerGetCredentialInputSchema = createParser(parseProviderGetCredentialInput);
 export const providerClearAuthInputSchema = createParser(parseProviderClearAuthInput);
 export const providerSyncCatalogInputSchema = createParser(parseProviderSyncCatalogInput);
 export const providerListAuthMethodsInputSchema = createParser(parseProviderListAuthMethodsInput);

@@ -1,11 +1,11 @@
-import { getBootBlockingPrerequisiteLabel, type BootStatusSnapshot } from '@/app/shared/splashContract';
+import {
+    formatBootElapsedMs,
+    getBootBlockingPrerequisiteLabel,
+    type BootStatusSnapshot,
+} from '@/app/shared/splashContract';
 
 interface WorkspaceBootDiagnosticsPanelProps {
     status: BootStatusSnapshot;
-}
-
-function formatElapsedMs(elapsedMs: number): string {
-    return `${Math.max(0, Math.round(elapsedMs / 100) / 10).toFixed(1)}s`;
 }
 
 export function WorkspaceBootDiagnosticsPanel({ status }: WorkspaceBootDiagnosticsPanelProps) {
@@ -26,7 +26,7 @@ export function WorkspaceBootDiagnosticsPanel({ status }: WorkspaceBootDiagnosti
             </div>
             <div className='text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs'>
                 <span>Stage: {status.stage}</span>
-                <span>Elapsed: {formatElapsedMs(status.elapsedMs)}</span>
+                <span>Elapsed: {formatBootElapsedMs(status.elapsedMs)}</span>
                 {blockingPrerequisiteLabel ? <span>Waiting on: {blockingPrerequisiteLabel}</span> : null}
             </div>
         </section>

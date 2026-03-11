@@ -42,6 +42,11 @@ export interface BootStatusSnapshot {
     source: BootStatusSource;
 }
 
+export interface SplashBootstrapPayload {
+    mascotSource: string | null;
+    status: BootStatusSnapshot;
+}
+
 export const INITIAL_BOOT_STATUS_SNAPSHOT: BootStatusSnapshot = {
     stage: 'main_initializing',
     headline: 'Starting NeonConductor',
@@ -210,6 +215,10 @@ export function createBootStatusSnapshot(input: {
     };
 }
 
+export function formatBootElapsedMs(elapsedMs: number): string {
+    return `${Math.max(0, Math.round(elapsedMs / 100) / 10).toFixed(1)}s`;
+}
+
 export function getBootStatusSignature(
     input: Pick<BootStatusSnapshot, 'stage' | 'headline' | 'detail' | 'isStuck' | 'blockingPrerequisite' | 'source'>
 ): string {
@@ -221,4 +230,13 @@ export function getBootStatusSignature(
         input.blockingPrerequisite ?? 'none',
         input.source,
     ].join('|');
+}
+
+export function getBootStatusDisplaySignature(
+    input: Pick<
+        BootStatusSnapshot,
+        'stage' | 'headline' | 'detail' | 'isStuck' | 'blockingPrerequisite' | 'source' | 'elapsedMs'
+    >
+): string {
+    return `${getBootStatusSignature(input)}|${formatBootElapsedMs(input.elapsedMs)}`;
 }

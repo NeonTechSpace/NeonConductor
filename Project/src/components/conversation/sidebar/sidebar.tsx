@@ -125,8 +125,14 @@ export function ConversationSidebar({
     });
 
     return (
-        <aside className='border-border bg-card/40 flex min-h-0 w-[360px] flex-col border-r'>
-            <div className='border-border space-y-3 border-b p-3'>
+        <aside className='border-border/70 bg-card/40 flex min-h-0 w-[304px] flex-col border-r xl:w-[320px]'>
+            <div className='border-border/70 space-y-4 border-b p-4'>
+                <div className='space-y-1'>
+                    <p className='text-sm font-semibold'>Threads</p>
+                    <p className='text-muted-foreground text-xs'>
+                        Keep the active conversation list focused, then branch or filter only when needed.
+                    </p>
+                </div>
                 {feedbackMessage ? (
                     <div aria-live='polite' className='rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive'>
                         {feedbackMessage}
@@ -173,7 +179,7 @@ export function ConversationSidebar({
                     </Button>
                     <select
                         aria-label='Sort threads'
-                        className='border-border bg-background h-9 rounded-md border px-2 text-sm'
+                        className='border-border bg-background h-9 rounded-xl border px-3 text-sm'
                         value={sort}
                         onChange={(event) => {
                             onSortChange(event.target.value === 'alphabetical' ? 'alphabetical' : 'latest');
@@ -191,11 +197,11 @@ export function ConversationSidebar({
                         onClick={() => {
                             onShowAllModesChange(!showAllModes);
                         }}>
-                        {showAllModes ? 'Showing All Modes' : 'Show All Modes'}
+                        {showAllModes ? 'Including Other Tabs' : 'Current Tab Only'}
                     </Button>
                     <select
                         aria-label='Conversation grouping'
-                        className='border-border bg-background h-9 rounded-md border px-2 text-sm'
+                        className='border-border bg-background h-9 rounded-xl border px-3 text-sm'
                         value={groupView}
                         onChange={(event) => {
                             onGroupViewChange(event.target.value === 'branch' ? 'branch' : 'workspace');
@@ -204,14 +210,13 @@ export function ConversationSidebar({
                         <option value='branch'>Conversation Branches</option>
                     </select>
                 </div>
-                <p className='text-muted-foreground text-[11px]'>
-                    “Conversation Branches” shows message lineage only. Execution isolation for agent/orchestrator lives
-                    in the workspace panel as local workspace vs managed worktree.
+                <p className='text-muted-foreground text-[11px] leading-5'>
+                    Branch view shows lineage. Workspace execution details stay in the main workspace surface.
                 </p>
 
                 {scopeFilter === 'workspace' || workspaceFilter ? (
                     <select
-                        className='border-border bg-background h-9 w-full rounded-md border px-2 text-sm'
+                        className='border-border bg-background h-9 w-full rounded-xl border px-3 text-sm'
                         value={workspaceFilter ?? ''}
                         onChange={(event) => {
                             onWorkspaceFilterChange(event.target.value || undefined);
@@ -225,7 +230,8 @@ export function ConversationSidebar({
                     </select>
                 ) : null}
 
-                <div className='space-y-2'>
+                <div className='space-y-2 rounded-2xl border border-border/70 bg-background/70 p-3'>
+                    <p className='text-[11px] font-semibold tracking-[0.12em] uppercase'>New Thread</p>
                     <input
                         aria-label='Thread title'
                         name='newThreadTitle'
@@ -233,14 +239,14 @@ export function ConversationSidebar({
                         onChange={(event) => {
                             setNewThreadTitle(event.target.value);
                         }}
-                        className='border-border bg-background h-9 w-full rounded-md border px-2 text-sm'
+                        className='border-border bg-card h-9 w-full rounded-xl border px-3 text-sm'
                         autoComplete='off'
                         placeholder='Optional thread title…'
                     />
                     <div className='grid grid-cols-2 gap-2'>
                         <select
                             aria-label='Thread scope'
-                            className='border-border bg-background h-9 rounded-md border px-2 text-sm'
+                            className='border-border bg-card h-9 rounded-xl border px-3 text-sm'
                             value={newThreadScope}
                             onChange={(event) => {
                                 setNewThreadScope(event.target.value === 'workspace' ? 'workspace' : 'detached');
@@ -266,7 +272,7 @@ export function ConversationSidebar({
                             onChange={(event) => {
                                 setNewThreadWorkspace(event.target.value);
                             }}
-                            className='border-border bg-background h-9 w-full rounded-md border px-2 text-sm'
+                            className='border-border bg-card h-9 w-full rounded-xl border px-3 text-sm'
                             autoComplete='off'
                             placeholder='Workspace path…'
                         />
@@ -277,7 +283,7 @@ export function ConversationSidebar({
                 </div>
             </div>
 
-            <div className='border-border space-y-2 border-b p-3'>
+            <div className='border-border/70 space-y-2 border-b p-4'>
                 <p className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>Tag Filter</p>
                 <div className='flex flex-wrap gap-1.5'>
                     {tags.map((tag) => (
@@ -305,7 +311,7 @@ export function ConversationSidebar({
                             onChange={(event) => {
                                 setNewTagLabel(event.target.value);
                             }}
-                            className='border-border bg-background h-8 min-w-0 flex-1 rounded-md border px-2 text-xs'
+                            className='border-border bg-background h-8 min-w-0 flex-1 rounded-xl border px-3 text-xs'
                             autoComplete='off'
                             placeholder='Add tag to the selected thread…'
                         />
@@ -323,7 +329,7 @@ export function ConversationSidebar({
                 ) : null}
             </div>
 
-            <div className='min-h-0 flex-1 overflow-y-auto p-2'>
+            <div className='min-h-0 flex-1 overflow-y-auto p-3'>
                 {groupedThreadRows.length === 0 ? (
                     <div className='text-muted-foreground flex h-full min-h-48 items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/30 px-6 text-center text-sm'>
                         {statusMessage && statusTone !== 'error'
@@ -367,7 +373,7 @@ export function ConversationSidebar({
                                                 />
                                             ) : null}
                                             <div
-                                                className={`border-border bg-background hover:bg-accent flex items-start gap-2 rounded-lg border p-2 ${
+                                                className={`border-border bg-background hover:bg-accent flex items-start gap-2 rounded-2xl border p-3 ${
                                                     selectedThreadId === thread.id
                                                         ? 'border-primary bg-primary/10'
                                                         : ''

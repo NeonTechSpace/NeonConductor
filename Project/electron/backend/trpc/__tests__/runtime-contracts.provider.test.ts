@@ -342,6 +342,148 @@ describe('runtime contracts: provider and account flows', () => {
         expect(kiloAuto.contextLength).toBe(200000);
     });
 
+    it('persists kilo browser auth and exposes the stored session token through provider credential queries', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((url: string) => {
+                if (url.endsWith('/api/device-auth/codes')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            result: {
+                                deviceAuth: {
+                                    deviceCode: 'kilo-device-code-1',
+                                    userCode: 'KILO-CODE',
+                                    verificationUrl: 'https://kilo.example/verify',
+                                    poll_interval_seconds: 5,
+                                    expiresIn: 900,
+                                },
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/device-auth/codes/kilo-device-code-1')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                status: 'approved',
+                                accessToken: 'kilo-session-token',
+                                refreshToken: 'kilo-refresh-token',
+                                expiresAt: '2026-03-11T16:00:00.000Z',
+                                accountId: 'acct_kilo',
+                                organizationId: 'org_kilo',
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                id: 'acct_kilo',
+                                displayName: 'Neon User',
+                                emailMasked: 'n***@example.com',
+                                organizations: [
+                                    {
+                                        organization_id: 'org_kilo',
+                                        name: 'Kilo Org',
+                                        is_active: true,
+                                        entitlement: {},
+                                    },
+                                ],
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/defaults') || url.endsWith('/api/organizations/org_kilo/defaults')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {},
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile/balance')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                balance: 18.42,
+                                currency: 'USD',
+                            },
+                        }),
+                    });
+                }
+
+                return Promise.resolve({
+                    ok: false,
+                    status: 404,
+                    statusText: 'Not Found',
+                    json: () => ({}),
+                });
+            })
+        );
+
+        const started = await caller.provider.startAuth({
+            profileId,
+            providerId: 'kilo',
+            method: 'device_code',
+        });
+        expect(started.flow.flowType).toBe('device_code');
+        expect(started.userCode).toBe('KILO-CODE');
+
+        const polled = await caller.provider.pollAuth({
+            profileId,
+            providerId: 'kilo',
+            flowId: started.flow.id,
+        });
+        expect(polled.flow.status).toBe('completed');
+        expect(polled.state.authState).toBe('authenticated');
+
+        const credentialSummary = await caller.provider.getCredentialSummary({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(credentialSummary.credential).toMatchObject({
+            providerId: 'kilo',
+            hasStoredCredential: true,
+            credentialSource: 'access_token',
+        });
+        expect(credentialSummary.credential.maskedValue).toContain('••••');
+
+        const credentialValue = await caller.provider.getCredentialValue({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(credentialValue.credential?.value).toBe('kilo-session-token');
+
+        const accountContext = await caller.provider.getAccountContext({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(accountContext.kiloAccountContext?.displayName).toBe('Neon User');
+        expect(accountContext.kiloAccountContext?.organizations.some((organization) => organization.isActive)).toBe(
+            true
+        );
+    });
+
 
     it('supports openai oauth device auth start and pending polling', async () => {
         const caller = createCaller();

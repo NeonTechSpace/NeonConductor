@@ -19,9 +19,13 @@ import {
     okProviderService,
     type ProviderServiceResult,
 } from '@/app/backend/providers/service/errors';
-import { defaultAuthState, ensureSupportedProvider } from '@/app/backend/providers/service/helpers';
+import { defaultAuthState, ensureSupportedProvider, resolveSecret } from '@/app/backend/providers/service/helpers';
 import { getOpenAISubscriptionRateLimits as getOpenAISubscriptionRateLimitsFromWham } from '@/app/backend/providers/service/openaiSubscriptionRateLimits';
-import type { ProviderListItem } from '@/app/backend/providers/service/types';
+import type {
+    ProviderCredentialSummaryResult,
+    ProviderCredentialValueResult,
+    ProviderListItem,
+} from '@/app/backend/providers/service/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import { appLog } from '@/app/main/logging';
 
@@ -74,6 +78,71 @@ export async function listProviders(profileId: string): Promise<ProviderListItem
             };
         })
     );
+}
+
+function maskCredentialValue(value: string): string {
+    const normalized = value.trim();
+    if (normalized.length <= 8) {
+        return `${normalized.slice(0, 2)}••••${normalized.slice(-2)}`;
+    }
+
+    return `${normalized.slice(0, 6)}••••${normalized.slice(-4)}`;
+}
+
+export async function getCredentialSummary(
+    profileId: string,
+    providerId: RuntimeProviderId
+): Promise<ProviderServiceResult<ProviderCredentialSummaryResult>> {
+    const ensuredProvider = await ensureSupportedProvider(providerId);
+    if (ensuredProvider.isErr()) {
+        return errProviderService(ensuredProvider.error.code, ensuredProvider.error.message);
+    }
+
+    const [apiKey, accessToken] = await Promise.all([
+        resolveSecret(profileId, providerId, 'api_key'),
+        resolveSecret(profileId, providerId, 'access_token'),
+    ]);
+    const resolvedCredential = apiKey ?? accessToken;
+    const credentialSource = apiKey ? ('api_key' as const) : accessToken ? ('access_token' as const) : null;
+
+    return okProviderService({
+        providerId,
+        hasStoredCredential: resolvedCredential !== undefined,
+        credentialSource,
+        ...(resolvedCredential ? { maskedValue: maskCredentialValue(resolvedCredential) } : {}),
+    });
+}
+
+export async function getCredentialValue(
+    profileId: string,
+    providerId: RuntimeProviderId
+): Promise<ProviderServiceResult<ProviderCredentialValueResult>> {
+    const ensuredProvider = await ensureSupportedProvider(providerId);
+    if (ensuredProvider.isErr()) {
+        return errProviderService(ensuredProvider.error.code, ensuredProvider.error.message);
+    }
+
+    const [apiKey, accessToken] = await Promise.all([
+        resolveSecret(profileId, providerId, 'api_key'),
+        resolveSecret(profileId, providerId, 'access_token'),
+    ]);
+    if (apiKey) {
+        return okProviderService({
+            providerId,
+            credentialSource: 'api_key',
+            value: apiKey,
+        });
+    }
+
+    if (accessToken) {
+        return okProviderService({
+            providerId,
+            credentialSource: 'access_token',
+            value: accessToken,
+        });
+    }
+
+    return okProviderService(null);
 }
 
 export async function listModels(

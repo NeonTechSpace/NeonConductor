@@ -1,3 +1,4 @@
+import { methodLabel } from '@/web/components/settings/providerSettings/helpers';
 import type { ProviderListItem } from '@/web/components/settings/providerSettings/types';
 import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 
@@ -40,7 +41,7 @@ export function ProviderSidebar({
             items={providers.map((provider) => ({
                 id: provider.id,
                 title: provider.label,
-                subtitle: `Auth ${provider.authState} via ${provider.authMethod.replace('_', ' ')}`,
+                subtitle: `${provider.authState.replace('_', ' ')} · ${methodLabel(provider.authMethod)}`,
                 ...(provider.isDefault ? { meta: 'Default' } : {}),
             }))}
         />

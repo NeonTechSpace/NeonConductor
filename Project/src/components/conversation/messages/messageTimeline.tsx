@@ -127,8 +127,10 @@ function TimelineImagePart({
 
 export function MessageTimelineEmptyState() {
     return (
-        <div className='text-muted-foreground border-border bg-card/60 rounded-xl border p-5 text-sm'>
-            No messages yet for this session. Start a run to populate the timeline.
+        <div className='flex h-full min-h-[16rem] items-center justify-center'>
+            <div className='text-muted-foreground border-border bg-card/60 max-w-xl rounded-2xl border px-6 py-8 text-center text-sm'>
+                No messages yet for this session. Start a run to populate the timeline.
+            </div>
         </div>
     );
 }

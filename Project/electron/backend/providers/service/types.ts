@@ -1,6 +1,12 @@
 import type { ProviderRecord } from '@/app/backend/persistence/types';
 import type { ProviderCatalogStrategy } from '@/app/backend/providers/registry';
-import type { KiloModelProviderInfo, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import type {
+    KiloModelProviderInfo,
+    ProviderAuthMethod,
+    ProviderCredentialSummary,
+    ProviderCredentialValue,
+    RuntimeProviderId,
+} from '@/app/backend/runtime/contracts';
 
 export interface ProviderListItem extends ProviderRecord {
     isDefault: boolean;
@@ -47,3 +53,7 @@ export interface ProviderEndpointProfileResult {
         label: string;
     }>;
 }
+
+export type ProviderCredentialSummaryResult = ProviderCredentialSummary;
+
+export type ProviderCredentialValueResult = ProviderCredentialValue | null;

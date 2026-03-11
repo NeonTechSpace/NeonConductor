@@ -14,6 +14,9 @@ import {
     MAIN_WINDOW_PRELOAD_BUNDLE_NAME,
     SPLASH_WINDOW_PRELOAD_BUNDLE_NAME,
 } from '@/app/main/window/preloadPaths';
+import { preloadBundleUsesUnsupportedModuleSyntax } from '@/app/main/window/preloadBundleSyntax';
+
+export { preloadBundleUsesUnsupportedModuleSyntax } from '@/app/main/window/preloadBundleSyntax';
 
 import { scriptLog } from '@/scripts/logger';
 
@@ -154,18 +157,6 @@ function countRows(database: DatabaseSync, tableName: string): number | null {
 
     const row = database.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get();
     return readOptionalNumberField(row, 'count') ?? 0;
-}
-
-export function preloadBundleUsesUnsupportedModuleSyntax(source: string): boolean {
-    return source.split(/\r?\n/u).some((line) => {
-        const trimmedLine = line.trimStart();
-        return (
-            trimmedLine.startsWith('import ') ||
-            trimmedLine.startsWith("import '") ||
-            trimmedLine.startsWith('import "') ||
-            trimmedLine.startsWith('export ')
-        );
-    });
 }
 
 export function inspectSandboxedPreloadBundles(mainDirname: string): SandboxedPreloadBundleCheck[] {

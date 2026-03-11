@@ -28,7 +28,7 @@ export function SettingsSelectionRail({
     onItemIntent,
 }: SettingsSelectionRailProps) {
     return (
-        <aside className='border-border bg-background/50 min-h-0 overflow-y-auto border-r p-3'>
+        <aside className='border-border bg-background/50 h-full min-h-0 min-w-0 overflow-y-auto border-r p-3'>
             <p className='text-muted-foreground mb-2 text-xs font-semibold tracking-[0.16em] uppercase'>{title}</p>
             <div aria-label={ariaLabel} className='space-y-2'>
                 {items.length === 0 ? (

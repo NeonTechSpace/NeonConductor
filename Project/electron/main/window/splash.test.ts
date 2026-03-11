@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveSplashAssetPath, resolveSplashPageLocation, updateSplashWindowStatus } from '@/app/main/window/splash';
+import {
+    buildSplashBootstrapPayload,
+    resolveSplashAssetPath,
+    resolveSplashAssetUrl,
+    resolveSplashPageLocation,
+    updateSplashWindowStatus,
+} from '@/app/main/window/splash';
 
 describe('splash window', () => {
     it('resolves the mascot from the project app path during development', () => {
@@ -22,6 +28,26 @@ describe('splash window', () => {
                 resourcesPath: 'C:\\Program Files\\NeonConductor\\resources',
             })
         ).toBe('C:\\Program Files\\NeonConductor\\resources\\assets\\appicon.png');
+    });
+
+    it('resolves a browser-safe dev mascot URL for the splash renderer', () => {
+        expect(
+            resolveSplashAssetUrl({
+                appPath: 'C:\\repo\\Project',
+                devServerUrl: 'http://localhost:5173',
+                isPackaged: false,
+            })
+        ).toBe('http://localhost:5173/src/assets/appicon.png');
+    });
+
+    it('resolves a file URL for the packaged mascot', () => {
+        expect(
+            resolveSplashAssetUrl({
+                appPath: 'ignored',
+                isPackaged: true,
+                resourcesPath: 'C:\\Program Files\\NeonConductor\\resources',
+            })
+        ).toBe('file:///C:/Program%20Files/NeonConductor/resources/assets/appicon.png');
     });
 
     it('loads the bundled splash page from the Vite dev server during development', () => {
@@ -88,5 +114,20 @@ describe('splash window', () => {
 
         expect(source).not.toContain('data:text/html');
         expect(source).not.toContain('executeJavaScript');
+    });
+
+    it('builds a preload bootstrap payload with mascot source and initial status', () => {
+        expect(
+            buildSplashBootstrapPayload({
+                appPath: 'C:\\repo\\Project',
+                devServerUrl: 'http://localhost:5173',
+                isPackaged: false,
+            })
+        ).toMatchObject({
+            mascotSource: 'http://localhost:5173/src/assets/appicon.png',
+            status: expect.objectContaining({
+                stage: 'main_initializing',
+            }),
+        });
     });
 });

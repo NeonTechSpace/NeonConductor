@@ -83,14 +83,25 @@
 html,
 body,
 #root {
+    height: 100%;
     min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
 body {
     margin: 0;
     font-family: var(--font-body);
     background-color: hsl(var(--background));
+    background-image:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 28%),
+        radial-gradient(circle at top right, color-mix(in srgb, var(--color-card) 92%, transparent), transparent 36%);
     color: hsl(var(--foreground));
+    overflow: hidden;
 }
 
 .privacy-redacted {

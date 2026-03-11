@@ -1,6 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 
-import { formatMetric } from '@/web/components/settings/providerSettings/helpers';
+import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import type { ProviderModelOption } from '@/web/components/settings/providerSettings/types';
 import { Button } from '@/web/components/ui/button';
 
@@ -34,39 +34,31 @@ export function ProviderDefaultModelSection({
             <div className='space-y-1'>
                 <p className='text-sm font-semibold'>Default Model</p>
                 <p className='text-muted-foreground text-xs'>
-                    Choose the model that should be preselected for this provider in settings and the composer.
+                    {selectedProviderId === 'kilo'
+                        ? 'Choose the Kilo model profile that should be preselected in settings and the composer.'
+                        : 'Choose the model that should be preselected for this provider in settings and the composer.'}
                 </p>
             </div>
-            <div className='grid grid-cols-[1fr_auto_auto] gap-2'>
+            <div className='grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto]'>
                 <label className='sr-only' htmlFor='provider-default-model'>
                     Default model
                 </label>
-                <select
+                <ModelPicker
                     id='provider-default-model'
                     name='providerDefaultModel'
-                    value={selectedModelId}
-                    onChange={(event) => {
-                        onSelectModel(event.target.value);
-                    }}
-                    className='border-border bg-background h-9 rounded-md border px-2 text-sm'
-                    disabled={models.length === 0}>
-                    {models.length === 0 ? (
-                        <option value=''>No runnable models available</option>
-                    ) : (
-                        models.map((model) => (
-                            <option key={model.id} value={model.id}>
-                                {model.label}
-                                {selectedProviderId === 'kilo'
-                                    ? ` · price ${formatMetric(model.price)} · latency ${formatMetric(model.latency)} · tps ${formatMetric(model.tps)}`
-                                    : ''}
-                            </option>
-                        ))
-                    )}
-                </select>
+                    providerId={selectedProviderId}
+                    selectedModelId={selectedModelId}
+                    models={models}
+                    disabled={models.length === 0}
+                    ariaLabel='Default model'
+                    placeholder='Select model'
+                    onSelectModel={onSelectModel}
+                />
                 <Button
                     type='button'
                     size='sm'
                     variant='outline'
+                    className='md:self-end'
                     disabled={!selectedModelId || isSavingDefault || isDefaultModel}
                     onClick={onSetDefault}>
                     {isDefaultModel ? 'Default' : 'Set Default'}
@@ -75,6 +67,7 @@ export function ProviderDefaultModelSection({
                     type='button'
                     size='sm'
                     variant='outline'
+                    className='md:self-end'
                     disabled={isSyncingCatalog || !selectedProviderId}
                     onClick={onSyncCatalog}>
                     <RefreshCw className='h-3.5 w-3.5' />

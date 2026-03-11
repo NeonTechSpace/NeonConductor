@@ -92,8 +92,8 @@ export function WorkspaceStatusPanel({
 }: WorkspaceStatusPanelProps) {
     return (
         <section
-            className={`mb-3 grid gap-3 md:grid-cols-2 ${
-                registrySummary || agentContextSummary ? 'xl:grid-cols-6' : 'xl:grid-cols-4'
+            className={`grid gap-3 md:grid-cols-2 ${
+                registrySummary || agentContextSummary ? 'xl:grid-cols-5' : 'xl:grid-cols-3'
             }`}>
             <StatusCard
                 label='Run'
@@ -120,11 +120,11 @@ export function WorkspaceStatusPanel({
                 }
             />
             <StatusCard
-                label='Provider'
-                value={provider?.label ?? 'Unresolved'}
+                label='Target'
+                value={modelLabel ?? provider?.label ?? 'Unresolved'}
                 detail={
                     provider
-                        ? `${provider.authState} via ${methodLabel(provider.authMethod)}${routingBadge ? ` · ${routingBadge}` : ''}`
+                        ? `${provider.label} · ${provider.authState} via ${methodLabel(provider.authMethod)}${routingBadge ? ` · ${routingBadge}` : ''}`
                         : 'Select a runnable provider/model pair'
                 }
             />
@@ -136,11 +136,6 @@ export function WorkspaceStatusPanel({
                         ? `${formatInteger(usageSummary.runCount)} runs · ${formatMicrounits(usageSummary.totalCostMicrounits)}`
                         : 'No local telemetry for this provider yet'
                 }
-            />
-            <StatusCard
-                label='Model'
-                value={modelLabel ?? 'Unresolved'}
-                detail={run?.modelId ?? 'Composer target model'}
             />
             {agentContextSummary ? (
                 <StatusCard

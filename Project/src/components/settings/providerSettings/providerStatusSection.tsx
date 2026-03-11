@@ -55,7 +55,7 @@ function readActiveOrganization(accountContext: KiloAccountContext | undefined) 
 
 function StatusCard({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section className='border-border bg-background rounded-xl border p-4'>
+        <section className='border-border bg-background min-w-0 rounded-[22px] border p-4'>
             <p className='text-xs font-semibold tracking-[0.12em] uppercase'>{title}</p>
             <div className='mt-3'>{children}</div>
         </section>
@@ -79,7 +79,7 @@ export function ProviderStatusSection({
     const effectiveAuthMethod = authState?.authMethod ?? provider.authMethod;
 
     return (
-        <section className='space-y-3'>
+        <section className='border-border/70 bg-card/40 space-y-4 rounded-[24px] border p-5'>
             <div>
                 <p className='text-sm font-semibold'>Provider Status</p>
                 <p className='text-muted-foreground text-xs'>
@@ -87,24 +87,24 @@ export function ProviderStatusSection({
                 </p>
             </div>
 
-            <div className='grid gap-3 xl:grid-cols-2'>
+            <div className='grid gap-3 lg:grid-cols-2'>
                 <StatusCard title='Connection'>
                     <dl className='space-y-2 text-sm'>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Auth state</dt>
-                            <dd className='font-medium'>{effectiveAuthState}</dd>
+                            <dd className='min-w-0 break-words font-medium'>{effectiveAuthState}</dd>
                         </div>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Method</dt>
-                            <dd>{methodLabel(effectiveAuthMethod)}</dd>
+                            <dd className='min-w-0 break-words'>{methodLabel(effectiveAuthMethod)}</dd>
                         </div>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Endpoint</dt>
-                            <dd>{provider.endpointProfile.label}</dd>
+                            <dd className='min-w-0 break-words'>{provider.endpointProfile.label}</dd>
                         </div>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Token expiry</dt>
-                            <dd>{formatDateTime(authState?.tokenExpiresAt)}</dd>
+                            <dd className='min-w-0 break-words'>{formatDateTime(authState?.tokenExpiresAt)}</dd>
                         </div>
                     </dl>
                 </StatusCard>
@@ -117,25 +117,25 @@ export function ProviderStatusSection({
                             <dl className='space-y-2 text-sm'>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Display name</dt>
-                                    <dd>
+                                    <dd className='min-w-0 break-words'>
                                         <SensitiveValue value={accountContext?.displayName} category='person' />
                                     </dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Email</dt>
-                                    <dd>
+                                    <dd className='min-w-0 break-words'>
                                         <SensitiveValue value={accountContext?.emailMasked} category='email' />
                                     </dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Account ID</dt>
-                                    <dd>
+                                    <dd className='min-w-0 break-words'>
                                         <SensitiveValue value={accountContext?.accountId} category='account_id' />
                                     </dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Last sync</dt>
-                                    <dd>{formatDateTime(accountContext?.updatedAt)}</dd>
+                                    <dd className='min-w-0 break-words'>{formatDateTime(accountContext?.updatedAt)}</dd>
                                 </div>
                             </dl>
                         )
@@ -143,13 +143,13 @@ export function ProviderStatusSection({
                         <dl className='space-y-2 text-sm'>
                             <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                 <dt className='text-muted-foreground'>Account ID</dt>
-                                <dd>
+                                <dd className='min-w-0 break-words'>
                                     <SensitiveValue value={authState?.accountId} category='account_id' />
                                 </dd>
                             </div>
                             <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                 <dt className='text-muted-foreground'>Auth guidance</dt>
-                                <dd className='text-muted-foreground text-xs leading-5'>
+                                <dd className='text-muted-foreground min-w-0 break-words text-xs leading-5'>
                                     {effectiveAuthState === 'authenticated'
                                         ? 'OpenAI account context is ready.'
                                         : 'Use OAuth for account limits or an API key for direct Responses access.'}
@@ -192,17 +192,17 @@ export function ProviderStatusSection({
                             <dl className='space-y-2 text-sm'>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Active org</dt>
-                                    <dd>
+                                    <dd className='min-w-0 break-words'>
                                         <SensitiveValue value={activeOrganization?.name} category='organization' />
                                     </dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Org count</dt>
-                                    <dd>{formatInteger(accountContext?.organizations.length)}</dd>
+                                    <dd className='min-w-0 break-words'>{formatInteger(accountContext?.organizations.length)}</dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Balance</dt>
-                                    <dd>
+                                    <dd className='min-w-0 break-words'>
                                         <SensitiveValue
                                             value={accountContext?.balance ? formatBalance(accountContext.balance) : undefined}
                                             category='balance'
@@ -211,7 +211,7 @@ export function ProviderStatusSection({
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Balance updated</dt>
-                                    <dd>{formatDateTime(accountContext?.balance?.updatedAt)}</dd>
+                                    <dd className='min-w-0 break-words'>{formatDateTime(accountContext?.balance?.updatedAt)}</dd>
                                 </div>
                             </dl>
                         )

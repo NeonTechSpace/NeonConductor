@@ -10,6 +10,10 @@ declare module '*.wasm?url' {
 declare global {
     interface Window {
         neonSplash?: {
+            getBootstrapPayload(): {
+                mascotSource: string | null;
+                status: BootStatusSnapshot;
+            };
             onStatusChange(listener: (status: BootStatusSnapshot) => void): () => void;
         };
     }

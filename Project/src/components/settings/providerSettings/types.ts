@@ -5,6 +5,8 @@ import type {
     KiloModelProviderInfo,
     KiloModelRoutingPreference,
     KiloRoutingMode,
+    ProviderCredentialSummary,
+    ProviderCredentialValue,
     RuntimeProviderId,
 } from '@/shared/contracts';
 
@@ -49,6 +51,10 @@ export interface ProviderAuthStateView {
     accountId?: string;
     tokenExpiresAt?: string;
 }
+
+export type ProviderCredentialSummaryView = ProviderCredentialSummary;
+
+export type ProviderCredentialValueView = ProviderCredentialValue | null;
 
 export type ProviderModelOption = ProviderModelRecord;
 

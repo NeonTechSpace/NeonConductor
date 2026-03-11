@@ -1,4 +1,5 @@
 import {
+    formatBootElapsedMs,
     INITIAL_BOOT_STATUS_SNAPSHOT,
     getBootBlockingPrerequisiteLabel,
     isBootStatusSnapshot,
@@ -14,6 +15,10 @@ export interface SplashDocumentTarget {
 
 export function normalizeBootStatusSnapshot(value: unknown): BootStatusSnapshot {
     return isBootStatusSnapshot(value) ? value : INITIAL_BOOT_STATUS_SNAPSHOT;
+}
+
+function formatDiagnostics(status: BootStatusSnapshot): string {
+    return `Elapsed: ${formatBootElapsedMs(status.elapsedMs)}`;
 }
 
 export function applyBootStatus(target: SplashDocumentTarget, status: BootStatusSnapshot): void {
@@ -40,9 +45,8 @@ export function applyBootStatus(target: SplashDocumentTarget, status: BootStatus
         ? getBootBlockingPrerequisiteLabel(status.blockingPrerequisite)
         : undefined;
 
-    diagnosticsElement.textContent = status.isStuck
-        ? `Waiting on: ${blockingPrerequisiteLabel ?? 'startup prerequisite'}`
-        : blockingPrerequisiteLabel
-          ? `Current blocker: ${blockingPrerequisiteLabel}`
-          : `Elapsed: ${String(Math.max(0, Math.round(status.elapsedMs)))}ms`;
+    diagnosticsElement.textContent =
+        !status.isStuck && blockingPrerequisiteLabel
+            ? `Current blocker: ${blockingPrerequisiteLabel}`
+            : formatDiagnostics(status);
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
@@ -19,10 +19,25 @@ export default function TitleBar() {
     const [showUpdatesPanel, setShowUpdatesPanel] = useState(false);
     const [confirmClose, setConfirmClose] = useState(false);
 
+    const handleRequestClose = () => {
+        if (controls.canCloseImmediately) {
+            controls.closeWindow();
+            return;
+        }
+
+        setConfirmClose(true);
+    };
+
     useWindowCloseShortcut({
         platform: controls.platform,
-        onClose: controls.closeWindow,
+        onClose: handleRequestClose,
     });
+
+    useEffect(() => {
+        if (controls.canCloseImmediately && confirmClose) {
+            setConfirmClose(false);
+        }
+    }, [confirmClose, controls.canCloseImmediately]);
 
     const handleHeaderDoubleClick = (event: ReactMouseEvent<HTMLElement>) => {
         const eventTarget = event.target;
@@ -56,9 +71,7 @@ export default function TitleBar() {
                         canMinimize={controls.canMinimize}
                         canMaximize={controls.canMaximize}
                         isMaximized={controls.isMaximized}
-                        onRequestClose={() => {
-                            setConfirmClose(true);
-                        }}
+                        onRequestClose={handleRequestClose}
                         onMinimize={controls.minimizeWindow}
                         onToggleMaximize={controls.toggleMaximizeWindow}
                     />
@@ -90,9 +103,7 @@ export default function TitleBar() {
                         canMinimize={controls.canMinimize}
                         canMaximize={controls.canMaximize}
                         isMaximized={controls.isMaximized}
-                        onRequestClose={() => {
-                            setConfirmClose(true);
-                        }}
+                        onRequestClose={handleRequestClose}
                         onMinimize={controls.minimizeWindow}
                         onToggleMaximize={controls.toggleMaximizeWindow}
                     />
@@ -106,9 +117,12 @@ export default function TitleBar() {
                 }}
             />
             <ConfirmDialog
-                open={confirmClose}
-                title='Close NeonConductor?'
-                message='Any active update or runtime operation will continue only if safely supported by the app lifecycle.'
+                open={confirmClose && !controls.canCloseImmediately}
+                title={controls.closeWarningTitle ?? 'Close NeonConductor?'}
+                message={
+                    controls.closeWarningMessage ??
+                    'NeonConductor is still working on an update. Closing now may interrupt that work.'
+                }
                 confirmLabel='Close window'
                 cancelLabel='Cancel'
                 destructive

@@ -12,6 +12,8 @@ import {
     setModelRoutingPreference,
 } from '@/app/backend/providers/service/kiloRoutingService';
 import {
+    getCredentialSummary,
+    getCredentialValue,
     getOpenAISubscriptionRateLimits,
     getOpenAISubscriptionUsage,
     listAuthStates,
@@ -24,6 +26,8 @@ import {
     setDefault,
 } from '@/app/backend/providers/service/readService';
 import type {
+    ProviderCredentialSummaryResult,
+    ProviderCredentialValueResult,
     KiloModelProviderOption,
     ProviderEndpointProfileResult,
     ProviderListItem,
@@ -64,6 +68,20 @@ class ProviderManagementService {
 
     async getAuthState(profileId: string, providerId: RuntimeProviderId): Promise<ProviderAuthStateRecord> {
         return providerAuthExecutionService.getAuthState(profileId, providerId);
+    }
+
+    async getCredentialSummary(
+        profileId: string,
+        providerId: RuntimeProviderId
+    ): Promise<ProviderServiceResult<ProviderCredentialSummaryResult>> {
+        return getCredentialSummary(profileId, providerId);
+    }
+
+    async getCredentialValue(
+        profileId: string,
+        providerId: RuntimeProviderId
+    ): Promise<ProviderServiceResult<ProviderCredentialValueResult>> {
+        return getCredentialValue(profileId, providerId);
     }
 
     async listAuthStates(profileId: string) {

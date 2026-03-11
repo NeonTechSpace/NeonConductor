@@ -116,6 +116,14 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 authState: result.state.authState,
                 authMethod: result.state.authMethod,
             }));
+            void utils.provider.getCredentialSummary.invalidate({
+                profileId: input.profileId,
+                providerId: variables.providerId,
+            });
+            void utils.provider.getCredentialValue.invalidate({
+                profileId: input.profileId,
+                providerId: variables.providerId,
+            });
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
@@ -238,6 +246,14 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                     providerId: 'kilo',
                 });
             }
+            void utils.provider.getCredentialSummary.invalidate({
+                profileId: input.profileId,
+                providerId: variables.providerId,
+            });
+            void utils.provider.getCredentialValue.invalidate({
+                profileId: input.profileId,
+                providerId: variables.providerId,
+            });
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }

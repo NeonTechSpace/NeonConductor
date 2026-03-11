@@ -50,26 +50,26 @@ export function ConfirmDialog({
                     onCancel();
                 }
             }}>
-            <div className='border-border bg-card text-card-foreground w-full max-w-sm rounded-xl border p-5 shadow-xl'>
+            <div className='border-border bg-card text-card-foreground w-full max-w-[32rem] rounded-2xl border p-6 shadow-xl'>
                 <h2 id={titleId} className='text-base font-semibold'>
                     {title}
                 </h2>
-                <p id={descriptionId} className='text-muted-foreground mt-2 text-sm'>
+                <p id={descriptionId} className='text-muted-foreground mt-2 break-words text-sm leading-6 text-balance'>
                     {message}
                 </p>
                 {children ? <div className='mt-4'>{children}</div> : null}
-                <div className='mt-5 flex justify-end gap-2'>
+                <div className='mt-6 flex flex-wrap justify-end gap-2'>
                     <button
                         ref={cancelButtonRef}
                         type='button'
-                        className='border-border bg-background hover:bg-accent focus-visible:ring-ring rounded-md border px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none'
+                        className='border-border bg-background hover:bg-accent focus-visible:ring-ring min-h-11 rounded-xl border px-4 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none'
                         onClick={onCancel}
                         disabled={busy}>
                         {cancelLabel}
                     </button>
                     <button
                         type='button'
-                        className={`focus-visible:ring-ring rounded-md px-3 py-1.5 text-sm text-white focus-visible:ring-2 focus-visible:outline-none ${
+                        className={`focus-visible:ring-ring min-h-11 rounded-xl px-4 py-2 text-sm text-white focus-visible:ring-2 focus-visible:outline-none ${
                             destructive ? 'bg-destructive hover:bg-destructive/85' : 'bg-primary hover:bg-primary/85'
                         }`}
                         onClick={onConfirm}

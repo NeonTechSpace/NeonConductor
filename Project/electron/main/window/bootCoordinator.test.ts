@@ -153,7 +153,7 @@ describe('bootCoordinator', () => {
         );
     });
 
-    it('deduplicates repeated renderer boot status reports with the same signature', () => {
+    it('keeps publishing stable-stage status updates when only elapsed time changes', () => {
         const mainWindow = createMockWindow(300);
         const splashWindow = createMockWindow(400);
 
@@ -162,20 +162,23 @@ describe('bootCoordinator', () => {
             splashWindow: splashWindow as never,
         });
         updateSplashWindowStatusSpy.mockClear();
+        appLogInfoSpy.mockClear();
 
         reportRendererBootStatus(mainWindow as never, {
             stage: 'profile_resolving',
             blockingPrerequisite: 'resolved_profile',
             detail: 'Waiting for the active workspace profile.',
         });
+        vi.advanceTimersByTime(250);
         reportRendererBootStatus(mainWindow as never, {
             stage: 'profile_resolving',
             blockingPrerequisite: 'resolved_profile',
             detail: 'Waiting for the active workspace profile.',
-            elapsedMs: 9999,
+            elapsedMs: 250,
         });
 
-        expect(updateSplashWindowStatusSpy).toHaveBeenCalledTimes(1);
+        expect(updateSplashWindowStatusSpy).toHaveBeenCalledTimes(2);
+        expect(appLogInfoSpy).toHaveBeenCalledTimes(1);
     });
 
     it('rejects handoff and boot reports from a different window', () => {

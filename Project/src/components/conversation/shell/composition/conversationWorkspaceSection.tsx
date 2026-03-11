@@ -11,7 +11,7 @@ import type {
     ThreadListRecord,
 } from '@/app/backend/persistence/types';
 
-import type { DiffOverview, ResolvedContextState, RuntimeProviderId } from '@/shared/contracts';
+import type { DiffOverview, ResolvedContextState, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 import type { ReactNode } from 'react';
 
@@ -78,6 +78,9 @@ interface ConversationWorkspaceSectionProps {
     canCreateSession: boolean;
     selectedProviderId: RuntimeProviderId | undefined;
     selectedModelId: string | undefined;
+    topLevelTab: TopLevelTab;
+    activeModeKey: string;
+    modes: Array<{ id: string; modeKey: string; label: string }>;
     canAttachImages: boolean;
     imageAttachmentBlockedReason?: string;
     routingBadge: string | undefined;
@@ -106,7 +109,16 @@ interface ConversationWorkspaceSectionProps {
         | undefined;
     runDiffOverview?: DiffOverview;
     providerOptions: Array<{ id: string; label: string; authState: string }>;
-    modelOptions: Array<{ id: string; label: string; price?: number; latency?: number; tps?: number }>;
+    modelOptions: Array<{
+        id: string;
+        label: string;
+        sourceProvider?: string;
+        source?: string;
+        promptFamily?: string;
+        price?: number;
+        latency?: number;
+        tps?: number;
+    }>;
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
     contextFeedbackMessage?: string;
@@ -121,6 +133,7 @@ interface ConversationWorkspaceSectionProps {
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onModeChange: (modeKey: string) => void;
     onCreateSession: () => void;
     onPromptChange: (prompt: string) => void;
     onAddImageFiles: (files: FileList | File[]) => void;
@@ -161,6 +174,9 @@ export function ConversationWorkspaceSection({
     canCreateSession,
     selectedProviderId,
     selectedModelId,
+    topLevelTab,
+    activeModeKey,
+    modes,
     canAttachImages,
     imageAttachmentBlockedReason,
     routingBadge,
@@ -186,6 +202,7 @@ export function ConversationWorkspaceSection({
     onSelectRun,
     onProviderChange,
     onModelChange,
+    onModeChange,
     onCreateSession,
     onPromptChange,
     onAddImageFiles,
@@ -198,7 +215,7 @@ export function ConversationWorkspaceSection({
     onBranchFromMessage,
 }: ConversationWorkspaceSectionProps) {
     return (
-        <section className='flex min-h-0 flex-1 flex-col'>
+        <section className='flex min-h-0 min-w-0 flex-1 flex-col'>
             <header className='border-border flex items-center justify-between border-b px-4 py-3'>
                 <div className='min-w-0'>
                     <p className='truncate text-sm font-semibold'>{selectedThread?.title ?? 'No Thread Selected'}</p>
@@ -229,6 +246,9 @@ export function ConversationWorkspaceSection({
                 canCreateSession={canCreateSession}
                 selectedProviderId={selectedProviderId}
                 selectedModelId={selectedModelId}
+                topLevelTab={topLevelTab}
+                activeModeKey={activeModeKey}
+                modes={modes}
                 canAttachImages={canAttachImages}
                 {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
                 {...(routingBadge !== undefined ? { routingBadge } : {})}
@@ -255,6 +275,7 @@ export function ConversationWorkspaceSection({
                 onSelectRun={onSelectRun}
                 onProviderChange={onProviderChange}
                 onModelChange={onModelChange}
+                onModeChange={onModeChange}
                 onCreateSession={onCreateSession}
                 onPromptChange={onPromptChange}
                 onAddImageFiles={onAddImageFiles}

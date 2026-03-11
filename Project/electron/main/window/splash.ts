@@ -1,15 +1,18 @@
 import { BrowserWindow } from 'electron';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { resolveRuntimeAssetPath } from '@/app/main/runtime/assets';
 import { resolveSplashWindowPreloadPath } from '@/app/main/window/preloadPaths';
 import {
     INITIAL_BOOT_STATUS_SNAPSHOT,
     SPLASH_BOOT_STATUS_CHANNEL,
+    type SplashBootstrapPayload,
     type BootStatusSnapshot,
 } from '@/app/shared/splashContract';
 
 const splashWindowStatusById = new Map<number, BootStatusSnapshot>();
+const SPLASH_MASCOT_SOURCE_ARGUMENT_PREFIX = '--neon-splash-mascot-source=';
 
 export interface SplashWindowOptions {
     appPath: string;
@@ -30,6 +33,25 @@ export function resolveSplashAssetPath(input: {
         relativePath: input.isPackaged ? 'assets/appicon.png' : 'src/assets/appicon.png',
         ...(input.resourcesPath ? { resourcesPath: input.resourcesPath } : {}),
     });
+}
+
+export function resolveSplashAssetUrl(input: {
+    appPath: string;
+    devServerUrl?: string;
+    isPackaged: boolean;
+    resourcesPath?: string;
+}): string {
+    if (!input.isPackaged && input.devServerUrl) {
+        return new URL('src/assets/appicon.png', ensureTrailingSlash(input.devServerUrl)).toString();
+    }
+
+    return pathToFileURL(
+        resolveSplashAssetPath({
+            appPath: input.appPath,
+            isPackaged: input.isPackaged,
+            ...(input.resourcesPath ? { resourcesPath: input.resourcesPath } : {}),
+        })
+    ).toString();
 }
 
 export function resolveSplashPageLocation(
@@ -66,9 +88,33 @@ export function updateSplashWindowStatus(splashWindow: BrowserWindow, status: Bo
     return Promise.resolve();
 }
 
+export function buildSplashBootstrapPayload(input: {
+    appPath: string;
+    devServerUrl?: string;
+    isPackaged: boolean;
+    resourcesPath?: string;
+    status?: BootStatusSnapshot;
+}): SplashBootstrapPayload {
+    return {
+        mascotSource: resolveSplashAssetUrl({
+            appPath: input.appPath,
+            ...(input.devServerUrl ? { devServerUrl: input.devServerUrl } : {}),
+            isPackaged: input.isPackaged,
+            ...(input.resourcesPath ? { resourcesPath: input.resourcesPath } : {}),
+        }),
+        status: input.status ?? INITIAL_BOOT_STATUS_SNAPSHOT,
+    };
+}
+
 export function createSplashWindow(options: SplashWindowOptions): BrowserWindow {
     const assetPath = resolveSplashAssetPath({
         appPath: options.appPath,
+        isPackaged: options.isPackaged,
+        ...(options.resourcesPath ? { resourcesPath: options.resourcesPath } : {}),
+    });
+    const bootstrapPayload = buildSplashBootstrapPayload({
+        appPath: options.appPath,
+        ...(options.devServerUrl ? { devServerUrl: options.devServerUrl } : {}),
         isPackaged: options.isPackaged,
         ...(options.resourcesPath ? { resourcesPath: options.resourcesPath } : {}),
     });
@@ -93,6 +139,9 @@ export function createSplashWindow(options: SplashWindowOptions): BrowserWindow 
         icon: assetPath,
         webPreferences: {
             preload: resolveSplashWindowPreloadPath(options.mainDirname),
+            additionalArguments: [
+                `${SPLASH_MASCOT_SOURCE_ARGUMENT_PREFIX}${encodeURIComponent(bootstrapPayload.mascotSource ?? '')}`,
+            ],
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: true,

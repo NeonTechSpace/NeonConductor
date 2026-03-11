@@ -33,6 +33,8 @@ export function useProviderSettingsController(profileId: string, options?: Provi
     const [apiKeyInput, setApiKeyInput] = useState('');
     const [activeAuthFlow, setActiveAuthFlow] = useState<ActiveAuthFlow | undefined>(undefined);
     const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
+    const [isCredentialVisible, setIsCredentialVisible] = useState(false);
+    const [hasLoadedStoredCredential, setHasLoadedStoredCredential] = useState(false);
 
     const providersQuery = trpc.provider.listProviders.useQuery({ profileId }, PROGRESSIVE_QUERY_OPTIONS);
     const defaultsQuery = trpc.provider.getDefaults.useQuery({ profileId }, PROGRESSIVE_QUERY_OPTIONS);
@@ -51,6 +53,16 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         }
     );
     const authStateQuery = trpc.provider.getAuthState.useQuery(
+        {
+            profileId,
+            providerId: selectedProviderId ?? 'openai',
+        },
+        {
+            enabled: Boolean(selectedProviderId),
+            ...PROGRESSIVE_QUERY_OPTIONS,
+        }
+    );
+    const credentialSummaryQuery = trpc.provider.getCredentialSummary.useQuery(
         {
             profileId,
             providerId: selectedProviderId ?? 'openai',
@@ -134,6 +146,7 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         defaultsQuery,
         listModelsQuery,
         authStateQuery,
+        credentialSummaryQuery,
         kiloRoutingPreferenceQuery,
         kiloModelProvidersQuery,
         accountContextQuery,
@@ -153,6 +166,12 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         });
         setRequestedProviderId(options?.initialProviderId);
     }, [options?.initialProviderId, profileId]);
+
+    useEffect(() => {
+        setApiKeyInput('');
+        setIsCredentialVisible(false);
+        setHasLoadedStoredCredential(false);
+    }, [selectedProviderId]);
 
     const mutations = useProviderSettingsMutations({
         profileId,
@@ -177,6 +196,7 @@ export function useProviderSettingsController(profileId: string, options?: Provi
     const selectedAuthState: ProviderAuthStateView | undefined = authStateQuery.data?.found
         ? authStateQuery.data.state
         : undefined;
+    const credentialSummary = credentialSummaryQuery.data?.credential;
     const kiloAccountContext =
         accountContextQuery.data?.providerId === 'kilo' ? accountContextQuery.data.kiloAccountContext : undefined;
     const selectedProviderUsageSummary = usageSummaryQuery.data?.summaries.find(
@@ -198,6 +218,90 @@ export function useProviderSettingsController(profileId: string, options?: Provi
             await mutations.setModelRoutingPreferenceMutation.mutateAsync(saveInput);
         },
     });
+
+    useEffect(() => {
+        if (
+            selectedProviderId !== 'kilo' ||
+            hasLoadedStoredCredential ||
+            credentialSummary?.credentialSource !== 'access_token' ||
+            apiKeyInput.trim().length > 0
+        ) {
+            return;
+        }
+
+        let cancelled = false;
+        void (async () => {
+            const result = await utils.provider.getCredentialValue.fetch({
+                profileId,
+                providerId: 'kilo',
+            });
+            if (!result.credential || cancelled) {
+                return;
+            }
+
+            setApiKeyInput(result.credential.value);
+            setHasLoadedStoredCredential(true);
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        apiKeyInput,
+        credentialSummary?.credentialSource,
+        hasLoadedStoredCredential,
+        profileId,
+        selectedProviderId,
+        utils.provider.getCredentialValue,
+    ]);
+
+    const revealStoredCredential = async () => {
+        if (!selectedProviderId) {
+            return;
+        }
+
+        if (apiKeyInput.trim().length === 0 && credentialSummary?.hasStoredCredential) {
+            const result = await utils.provider.getCredentialValue.fetch({
+                profileId,
+                providerId: selectedProviderId,
+            });
+            if (!result.credential) {
+                setStatusMessage('No stored credential is available for this provider.');
+                return;
+            }
+
+            setApiKeyInput(result.credential.value);
+            setHasLoadedStoredCredential(true);
+        }
+
+        setIsCredentialVisible(true);
+    };
+
+    const hideStoredCredential = () => {
+        setIsCredentialVisible(false);
+    };
+
+    const copyStoredCredential = async () => {
+        if (!selectedProviderId) {
+            return;
+        }
+
+        const credentialValue =
+            apiKeyInput.trim().length > 0
+                ? apiKeyInput
+                : (await utils.provider.getCredentialValue.fetch({
+                      profileId,
+                      providerId: selectedProviderId,
+                  })).credential?.value;
+        if (!credentialValue) {
+            setStatusMessage('No stored credential is available for this provider.');
+            return;
+        }
+
+        await navigator.clipboard.writeText(credentialValue);
+        setHasLoadedStoredCredential(true);
+        setStatusMessage('Stored credential copied.');
+    };
     const actions = createProviderSettingsActions({
         profileId,
         selectedProviderId,
@@ -278,11 +382,13 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         selectedProviderId,
         selectedModelId,
         apiKeyInput,
+        isCredentialVisible,
         activeAuthFlow,
         statusMessage,
         providerItems,
         selectedProvider,
         models,
+        credentialSummary,
         methods: selectedProvider?.availableAuthMethods ?? [],
         kiloModelProviders,
         selectedAuthState,
@@ -302,6 +408,9 @@ export function useProviderSettingsController(profileId: string, options?: Provi
                 trpcUtils: utils,
             });
         },
+        revealStoredCredential,
+        hideStoredCredential,
+        copyStoredCredential,
         setSelectedModelId: setRequestedModelId,
         setApiKeyInput,
         setStatusMessage,

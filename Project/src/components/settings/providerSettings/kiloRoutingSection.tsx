@@ -60,7 +60,7 @@ export function KiloRoutingSection({
     const hasProviders = providers.length > 0;
 
     return (
-        <section className='space-y-3'>
+        <section className='space-y-4 rounded-[24px] border border-border/70 bg-card/40 p-4'>
             <div className='space-y-1'>
                 <p className='text-sm font-semibold'>Kilo Routing</p>
                 <p className='text-muted-foreground text-xs'>
@@ -91,7 +91,7 @@ export function KiloRoutingSection({
                 </Button>
             </div>
 
-            <div className='grid grid-cols-2 gap-2'>
+            <div className='grid gap-2 md:grid-cols-2'>
                 <label className='space-y-1'>
                     <span className='text-muted-foreground text-xs'>Dynamic sort</span>
                     <select
@@ -103,7 +103,7 @@ export function KiloRoutingSection({
                                 onSortChange(nextValue);
                             }
                         }}
-                        className='border-border bg-background h-9 w-full rounded-md border px-2 text-sm'>
+                        className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'>
                         {sortOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                                 {option.label}
@@ -121,7 +121,7 @@ export function KiloRoutingSection({
                         onChange={(event) => {
                             onPinnedProviderChange(event.target.value);
                         }}
-                        className='border-border bg-background h-9 w-full rounded-md border px-2 text-sm'>
+                        className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'>
                         <option value=''>Select provider</option>
                         {providers.map((provider) => (
                             <option key={provider.providerId} value={provider.providerId}>
@@ -132,8 +132,8 @@ export function KiloRoutingSection({
                 </label>
             </div>
 
-            <div className='border-border overflow-hidden rounded-md border'>
-                <table className='w-full border-collapse text-xs'>
+            <div className='border-border overflow-x-auto rounded-xl border'>
+                <table className='min-w-[42rem] w-full border-collapse text-xs'>
                     <thead className='bg-muted/40'>
                         <tr>
                             <th className='px-2 py-1.5 text-left font-medium'>Provider</th>

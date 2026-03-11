@@ -35,6 +35,8 @@ interface ConversationShellProps {
     profileId: string;
     topLevelTab: TopLevelTab;
     modeKey: string;
+    modes: Array<{ id: string; modeKey: string; label: string }>;
+    onModeChange: (modeKey: string) => void;
     onTopLevelTabChange: (nextTab: TopLevelTab) => void;
     onSelectedWorkspaceFingerprintChange?: (workspaceFingerprint: string | undefined) => void;
     onBootChromeReadyChange?: (readiness: ConversationShellBootChromeReadiness) => void;
@@ -44,6 +46,8 @@ export function ConversationShell({
     profileId,
     topLevelTab,
     modeKey,
+    modes,
+    onModeChange,
     onTopLevelTabChange,
     onSelectedWorkspaceFingerprintChange,
     onBootChromeReadyChange,
@@ -496,7 +500,7 @@ export function ConversationShell({
     });
 
     return (
-        <main className='bg-background flex min-h-0 flex-1 overflow-hidden'>
+        <main className='bg-background flex h-full min-h-0 min-w-0 flex-1 overflow-hidden'>
             <ConversationSidebarPane
                 profileId={profileId}
                 topLevelTab={topLevelTab}
@@ -564,6 +568,9 @@ export function ConversationShell({
                 canCreateSession={Boolean(uiState.selectedThreadId)}
                 selectedProviderId={runTargetState.selectedProviderIdForComposer}
                 selectedModelId={runTargetState.selectedModelIdForComposer}
+                topLevelTab={topLevelTab}
+                activeModeKey={modeKey}
+                modes={modes}
                 canAttachImages={canAttachImages}
                 {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
                 routingBadge={routingBadge}
@@ -598,6 +605,7 @@ export function ConversationShell({
                 onModelChange={(modelId) => {
                     sessionActions.onModelChange(runTargetState.selectedProviderIdForComposer, modelId);
                 }}
+                onModeChange={onModeChange}
                 onCreateSession={sessionActions.onCreateSession}
                 onPromptChange={composer.onPromptChange}
                 onAddImageFiles={composer.onAddImageFiles}
