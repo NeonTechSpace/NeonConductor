@@ -15,6 +15,8 @@ import type {
     CheckpointRecord,
     ConversationRecord,
     DiffRecord,
+    MessagePartRecord,
+    MessageRecord,
     ProviderAuthStateRecord,
     ProviderModelRecord,
     RuntimeEventRecordV1,
@@ -38,6 +40,7 @@ import type { KiloModelRoutingPreference } from '@/shared/contracts';
 
 const conversationScopes = ['detached', 'workspace'] as const;
 const providerCatalogStrategies = ['dynamic', 'static'] as const;
+type SessionMessagesQueryData = { messages: MessageRecord[]; messageParts: MessagePartRecord[] };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -633,6 +636,45 @@ function replaceProviderModels(currentModels: ProviderModelRecord[], nextModels:
     return [...currentModels.filter((model) => model.providerId !== providerId), ...nextModels];
 }
 
+function readMessagePartRecord(value: unknown): MessagePartRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const messageId = readString(value['messageId']);
+    const sequence = readNumber(value['sequence']);
+    const partType = readLiteral(
+        value['partType'],
+        ['text', 'image', 'reasoning', 'reasoning_summary', 'reasoning_encrypted', 'tool_call', 'error', 'status'] as const
+    );
+    const payload = isRecord(value['payload']) ? value['payload'] : undefined;
+    const createdAt = readString(value['createdAt']);
+
+    if (!id || !isEntityId(id, 'part') || !messageId || !isEntityId(messageId, 'msg') || sequence === undefined || !partType || !payload || !createdAt) {
+        return undefined;
+    }
+
+    return {
+        id,
+        messageId,
+        sequence,
+        partType,
+        payload,
+        createdAt,
+    };
+}
+
+function upsertMessagePartRecord(messageParts: MessagePartRecord[], nextPart: MessagePartRecord): MessagePartRecord[] {
+    return [...messageParts.filter((candidate) => candidate.id !== nextPart.id), nextPart].sort((left, right) => {
+        if (left.createdAt !== right.createdAt) {
+            return left.createdAt.localeCompare(right.createdAt);
+        }
+
+        return left.sequence - right.sequence;
+    });
+}
+
 export function applyRuntimeEventPatches(
     utils: TrpcUtils,
     event: RuntimeEventRecordV1,
@@ -790,6 +832,28 @@ export function applyRuntimeEventPatches(
             }
             return true;
         }
+    }
+
+    if (event.domain === 'messagePart') {
+        const messagePart = readMessagePartRecord(event.payload['part']);
+        if (!messagePart || !context.profileId || !context.sessionId) {
+            return false;
+        }
+
+        updateMatchingQueryData<SessionMessagesQueryData>(
+            ['session', 'listMessages', context.profileId, context.sessionId],
+            (current) => {
+                if (!current || !current.messages.some((message) => message.id === messagePart.messageId)) {
+                    return current;
+                }
+
+                return {
+                    ...current,
+                    messageParts: upsertMessagePartRecord(current.messageParts, messagePart),
+                };
+            }
+        );
+        return true;
     }
 
     if (event.domain === 'tag') {

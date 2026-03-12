@@ -104,6 +104,15 @@ body {
     overflow: hidden;
 }
 
+button,
+a,
+input,
+select,
+textarea,
+summary {
+    touch-action: manipulation;
+}
+
 .privacy-redacted {
     filter: blur(1.4px);
     opacity: 0.92;
@@ -111,8 +120,11 @@ body {
 }
 
 .markdown-code-surface {
-    background:
-        linear-gradient(180deg, color-mix(in srgb, var(--color-card) 94%, transparent), color-mix(in srgb, var(--color-background) 100%, transparent));
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-card) 94%, transparent),
+        color-mix(in srgb, var(--color-background) 100%, transparent)
+    );
 }
 
 .markdown-content > :first-child {

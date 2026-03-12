@@ -1,0 +1,236 @@
+import { buildMessageCopyPayloads } from '@/web/components/conversation/messages/messageCopy';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+
+import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
+import { readImageMimeType } from '@/app/shared/imageMimeType';
+
+import type { EntityId } from '@/shared/contracts';
+
+export type MessageFlowTextEntryType = 'assistant_reasoning' | 'assistant_text' | 'user_text' | 'system_text';
+export type MessageFlowImageEntryType = 'assistant_image' | 'user_image' | 'system_image';
+
+export type MessageFlowBodyEntry =
+    | {
+          id: string;
+          type: MessageFlowTextEntryType;
+          text: string;
+          providerLimitedReasoning: boolean;
+      }
+    | {
+          id: string;
+          type: MessageFlowImageEntryType;
+          mediaId: EntityId<'media'>;
+          mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+          width: number;
+          height: number;
+      };
+
+export interface MessageFlowMessage {
+    id: string;
+    runId: MessageRecord['runId'];
+    role: MessageRecord['role'];
+    createdAt: string;
+    body: MessageFlowBodyEntry[];
+    plainCopyText?: string;
+    rawCopyText?: string;
+    editableText?: string;
+}
+
+export interface MessageFlowTurn {
+    id: string;
+    runId: MessageRecord['runId'];
+    createdAt: string;
+    messages: MessageFlowMessage[];
+}
+
+export interface BottomThresholdInput {
+    scrollHeight: number;
+    scrollTop: number;
+    clientHeight: number;
+    thresholdPx?: number;
+}
+
+const DEFAULT_BOTTOM_THRESHOLD_PX = 96;
+
+function readTextPayload(part: MessagePartRecord): string | null {
+    const text = part.payload['text'];
+    if (typeof text !== 'string') {
+        return null;
+    }
+
+    return text.trim().length > 0 ? text : null;
+}
+
+function mapImageEntryType(role: MessageRecord['role']): MessageFlowImageEntryType | null {
+    if (role === 'assistant') {
+        return 'assistant_image';
+    }
+    if (role === 'user') {
+        return 'user_image';
+    }
+    if (role === 'system') {
+        return 'system_image';
+    }
+
+    return null;
+}
+
+function mapTextEntryType(
+    role: MessageRecord['role']
+): Exclude<MessageFlowTextEntryType, 'assistant_reasoning'> | null {
+    if (role === 'assistant') {
+        return 'assistant_text';
+    }
+    if (role === 'user') {
+        return 'user_text';
+    }
+    if (role === 'system') {
+        return 'system_text';
+    }
+
+    return null;
+}
+
+function buildBodyEntries(message: MessageRecord, parts: MessagePartRecord[]): MessageFlowBodyEntry[] {
+    const projected: MessageFlowBodyEntry[] = [];
+
+    for (const part of parts) {
+        if (part.partType === 'reasoning_encrypted') {
+            continue;
+        }
+
+        if (part.partType === 'image') {
+            const rawMediaId = part.payload['mediaId'];
+            const mimeType = part.payload['mimeType'];
+            const width = part.payload['width'];
+            const height = part.payload['height'];
+            const imageEntryType = mapImageEntryType(message.role);
+            const mediaId = typeof rawMediaId === 'string' ? rawMediaId : undefined;
+            const normalizedMimeType = readImageMimeType(mimeType);
+
+            if (
+                imageEntryType &&
+                isEntityId(mediaId, 'media') &&
+                normalizedMimeType &&
+                typeof width === 'number' &&
+                typeof height === 'number'
+            ) {
+                projected.push({
+                    id: part.id,
+                    type: imageEntryType,
+                    mediaId,
+                    mimeType: normalizedMimeType,
+                    width,
+                    height,
+                });
+            }
+            continue;
+        }
+
+        const text = readTextPayload(part);
+        if (!text) {
+            continue;
+        }
+
+        if (part.partType === 'reasoning') {
+            projected.push({
+                id: part.id,
+                type: 'assistant_reasoning',
+                text,
+                providerLimitedReasoning: false,
+            });
+            continue;
+        }
+
+        if (part.partType === 'reasoning_summary') {
+            projected.push({
+                id: part.id,
+                type: 'assistant_reasoning',
+                text,
+                providerLimitedReasoning: true,
+            });
+            continue;
+        }
+
+        const textEntryType = mapTextEntryType(message.role);
+        if (!textEntryType) {
+            continue;
+        }
+
+        projected.push({
+            id: part.id,
+            type: textEntryType,
+            text,
+            providerLimitedReasoning: false,
+        });
+    }
+
+    return projected;
+}
+
+function buildFlowMessage(message: MessageRecord, parts: MessagePartRecord[]): MessageFlowMessage {
+    const body = buildBodyEntries(message, parts);
+    const editableText =
+        message.role === 'user'
+            ? body
+                  .filter(
+                      (item): item is MessageFlowBodyEntry & { type: 'user_text'; text: string } =>
+                          item.type === 'user_text' && 'text' in item
+                  )
+                  .map((item) => item.text)
+                  .join('\n\n')
+            : undefined;
+
+    const copyPayloads = buildMessageCopyPayloads({
+        body,
+    });
+
+    return {
+        id: message.id,
+        runId: message.runId,
+        role: message.role,
+        createdAt: message.createdAt,
+        body,
+        ...(copyPayloads.plainText ? { plainCopyText: copyPayloads.plainText } : {}),
+        ...(copyPayloads.rawText ? { rawCopyText: copyPayloads.rawText } : {}),
+        ...(editableText && editableText.trim().length > 0 ? { editableText } : {}),
+    };
+}
+
+export function buildMessageFlowTurns(
+    messages: MessageRecord[],
+    partsByMessageId: Map<string, MessagePartRecord[]>
+): MessageFlowTurn[] {
+    const turns: MessageFlowTurn[] = [];
+    const turnByRunId = new Map<string, MessageFlowTurn>();
+
+    for (const message of messages) {
+        const flowMessage = buildFlowMessage(message, partsByMessageId.get(message.id) ?? []);
+        const existingTurn = turnByRunId.get(message.runId);
+        if (existingTurn) {
+            existingTurn.messages.push(flowMessage);
+            continue;
+        }
+
+        const nextTurn: MessageFlowTurn = {
+            id: message.runId,
+            runId: message.runId,
+            createdAt: message.createdAt,
+            messages: [flowMessage],
+        };
+        turnByRunId.set(message.runId, nextTurn);
+        turns.push(nextTurn);
+    }
+
+    return turns;
+}
+
+export function isWithinBottomThreshold({
+    scrollHeight,
+    scrollTop,
+    clientHeight,
+    thresholdPx = DEFAULT_BOTTOM_THRESHOLD_PX,
+}: BottomThresholdInput): boolean {
+    const distance = scrollHeight - scrollTop - clientHeight;
+    return distance <= thresholdPx;
+}

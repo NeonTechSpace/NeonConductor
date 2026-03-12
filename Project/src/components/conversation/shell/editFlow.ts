@@ -34,3 +34,19 @@ export function toEditFailureMessage(reason: string): string {
     return `Edit failed: ${reason}`;
 }
 
+export function toBranchFailureMessage(reason: string): string {
+    if (reason === 'message_not_found') {
+        return 'Could not find the selected message for branching.';
+    }
+    if (reason === 'message_not_branchable') {
+        return 'Only user and assistant messages can be branched.';
+    }
+    if (reason === 'session_not_found') {
+        return 'The selected session no longer exists.';
+    }
+    if (reason === 'thread_tab_mismatch') {
+        return 'Branch is not allowed from this tab because the thread belongs to another mode.';
+    }
+
+    return `Branch failed: ${reason}`;
+}

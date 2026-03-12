@@ -1,4 +1,4 @@
-import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { SessionWorkspacePanel } from '@/web/components/conversation/sessions/sessionWorkspacePanel';
 
 import type {
@@ -132,6 +132,7 @@ interface ConversationWorkspaceSectionProps {
     executionEnvironmentPanel?: ReactNode;
     attachedSkillsPanel?: ReactNode;
     diffCheckpointPanel?: ReactNode;
+    focusComposerRequestKey?: number;
     onSelectSession: (sessionId: string) => void;
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
@@ -149,8 +150,8 @@ interface ConversationWorkspaceSectionProps {
         resolution: 'deny' | 'allow_once' | 'allow_profile' | 'allow_workspace',
         selectedApprovalResource?: string
     ) => void;
-    onEditMessage: (entry: MessageTimelineEntry) => void;
-    onBranchFromMessage: (entry: MessageTimelineEntry) => void;
+    onEditMessage: (entry: MessageFlowMessage) => void;
+    onBranchFromMessage: (entry: MessageFlowMessage) => void;
 }
 
 export function ConversationWorkspaceSection({
@@ -202,6 +203,7 @@ export function ConversationWorkspaceSection({
     executionEnvironmentPanel,
     attachedSkillsPanel,
     diffCheckpointPanel,
+    focusComposerRequestKey,
     onSelectSession,
     onSelectRun,
     onProviderChange,
@@ -224,9 +226,7 @@ export function ConversationWorkspaceSection({
                 <div className='min-w-0'>
                     <p className='truncate text-sm font-semibold'>{selectedThread?.title ?? 'No Thread Selected'}</p>
                     <p
-                        className={`text-xs ${
-                            streamState === 'error' ? 'text-amber-300' : 'text-muted-foreground'
-                        }`}
+                        className={`text-xs ${streamState === 'error' ? 'text-amber-300' : 'text-muted-foreground'}`}
                         title={streamErrorMessage ?? undefined}>
                         {streamState === 'error'
                             ? `Live updates degraded · retrying · Events: ${String(lastSequence)}`
@@ -299,8 +299,8 @@ export function ConversationWorkspaceSection({
                 modePanel={modePanel}
                 {...(attachedSkillsPanel ? { attachedSkillsPanel } : {})}
                 {...(diffCheckpointPanel ? { diffCheckpointPanel } : {})}
+                {...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {})}
             />
         </section>
     );
 }
-

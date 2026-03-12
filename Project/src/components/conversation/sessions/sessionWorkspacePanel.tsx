@@ -1,19 +1,14 @@
 import { useState } from 'react';
 
-import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { ComposerActionPanel } from '@/web/components/conversation/panels/composerActionPanel';
-import { MessageTimelinePanel } from '@/web/components/conversation/panels/messageTimelinePanel';
+import { MessageFlowPanel } from '@/web/components/conversation/panels/messageFlowPanel';
 import { PendingPermissionsPanel } from '@/web/components/conversation/panels/pendingPermissionsPanel';
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
 import { WorkspaceStatusPanel } from '@/web/components/conversation/panels/workspaceStatusPanel';
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { WorkspaceInspector } from '@/web/components/conversation/sessions/workspaceInspector';
-import type {
-    WorkspaceInspectorSection,
-    WorkspaceStripChip,
-} from '@/web/components/conversation/sessions/workspaceShellModel';
+import type { WorkspaceInspectorSection } from '@/web/components/conversation/sessions/workspaceShellModel';
 import { Button } from '@/web/components/ui/button';
-import { trpc } from '@/web/trpc/client';
 
 import type {
     MessagePartRecord,
@@ -141,6 +136,7 @@ interface SessionWorkspacePanelProps {
     executionEnvironmentPanel?: ReactNode;
     attachedSkillsPanel?: ReactNode;
     diffCheckpointPanel?: ReactNode;
+    focusComposerRequestKey?: number;
     onSelectSession: (sessionId: string) => void;
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
@@ -158,61 +154,19 @@ interface SessionWorkspacePanelProps {
         resolution: 'deny' | 'allow_once' | 'allow_profile' | 'allow_workspace',
         selectedApprovalResource?: string
     ) => void;
-    onEditMessage?: (entry: MessageTimelineEntry) => void;
-    onBranchFromMessage?: (entry: MessageTimelineEntry) => void;
+    onEditMessage?: (entry: MessageFlowMessage) => void;
+    onBranchFromMessage?: (entry: MessageFlowMessage) => void;
 }
 
-function describeSession(session: SessionSummaryRecord): WorkspaceStripChip {
-    const label =
-        session.kind === 'worktree'
-            ? 'Worktree session'
-            : session.kind === 'local'
-              ? 'Workspace session'
-              : 'Playground session';
-
-    return {
-        id: session.id,
-        label,
-        detail: `${session.runStatus.replaceAll('_', ' ')} · ${String(session.turnCount)} turns`,
-        selected: false,
-    };
+function formatSessionOptionLabel(session: SessionSummaryRecord): string {
+    const kindLabel = session.kind === 'worktree' ? 'Worktree' : session.kind === 'local' ? 'Workspace' : 'Playground';
+    return `${kindLabel} · ${session.turnCount} turns`;
 }
 
-function describeRun(run: RunRecord): WorkspaceStripChip {
+function formatRunOptionLabel(run: RunRecord): string {
     const timestamp = new Date(run.updatedAt);
-
-    return {
-        id: run.id,
-        label: run.status.replaceAll('_', ' '),
-        detail: Number.isNaN(timestamp.getTime()) ? run.id : timestamp.toLocaleTimeString(),
-        selected: false,
-    };
-}
-
-function StripChip({
-    item,
-    onClick,
-    onPointerIntent,
-}: {
-    item: WorkspaceStripChip;
-    onClick: () => void;
-    onPointerIntent?: () => void;
-}) {
-    return (
-        <button
-            type='button'
-            className={`min-w-[180px] shrink-0 rounded-2xl border px-3 py-2 text-left transition-colors ${
-                item.selected
-                    ? 'border-primary bg-primary/10 shadow-sm'
-                    : 'border-border bg-background/80 hover:bg-accent'
-            }`}
-            onMouseEnter={onPointerIntent}
-            onFocus={onPointerIntent}
-            onClick={onClick}>
-            <p className='truncate text-sm font-medium'>{item.label}</p>
-            <p className='text-muted-foreground mt-1 text-xs'>{item.detail}</p>
-        </button>
-    );
+    const timeLabel = Number.isNaN(timestamp.getTime()) ? run.id : timestamp.toLocaleTimeString();
+    return `${run.status.replaceAll('_', ' ')} · ${timeLabel}`;
 }
 
 export function SessionWorkspacePanel({
@@ -259,6 +213,7 @@ export function SessionWorkspacePanel({
     executionEnvironmentPanel,
     attachedSkillsPanel,
     diffCheckpointPanel,
+    focusComposerRequestKey,
     onSelectSession,
     onSelectRun,
     onProviderChange,
@@ -275,22 +230,14 @@ export function SessionWorkspacePanel({
     onEditMessage,
     onBranchFromMessage,
 }: SessionWorkspacePanelProps) {
-    const utils = trpc.useUtils();
     const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-    const latestRun = runs.find((run) => run.id === selectedRunId) ?? runs.at(0);
+    const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? sessions[0];
+    const selectedRun = runs.find((run) => run.id === selectedRunId) ?? runs[0];
     const pendingPermissionCount = pendingPermissions.length;
-    const isPlanPrimarySurface = Boolean(modePanel) && (topLevelTab === 'orchestrator' || activeModeKey === 'plan');
-    const sessionChips = sessions.map((session) => ({
-        ...describeSession(session),
-        selected: selectedSessionId === session.id,
-    }));
-    const runChips = runs.map((run) => ({
-        ...describeRun(run),
-        selected: selectedRunId === run.id,
-    }));
     const compactConnectionLabel = selectedProviderStatus
         ? `${selectedProviderStatus.label} · ${selectedProviderStatus.authState.replaceAll('_', ' ')}`
         : undefined;
+
     const inspectorSections: WorkspaceInspectorSection[] = [
         {
             id: 'workspace-status',
@@ -298,7 +245,7 @@ export function SessionWorkspacePanel({
             description: 'Run state, workspace scope, provider readiness, and local telemetry.',
             content: (
                 <WorkspaceStatusPanel
-                    run={latestRun}
+                    run={selectedRun}
                     executionPreset={executionPreset}
                     workspaceScope={workspaceScope}
                     provider={selectedProviderStatus}
@@ -334,11 +281,8 @@ export function SessionWorkspacePanel({
         {
             id: 'pending-permissions',
             label: 'Pending permissions',
-            description: 'Approvals stay out of the main composer until an action needs them.',
-            badge:
-                pendingPermissionCount > 0
-                    ? `${String(pendingPermissionCount)} waiting`
-                    : 'None waiting',
+            description: 'Approvals stay in the inspector until an action needs them.',
+            badge: pendingPermissionCount > 0 ? `${String(pendingPermissionCount)} waiting` : 'None waiting',
             tone: pendingPermissionCount > 0 ? 'attention' : 'default',
             content: (
                 <PendingPermissionsPanel
@@ -373,29 +317,43 @@ export function SessionWorkspacePanel({
 
     return (
         <div
-            className={`grid min-h-0 flex-1 min-w-0 ${
-                isInspectorOpen ? 'lg:grid-cols-[minmax(0,1fr)_340px]' : 'grid-cols-1'
-            }`}>
-            <div className='bg-background/20 flex min-h-0 min-w-0 flex-col overflow-hidden'>
+            className={`grid min-h-0 min-w-0 flex-1 ${isInspectorOpen ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : 'grid-cols-1'}`}>
+            <div className='flex min-h-0 min-w-0 flex-col overflow-hidden'>
                 <div className='border-border/70 bg-card/30 border-b px-4 py-4'>
                     <div className='flex flex-wrap items-start justify-between gap-3'>
                         <div className='min-w-0'>
-                            <p className='text-sm font-semibold'>Workspace</p>
-                            <p className='text-muted-foreground text-xs'>
-                                Keep the timeline and composer primary. Secondary execution detail lives in the inspector.
+                            <p className='text-sm font-semibold'>
+                                {selectedSession ? 'Conversation flow' : 'Workspace'}
+                            </p>
+                            <p className='text-muted-foreground mt-1 text-xs'>
+                                Transcript and composer stay primary. Session, run, and workspace detail stay compact
+                                until needed.
                             </p>
                         </div>
                         <div className='flex flex-wrap items-center gap-2'>
                             {compactConnectionLabel ? (
-                                <span className='border-border bg-background text-muted-foreground rounded-full border px-3 py-1 text-xs'>
+                                <span className='border-border bg-background/70 text-muted-foreground rounded-full border px-3 py-1 text-xs'>
                                     {compactConnectionLabel}
                                 </span>
                             ) : null}
                             {routingBadge ? (
-                                <span className='border-border bg-background text-muted-foreground rounded-full border px-3 py-1 text-xs'>
+                                <span className='border-border bg-background/70 text-muted-foreground rounded-full border px-3 py-1 text-xs'>
                                     {routingBadge}
                                 </span>
                             ) : null}
+                            {pendingPermissionCount > 0 ? (
+                                <span className='rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200'>
+                                    {String(pendingPermissionCount)} approvals waiting
+                                </span>
+                            ) : null}
+                            <Button
+                                type='button'
+                                size='sm'
+                                variant='outline'
+                                disabled={!canCreateSession || isCreatingSession}
+                                onClick={onCreateSession}>
+                                New session
+                            </Button>
                             <Button
                                 type='button'
                                 size='sm'
@@ -408,154 +366,82 @@ export function SessionWorkspacePanel({
                         </div>
                     </div>
 
-                    <div className='mt-4 space-y-4'>
-                        <div className='flex items-center justify-between gap-3'>
-                            <div className='min-w-0'>
-                                <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
-                                    Sessions
-                                </p>
-                                <p className='text-muted-foreground mt-1 text-xs'>
-                                    Sessions stay close, but they no longer own a permanent side rail.
-                                </p>
+                    <div className='mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]'>
+                        <label className='space-y-1'>
+                            <span className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                Session
+                            </span>
+                            <select
+                                aria-label='Selected session'
+                                value={selectedSession?.id ?? ''}
+                                className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                                onChange={(event) => {
+                                    onSelectSession(event.target.value);
+                                }}
+                                disabled={sessions.length === 0}>
+                                {sessions.length === 0 ? <option value=''>No sessions</option> : null}
+                                {sessions.map((session) => (
+                                    <option key={session.id} value={session.id}>
+                                        {formatSessionOptionLabel(session)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className='space-y-1'>
+                            <span className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                Run focus
+                            </span>
+                            <select
+                                aria-label='Selected run'
+                                value={selectedRun?.id ?? ''}
+                                className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                                onChange={(event) => {
+                                    onSelectRun(event.target.value);
+                                }}
+                                disabled={runs.length === 0}>
+                                {runs.length === 0 ? <option value=''>No runs</option> : null}
+                                {runs.map((run) => (
+                                    <option key={run.id} value={run.id}>
+                                        {formatRunOptionLabel(run)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <div className='flex items-end justify-start xl:justify-end'>
+                            <div className='text-muted-foreground border-border/70 bg-background/50 rounded-[1.25rem] border px-3 py-2 text-xs'>
+                                {selectedSession
+                                    ? `${String(selectedSession.turnCount)} turns · ${selectedSession.runStatus}`
+                                    : 'No session selected'}
                             </div>
-                            <Button
-                                type='button'
-                                size='sm'
-                                disabled={!canCreateSession || isCreatingSession}
-                                onClick={onCreateSession}>
-                                New session
-                            </Button>
                         </div>
-
-                        <div className='flex gap-2 overflow-x-auto pb-1'>
-                            {sessionChips.length > 0 ? (
-                                sessionChips.map((sessionChip) => (
-                                    <StripChip
-                                        key={sessionChip.id}
-                                        item={sessionChip}
-                                        onPointerIntent={() => {
-                                            if (!isEntityId(sessionChip.id, 'sess')) {
-                                                return;
-                                            }
-                                            void utils.session.status.prefetch({
-                                                profileId,
-                                                sessionId: sessionChip.id,
-                                            });
-                                            void utils.session.listRuns.prefetch({
-                                                profileId,
-                                                sessionId: sessionChip.id,
-                                            });
-                                        }}
-                                        onClick={() => {
-                                            onSelectSession(sessionChip.id);
-                                        }}
-                                    />
-                                ))
-                            ) : (
-                                <div className='border-border bg-background/70 text-muted-foreground rounded-2xl border px-4 py-3 text-sm'>
-                                    No sessions for this thread yet.
-                                </div>
-                            )}
-                        </div>
-
-                        {runChips.length > 0 ? (
-                            <div className='space-y-2'>
-                                <div className='flex items-center justify-between gap-3'>
-                                    <div className='min-w-0'>
-                                        <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
-                                            Runs
-                                        </p>
-                                        <p className='text-muted-foreground mt-1 text-xs'>
-                                            Recent runs stay in a compact strip instead of a separate panel.
-                                        </p>
-                                    </div>
-                                    {pendingPermissionCount > 0 ? (
-                                        <span className='rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200'>
-                                            {String(pendingPermissionCount)} approvals waiting
-                                        </span>
-                                    ) : null}
-                                </div>
-                                <div className='flex gap-2 overflow-x-auto pb-1'>
-                                    {runChips.map((runChip) => (
-                                        <StripChip
-                                            key={runChip.id}
-                                            item={runChip}
-                                            onPointerIntent={() => {
-                                                if (!isEntityId(runChip.id, 'run')) {
-                                                    return;
-                                                }
-                                                if (!isEntityId(selectedSessionId, 'sess')) {
-                                                    return;
-                                                }
-
-                                                void utils.session.listMessages.prefetch({
-                                                    profileId,
-                                                    sessionId: selectedSessionId,
-                                                    runId: runChip.id,
-                                                });
-                                                void utils.diff.listByRun.prefetch({
-                                                    profileId,
-                                                    runId: runChip.id,
-                                                });
-                                                void utils.checkpoint.list.prefetch({
-                                                    profileId,
-                                                    sessionId: selectedSessionId,
-                                                });
-                                            }}
-                                            onClick={() => {
-                                                onSelectRun(runChip.id);
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
                     </div>
                 </div>
 
-                <div className='flex min-h-0 flex-1 flex-col gap-4 px-4 py-4'>
-                    {isPlanPrimarySurface ? (
-                        <div className='grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]'>
-                            <div className='border-border/70 bg-card/35 min-h-0 min-w-0 overflow-y-auto rounded-[28px] border p-4'>
-                                {modePanel}
-                            </div>
-                            <div className='flex min-h-[280px] min-w-0 flex-col rounded-[28px] border border-border/70 bg-card/35 p-4'>
-                                <MessageTimelinePanel
-                                    profileId={profileId}
-                                    messages={messages}
-                                    partsByMessageId={partsByMessageId}
-                                    {...(latestRun ? { run: latestRun } : {})}
-                                    {...(onEditMessage ? { onEditMessage } : {})}
-                                    {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
-                                />
-                            </div>
+                <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 py-4'>
+                    {modePanel ? (
+                        <div className='border-border/70 bg-card/35 shrink-0 rounded-[28px] border p-4'>
+                            {modePanel}
                         </div>
-                    ) : (
-                        <>
-                            {modePanel ? (
-                                <div className='border-border/70 bg-card/35 shrink-0 rounded-[28px] border p-4'>
-                                    {modePanel}
-                                </div>
-                            ) : null}
+                    ) : null}
 
-                            <div className='flex min-h-[320px] min-w-0 flex-1 flex-col rounded-[28px] border border-border/70 bg-card/35 p-4'>
-                                <MessageTimelinePanel
-                                    profileId={profileId}
-                                    messages={messages}
-                                    partsByMessageId={partsByMessageId}
-                                    {...(latestRun ? { run: latestRun } : {})}
-                                    {...(onEditMessage ? { onEditMessage } : {})}
-                                    {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
-                                />
-                            </div>
-                        </>
-                    )}
+                    <div className='border-border/70 bg-card/20 flex min-h-[320px] min-w-0 flex-1 flex-col overflow-hidden rounded-[32px] border px-3 py-5 md:px-5'>
+                        <MessageFlowPanel
+                            profileId={profileId}
+                            messages={messages}
+                            partsByMessageId={partsByMessageId}
+                            runs={runs}
+                            {...(onEditMessage ? { onEditMessage } : {})}
+                            {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
+                        />
+                    </div>
 
-                    <div className='shrink-0 rounded-[28px] border border-border/70 bg-background/80 p-4 shadow-sm'>
+                    <div className='border-border/70 bg-background/85 shrink-0 rounded-[28px] border p-4 shadow-sm'>
                         <ComposerActionPanel
                             prompt={prompt}
                             pendingImages={pendingImages}
-                            disabled={!selectedSessionId}
+                            disabled={!selectedSession}
                             isSubmitting={isStartingRun}
                             selectedProviderId={selectedProviderId}
                             selectedModelId={selectedModelId}
@@ -578,6 +464,7 @@ export function SessionWorkspacePanel({
                                 : {})}
                             {...(canCompactContext !== undefined ? { canCompactContext } : {})}
                             {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
+                            {...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {})}
                             onProviderChange={onProviderChange}
                             onModelChange={onModelChange}
                             onModeChange={onModeChange}

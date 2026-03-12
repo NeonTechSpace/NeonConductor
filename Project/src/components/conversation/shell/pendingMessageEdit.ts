@@ -1,9 +1,9 @@
-import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { PendingMessageEdit } from '@/web/components/conversation/shell/editFlow';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
 export function createPendingMessageEdit(
-    entry: MessageTimelineEntry,
+    entry: MessageFlowMessage,
     forcedMode?: PendingMessageEdit['forcedMode']
 ): PendingMessageEdit | undefined {
     if (!isEntityId(entry.id, 'msg')) {

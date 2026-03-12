@@ -27,9 +27,7 @@ export class SessionHistoryService {
             return { truncated: false, reason: 'run_not_found' };
         }
 
-        const deletedRunIds = runs
-            .slice(index)
-            .map((item) => parseEntityId(item.id, 'runs.id', 'run'));
+        const deletedRunIds = runs.slice(index).map((item) => parseEntityId(item.id, 'runs.id', 'run'));
         await sessionHistoryStore.deleteRuns(profileId, deletedRunIds);
 
         const refreshed = await sessionStore.refreshStatus(profileId, session.id);
@@ -116,9 +114,85 @@ export class SessionHistoryService {
             thread: {
                 id: branchThread.value.id,
                 topLevelTab: branchThread.value.topLevelTab,
-                ...(branchThread.value.parentThreadId
-                    ? { parentThreadId: branchThread.value.parentThreadId }
-                    : {}),
+                ...(branchThread.value.parentThreadId ? { parentThreadId: branchThread.value.parentThreadId } : {}),
+                rootThreadId: branchThread.value.rootThreadId,
+            },
+        };
+    }
+
+    async createBranchThroughRun(
+        profileId: string,
+        sessionId: EntityId<'sess'>,
+        runId: EntityId<'run'>
+    ): Promise<
+        | { branched: false; reason: 'session_not_found' | 'run_not_found' }
+        | {
+              branched: true;
+              session: SessionSummaryRecord;
+              sourceRunCount: number;
+              clonedRunCount: number;
+              sourceThreadId: string;
+              thread: {
+                  id: string;
+                  topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                  parentThreadId?: string;
+                  rootThreadId: string;
+              };
+          }
+    > {
+        const sourceSession = await sessionHistoryStore.getSessionRecord(profileId, sessionId);
+        if (!sourceSession) {
+            return { branched: false, reason: 'session_not_found' };
+        }
+
+        const sourceThread = await threadStore.getById(profileId, sourceSession.thread_id);
+        if (!sourceThread) {
+            return { branched: false, reason: 'session_not_found' };
+        }
+
+        const branchThread = await threadStore.create({
+            profileId,
+            conversationId: sourceSession.conversation_id,
+            title: `${sourceThread.title} (Branch)`,
+            topLevelTab: sourceThread.topLevelTab,
+            parentThreadId: sourceThread.id,
+            rootThreadId: sourceThread.rootThreadId,
+        });
+        if (branchThread.isErr()) {
+            return { branched: false, reason: 'session_not_found' };
+        }
+
+        const created = await sessionHistoryStore.createBranchFromRun({
+            profileId,
+            sourceSession,
+            branchThreadId: branchThread.value.id,
+            targetRunId: runId,
+            includeTargetRun: true,
+        });
+        if (!created.created) {
+            return { branched: false, reason: created.reason };
+        }
+
+        const summary = await sessionStore.refreshStatus(profileId, created.branchSessionId);
+        if (summary.isErr()) {
+            return { branched: false, reason: 'session_not_found' };
+        }
+        await threadStore.touchByThread(profileId, sourceSession.thread_id);
+        await threadStore.touchByThread(profileId, branchThread.value.id);
+        if (created.latestAssistantAt) {
+            await threadStore.markAssistantActivity(profileId, branchThread.value.id, created.latestAssistantAt);
+        }
+
+        return {
+            branched: true,
+            session: summary.value,
+            sourceRunCount: created.sourceRunCount,
+            clonedRunCount: created.clonedRunCount,
+            sourceThreadId: sourceThread.id,
+            thread: {
+                id: branchThread.value.id,
+                topLevelTab: branchThread.value.topLevelTab,
+                ...(branchThread.value.parentThreadId ? { parentThreadId: branchThread.value.parentThreadId } : {}),
                 rootThreadId: branchThread.value.rootThreadId,
             },
         };

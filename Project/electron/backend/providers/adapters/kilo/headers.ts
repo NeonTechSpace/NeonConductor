@@ -43,7 +43,7 @@ export function buildKiloRuntimeHeaders(input: {
 }): Record<string, string> {
     const headers: Record<string, string> = {
         Authorization: `Bearer ${input.token}`,
-        Accept: 'application/json',
+        Accept: 'text/event-stream, application/json',
         'Content-Type': 'application/json',
         'User-Agent': 'neonconductor-gateway-client',
         [HEADER_EDITOR_NAME]: DEFAULT_EDITOR_NAME,
@@ -102,7 +102,7 @@ export function buildKiloRuntimeBody(input: ProviderRuntimeInput): Record<string
                                 }
                       ),
         })),
-        stream: false,
+        stream: true,
         stream_options: {
             include_usage: true,
         },

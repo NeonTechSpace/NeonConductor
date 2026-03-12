@@ -11,6 +11,7 @@ export function useConversationMutations() {
         createSessionMutation: trpc.session.create.useMutation(),
         startRunMutation: trpc.session.startRun.useMutation(),
         editSessionMutation: trpc.session.edit.useMutation(),
+        branchFromMessageMutation: trpc.session.branchFromMessage.useMutation(),
         planStartMutation: trpc.plan.start.useMutation(),
         planAnswerMutation: trpc.plan.answerQuestion.useMutation(),
         planReviseMutation: trpc.plan.revise.useMutation(),

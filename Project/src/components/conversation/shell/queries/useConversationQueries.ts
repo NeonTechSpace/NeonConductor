@@ -36,10 +36,7 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
         { profileId: input.profileId },
         PROGRESSIVE_QUERY_OPTIONS
     );
-    const listThreadsQuery = trpc.conversation.listThreads.useQuery(
-        listThreadsInput,
-        PROGRESSIVE_QUERY_OPTIONS
-    );
+    const listThreadsQuery = trpc.conversation.listThreads.useQuery(listThreadsInput, PROGRESSIVE_QUERY_OPTIONS);
 
     const fallbackSessionId = 'sess_missing';
     const selectedSessionIdForQueries = isEntityId(input.selectedSessionId, 'sess')
@@ -55,27 +52,17 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
     const messagesInput = {
         profileId: input.profileId,
         sessionId: selectedSessionIdForQueries,
-        ...(selectedRunIdForQueries ? { runId: selectedRunIdForQueries } : {}),
     };
 
-    const sessionsQuery = trpc.session.list.useQuery(
-        sessionsInput,
-        PROGRESSIVE_QUERY_OPTIONS
-    );
-    const runsQuery = trpc.session.listRuns.useQuery(
-        runsInput,
-        {
-            enabled: isEntityId(input.selectedSessionId, 'sess'),
-            ...PROGRESSIVE_QUERY_OPTIONS,
-        }
-    );
-    const messagesQuery = trpc.session.listMessages.useQuery(
-        messagesInput,
-        {
-            enabled: isEntityId(input.selectedSessionId, 'sess'),
-            ...PROGRESSIVE_QUERY_OPTIONS,
-        }
-    );
+    const sessionsQuery = trpc.session.list.useQuery(sessionsInput, PROGRESSIVE_QUERY_OPTIONS);
+    const runsQuery = trpc.session.listRuns.useQuery(runsInput, {
+        enabled: isEntityId(input.selectedSessionId, 'sess'),
+        ...PROGRESSIVE_QUERY_OPTIONS,
+    });
+    const messagesQuery = trpc.session.listMessages.useQuery(messagesInput, {
+        enabled: isEntityId(input.selectedSessionId, 'sess'),
+        ...PROGRESSIVE_QUERY_OPTIONS,
+    });
     const attachedSkillsQuery = trpc.session.getAttachedSkills.useQuery(
         {
             profileId: input.profileId,
@@ -158,4 +145,3 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
         orchestratorLatestQuery,
     };
 }
-

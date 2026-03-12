@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { createPendingMessageEdit } from '@/web/components/conversation/shell/pendingMessageEdit';
 
 describe('createPendingMessageEdit', () => {
     it('creates pending edit state for editable messages and supports forced branch mode', () => {
-        const entry: MessageTimelineEntry = {
+        const entry: MessageFlowMessage = {
             id: 'msg_123',
             runId: 'run_123',
             role: 'user',

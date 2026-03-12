@@ -28,10 +28,7 @@ interface ThreadListInput {
     sort?: 'latest' | 'alphabetical';
 }
 
-function upsertSessionRecord(
-    sessions: SessionSummaryRecord[],
-    session: SessionSummaryRecord
-): SessionSummaryRecord[] {
+function upsertSessionRecord(sessions: SessionSummaryRecord[], session: SessionSummaryRecord): SessionSummaryRecord[] {
     return [session, ...sessions.filter((candidate) => candidate.id !== session.id)].sort((left, right) =>
         right.updatedAt.localeCompare(left.updatedAt)
     );
@@ -41,6 +38,29 @@ function upsertRunRecord(runs: RunRecord[], run: RunRecord): RunRecord[] {
     return [run, ...runs.filter((candidate) => candidate.id !== run.id)].sort((left, right) =>
         right.createdAt.localeCompare(left.createdAt)
     );
+}
+
+function upsertMessageRecords(messages: MessageRecord[], incomingMessages: MessageRecord[]): MessageRecord[] {
+    return [
+        ...messages.filter((message) => !incomingMessages.some((incoming) => incoming.id === message.id)),
+        ...incomingMessages,
+    ].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+}
+
+function upsertMessagePartRecords(
+    messageParts: MessagePartRecord[],
+    incomingMessageParts: MessagePartRecord[]
+): MessagePartRecord[] {
+    return [
+        ...messageParts.filter((part) => !incomingMessageParts.some((incoming) => incoming.id === part.id)),
+        ...incomingMessageParts,
+    ].sort((left, right) => {
+        if (left.createdAt !== right.createdAt) {
+            return left.createdAt.localeCompare(right.createdAt);
+        }
+
+        return left.sequence - right.sequence;
+    });
 }
 
 function matchesThreadListInput(thread: ThreadListRecord, input: ThreadListInput): boolean {
@@ -110,6 +130,16 @@ export function applyConversationSessionCacheUpdate(input: {
             {
                 profileId: input.profileId,
                 sessionId: input.session.id,
+            },
+            (current: SessionMessagesData | undefined): SessionMessagesData => ({
+                messages: upsertMessageRecords(current?.messages ?? [], initialMessagesForRun.messages),
+                messageParts: upsertMessagePartRecords(current?.messageParts ?? [], initialMessagesForRun.messageParts),
+            })
+        );
+        input.utils.session.listMessages.setData(
+            {
+                profileId: input.profileId,
+                sessionId: input.session.id,
                 runId: initialMessagesForRun.runId,
             },
             (): SessionMessagesData => ({
@@ -120,32 +150,24 @@ export function applyConversationSessionCacheUpdate(input: {
     }
 
     if (nextThread) {
-        input.utils.conversation.listThreads.setData(
-            input.listThreadsInput,
-            (current: ThreadListData | undefined) => {
-                const existingThreads = current?.threads ?? [];
-                const withoutThread = existingThreads.filter((candidate) => candidate.id !== nextThread.id);
-                if (!matchesThreadListInput(nextThread, input.listThreadsInput)) {
-                    return {
-                        sort: current?.sort ?? input.listThreadsInput.sort ?? 'latest',
-                        showAllModes: current?.showAllModes ?? input.listThreadsInput.showAllModes,
-                        groupView: current?.groupView ?? input.listThreadsInput.groupView,
-                        threads: withoutThread,
-                    };
-                }
-
+        input.utils.conversation.listThreads.setData(input.listThreadsInput, (current: ThreadListData | undefined) => {
+            const existingThreads = current?.threads ?? [];
+            const withoutThread = existingThreads.filter((candidate) => candidate.id !== nextThread.id);
+            if (!matchesThreadListInput(nextThread, input.listThreadsInput)) {
                 return {
                     sort: current?.sort ?? input.listThreadsInput.sort ?? 'latest',
                     showAllModes: current?.showAllModes ?? input.listThreadsInput.showAllModes,
                     groupView: current?.groupView ?? input.listThreadsInput.groupView,
-                    threads: upsertThreadListRecord(
-                        withoutThread,
-                        nextThread,
-                        input.listThreadsInput.sort ?? 'latest'
-                    ),
+                    threads: withoutThread,
                 };
             }
-        );
+
+            return {
+                sort: current?.sort ?? input.listThreadsInput.sort ?? 'latest',
+                showAllModes: current?.showAllModes ?? input.listThreadsInput.showAllModes,
+                groupView: current?.groupView ?? input.listThreadsInput.groupView,
+                threads: upsertThreadListRecord(withoutThread, nextThread, input.listThreadsInput.sort ?? 'latest'),
+            };
+        });
     }
 }
-

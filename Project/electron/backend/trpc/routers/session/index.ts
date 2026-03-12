@@ -1,6 +1,7 @@
 import { messageMediaStore, messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import {
     profileInputSchema,
+    sessionBranchFromMessageInputSchema,
     sessionByIdInputSchema,
     sessionCreateInputSchema,
     sessionEditInputSchema,
@@ -16,6 +17,7 @@ import { eventMetadata } from '@/app/backend/runtime/services/common/logContext'
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { runtimeStatusEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import { sessionBranchService } from '@/app/backend/runtime/services/sessionBranch/service';
 import { sessionEditService } from '@/app/backend/runtime/services/sessionEdit/service';
 import { sessionHistoryService } from '@/app/backend/runtime/services/sessionHistory/service';
 import { getAttachedSkills, setAttachedSkills } from '@/app/backend/runtime/services/sessionSkills/service';
@@ -33,18 +35,18 @@ export const sessionRouter = router({
         }
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
-            entityType: 'session',
-            domain: 'session',
-            entityId: session.session.id,
-            eventType: 'session.created',
-            payload: {
-                session: session.session,
-            },
-            ...eventMetadata({
-                requestId: ctx.requestId,
-                correlationId: ctx.correlationId,
-                origin: 'trpc.session.create',
-            }),
+                entityType: 'session',
+                domain: 'session',
+                entityId: session.session.id,
+                eventType: 'session.created',
+                payload: {
+                    session: session.session,
+                },
+                ...eventMetadata({
+                    requestId: ctx.requestId,
+                    correlationId: ctx.correlationId,
+                    origin: 'trpc.session.create',
+                }),
             })
         );
 
@@ -103,22 +105,22 @@ export const sessionRouter = router({
         if (result.accepted) {
             await runtimeEventLogService.append(
                 runtimeStatusEvent({
-                entityType: 'session',
-                domain: 'session',
-                entityId: input.sessionId,
-                eventType: 'session.run.started',
-                payload: {
-                    runId: result.runId,
-                    profileId: input.profileId,
-                    topLevelTab: input.topLevelTab,
-                    modeKey: input.modeKey,
-                    workspaceFingerprint: input.workspaceFingerprint ?? null,
-                },
-                ...eventMetadata({
-                    requestId: ctx.requestId,
-                    correlationId: ctx.correlationId,
-                    origin: 'trpc.session.startRun',
-                }),
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.run.started',
+                    payload: {
+                        runId: result.runId,
+                        profileId: input.profileId,
+                        topLevelTab: input.topLevelTab,
+                        modeKey: input.modeKey,
+                        workspaceFingerprint: input.workspaceFingerprint ?? null,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.startRun',
+                    }),
                 })
             );
         }
@@ -154,19 +156,19 @@ export const sessionRouter = router({
         if (result.aborted) {
             await runtimeEventLogService.append(
                 runtimeStatusEvent({
-                entityType: 'session',
-                domain: 'session',
-                entityId: input.sessionId,
-                eventType: 'session.aborted',
-                payload: {
-                    runId: result.runId,
-                    profileId: input.profileId,
-                },
-                ...eventMetadata({
-                    requestId: ctx.requestId,
-                    correlationId: ctx.correlationId,
-                    origin: 'trpc.session.abort',
-                }),
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.aborted',
+                    payload: {
+                        runId: result.runId,
+                        profileId: input.profileId,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.abort',
+                    }),
                 })
             );
         }
@@ -200,19 +202,19 @@ export const sessionRouter = router({
         if (result.reverted) {
             await runtimeEventLogService.append(
                 runtimeUpsertEvent({
-                entityType: 'session',
-                domain: 'session',
-                entityId: input.sessionId,
-                eventType: 'session.reverted',
-                payload: {
-                    session: result.session,
-                    profileId: input.profileId,
-                },
-                ...eventMetadata({
-                    requestId: ctx.requestId,
-                    correlationId: ctx.correlationId,
-                    origin: 'trpc.session.revert',
-                }),
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.reverted',
+                    payload: {
+                        session: result.session,
+                        profileId: input.profileId,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.revert',
+                    }),
                 })
             );
         }
@@ -238,23 +240,51 @@ export const sessionRouter = router({
         if (result.edited) {
             await runtimeEventLogService.append(
                 runtimeUpsertEvent({
-                entityType: 'session',
-                domain: 'session',
-                entityId: result.sessionId,
-                eventType: 'session.edited',
-                payload: {
-                    profileId: input.profileId,
-                    sourceSessionId: result.sourceSessionId,
-                    sessionId: result.sessionId,
-                    editMode: result.editMode,
-                    started: result.started,
-                    runId: result.runId ?? null,
-                },
-                ...eventMetadata({
-                    requestId: ctx.requestId,
-                    correlationId: ctx.correlationId,
-                    origin: 'trpc.session.edit',
-                }),
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: result.sessionId,
+                    eventType: 'session.edited',
+                    payload: {
+                        profileId: input.profileId,
+                        sourceSessionId: result.sourceSessionId,
+                        sessionId: result.sessionId,
+                        editMode: result.editMode,
+                        started: result.started,
+                        runId: result.runId ?? null,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.edit',
+                    }),
+                })
+            );
+        }
+
+        return result;
+    }),
+    branchFromMessage: publicProcedure.input(sessionBranchFromMessageInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await sessionBranchService.branchFromMessage(input);
+        if (result.branched) {
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: result.sessionId,
+                    eventType: 'session.branched_from_message',
+                    payload: {
+                        profileId: input.profileId,
+                        sourceSessionId: result.sourceSessionId,
+                        sessionId: result.sessionId,
+                        sourceThreadId: result.sourceThreadId,
+                        threadId: result.threadId,
+                        messageId: input.messageId,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.branchFromMessage',
+                    }),
                 })
             );
         }

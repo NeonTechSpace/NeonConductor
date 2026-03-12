@@ -64,7 +64,6 @@ export function useSessionRunSelection(input: UseSessionRunSelectionInput): Sess
         ? []
         : input.allMessages
               .filter((message) => message.sessionId === resolvedSessionId)
-              .filter((message) => (resolvedRunId ? message.runId === resolvedRunId : true))
               .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 
     const partsByMessageId = new Map<string, MessagePartRecord[]>();

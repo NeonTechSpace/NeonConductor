@@ -105,6 +105,12 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         editMode: 'truncate' | 'branch';
         autoStartRun?: boolean;
     }>();
+    expectTypeOf<Inputs['session']['branchFromMessage']>().toExtend<{
+        profileId: string;
+        sessionId: string;
+        topLevelTab: 'chat' | 'agent' | 'orchestrator';
+        messageId: string;
+    }>();
     expectTypeOf<Inputs['session']['getAttachedSkills']>().toExtend<{
         profileId: string;
         sessionId: string;

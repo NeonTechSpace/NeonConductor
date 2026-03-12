@@ -173,7 +173,7 @@ describe('invalidateQueriesForRuntimeEvent', () => {
         expect(setQueriesDataMock).not.toHaveBeenCalled();
     });
 
-    it('invalidates only selected message queries for message part updates', async () => {
+    it('patches selected message queries for message part updates without refetch invalidation', async () => {
         const calls: InvalidationCall[] = [];
         const utils = createUtilsMock(calls);
         setSelectionState('profile_default', {
@@ -192,20 +192,22 @@ describe('invalidateQueriesForRuntimeEvent', () => {
                     profileId: 'profile_default',
                     sessionId: 'sess_selected',
                     runId: 'run_selected',
+                    part: {
+                        id: 'part_1',
+                        messageId: 'msg_selected',
+                        sequence: 0,
+                        partType: 'text',
+                        payload: {
+                            text: 'partial',
+                        },
+                        createdAt: '2026-03-12T10:00:00.000Z',
+                    },
                 },
             })
         );
 
-        expect(calls).toEqual([
-            {
-                key: 'session.listMessages',
-                args: {
-                    profileId: 'profile_default',
-                    sessionId: 'sess_selected',
-                    runId: 'run_selected',
-                },
-            },
-        ]);
+        expect(calls).toEqual([]);
+        expect(setQueriesDataMock).toHaveBeenCalledTimes(1);
     });
 
     it('keeps provider auth events scoped to provider queries', async () => {

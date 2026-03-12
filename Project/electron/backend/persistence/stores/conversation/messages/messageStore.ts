@@ -56,6 +56,12 @@ function mapMessagePartRecord(row: {
 }
 
 export class MessageStore {
+    private async readPartById(partId: string): Promise<MessagePartRecord> {
+        const { db } = getPersistence();
+        const row = await db.selectFrom('message_parts').selectAll().where('id', '=', partId).executeTakeFirstOrThrow();
+        return mapMessagePartRecord(row);
+    }
+
     async createMessage(input: {
         profileId: string;
         sessionId: string;
@@ -84,7 +90,7 @@ export class MessageStore {
         return mapMessageRecord(row);
     }
 
-    async appendPart(input: {
+    async createPart(input: {
         messageId: string;
         partType: (typeof runtimeMessagePartTypes)[number];
         payload: Record<string, unknown>;
@@ -117,6 +123,46 @@ export class MessageStore {
         const row = await db.selectFrom('message_parts').selectAll().where('id', '=', partId).executeTakeFirstOrThrow();
 
         return mapMessagePartRecord(row);
+    }
+
+    async appendPart(input: {
+        messageId: string;
+        partType: (typeof runtimeMessagePartTypes)[number];
+        payload: Record<string, unknown>;
+    }): Promise<MessagePartRecord> {
+        return this.createPart(input);
+    }
+
+    async extendTextPart(input: {
+        partId: EntityId<'part'>;
+        appendText: string;
+    }): Promise<MessagePartRecord> {
+        if (input.appendText.length === 0) {
+            return this.readPartById(input.partId);
+        }
+
+        const { db } = getPersistence();
+        const existing = await db
+            .selectFrom('message_parts')
+            .select(['id', 'payload_json'])
+            .where('id', '=', input.partId)
+            .executeTakeFirstOrThrow();
+        const payload = parseJsonRecord(existing.payload_json);
+        const currentText = typeof payload['text'] === 'string' ? payload['text'] : '';
+        const nextPayload = {
+            ...payload,
+            text: `${currentText}${input.appendText}`,
+        };
+
+        await db
+            .updateTable('message_parts')
+            .set({
+                payload_json: JSON.stringify(nextPayload),
+            })
+            .where('id', '=', input.partId)
+            .executeTakeFirst();
+
+        return this.readPartById(input.partId);
     }
 
     async listMessagesBySession(profileId: string, sessionId: string, runId?: string): Promise<MessageRecord[]> {
@@ -242,7 +288,38 @@ export class MessageStore {
             currentText: text,
         };
     }
+
+    async getBranchMessageTarget(input: {
+        profileId: string;
+        sessionId: string;
+        messageId: EntityId<'msg'>;
+    }): Promise<
+        | { found: false; reason: 'not_found' | 'not_branchable' }
+        | { found: true; runId: EntityId<'run'>; role: MessageRole }
+    > {
+        const { db } = getPersistence();
+        const message = await db
+            .selectFrom('messages')
+            .select(['run_id', 'role'])
+            .where('id', '=', input.messageId)
+            .where('profile_id', '=', input.profileId)
+            .where('session_id', '=', input.sessionId)
+            .executeTakeFirst();
+        if (!message) {
+            return { found: false, reason: 'not_found' };
+        }
+
+        const role = parseMessageRole(message.role);
+        if (role !== 'user' && role !== 'assistant') {
+            return { found: false, reason: 'not_branchable' };
+        }
+
+        return {
+            found: true,
+            runId: parseEntityId(message.run_id, 'messages.run_id', 'run'),
+            role,
+        };
+    }
 }
 
 export const messageStore = new MessageStore();
-

@@ -1,5 +1,11 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-import type { MessagePartsTable, MessagesTable, RunUsageTable, RunsTable, SessionsTable } from '@/app/backend/persistence/schema';
+import type {
+    MessagePartsTable,
+    MessagesTable,
+    RunUsageTable,
+    RunsTable,
+    SessionsTable,
+} from '@/app/backend/persistence/schema';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
@@ -67,10 +73,17 @@ export class SessionHistoryStore {
         }
 
         const { db } = getPersistence();
-        await db.deleteFrom('runs').where('profile_id', '=', profileId).where('id', 'in', [...runIds]).execute();
+        await db
+            .deleteFrom('runs')
+            .where('profile_id', '=', profileId)
+            .where('id', 'in', [...runIds])
+            .execute();
     }
 
-    private async loadSourceHistoryGraph(profileId: string, sourceRunIds: readonly string[]): Promise<SourceHistoryGraph> {
+    private async loadSourceHistoryGraph(
+        profileId: string,
+        sourceRunIds: readonly string[]
+    ): Promise<SourceHistoryGraph> {
         if (sourceRunIds.length === 0) {
             return {
                 runs: [],
@@ -89,7 +102,11 @@ export class SessionHistoryStore {
             .orderBy('created_at', 'asc')
             .orderBy('id', 'asc')
             .execute();
-        const runUsage = await db.selectFrom('run_usage').selectAll().where('run_id', 'in', [...sourceRunIds]).execute();
+        const runUsage = await db
+            .selectFrom('run_usage')
+            .selectAll()
+            .where('run_id', 'in', [...sourceRunIds])
+            .execute();
         const messages = await db
             .selectFrom('messages')
             .selectAll()
@@ -123,6 +140,7 @@ export class SessionHistoryStore {
         sourceSession: SessionRow;
         branchThreadId: string;
         targetRunId: string;
+        includeTargetRun?: boolean;
     }): Promise<
         | { created: false; reason: 'run_not_found' }
         | {
@@ -139,7 +157,7 @@ export class SessionHistoryStore {
             return { created: false, reason: 'run_not_found' };
         }
 
-        const prefixRuns = sourceRuns.slice(0, targetIndex);
+        const prefixRuns = sourceRuns.slice(0, input.includeTargetRun ? targetIndex + 1 : targetIndex);
         const sourceRunIds = prefixRuns.map((run) => run.id);
         const sourceGraph = await this.loadSourceHistoryGraph(input.profileId, sourceRunIds);
         const branchSessionId = createEntityId('sess');
@@ -304,4 +322,3 @@ export class SessionHistoryStore {
 }
 
 export const sessionHistoryStore = new SessionHistoryStore();
-

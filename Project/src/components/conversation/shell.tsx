@@ -59,6 +59,7 @@ export function ConversationShell({
     const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
     const [contextFeedbackMessage, setContextFeedbackMessage] = useState<string | undefined>(undefined);
     const [contextFeedbackTone, setContextFeedbackTone] = useState<'success' | 'error' | 'info'>('info');
+    const [focusComposerRequestKey, setFocusComposerRequestKey] = useState(0);
     const uiState = useConversationUiState(profileId);
     const utils = trpc.useUtils();
     const queries = useConversationQueries({
@@ -78,47 +79,51 @@ export function ConversationShell({
     const streamState = useRuntimeEventStreamStore((state) => state.connectionState);
     const streamErrorMessage = useRuntimeEventStreamStore((state) => state.lastError);
     const requestedSessionId = uiState.selectedSessionId;
-    const applySessionWorkspaceUpdate = useEffectEvent((input: {
-        session: SessionSummaryRecord;
-        run?: RunRecord;
-        thread?: ThreadListRecord;
-        initialMessagesForRun?: AcceptedRunStartResult['initialMessages'];
-    }) => {
-        if (!isEntityId(input.session.id, 'sess')) {
-            return;
-        }
+    const applySessionWorkspaceUpdate = useEffectEvent(
+        (input: {
+            session: SessionSummaryRecord;
+            run?: RunRecord;
+            thread?: ThreadListRecord;
+            initialMessagesForRun?: AcceptedRunStartResult['initialMessages'];
+        }) => {
+            if (!isEntityId(input.session.id, 'sess')) {
+                return;
+            }
 
-        applyConversationSessionCacheUpdate({
-            utils,
-            profileId,
-            listThreadsInput: queries.listThreadsInput,
-            session: input.session,
-            ...(input.run ? { run: input.run } : {}),
-            ...(input.thread ? { thread: input.thread } : {}),
-            ...(input.run && input.initialMessagesForRun
-                ? {
-                      initialMessagesForRun: {
-                          runId: input.run.id,
-                          messages: input.initialMessagesForRun.messages,
-                          messageParts: input.initialMessagesForRun.messageParts,
-                      },
-                  }
-                : {}),
-        });
-    });
-    const applyPlanWorkspaceUpdate = useEffectEvent((result: { found: false } | { found: true; plan: PlanRecordView }) => {
-        if (!isEntityId(selectedSessionId, 'sess')) {
-            return;
+            applyConversationSessionCacheUpdate({
+                utils,
+                profileId,
+                listThreadsInput: queries.listThreadsInput,
+                session: input.session,
+                ...(input.run ? { run: input.run } : {}),
+                ...(input.thread ? { thread: input.thread } : {}),
+                ...(input.run && input.initialMessagesForRun
+                    ? {
+                          initialMessagesForRun: {
+                              runId: input.run.id,
+                              messages: input.initialMessagesForRun.messages,
+                              messageParts: input.initialMessagesForRun.messageParts,
+                          },
+                      }
+                    : {}),
+            });
         }
+    );
+    const applyPlanWorkspaceUpdate = useEffectEvent(
+        (result: { found: false } | { found: true; plan: PlanRecordView }) => {
+            if (!isEntityId(selectedSessionId, 'sess')) {
+                return;
+            }
 
-        setActivePlanCache({
-            utils,
-            profileId,
-            sessionId: selectedSessionId,
-            topLevelTab,
-            planResult: result,
-        });
-    });
+            setActivePlanCache({
+                utils,
+                profileId,
+                sessionId: selectedSessionId,
+                topLevelTab,
+                planResult: result,
+            });
+        }
+    );
 
     const sessionActions = useConversationShellSessionActions({
         profileId,
@@ -212,17 +217,14 @@ export function ConversationShell({
         : runTargetState.selectedModelForComposer?.supportsVision
           ? undefined
           : 'Select a vision-capable model to attach images.';
-    const contextStateQuery = trpc.context.getResolvedState.useQuery(
-        contextStateQueryInput,
-        {
-            enabled:
-                hasSelectedSession &&
-                topLevelTab !== 'orchestrator' &&
-                Boolean(runTargetState.selectedProviderIdForComposer) &&
-                Boolean(runTargetState.selectedModelIdForComposer),
-            ...PROGRESSIVE_QUERY_OPTIONS,
-        }
-    );
+    const contextStateQuery = trpc.context.getResolvedState.useQuery(contextStateQueryInput, {
+        enabled:
+            hasSelectedSession &&
+            topLevelTab !== 'orchestrator' &&
+            Boolean(runTargetState.selectedProviderIdForComposer) &&
+            Boolean(runTargetState.selectedModelIdForComposer),
+        ...PROGRESSIVE_QUERY_OPTIONS,
+    });
     const composerMediaSettingsQuery = trpc.composer.getSettings.useQuery(undefined, PROGRESSIVE_QUERY_OPTIONS);
     const composerMediaSettings = composerMediaSettingsQuery.data?.settings;
     const composer = useConversationShellComposer({
@@ -276,6 +278,7 @@ export function ConversationShell({
         selectedThread: shellViewModel.selectedThread,
         resolvedRunTarget: runTargetState.resolvedRunTarget,
         editSession: mutations.editSessionMutation.mutateAsync,
+        branchFromMessage: mutations.branchFromMessageMutation.mutateAsync,
         setEditPreference,
         uiState,
         onTopLevelTabChange,
@@ -283,6 +286,9 @@ export function ConversationShell({
         onError: composer.setRunSubmitError,
         onPromptReset: () => {
             composer.resetComposer();
+        },
+        onComposerFocusRequest: () => {
+            setFocusComposerRequestKey((current) => current + 1);
         },
         onSessionEdited: ({ session, run, thread }) => {
             applySessionWorkspaceUpdate({
@@ -380,15 +386,15 @@ export function ConversationShell({
             sessionId: selectedSessionId,
         });
 
+        void utils.session.listMessages.prefetch({
+            profileId,
+            sessionId: selectedSessionId,
+        });
+
         const preferredRunId = isEntityId(selectedRunId, 'run')
             ? selectedRunId
             : shellViewModel.sessionRunSelection.runs.at(0)?.id;
         if (preferredRunId) {
-            void utils.session.listMessages.prefetch({
-                profileId,
-                sessionId: selectedSessionId,
-                runId: preferredRunId,
-            });
             void utils.diff.listByRun.prefetch({
                 profileId,
                 runId: preferredRunId,
@@ -445,7 +451,6 @@ export function ConversationShell({
         void utils.session.listMessages.fetch({
             profileId,
             sessionId: selectedSessionId,
-            ...(activeRunId ? { runId: activeRunId } : {}),
         });
 
         if (activeRunId) {
@@ -494,18 +499,19 @@ export function ConversationShell({
             ? 'Loading threads...'
             : queries.sessionsQuery.isPending
               ? 'Loading sessions...'
-              : queries.listBucketsQuery.error?.message ??
+              : (queries.listBucketsQuery.error?.message ??
                 queries.listTagsQuery.error?.message ??
                 queries.listThreadsQuery.error?.message ??
-                queries.sessionsQuery.error?.message;
-    const sidebarStatusTone = queries.listBucketsQuery.error ??
+                queries.sessionsQuery.error?.message);
+    const sidebarStatusTone =
+        (queries.listBucketsQuery.error ??
         queries.listTagsQuery.error ??
         queries.listThreadsQuery.error ??
-        queries.sessionsQuery.error
-        ? 'error'
-        : sidebarStatusMessage
-          ? 'info'
-          : undefined;
+        queries.sessionsQuery.error)
+            ? 'error'
+            : sidebarStatusMessage
+              ? 'info'
+              : undefined;
 
     const routingBadge = useConversationShellRoutingBadge({
         profileId,
@@ -658,9 +664,7 @@ export function ConversationShell({
                       }
                     : {})}
                 canCompactContext={
-                    topLevelTab !== 'orchestrator' &&
-                    hasSelectedSession &&
-                    Boolean(contextStateQuery.data?.compactable)
+                    topLevelTab !== 'orchestrator' && hasSelectedSession && Boolean(contextStateQuery.data?.compactable)
                 }
                 isCompactingContext={mutations.compactSessionMutation.isPending}
                 onSelectSession={sessionActions.onSelectSession}
@@ -731,6 +735,7 @@ export function ConversationShell({
                 executionEnvironmentPanel={workspacePanels.executionEnvironmentPanel}
                 attachedSkillsPanel={workspacePanels.attachedSkillsPanel}
                 diffCheckpointPanel={workspacePanels.diffCheckpointPanel}
+                focusComposerRequestKey={focusComposerRequestKey}
             />
 
             <MessageEditDialog
@@ -740,4 +745,3 @@ export function ConversationShell({
         </main>
     );
 }
-

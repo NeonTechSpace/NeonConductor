@@ -1,7 +1,7 @@
 import { markdownToPlainText } from '@/web/components/content/markdown/plainText';
-import type { MessageTimelineBodyEntry, MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import type { MessageFlowBodyEntry } from '@/web/components/conversation/messages/messageFlowModel';
 
-function entryLabel(entry: MessageTimelineBodyEntry): string | undefined {
+function entryLabel(entry: MessageFlowBodyEntry): string | undefined {
     if (entry.type !== 'assistant_reasoning') {
         return undefined;
     }
@@ -13,10 +13,7 @@ function prefixSection(label: string | undefined, text: string): string {
     return label ? `${label}:\n${text}` : text;
 }
 
-function buildCopyPayload(input: {
-    body: MessageTimelineEntry['body'];
-    mode: 'plain' | 'raw';
-}): string {
+function buildCopyPayload(input: { body: MessageFlowBodyEntry[]; mode: 'plain' | 'raw' }): string {
     const sections = input.body
         .map((bodyEntry) => {
             if (!('text' in bodyEntry)) {
@@ -41,7 +38,7 @@ function buildCopyPayload(input: {
     return sections.join('\n\n').trim();
 }
 
-export function buildMessageCopyPayloads(entry: MessageTimelineEntry): {
+export function buildMessageCopyPayloads(entry: { body: MessageFlowBodyEntry[] }): {
     plainText: string;
     rawText: string;
 } {

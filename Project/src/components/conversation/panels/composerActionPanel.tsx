@@ -1,13 +1,17 @@
 import { ImagePlus, LoaderCircle, RefreshCw, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { getImagePreviewStatusLabel, getPendingImagePreviewState } from '@/web/components/conversation/messages/imagePreviewState';
+import {
+    getImagePreviewStatusLabel,
+    getPendingImagePreviewState,
+} from '@/web/components/conversation/messages/imagePreviewState';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
 import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
 import type { ResolvedContextState, TopLevelTab } from '@/shared/contracts';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 interface ModelOption {
     id: string;
@@ -62,6 +66,7 @@ interface ComposerActionPanelProps {
     contextFeedbackTone?: 'success' | 'error' | 'info';
     canCompactContext?: boolean;
     isCompactingContext?: boolean;
+    focusComposerRequestKey?: number;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
     onModeChange: (modeKey: string) => void;
@@ -112,6 +117,14 @@ function extractClipboardFiles(clipboardData: DataTransfer | null): File[] {
         .filter((file): file is File => file !== null);
 }
 
+export function shouldSubmitComposerOnEnter(input: {
+    key: string;
+    shiftKey: boolean;
+    nativeEvent: { isComposing?: boolean };
+}): boolean {
+    return input.key === 'Enter' && !input.shiftKey && input.nativeEvent.isComposing !== true;
+}
+
 export function ComposerActionPanel({
     prompt,
     pendingImages,
@@ -134,6 +147,7 @@ export function ComposerActionPanel({
     contextFeedbackTone = 'info',
     canCompactContext = false,
     isCompactingContext = false,
+    focusComposerRequestKey,
     onProviderChange,
     onModelChange,
     onModeChange,
@@ -154,6 +168,7 @@ export function ComposerActionPanel({
         | undefined
     >(undefined);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
     const thresholdTokens = contextState?.policy.thresholdTokens;
     const totalTokens = contextState?.estimate?.totalTokens;
     const hasUsageNumbers = totalTokens !== undefined && thresholdTokens !== undefined;
@@ -166,12 +181,20 @@ export function ComposerActionPanel({
         ? `${selectedProviderStatus.label} · ${selectedProviderStatus.authState.replace('_', ' ')}`
         : undefined;
     const attachmentStatusMessage = hasUnsupportedPendingImages
-        ? imageAttachmentBlockedReason ?? 'Select a vision-capable model to send attached images.'
+        ? (imageAttachmentBlockedReason ?? 'Select a vision-capable model to send attached images.')
         : hasBlockingPendingImages
           ? 'Sending is locked until every image finishes processing.'
           : pendingImages.length > 0
             ? 'Images are ready to send with this message.'
             : 'Text-only prompt.';
+
+    useEffect(() => {
+        if (focusComposerRequestKey === undefined) {
+            return;
+        }
+
+        promptTextareaRef.current?.focus();
+    }, [focusComposerRequestKey]);
 
     function openFilePicker() {
         fileInputRef.current?.click();
@@ -229,9 +252,7 @@ export function ComposerActionPanel({
                 />
                 <div
                     className={`grid gap-3 ${
-                        shouldShowModePicker
-                            ? 'xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]'
-                            : 'grid-cols-1'
+                        shouldShowModePicker ? 'xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]' : 'grid-cols-1'
                     }`}>
                     {shouldShowModePicker ? (
                         <div className='space-y-1'>
@@ -392,7 +413,9 @@ export function ComposerActionPanel({
                                 const previewState = getPendingImagePreviewState(image.status);
 
                                 return (
-                                    <div key={image.clientId} className='border-border bg-background/80 rounded-2xl border p-2'>
+                                    <div
+                                        key={image.clientId}
+                                        className='border-border bg-background/80 rounded-2xl border p-2'>
                                         <button
                                             type='button'
                                             className='group focus-visible:ring-ring focus-visible:ring-offset-background block w-full rounded-xl text-left focus-visible:ring-2 focus-visible:ring-offset-2'
@@ -443,9 +466,9 @@ export function ComposerActionPanel({
                                                         ? 'Image is queued and will start processing soon.'
                                                         : previewState === 'loading'
                                                           ? 'Image is being compressed before it can be sent.'
-                                                        : previewState === 'ready'
-                                                          ? 'Image is ready to be sent with this message.'
-                                                          : 'Image preview is waiting for action.'}
+                                                          : previewState === 'ready'
+                                                            ? 'Image is ready to be sent with this message.'
+                                                            : 'Image preview is waiting for action.'}
                                                 </p>
                                             )}
                                         </div>
@@ -492,6 +515,7 @@ export function ComposerActionPanel({
                         </div>
                     ) : null}
                     <textarea
+                        ref={promptTextareaRef}
                         aria-label='Prompt'
                         name='composerPrompt'
                         value={prompt}
@@ -508,6 +532,24 @@ export function ComposerActionPanel({
                             if (event.clipboardData.getData('text').trim().length === 0) {
                                 event.preventDefault();
                             }
+                        }}
+                        onKeyDown={(event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+                            if (!shouldSubmitComposerOnEnter(event)) {
+                                return;
+                            }
+
+                            if (
+                                disabled ||
+                                isSubmitting ||
+                                !hasSubmittableContent ||
+                                hasBlockingPendingImages ||
+                                hasUnsupportedPendingImages
+                            ) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            onSubmitPrompt();
                         }}
                         rows={4}
                         className='border-border bg-background/70 focus-visible:ring-ring focus-visible:border-ring min-h-[160px] w-full resize-y border-t px-4 py-4 text-sm leading-6 focus-visible:ring-2 focus-visible:outline-none'
@@ -552,4 +594,3 @@ export function ComposerActionPanel({
         </>
     );
 }
-

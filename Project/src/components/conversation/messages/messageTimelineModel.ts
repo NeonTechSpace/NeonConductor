@@ -1,7 +1,6 @@
 import { buildMessageCopyPayloads } from '@/web/components/conversation/messages/messageCopy';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
-
 import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
 import { readImageMimeType } from '@/app/shared/imageMimeType';
 
@@ -17,7 +16,7 @@ export type MessageTimelineBodyEntry =
           text: string;
           providerLimitedReasoning: boolean;
       }
-      | {
+    | {
           id: string;
           type: MessageTimelineImageEntryType;
           mediaId: EntityId<'media'>;
@@ -52,8 +51,7 @@ function readTextPayload(part: MessagePartRecord): string | null {
         return null;
     }
 
-    const normalized = text.trim();
-    return normalized.length > 0 ? normalized : null;
+    return text.trim().length > 0 ? text : null;
 }
 
 function mapImageEntryType(role: MessageRecord['role']): MessageTimelineImageEntryType | null {
@@ -70,7 +68,9 @@ function mapImageEntryType(role: MessageRecord['role']): MessageTimelineImageEnt
     return null;
 }
 
-function mapTextEntryType(role: MessageRecord['role']): Exclude<MessageTimelineTextEntryType, 'assistant_reasoning'> | null {
+function mapTextEntryType(
+    role: MessageRecord['role']
+): Exclude<MessageTimelineTextEntryType, 'assistant_reasoning'> | null {
     if (role === 'assistant') {
         return 'assistant_text';
     }
@@ -171,20 +171,16 @@ export function buildTimelineEntries(
         const editableText =
             message.role === 'user'
                 ? body
-                      .filter((item): item is MessageTimelineBodyEntry & { type: 'user_text'; text: string } =>
-                          item.type === 'user_text' && 'text' in item
+                      .filter(
+                          (item): item is MessageTimelineBodyEntry & { type: 'user_text'; text: string } =>
+                              item.type === 'user_text' && 'text' in item
                       )
                       .map((item) => item.text)
                       .join('\n\n')
                 : undefined;
 
         const copyPayloads = buildMessageCopyPayloads({
-            id: message.id,
-            runId: message.runId,
-            role: message.role,
-            createdAt: message.createdAt,
             body,
-            ...(editableText && editableText.trim().length > 0 ? { editableText } : {}),
         });
 
         return {
@@ -209,4 +205,3 @@ export function isWithinBottomThreshold({
     const distance = scrollHeight - scrollTop - clientHeight;
     return distance <= thresholdPx;
 }
-

@@ -14,6 +14,7 @@ import {
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
     ComposerImageAttachmentInput,
+    SessionBranchFromMessageInput,
     SessionByIdInput,
     SessionCreateInput,
     SessionEditInput,
@@ -183,6 +184,17 @@ export function parseSessionEditInput(input: unknown): SessionEditInput {
     };
 }
 
+export function parseSessionBranchFromMessageInput(input: unknown): SessionBranchFromMessageInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        sessionId: readEntityId(source.sessionId, 'sessionId', 'sess'),
+        topLevelTab: readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs),
+        messageId: readEntityId(source.messageId, 'messageId', 'msg'),
+    };
+}
+
 export const sessionCreateInputSchema = createParser(parseSessionCreateInput);
 export const sessionByIdInputSchema = createParser(parseSessionByIdInput);
 export const sessionRevertInputSchema = createParser(parseSessionRevertInput);
@@ -193,3 +205,4 @@ export const sessionGetMessageMediaInputSchema = createParser(parseSessionGetMes
 export const sessionGetAttachedSkillsInputSchema = createParser(parseSessionGetAttachedSkillsInput);
 export const sessionSetAttachedSkillsInputSchema = createParser(parseSessionSetAttachedSkillsInput);
 export const sessionEditInputSchema = createParser(parseSessionEditInput);
+export const sessionBranchFromMessageInputSchema = createParser(parseSessionBranchFromMessageInput);

@@ -84,6 +84,11 @@ export interface SessionEditInput extends SessionByIdInput {
     runtimeOptions?: RuntimeRunOptions;
 }
 
+export interface SessionBranchFromMessageInput extends SessionByIdInput {
+    topLevelTab: TopLevelTab;
+    messageId: EntityId<'msg'>;
+}
+
 export type SessionListRunsInput = SessionByIdInput;
 
 export interface SessionListMessagesInput extends SessionByIdInput {

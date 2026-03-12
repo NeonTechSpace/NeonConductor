@@ -9,6 +9,11 @@ import {
     resolveKiloRuntimeAuthToken,
 } from '@/app/backend/providers/adapters/kilo/headers';
 import { parseChatCompletionsPayload } from '@/app/backend/providers/adapters/runtimePayload';
+import {
+    consumeChatCompletionsStreamResponse,
+    emitParsedCompletion,
+    isEventStreamResponse,
+} from '@/app/backend/providers/adapters/streaming';
 import { KILO_GATEWAY_BASE_URL } from '@/app/backend/providers/kiloGatewayClient/constants';
 import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
 import { appLog } from '@/app/main/logging';
@@ -31,6 +36,10 @@ function failKiloRuntime(
     });
 
     return errProviderAdapter('provider_request_failed', error);
+}
+
+function shouldRetryWithoutStreaming(status: number): boolean {
+    return status === 400 || status === 404 || status === 405 || status === 415 || status === 422;
 }
 
 export async function streamKiloRuntime(
@@ -82,30 +91,76 @@ export async function streamKiloRuntime(
     }
 
     if (!response.ok) {
-        return failKiloRuntime(
-            input,
-            'request',
-            'provider_request_failed',
-            `Kilo runtime completion failed: ${String(response.status)} ${response.statusText}`
-        );
+        if (!shouldRetryWithoutStreaming(response.status)) {
+            return failKiloRuntime(
+                input,
+                'request',
+                'provider_request_failed',
+                `Kilo runtime completion failed: ${String(response.status)} ${response.statusText}`
+            );
+        }
+
+        try {
+            response = await fetch(`${KILO_GATEWAY_BASE_URL}/chat/completions`, {
+                method: 'POST',
+                headers: buildKiloRuntimeHeaders({
+                    token,
+                    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+                    modelId: input.modelId,
+                    ...(input.cache.applied && input.cache.key
+                        ? {
+                              cacheKey: input.cache.key,
+                          }
+                        : {}),
+                }),
+                body: JSON.stringify({
+                    ...buildKiloRuntimeBody(input),
+                    stream: false,
+                }),
+                signal: input.signal,
+            });
+        } catch (error) {
+            return failKiloRuntime(
+                input,
+                'request fallback',
+                'provider_request_unavailable',
+                error instanceof Error ? error.message : 'Kilo runtime request failed before receiving a response.'
+            );
+        }
+
+        if (!response.ok) {
+            return failKiloRuntime(
+                input,
+                'request fallback',
+                'provider_request_failed',
+                `Kilo runtime completion failed: ${String(response.status)} ${response.statusText}`
+            );
+        }
     }
 
-    const payload: unknown = await response.json();
+    if (isEventStreamResponse(response)) {
+        const streamed = await consumeChatCompletionsStreamResponse({
+            response,
+            handlers,
+            startedAt,
+        });
+        if (streamed.isErr()) {
+            return failKiloRuntime(input, 'payload parse', streamed.error.code, streamed.error.message);
+        }
+        return okProviderAdapter(undefined);
+    }
+
+    let payload: unknown;
+    try {
+        payload = await response.json();
+    } catch {
+        payload = {};
+    }
     const parsed = parseChatCompletionsPayload(payload);
     if (parsed.isErr()) {
         return failKiloRuntime(input, 'payload parse', parsed.error.code, parsed.error.message);
     }
-
-    for (const part of parsed.value.parts) {
-        await handlers.onPart(part);
-    }
-
-    if (handlers.onUsage) {
-        await handlers.onUsage({
-            ...parsed.value.usage,
-            latencyMs: Date.now() - startedAt,
-        });
-    }
+    await emitParsedCompletion(parsed.value, handlers, startedAt);
 
     return okProviderAdapter(undefined);
 }

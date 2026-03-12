@@ -10,7 +10,10 @@ import {
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
-import { emitPartEvents, emitTransportSelectionEvent } from '@/app/backend/runtime/services/runExecution/eventing';
+import {
+    createAssistantMessagePartRecorder,
+    emitTransportSelectionEvent,
+} from '@/app/backend/runtime/services/runExecution/eventing';
 import type {
     RunContextMessage,
     RunCacheResolution,
@@ -91,6 +94,12 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
     const behavior = getProviderRuntimeBehavior(input.providerId);
     let usage: UsageAccumulator = {};
     let transportSelection = input.transportSelection;
+    const partRecorder = createAssistantMessagePartRecorder({
+        runId: input.runId,
+        profileId: input.profileId,
+        sessionId: input.sessionId,
+        messageId: input.assistantMessageId,
+    });
     const resolvedContextMessages = input.contextMessages
         ? await Promise.all(
               input.contextMessages.map(async (message) => ({
@@ -151,13 +160,7 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
         },
         {
             onPart: async (part) => {
-                await emitPartEvents({
-                    runId: input.runId,
-                    profileId: input.profileId,
-                    sessionId: input.sessionId,
-                    messageId: input.assistantMessageId,
-                    part,
-                });
+                await partRecorder.recordPart(part);
             },
             onUsage: (nextUsage: ProviderRuntimeUsage) => {
                 usage = mergeUsage(usage, nextUsage);

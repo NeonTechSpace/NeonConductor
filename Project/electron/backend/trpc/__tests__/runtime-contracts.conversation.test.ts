@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { describe, expect, it, vi } from 'vitest';
 
-
 import {
     runtimeContractProfileId,
     registerRuntimeContractHooks,
@@ -17,11 +16,10 @@ registerRuntimeContractHooks();
 function buildTinyPngBase64(): string {
     return Buffer.from(
         Uint8Array.from([
-            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x04, 0x00, 0x00, 0x00, 0xb5, 0x1c, 0x0c,
-            0x02, 0x00, 0x00, 0x00, 0x0b, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0xfc, 0xff, 0x1f, 0x00,
-            0x02, 0xeb, 0x01, 0xf6, 0xcf, 0x28, 0x14, 0xac, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
-            0xae, 0x42, 0x60, 0x82,
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x04, 0x00, 0x00, 0x00, 0xb5, 0x1c, 0x0c, 0x02, 0x00, 0x00, 0x00,
+            0x0b, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0xfc, 0xff, 0x1f, 0x00, 0x02, 0xeb, 0x01, 0xf6, 0xcf, 0x28,
+            0x14, 0xac, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
         ])
     ).toString('base64');
 }
@@ -168,29 +166,25 @@ describe('runtime contracts: conversation and runs', () => {
         const secondRequestInput = Array.isArray(requestBodies[1]?.['input']) ? requestBodies[1]['input'] : [];
         const firstRequestContent = firstRequestInput.flatMap((message) =>
             typeof message === 'object' && message !== null && Array.isArray((message as { content?: unknown }).content)
-                ? ((message as { content: unknown[] }).content)
+                ? (message as { content: unknown[] }).content
                 : []
         );
         const secondRequestContent = secondRequestInput.flatMap((message) =>
             typeof message === 'object' && message !== null && Array.isArray((message as { content?: unknown }).content)
-                ? ((message as { content: unknown[] }).content)
+                ? (message as { content: unknown[] }).content
                 : []
         );
 
         expect(
             firstRequestContent.some(
                 (entry) =>
-                    typeof entry === 'object' &&
-                    entry !== null &&
-                    (entry as { type?: unknown }).type === 'input_image'
+                    typeof entry === 'object' && entry !== null && (entry as { type?: unknown }).type === 'input_image'
             )
         ).toBe(true);
         expect(
             secondRequestContent.some(
                 (entry) =>
-                    typeof entry === 'object' &&
-                    entry !== null &&
-                    (entry as { type?: unknown }).type === 'input_image'
+                    typeof entry === 'object' && entry !== null && (entry as { type?: unknown }).type === 'input_image'
             )
         ).toBe(true);
     });
@@ -370,7 +364,6 @@ describe('runtime contracts: conversation and runs', () => {
         expect(reverted.session.turnCount).toBe(0);
         expect(reverted.session.runStatus).toBe('idle');
     });
-
 
     it('supports session edit truncate and branch across all tabs with chat-only replay', async () => {
         const caller = createCaller();
@@ -684,4 +677,120 @@ describe('runtime contracts: conversation and runs', () => {
         expect(orchestratorBranchInput.length).toBeGreaterThan(0);
     });
 
+    it('branches directly from assistant messages without starting a new run', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'assistant response',
+                                },
+                            },
+                        ],
+                        usage: {
+                            prompt_tokens: 8,
+                            completion_tokens: 12,
+                            total_tokens: 20,
+                        },
+                    }),
+                })
+            )
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-direct-branch-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Direct branch thread',
+            kind: 'local',
+        });
+
+        const firstRun = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'first',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(firstRun.accepted).toBe(true);
+        if (!firstRun.accepted) {
+            throw new Error('Expected first run to start.');
+        }
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const secondRun = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'second',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(secondRun.accepted).toBe(true);
+        if (!secondRun.accepted) {
+            throw new Error('Expected second run to start.');
+        }
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const sourceMessages = await caller.session.listMessages({
+            profileId,
+            sessionId: created.session.id,
+        });
+        const assistantMessage = sourceMessages.messages.filter((message) => message.role === 'assistant').at(-1);
+        if (!assistantMessage) {
+            throw new Error('Expected assistant message to branch from.');
+        }
+
+        const branched = await caller.session.branchFromMessage({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'chat',
+            messageId: assistantMessage.id,
+        });
+        expect(branched.branched).toBe(true);
+        if (!branched.branched) {
+            throw new Error(`Expected direct branch to succeed, received "${branched.reason}".`);
+        }
+        expect(branched.sessionId).not.toBe(created.session.id);
+
+        const branchRuns = await caller.session.listRuns({
+            profileId,
+            sessionId: branched.sessionId,
+        });
+        expect(branchRuns.runs).toHaveLength(2);
+
+        const branchMessages = await caller.session.listMessages({
+            profileId,
+            sessionId: branched.sessionId,
+        });
+        expect(branchMessages.messages).toHaveLength(4);
+
+        const branchStatus = await caller.session.status({
+            profileId,
+            sessionId: branched.sessionId,
+        });
+        expect(branchStatus.found).toBe(true);
+        if (!branchStatus.found) {
+            throw new Error('Expected direct branch session to exist.');
+        }
+        expect(branchStatus.activeRunId).toBeNull();
+        expect(branchStatus.session.turnCount).toBe(2);
+    });
 });
