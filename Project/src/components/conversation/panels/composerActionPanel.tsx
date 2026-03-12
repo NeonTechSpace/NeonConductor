@@ -26,7 +26,7 @@ interface PendingImageView {
     clientId: string;
     fileName: string;
     previewUrl: string;
-    status: 'compressing' | 'ready' | 'failed';
+    status: 'queued' | 'compressing' | 'ready' | 'failed';
     errorMessage?: string;
     byteSize?: number;
     attachment?: {
@@ -47,6 +47,7 @@ interface ComposerActionPanelProps {
     activeModeKey: string;
     modes: Array<{ id: string; modeKey: string; label: string }>;
     canAttachImages: boolean;
+    maxImageAttachmentsPerMessage: number;
     imageAttachmentBlockedReason?: string;
     routingBadge?: string;
     selectedProviderStatus?: {
@@ -122,6 +123,7 @@ export function ComposerActionPanel({
     activeModeKey,
     modes,
     canAttachImages,
+    maxImageAttachmentsPerMessage,
     imageAttachmentBlockedReason,
     routingBadge,
     selectedProviderStatus,
@@ -365,7 +367,8 @@ export function ComposerActionPanel({
                         <div>
                             <p className='text-sm font-semibold'>Prompt</p>
                             <p className='text-muted-foreground text-xs'>
-                                Paste or drop images here. Up to 4 images, 1.5 MB each after compression.
+                                Paste or drop images here. Up to {maxImageAttachmentsPerMessage} images, 1.5 MB each
+                                after compression.
                             </p>
                         </div>
                         <Button
@@ -436,8 +439,10 @@ export function ComposerActionPanel({
                                                 </p>
                                             ) : (
                                                 <p aria-live='polite' className='text-muted-foreground text-[11px]'>
-                                                    {previewState === 'loading'
-                                                        ? 'Image is being compressed before it can be sent.'
+                                                    {image.status === 'queued'
+                                                        ? 'Image is queued and will start processing soon.'
+                                                        : previewState === 'loading'
+                                                          ? 'Image is being compressed before it can be sent.'
                                                         : previewState === 'ready'
                                                           ? 'Image is ready to be sent with this message.'
                                                           : 'Image preview is waiting for action.'}
@@ -462,6 +467,11 @@ export function ComposerActionPanel({
                                                 <span className='text-muted-foreground inline-flex items-center gap-1 px-2 text-[11px]'>
                                                     <LoaderCircle className='h-3.5 w-3.5 animate-spin' />
                                                     Preparing
+                                                </span>
+                                            ) : null}
+                                            {image.status === 'queued' ? (
+                                                <span className='text-muted-foreground inline-flex items-center gap-1 px-2 text-[11px]'>
+                                                    Queued
                                                 </span>
                                             ) : null}
                                             <Button

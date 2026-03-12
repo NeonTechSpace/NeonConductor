@@ -64,7 +64,7 @@ interface ConversationWorkspaceSectionProps {
         clientId: string;
         fileName: string;
         previewUrl: string;
-        status: 'compressing' | 'ready' | 'failed';
+        status: 'queued' | 'compressing' | 'ready' | 'failed';
         errorMessage?: string;
         byteSize?: number;
         attachment?: {
@@ -82,6 +82,7 @@ interface ConversationWorkspaceSectionProps {
     topLevelTab: TopLevelTab;
     activeModeKey: string;
     modes: Array<{ id: string; modeKey: string; label: string }>;
+    maxImageAttachmentsPerMessage: number;
     canAttachImages: boolean;
     imageAttachmentBlockedReason?: string;
     routingBadge: string | undefined;
@@ -180,6 +181,7 @@ export function ConversationWorkspaceSection({
     topLevelTab,
     activeModeKey,
     modes,
+    maxImageAttachmentsPerMessage,
     canAttachImages,
     imageAttachmentBlockedReason,
     routingBadge,
@@ -257,6 +259,7 @@ export function ConversationWorkspaceSection({
                 topLevelTab={topLevelTab}
                 activeModeKey={activeModeKey}
                 modes={modes}
+                maxImageAttachmentsPerMessage={maxImageAttachmentsPerMessage}
                 canAttachImages={canAttachImages}
                 {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
                 {...(routingBadge !== undefined ? { routingBadge } : {})}

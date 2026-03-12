@@ -8,6 +8,7 @@ import {
 
 describe('imagePreviewState', () => {
     it('maps pending image states to the shared preview model', () => {
+        expect(getPendingImagePreviewState('queued')).toBe('loading');
         expect(getPendingImagePreviewState('compressing')).toBe('loading');
         expect(getPendingImagePreviewState('ready')).toBe('ready');
         expect(getPendingImagePreviewState('failed')).toBe('failed');

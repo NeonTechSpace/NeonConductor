@@ -1,4 +1,5 @@
 import type {
+    ComposerMediaSettings,
     ContextCompactionSource,
     ModelLimitOverrideRecord as RuntimeModelLimitOverrideRecord,
     ContextProfileSettings,
@@ -191,6 +192,8 @@ export interface ProviderDiscoverySnapshotRecord {
 }
 
 export type AppContextSettingsRecord = ContextGlobalSettings;
+
+export type AppComposerMediaSettingsRecord = ComposerMediaSettings;
 
 export type ProfileContextSettingsRecord = ContextProfileSettings;
 

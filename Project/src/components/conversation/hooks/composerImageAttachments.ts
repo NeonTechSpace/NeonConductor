@@ -16,10 +16,9 @@ const JPEG_QUALITY_STEPS = [0.82, 0.74, 0.66, 0.58, 0.5, 0.42] as const;
 const DOWNSCALE_RATIO = 0.85;
 const MIN_IMAGE_EDGE_PX = 512;
 
-export const MAX_COMPOSER_IMAGE_COUNT = 4;
 export const MAX_COMPOSER_TOTAL_IMAGE_BYTES = 6_000_000;
 
-export type ComposerPendingImageStatus = 'compressing' | 'ready' | 'failed';
+export type ComposerPendingImageStatus = 'queued' | 'compressing' | 'ready' | 'failed';
 
 export interface ComposerPendingImage {
     clientId: string;
@@ -451,7 +450,7 @@ export function createPendingImage(file: File): ComposerPendingImage {
         fileName: file.name,
         sourceFile: file,
         previewUrl: URL.createObjectURL(file),
-        status: 'compressing',
+        status: 'queued',
     };
 }
 

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
     createPendingImage,
-    MAX_COMPOSER_IMAGE_COUNT,
     MAX_COMPOSER_TOTAL_IMAGE_BYTES,
     prepareComposerImageAttachment,
     releasePendingImageResources,
@@ -49,6 +48,8 @@ interface UseConversationShellComposerInput<
     runtimeOptions: RuntimeRunOptions;
     isStartingRun: boolean;
     canAttachImages: boolean;
+    maxImageAttachmentsPerMessage: number;
+    imageCompressionConcurrency: number;
     imageAttachmentBlockedReason?: string;
     startPlan: (input: PlanStartInput) => Promise<TPlanStartResult>;
     startRun: (input: SessionStartRunInput) => Promise<TRunStartAcceptedResult | TRunStartRejectedResult>;
@@ -106,6 +107,16 @@ export function useConversationShellComposer<
             previewUrl: image.previewUrl,
             status: 'failed',
             errorMessage,
+        };
+    }
+
+    function toQueuedImageState(image: ComposerPendingImage): ComposerPendingImage {
+        return {
+            clientId: image.clientId,
+            fileName: image.fileName,
+            sourceFile: image.sourceFile,
+            previewUrl: image.previewUrl,
+            status: 'queued',
         };
     }
 
@@ -188,22 +199,21 @@ export function useConversationShellComposer<
             return;
         }
 
-        const availableSlots = Math.max(0, MAX_COMPOSER_IMAGE_COUNT - pendingImagesRef.current.length);
+        const availableSlots = Math.max(0, input.maxImageAttachmentsPerMessage - pendingImagesRef.current.length);
         if (availableSlots === 0) {
-            failImageAttachment(`You can attach up to ${String(MAX_COMPOSER_IMAGE_COUNT)} images per message.`);
+            failImageAttachment(
+                `You can attach up to ${String(input.maxImageAttachmentsPerMessage)} images per message.`
+            );
             return;
         }
 
         const acceptedFiles = imageFiles.slice(0, availableSlots);
         if (acceptedFiles.length < imageFiles.length) {
-            failImageAttachment(`Only the first ${String(MAX_COMPOSER_IMAGE_COUNT)} images were kept.`);
+            failImageAttachment(`Only the first ${String(input.maxImageAttachmentsPerMessage)} images were kept.`);
         }
 
         const nextImages = acceptedFiles.map((file) => createPendingImage(file));
         setPendingImages((current) => [...current, ...nextImages]);
-        for (const image of nextImages) {
-            startCompressingImage(image);
-        }
     }
 
     function removePendingImage(clientId: string) {
@@ -228,12 +238,33 @@ export function useConversationShellComposer<
         setPendingImages((current) =>
             current.map((candidate) =>
                 candidate.clientId === clientId
-                    ? toCompressingImageState(candidate)
+                    ? toQueuedImageState(candidate)
                     : candidate
             )
         );
-        startCompressingImage(image);
     }
+
+    useEffect(() => {
+        const activeCompressionCount = pendingImages.filter((image) => image.status === 'compressing').length;
+        const availableCompressionSlots = Math.max(0, input.imageCompressionConcurrency - activeCompressionCount);
+        if (availableCompressionSlots === 0) {
+            return;
+        }
+
+        const queuedImages = pendingImages.filter((image) => image.status === 'queued').slice(0, availableCompressionSlots);
+        if (queuedImages.length === 0) {
+            return;
+        }
+
+        for (const queuedImage of queuedImages) {
+            setPendingImages((current) =>
+                current.map((candidate) =>
+                    candidate.clientId === queuedImage.clientId ? toCompressingImageState(candidate) : candidate
+                )
+            );
+            startCompressingImage(queuedImage);
+        }
+    }, [input.imageCompressionConcurrency, pendingImages]);
 
     const readyAttachments = pendingImages.flatMap((image) =>
         image.status === 'ready' && image.attachment ? [image.attachment] : []

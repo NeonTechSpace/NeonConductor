@@ -5,6 +5,7 @@
 
 import { router } from '@/app/backend/trpc/init';
 import { checkpointRouter } from '@/app/backend/trpc/routers/checkpoint';
+import { composerRouter } from '@/app/backend/trpc/routers/composer';
 import { contextRouter } from '@/app/backend/trpc/routers/context';
 import { conversationRouter } from '@/app/backend/trpc/routers/conversation';
 import { diffRouter } from '@/app/backend/trpc/routers/diff';
@@ -25,6 +26,7 @@ import { worktreeRouter } from '@/app/backend/trpc/routers/worktree';
 
 export const appRouter = router({
     runtime: runtimeRouter,
+    composer: composerRouter,
     context: contextRouter,
     checkpoint: checkpointRouter,
     conversation: conversationRouter,

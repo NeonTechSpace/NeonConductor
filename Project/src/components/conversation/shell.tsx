@@ -30,6 +30,10 @@ import { trpc } from '@/web/trpc/client';
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
 import type { PlanRecordView, TopLevelTab } from '@/shared/contracts';
+import {
+    DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
+    DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
+} from '@/shared/contracts';
 
 interface ConversationShellProps {
     profileId: string;
@@ -219,6 +223,8 @@ export function ConversationShell({
             ...PROGRESSIVE_QUERY_OPTIONS,
         }
     );
+    const composerMediaSettingsQuery = trpc.composer.getSettings.useQuery(undefined, PROGRESSIVE_QUERY_OPTIONS);
+    const composerMediaSettings = composerMediaSettingsQuery.data?.settings;
     const composer = useConversationShellComposer({
         profileId,
         selectedSessionId,
@@ -234,6 +240,10 @@ export function ConversationShell({
         runtimeOptions: DEFAULT_RUN_OPTIONS,
         isStartingRun: mutations.startRunMutation.isPending,
         canAttachImages,
+        maxImageAttachmentsPerMessage:
+            composerMediaSettings?.maxImageAttachmentsPerMessage ?? DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
+        imageCompressionConcurrency:
+            composerMediaSettings?.imageCompressionConcurrency ?? DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
         ...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {}),
         startPlan: mutations.planStartMutation.mutateAsync,
         startRun: mutations.startRunMutation.mutateAsync,
@@ -630,6 +640,10 @@ export function ConversationShell({
                 topLevelTab={topLevelTab}
                 activeModeKey={modeKey}
                 modes={modes}
+                maxImageAttachmentsPerMessage={
+                    composerMediaSettings?.maxImageAttachmentsPerMessage ??
+                    DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE
+                }
                 canAttachImages={canAttachImages}
                 {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
                 routingBadge={routingBadge}

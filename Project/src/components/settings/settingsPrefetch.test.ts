@@ -12,6 +12,7 @@ describe('settingsPrefetch', () => {
         const profileListPrefetch = vi.fn().mockResolvedValue(undefined);
         const globalSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
         const profileSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
+        const composerSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
         const listWorkspaceRootsPrefetch = vi.fn().mockResolvedValue(undefined);
         const registryPrefetch = vi.fn().mockResolvedValue(undefined);
 
@@ -48,6 +49,11 @@ describe('settingsPrefetch', () => {
                         prefetch: profileSettingsPrefetch,
                     },
                 },
+                composer: {
+                    getSettings: {
+                        prefetch: composerSettingsPrefetch,
+                    },
+                },
                 runtime: {
                     listWorkspaceRoots: {
                         prefetch: listWorkspaceRootsPrefetch,
@@ -82,6 +88,7 @@ describe('settingsPrefetch', () => {
         expect(profileSettingsPrefetch).toHaveBeenCalledWith({
             profileId: 'profile_default',
         });
+        expect(composerSettingsPrefetch).toHaveBeenCalledOnce();
         expect(listWorkspaceRootsPrefetch).toHaveBeenCalledOnce();
         expect(registryPrefetch).toHaveBeenCalledOnce();
     });

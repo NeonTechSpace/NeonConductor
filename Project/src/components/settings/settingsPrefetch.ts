@@ -31,6 +31,11 @@ interface SettingsPrefetchInput {
                 prefetch: (input: { profileId: string }) => Promise<void>;
             };
         };
+        composer: {
+            getSettings: {
+                prefetch: (input: undefined) => Promise<void>;
+            };
+        };
         runtime: {
             listWorkspaceRoots: {
                 prefetch: (input: { profileId: string }) => Promise<void>;
@@ -54,6 +59,7 @@ export function prefetchSettingsData(input: SettingsPrefetchInput): void {
         input.trpcUtils.profile.list.prefetch(undefined),
         input.trpcUtils.context.getGlobalSettings.prefetch(undefined),
         input.trpcUtils.context.getProfileSettings.prefetch({ profileId: input.profileId }),
+        input.trpcUtils.composer.getSettings.prefetch(undefined),
         input.trpcUtils.runtime.listWorkspaceRoots.prefetch({ profileId: input.profileId }),
         input.trpcUtils.registry.listResolved.prefetch({ profileId: input.profileId }),
     ]);

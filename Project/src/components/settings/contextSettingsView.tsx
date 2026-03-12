@@ -2,6 +2,11 @@ import { useState } from 'react';
 
 import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
 import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
+import { ComposerMediaSettingsSection } from '@/web/components/settings/composerMediaSettingsSection';
+import {
+    resolveComposerMediaSettingsDraft,
+    type ComposerMediaSettingsDraft,
+} from '@/web/components/settings/composerMediaSettingsDrafts';
 import {
     resolveContextGlobalDraft,
     resolveContextProfileDraft,
@@ -15,6 +20,10 @@ import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptio
 import { trpc } from '@/web/trpc/client';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
+import {
+    MAX_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
+    MAX_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
+} from '@/shared/contracts';
 
 function formatTokenCount(value: number): string {
     return new Intl.NumberFormat('en-US').format(value);
@@ -29,6 +38,7 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
     const [selectedProfileId, setSelectedProfileId] = useState(activeProfileId);
     const [globalDraft, setGlobalDraft] = useState<ContextGlobalDraft | undefined>(undefined);
     const [profileDraft, setProfileDraft] = useState<ContextProfileDraft | undefined>(undefined);
+    const [composerMediaDraft, setComposerMediaDraft] = useState<ComposerMediaSettingsDraft | undefined>(undefined);
     const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>(undefined);
     const [feedbackTone, setFeedbackTone] = useState<'success' | 'error' | 'info'>('info');
 
@@ -40,6 +50,7 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
         { profileId: resolvedSelectedProfileId },
         { enabled: resolvedSelectedProfileId.length > 0, ...PROGRESSIVE_QUERY_OPTIONS }
     );
+    const composerMediaSettingsQuery = trpc.composer.getSettings.useQuery(undefined, PROGRESSIVE_QUERY_OPTIONS);
     const shellBootstrapQuery = trpc.runtime.getShellBootstrap.useQuery(
         { profileId: resolvedSelectedProfileId },
         { enabled: resolvedSelectedProfileId.length > 0, ...PROGRESSIVE_QUERY_OPTIONS }
@@ -80,6 +91,10 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
         settings: profileSettingsQuery.data?.settings,
         draft: profileDraft,
     });
+    const composerMediaForm = resolveComposerMediaSettingsDraft({
+        settings: composerMediaSettingsQuery.data?.settings,
+        draft: composerMediaDraft,
+    });
 
     function updateGlobalDraft(
         updater: (current: ContextGlobalDraft) => ContextGlobalDraft
@@ -97,6 +112,12 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
                     : profileForm
             )
         );
+    }
+
+    function updateComposerMediaDraft(
+        updater: (current: ComposerMediaSettingsDraft) => ComposerMediaSettingsDraft
+    ): void {
+        setComposerMediaDraft((current) => updater(current ?? composerMediaForm));
     }
 
     const setGlobalSettingsMutation = trpc.context.setGlobalSettings.useMutation({
@@ -146,6 +167,20 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
             setFeedbackMessage(error.message);
         },
     });
+    const setComposerMediaSettingsMutation = trpc.composer.setSettings.useMutation({
+        onSuccess: ({ settings }) => {
+            setFeedbackTone('success');
+            setFeedbackMessage('Saved composer media defaults.');
+            setComposerMediaDraft(undefined);
+            utils.composer.getSettings.setData(undefined, {
+                settings,
+            });
+        },
+        onError: (error) => {
+            setFeedbackTone('error');
+            setFeedbackMessage(error.message);
+        },
+    });
 
     return (
         <section className='grid h-full min-h-0 min-w-0 overflow-hidden grid-cols-[260px_1fr]'>
@@ -167,6 +202,46 @@ export function ContextSettingsView({ activeProfileId }: ContextSettingsViewProp
             <div className='min-h-0 min-w-0 overflow-y-auto p-4'>
                 <div className='space-y-6'>
                     <SettingsFeedbackBanner message={feedbackMessage} tone={feedbackTone} />
+                    <ComposerMediaSettingsSection
+                        draft={composerMediaForm}
+                        isSaving={setComposerMediaSettingsMutation.isPending}
+                        onDraftChange={(updater) => {
+                            updateComposerMediaDraft(updater);
+                            setFeedbackMessage(undefined);
+                        }}
+                        onSave={() => {
+                            const maxImageAttachmentsPerMessage = Number(composerMediaForm.maxImageAttachmentsPerMessage);
+                            if (
+                                !Number.isInteger(maxImageAttachmentsPerMessage) ||
+                                maxImageAttachmentsPerMessage < 1 ||
+                                maxImageAttachmentsPerMessage > MAX_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE
+                            ) {
+                                setFeedbackTone('error');
+                                setFeedbackMessage(
+                                    `Image limit must be an integer between 1 and ${String(MAX_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE)}.`
+                                );
+                                return;
+                            }
+
+                            const imageCompressionConcurrency = Number(composerMediaForm.imageCompressionConcurrency);
+                            if (
+                                !Number.isInteger(imageCompressionConcurrency) ||
+                                imageCompressionConcurrency < 1 ||
+                                imageCompressionConcurrency > MAX_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY
+                            ) {
+                                setFeedbackTone('error');
+                                setFeedbackMessage(
+                                    `Compression concurrency must be an integer between 1 and ${String(MAX_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY)}.`
+                                );
+                                return;
+                            }
+
+                            void setComposerMediaSettingsMutation.mutateAsync({
+                                maxImageAttachmentsPerMessage,
+                                imageCompressionConcurrency,
+                            });
+                        }}
+                    />
                     <section className='space-y-3'>
                         <div>
                             <h4 className='text-sm font-semibold'>Global Default</h4>

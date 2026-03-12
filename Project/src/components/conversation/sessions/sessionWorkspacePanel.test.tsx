@@ -97,6 +97,7 @@ describe('session workspace panel layout', () => {
                 topLevelTab='chat'
                 activeModeKey='chat'
                 modes={[]}
+                maxImageAttachmentsPerMessage={10}
                 canAttachImages={false}
                 selectedProviderStatus={{
                     label: 'Kilo',

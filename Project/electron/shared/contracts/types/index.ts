@@ -11,5 +11,6 @@ export type * from '@/shared/contracts/types/plan';
 export type * from '@/shared/contracts/types/orchestrator';
 export * from '@/shared/contracts/types/runtime';
 export type * from '@/shared/contracts/types/context';
+export * from '@/shared/contracts/types/composer';
 export type * from '@/shared/contracts/types/registry';
 export type * from '@/shared/contracts/types/worktree';

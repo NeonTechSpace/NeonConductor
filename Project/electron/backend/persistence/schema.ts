@@ -154,6 +154,13 @@ export interface AppContextSettingsTable {
     updated_at: string;
 }
 
+export interface AppComposerMediaSettingsTable {
+    id: string;
+    max_image_attachments_per_message: number;
+    image_compression_concurrency: number;
+    updated_at: string;
+}
+
 export interface ProfileContextSettingsTable {
     profile_id: string;
     override_mode: 'inherit' | 'percent' | 'fixed_tokens';
@@ -585,6 +592,7 @@ export interface DatabaseSchema {
     permissions: PermissionsTable;
     settings: SettingsTable;
     app_context_settings: AppContextSettingsTable;
+    app_composer_media_settings: AppComposerMediaSettingsTable;
     profile_context_settings: ProfileContextSettingsTable;
     session_context_compactions: SessionContextCompactionsTable;
     model_limit_overrides: ModelLimitOverridesTable;
