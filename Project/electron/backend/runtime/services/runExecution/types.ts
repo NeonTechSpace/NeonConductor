@@ -18,6 +18,7 @@ import type {
     ResolvedWorkspaceContext,
 } from '@/app/backend/runtime/contracts';
 import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runExecution/errors';
+import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
 
 export interface StartRunInput {
     profileId: string;
@@ -55,7 +56,7 @@ export interface RunCacheResolution {
 }
 
 export interface RunContextMessage {
-    role: 'system' | 'user' | 'assistant';
+    role: 'system' | 'user' | 'assistant' | 'tool';
     parts: RunContextPart[];
 }
 
@@ -72,6 +73,19 @@ export type RunContextPart =
           mimeType: ComposerImageAttachmentInput['mimeType'];
           width: number;
           height: number;
+      }
+    | {
+          type: 'tool_call';
+          callId: string;
+          toolName: string;
+          argumentsText: string;
+      }
+    | {
+          type: 'tool_result';
+          callId: string;
+          toolName: string;
+          outputText: string;
+          isError: boolean;
       };
 
 export interface RunContext {
@@ -104,6 +118,7 @@ export interface PreparedRunStart {
     resolvedAuth: ResolvedRunAuth;
     resolvedCache: RunCacheResolution;
     initialTransport: RunTransportResolution;
+    toolDefinitions: ProviderRuntimeToolDefinition[];
     runContext?: RunContext;
     kiloRouting?: ResolvedKiloRouting;
     workspaceContext?: ResolvedWorkspaceContext;

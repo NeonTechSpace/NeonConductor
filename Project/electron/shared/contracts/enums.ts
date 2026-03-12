@@ -98,6 +98,7 @@ export const runtimeMessagePartTypes = [
     'reasoning_summary',
     'reasoning_encrypted',
     'tool_call',
+    'tool_result',
     'error',
     'status',
 ] as const;

@@ -119,6 +119,19 @@ export interface ProviderRuntimeUsage {
     costMicrounits?: number;
 }
 
+export interface ProviderRuntimeToolDefinition {
+    id: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+}
+
+export interface ProviderRuntimeToolResult {
+    callId: string;
+    toolName: string;
+    outputText: string;
+    isError: boolean;
+}
+
 export interface ProviderRuntimePart {
     partType: RuntimeMessagePartType;
     payload: Record<string, unknown>;
@@ -168,7 +181,7 @@ export interface ProviderRuntimeInput {
     modelId: string;
     promptText: string;
     contextMessages?: Array<{
-        role: 'system' | 'user' | 'assistant';
+        role: 'system' | 'user' | 'assistant' | 'tool';
         parts: Array<
             | {
                   type: 'text';
@@ -181,8 +194,24 @@ export interface ProviderRuntimeInput {
                   width: number;
                   height: number;
               }
+            | {
+                  type: 'tool_call';
+                  callId: string;
+                  toolName: string;
+                  argumentsText: string;
+              }
+            | {
+                  type: 'tool_result';
+                  callId: string;
+                  toolName: string;
+                  outputText: string;
+                  isError: boolean;
+              }
         >;
     }>;
+    tools?: ProviderRuntimeToolDefinition[];
+    toolResults?: ProviderRuntimeToolResult[];
+    toolChoice?: 'auto';
     runtimeOptions: {
         reasoning: ProviderRuntimeReasoningOptions;
         cache: ProviderRuntimeCacheOptions;

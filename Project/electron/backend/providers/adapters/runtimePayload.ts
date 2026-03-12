@@ -5,7 +5,7 @@ import {
 } from '@/app/backend/providers/adapters/errors';
 
 export interface RuntimeParsedPart {
-    partType: 'text' | 'reasoning' | 'reasoning_summary' | 'reasoning_encrypted';
+    partType: 'text' | 'reasoning' | 'reasoning_summary' | 'reasoning_encrypted' | 'tool_call';
     payload: Record<string, unknown>;
 }
 
@@ -35,6 +35,10 @@ function readOptionalString(value: unknown): string | undefined {
 
 function readOptionalNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readOptionalRecord(value: unknown): Record<string, unknown> | undefined {
+    return isRecord(value) ? value : undefined;
 }
 
 function normalizeUsage(value: unknown): RuntimeParsedCompletion['usage'] {
@@ -139,6 +143,58 @@ function parseReasoningTextParts(reasoningSource: Record<string, unknown>): Runt
     return parts;
 }
 
+export function parseStructuredToolCall(input: {
+    callId: unknown;
+    toolName: unknown;
+    argumentsText: unknown;
+    sourceLabel: string;
+}): ProviderAdapterResult<RuntimeParsedPart> {
+    const callId = readOptionalString(input.callId);
+    if (!callId) {
+        return errProviderAdapter('invalid_payload', `${input.sourceLabel} tool call is missing a call id.`);
+    }
+
+    const toolName = readOptionalString(input.toolName);
+    if (!toolName) {
+        return errProviderAdapter('invalid_payload', `${input.sourceLabel} tool call is missing a function name.`);
+    }
+
+    const argumentsText = typeof input.argumentsText === 'string' ? input.argumentsText : undefined;
+    if (argumentsText === undefined) {
+        return errProviderAdapter(
+            'invalid_payload',
+            `${input.sourceLabel} tool call "${toolName}" is missing serialized arguments.`
+        );
+    }
+
+    let parsedArguments: unknown;
+    try {
+        parsedArguments = JSON.parse(argumentsText);
+    } catch {
+        return errProviderAdapter(
+            'invalid_payload',
+            `${input.sourceLabel} tool call "${toolName}" contained invalid JSON arguments.`
+        );
+    }
+
+    if (!isRecord(parsedArguments)) {
+        return errProviderAdapter(
+            'invalid_payload',
+            `${input.sourceLabel} tool call "${toolName}" must contain a JSON object for arguments.`
+        );
+    }
+
+    return okProviderAdapter({
+        partType: 'tool_call',
+        payload: {
+            callId,
+            toolName,
+            argumentsText,
+            args: parsedArguments,
+        },
+    });
+}
+
 function parseMessageContentAsParts(content: unknown): RuntimeParsedPart[] {
     if (typeof content === 'string') {
         const text = readOptionalString(content);
@@ -203,6 +259,24 @@ export function parseChatCompletionsPayload(payload: unknown): ProviderAdapterRe
 
     if (message) {
         parts.push(...parseMessageContentAsParts(message['content']));
+        const rawToolCalls = Array.isArray(message['tool_calls']) ? message['tool_calls'] : [];
+        for (const rawToolCall of rawToolCalls) {
+            if (!isRecord(rawToolCall)) {
+                continue;
+            }
+
+            const functionRecord = readOptionalRecord(rawToolCall['function']);
+            const toolCallResult = parseStructuredToolCall({
+                callId: rawToolCall['id'],
+                toolName: functionRecord?.['name'],
+                argumentsText: functionRecord?.['arguments'],
+                sourceLabel: 'Chat completions payload',
+            });
+            if (toolCallResult.isErr()) {
+                return errProviderAdapter(toolCallResult.error.code, toolCallResult.error.message);
+            }
+            parts.push(toolCallResult.value);
+        }
 
         const reasoning = message['reasoning'];
         if (typeof reasoning === 'string') {
@@ -247,6 +321,20 @@ export function parseResponsesPayload(payload: unknown): ProviderAdapterResult<R
             parts.push(...parseReasoningTextParts(item));
             parts.push(...parseReasoningSummaryParts(item));
             parts.push(...parseOpaqueReasoningParts(item));
+            continue;
+        }
+
+        if (type === 'function_call') {
+            const toolCallResult = parseStructuredToolCall({
+                callId: item['call_id'] ?? item['id'],
+                toolName: item['name'],
+                argumentsText: item['arguments'],
+                sourceLabel: 'Responses payload',
+            });
+            if (toolCallResult.isErr()) {
+                return errProviderAdapter(toolCallResult.error.code, toolCallResult.error.message);
+            }
+            parts.push(toolCallResult.value);
             continue;
         }
 

@@ -2,11 +2,11 @@ import { markdownToPlainText } from '@/web/components/content/markdown/plainText
 import type { MessageFlowBodyEntry } from '@/web/components/conversation/messages/messageFlowModel';
 
 function entryLabel(entry: MessageFlowBodyEntry): string | undefined {
-    if (entry.type !== 'assistant_reasoning') {
-        return undefined;
+    if (entry.type === 'assistant_reasoning') {
+        return entry.providerLimitedReasoning ? 'Reasoning (provider-limited)' : 'Reasoning';
     }
 
-    return entry.providerLimitedReasoning ? 'Reasoning (provider-limited)' : 'Reasoning';
+    return 'displayLabel' in entry ? entry.displayLabel : undefined;
 }
 
 function prefixSection(label: string | undefined, text: string): string {

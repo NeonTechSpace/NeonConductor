@@ -16,6 +16,18 @@ function readOptionalFiniteNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function sumOptionalNumbers(left: number | undefined, right: number | undefined): number | undefined {
+    if (left === undefined) {
+        return right;
+    }
+
+    if (right === undefined) {
+        return left;
+    }
+
+    return left + right;
+}
+
 export function mergeUsage(current: UsageAccumulator, next: unknown): UsageAccumulator {
     const merged: UsageAccumulator = {};
 
@@ -46,4 +58,38 @@ export function mergeUsage(current: UsageAccumulator, next: unknown): UsageAccum
     }
 
     return merged;
+}
+
+export function accumulateUsage(current: UsageAccumulator, next: unknown): UsageAccumulator {
+    if (!isRecord(next)) {
+        return current;
+    }
+
+    const inputTokens = readOptionalFiniteNumber(next['inputTokens']);
+    const outputTokens = readOptionalFiniteNumber(next['outputTokens']);
+    const cachedTokens = readOptionalFiniteNumber(next['cachedTokens']);
+    const reasoningTokens = readOptionalFiniteNumber(next['reasoningTokens']);
+    const totalTokens = readOptionalFiniteNumber(next['totalTokens']);
+    const latencyMs = readOptionalFiniteNumber(next['latencyMs']);
+    const costMicrounits = readOptionalFiniteNumber(next['costMicrounits']);
+
+    const accumulated: UsageAccumulator = {};
+
+    const nextInputTokens = sumOptionalNumbers(current.inputTokens, inputTokens);
+    const nextOutputTokens = sumOptionalNumbers(current.outputTokens, outputTokens);
+    const nextCachedTokens = sumOptionalNumbers(current.cachedTokens, cachedTokens);
+    const nextReasoningTokens = sumOptionalNumbers(current.reasoningTokens, reasoningTokens);
+    const nextTotalTokens = sumOptionalNumbers(current.totalTokens, totalTokens);
+    const nextLatencyMs = sumOptionalNumbers(current.latencyMs, latencyMs);
+    const nextCostMicrounits = sumOptionalNumbers(current.costMicrounits, costMicrounits);
+
+    if (nextInputTokens !== undefined) accumulated.inputTokens = nextInputTokens;
+    if (nextOutputTokens !== undefined) accumulated.outputTokens = nextOutputTokens;
+    if (nextCachedTokens !== undefined) accumulated.cachedTokens = nextCachedTokens;
+    if (nextReasoningTokens !== undefined) accumulated.reasoningTokens = nextReasoningTokens;
+    if (nextTotalTokens !== undefined) accumulated.totalTokens = nextTotalTokens;
+    if (nextLatencyMs !== undefined) accumulated.latencyMs = nextLatencyMs;
+    if (nextCostMicrounits !== undefined) accumulated.costMicrounits = nextCostMicrounits;
+
+    return accumulated;
 }

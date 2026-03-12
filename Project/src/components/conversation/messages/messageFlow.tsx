@@ -234,7 +234,14 @@ function MessageBody({
             {contentEntries.map((item) => (
                 <div key={item.id} className='space-y-2'>
                     {'text' in item ? (
-                        <MarkdownContent markdown={item.text} />
+                        <>
+                            {item.displayLabel ? (
+                                <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                    {item.displayLabel}
+                                </p>
+                            ) : null}
+                            <MarkdownContent markdown={item.text} />
+                        </>
                     ) : (
                         <TimelineImagePart profileId={profileId} item={item} />
                     )}

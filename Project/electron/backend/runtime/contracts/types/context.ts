@@ -48,7 +48,7 @@ export interface ResolvedModelLimits {
 }
 
 export interface TokenCountEstimatePart {
-    role: 'system' | 'user' | 'assistant';
+    role: 'system' | 'user' | 'assistant' | 'tool';
     textLength: number;
     tokenCount: number;
     containsImages?: boolean;

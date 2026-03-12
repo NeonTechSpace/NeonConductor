@@ -6,7 +6,13 @@ import { readImageMimeType } from '@/app/shared/imageMimeType';
 
 import type { EntityId } from '@/shared/contracts';
 
-export type MessageTimelineTextEntryType = 'assistant_reasoning' | 'assistant_text' | 'user_text' | 'system_text';
+export type MessageTimelineTextEntryType =
+    | 'assistant_reasoning'
+    | 'assistant_text'
+    | 'user_text'
+    | 'system_text'
+    | 'assistant_tool_call'
+    | 'tool_result';
 export type MessageTimelineImageEntryType = 'assistant_image' | 'user_image' | 'system_image';
 
 export type MessageTimelineBodyEntry =
@@ -15,6 +21,7 @@ export type MessageTimelineBodyEntry =
           type: MessageTimelineTextEntryType;
           text: string;
           providerLimitedReasoning: boolean;
+          displayLabel?: string;
       }
     | {
           id: string;
@@ -120,12 +127,12 @@ function buildBodyEntries(message: MessageRecord, parts: MessagePartRecord[]): M
             continue;
         }
 
-        const text = readTextPayload(part);
-        if (!text) {
-            continue;
-        }
-
         if (part.partType === 'reasoning') {
+            const text = readTextPayload(part);
+            if (!text) {
+                continue;
+            }
+
             projected.push({
                 id: part.id,
                 type: 'assistant_reasoning',
@@ -136,12 +143,49 @@ function buildBodyEntries(message: MessageRecord, parts: MessagePartRecord[]): M
         }
 
         if (part.partType === 'reasoning_summary') {
+            const text = readTextPayload(part);
+            if (!text) {
+                continue;
+            }
+
             projected.push({
                 id: part.id,
                 type: 'assistant_reasoning',
                 text,
                 providerLimitedReasoning: true,
             });
+            continue;
+        }
+
+        if (part.partType === 'tool_call' && message.role === 'assistant') {
+            const toolName = typeof part.payload['toolName'] === 'string' ? part.payload['toolName'] : 'tool';
+            const argumentsText =
+                typeof part.payload['argumentsText'] === 'string' ? part.payload['argumentsText'].trim() : '';
+            projected.push({
+                id: part.id,
+                type: 'assistant_tool_call',
+                text: argumentsText.length > 0 ? `\`\`\`json\n${argumentsText}\n\`\`\`` : '',
+                providerLimitedReasoning: false,
+                displayLabel: `Tool Call: ${toolName}`,
+            });
+            continue;
+        }
+
+        if (part.partType === 'tool_result' && message.role === 'tool') {
+            const outputText =
+                typeof part.payload['outputText'] === 'string' ? part.payload['outputText'] : '';
+            projected.push({
+                id: part.id,
+                type: 'tool_result',
+                text: outputText,
+                providerLimitedReasoning: false,
+                displayLabel: 'Tool Result',
+            });
+            continue;
+        }
+
+        const text = readTextPayload(part);
+        if (!text) {
             continue;
         }
 

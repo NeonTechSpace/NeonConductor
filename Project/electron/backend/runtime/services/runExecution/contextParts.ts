@@ -15,6 +15,34 @@ export function createTextPart(text: string): RunContextPart | null {
     };
 }
 
+export function createToolCallPart(input: {
+    callId: string;
+    toolName: string;
+    argumentsText: string;
+}): RunContextPart {
+    return {
+        type: 'tool_call',
+        callId: input.callId,
+        toolName: input.toolName,
+        argumentsText: input.argumentsText,
+    };
+}
+
+export function createToolResultPart(input: {
+    callId: string;
+    toolName: string;
+    outputText: string;
+    isError: boolean;
+}): RunContextPart {
+    return {
+        type: 'tool_result',
+        callId: input.callId,
+        toolName: input.toolName,
+        outputText: input.outputText,
+        isError: input.isError,
+    };
+}
+
 export function createTextMessage(
     role: RunContextMessage['role'],
     text: string
@@ -63,8 +91,22 @@ export function appendPromptMessage(input: {
 
 export function extractTextFromParts(parts: RunContextPart[]): string {
     return parts
-        .filter((part): part is Extract<RunContextPart, { type: 'text' }> => part.type === 'text')
-        .map((part) => part.text)
+        .map((part) => {
+            if (part.type === 'text') {
+                return part.text;
+            }
+
+            if (part.type === 'tool_call') {
+                return `${part.toolName}\n${part.argumentsText}`;
+            }
+
+            if (part.type === 'tool_result') {
+                return part.outputText;
+            }
+
+            return null;
+        })
+        .filter((part): part is string => typeof part === 'string')
         .join('\n\n')
         .trim();
 }
@@ -76,6 +118,14 @@ export function hasImageParts(messages: RunContextMessage[]): boolean {
 export function hashablePartContent(part: RunContextPart): string {
     if (part.type === 'text') {
         return part.text;
+    }
+
+    if (part.type === 'tool_call') {
+        return [part.callId, part.toolName, part.argumentsText].join('|');
+    }
+
+    if (part.type === 'tool_result') {
+        return [part.callId, part.toolName, part.outputText, String(part.isError)].join('|');
     }
 
     return [part.mediaId ?? '', part.sha256 ?? '', part.mimeType, String(part.width), String(part.height)].join('|');

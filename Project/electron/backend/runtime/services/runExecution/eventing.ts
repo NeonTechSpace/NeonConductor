@@ -1,5 +1,5 @@
 import { messageStore } from '@/app/backend/persistence/stores';
-import type { MessagePartRecord } from '@/app/backend/persistence/types';
+import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
 import type { ProviderRuntimePart, ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
 import { isReasoningPart } from '@/app/backend/runtime/services/runExecution/parts';
 import type { RunCacheResolution } from '@/app/backend/runtime/services/runExecution/types';
@@ -113,7 +113,29 @@ async function emitMessagePartUpdatedEvent(input: {
     );
 }
 
-export function createAssistantMessagePartRecorder(input: {
+export async function emitMessageCreatedEvent(input: {
+    runId: string;
+    profileId: string;
+    sessionId: string;
+    message: MessageRecord;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeUpsertEvent({
+            entityType: 'message',
+            domain: 'message',
+            entityId: input.message.id,
+            eventType: 'message.created',
+            payload: {
+                runId: input.runId,
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                message: input.message,
+            },
+        })
+    );
+}
+
+export function createMessagePartRecorder(input: {
     runId: string;
     profileId: string;
     sessionId: string;
@@ -166,4 +188,13 @@ export function createAssistantMessagePartRecorder(input: {
             });
         },
     };
+}
+
+export function createAssistantMessagePartRecorder(input: {
+    runId: string;
+    profileId: string;
+    sessionId: string;
+    messageId: string;
+}) {
+    return createMessagePartRecorder(input);
 }

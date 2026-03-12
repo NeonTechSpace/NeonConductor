@@ -6,13 +6,14 @@ import { emitCacheResolutionEvent, emitTransportSelectionEvent } from '@/app/bac
 import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import type { EntityId } from '@/app/backend/runtime/contracts';
 
 export async function persistRunStart(input: {
     input: StartRunInput;
     prepared: PreparedRunStart;
 }): Promise<{
     run: Awaited<ReturnType<typeof runStore.create>>;
-    assistantMessageId: string;
+    assistantMessageId: EntityId<'msg'>;
 }> {
     const run = await runStore.create({
         profileId: input.input.profileId,

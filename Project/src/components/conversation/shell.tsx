@@ -23,6 +23,7 @@ import {
     DEFAULT_REASONING_EFFORT,
     isEntityId,
     isProviderId,
+    modeRequiresNativeTools,
 } from '@/web/components/conversation/shell/workspace/helpers';
 import { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
@@ -178,6 +179,7 @@ export function ConversationShell({
         providerModels: queries.shellBootstrapQuery.data?.providerModels ?? [],
         defaults: queries.shellBootstrapQuery.data?.defaults,
         runs: [],
+        requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
     });
     const shellViewModel = useConversationShellViewModel({
@@ -194,6 +196,7 @@ export function ConversationShell({
         providerModels: queries.shellBootstrapQuery.data?.providerModels ?? [],
         defaults: queries.shellBootstrapQuery.data?.defaults,
         runs: shellViewModel.sessionRunSelection.runs,
+        requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
     });
     const selectedSessionId = shellViewModel.sessionRunSelection.selection.resolvedSessionId;

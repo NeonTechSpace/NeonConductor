@@ -127,6 +127,104 @@ describe('runtime contracts: provider and account flows', () => {
     });
 
 
+    it('rejects tool-capable agent runs when the selected model does not support native tools', async () => {
+        const caller = createCaller();
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-no-tools-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/gpt-5-no-tools', 'openai', 'GPT 5 No Tools', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/gpt-5-no-tools',
+                'GPT 5 No Tools',
+                'openai',
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const workspaceFingerprint = 'ws_no_tools_agent';
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'No Tools Agent Thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Try to inspect the workspace',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+        });
+        expect(started.accepted).toBe(false);
+        if (started.accepted) {
+            throw new Error('Expected tool-capable agent run to be rejected.');
+        }
+        expect(started.code).toBe('runtime_option_invalid');
+        expect(started.message).toContain('does not support native tool calling');
+    });
+
+
     it('persists provider default in memory and lists models', async () => {
         const caller = createCaller();
 

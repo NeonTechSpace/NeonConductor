@@ -646,7 +646,7 @@ function readMessagePartRecord(value: unknown): MessagePartRecord | undefined {
     const sequence = readNumber(value['sequence']);
     const partType = readLiteral(
         value['partType'],
-        ['text', 'image', 'reasoning', 'reasoning_summary', 'reasoning_encrypted', 'tool_call', 'error', 'status'] as const
+        ['text', 'image', 'reasoning', 'reasoning_summary', 'reasoning_encrypted', 'tool_call', 'tool_result', 'error', 'status'] as const
     );
     const payload = isRecord(value['payload']) ? value['payload'] : undefined;
     const createdAt = readString(value['createdAt']);
@@ -662,6 +662,44 @@ function readMessagePartRecord(value: unknown): MessagePartRecord | undefined {
         partType,
         payload,
         createdAt,
+    };
+}
+
+function readMessageRecord(value: unknown): MessageRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const sessionId = readString(value['sessionId']);
+    const runId = readString(value['runId']);
+    const role = readLiteral(value['role'], ['user', 'assistant', 'system', 'tool'] as const);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    if (
+        !id ||
+        !isEntityId(id, 'msg') ||
+        !profileId ||
+        !sessionId ||
+        !isEntityId(sessionId, 'sess') ||
+        !runId ||
+        !isEntityId(runId, 'run') ||
+        !role ||
+        !createdAt ||
+        !updatedAt
+    ) {
+        return undefined;
+    }
+
+    return {
+        id,
+        profileId,
+        sessionId,
+        runId,
+        role,
+        createdAt,
+        updatedAt,
     };
 }
 
@@ -850,6 +888,30 @@ export function applyRuntimeEventPatches(
                 return {
                     ...current,
                     messageParts: upsertMessagePartRecord(current.messageParts, messagePart),
+                };
+            }
+        );
+        return true;
+    }
+
+    if (event.domain === 'message') {
+        const message = readMessageRecord(event.payload['message']);
+        if (!message || !context.profileId || !context.sessionId) {
+            return false;
+        }
+
+        updateMatchingQueryData<SessionMessagesQueryData>(
+            ['session', 'listMessages', context.profileId, context.sessionId],
+            (current) => {
+                if (!current) {
+                    return current;
+                }
+
+                return {
+                    ...current,
+                    messages: [...current.messages.filter((candidate) => candidate.id !== message.id), message].sort((left, right) =>
+                        left.createdAt.localeCompare(right.createdAt)
+                    ),
                 };
             }
         );

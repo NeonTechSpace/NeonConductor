@@ -1,4 +1,4 @@
-import type { ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
+import type { ProviderRuntimeToolDefinition, ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import { ensureCheckpointForRun } from '@/app/backend/runtime/services/checkpoint/service';
 import { executeRun, isAbortError } from '@/app/backend/runtime/services/runExecution/executeRun';
@@ -20,6 +20,7 @@ export async function runToTerminalState(input: {
     runtimeOptions: StartRunInput['runtimeOptions'];
     cache: RunCacheResolution;
     transportSelection: ProviderRuntimeTransportSelection;
+    toolDefinitions: ProviderRuntimeToolDefinition[];
     apiKey?: string;
     accessToken?: string;
     organizationId?: string;
@@ -27,7 +28,7 @@ export async function runToTerminalState(input: {
     contextMessages?: RunContextMessage[];
     workspaceFingerprint?: string;
     worktreeId?: EntityId<'wt'>;
-    assistantMessageId: string;
+    assistantMessageId: EntityId<'msg'>;
     signal: AbortSignal;
 }): Promise<void> {
     try {

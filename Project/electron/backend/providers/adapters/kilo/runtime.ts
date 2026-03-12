@@ -160,7 +160,5 @@ export async function streamKiloRuntime(
     if (parsed.isErr()) {
         return failKiloRuntime(input, 'payload parse', parsed.error.code, parsed.error.message);
     }
-    await emitParsedCompletion(parsed.value, handlers, startedAt);
-
-    return okProviderAdapter(undefined);
+    return emitParsedCompletion(parsed.value, handlers, startedAt);
 }

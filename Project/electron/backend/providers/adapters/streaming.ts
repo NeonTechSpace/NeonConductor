@@ -3,7 +3,11 @@ import {
     okProviderAdapter,
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
-import type { RuntimeParsedCompletion, RuntimeParsedPart } from '@/app/backend/providers/adapters/runtimePayload';
+import {
+    parseStructuredToolCall,
+    type RuntimeParsedCompletion,
+    type RuntimeParsedPart,
+} from '@/app/backend/providers/adapters/runtimePayload';
 import type { ProviderRuntimeHandlers, ProviderRuntimeUsage } from '@/app/backend/providers/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -16,6 +20,10 @@ function readOptionalString(value: unknown): string | undefined {
 
 function readOptionalNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readOptionalRecord(value: unknown): Record<string, unknown> | undefined {
+    return isRecord(value) ? value : undefined;
 }
 
 function normalizeUsage(value: unknown): ProviderRuntimeUsage | undefined {
@@ -169,7 +177,7 @@ async function emitParsedCompletionParts(input: {
     parsed: { parts: RuntimeParsedPart[]; usage?: ProviderRuntimeUsage };
     handlers: ProviderRuntimeHandlers;
     startedAt: number;
-}): Promise<void> {
+}): Promise<ProviderAdapterResult<void>> {
     for (const part of input.parsed.parts) {
         await input.handlers.onPart(part);
     }
@@ -180,6 +188,8 @@ async function emitParsedCompletionParts(input: {
             latencyMs: Date.now() - input.startedAt,
         });
     }
+
+    return okProviderAdapter(undefined);
 }
 
 interface ServerSentEventFrame {
@@ -218,7 +228,7 @@ function parseServerSentEventFrame(frame: string): ServerSentEventFrame | null {
 
 async function consumeServerSentEvents(
     response: Response,
-    onFrame: (frame: ServerSentEventFrame) => Promise<void>
+    onFrame: (frame: ServerSentEventFrame) => Promise<ProviderAdapterResult<void>>
 ): Promise<ProviderAdapterResult<void>> {
     try {
         const stream = response.body;
@@ -240,8 +250,13 @@ async function consumeServerSentEvents(
 
             for (const frame of frames) {
                 const parsedFrame = parseServerSentEventFrame(frame);
-                if (parsedFrame) {
-                    await onFrame(parsedFrame);
+                if (!parsedFrame) {
+                    continue;
+                }
+
+                const frameResult = await onFrame(parsedFrame);
+                if (frameResult.isErr()) {
+                    return frameResult;
                 }
             }
 
@@ -252,7 +267,10 @@ async function consumeServerSentEvents(
 
         const trailingFrame = parseServerSentEventFrame(buffer);
         if (trailingFrame) {
-            await onFrame(trailingFrame);
+            const trailingResult = await onFrame(trailingFrame);
+            if (trailingResult.isErr()) {
+                return trailingResult;
+            }
         }
 
         return okProviderAdapter(undefined);
@@ -262,6 +280,138 @@ async function consumeServerSentEvents(
             error instanceof Error ? error.message : 'Streaming response parsing failed.'
         );
     }
+}
+
+interface ChatStreamToolCallAccumulator {
+    index: number;
+    callId?: string;
+    toolName?: string;
+    argumentsText: string;
+}
+
+function flushChatToolCalls(
+    accumulators: Map<number, ChatStreamToolCallAccumulator>
+): ProviderAdapterResult<RuntimeParsedPart[]> {
+    const toolCallParts: RuntimeParsedPart[] = [];
+    for (const accumulator of [...accumulators.values()].sort((left, right) => left.index - right.index)) {
+        const partResult = parseStructuredToolCall({
+            callId: accumulator.callId,
+            toolName: accumulator.toolName,
+            argumentsText: accumulator.argumentsText,
+            sourceLabel: 'Chat completions stream',
+        });
+        if (partResult.isErr()) {
+            return errProviderAdapter(partResult.error.code, partResult.error.message);
+        }
+
+        toolCallParts.push(partResult.value);
+    }
+
+    accumulators.clear();
+    return okProviderAdapter(toolCallParts);
+}
+
+function accumulateChatToolCalls(
+    payload: unknown,
+    accumulators: Map<number, ChatStreamToolCallAccumulator>
+): { shouldFlush: boolean } {
+    if (!isRecord(payload)) {
+        return { shouldFlush: false };
+    }
+
+    const choices = Array.isArray(payload['choices']) ? payload['choices'] : [];
+    let shouldFlush = false;
+    for (const choice of choices) {
+        if (!isRecord(choice)) {
+            continue;
+        }
+
+        const finishReason = readOptionalString(choice['finish_reason']);
+        if (finishReason === 'tool_calls') {
+            shouldFlush = true;
+        }
+
+        const delta = readOptionalRecord(choice['delta']);
+        const rawToolCalls = Array.isArray(delta?.['tool_calls']) ? delta['tool_calls'] : [];
+        for (const rawToolCall of rawToolCalls) {
+            if (!isRecord(rawToolCall)) {
+                continue;
+            }
+
+            const index = readOptionalNumber(rawToolCall['index']) ?? accumulators.size;
+            const current = accumulators.get(index) ?? {
+                index,
+                argumentsText: '',
+            };
+            const functionRecord = readOptionalRecord(rawToolCall['function']);
+            const argumentsDelta = typeof functionRecord?.['arguments'] === 'string' ? functionRecord['arguments'] : '';
+            const nextCallId = readOptionalString(rawToolCall['id']);
+            const nextToolName = readOptionalString(functionRecord?.['name']);
+
+            accumulators.set(index, {
+                ...current,
+                ...(nextCallId ? { callId: nextCallId } : {}),
+                ...(nextToolName ? { toolName: nextToolName } : {}),
+                argumentsText: `${current.argumentsText}${argumentsDelta}`,
+            });
+        }
+    }
+
+    return { shouldFlush };
+}
+
+function parseResponsesToolCallParts(input: {
+    eventName?: string;
+    payload: unknown;
+}): ProviderAdapterResult<RuntimeParsedPart[]> {
+    if (!isRecord(input.payload)) {
+        return okProviderAdapter([]);
+    }
+
+    const type = readOptionalString(input.payload['type']) ?? input.eventName;
+    if (!type) {
+        return okProviderAdapter([]);
+    }
+
+    const toolCallParts: RuntimeParsedPart[] = [];
+    const tryAppendToolCall = (item: unknown, sourceLabel: string): ProviderAdapterResult<void> => {
+        if (!isRecord(item) || readOptionalString(item['type']) !== 'function_call') {
+            return okProviderAdapter(undefined);
+        }
+
+        const partResult = parseStructuredToolCall({
+            callId: item['call_id'] ?? item['id'],
+            toolName: item['name'],
+            argumentsText: item['arguments'],
+            sourceLabel,
+        });
+        if (partResult.isErr()) {
+            return errProviderAdapter(partResult.error.code, partResult.error.message);
+        }
+
+        toolCallParts.push(partResult.value);
+        return okProviderAdapter(undefined);
+    };
+
+    if (type === 'response.output_item.done') {
+        const appended = tryAppendToolCall(input.payload['item'], 'Responses stream');
+        if (appended.isErr()) {
+            return errProviderAdapter(appended.error.code, appended.error.message);
+        }
+    }
+
+    if (type === 'response.completed') {
+        const responseRecord = readOptionalRecord(input.payload['response']);
+        const outputItems = Array.isArray(responseRecord?.['output']) ? responseRecord['output'] : [];
+        for (const outputItem of outputItems) {
+            const appended = tryAppendToolCall(outputItem, 'Responses stream');
+            if (appended.isErr()) {
+                return errProviderAdapter(appended.error.code, appended.error.message);
+            }
+        }
+    }
+
+    return okProviderAdapter(toolCallParts);
 }
 
 export function isEventStreamResponse(response: Response): boolean {
@@ -274,8 +424,8 @@ export async function emitParsedCompletion(
     parsed: RuntimeParsedCompletion,
     handlers: ProviderRuntimeHandlers,
     startedAt: number
-): Promise<void> {
-    await emitParsedCompletionParts({
+): Promise<ProviderAdapterResult<void>> {
+    return emitParsedCompletionParts({
         parsed: {
             parts: parsed.parts,
             usage: parsed.usage,
@@ -290,20 +440,58 @@ export async function consumeChatCompletionsStreamResponse(input: {
     handlers: ProviderRuntimeHandlers;
     startedAt: number;
 }): Promise<ProviderAdapterResult<void>> {
+    const toolCallAccumulators = new Map<number, ChatStreamToolCallAccumulator>();
+
     return consumeServerSentEvents(input.response, async (frame) => {
         if (frame.data === '[DONE]') {
-            return;
+            if (toolCallAccumulators.size === 0) {
+                return okProviderAdapter(undefined);
+            }
+
+            const flushedToolCalls = flushChatToolCalls(toolCallAccumulators);
+            if (flushedToolCalls.isErr()) {
+                return errProviderAdapter(flushedToolCalls.error.code, flushedToolCalls.error.message);
+            }
+
+            return emitParsedCompletionParts({
+                parsed: {
+                    parts: flushedToolCalls.value,
+                },
+                handlers: input.handlers,
+                startedAt: input.startedAt,
+            });
         }
 
         let payload: unknown;
         try {
             payload = JSON.parse(frame.data);
         } catch {
-            return;
+            return okProviderAdapter(undefined);
         }
 
-        await emitParsedCompletionParts({
+        const accumulation = accumulateChatToolCalls(payload, toolCallAccumulators);
+        const parsedChunkResult = await emitParsedCompletionParts({
             parsed: parseChatCompletionsStreamChunk(payload),
+            handlers: input.handlers,
+            startedAt: input.startedAt,
+        });
+        if (parsedChunkResult.isErr()) {
+            return parsedChunkResult;
+        }
+
+        if (!accumulation.shouldFlush || toolCallAccumulators.size === 0) {
+            return okProviderAdapter(undefined);
+        }
+
+        const flushedToolCalls = flushChatToolCalls(toolCallAccumulators);
+        if (flushedToolCalls.isErr()) {
+            return errProviderAdapter(flushedToolCalls.error.code, flushedToolCalls.error.message);
+        }
+
+        return emitParsedCompletionParts({
+            parsed: {
+                parts: flushedToolCalls.value,
+            },
             handlers: input.handlers,
             startedAt: input.startedAt,
         });
@@ -315,23 +503,58 @@ export async function consumeResponsesStreamResponse(input: {
     handlers: ProviderRuntimeHandlers;
     startedAt: number;
 }): Promise<ProviderAdapterResult<void>> {
+    const emittedToolCallIds = new Set<string>();
+
     return consumeServerSentEvents(input.response, async (frame) => {
         if (frame.data === '[DONE]') {
-            return;
+            return okProviderAdapter(undefined);
         }
 
         let payload: unknown;
         try {
             payload = JSON.parse(frame.data);
         } catch {
-            return;
+            return okProviderAdapter(undefined);
         }
 
-        await emitParsedCompletionParts({
+        const parsedChunkResult = await emitParsedCompletionParts({
             parsed: parseResponsesStreamChunk({
                 ...(frame.eventName ? { eventName: frame.eventName } : {}),
                 payload,
             }),
+            handlers: input.handlers,
+            startedAt: input.startedAt,
+        });
+        if (parsedChunkResult.isErr()) {
+            return parsedChunkResult;
+        }
+
+        const toolCallPartsResult = parseResponsesToolCallParts({
+            ...(frame.eventName ? { eventName: frame.eventName } : {}),
+            payload,
+        });
+        if (toolCallPartsResult.isErr()) {
+            return errProviderAdapter(toolCallPartsResult.error.code, toolCallPartsResult.error.message);
+        }
+
+        const nextToolCallParts = toolCallPartsResult.value.filter((part) => {
+            const callId = part.payload['callId'];
+            if (typeof callId !== 'string' || emittedToolCallIds.has(callId)) {
+                return false;
+            }
+
+            emittedToolCallIds.add(callId);
+            return true;
+        });
+
+        if (nextToolCallParts.length === 0) {
+            return okProviderAdapter(undefined);
+        }
+
+        return emitParsedCompletionParts({
+            parsed: {
+                parts: nextToolCallParts,
+            },
             handlers: input.handlers,
             startedAt: input.startedAt,
         });

@@ -9,6 +9,7 @@ import { resolveModeExecution } from '@/app/backend/runtime/services/runExecutio
 import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
 import { resolveFirstRunnableRunTarget } from '@/app/backend/runtime/services/runExecution/resolveRunnableTarget';
 import { resolveRunTarget } from '@/app/backend/runtime/services/runExecution/resolveRunTarget';
+import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import { resolveInitialRunTransport } from '@/app/backend/runtime/services/runExecution/transport';
 import type {
     PreparedRunStart,
@@ -80,6 +81,8 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
         modelId: activeTarget.modelId,
         modelCapabilities,
         runtimeOptions: input.runtimeOptions,
+        topLevelTab: input.topLevelTab,
+        mode: resolvedModeResult.value.mode,
     });
     if (capabilityValidation.isErr()) {
         return errRunExecution(capabilityValidation.error.code, capabilityValidation.error.message);
@@ -94,6 +97,10 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
     const initialTransport = resolveInitialRunTransport({
         providerId: activeTarget.providerId,
         runtimeOptions: input.runtimeOptions,
+    });
+    const toolDefinitions = await resolveRuntimeToolsForMode({
+        topLevelTab: input.topLevelTab,
+        mode: resolvedModeResult.value.mode,
     });
     const runContextResult = await buildRunContext({
         profileId: input.profileId,
@@ -156,6 +163,7 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
         resolvedAuth,
         resolvedCache: resolvedCacheResult.value,
         initialTransport,
+        toolDefinitions,
         ...(runContext ? { runContext } : {}),
         ...(kiloRouting ? { kiloRouting } : {}),
     });

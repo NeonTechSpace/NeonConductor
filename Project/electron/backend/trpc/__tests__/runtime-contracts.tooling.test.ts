@@ -756,6 +756,154 @@ describe('runtime contracts: permissions and tooling', () => {
         rmSync(workspacePath, { recursive: true, force: true });
     }, 15_000);
 
+    it('executes native provider tool calls through the run loop and persists tool results', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-native-tool-loop-'));
+        writeFileSync(path.join(workspacePath, 'README.md'), 'native tool loop\n', 'utf8');
+
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => ({
+                    output: [
+                        {
+                            type: 'function_call',
+                            call_id: 'call_readme',
+                            name: 'read_file',
+                            arguments: '{"path":"README.md"}',
+                        },
+                    ],
+                    usage: {
+                        input_tokens: 20,
+                        output_tokens: 5,
+                        total_tokens: 25,
+                    },
+                }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => ({
+                    output: [
+                        {
+                            type: 'message',
+                            content: [
+                                {
+                                    type: 'output_text',
+                                    text: 'File inspected successfully.',
+                                },
+                            ],
+                        },
+                    ],
+                    usage: {
+                        input_tokens: 30,
+                        output_tokens: 8,
+                        total_tokens: 38,
+                    },
+                }),
+            });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-native-tool-key',
+        });
+        expect(configured.success).toBe(true);
+
+        await caller.profile.setExecutionPreset({
+            profileId,
+            preset: 'yolo',
+        });
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Native Tool Loop Thread',
+        });
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === thread.thread.id);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for native tool loop test.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId: requireEntityId(thread.thread.id, 'thr', 'Expected workspace thread id.'),
+            kind: 'local',
+        });
+        expect(created.created).toBe(true);
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Read the README',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: workspaceThread.workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected native tool loop run to start.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const messages = await caller.session.listMessages({
+            profileId,
+            sessionId: created.session.id,
+            runId: started.runId,
+        });
+        expect(messages.messages.map((message) => message.role)).toEqual(['user', 'assistant', 'tool', 'assistant']);
+        expect(
+            messages.messageParts.some(
+                (part) =>
+                    part.partType === 'tool_call' &&
+                    part.payload['toolName'] === 'read_file' &&
+                    part.payload['callId'] === 'call_readme'
+            )
+        ).toBe(true);
+        expect(
+            messages.messageParts.some(
+                (part) =>
+                    part.partType === 'tool_result' &&
+                    typeof part.payload['outputText'] === 'string' &&
+                    String(part.payload['outputText']).includes('native tool loop')
+            )
+        ).toBe(true);
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        const secondCallInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
+        expect(secondCallInit).toBeDefined();
+        const secondCallBody =
+            secondCallInit && typeof secondCallInit.body === 'string'
+                ? JSON.parse(secondCallInit.body)
+                : undefined;
+        expect(JSON.stringify(secondCallBody)).toContain('function_call_output');
+        expect(JSON.stringify(secondCallBody)).toContain('call_readme');
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    }, 15_000);
+
 
     it('records unsupported diff artifacts for non-git mutation runs and skips checkpoints', async () => {
         const caller = createCaller();

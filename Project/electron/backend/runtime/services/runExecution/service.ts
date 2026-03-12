@@ -168,6 +168,7 @@ export class RunExecutionService {
             runtimeOptions: input.runtimeOptions,
             cache: prepared.resolvedCache,
             transportSelection,
+            toolDefinitions: prepared.toolDefinitions,
             ...(prepared.resolvedAuth.apiKey ? { apiKey: prepared.resolvedAuth.apiKey } : {}),
             ...(prepared.resolvedAuth.accessToken ? { accessToken: prepared.resolvedAuth.accessToken } : {}),
             ...(prepared.resolvedAuth.organizationId

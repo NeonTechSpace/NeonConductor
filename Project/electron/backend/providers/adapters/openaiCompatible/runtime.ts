@@ -184,8 +184,7 @@ async function handleRuntimeResponse(input: {
         return errProviderAdapter(parsed.error.code, parsed.error.message);
     }
 
-    await emitParsedCompletion(parsed.value, input.handlers, input.startedAt);
-    return okProviderAdapter(undefined);
+    return emitParsedCompletion(parsed.value, input.handlers, input.startedAt);
 }
 
 function buildResponsesBody(input: ProviderRuntimeInput, modelPrefix: string): Record<string, unknown> {
@@ -197,28 +196,81 @@ function buildResponsesBody(input: ProviderRuntimeInput, modelPrefix: string): R
             ? input.contextMessages
             : [{ role: 'user' as const, parts: [{ type: 'text' as const, text: input.promptText }] }];
 
+    const responseInputItems = contextMessages.flatMap((message) => {
+        const textAndImageParts = message.parts.filter(
+            (
+                part
+            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+                part.type === 'text' || part.type === 'image'
+        );
+        const toolCallParts = message.parts.filter(
+            (
+                part
+            ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+        );
+        const toolResultParts = message.parts.filter(
+            (
+                part
+            ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> => part.type === 'tool_result'
+        );
+
+        const items: Array<Record<string, unknown>> = [];
+        if (textAndImageParts.length > 0) {
+            items.push({
+                role: message.role,
+                content: textAndImageParts.map((part) =>
+                    part.type === 'text'
+                        ? {
+                              type: 'input_text',
+                              text: part.text,
+                          }
+                        : {
+                              type: 'input_image',
+                              image_url: part.dataUrl,
+                          }
+                ),
+            });
+        }
+
+        for (const toolCallPart of toolCallParts) {
+            items.push({
+                type: 'function_call',
+                call_id: toolCallPart.callId,
+                name: toolCallPart.toolName,
+                arguments: toolCallPart.argumentsText,
+            });
+        }
+
+        for (const toolResultPart of toolResultParts) {
+            items.push({
+                type: 'function_call_output',
+                call_id: toolResultPart.callId,
+                output: toolResultPart.outputText,
+            });
+        }
+
+        return items;
+    });
+
     const body: Record<string, unknown> = {
         model: toUpstreamModelId(input.modelId, modelPrefix),
         stream: true,
-        input: contextMessages.map((message) => ({
-            role: message.role,
-            content: message.parts.map((part) =>
-                part.type === 'text'
-                    ? {
-                          type: 'input_text',
-                          text: part.text,
-                      }
-                    : {
-                          type: 'input_image',
-                          image_url: part.dataUrl,
-                      }
-            ),
-        })),
+        input: responseInputItems,
         reasoning: {
             summary: input.runtimeOptions.reasoning.summary,
             ...(effort ? { effort } : {}),
         },
     };
+
+    if (input.tools && input.tools.length > 0) {
+        body['tools'] = input.tools.map((tool) => ({
+            type: 'function',
+            name: tool.id,
+            description: tool.description,
+            parameters: tool.inputSchema,
+        }));
+        body['tool_choice'] = input.toolChoice ?? 'auto';
+    }
 
     if (include.length > 0) {
         body['include'] = include;
@@ -228,37 +280,133 @@ function buildResponsesBody(input: ProviderRuntimeInput, modelPrefix: string): R
 }
 
 function buildChatCompletionsBody(input: ProviderRuntimeInput, modelPrefix: string): Record<string, unknown> {
+    type ChatCompletionRequestMessage =
+        | {
+              role: 'tool';
+              tool_call_id: string;
+              content: string;
+          }
+        | {
+              role: 'system' | 'user' | 'assistant';
+              content:
+                  | string
+                  | Array<
+                        | {
+                              type: 'text';
+                              text: string;
+                          }
+                        | {
+                              type: 'image_url';
+                              image_url: {
+                                  url: string;
+                              };
+                          }
+                    >
+                  | null;
+              tool_calls?: Array<{
+                  id: string;
+                  type: 'function';
+                  function: {
+                      name: string;
+                      arguments: string;
+                  };
+              }>;
+          };
+
     const contextMessages =
         input.contextMessages && input.contextMessages.length > 0
             ? input.contextMessages
             : [{ role: 'user' as const, parts: [{ type: 'text' as const, text: input.promptText }] }];
 
-    return {
-        model: toUpstreamModelId(input.modelId, modelPrefix),
-        messages: contextMessages.map((message) => ({
+    const messages: ChatCompletionRequestMessage[] = [];
+    for (const message of contextMessages) {
+        if (message.role === 'tool') {
+            const toolMessages = message.parts
+                .filter(
+                    (
+                        part
+                    ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
+                        part.type === 'tool_result'
+                )
+                .map((part) => ({
+                    role: 'tool' as const,
+                    tool_call_id: part.callId,
+                    content: part.outputText,
+                }));
+            messages.push(...toolMessages);
+            continue;
+        }
+
+        const contentParts = message.parts.filter(
+            (
+                part
+            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+                part.type === 'text' || part.type === 'image'
+        );
+        const toolCallParts = message.parts.filter(
+            (
+                part
+            ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+        );
+        const content =
+            contentParts.length === 0
+                ? null
+                : contentParts.length === 1 && contentParts[0]?.type === 'text'
+                  ? contentParts[0].text
+                  : contentParts.map((part) =>
+                        part.type === 'text'
+                            ? {
+                                  type: 'text' as const,
+                                  text: part.text,
+                              }
+                            : {
+                                  type: 'image_url' as const,
+                                  image_url: {
+                                      url: part.dataUrl,
+                                  },
+                              }
+                    );
+
+        messages.push({
             role: message.role,
-            content:
-                message.parts.length === 1 && message.parts[0]?.type === 'text'
-                    ? message.parts[0].text
-                    : message.parts.map((part) =>
-                          part.type === 'text'
-                              ? {
-                                    type: 'text',
-                                    text: part.text,
-                                }
-                              : {
-                                    type: 'image_url',
-                                    image_url: {
-                                        url: part.dataUrl,
-                                    },
-                                }
-                      ),
-        })),
+            content,
+            ...(toolCallParts.length > 0
+                ? {
+                      tool_calls: toolCallParts.map((part) => ({
+                          id: part.callId,
+                          type: 'function' as const,
+                          function: {
+                              name: part.toolName,
+                              arguments: part.argumentsText,
+                          },
+                      })),
+                  }
+                : {}),
+        });
+    }
+
+    const body: Record<string, unknown> = {
+        model: toUpstreamModelId(input.modelId, modelPrefix),
+        messages,
         stream: true,
         stream_options: {
             include_usage: true,
         },
     };
+
+    if (input.tools && input.tools.length > 0) {
+        body['tools'] = input.tools.map((tool) => ({
+            type: 'function',
+            function: {
+                name: tool.id,
+                description: tool.description,
+                parameters: tool.inputSchema,
+            },
+        }));
+        body['tool_choice'] = input.toolChoice ?? 'auto';
+    }
+
+    return body;
 }
 
 function failWithLog(
@@ -367,8 +515,7 @@ export async function streamOpenAICompatibleRuntime(
                     parsedFallback.error.message
                 );
             }
-            await emitParsedCompletion(parsedFallback.value, handlers, startedAt);
-            return okProviderAdapter(undefined);
+            return emitParsedCompletion(parsedFallback.value, handlers, startedAt);
         }
 
         const handledChat = await handleRuntimeResponse({
@@ -512,8 +659,7 @@ export async function streamOpenAICompatibleRuntime(
                 parsedFallback.error.message
             );
         }
-        await emitParsedCompletion(parsedFallback.value, handlers, startedAt);
-        return okProviderAdapter(undefined);
+        return emitParsedCompletion(parsedFallback.value, handlers, startedAt);
     }
 
     const handledChatFallback = await handleRuntimeResponse({

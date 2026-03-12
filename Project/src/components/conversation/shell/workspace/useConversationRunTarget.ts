@@ -22,10 +22,12 @@ interface UseConversationRunTargetInput {
         | undefined;
     sessionOverride?: { providerId?: RuntimeProviderId; modelId?: string };
     runs: RunRecord[];
+    requiresTools?: boolean;
 }
 
 export function useConversationRunTarget(input: UseConversationRunTargetInput) {
     const providerById = new Map(input.providers.map((provider) => [provider.id, provider]));
+    const modelFilterOptions = input.requiresTools ? { requiresTools: true as const } : undefined;
 
     const modelsByProvider = new Map<RuntimeProviderId, ProviderModelRecord[]>();
     for (const model of input.providerModels) {
@@ -36,7 +38,9 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
 
     let resolvedRunTarget: RunTargetSelection | undefined;
     if (input.sessionOverride?.providerId && input.sessionOverride.modelId) {
-        if (modelExists(modelsByProvider, input.sessionOverride.providerId, input.sessionOverride.modelId)) {
+        if (
+            modelExists(modelsByProvider, input.sessionOverride.providerId, input.sessionOverride.modelId, modelFilterOptions)
+        ) {
             resolvedRunTarget = {
                 providerId: input.sessionOverride.providerId,
                 modelId: input.sessionOverride.modelId,
@@ -45,7 +49,7 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
     }
 
     if (!resolvedRunTarget) {
-        const fromLatestRun = resolveLatestRunTarget(input.runs, modelsByProvider);
+        const fromLatestRun = resolveLatestRunTarget(input.runs, modelsByProvider, modelFilterOptions);
         if (fromLatestRun) {
             resolvedRunTarget = fromLatestRun;
         }
@@ -55,7 +59,7 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         !resolvedRunTarget &&
         input.defaults &&
         isProviderId(input.defaults.providerId) &&
-        modelExists(modelsByProvider, input.defaults.providerId, input.defaults.modelId)
+        modelExists(modelsByProvider, input.defaults.providerId, input.defaults.modelId, modelFilterOptions)
     ) {
         resolvedRunTarget = {
             providerId: input.defaults.providerId,
@@ -65,7 +69,9 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
 
     if (!resolvedRunTarget) {
         for (const provider of input.providers) {
-            const models = modelsByProvider.get(provider.id) ?? [];
+            const models = (modelsByProvider.get(provider.id) ?? []).filter(
+                (model) => !input.requiresTools || model.supportsTools
+            );
             if (models.length === 0) {
                 continue;
             }
@@ -86,7 +92,9 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
 
     if (!resolvedRunTarget) {
         for (const provider of input.providers) {
-            const models = modelsByProvider.get(provider.id) ?? [];
+            const models = (modelsByProvider.get(provider.id) ?? []).filter(
+                (model) => !input.requiresTools || model.supportsTools
+            );
             if (models.length === 0) {
                 continue;
             }
@@ -113,7 +121,9 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
             : undefined;
 
     const modelOptions = input.providers.flatMap((provider) => {
-        const providerModels = modelsByProvider.get(provider.id) ?? [];
+        const providerModels = (modelsByProvider.get(provider.id) ?? []).filter(
+            (model) => !input.requiresTools || model.supportsTools
+        );
         if (providerModels.length === 0) {
             return [];
         }

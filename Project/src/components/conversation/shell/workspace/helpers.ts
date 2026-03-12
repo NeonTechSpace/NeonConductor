@@ -47,6 +47,21 @@ export interface RunTargetSelection {
     modelId: string;
 }
 
+export function modeRequiresNativeTools(input: {
+    topLevelTab: 'chat' | 'agent' | 'orchestrator';
+    modeKey: string;
+}): boolean {
+    if (input.topLevelTab === 'chat') {
+        return false;
+    }
+
+    if (input.topLevelTab === 'agent') {
+        return input.modeKey !== 'ask' && input.modeKey !== 'plan';
+    }
+
+    return input.modeKey !== 'plan';
+}
+
 export function isEntityId<P extends EntityIdPrefix>(value: string | undefined, prefix: P): value is EntityId<P> {
     return typeof value === 'string' && value.startsWith(`${prefix}_`) && value.length > prefix.length + 1;
 }
@@ -74,21 +89,29 @@ export function isProviderRunnable(authState: string, authMethod: string): boole
 export function modelExists(
     modelsByProvider: Map<RuntimeProviderId, ProviderModelRecord[]>,
     providerId: RuntimeProviderId,
-    modelId: string
+    modelId: string,
+    options?: {
+        requiresTools?: boolean;
+    }
 ): boolean {
-    return (modelsByProvider.get(providerId) ?? []).some((model) => model.id === modelId);
+    return (modelsByProvider.get(providerId) ?? []).some(
+        (model) => model.id === modelId && (!options?.requiresTools || model.supportsTools)
+    );
 }
 
 export function resolveLatestRunTarget(
     runs: RunRecord[],
-    modelsByProvider: Map<RuntimeProviderId, ProviderModelRecord[]>
+    modelsByProvider: Map<RuntimeProviderId, ProviderModelRecord[]>,
+    options?: {
+        requiresTools?: boolean;
+    }
 ): RunTargetSelection | undefined {
     for (const run of runs) {
         if (!isProviderId(run.providerId) || typeof run.modelId !== 'string') {
             continue;
         }
 
-        if (!modelExists(modelsByProvider, run.providerId, run.modelId)) {
+        if (!modelExists(modelsByProvider, run.providerId, run.modelId, options)) {
             continue;
         }
 

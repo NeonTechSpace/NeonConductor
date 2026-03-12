@@ -1,5 +1,9 @@
 import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
-import { createTextPart } from '@/app/backend/runtime/services/runExecution/contextParts';
+import {
+    createTextPart,
+    createToolCallPart,
+    createToolResultPart,
+} from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { RunContextMessage, RunContextPart } from '@/app/backend/runtime/services/runExecution/types';
 import { readImageMimeType } from '@/app/shared/imageMimeType';
 
@@ -28,6 +32,9 @@ function mapRole(role: MessageRecord['role']): RunContextMessage['role'] | null 
     }
     if (role === 'system') {
         return 'system';
+    }
+    if (role === 'tool') {
+        return 'tool';
     }
     return null;
 }
@@ -58,10 +65,55 @@ function extractReplayParts(parts: MessagePartRecord[]): RunContextPart[] {
             continue;
         }
 
-        const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
-        const textPart = createTextPart(text);
-        if (textPart) {
-            replayParts.push(textPart);
+        if (part.partType === 'text') {
+            const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
+            const textPart = createTextPart(text);
+            if (textPart) {
+                replayParts.push(textPart);
+            }
+            continue;
+        }
+
+        if (part.partType === 'tool_call') {
+            const callId = part.payload['callId'];
+            const toolName = part.payload['toolName'];
+            const argumentsText = part.payload['argumentsText'];
+            if (
+                typeof callId === 'string' &&
+                typeof toolName === 'string' &&
+                typeof argumentsText === 'string'
+            ) {
+                replayParts.push(
+                    createToolCallPart({
+                        callId,
+                        toolName,
+                        argumentsText,
+                    })
+                );
+            }
+            continue;
+        }
+
+        if (part.partType === 'tool_result') {
+            const callId = part.payload['callId'];
+            const toolName = part.payload['toolName'];
+            const outputText = part.payload['outputText'];
+            const isError = part.payload['isError'];
+            if (
+                typeof callId === 'string' &&
+                typeof toolName === 'string' &&
+                typeof outputText === 'string' &&
+                typeof isError === 'boolean'
+            ) {
+                replayParts.push(
+                    createToolResultPart({
+                        callId,
+                        toolName,
+                        outputText,
+                        isError,
+                    })
+                );
+            }
         }
     }
 

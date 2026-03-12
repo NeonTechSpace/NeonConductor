@@ -253,6 +253,10 @@ export function MessageTimelineItem({
                                                 </span>
                                             ) : null}
                                         </div>
+                                    ) : item.displayLabel ? (
+                                        <div className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                            {item.displayLabel}
+                                        </div>
                                     ) : null}
                                     <MarkdownContent markdown={item.text} />
                                 </>
