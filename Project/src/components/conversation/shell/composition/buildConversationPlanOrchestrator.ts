@@ -1,9 +1,9 @@
 import type { ModeExecutionPanelProps } from '@/web/components/conversation/panels/modeExecutionPanel';
-import { DEFAULT_RUN_OPTIONS, type RunTargetSelection } from '@/web/components/conversation/shell/workspace/helpers';
+import type { RunTargetSelection } from '@/web/components/conversation/shell/workspace/helpers';
 
 import type { OrchestratorRunRecord, OrchestratorStepRecord } from '@/app/backend/persistence/types';
 
-import type { EntityId, PlanRecordView, RuntimeProviderId } from '@/shared/contracts';
+import type { EntityId, PlanRecordView, RuntimeProviderId, RuntimeRunOptions } from '@/shared/contracts';
 
 interface MutationLike<TInput, TResult> {
     isPending: boolean;
@@ -13,48 +13,76 @@ interface MutationLike<TInput, TResult> {
 interface BuildConversationPlanOrchestratorInput {
     profileId: string;
     applyPlanWorkspaceUpdate: (result: { found: false } | { found: true; plan: PlanRecordView }) => void;
-    applyOrchestratorWorkspaceUpdate: (result: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }) => void;
+    applyOrchestratorWorkspaceUpdate: (
+        result: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }
+    ) => void;
     onError: (message: string) => void;
     resolvedRunTarget: RunTargetSelection | undefined;
+    runtimeOptions: RuntimeRunOptions;
     workspaceFingerprint: string | undefined;
     activePlan: ModeExecutionPanelProps['activePlan'];
     orchestratorView: ModeExecutionPanelProps['orchestratorView'];
-    planStartMutation: MutationLike<{
-        profileId: string;
-        sessionId: EntityId<'sess'>;
-        topLevelTab: 'chat' | 'agent' | 'orchestrator';
-        modeKey: string;
-        prompt: string;
-        workspaceFingerprint?: string;
-    }, { plan: PlanRecordView }>;
-    planAnswerMutation: MutationLike<{
-        profileId: string;
-        planId: EntityId<'plan'>;
-        questionId: string;
-        answer: string;
-    }, { found: false } | { found: true; plan: PlanRecordView }>;
-    planReviseMutation: MutationLike<{
-        profileId: string;
-        planId: EntityId<'plan'>;
-        summaryMarkdown: string;
-        items: Array<{ description: string }>;
-    }, { found: false } | { found: true; plan: PlanRecordView }>;
-    planApproveMutation: MutationLike<{
-        profileId: string;
-        planId: EntityId<'plan'>;
-    }, { found: false } | { found: true; plan: PlanRecordView }>;
-    planImplementMutation: MutationLike<{
-        profileId: string;
-        planId: EntityId<'plan'>;
-        runtimeOptions: typeof DEFAULT_RUN_OPTIONS;
-        providerId?: RuntimeProviderId;
-        modelId?: string;
-        workspaceFingerprint?: string;
-    }, { found: false } | { found: true; plan: PlanRecordView } | { found: true; plan: PlanRecordView; started: true; mode: 'agent.code' | 'orchestrator.orchestrate' }>;
-    orchestratorAbortMutation: MutationLike<{
-        profileId: string;
-        orchestratorRunId: EntityId<'orch'>;
-    }, { aborted: false; reason: 'not_found' } | { aborted: true; runId: EntityId<'orch'>; latest: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] } }>;
+    planStartMutation: MutationLike<
+        {
+            profileId: string;
+            sessionId: EntityId<'sess'>;
+            topLevelTab: 'chat' | 'agent' | 'orchestrator';
+            modeKey: string;
+            prompt: string;
+            workspaceFingerprint?: string;
+        },
+        { plan: PlanRecordView }
+    >;
+    planAnswerMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            questionId: string;
+            answer: string;
+        },
+        { found: false } | { found: true; plan: PlanRecordView }
+    >;
+    planReviseMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            summaryMarkdown: string;
+            items: Array<{ description: string }>;
+        },
+        { found: false } | { found: true; plan: PlanRecordView }
+    >;
+    planApproveMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+        },
+        { found: false } | { found: true; plan: PlanRecordView }
+    >;
+    planImplementMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            runtimeOptions: RuntimeRunOptions;
+            providerId?: RuntimeProviderId;
+            modelId?: string;
+            workspaceFingerprint?: string;
+        },
+        | { found: false }
+        | { found: true; plan: PlanRecordView }
+        | { found: true; plan: PlanRecordView; started: true; mode: 'agent.code' | 'orchestrator.orchestrate' }
+    >;
+    orchestratorAbortMutation: MutationLike<
+        {
+            profileId: string;
+            orchestratorRunId: EntityId<'orch'>;
+        },
+        | { aborted: false; reason: 'not_found' }
+        | {
+              aborted: true;
+              runId: EntityId<'orch'>;
+              latest: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] };
+          }
+    >;
 }
 
 export function buildConversationPlanOrchestrator(input: BuildConversationPlanOrchestratorInput): {
@@ -121,7 +149,7 @@ export function buildConversationPlanOrchestrator(input: BuildConversationPlanOr
                 .mutateAsync({
                     profileId: input.profileId,
                     planId,
-                    runtimeOptions: DEFAULT_RUN_OPTIONS,
+                    runtimeOptions: input.runtimeOptions,
                     ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
                     ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
                     ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
@@ -155,4 +183,3 @@ export function buildConversationPlanOrchestrator(input: BuildConversationPlanOr
         },
     };
 }
-

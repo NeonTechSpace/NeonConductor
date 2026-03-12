@@ -101,7 +101,9 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                         <SummaryCard
                             label='Account'
                             value={<SensitiveValue value={accountContext?.displayName} category='person' />}
-                            meta={accountContext?.accountId ? `ID ${accountContext.accountId}` : 'No account linked yet'}
+                            meta={
+                                accountContext?.accountId ? `ID ${accountContext.accountId}` : 'No account linked yet'
+                            }
                         />
                         <SummaryCard
                             label='Email'
@@ -121,7 +123,10 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                             label='Balance'
                             value={
                                 <SensitiveValue
-                                    value={formatBalance(accountContext?.balance?.amount, accountContext?.balance?.currency)}
+                                    value={formatBalance(
+                                        accountContext?.balance?.amount,
+                                        accountContext?.balance?.currency
+                                    )}
                                     category='balance'
                                 />
                             }
@@ -190,9 +195,12 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                         isDefaultModel={controller.selectedIsDefaultModel}
                         isSavingDefault={controller.mutations.setDefaultMutation.isPending}
                         isSyncingCatalog={controller.mutations.syncCatalogMutation.isPending}
-                        onSelectModel={controller.setSelectedModelId}
-                        onSetDefault={() => {
-                            void controller.setDefaultModel();
+                        onSelectModel={(modelId) => {
+                            controller.setSelectedModelId(modelId);
+                            if (modelId === controller.selectedModelId && controller.selectedIsDefaultModel) {
+                                return;
+                            }
+                            void controller.setDefaultModel(modelId);
                         }}
                         onSyncCatalog={() => {
                             void controller.syncCatalog();
@@ -201,7 +209,9 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
 
                     {shouldShowRoutingSection ? (
                         <details className='border-border/70 bg-card/40 rounded-[24px] border p-4'>
-                            <summary className='cursor-pointer list-none text-sm font-semibold'>Advanced routing</summary>
+                            <summary className='cursor-pointer list-none text-sm font-semibold'>
+                                Advanced routing
+                            </summary>
                             <p className='text-muted-foreground mt-2 text-xs leading-5'>
                                 Fine-tune which upstream provider Kilo should prefer only after choosing a model that
                                 actually supports multiple backing providers.
@@ -252,7 +262,9 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                             />
                             <SummaryCard
                                 label='Active Org ID'
-                                value={<SensitiveValue value={activeOrganization?.organizationId} category='account_id' />}
+                                value={
+                                    <SensitiveValue value={activeOrganization?.organizationId} category='account_id' />
+                                }
                                 meta='Switch organizations from the Kilo organization panel.'
                             />
                         </div>

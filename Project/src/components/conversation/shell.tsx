@@ -18,7 +18,12 @@ import { applyConversationSessionCacheUpdate } from '@/web/components/conversati
 import { setActivePlanCache, setOrchestratorLatestCache } from '@/web/components/conversation/shell/planCache';
 import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { buildConversationUiSyncPatch } from '@/web/components/conversation/shell/queries/useConversationSync';
-import { DEFAULT_RUN_OPTIONS, isEntityId, isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
+import {
+    buildRuntimeRunOptions,
+    DEFAULT_REASONING_EFFORT,
+    isEntityId,
+    isProviderId,
+} from '@/web/components/conversation/shell/workspace/helpers';
 import { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 import { ConversationSidebarPane } from '@/web/components/conversation/sidebar/conversationSidebarPane';
@@ -29,7 +34,7 @@ import { trpc } from '@/web/trpc/client';
 
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
-import type { PlanRecordView, TopLevelTab } from '@/shared/contracts';
+import type { PlanRecordView, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
 import {
     DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
     DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
@@ -60,6 +65,8 @@ export function ConversationShell({
     const [contextFeedbackMessage, setContextFeedbackMessage] = useState<string | undefined>(undefined);
     const [contextFeedbackTone, setContextFeedbackTone] = useState<'success' | 'error' | 'info'>('info');
     const [focusComposerRequestKey, setFocusComposerRequestKey] = useState(0);
+    const [requestedReasoningEffort, setRequestedReasoningEffort] =
+        useState<RuntimeReasoningEffort>(DEFAULT_REASONING_EFFORT);
     const uiState = useConversationUiState(profileId);
     const utils = trpc.useUtils();
     const queries = useConversationQueries({
@@ -208,6 +215,28 @@ export function ConversationShell({
             : {}),
     };
     const isPlanningComposerMode = modeKey === 'plan' && (topLevelTab === 'agent' || topLevelTab === 'orchestrator');
+    const selectedModelSupportsReasoning = Boolean(runTargetState.selectedModelForComposer?.supportsReasoning);
+    const supportedReasoningEfforts =
+        runTargetState.selectedProviderIdForComposer === 'kilo'
+            ? (runTargetState.selectedModelForComposer?.reasoningEfforts?.filter(
+                  (effort): effort is Exclude<RuntimeReasoningEffort, 'none'> => effort !== 'none'
+              ) ?? [])
+            : undefined;
+    const canAdjustReasoningEffort =
+        selectedModelSupportsReasoning &&
+        (supportedReasoningEfforts === undefined || supportedReasoningEfforts.length > 0);
+    const effectiveReasoningEffort =
+        selectedModelSupportsReasoning &&
+        canAdjustReasoningEffort &&
+        (supportedReasoningEfforts === undefined ||
+            requestedReasoningEffort === 'none' ||
+            supportedReasoningEfforts.includes(requestedReasoningEffort))
+            ? requestedReasoningEffort
+            : 'none';
+    const runtimeOptions = buildRuntimeRunOptions({
+        supportsReasoning: selectedModelSupportsReasoning,
+        reasoningEffort: effectiveReasoningEffort,
+    });
     const canAttachImages =
         topLevelTab !== 'orchestrator' &&
         !isPlanningComposerMode &&
@@ -239,7 +268,7 @@ export function ConversationShell({
             : {}),
         resolvedRunTarget: runTargetState.resolvedRunTarget,
         providerById: runTargetState.providerById,
-        runtimeOptions: DEFAULT_RUN_OPTIONS,
+        runtimeOptions,
         isStartingRun: mutations.startRunMutation.isPending,
         canAttachImages,
         maxImageAttachmentsPerMessage:
@@ -277,6 +306,7 @@ export function ConversationShell({
         selectedSessionId,
         selectedThread: shellViewModel.selectedThread,
         resolvedRunTarget: runTargetState.resolvedRunTarget,
+        runtimeOptions,
         editSession: mutations.editSessionMutation.mutateAsync,
         branchFromMessage: mutations.branchFromMessageMutation.mutateAsync,
         setEditPreference,
@@ -534,6 +564,7 @@ export function ConversationShell({
         },
         onError: composer.setRunSubmitError,
         resolvedRunTarget: runTargetState.resolvedRunTarget,
+        runtimeOptions,
         workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
         activePlan: queries.activePlanQuery.data?.found ? queries.activePlanQuery.data.plan : undefined,
         orchestratorView: queries.orchestratorLatestQuery.data?.found
@@ -646,6 +677,9 @@ export function ConversationShell({
                 topLevelTab={topLevelTab}
                 activeModeKey={modeKey}
                 modes={modes}
+                reasoningEffort={effectiveReasoningEffort}
+                selectedModelSupportsReasoning={selectedModelSupportsReasoning}
+                {...(supportedReasoningEfforts !== undefined ? { supportedReasoningEfforts } : {})}
                 maxImageAttachmentsPerMessage={
                     composerMediaSettings?.maxImageAttachmentsPerMessage ??
                     DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE
@@ -681,6 +715,7 @@ export function ConversationShell({
                 onModelChange={(modelId) => {
                     sessionActions.onModelChange(runTargetState.selectedProviderIdForComposer, modelId);
                 }}
+                onReasoningEffortChange={setRequestedReasoningEffort}
                 onModeChange={onModeChange}
                 onCreateSession={sessionActions.onCreateSession}
                 onPromptChange={composer.onPromptChange}

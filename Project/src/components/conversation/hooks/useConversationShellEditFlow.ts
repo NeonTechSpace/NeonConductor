@@ -8,7 +8,7 @@ import {
     type PendingMessageEdit,
 } from '@/web/components/conversation/shell/editFlow';
 import { createPendingMessageEdit } from '@/web/components/conversation/shell/pendingMessageEdit';
-import { DEFAULT_RUN_OPTIONS, isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
@@ -16,6 +16,7 @@ import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/ba
 
 import type {
     RuntimeProviderId,
+    RuntimeRunOptions,
     SessionBranchFromMessageInput,
     SessionEditInput,
     TopLevelTab,
@@ -33,6 +34,7 @@ interface UseConversationShellEditFlowInput {
               modelId: string;
           }
         | undefined;
+    runtimeOptions: RuntimeRunOptions;
     editSession: (input: SessionEditInput) => Promise<
         | { edited: false; reason: string }
         | {
@@ -182,7 +184,7 @@ export function useConversationShellEditFlow(input: UseConversationShellEditFlow
                         replacementText: dialogInput.replacementText,
                         editMode: dialogInput.editMode,
                         autoStartRun: true,
-                        runtimeOptions: DEFAULT_RUN_OPTIONS,
+                        runtimeOptions: input.runtimeOptions,
                         ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
                         ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
                         ...(input.selectedThread?.workspaceFingerprint

@@ -80,6 +80,8 @@ describe('session workspace panel layout', () => {
                 topLevelTab: 'chat',
                 activeModeKey: 'chat',
                 modes: [],
+                reasoningEffort: 'medium',
+                selectedModelSupportsReasoning: true,
                 maxImageAttachmentsPerMessage: 10,
                 canAttachImages: false,
                 selectedProviderStatus: {
@@ -93,6 +95,7 @@ describe('session workspace panel layout', () => {
                 onSelectRun: vi.fn(),
                 onProviderChange: vi.fn(),
                 onModelChange: vi.fn(),
+                onReasoningEffortChange: vi.fn(),
                 onModeChange: vi.fn(),
                 onCreateSession: vi.fn(),
                 onPromptChange: vi.fn(),

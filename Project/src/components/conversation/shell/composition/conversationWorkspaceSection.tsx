@@ -11,7 +11,13 @@ import type {
     ThreadListRecord,
 } from '@/app/backend/persistence/types';
 
-import type { DiffOverview, ResolvedContextState, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type {
+    DiffOverview,
+    ResolvedContextState,
+    RuntimeProviderId,
+    RuntimeReasoningEffort,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 import type { ReactNode } from 'react';
 
@@ -82,6 +88,9 @@ interface ConversationWorkspaceSectionProps {
     topLevelTab: TopLevelTab;
     activeModeKey: string;
     modes: Array<{ id: string; modeKey: string; label: string }>;
+    reasoningEffort: RuntimeReasoningEffort;
+    selectedModelSupportsReasoning: boolean;
+    supportedReasoningEfforts?: RuntimeReasoningEffort[];
     maxImageAttachmentsPerMessage: number;
     canAttachImages: boolean;
     imageAttachmentBlockedReason?: string;
@@ -118,6 +127,7 @@ interface ConversationWorkspaceSectionProps {
         sourceProvider?: string;
         source?: string;
         promptFamily?: string;
+        reasoningEfforts?: RuntimeReasoningEffort[];
         price?: number;
         latency?: number;
         tps?: number;
@@ -137,6 +147,7 @@ interface ConversationWorkspaceSectionProps {
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onCreateSession: () => void;
     onPromptChange: (prompt: string) => void;
@@ -182,6 +193,9 @@ export function ConversationWorkspaceSection({
     topLevelTab,
     activeModeKey,
     modes,
+    reasoningEffort,
+    selectedModelSupportsReasoning,
+    supportedReasoningEfforts,
     maxImageAttachmentsPerMessage,
     canAttachImages,
     imageAttachmentBlockedReason,
@@ -208,6 +222,7 @@ export function ConversationWorkspaceSection({
     onSelectRun,
     onProviderChange,
     onModelChange,
+    onReasoningEffortChange,
     onModeChange,
     onCreateSession,
     onPromptChange,
@@ -259,6 +274,9 @@ export function ConversationWorkspaceSection({
                 topLevelTab={topLevelTab}
                 activeModeKey={activeModeKey}
                 modes={modes}
+                reasoningEffort={reasoningEffort}
+                selectedModelSupportsReasoning={selectedModelSupportsReasoning}
+                {...(supportedReasoningEfforts ? { supportedReasoningEfforts } : {})}
                 maxImageAttachmentsPerMessage={maxImageAttachmentsPerMessage}
                 canAttachImages={canAttachImages}
                 {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
@@ -285,6 +303,7 @@ export function ConversationWorkspaceSection({
                 onSelectRun={onSelectRun}
                 onProviderChange={onProviderChange}
                 onModelChange={onModelChange}
+                onReasoningEffortChange={onReasoningEffortChange}
                 onModeChange={onModeChange}
                 onCreateSession={onCreateSession}
                 onPromptChange={onPromptChange}

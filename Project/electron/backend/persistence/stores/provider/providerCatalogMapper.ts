@@ -8,6 +8,8 @@ import {
 } from '@/app/backend/persistence/stores/provider/providerCatalogParsers';
 import type { ProviderDiscoverySnapshotRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderModelModality } from '@/app/backend/providers/types';
+import { runtimeReasoningEfforts } from '@/app/backend/runtime/contracts';
+import type { RuntimeReasoningEffort } from '@/app/backend/runtime/contracts';
 
 export interface ProviderCatalogModelUpsert {
     modelId: string;
@@ -216,6 +218,86 @@ function extractTps(raw: Record<string, unknown>): number | undefined {
     return undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeReasoningEfforts(values: Iterable<string>): RuntimeReasoningEffort[] {
+    const allowedValues = new Set<RuntimeReasoningEffort>(runtimeReasoningEfforts);
+    const normalized = new Set<RuntimeReasoningEffort>();
+
+    for (const value of values) {
+        if (!allowedValues.has(value as RuntimeReasoningEffort)) {
+            continue;
+        }
+
+        normalized.add(value as RuntimeReasoningEffort);
+    }
+
+    return runtimeReasoningEfforts.filter((effort) => normalized.has(effort));
+}
+
+function extractVariantReasoningEfforts(raw: Record<string, unknown>): RuntimeReasoningEffort[] {
+    const opencode = isRecord(raw['opencode']) ? raw['opencode'] : undefined;
+    const variants = opencode && isRecord(opencode['variants']) ? opencode['variants'] : undefined;
+    if (!variants) {
+        return [];
+    }
+
+    return normalizeReasoningEfforts(Object.keys(variants));
+}
+
+function deriveLegacyKiloReasoningEfforts(modelId: string): RuntimeReasoningEffort[] {
+    const normalizedModelId = modelId.toLowerCase();
+    if (
+        normalizedModelId.includes('deepseek') ||
+        normalizedModelId.includes('minimax') ||
+        normalizedModelId.includes('glm') ||
+        normalizedModelId.includes('mistral') ||
+        normalizedModelId.includes('kimi') ||
+        normalizedModelId.includes('k2p5')
+    ) {
+        return [];
+    }
+
+    if (normalizedModelId.includes('grok') && normalizedModelId.includes('grok-3-mini')) {
+        return ['low', 'high'];
+    }
+
+    if (normalizedModelId.includes('grok')) {
+        return [];
+    }
+
+    if (
+        normalizedModelId.includes('gpt') ||
+        normalizedModelId.includes('gemini-3') ||
+        normalizedModelId.includes('claude')
+    ) {
+        return ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+    }
+
+    return [];
+}
+
+function extractKiloReasoningEfforts(input: {
+    providerId: string;
+    modelId: string;
+    supportsReasoning: boolean;
+    raw: Record<string, unknown>;
+}): RuntimeReasoningEffort[] | undefined {
+    if (input.providerId !== 'kilo' || !input.supportsReasoning) {
+        return undefined;
+    }
+
+    const variantEfforts = extractVariantReasoningEfforts(input.raw);
+    if (variantEfforts.length > 0) {
+        return variantEfforts;
+    }
+
+    const legacyFallbackEfforts = deriveLegacyKiloReasoningEfforts(input.modelId);
+    return legacyFallbackEfforts.length > 0 ? legacyFallbackEfforts : [];
+}
+
 export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderModelRecord {
     const inputModalities = parseModalities(row.input_modalities_json);
     const outputModalities = parseModalities(row.output_modalities_json);
@@ -229,6 +311,13 @@ export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderM
     const price = extractPrice(pricing, raw);
     const latency = extractLatency(raw);
     const tps = extractTps(raw);
+    const supportsReasoning = row.supports_reasoning === 1;
+    const kiloReasoningEfforts = extractKiloReasoningEfforts({
+        providerId: row.provider_id,
+        modelId: row.model_id,
+        supportsReasoning,
+        raw,
+    });
 
     return {
         id: row.model_id,
@@ -238,7 +327,7 @@ export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderM
         source: row.source,
         updatedAt: row.updated_at,
         supportsTools: row.supports_tools === 1,
-        supportsReasoning: row.supports_reasoning === 1,
+        supportsReasoning,
         supportsVision: row.supports_vision === null ? inputModalities.includes('image') : row.supports_vision === 1,
         supportsAudioInput:
             row.supports_audio_input === null ? inputModalities.includes('audio') : row.supports_audio_input === 1,
@@ -246,6 +335,7 @@ export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderM
             row.supports_audio_output === null ? outputModalities.includes('audio') : row.supports_audio_output === 1,
         inputModalities,
         outputModalities,
+        ...(kiloReasoningEfforts !== undefined ? { reasoningEfforts: kiloReasoningEfforts } : {}),
         ...(row.prompt_family ? { promptFamily: row.prompt_family } : {}),
         ...(row.context_length !== null ? { contextLength: row.context_length } : {}),
         ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),

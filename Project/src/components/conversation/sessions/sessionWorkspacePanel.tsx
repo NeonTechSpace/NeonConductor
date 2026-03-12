@@ -20,7 +20,7 @@ import type {
 } from '@/app/backend/persistence/types';
 
 import type { DiffOverview } from '@/shared/contracts';
-import type { ResolvedContextState, TopLevelTab } from '@/shared/contracts';
+import type { ResolvedContextState, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
 
 import type { ReactNode } from 'react';
 
@@ -86,6 +86,9 @@ interface SessionWorkspacePanelProps {
     topLevelTab: TopLevelTab;
     activeModeKey: string;
     modes: Array<{ id: string; modeKey: string; label: string }>;
+    reasoningEffort: RuntimeReasoningEffort;
+    selectedModelSupportsReasoning: boolean;
+    supportedReasoningEfforts?: RuntimeReasoningEffort[];
     maxImageAttachmentsPerMessage: number;
     canAttachImages: boolean;
     imageAttachmentBlockedReason?: string;
@@ -122,6 +125,7 @@ interface SessionWorkspacePanelProps {
         sourceProvider?: string;
         source?: string;
         promptFamily?: string;
+        reasoningEfforts?: RuntimeReasoningEffort[];
         price?: number;
         latency?: number;
         tps?: number;
@@ -141,6 +145,7 @@ interface SessionWorkspacePanelProps {
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onCreateSession: () => void;
     onPromptChange: (nextPrompt: string) => void;
@@ -192,6 +197,9 @@ export function SessionWorkspacePanel({
     topLevelTab,
     activeModeKey,
     modes,
+    reasoningEffort,
+    selectedModelSupportsReasoning,
+    supportedReasoningEfforts,
     maxImageAttachmentsPerMessage,
     canAttachImages,
     imageAttachmentBlockedReason,
@@ -218,6 +226,7 @@ export function SessionWorkspacePanel({
     onSelectRun,
     onProviderChange,
     onModelChange,
+    onReasoningEffortChange,
     onModeChange,
     onCreateSession,
     onPromptChange,
@@ -448,6 +457,9 @@ export function SessionWorkspacePanel({
                             topLevelTab={topLevelTab}
                             activeModeKey={activeModeKey}
                             modes={modes}
+                            reasoningEffort={reasoningEffort}
+                            selectedModelSupportsReasoning={selectedModelSupportsReasoning}
+                            {...(supportedReasoningEfforts ? { supportedReasoningEfforts } : {})}
                             maxImageAttachmentsPerMessage={maxImageAttachmentsPerMessage}
                             canAttachImages={canAttachImages}
                             {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
@@ -467,6 +479,7 @@ export function SessionWorkspacePanel({
                             {...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {})}
                             onProviderChange={onProviderChange}
                             onModelChange={onModelChange}
+                            onReasoningEffortChange={onReasoningEffortChange}
                             onModeChange={onModeChange}
                             onPromptChange={onPromptChange}
                             onAddImageFiles={onAddImageFiles}

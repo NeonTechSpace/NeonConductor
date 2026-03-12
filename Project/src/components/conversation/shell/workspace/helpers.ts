@@ -1,14 +1,17 @@
 import type { ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
 
 import { providerIds } from '@/shared/contracts';
-import type { EntityId, EntityIdPrefix, RuntimeProviderId, RuntimeRunOptions } from '@/shared/contracts';
+import type {
+    EntityId,
+    EntityIdPrefix,
+    RuntimeProviderId,
+    RuntimeReasoningEffort,
+    RuntimeRunOptions,
+} from '@/shared/contracts';
 
-export const DEFAULT_RUN_OPTIONS: RuntimeRunOptions = {
-    reasoning: {
-        effort: 'medium',
-        summary: 'auto',
-        includeEncrypted: false,
-    },
+export const DEFAULT_REASONING_EFFORT: RuntimeReasoningEffort = 'medium';
+
+const DEFAULT_RUN_OPTION_BASE: Pick<RuntimeRunOptions, 'cache' | 'transport'> = {
     cache: {
         strategy: 'auto',
     },
@@ -16,6 +19,28 @@ export const DEFAULT_RUN_OPTIONS: RuntimeRunOptions = {
         openai: 'auto',
     },
 };
+
+export function buildRuntimeRunOptions(input: {
+    supportsReasoning: boolean;
+    reasoningEffort: RuntimeReasoningEffort;
+}): RuntimeRunOptions {
+    const effectiveReasoningEffort = input.supportsReasoning ? input.reasoningEffort : 'none';
+    const shouldRequestReasoning = input.supportsReasoning && effectiveReasoningEffort !== 'none';
+
+    return {
+        reasoning: {
+            effort: effectiveReasoningEffort,
+            summary: shouldRequestReasoning ? 'auto' : 'none',
+            includeEncrypted: false,
+        },
+        ...DEFAULT_RUN_OPTION_BASE,
+    };
+}
+
+export const DEFAULT_RUN_OPTIONS = buildRuntimeRunOptions({
+    supportsReasoning: true,
+    reasoningEffort: DEFAULT_REASONING_EFFORT,
+});
 
 export interface RunTargetSelection {
     providerId: RuntimeProviderId;
@@ -96,4 +121,3 @@ export function toActionableRunError(message: string, providerLabel: string): st
 
     return `Run failed: ${message}`;
 }
-

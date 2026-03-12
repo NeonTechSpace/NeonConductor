@@ -15,7 +15,9 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
     const controller = useProviderSettingsController(profileId);
     const customProviders = controller.providerItems.filter((provider) => provider.id !== 'kilo');
     const selectedProvider =
-        controller.selectedProvider && controller.selectedProvider.id !== 'kilo' ? controller.selectedProvider : undefined;
+        controller.selectedProvider && controller.selectedProvider.id !== 'kilo'
+            ? controller.selectedProvider
+            : undefined;
 
     useEffect(() => {
         if (selectedProvider || customProviders.length === 0) {
@@ -48,8 +50,8 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                             <div className='min-w-0'>
                                 <h4 className='text-xl font-semibold text-balance'>{selectedProvider.label}</h4>
                                 <p className='text-muted-foreground mt-1 max-w-3xl text-sm leading-6'>
-                                    Connect and tune direct providers here. Kilo sign-in, Kilo default models, and
-                                    Kilo routing live in the dedicated Kilo section.
+                                    Connect and tune direct providers here. Kilo sign-in, Kilo default models, and Kilo
+                                    routing live in the dedicated Kilo section.
                                 </p>
                             </div>
                             <div className='border-border/70 bg-background/80 self-start rounded-full border px-3 py-1.5 text-xs font-medium'>
@@ -129,15 +131,17 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                             isDefaultModel={controller.selectedIsDefaultModel}
                             isSavingDefault={controller.mutations.setDefaultMutation.isPending}
                             isSyncingCatalog={controller.mutations.syncCatalogMutation.isPending}
-                            onSelectModel={controller.setSelectedModelId}
-                            onSetDefault={() => {
-                                void controller.setDefaultModel();
+                            onSelectModel={(modelId) => {
+                                controller.setSelectedModelId(modelId);
+                                if (modelId === controller.selectedModelId && controller.selectedIsDefaultModel) {
+                                    return;
+                                }
+                                void controller.setDefaultModel(modelId);
                             }}
                             onSyncCatalog={() => {
                                 void controller.syncCatalog();
                             }}
                         />
-
                     </div>
                 ) : (
                     <div className='border-border/70 bg-card/40 space-y-2 rounded-[24px] border p-5'>

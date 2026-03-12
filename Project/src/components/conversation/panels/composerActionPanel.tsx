@@ -10,7 +10,7 @@ import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
 import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
-import type { ResolvedContextState, TopLevelTab } from '@/shared/contracts';
+import type { ResolvedContextState, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 interface ModelOption {
@@ -21,6 +21,7 @@ interface ModelOption {
     sourceProvider?: string;
     source?: string;
     promptFamily?: string;
+    reasoningEfforts?: RuntimeReasoningEffort[];
     price?: number;
     latency?: number;
     tps?: number;
@@ -50,6 +51,9 @@ interface ComposerActionPanelProps {
     topLevelTab: TopLevelTab;
     activeModeKey: string;
     modes: Array<{ id: string; modeKey: string; label: string }>;
+    reasoningEffort: RuntimeReasoningEffort;
+    selectedModelSupportsReasoning: boolean;
+    supportedReasoningEfforts?: RuntimeReasoningEffort[];
     canAttachImages: boolean;
     maxImageAttachmentsPerMessage: number;
     imageAttachmentBlockedReason?: string;
@@ -69,6 +73,7 @@ interface ComposerActionPanelProps {
     focusComposerRequestKey?: number;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onPromptChange: (nextPrompt: string) => void;
     onAddImageFiles: (files: FileList | File[]) => void;
@@ -125,6 +130,15 @@ export function shouldSubmitComposerOnEnter(input: {
     return input.key === 'Enter' && !input.shiftKey && input.nativeEvent.isComposing !== true;
 }
 
+const reasoningEffortOptions: Array<{ value: RuntimeReasoningEffort; label: string }> = [
+    { value: 'none', label: 'Off' },
+    { value: 'minimal', label: 'Minimal' },
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'xhigh', label: 'Max' },
+];
+
 export function ComposerActionPanel({
     prompt,
     pendingImages,
@@ -135,6 +149,9 @@ export function ComposerActionPanel({
     topLevelTab,
     activeModeKey,
     modes,
+    reasoningEffort,
+    selectedModelSupportsReasoning,
+    supportedReasoningEfforts,
     canAttachImages,
     maxImageAttachmentsPerMessage,
     imageAttachmentBlockedReason,
@@ -150,6 +167,7 @@ export function ComposerActionPanel({
     focusComposerRequestKey,
     onProviderChange,
     onModelChange,
+    onReasoningEffortChange,
     onModeChange,
     onPromptChange,
     onAddImageFiles,
@@ -177,6 +195,19 @@ export function ComposerActionPanel({
     const hasSubmittableContent = prompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
     const hasUnsupportedPendingImages = pendingImages.length > 0 && !canAttachImages;
     const shouldShowModePicker = topLevelTab !== 'chat';
+    const availableReasoningEfforts = selectedModelSupportsReasoning
+        ? reasoningEffortOptions.filter(
+              (option) =>
+                  option.value === 'none' ||
+                  supportedReasoningEfforts === undefined ||
+                  supportedReasoningEfforts.includes(option.value)
+          )
+        : reasoningEffortOptions.filter((option) => option.value === 'none');
+    const hasAdjustableReasoningEfforts = availableReasoningEfforts.length > 1;
+    const selectedReasoningEffort = availableReasoningEfforts.some((option) => option.value === reasoningEffort)
+        ? reasoningEffort
+        : 'none';
+    const reasoningControlDisabled = disabled || !selectedModelSupportsReasoning || !hasAdjustableReasoningEfforts;
     const compactConnectionLabel = selectedProviderStatus
         ? `${selectedProviderStatus.label} · ${selectedProviderStatus.authState.replace('_', ' ')}`
         : undefined;
@@ -252,7 +283,9 @@ export function ComposerActionPanel({
                 />
                 <div
                     className={`grid gap-3 ${
-                        shouldShowModePicker ? 'xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]' : 'grid-cols-1'
+                        shouldShowModePicker
+                            ? 'xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.2fr)_minmax(180px,0.6fr)]'
+                            : 'md:grid-cols-[minmax(0,1fr)_minmax(180px,0.45fr)]'
                     }`}>
                     {shouldShowModePicker ? (
                         <div className='space-y-1'>
@@ -297,6 +330,44 @@ export function ComposerActionPanel({
                             }}
                             onSelectModel={onModelChange}
                         />
+                    </div>
+                    <div className='space-y-1'>
+                        <label
+                            className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'
+                            htmlFor='composer-reasoning-select'>
+                            Reasoning
+                        </label>
+                        <select
+                            id='composer-reasoning-select'
+                            aria-label='Reasoning effort'
+                            value={selectedReasoningEffort}
+                            onChange={(event) => {
+                                const selectedEffort = availableReasoningEfforts.find(
+                                    (option) => option.value === event.target.value
+                                )?.value;
+                                if (!selectedEffort) {
+                                    return;
+                                }
+
+                                onReasoningEffortChange(selectedEffort);
+                            }}
+                            className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                            disabled={reasoningControlDisabled}>
+                            {availableReasoningEfforts.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                        <p className='text-muted-foreground text-[11px] leading-5'>
+                            {selectedModelSupportsReasoning
+                                ? !hasAdjustableReasoningEfforts
+                                    ? 'This model supports reasoning, but Kilo does not expose adjustable effort levels.'
+                                    : selectedReasoningEffort === 'none'
+                                      ? 'Reasoning is off for the next run.'
+                                      : 'Reasoning level applies to the next run.'
+                                : 'This model does not support reasoning.'}
+                        </p>
                     </div>
                 </div>
                 {compactConnectionLabel || routingBadge ? (

@@ -123,6 +123,7 @@ export interface ProviderModelRecord {
     supportsAudioOutput: boolean;
     inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+    reasoningEfforts?: RuntimeReasoningEffort[];
     promptFamily?: string;
     contextLength?: number;
     maxOutputTokens?: number;

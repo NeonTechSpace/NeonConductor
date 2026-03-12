@@ -108,8 +108,8 @@ describe('model picker', () => {
         ];
         const collisionIndex = getModelLabelCollisionIndex(models);
 
-        expect(getOptionDisplayText(models[0], collisionIndex)).toBe('Kilo Auto Free · OpenAI');
-        expect(getOptionDisplayText(models[1], collisionIndex)).toBe('Kilo Auto Free · Anthropic');
+        expect(getOptionDisplayText(models[0]!, collisionIndex)).toBe('Kilo Auto Free · OpenAI');
+        expect(getOptionDisplayText(models[1]!, collisionIndex)).toBe('Kilo Auto Free · Anthropic');
 
         const html = renderToStaticMarkup(
             createElement(ModelPicker, {
@@ -135,6 +135,6 @@ describe('model picker', () => {
         ];
         const collisionIndex = getModelLabelCollisionIndex(models);
 
-        expect(getOptionDisplayText(models[0], collisionIndex)).toBe('Kilo Auto');
+        expect(getOptionDisplayText(models[0]!, collisionIndex)).toBe('Kilo Auto');
     });
 });

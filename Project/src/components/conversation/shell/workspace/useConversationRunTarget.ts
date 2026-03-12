@@ -130,6 +130,7 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
             ...(model.sourceProvider ? { sourceProvider: model.sourceProvider } : {}),
             ...(model.source ? { source: model.source } : {}),
             ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
+            ...(model.reasoningEfforts ? { reasoningEfforts: model.reasoningEfforts } : {}),
             ...(model.price !== undefined ? { price: model.price } : {}),
             ...(model.latency !== undefined ? { latency: model.latency } : {}),
             ...(model.tps !== undefined ? { tps: model.tps } : {}),
@@ -146,4 +147,3 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         modelOptions,
     };
 }
-

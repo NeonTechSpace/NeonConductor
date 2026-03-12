@@ -100,15 +100,16 @@ export function createProviderSettingsActions(input: {
                 setStatusMessage: input.setStatusMessage,
             });
         },
-        setDefaultModel: async () => {
-            if (!input.selectedProviderId || !input.selectedModelId) {
+        setDefaultModel: async (modelId?: string) => {
+            const nextModelId = modelId ?? input.selectedModelId;
+            if (!input.selectedProviderId || !nextModelId) {
                 return;
             }
 
             await input.mutations.setDefaultMutation.mutateAsync({
                 profileId: input.profileId,
                 providerId: input.selectedProviderId,
-                modelId: input.selectedModelId,
+                modelId: nextModelId,
             });
         },
         syncCatalog: async () => {

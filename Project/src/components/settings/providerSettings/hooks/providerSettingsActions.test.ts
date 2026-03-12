@@ -5,6 +5,7 @@ import { createProviderSettingsActions } from '@/web/components/settings/provide
 describe('provider settings actions', () => {
     it('omits pinnedProviderId when saving dynamic Kilo routing', async () => {
         const mutateAsync = vi.fn().mockResolvedValue(undefined);
+        const setDefaultMutateAsync = vi.fn().mockResolvedValue(undefined);
         const actions = createProviderSettingsActions({
             profileId: 'profile_default',
             selectedProviderId: 'kilo',
@@ -19,7 +20,7 @@ describe('provider settings actions', () => {
             setStatusMessage: vi.fn(),
             onPreviewProvider: vi.fn(),
             mutations: {
-                setDefaultMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setDefaultMutation: { mutateAsync: setDefaultMutateAsync },
                 syncCatalogMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setModelRoutingPreferenceMutation: { mutateAsync },
                 setEndpointProfileMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
@@ -48,6 +49,14 @@ describe('provider settings actions', () => {
             modelId: 'kilo/auto',
             routingMode: 'dynamic',
             sort: 'latency',
+        });
+
+        await actions.setDefaultModel('kilo/code');
+
+        expect(setDefaultMutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            providerId: 'kilo',
+            modelId: 'kilo/code',
         });
     });
 });
