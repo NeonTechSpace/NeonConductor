@@ -1,5 +1,13 @@
 # AGENTS.md
 
+## Project Stage
+- NeonConductor is in active alpha development.
+- The app is not installed for real users yet, so compatibility preservation is not the default priority.
+- Prefer the best architecture over temporary compatibility: breaking changes are allowed and often desirable when they remove bad patterns, collapse unnecessary complexity, or establish cleaner long-term boundaries.
+- Do not carry forward unstable APIs, weak abstractions, or legacy behavior just to avoid churn during alpha.
+- When a simpler or more correct design requires reshaping contracts, storage, flows, or UI assumptions, make the breaking change and update the surrounding code coherently.
+- Optimize for the codebase we want to keep, not the intermediate shape we happen to have today.
+
 ## Engineering Standard
 
 ### 1) Optimize for Clarity and Changeability
