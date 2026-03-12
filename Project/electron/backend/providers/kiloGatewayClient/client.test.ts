@@ -112,4 +112,159 @@ describe('KiloGatewayClient', () => {
             pollIntervalSeconds: 7,
         });
     });
+
+    it('parses nested user profile payloads used by newer kilo responses', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        data: {
+                            user: {
+                                id: 'acct_nested',
+                                name: 'Nested User',
+                                email: 'nested@example.com',
+                            },
+                            organizations: [
+                                {
+                                    id: 'org_nested',
+                                    name: 'Nested Org',
+                                    is_active: true,
+                                },
+                            ],
+                        },
+                    }),
+                })
+            )
+        );
+
+        const client = new KiloGatewayClient({
+            gatewayBaseUrl: 'https://gateway.test',
+            apiBaseUrl: 'https://api.test',
+            timeoutMs: 100,
+        });
+        const result = await client.getProfile({ accessToken: 'token' });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error('Expected nested kilo profile payload to parse.');
+        }
+
+        expect(result.value).toMatchObject({
+            accountId: 'acct_nested',
+            displayName: 'Nested User',
+            emailMasked: 'nested@example.com',
+            organizations: [
+                {
+                    organizationId: 'org_nested',
+                    name: 'Nested Org',
+                    isActive: true,
+                },
+            ],
+        });
+    });
+
+    it('prefers masked and root identity fields over nested raw aliases', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        data: {
+                            id: 'acct_root',
+                            displayName: 'Root Display',
+                            emailMasked: 'r***@example.com',
+                            user: {
+                                id: 'acct_nested',
+                                name: 'Nested User',
+                                displayName: 'Nested Display',
+                                email: 'nested@example.com',
+                                emailMasked: 'n***@example.com',
+                            },
+                        },
+                    }),
+                })
+            )
+        );
+
+        const client = new KiloGatewayClient({
+            gatewayBaseUrl: 'https://gateway.test',
+            apiBaseUrl: 'https://api.test',
+            timeoutMs: 100,
+        });
+        const result = await client.getProfile({ accessToken: 'token' });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error('Expected mixed kilo profile payload to parse.');
+        }
+
+        expect(result.value).toMatchObject({
+            accountId: 'acct_root',
+            displayName: 'Root Display',
+            emailMasked: 'r***@example.com',
+        });
+    });
+
+    it('dedupes duplicate model ids while keeping the last payload data', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        data: [
+                            {
+                                id: 'kilo/auto',
+                                name: 'Kilo Auto Free',
+                                owned_by: 'openai',
+                                supported_parameters: [],
+                                architecture: {
+                                    input_modalities: ['text'],
+                                    output_modalities: ['text'],
+                                },
+                            },
+                            {
+                                id: 'kilo/auto',
+                                name: 'Kilo Auto Free',
+                                owned_by: 'anthropic',
+                                supported_parameters: ['reasoning'],
+                                architecture: {
+                                    input_modalities: ['text'],
+                                    output_modalities: ['text'],
+                                },
+                            },
+                        ],
+                    }),
+                })
+            )
+        );
+
+        const client = new KiloGatewayClient({
+            gatewayBaseUrl: 'https://gateway.test',
+            apiBaseUrl: 'https://api.test',
+            timeoutMs: 100,
+        });
+        const result = await client.getModels();
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error('Expected duplicate kilo models payload to parse.');
+        }
+
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0]).toMatchObject({
+            id: 'kilo/auto',
+            upstreamProvider: 'anthropic',
+            supportedParameters: ['reasoning'],
+        });
+    });
 });

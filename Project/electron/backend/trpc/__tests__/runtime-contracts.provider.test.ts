@@ -342,6 +342,104 @@ describe('runtime contracts: provider and account flows', () => {
         expect(kiloAuto.contextLength).toBe(200000);
     });
 
+    it('keeps distinct kilo model ids when discovery returns the same visible label twice', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((url: string) => {
+                if (url.endsWith('/models')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: [
+                                {
+                                    id: 'kilo/auto-openai',
+                                    name: 'Kilo Auto Free',
+                                    owned_by: 'openai',
+                                    context_length: 200000,
+                                    supported_parameters: ['tools'],
+                                    architecture: {
+                                        input_modalities: ['text'],
+                                        output_modalities: ['text'],
+                                    },
+                                    pricing: {},
+                                },
+                                {
+                                    id: 'kilo/auto-anthropic',
+                                    name: 'Kilo Auto Free',
+                                    owned_by: 'anthropic',
+                                    context_length: 200000,
+                                    supported_parameters: ['reasoning'],
+                                    architecture: {
+                                        input_modalities: ['text'],
+                                        output_modalities: ['text'],
+                                    },
+                                    pricing: {},
+                                },
+                            ],
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/providers')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: [
+                                { id: 'openai', label: 'OpenAI' },
+                                { id: 'anthropic', label: 'Anthropic' },
+                            ],
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/models-by-provider')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: [
+                                { provider: 'openai', models: ['kilo/auto-openai'] },
+                                { provider: 'anthropic', models: ['kilo/auto-anthropic'] },
+                            ],
+                        }),
+                    });
+                }
+
+                return Promise.resolve({
+                    ok: false,
+                    status: 404,
+                    statusText: 'Not Found',
+                    json: () => ({}),
+                });
+            })
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'kilo',
+            apiKey: 'kilo-api-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const syncResult = await caller.provider.syncCatalog({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(syncResult.ok).toBe(true);
+        expect(syncResult.modelCount).toBe(2);
+
+        const models = await caller.provider.listModels({ profileId, providerId: 'kilo' });
+        expect(models.models.some((model) => model.id === 'kilo/auto-openai')).toBe(true);
+        expect(models.models.some((model) => model.id === 'kilo/auto-anthropic')).toBe(true);
+        expect(models.models.filter((model) => model.label === 'Kilo Auto Free')).toHaveLength(2);
+    });
+
     it('persists kilo browser auth and exposes the stored session token through provider credential queries', async () => {
         const caller = createCaller();
         vi.stubGlobal(
@@ -479,6 +577,135 @@ describe('runtime contracts: provider and account flows', () => {
             providerId: 'kilo',
         });
         expect(accountContext.kiloAccountContext?.displayName).toBe('Neon User');
+        expect(accountContext.kiloAccountContext?.organizations.some((organization) => organization.isActive)).toBe(
+            true
+        );
+    });
+
+    it('persists kilo identity from nested user payloads even when defaults sync fails', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((url: string) => {
+                if (url.endsWith('/api/device-auth/codes')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            result: {
+                                deviceAuth: {
+                                    deviceCode: 'kilo-device-code-nested',
+                                    userCode: 'KILO-NESTED',
+                                    verificationUrl: 'https://kilo.example/verify',
+                                    poll_interval_seconds: 5,
+                                    expiresIn: 900,
+                                },
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/device-auth/codes/kilo-device-code-nested')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                status: 'approved',
+                                accessToken: 'kilo-session-token-nested',
+                                refreshToken: 'kilo-refresh-token-nested',
+                                expiresAt: '2026-03-11T16:00:00.000Z',
+                                accountId: 'acct_nested',
+                                organizationId: 'org_nested',
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                user: {
+                                    id: 'acct_nested',
+                                    name: 'Nested User',
+                                    email: 'nested@example.com',
+                                },
+                                organizations: [
+                                    {
+                                        organization_id: 'org_nested',
+                                        name: 'Nested Org',
+                                        is_active: true,
+                                        entitlement: {},
+                                    },
+                                ],
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/defaults') || url.endsWith('/api/organizations/org_nested/defaults')) {
+                    return Promise.resolve({
+                        ok: false,
+                        status: 500,
+                        statusText: 'Server Error',
+                        json: () => ({
+                            error: 'defaults unavailable',
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile/balance')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                balance: 7.25,
+                                currency: 'USD',
+                            },
+                        }),
+                    });
+                }
+
+                return Promise.resolve({
+                    ok: false,
+                    status: 404,
+                    statusText: 'Not Found',
+                    json: () => ({}),
+                });
+            })
+        );
+
+        const started = await caller.provider.startAuth({
+            profileId,
+            providerId: 'kilo',
+            method: 'device_code',
+        });
+        expect(started.flow.flowType).toBe('device_code');
+        expect(started.userCode).toBe('KILO-NESTED');
+
+        const polled = await caller.provider.pollAuth({
+            profileId,
+            providerId: 'kilo',
+            flowId: started.flow.id,
+        });
+        expect(polled.flow.status).toBe('completed');
+        expect(polled.state.authState).toBe('authenticated');
+
+        const accountContext = await caller.provider.getAccountContext({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(accountContext.kiloAccountContext?.displayName).toBe('Nested User');
+        expect(accountContext.kiloAccountContext?.emailMasked).toBe('nested@example.com');
+        expect(accountContext.kiloAccountContext?.balance?.amount).toBe(7.25);
         expect(accountContext.kiloAccountContext?.organizations.some((organization) => organization.isActive)).toBe(
             true
         );

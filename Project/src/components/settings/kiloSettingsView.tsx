@@ -255,11 +255,6 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                                 value={<SensitiveValue value={activeOrganization?.organizationId} category='account_id' />}
                                 meta='Switch organizations from the Kilo organization panel.'
                             />
-                            <SummaryCard
-                                label='Email'
-                                value={<SensitiveValue value={accountContext?.emailMasked} category='email' />}
-                                meta='Identity data is synced from the Kilo account profile.'
-                            />
                         </div>
                     </div>
                 </div>

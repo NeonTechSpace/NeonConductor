@@ -13,6 +13,7 @@ import type {
 
 export function parseProfilePayload(payload: Record<string, unknown>): KiloProfileResponse {
     const data = readDataRecord(payload);
+    const user = isRecord(data['user']) ? data['user'] : null;
     const organizations = readArray(data['organizations'])
         .map((entry) => {
             if (!isRecord(entry)) {
@@ -38,12 +39,27 @@ export function parseProfilePayload(payload: Record<string, unknown>): KiloProfi
             };
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-    const accountId = readOptionalString(data['id']);
+    const accountId =
+        readOptionalString(data['accountId']) ??
+        readOptionalString(data['id']) ??
+        readOptionalString(user?.['id']);
+    const displayName =
+        readOptionalString(data['displayName']) ??
+        readOptionalString(data['name']) ??
+        readOptionalString(user?.['displayName']) ??
+        readOptionalString(user?.['name']) ??
+        '';
+    const emailMasked =
+        readOptionalString(data['emailMasked']) ??
+        readOptionalString(user?.['emailMasked']) ??
+        readOptionalString(data['email']) ??
+        readOptionalString(user?.['email']) ??
+        '';
 
     return {
         ...(accountId ? { accountId } : {}),
-        displayName: readOptionalString(data['name']) ?? readOptionalString(data['displayName']) ?? '',
-        emailMasked: readOptionalString(data['emailMasked']) ?? readOptionalString(data['email']) ?? '',
+        displayName,
+        emailMasked,
         organizations,
         raw: payload,
     };

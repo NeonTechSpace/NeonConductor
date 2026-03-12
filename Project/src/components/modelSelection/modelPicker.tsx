@@ -38,6 +38,8 @@ interface ModelGroup {
     options: ModelPickerOption[];
 }
 
+export type ModelLabelCollisionIndex = ReadonlyMap<string, number>;
+
 function formatMetric(value: number | undefined): string | undefined {
     if (value === undefined || !Number.isFinite(value)) {
         return undefined;
@@ -66,6 +68,55 @@ function getDisplayLabel(option: ModelPickerOption): string {
     }
 
     return option.label;
+}
+
+function getCollisionKey(option: ModelPickerOption): string | null {
+    if (option.providerId !== 'kilo') {
+        return null;
+    }
+
+    return getDisplayLabel(option).toLowerCase();
+}
+
+export function getModelLabelCollisionIndex(options: ModelPickerOption[]): ModelLabelCollisionIndex {
+    const collisionIndex = new Map<string, number>();
+
+    for (const option of options) {
+        const collisionKey = getCollisionKey(option);
+        if (!collisionKey) {
+            continue;
+        }
+
+        collisionIndex.set(collisionKey, (collisionIndex.get(collisionKey) ?? 0) + 1);
+    }
+
+    return collisionIndex;
+}
+
+function getModelDisambiguator(option: ModelPickerOption): string | undefined {
+    return option.sourceProvider ?? option.promptFamily ?? option.id;
+}
+
+function hasLabelCollision(option: ModelPickerOption, collisionIndex: ModelLabelCollisionIndex): boolean {
+    const collisionKey = getCollisionKey(option);
+    if (!collisionKey) {
+        return false;
+    }
+
+    return (collisionIndex.get(collisionKey) ?? 0) > 1;
+}
+
+export function getOptionDisplayText(
+    option: ModelPickerOption,
+    collisionIndex: ModelLabelCollisionIndex = new Map()
+): string {
+    const displayLabel = getDisplayLabel(option);
+    if (!hasLabelCollision(option, collisionIndex)) {
+        return displayLabel;
+    }
+
+    const disambiguator = getModelDisambiguator(option);
+    return disambiguator ? `${displayLabel} · ${disambiguator}` : displayLabel;
 }
 
 function getGroupKey(option: ModelPickerOption): string {
@@ -155,6 +206,7 @@ function PopoverModelPicker(props: ModelPickerProps) {
     const listboxId = useId();
 
     const selectedOption = props.models.find((option) => option.id === props.selectedModelId);
+    const labelCollisionIndex = useMemo(() => getModelLabelCollisionIndex(props.models), [props.models]);
     const filteredOptions = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
         if (normalizedQuery.length === 0) {
@@ -223,7 +275,7 @@ function PopoverModelPicker(props: ModelPickerProps) {
                 }}>
                 <span className='min-w-0 truncate'>
                     {selectedOption?.label
-                        ? getDisplayLabel(selectedOption)
+                        ? getOptionDisplayText(selectedOption, labelCollisionIndex)
                         : props.models.length === 0
                           ? 'No runnable models available'
                           : props.placeholder}
@@ -293,7 +345,7 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                                     <div className='flex items-start justify-between gap-3'>
                                                         <div className='min-w-0'>
                                                             <p className='truncate text-sm font-medium'>
-                                                                {getDisplayLabel(option)}
+                                                                {getOptionDisplayText(option, labelCollisionIndex)}
                                                             </p>
                                                             <p className='text-muted-foreground mt-1 text-xs leading-5'>
                                                                 {getModelDescription(option)}
@@ -351,6 +403,8 @@ export function ModelPicker(props: ModelPickerProps) {
         return <PopoverModelPicker {...props} />;
     }
 
+    const labelCollisionIndex = getModelLabelCollisionIndex(props.models);
+
     return (
         <select
             {...(props.id ? { id: props.id } : {})}
@@ -375,7 +429,7 @@ export function ModelPicker(props: ModelPickerProps) {
                     </option>
                     {props.models.map((model) => (
                         <option key={`${model.providerId ?? 'single'}:${model.id}`} value={model.id}>
-                            {getDisplayLabel(model)}
+                            {getOptionDisplayText(model, labelCollisionIndex)}
                         </option>
                     ))}
                 </>

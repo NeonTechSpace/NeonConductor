@@ -13,13 +13,13 @@ export async function syncKiloAccountContext(input: {
         ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     };
 
-    const [profileResult, defaultsResult, balanceResult] = await Promise.all([
-        kiloGatewayClient.getProfile(headers),
-        input.organizationId
-            ? kiloGatewayClient.getOrganizationDefaults(input.organizationId, headers)
-            : kiloGatewayClient.getDefaults(headers),
-        kiloGatewayClient.getProfileBalance(headers),
-    ]);
+    const profileResultPromise = kiloGatewayClient.getProfile(headers);
+    const defaultsResultPromise = input.organizationId
+        ? kiloGatewayClient.getOrganizationDefaults(input.organizationId, headers)
+        : kiloGatewayClient.getDefaults(headers);
+    const balanceResultPromise = kiloGatewayClient.getProfileBalance(headers);
+
+    const profileResult = await profileResultPromise;
     if (profileResult.isErr()) {
         return errAuthExecution(
             profileResult.error.code === 'timeout' || profileResult.error.code === 'network_error'
@@ -28,16 +28,9 @@ export async function syncKiloAccountContext(input: {
             profileResult.error.message
         );
     }
-    if (defaultsResult.isErr()) {
-        return errAuthExecution(
-            defaultsResult.error.code === 'timeout' || defaultsResult.error.code === 'network_error'
-                ? 'provider_request_unavailable'
-                : 'provider_request_failed',
-            defaultsResult.error.message
-        );
-    }
+
+    const [defaultsResult, balanceResult] = await Promise.all([defaultsResultPromise, balanceResultPromise]);
     const profile = profileResult.value;
-    const defaults = defaultsResult.value;
     const balance = balanceResult.isOk() ? balanceResult.value : undefined;
 
     await accountSnapshotStore.upsertAccount({
@@ -62,10 +55,10 @@ export async function syncKiloAccountContext(input: {
         organizations: profile.organizations,
     });
 
-    if (defaults.defaultModelId) {
-        const modelExists = await providerStore.modelExists(input.profileId, 'kilo', defaults.defaultModelId);
+    if (defaultsResult.isOk() && defaultsResult.value.defaultModelId) {
+        const modelExists = await providerStore.modelExists(input.profileId, 'kilo', defaultsResult.value.defaultModelId);
         if (modelExists) {
-            await providerStore.setDefaults(input.profileId, 'kilo', defaults.defaultModelId);
+            await providerStore.setDefaults(input.profileId, 'kilo', defaultsResult.value.defaultModelId);
         }
     }
 

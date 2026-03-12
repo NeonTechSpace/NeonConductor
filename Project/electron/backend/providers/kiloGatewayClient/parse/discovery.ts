@@ -15,7 +15,7 @@ import { appLog } from '@/app/main/logging';
 export function parseModelsPayload(payload: Record<string, unknown>): KiloGatewayModel[] {
     const list = readArray(unwrapData(payload));
 
-    return list
+    const models = list
         .map((entry) => {
             if (!isRecord(entry)) {
                 return null;
@@ -58,6 +58,13 @@ export function parseModelsPayload(payload: Record<string, unknown>): KiloGatewa
             };
         })
         .filter((model): model is KiloGatewayModel => model !== null);
+
+    const dedupedModels = new Map<string, KiloGatewayModel>();
+    for (const model of models) {
+        dedupedModels.set(model.id, model);
+    }
+
+    return [...dedupedModels.values()];
 }
 
 export function parseProvidersPayload(payload: Record<string, unknown>): KiloGatewayProvider[] {
