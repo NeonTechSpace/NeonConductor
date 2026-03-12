@@ -1,4 +1,4 @@
-import { resolveEndpointProfile } from '@/app/backend/providers/service/endpointProfiles';
+import { resolveConnectionProfile } from '@/app/backend/providers/service/endpointProfiles';
 import type {
     RuntimeProviderId,
     TokenCountEstimate,
@@ -185,9 +185,11 @@ async function countZaiMessageTokens(input: {
         return null;
     }
 
-    const endpointProfileResult = await resolveEndpointProfile(input.profileId, 'zai');
-    const endpointProfile = endpointProfileResult.isErr() ? 'coding_international' : endpointProfileResult.value;
-    const baseUrl = endpointProfile === 'general_international' ? ZAI_GENERAL_BASE_URL : ZAI_CODING_BASE_URL;
+    const connectionProfileResult = await resolveConnectionProfile(input.profileId, 'zai');
+    const optionProfileId = connectionProfileResult.isErr()
+        ? 'coding_international'
+        : connectionProfileResult.value.optionProfileId;
+    const baseUrl = optionProfileId === 'general_international' ? ZAI_GENERAL_BASE_URL : ZAI_CODING_BASE_URL;
     const tokenizerUrl = buildEndpoint(baseUrl, '/tokenizer');
     const token = authResult.value.accessToken ?? authResult.value.apiKey;
     if (!token) {

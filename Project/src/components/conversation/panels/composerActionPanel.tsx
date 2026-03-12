@@ -5,6 +5,7 @@ import {
     getImagePreviewStatusLabel,
     getPendingImagePreviewState,
 } from '@/web/components/conversation/messages/imagePreviewState';
+import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
@@ -12,20 +13,6 @@ import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
 import type { ResolvedContextState, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-
-interface ModelOption {
-    id: string;
-    label: string;
-    providerId?: string;
-    providerLabel?: string;
-    sourceProvider?: string;
-    source?: string;
-    promptFamily?: string;
-    reasoningEfforts?: RuntimeReasoningEffort[];
-    price?: number;
-    latency?: number;
-    tps?: number;
-}
 
 interface PendingImageView {
     clientId: string;
@@ -42,7 +29,6 @@ interface PendingImageView {
 }
 
 interface ComposerActionPanelProps {
-    prompt: string;
     pendingImages: PendingImageView[];
     disabled: boolean;
     isSubmitting: boolean;
@@ -58,29 +44,36 @@ interface ComposerActionPanelProps {
     maxImageAttachmentsPerMessage: number;
     imageAttachmentBlockedReason?: string;
     routingBadge?: string;
+    selectedModelCompatibilityState?: ModelCompatibilityState;
+    selectedModelCompatibilityReason?: string;
     selectedProviderStatus?: {
         label: string;
         authState: string;
         authMethod: string;
     };
-    modelOptions: ModelOption[];
+    modelOptions: ModelPickerOption[];
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
-    contextFeedbackMessage?: string;
-    contextFeedbackTone?: 'success' | 'error' | 'info';
     canCompactContext?: boolean;
     isCompactingContext?: boolean;
+    promptResetKey?: number;
     focusComposerRequestKey?: number;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
     onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
-    onPromptChange: (nextPrompt: string) => void;
+    onPromptEdited: () => void;
     onAddImageFiles: (files: FileList | File[]) => void;
     onRemovePendingImage: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onSubmitPrompt: () => void;
-    onCompactContext?: () => void;
+    onSubmitPrompt: (prompt: string) => void;
+    onCompactContext?: () => Promise<
+        | void
+        | {
+              message: string;
+              tone: 'success' | 'error' | 'info';
+          }
+    >;
 }
 
 function formatTokenCount(value: number): string {
@@ -140,7 +133,6 @@ const reasoningEffortOptions: Array<{ value: RuntimeReasoningEffort; label: stri
 ];
 
 export function ComposerActionPanel({
-    prompt,
     pendingImages,
     disabled,
     isSubmitting,
@@ -156,20 +148,21 @@ export function ComposerActionPanel({
     maxImageAttachmentsPerMessage,
     imageAttachmentBlockedReason,
     routingBadge,
+    selectedModelCompatibilityState,
+    selectedModelCompatibilityReason,
     selectedProviderStatus,
     modelOptions,
     runErrorMessage,
     contextState,
-    contextFeedbackMessage,
-    contextFeedbackTone = 'info',
     canCompactContext = false,
     isCompactingContext = false,
+    promptResetKey,
     focusComposerRequestKey,
     onProviderChange,
     onModelChange,
     onReasoningEffortChange,
     onModeChange,
-    onPromptChange,
+    onPromptEdited,
     onAddImageFiles,
     onRemovePendingImage,
     onRetryPendingImage,
@@ -177,11 +170,19 @@ export function ComposerActionPanel({
     onCompactContext,
 }: ComposerActionPanelProps) {
     const [isDragActive, setIsDragActive] = useState(false);
+    const [draftPrompt, setDraftPrompt] = useState('');
     const [lightboxImage, setLightboxImage] = useState<
         | {
               imageUrl: string;
               title: string;
               detail?: string;
+          }
+        | undefined
+    >(undefined);
+    const [contextFeedback, setContextFeedback] = useState<
+        | {
+              message: string;
+              tone: 'success' | 'error' | 'info';
           }
         | undefined
     >(undefined);
@@ -192,16 +193,22 @@ export function ComposerActionPanel({
     const hasUsageNumbers = totalTokens !== undefined && thresholdTokens !== undefined;
     const compactionRecord = contextState?.compaction;
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
-    const hasSubmittableContent = prompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
+    const hasSubmittableContent = draftPrompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
     const hasUnsupportedPendingImages = pendingImages.length > 0 && !canAttachImages;
     const shouldShowModePicker = topLevelTab !== 'chat';
+    const isKiloReasoningModel = selectedProviderId === 'kilo' && selectedModelSupportsReasoning;
     const availableReasoningEfforts = selectedModelSupportsReasoning
-        ? reasoningEffortOptions.filter(
-              (option) =>
-                  option.value === 'none' ||
-                  supportedReasoningEfforts === undefined ||
-                  supportedReasoningEfforts.includes(option.value)
-          )
+        ? reasoningEffortOptions.filter((option) => {
+              if (option.value === 'none') {
+                  return true;
+              }
+
+              if (isKiloReasoningModel) {
+                  return supportedReasoningEfforts?.includes(option.value) ?? false;
+              }
+
+              return supportedReasoningEfforts === undefined || supportedReasoningEfforts.includes(option.value);
+          })
         : reasoningEffortOptions.filter((option) => option.value === 'none');
     const hasAdjustableReasoningEfforts = availableReasoningEfforts.length > 1;
     const selectedReasoningEffort = availableReasoningEfforts.some((option) => option.value === reasoningEffort)
@@ -213,11 +220,13 @@ export function ComposerActionPanel({
         : undefined;
     const attachmentStatusMessage = hasUnsupportedPendingImages
         ? (imageAttachmentBlockedReason ?? 'Select a vision-capable model to send attached images.')
-        : hasBlockingPendingImages
-          ? 'Sending is locked until every image finishes processing.'
-          : pendingImages.length > 0
-            ? 'Images are ready to send with this message.'
-            : 'Text-only prompt.';
+        : selectedModelCompatibilityState === 'incompatible' && selectedModelCompatibilityReason
+          ? selectedModelCompatibilityReason
+          : hasBlockingPendingImages
+            ? 'Sending is locked until every image finishes processing.'
+            : pendingImages.length > 0
+              ? 'Images are ready to send with this message.'
+              : 'Text-only prompt.';
 
     useEffect(() => {
         if (focusComposerRequestKey === undefined) {
@@ -226,6 +235,18 @@ export function ComposerActionPanel({
 
         promptTextareaRef.current?.focus();
     }, [focusComposerRequestKey]);
+
+    useEffect(() => {
+        if (promptResetKey === undefined) {
+            return;
+        }
+
+        setDraftPrompt('');
+    }, [promptResetKey]);
+
+    useEffect(() => {
+        setContextFeedback(undefined);
+    }, [selectedProviderId, selectedModelId, topLevelTab, activeModeKey]);
 
     function openFilePicker() {
         fileInputRef.current?.click();
@@ -266,7 +287,7 @@ export function ComposerActionPanel({
                 }}
                 onSubmit={(event) => {
                     event.preventDefault();
-                    onSubmitPrompt();
+                    onSubmitPrompt(draftPrompt);
                 }}>
                 <input
                     ref={fileInputRef}
@@ -330,6 +351,18 @@ export function ComposerActionPanel({
                             }}
                             onSelectModel={onModelChange}
                         />
+                        {selectedModelCompatibilityReason ? (
+                            <p
+                                className={`text-[11px] leading-5 ${
+                                    selectedModelCompatibilityState === 'incompatible'
+                                        ? 'text-destructive'
+                                        : selectedModelCompatibilityState === 'warning'
+                                          ? 'text-amber-700 dark:text-amber-300'
+                                          : 'text-muted-foreground'
+                                }`}>
+                                {selectedModelCompatibilityReason}
+                            </p>
+                        ) : null}
                     </div>
                     <div className='space-y-1'>
                         <label
@@ -362,7 +395,9 @@ export function ComposerActionPanel({
                         <p className='text-muted-foreground text-[11px] leading-5'>
                             {selectedModelSupportsReasoning
                                 ? !hasAdjustableReasoningEfforts
-                                    ? 'This model supports reasoning, but Kilo does not expose adjustable effort levels.'
+                                    ? isKiloReasoningModel
+                                        ? 'This model supports reasoning, but Kilo does not expose trusted adjustable effort levels.'
+                                        : 'This model supports reasoning, but does not expose adjustable effort levels.'
                                     : selectedReasoningEffort === 'none'
                                       ? 'Reasoning is off for the next run.'
                                       : 'Reasoning level applies to the next run.'
@@ -420,7 +455,30 @@ export function ComposerActionPanel({
                                     size='sm'
                                     variant='outline'
                                     disabled={!canCompactContext || isCompactingContext}
-                                    onClick={onCompactContext}>
+                                    onClick={() => {
+                                        if (!onCompactContext) {
+                                            return;
+                                        }
+
+                                        setContextFeedback(undefined);
+                                        void onCompactContext()
+                                            .then((result) => {
+                                                if (!result) {
+                                                    return;
+                                                }
+
+                                                setContextFeedback(result);
+                                            })
+                                            .catch((error: unknown) => {
+                                                setContextFeedback({
+                                                    tone: 'error',
+                                                    message:
+                                                        error instanceof Error
+                                                            ? error.message
+                                                            : 'Context compaction failed.',
+                                                });
+                                            });
+                                    }}>
                                     {isCompactingContext ? 'Compacting...' : 'Compact now'}
                                 </Button>
                             ) : null}
@@ -437,16 +495,16 @@ export function ComposerActionPanel({
                                 ? ` · Override: ${contextState.policy.limits.overrideReason}`
                                 : ''}
                         </p>
-                        {contextFeedbackMessage ? (
+                        {contextFeedback ? (
                             <p
                                 className={`text-xs ${
-                                    contextFeedbackTone === 'error'
+                                    contextFeedback.tone === 'error'
                                         ? 'text-destructive'
-                                        : contextFeedbackTone === 'success'
+                                        : contextFeedback.tone === 'success'
                                           ? 'text-primary'
                                           : 'text-muted-foreground'
                                 }`}>
-                                {contextFeedbackMessage}
+                                {contextFeedback.message}
                             </p>
                         ) : null}
                     </div>
@@ -589,9 +647,12 @@ export function ComposerActionPanel({
                         ref={promptTextareaRef}
                         aria-label='Prompt'
                         name='composerPrompt'
-                        value={prompt}
+                        value={draftPrompt}
                         onChange={(event) => {
-                            onPromptChange(event.target.value);
+                            if (runErrorMessage) {
+                                onPromptEdited();
+                            }
+                            setDraftPrompt(event.target.value);
                         }}
                         onPaste={(event) => {
                             const files = extractClipboardFiles(event.clipboardData);
@@ -614,13 +675,14 @@ export function ComposerActionPanel({
                                 isSubmitting ||
                                 !hasSubmittableContent ||
                                 hasBlockingPendingImages ||
-                                hasUnsupportedPendingImages
+                                hasUnsupportedPendingImages ||
+                                selectedModelCompatibilityState === 'incompatible'
                             ) {
                                 return;
                             }
 
                             event.preventDefault();
-                            onSubmitPrompt();
+                            onSubmitPrompt(draftPrompt);
                         }}
                         rows={4}
                         className='border-border bg-background/70 focus-visible:ring-ring focus-visible:border-ring min-h-[160px] w-full resize-y border-t px-4 py-4 text-sm leading-6 focus-visible:ring-2 focus-visible:outline-none'
@@ -646,7 +708,8 @@ export function ComposerActionPanel({
                             isSubmitting ||
                             !hasSubmittableContent ||
                             hasBlockingPendingImages ||
-                            hasUnsupportedPendingImages
+                            hasUnsupportedPendingImages ||
+                            selectedModelCompatibilityState === 'incompatible'
                         }>
                         {hasBlockingPendingImages ? 'Images preparing…' : 'Start Run'}
                     </Button>

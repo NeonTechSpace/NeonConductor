@@ -3,79 +3,163 @@ import {
     getDefaultEndpointProfile,
     getProviderDefinition,
     isValidEndpointProfile,
+    type ProviderEndpointProfileDefinition,
     resolveProviderApiKeyCta,
     type FirstPartyProviderId,
 } from '@/app/backend/providers/registry';
+import { resolveProviderBaseUrl } from '@/app/backend/providers/providerBaseUrls';
 import {
     errProviderService,
     okProviderService,
     type ProviderServiceResult,
 } from '@/app/backend/providers/service/errors';
 
-function endpointProfileSettingKey(providerId: FirstPartyProviderId): string {
-    return `provider_endpoint_profile:${providerId}`;
+function connectionProfileSettingKey(providerId: FirstPartyProviderId): string {
+    return `provider_connection_profile:${providerId}`;
 }
 
-export interface ProviderEndpointProfileState {
+interface StoredProviderConnectionProfile {
+    optionProfileId: string;
+    baseUrlOverride?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStoredProviderConnectionProfile(value: unknown): value is StoredProviderConnectionProfile {
+    if (!isRecord(value) || typeof value['optionProfileId'] !== 'string') {
+        return false;
+    }
+
+    return value['baseUrlOverride'] === undefined || typeof value['baseUrlOverride'] === 'string';
+}
+
+function normalizeOptionalString(value: string | null | undefined): string | undefined {
+    if (value === null || value === undefined) {
+        return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function buildConnectionProfileOption(definition: ProviderEndpointProfileDefinition): { value: string; label: string } {
+    return {
+        value: definition.value,
+        label: definition.label,
+    };
+}
+
+function resolveSelectedOption(
+    providerId: FirstPartyProviderId,
+    storedOptionProfileId: string | undefined
+): { optionProfileId: string; definition: ProviderEndpointProfileDefinition } {
+    const providerDefinition = getProviderDefinition(providerId);
+    const fallbackOptionProfileId = getDefaultEndpointProfile(providerId);
+    const optionProfileId =
+        storedOptionProfileId && isValidEndpointProfile(providerId, storedOptionProfileId)
+            ? storedOptionProfileId
+            : fallbackOptionProfileId;
+    const definition =
+        providerDefinition.endpointProfiles.find((profile) => profile.value === optionProfileId) ??
+        providerDefinition.endpointProfiles[0] ?? {
+            value: optionProfileId,
+            label: optionProfileId,
+        };
+
+    return {
+        optionProfileId,
+        definition,
+    };
+}
+
+export interface ProviderConnectionProfileState {
     providerId: FirstPartyProviderId;
-    value: string;
+    optionProfileId: string;
     label: string;
     options: Array<{ value: string; label: string }>;
+    baseUrlOverride?: string;
+    resolvedBaseUrl: string | null;
 }
 
-export async function getEndpointProfileState(
+export async function getConnectionProfileState(
     profileId: string,
     providerId: FirstPartyProviderId
-): Promise<ProviderServiceResult<ProviderEndpointProfileState>> {
+): Promise<ProviderServiceResult<ProviderConnectionProfileState>> {
     const definition = getProviderDefinition(providerId);
-    const stored = await settingsStore.getStringOptional(profileId, endpointProfileSettingKey(providerId));
-    const fallback = getDefaultEndpointProfile(providerId);
-    const value = stored && isValidEndpointProfile(providerId, stored) ? stored : fallback;
-    const selected = definition.endpointProfiles.find((profile) => profile.value === value);
+    const stored = await settingsStore.getJsonOptional(
+        profileId,
+        connectionProfileSettingKey(providerId),
+        isStoredProviderConnectionProfile
+    );
+    const { optionProfileId, definition: selected } = resolveSelectedOption(providerId, stored?.optionProfileId);
+    const baseUrlOverride = normalizeOptionalString(stored?.baseUrlOverride);
 
     return okProviderService({
         providerId,
-        value,
-        label: selected?.label ?? value,
-        options: definition.endpointProfiles.map((profile) => ({
-            value: profile.value,
-            label: profile.label,
-        })),
+        optionProfileId,
+        label: selected.label,
+        options: definition.endpointProfiles.map(buildConnectionProfileOption),
+        ...(baseUrlOverride ? { baseUrlOverride } : {}),
+        resolvedBaseUrl: baseUrlOverride ?? resolveProviderBaseUrl(providerId, optionProfileId),
     });
 }
 
-export async function setEndpointProfileState(
+export async function setConnectionProfileState(
     profileId: string,
     providerId: FirstPartyProviderId,
-    value: string
-): Promise<ProviderServiceResult<ProviderEndpointProfileState>> {
-    if (!isValidEndpointProfile(providerId, value)) {
+    input: {
+        optionProfileId: string;
+        baseUrlOverride?: string | null;
+    }
+): Promise<ProviderServiceResult<ProviderConnectionProfileState>> {
+    if (!isValidEndpointProfile(providerId, input.optionProfileId)) {
         return errProviderService(
             'invalid_payload',
-            `Invalid endpoint profile "${value}" for provider "${providerId}".`
+            `Invalid connection profile option "${input.optionProfileId}" for provider "${providerId}".`
         );
     }
 
-    await settingsStore.setString(profileId, endpointProfileSettingKey(providerId), value);
-    return getEndpointProfileState(profileId, providerId);
+    const providerDefinition = getProviderDefinition(providerId);
+    const normalizedBaseUrlOverride = normalizeOptionalString(input.baseUrlOverride);
+    if (normalizedBaseUrlOverride && !providerDefinition.supportsCustomBaseUrl) {
+        return errProviderService(
+            'invalid_payload',
+            `Provider "${providerId}" does not support custom base URL overrides.`
+        );
+    }
+
+    await settingsStore.setJson(profileId, connectionProfileSettingKey(providerId), {
+        optionProfileId: input.optionProfileId,
+        ...(normalizedBaseUrlOverride ? { baseUrlOverride: normalizedBaseUrlOverride } : {}),
+    });
+    return getConnectionProfileState(profileId, providerId);
+}
+
+export async function resolveConnectionProfile(
+    profileId: string,
+    providerId: FirstPartyProviderId
+): Promise<ProviderServiceResult<ProviderConnectionProfileState>> {
+    return getConnectionProfileState(profileId, providerId);
 }
 
 export async function resolveEndpointProfile(
     profileId: string,
     providerId: FirstPartyProviderId
 ): Promise<ProviderServiceResult<string>> {
-    const state = await getEndpointProfileState(profileId, providerId);
+    const state = await getConnectionProfileState(profileId, providerId);
     if (state.isErr()) {
         return errProviderService(state.error.code, state.error.message);
     }
-    return okProviderService(state.value.value);
+    return okProviderService(state.value.optionProfileId);
 }
 
 export async function resolveApiKeyCta(profileId: string, providerId: FirstPartyProviderId) {
-    const endpointProfileResult = await resolveEndpointProfile(profileId, providerId);
-    if (endpointProfileResult.isErr()) {
-        return errProviderService(endpointProfileResult.error.code, endpointProfileResult.error.message);
+    const connectionProfileResult = await resolveConnectionProfile(profileId, providerId);
+    if (connectionProfileResult.isErr()) {
+        return errProviderService(connectionProfileResult.error.code, connectionProfileResult.error.message);
     }
 
-    return okProviderService(resolveProviderApiKeyCta(providerId, endpointProfileResult.value));
+    return okProviderService(resolveProviderApiKeyCta(providerId, connectionProfileResult.value.optionProfileId));
 }

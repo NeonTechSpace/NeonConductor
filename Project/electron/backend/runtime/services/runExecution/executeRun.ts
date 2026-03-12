@@ -6,11 +6,14 @@ import { getProviderRuntimeBehavior } from '@/app/backend/providers/behaviors';
 import type {
     ProviderRuntimeInput,
     ProviderRuntimePart,
+    ProviderApiFamily,
+    ProviderRoutedApiFamily,
     ProviderRuntimeToolDefinition,
     ProviderRuntimeTransportSelection,
     ProviderRuntimeUsage,
 } from '@/app/backend/providers/types';
 import type { EntityId, KiloDynamicSort, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import {
     errRunExecution,
     okRunExecution,
@@ -21,6 +24,7 @@ import {
     emitMessageCreatedEvent,
     emitTransportSelectionEvent,
 } from '@/app/backend/runtime/services/runExecution/eventing';
+import { createReasoningPartFromProviderPart } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type {
     RunContextMessage,
     RunCacheResolution,
@@ -93,6 +97,9 @@ export interface ExecuteRunInput {
     modeKey: StartRunInput['modeKey'];
     providerId: RuntimeProviderId;
     modelId: string;
+    toolProtocol: ProviderRuntimeInput['toolProtocol'];
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: StartRunInput['runtimeOptions'];
     contextMessages?: RunContextMessage[];
@@ -141,7 +148,14 @@ async function resolveContextMessages(
             parts: (
                 await Promise.all(
                     message.parts.map(async (part) => {
-                        if (part.type === 'text' || part.type === 'tool_call' || part.type === 'tool_result') {
+                        if (
+                            part.type === 'text' ||
+                            part.type === 'reasoning' ||
+                            part.type === 'reasoning_summary' ||
+                            part.type === 'reasoning_encrypted' ||
+                            part.type === 'tool_call' ||
+                            part.type === 'tool_result'
+                        ) {
                             return part;
                         }
 
@@ -255,6 +269,12 @@ function createAssistantTurnCollector() {
                         text,
                     });
                 }
+                return;
+            }
+
+            const reasoningPart = createReasoningPartFromProviderPart(part);
+            if (reasoningPart) {
+                parts.push(reasoningPart);
                 return;
             }
 
@@ -390,6 +410,9 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
             runId: input.runId,
             providerId: input.providerId,
             modelId: input.modelId,
+            toolProtocol: input.toolProtocol,
+            ...(input.apiFamily ? { apiFamily: input.apiFamily } : {}),
+            ...(input.routedApiFamily ? { routedApiFamily: input.routedApiFamily } : {}),
             promptText: input.prompt,
             ...(conversationMessages.length > 0 ? { contextMessages: conversationMessages } : {}),
             ...(input.toolDefinitions.length > 0 ? { tools: input.toolDefinitions, toolChoice: 'auto' as const } : {}),
@@ -423,7 +446,7 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                     }
 
                     transportSelection = selection;
-                    await runStore.updateRuntimeMetadata(input.runId, {
+                    const run = await runStore.updateRuntimeMetadata(input.runId, {
                         transportSelected: selection.selected,
                         ...(selection.degradedReason
                             ? {
@@ -431,11 +454,17 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                               }
                             : {}),
                     });
+                    if (!run) {
+                        throw new InvariantError(
+                            'Run transport metadata persisted successfully but the updated run snapshot could not be reloaded.'
+                        );
+                    }
                     await emitTransportSelectionEvent({
                         runId: input.runId,
                         profileId: input.profileId,
                         sessionId: input.sessionId,
                         selection,
+                        run,
                     });
                 },
             }
@@ -458,9 +487,14 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                 await input.onBeforeFinalize();
             }
 
-            await runStore.finalize(input.runId, {
+            const run = await runStore.finalize(input.runId, {
                 status: 'completed',
             });
+            if (!run) {
+                throw new InvariantError(
+                    'Run completion persisted successfully but the updated run snapshot could not be reloaded.'
+                );
+            }
             await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'completed');
             const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
             if (sessionThread) {
@@ -484,6 +518,7 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                         runId: input.runId,
                         sessionId: input.sessionId,
                         profileId: input.profileId,
+                        run,
                     },
                 })
             );

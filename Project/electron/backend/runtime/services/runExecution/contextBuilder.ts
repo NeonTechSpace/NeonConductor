@@ -58,7 +58,9 @@ export async function buildRunContext(input: {
         resolvedMode: input.resolvedMode,
     });
     if (systemPreludeResult.isErr()) {
-        return errRunExecution(systemPreludeResult.error.code, systemPreludeResult.error.message);
+        return errRunExecution(systemPreludeResult.error.code, systemPreludeResult.error.message, {
+            ...(systemPreludeResult.error.action ? { action: systemPreludeResult.error.action } : {}),
+        });
     }
 
     const preparedContext = await sessionContextService.prepareSessionContext({

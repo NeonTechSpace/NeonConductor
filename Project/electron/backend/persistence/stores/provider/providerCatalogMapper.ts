@@ -7,7 +7,12 @@ import {
     readNumberFromRecord,
 } from '@/app/backend/persistence/stores/provider/providerCatalogParsers';
 import type { ProviderDiscoverySnapshotRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
-import type { ProviderModelModality } from '@/app/backend/providers/types';
+import type {
+    ProviderApiFamily,
+    ProviderModelModality,
+    ProviderRoutedApiFamily,
+    ProviderToolProtocol,
+} from '@/app/backend/providers/types';
 import { runtimeReasoningEfforts } from '@/app/backend/runtime/contracts';
 import type { RuntimeReasoningEffort } from '@/app/backend/runtime/contracts';
 
@@ -21,9 +26,14 @@ export interface ProviderCatalogModelUpsert {
     supportsVision?: boolean;
     supportsAudioInput?: boolean;
     supportsAudioOutput?: boolean;
+    supportsPromptCache?: boolean;
+    toolProtocol?: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     inputModalities?: ProviderModelModality[];
     outputModalities?: ProviderModelModality[];
     promptFamily?: string;
+    providerSettings?: Record<string, unknown>;
     contextLength?: number;
     pricing?: Record<string, unknown>;
     raw?: Record<string, unknown>;
@@ -40,9 +50,14 @@ export interface ComparableCatalogModel {
     supportsVision: boolean;
     supportsAudioInput: boolean;
     supportsAudioOutput: boolean;
+    supportsPromptCache: boolean | null;
+    toolProtocol: ProviderToolProtocol | null;
+    apiFamily: ProviderApiFamily | null;
+    routedApiFamily: ProviderRoutedApiFamily | null;
     inputModalities: ProviderModelModality[];
     outputModalities: ProviderModelModality[];
     promptFamily: string | null;
+    providerSettings: Record<string, unknown>;
     contextLength: number | null;
     pricing: Record<string, unknown>;
     raw: Record<string, unknown>;
@@ -59,8 +74,13 @@ interface ProviderCatalogModelRow {
     supports_vision: 0 | 1 | null;
     supports_audio_input: 0 | 1 | null;
     supports_audio_output: 0 | 1 | null;
+    supports_prompt_cache: 0 | 1 | null;
+    tool_protocol: string | null;
+    api_family: string | null;
+    routed_api_family: string | null;
     pricing_json: string;
     raw_json: string;
+    provider_settings_json: string | null;
     input_modalities_json: string | null;
     output_modalities_json: string | null;
     prompt_family: string | null;
@@ -89,12 +109,17 @@ interface ExistingCatalogModelRow {
     supports_vision: 0 | 1 | null;
     supports_audio_input: 0 | 1 | null;
     supports_audio_output: 0 | 1 | null;
+    supports_prompt_cache: 0 | 1 | null;
+    tool_protocol: string | null;
+    api_family: string | null;
+    routed_api_family: string | null;
     input_modalities_json: string | null;
     output_modalities_json: string | null;
     prompt_family: string | null;
     context_length: number | null;
     pricing_json: string;
     raw_json: string;
+    provider_settings_json: string | null;
     source: string;
 }
 
@@ -222,6 +247,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function parseToolProtocol(value: string | null): ProviderToolProtocol | undefined {
+    switch (value) {
+        case 'openai_responses':
+        case 'openai_chat_completions':
+        case 'kilo_gateway':
+        case 'provider_native':
+        case 'anthropic_messages':
+        case 'google_generativeai':
+            return value;
+        default:
+            return undefined;
+    }
+}
+
+function parseApiFamily(value: string | null): ProviderApiFamily | undefined {
+    switch (value) {
+        case 'openai_compatible':
+        case 'kilo_gateway':
+        case 'provider_native':
+        case 'anthropic_messages':
+        case 'google_generativeai':
+            return value;
+        default:
+            return undefined;
+    }
+}
+
+function parseRoutedApiFamily(value: string | null): ProviderRoutedApiFamily | undefined {
+    switch (value) {
+        case 'openai_compatible':
+        case 'provider_native':
+        case 'anthropic_messages':
+        case 'google_generativeai':
+            return value;
+        default:
+            return undefined;
+    }
+}
+
 function normalizeReasoningEfforts(values: Iterable<string>): RuntimeReasoningEffort[] {
     const allowedValues = new Set<RuntimeReasoningEffort>(runtimeReasoningEfforts);
     const normalized = new Set<RuntimeReasoningEffort>();
@@ -247,41 +311,8 @@ function extractVariantReasoningEfforts(raw: Record<string, unknown>): RuntimeRe
     return normalizeReasoningEfforts(Object.keys(variants));
 }
 
-function deriveLegacyKiloReasoningEfforts(modelId: string): RuntimeReasoningEffort[] {
-    const normalizedModelId = modelId.toLowerCase();
-    if (
-        normalizedModelId.includes('deepseek') ||
-        normalizedModelId.includes('minimax') ||
-        normalizedModelId.includes('glm') ||
-        normalizedModelId.includes('mistral') ||
-        normalizedModelId.includes('kimi') ||
-        normalizedModelId.includes('k2p5')
-    ) {
-        return [];
-    }
-
-    if (normalizedModelId.includes('grok') && normalizedModelId.includes('grok-3-mini')) {
-        return ['low', 'high'];
-    }
-
-    if (normalizedModelId.includes('grok')) {
-        return [];
-    }
-
-    if (
-        normalizedModelId.includes('gpt') ||
-        normalizedModelId.includes('gemini-3') ||
-        normalizedModelId.includes('claude')
-    ) {
-        return ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
-    }
-
-    return [];
-}
-
 function extractKiloReasoningEfforts(input: {
     providerId: string;
-    modelId: string;
     supportsReasoning: boolean;
     raw: Record<string, unknown>;
 }): RuntimeReasoningEffort[] | undefined {
@@ -290,12 +321,7 @@ function extractKiloReasoningEfforts(input: {
     }
 
     const variantEfforts = extractVariantReasoningEfforts(input.raw);
-    if (variantEfforts.length > 0) {
-        return variantEfforts;
-    }
-
-    const legacyFallbackEfforts = deriveLegacyKiloReasoningEfforts(input.modelId);
-    return legacyFallbackEfforts.length > 0 ? legacyFallbackEfforts : [];
+    return variantEfforts.length > 0 ? variantEfforts : undefined;
 }
 
 export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderModelRecord {
@@ -312,9 +338,12 @@ export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderM
     const latency = extractLatency(raw);
     const tps = extractTps(raw);
     const supportsReasoning = row.supports_reasoning === 1;
+    const toolProtocol = parseToolProtocol(row.tool_protocol);
+    const apiFamily = parseApiFamily(row.api_family);
+    const routedApiFamily = parseRoutedApiFamily(row.routed_api_family);
+    const providerSettings = row.provider_settings_json ? parseJsonObject(row.provider_settings_json) : undefined;
     const kiloReasoningEfforts = extractKiloReasoningEfforts({
         providerId: row.provider_id,
-        modelId: row.model_id,
         supportsReasoning,
         raw,
     });
@@ -333,10 +362,15 @@ export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderM
             row.supports_audio_input === null ? inputModalities.includes('audio') : row.supports_audio_input === 1,
         supportsAudioOutput:
             row.supports_audio_output === null ? outputModalities.includes('audio') : row.supports_audio_output === 1,
+        ...(row.supports_prompt_cache !== null ? { supportsPromptCache: row.supports_prompt_cache === 1 } : {}),
+        ...(toolProtocol ? { toolProtocol } : {}),
+        ...(apiFamily ? { apiFamily } : {}),
+        ...(routedApiFamily ? { routedApiFamily } : {}),
         inputModalities,
         outputModalities,
         ...(kiloReasoningEfforts !== undefined ? { reasoningEfforts: kiloReasoningEfforts } : {}),
         ...(row.prompt_family ? { promptFamily: row.prompt_family } : {}),
+        ...(providerSettings ? { providerSettings } : {}),
         ...(row.context_length !== null ? { contextLength: row.context_length } : {}),
         ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
         ...(inputPrice !== undefined ? { inputPrice } : {}),
@@ -372,9 +406,14 @@ export function normalizeComparableModel(model: ProviderCatalogModelUpsert): Com
         supportsVision: model.supportsVision ?? false,
         supportsAudioInput: model.supportsAudioInput ?? false,
         supportsAudioOutput: model.supportsAudioOutput ?? false,
+        supportsPromptCache: model.supportsPromptCache ?? null,
+        toolProtocol: model.toolProtocol ?? null,
+        apiFamily: model.apiFamily ?? null,
+        routedApiFamily: model.routedApiFamily ?? null,
         inputModalities: normalizeModalities(model.inputModalities),
         outputModalities: normalizeModalities(model.outputModalities),
         promptFamily: model.promptFamily ?? null,
+        providerSettings: model.providerSettings ?? {},
         contextLength: model.contextLength ?? null,
         pricing: model.pricing ?? {},
         raw: model.raw ?? {},
@@ -394,6 +433,7 @@ export function serializeComparableModels(models: ComparableCatalogModel[]): str
             .map((model) => ({
                 ...model,
                 pricing: normalizeRecordKeys(model.pricing),
+                providerSettings: normalizeRecordKeys(model.providerSettings),
                 raw: normalizeRecordKeys(model.raw),
             }))
     );
@@ -410,9 +450,14 @@ export function mapComparableModelFromExistingRow(row: ExistingCatalogModelRow):
         supportsVision: row.supports_vision === null ? false : row.supports_vision === 1,
         supportsAudioInput: row.supports_audio_input === null ? false : row.supports_audio_input === 1,
         supportsAudioOutput: row.supports_audio_output === null ? false : row.supports_audio_output === 1,
+        supportsPromptCache: row.supports_prompt_cache === null ? null : row.supports_prompt_cache === 1,
+        toolProtocol: parseToolProtocol(row.tool_protocol) ?? null,
+        apiFamily: parseApiFamily(row.api_family) ?? null,
+        routedApiFamily: parseRoutedApiFamily(row.routed_api_family) ?? null,
         inputModalities: parseModalities(row.input_modalities_json),
         outputModalities: parseModalities(row.output_modalities_json),
         promptFamily: row.prompt_family,
+        providerSettings: row.provider_settings_json ? parseJsonObject(row.provider_settings_json) : {},
         contextLength: row.context_length,
         pricing: parseJsonObject(row.pricing_json),
         raw: parseJsonObject(row.raw_json),

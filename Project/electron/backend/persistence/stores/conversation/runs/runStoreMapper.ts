@@ -1,11 +1,12 @@
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import type { RunRecord } from '@/app/backend/persistence/types';
 import { assertSupportedProviderId } from '@/app/backend/providers/registry';
+import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 import {
     providerAuthMethods,
     runStatuses,
     runtimeCacheStrategies,
-    runtimeOpenAITransports,
+    runtimeRequestedTransportFamilies,
     runtimeReasoningEfforts,
     runtimeReasoningSummaries,
 } from '@/app/backend/runtime/contracts';
@@ -84,24 +85,31 @@ function parseCacheStrategy(value: string | null): 'auto' | 'manual' | undefined
     throw new DataCorruptionError(`Invalid run cache strategy in persistence row: "${value}".`);
 }
 
-function parseOpenAITransport(value: string | null) {
+function parseRequestedTransportFamily(value: string | null) {
     if (!value) {
         return undefined;
     }
 
-    if (isOneOf(value, runtimeOpenAITransports)) {
+    if (isOneOf(value, runtimeRequestedTransportFamilies)) {
         return value;
     }
 
-    throw new DataCorruptionError(`Invalid run OpenAI transport preference in persistence row: "${value}".`);
+    throw new DataCorruptionError(`Invalid requested transport family in persistence row: "${value}".`);
 }
 
-function parseSelectedTransport(value: string | null): 'responses' | 'chat_completions' | undefined {
+function parseSelectedTransport(value: string | null): ProviderRuntimeTransportFamily | undefined {
     if (!value) {
         return undefined;
     }
 
-    if (value === 'responses' || value === 'chat_completions') {
+    if (
+        value === 'openai_responses' ||
+        value === 'openai_chat_completions' ||
+        value === 'kilo_gateway' ||
+        value === 'provider_native' ||
+        value === 'anthropic_messages' ||
+        value === 'google_generativeai'
+    ) {
         return value;
     }
 
@@ -140,7 +148,7 @@ export interface RunRow {
     cache_key: string | null;
     cache_applied: number | null;
     cache_skip_reason: string | null;
-    transport_openai_preference: string | null;
+    transport_requested_family: string | null;
     transport_selected: string | null;
     transport_degraded_reason: string | null;
     started_at: string | null;
@@ -160,7 +168,7 @@ export function mapRunRecord(row: RunRow): RunRecord {
     const reasoningIncludeEncrypted = parseOptionalBoolean(row.reasoning_include_encrypted);
     const cacheStrategy = parseCacheStrategy(row.cache_strategy);
     const cacheApplied = parseOptionalBoolean(row.cache_applied);
-    const transportPreference = parseOpenAITransport(row.transport_openai_preference);
+    const transportPreference = parseRequestedTransportFamily(row.transport_requested_family);
     const transportSelected = parseSelectedTransport(row.transport_selected);
 
     return {
@@ -194,7 +202,7 @@ export function mapRunRecord(row: RunRow): RunRecord {
         ...(transportPreference
             ? {
                   transport: {
-                      openaiPreference: transportPreference,
+                      requestedFamily: transportPreference,
                       ...(transportSelected ? { selected: transportSelected } : {}),
                       ...(row.transport_degraded_reason ? { degradedReason: row.transport_degraded_reason } : {}),
                   },

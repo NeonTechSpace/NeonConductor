@@ -14,7 +14,12 @@ describe('providerCatalogMapper reasoning efforts', () => {
             supports_vision: 0,
             supports_audio_input: 0,
             supports_audio_output: 0,
+            supports_prompt_cache: null,
+            tool_protocol: null,
+            api_family: 'kilo_gateway',
+            routed_api_family: 'openai_compatible',
             pricing_json: '{}',
+            provider_settings_json: '{}',
             raw_json: JSON.stringify({
                 opencode: {
                     variants: {
@@ -32,9 +37,10 @@ describe('providerCatalogMapper reasoning efforts', () => {
         });
 
         expect(model.reasoningEfforts).toEqual(['minimal', 'high']);
+        expect(model.routedApiFamily).toBe('openai_compatible');
     });
 
-    it('falls back to the legacy KiloCode effort map when variants are absent', () => {
+    it('keeps Kilo reasoning effort metadata undefined when trusted variants are absent', () => {
         const model = mapProviderCatalogModel({
             model_id: 'openai/gpt-5',
             provider_id: 'kilo',
@@ -45,7 +51,12 @@ describe('providerCatalogMapper reasoning efforts', () => {
             supports_vision: 0,
             supports_audio_input: 0,
             supports_audio_output: 0,
+            supports_prompt_cache: null,
+            tool_protocol: null,
+            api_family: 'kilo_gateway',
+            routed_api_family: 'anthropic_messages',
             pricing_json: '{}',
+            provider_settings_json: '{}',
             raw_json: '{}',
             input_modalities_json: JSON.stringify(['text']),
             output_modalities_json: JSON.stringify(['text']),
@@ -55,6 +66,7 @@ describe('providerCatalogMapper reasoning efforts', () => {
             updated_at: '2026-03-12T00:00:00.000Z',
         });
 
-        expect(model.reasoningEfforts).toEqual(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']);
+        expect(model.reasoningEfforts).toBeUndefined();
+        expect(model.routedApiFamily).toBe('anthropic_messages');
     });
 });

@@ -179,7 +179,7 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
         utils.provider.listModels.invalidate(),
         utils.provider.getAuthState.invalidate(),
         utils.provider.getAccountContext.invalidate(),
-        utils.provider.getEndpointProfile.invalidate(),
+        utils.provider.getConnectionProfile.invalidate(),
         utils.provider.getModelRoutingPreference.invalidate(),
         utils.provider.listModelProviders.invalidate(),
         utils.provider.getUsageSummary.invalidate(),

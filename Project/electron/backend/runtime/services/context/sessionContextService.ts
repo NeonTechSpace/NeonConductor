@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { messageStore, sessionContextCompactionStore } from '@/app/backend/persistence/stores';
+import { messageStore, providerStore, sessionContextCompactionStore } from '@/app/backend/persistence/stores';
 import type { SessionContextCompactionRecord } from '@/app/backend/persistence/types';
 import { getProviderAdapter } from '@/app/backend/providers/adapters';
 import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
@@ -27,6 +27,7 @@ import {
     type ReplayMessage,
 } from '@/app/backend/runtime/services/runExecution/contextReplay';
 import { resolveModeExecution } from '@/app/backend/runtime/services/runExecution/mode';
+import { resolveRuntimeProtocol } from '@/app/backend/runtime/services/runExecution/protocol';
 import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 
@@ -147,6 +148,36 @@ async function summarizeReplayMessages(input: {
         return errOp(authResult.error.code, authResult.error.message);
     }
 
+    const modelCapabilities = await providerStore.getModelCapabilities(input.profileId, input.providerId, input.modelId);
+    if (!modelCapabilities) {
+        return errOp('provider_model_missing', `Model "${input.modelId}" is missing runtime capabilities.`);
+    }
+
+    const runtimeOptions = {
+        reasoning: {
+            effort: 'none' as const,
+            summary: 'none' as const,
+            includeEncrypted: false,
+        },
+        cache: {
+            strategy: 'auto' as const,
+        },
+        transport: {
+            family: 'auto' as const,
+        },
+    };
+    const runtimeProtocol = await resolveRuntimeProtocol({
+        profileId: input.profileId,
+        providerId: input.providerId,
+        modelId: input.modelId,
+        modelCapabilities,
+        authMethod: authResult.value.authMethod,
+        runtimeOptions,
+    });
+    if (runtimeProtocol.isErr()) {
+        return errOp(runtimeProtocol.error.code, runtimeProtocol.error.message);
+    }
+
     const adapter = getProviderAdapter(input.providerId);
     const summaryMessages: RunContextMessage[] = [
         createTextMessage('system', COMPACTION_SYSTEM_PROMPT),
@@ -169,6 +200,8 @@ async function summarizeReplayMessages(input: {
             runId: createEntityId('run'),
             providerId: input.providerId,
             modelId: input.modelId,
+            toolProtocol: runtimeProtocol.value.toolProtocol,
+            ...(runtimeProtocol.value.apiFamily ? { apiFamily: runtimeProtocol.value.apiFamily } : {}),
             promptText: '',
             contextMessages: summaryMessages.map((message) => ({
                 role: message.role,
@@ -179,26 +212,14 @@ async function summarizeReplayMessages(input: {
                         ): part is {
                             type: 'text';
                             text: string;
-                        } => part.type === 'text'
+                        } => part.type === 'text' || part.type === 'reasoning' || part.type === 'reasoning_summary'
                     )
                     .map((part) => ({
                         type: 'text' as const,
                         text: part.text,
                     })),
             })),
-            runtimeOptions: {
-                reasoning: {
-                    effort: 'none',
-                    summary: 'none',
-                    includeEncrypted: false,
-                },
-                cache: {
-                    strategy: 'auto',
-                },
-                transport: {
-                    openai: 'auto',
-                },
-            },
+            runtimeOptions,
             cache: {
                 strategy: 'auto',
                 applied: false,

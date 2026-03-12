@@ -168,7 +168,7 @@ export const defaultRuntimeOptions = {
         strategy: 'auto' as const,
     },
     transport: {
-        openai: 'auto' as const,
+        family: 'auto' as const,
     },
 };
 

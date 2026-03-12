@@ -1,5 +1,6 @@
 import type { ProviderCatalogModelUpsert } from '@/app/backend/persistence/stores/provider/providerCatalogStore';
 import { applyProviderMetadataOverride } from '@/app/backend/providers/metadata/overrides';
+import { supportsCatalogRuntimeFamily } from '@/app/backend/providers/runtimeFamilies';
 import type {
     MetadataKnownSource,
     NormalizedModelMetadata,
@@ -189,6 +190,10 @@ function validateMetadata(model: NormalizedModelMetadata): boolean {
     return true;
 }
 
+function hasRunnableProtocol(model: NormalizedModelMetadata): boolean {
+    return typeof model.toolProtocol === 'string' && model.toolProtocol.length > 0;
+}
+
 function normalizeProviderCatalogModel(providerId: NormalizedModelMetadata['providerId'], model: ProviderCatalogModel) {
     return {
         providerId,
@@ -203,13 +208,25 @@ function normalizeProviderCatalogModel(providerId: NormalizedModelMetadata['prov
         supportsVision: model.capabilities.supportsVision,
         supportsAudioInput: model.capabilities.supportsAudioInput,
         supportsAudioOutput: model.capabilities.supportsAudioOutput,
+        ...(model.capabilities.supportsPromptCache !== undefined
+            ? { supportsPromptCache: model.capabilities.supportsPromptCache }
+            : {}),
+        ...(model.capabilities.toolProtocol ? { toolProtocol: model.capabilities.toolProtocol } : {}),
+        ...(model.capabilities.apiFamily ? { apiFamily: model.capabilities.apiFamily } : {}),
+        ...(model.capabilities.routedApiFamily ? { routedApiFamily: model.capabilities.routedApiFamily } : {}),
         inputModalities: normalizeModalities(model.capabilities.inputModalities),
         outputModalities: normalizeModalities(model.capabilities.outputModalities),
         ...(model.capabilities.promptFamily ? { promptFamily: model.capabilities.promptFamily } : {}),
+        ...(isRecord(model.providerSettings) ? { providerSettings: model.providerSettings } : {}),
         ...(model.contextLength !== undefined ? { contextLength: model.contextLength } : {}),
         pricing: isRecord(model.pricing) ? model.pricing : {},
         raw: isRecord(model.raw) ? model.raw : {},
     } satisfies NormalizedModelMetadata;
+}
+
+export interface CatalogNormalizationContext {
+    optionProfileId: string;
+    resolvedBaseUrl: string | null;
 }
 
 export interface NormalizeCatalogMetadataResult {
@@ -221,7 +238,8 @@ export interface NormalizeCatalogMetadataResult {
 
 export function normalizeCatalogMetadata(
     providerId: NormalizedModelMetadata['providerId'],
-    models: ProviderCatalogModel[]
+    models: ProviderCatalogModel[],
+    context?: CatalogNormalizationContext
 ): NormalizeCatalogMetadataResult {
     const normalized: NormalizedModelMetadata[] = [];
     let overrideCount = 0;
@@ -238,6 +256,30 @@ export function normalizeCatalogMetadata(
         const withHints = deriveMetadataHints(withOverrides.model);
         if (withHints.derived) {
             derivedCount += 1;
+        }
+
+        if (!hasRunnableProtocol(withHints.model)) {
+            droppedCount += 1;
+            continue;
+        }
+
+        if (
+            !supportsCatalogRuntimeFamily({
+                    providerId,
+                    model: withHints.model,
+                    ...(context
+                        ? {
+                              context: {
+                                  providerId,
+                                  optionProfileId: context.optionProfileId,
+                                  resolvedBaseUrl: context.resolvedBaseUrl,
+                              },
+                          }
+                    : {}),
+            })
+        ) {
+            droppedCount += 1;
+            continue;
         }
 
         if (!validateMetadata(withHints.model)) {
@@ -295,9 +337,14 @@ export function toProviderCatalogUpsert(model: NormalizedModelMetadata): Provide
         supportsVision: model.supportsVision ?? false,
         supportsAudioInput: model.supportsAudioInput ?? false,
         supportsAudioOutput: model.supportsAudioOutput ?? false,
+        ...(model.supportsPromptCache !== undefined ? { supportsPromptCache: model.supportsPromptCache } : {}),
+        ...(model.toolProtocol ? { toolProtocol: model.toolProtocol } : {}),
+        ...(model.apiFamily ? { apiFamily: model.apiFamily } : {}),
+        ...(model.routedApiFamily ? { routedApiFamily: model.routedApiFamily } : {}),
         inputModalities: normalizeModalities(model.inputModalities),
         outputModalities: normalizeModalities(model.outputModalities),
         ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
+        ...(isRecord(model.providerSettings) ? { providerSettings: model.providerSettings } : {}),
         ...(model.contextLength !== undefined ? { contextLength: model.contextLength } : {}),
         pricing: buildPricing(model),
         raw: buildRaw(model),

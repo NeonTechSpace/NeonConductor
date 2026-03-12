@@ -1,11 +1,10 @@
-import { builtinModules } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import path from 'node:path';
 
-import type { LibraryFormats, Plugin, UserConfig } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
-
 import { preloadBundleUsesUnsupportedModuleSyntax } from '../window/preloadBundleSyntax';
+
+import type { LibraryFormats, Plugin, UserConfig } from 'vite';
 
 const sandboxedPreloadFormats: LibraryFormats[] = ['cjs'];
 const builtinExternalModules = builtinModules.filter((moduleName) => !moduleName.startsWith('_')).flatMap((moduleName) => [
@@ -40,7 +39,10 @@ export function createPreloadBuildConfig(
     const outDir = options?.outDir ?? 'dist-electron';
 
     return {
-        plugins: [tsconfigPaths(), createSandboxedPreloadAssertionPlugin(`${outputFileName}.js`, outDir)],
+        resolve: {
+            tsconfigPaths: true,
+        },
+        plugins: [createSandboxedPreloadAssertionPlugin(`${outputFileName}.js`, outDir)],
         build: {
             outDir,
             target: 'node20',
@@ -51,13 +53,13 @@ export function createPreloadBuildConfig(
                 formats: sandboxedPreloadFormats,
                 fileName: () => `${outputFileName}.js`,
             },
-            rollupOptions: {
+            rolldownOptions: {
                 input: entry,
                 external: ['electron', ...builtinExternalModules],
                 output: {
+                    codeSplitting: false,
                     format: 'cjs',
                     exports: 'named',
-                    inlineDynamicImports: true,
                 },
             },
         },

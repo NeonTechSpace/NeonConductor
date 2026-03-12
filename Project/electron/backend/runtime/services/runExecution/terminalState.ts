@@ -1,4 +1,5 @@
 import { runStore, sessionStore } from '@/app/backend/persistence/stores';
+import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
@@ -9,9 +10,12 @@ export async function moveRunToAbortedState(input: {
     runId: string;
     logMessage: string;
 }): Promise<void> {
-    await runStore.finalize(input.runId, {
+    const run = await runStore.finalize(input.runId, {
         status: 'aborted',
     });
+    if (!run) {
+        throw new InvariantError('Run abort persisted successfully but the updated run snapshot could not be reloaded.');
+    }
     await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'aborted');
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -23,6 +27,7 @@ export async function moveRunToAbortedState(input: {
             runId: input.runId,
             sessionId: input.sessionId,
             profileId: input.profileId,
+            run,
         },
         })
     );
@@ -43,11 +48,14 @@ export async function moveRunToFailedState(input: {
     errorMessage: string;
     logMessage: string;
 }): Promise<void> {
-    await runStore.finalize(input.runId, {
+    const run = await runStore.finalize(input.runId, {
         status: 'error',
         errorCode: input.errorCode,
         errorMessage: input.errorMessage,
     });
+    if (!run) {
+        throw new InvariantError('Run failure persisted successfully but the updated run snapshot could not be reloaded.');
+    }
     await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'error');
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -61,6 +69,7 @@ export async function moveRunToFailedState(input: {
             profileId: input.profileId,
             errorCode: input.errorCode,
             errorMessage: input.errorMessage,
+            run,
         },
         })
     );

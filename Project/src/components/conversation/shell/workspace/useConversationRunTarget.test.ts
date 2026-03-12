@@ -19,16 +19,18 @@ function createProvider(input: {
         authMethod: input.authMethod,
         authState: input.authState,
         availableAuthMethods: input.authMethod === 'none' ? [] : [input.authMethod],
-        endpointProfile: {
-            value: 'default',
+        connectionProfile: {
+            providerId: input.id,
+            optionProfileId: 'default',
             label: 'Default',
+            options: [
+                {
+                    value: 'default',
+                    label: 'Default',
+                },
+            ],
+            resolvedBaseUrl: null,
         },
-        endpointProfiles: [
-            {
-                value: 'default',
-                label: 'Default',
-            },
-        ],
         apiKeyCta: {
             label: 'Create key',
             url: 'https://example.com',
@@ -37,7 +39,9 @@ function createProvider(input: {
             catalogStrategy: 'dynamic',
             supportsKiloRouting: false,
             supportsModelProviderListing: false,
-            supportsEndpointProfiles: true,
+            supportsConnectionOptions: true,
+            supportsCustomBaseUrl: true,
+            supportsOrganizationScope: false,
         },
     };
 }
@@ -81,9 +85,11 @@ function createRun(input: {
 }
 
 describe('useConversationRunTarget', () => {
-    it('filters non-tool-capable models when the active mode requires native tools', () => {
+    it('keeps incompatible models visible but resolves to a tool-capable model when the active mode requires native tools', () => {
         const state = useConversationRunTarget({
-            providers: [createProvider({ id: 'openai', label: 'OpenAI', authMethod: 'api_key', authState: 'configured' })],
+            providers: [
+                createProvider({ id: 'openai', label: 'OpenAI', authMethod: 'api_key', authState: 'configured' }),
+            ],
             providerModels: [
                 createModel({
                     id: 'openai/gpt-5-no-tools',
@@ -110,6 +116,39 @@ describe('useConversationRunTarget', () => {
             providerId: 'openai',
             modelId: 'openai/gpt-5-tools',
         });
-        expect(state.modelOptions.map((model) => model.id)).toEqual(['openai/gpt-5-tools']);
+        expect(state.modelOptions.map((model) => model.id)).toEqual(['openai/gpt-5-no-tools', 'openai/gpt-5-tools']);
+        expect(state.modelOptions.find((model) => model.id === 'openai/gpt-5-no-tools')?.compatibilityState).toBe(
+            'incompatible'
+        );
+    });
+
+    it('skips an incompatible latest run target when a compatible model exists', () => {
+        const state = useConversationRunTarget({
+            providers: [
+                createProvider({ id: 'openai', label: 'OpenAI', authMethod: 'api_key', authState: 'configured' }),
+            ],
+            providerModels: [
+                createModel({
+                    id: 'openai/gpt-5-text',
+                    providerId: 'openai',
+                    label: 'GPT 5 Text',
+                    supportsTools: false,
+                }),
+                createModel({
+                    id: 'openai/gpt-5-tools',
+                    providerId: 'openai',
+                    label: 'GPT 5 Tools',
+                    supportsTools: true,
+                }),
+            ],
+            defaults: undefined,
+            runs: [createRun({ providerId: 'openai', modelId: 'openai/gpt-5-text' })],
+            requiresTools: true,
+        });
+
+        expect(state.resolvedRunTarget).toEqual({
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-tools',
+        });
     });
 });

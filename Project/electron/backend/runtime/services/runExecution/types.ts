@@ -15,10 +15,17 @@ import type {
     RuntimeRunOptions,
     RunStatus,
     TopLevelTab,
+    RunStartRejectionAction,
     ResolvedWorkspaceContext,
 } from '@/app/backend/runtime/contracts';
 import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runExecution/errors';
 import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
+import type {
+    ProviderApiFamily,
+    ProviderRoutedApiFamily,
+    ProviderRuntimeTransportFamily,
+    ProviderToolProtocol,
+} from '@/app/backend/providers/types';
 
 export interface StartRunInput {
     profileId: string;
@@ -60,6 +67,14 @@ export interface RunContextMessage {
     parts: RunContextPart[];
 }
 
+interface RunContextReasoningMetadata {
+    detailType?: string;
+    detailId?: string;
+    detailFormat?: string;
+    detailSignature?: string;
+    detailIndex?: number;
+}
+
 export type RunContextPart =
     | {
           type: 'text';
@@ -74,6 +89,18 @@ export type RunContextPart =
           width: number;
           height: number;
       }
+    | ({
+          type: 'reasoning';
+          text: string;
+      } & RunContextReasoningMetadata)
+    | ({
+          type: 'reasoning_summary';
+          text: string;
+      } & RunContextReasoningMetadata)
+    | ({
+          type: 'reasoning_encrypted';
+          opaque: unknown;
+      } & RunContextReasoningMetadata)
     | {
           type: 'tool_call';
           callId: string;
@@ -94,8 +121,8 @@ export interface RunContext {
 }
 
 export interface RunTransportResolution {
-    requested: RuntimeRunOptions['transport']['openai'];
-    selected: 'responses' | 'chat_completions';
+    requested: RuntimeRunOptions['transport']['family'];
+    selected: ProviderRuntimeTransportFamily;
     degraded: boolean;
     degradedReason?: string;
 }
@@ -115,6 +142,9 @@ export interface PreparedRunStart {
         mode: ModeDefinition;
     };
     activeTarget: ResolvedRunTarget;
+    runtimeProtocol: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     resolvedAuth: ResolvedRunAuth;
     resolvedCache: RunCacheResolution;
     initialTransport: RunTransportResolution;
@@ -130,6 +160,7 @@ export type StartRunResult =
           reason: 'not_found' | 'already_running' | 'rejected';
           code?: RunExecutionErrorCode;
           message?: string;
+          action?: RunStartRejectionAction;
       }
     | {
           accepted: true;

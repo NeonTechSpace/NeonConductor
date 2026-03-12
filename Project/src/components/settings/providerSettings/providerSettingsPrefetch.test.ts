@@ -6,7 +6,7 @@ describe('providerSettingsPrefetch', () => {
     it('warms provider-specific settings data for OpenAI without blocking render', async () => {
         const listModelsPrefetch = vi.fn().mockResolvedValue(undefined);
         const authStatePrefetch = vi.fn().mockResolvedValue(undefined);
-        const endpointProfilePrefetch = vi.fn().mockResolvedValue(undefined);
+        const connectionProfilePrefetch = vi.fn().mockResolvedValue(undefined);
         const usageSummaryPrefetch = vi.fn().mockResolvedValue(undefined);
         const kiloAccountContextPrefetch = vi.fn().mockResolvedValue(undefined);
         const openAiUsagePrefetch = vi.fn().mockResolvedValue(undefined);
@@ -19,7 +19,7 @@ describe('providerSettingsPrefetch', () => {
                 provider: {
                     listModels: { prefetch: listModelsPrefetch },
                     getAuthState: { prefetch: authStatePrefetch },
-                    getEndpointProfile: { prefetch: endpointProfilePrefetch },
+                    getConnectionProfile: { prefetch: connectionProfilePrefetch },
                     getUsageSummary: { prefetch: usageSummaryPrefetch },
                     getAccountContext: { prefetch: kiloAccountContextPrefetch },
                     getOpenAISubscriptionUsage: { prefetch: openAiUsagePrefetch },
@@ -38,7 +38,7 @@ describe('providerSettingsPrefetch', () => {
             profileId: 'profile_default',
             providerId: 'openai',
         });
-        expect(endpointProfilePrefetch).toHaveBeenCalledWith({
+        expect(connectionProfilePrefetch).toHaveBeenCalledWith({
             profileId: 'profile_default',
             providerId: 'openai',
         });

@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 
+import type { ProviderRuntimePart } from '@/app/backend/providers/types';
 import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
 import type { RunContextMessage, RunContextPart } from '@/app/backend/runtime/services/runExecution/types';
 
@@ -41,6 +42,111 @@ export function createToolResultPart(input: {
         outputText: input.outputText,
         isError: input.isError,
     };
+}
+
+function readOptionalString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function readOptionalNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readReasoningMetadata(payload: Record<string, unknown>) {
+    return {
+        ...(readOptionalString(payload['detailType']) ? { detailType: readOptionalString(payload['detailType']) } : {}),
+        ...(readOptionalString(payload['detailId']) ? { detailId: readOptionalString(payload['detailId']) } : {}),
+        ...(readOptionalString(payload['detailFormat'])
+            ? { detailFormat: readOptionalString(payload['detailFormat']) }
+            : {}),
+        ...(readOptionalString(payload['detailSignature'])
+            ? { detailSignature: readOptionalString(payload['detailSignature']) }
+            : {}),
+        ...(readOptionalNumber(payload['detailIndex']) !== undefined
+            ? { detailIndex: readOptionalNumber(payload['detailIndex']) }
+            : {}),
+    };
+}
+
+export function createReasoningTextPart(input: {
+    type: 'reasoning' | 'reasoning_summary';
+    text: string;
+    detailType?: string;
+    detailId?: string;
+    detailFormat?: string;
+    detailSignature?: string;
+    detailIndex?: number;
+}): RunContextPart | null {
+    const normalized = input.text.trim();
+    if (normalized.length === 0) {
+        return null;
+    }
+
+    return {
+        type: input.type,
+        text: normalized,
+        ...(input.detailType ? { detailType: input.detailType } : {}),
+        ...(input.detailId ? { detailId: input.detailId } : {}),
+        ...(input.detailFormat ? { detailFormat: input.detailFormat } : {}),
+        ...(input.detailSignature ? { detailSignature: input.detailSignature } : {}),
+        ...(input.detailIndex !== undefined ? { detailIndex: input.detailIndex } : {}),
+    };
+}
+
+export function createReasoningEncryptedPart(input: {
+    opaque: unknown;
+    detailType?: string;
+    detailId?: string;
+    detailFormat?: string;
+    detailSignature?: string;
+    detailIndex?: number;
+}): RunContextPart | null {
+    if (input.opaque === undefined || input.opaque === null) {
+        return null;
+    }
+
+    return {
+        type: 'reasoning_encrypted',
+        opaque: input.opaque,
+        ...(input.detailType ? { detailType: input.detailType } : {}),
+        ...(input.detailId ? { detailId: input.detailId } : {}),
+        ...(input.detailFormat ? { detailFormat: input.detailFormat } : {}),
+        ...(input.detailSignature ? { detailSignature: input.detailSignature } : {}),
+        ...(input.detailIndex !== undefined ? { detailIndex: input.detailIndex } : {}),
+    };
+}
+
+export function createReasoningPartFromProviderPart(
+    part: ProviderRuntimePart
+): Extract<RunContextPart, { type: 'reasoning' | 'reasoning_summary' | 'reasoning_encrypted' }> | null {
+    const metadata = readReasoningMetadata(part.payload);
+    if (part.partType === 'reasoning' || part.partType === 'reasoning_summary') {
+        const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
+        const reasoningPart = createReasoningTextPart({
+            type: part.partType,
+            text,
+            ...(metadata.detailType ? { detailType: metadata.detailType } : {}),
+            ...(metadata.detailId ? { detailId: metadata.detailId } : {}),
+            ...(metadata.detailFormat ? { detailFormat: metadata.detailFormat } : {}),
+            ...(metadata.detailSignature ? { detailSignature: metadata.detailSignature } : {}),
+            ...(metadata.detailIndex !== undefined ? { detailIndex: metadata.detailIndex } : {}),
+        });
+        return reasoningPart && reasoningPart.type === part.partType ? reasoningPart : null;
+    }
+
+    if (part.partType === 'reasoning_encrypted') {
+        const encryptedPart = createReasoningEncryptedPart({
+            opaque: part.payload['opaque'],
+            ...(metadata.detailType ? { detailType: metadata.detailType } : {}),
+            ...(metadata.detailId ? { detailId: metadata.detailId } : {}),
+            ...(metadata.detailFormat ? { detailFormat: metadata.detailFormat } : {}),
+            ...(metadata.detailSignature ? { detailSignature: metadata.detailSignature } : {}),
+            ...(metadata.detailIndex !== undefined ? { detailIndex: metadata.detailIndex } : {}),
+        });
+        return encryptedPart && encryptedPart.type === 'reasoning_encrypted' ? encryptedPart : null;
+    }
+
+    return null;
 }
 
 export function createTextMessage(
@@ -96,6 +202,10 @@ export function extractTextFromParts(parts: RunContextPart[]): string {
                 return part.text;
             }
 
+            if (part.type === 'reasoning' || part.type === 'reasoning_summary') {
+                return part.text;
+            }
+
             if (part.type === 'tool_call') {
                 return `${part.toolName}\n${part.argumentsText}`;
             }
@@ -118,6 +228,30 @@ export function hasImageParts(messages: RunContextMessage[]): boolean {
 export function hashablePartContent(part: RunContextPart): string {
     if (part.type === 'text') {
         return part.text;
+    }
+
+    if (part.type === 'reasoning' || part.type === 'reasoning_summary') {
+        return [
+            part.type,
+            part.text,
+            part.detailType ?? '',
+            part.detailId ?? '',
+            part.detailFormat ?? '',
+            part.detailSignature ?? '',
+            String(part.detailIndex ?? ''),
+        ].join('|');
+    }
+
+    if (part.type === 'reasoning_encrypted') {
+        return [
+            part.type,
+            JSON.stringify(part.opaque),
+            part.detailType ?? '',
+            part.detailId ?? '',
+            part.detailFormat ?? '',
+            part.detailSignature ?? '',
+            String(part.detailIndex ?? ''),
+        ].join('|');
     }
 
     if (part.type === 'tool_call') {

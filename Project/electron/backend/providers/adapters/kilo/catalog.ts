@@ -1,4 +1,5 @@
 import {
+    buildProviderIdSet,
     buildModelsByProviderIndex,
     normalizeKiloModel,
 } from '@/app/backend/providers/adapters/kilo/modelNormalization';
@@ -59,9 +60,13 @@ export async function syncKiloCatalog(input: SyncKiloCatalogInput): Promise<Prov
         const providers = providersResult.value;
         const modelsByProvider = modelsByProviderResult.isOk() ? modelsByProviderResult.value : [];
 
+        const providerIds = buildProviderIdSet(providers);
         const modelsByProviderIndex = buildModelsByProviderIndex(modelsByProvider);
         const normalizedModels = models.map((model) => {
-            const entry = normalizeKiloModel(model);
+            const entry = normalizeKiloModel(model, {
+                providerIds,
+                modelsByProviderIndex,
+            });
             if (entry.upstreamProvider && modelsByProviderIndex.has(entry.upstreamProvider)) {
                 const hasMembership = modelsByProviderIndex.get(entry.upstreamProvider)?.has(entry.modelId) ?? false;
                 return {

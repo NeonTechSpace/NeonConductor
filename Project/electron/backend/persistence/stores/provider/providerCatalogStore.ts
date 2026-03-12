@@ -11,7 +11,12 @@ import { parseModalities } from '@/app/backend/persistence/stores/provider/provi
 import { sortProviderModels } from '@/app/backend/persistence/stores/provider/providerCatalogRanking';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { ProviderDiscoverySnapshotRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
-import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
+import type {
+    ProviderApiFamily,
+    ProviderModelCapabilities,
+    ProviderRoutedApiFamily,
+    ProviderToolProtocol,
+} from '@/app/backend/providers/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 export type { ProviderCatalogModelUpsert };
@@ -19,6 +24,45 @@ export type { ProviderCatalogModelUpsert };
 export interface ReplaceCatalogModelsResult {
     modelCount: number;
     changed: boolean;
+}
+
+function parseToolProtocol(value: string | null): ProviderToolProtocol | undefined {
+    switch (value) {
+        case 'openai_responses':
+        case 'openai_chat_completions':
+        case 'kilo_gateway':
+        case 'provider_native':
+        case 'anthropic_messages':
+        case 'google_generativeai':
+            return value;
+        default:
+            return undefined;
+    }
+}
+
+function parseApiFamily(value: string | null): ProviderApiFamily | undefined {
+    switch (value) {
+        case 'openai_compatible':
+        case 'kilo_gateway':
+        case 'provider_native':
+        case 'anthropic_messages':
+        case 'google_generativeai':
+            return value;
+        default:
+            return undefined;
+    }
+}
+
+function parseRoutedApiFamily(value: string | null): ProviderRoutedApiFamily | undefined {
+    switch (value) {
+        case 'openai_compatible':
+        case 'provider_native':
+        case 'anthropic_messages':
+        case 'google_generativeai':
+            return value;
+        default:
+            return undefined;
+    }
 }
 
 export class ProviderCatalogStore {
@@ -37,8 +81,13 @@ export class ProviderCatalogStore {
                 'supports_vision',
                 'supports_audio_input',
                 'supports_audio_output',
+                'supports_prompt_cache',
+                'tool_protocol',
+                'api_family',
+                'routed_api_family',
                 'pricing_json',
                 'raw_json',
+                'provider_settings_json',
                 'input_modalities_json',
                 'output_modalities_json',
                 'prompt_family',
@@ -68,8 +117,13 @@ export class ProviderCatalogStore {
                 'supports_vision',
                 'supports_audio_input',
                 'supports_audio_output',
+                'supports_prompt_cache',
+                'tool_protocol',
+                'api_family',
+                'routed_api_family',
                 'pricing_json',
                 'raw_json',
+                'provider_settings_json',
                 'input_modalities_json',
                 'output_modalities_json',
                 'prompt_family',
@@ -129,8 +183,13 @@ export class ProviderCatalogStore {
                 'supports_vision',
                 'supports_audio_input',
                 'supports_audio_output',
+                'supports_prompt_cache',
+                'tool_protocol',
+                'api_family',
+                'routed_api_family',
                 'pricing_json',
                 'raw_json',
+                'provider_settings_json',
                 'input_modalities_json',
                 'output_modalities_json',
                 'prompt_family',
@@ -160,6 +219,10 @@ export class ProviderCatalogStore {
                 'supports_vision',
                 'supports_audio_input',
                 'supports_audio_output',
+                'supports_prompt_cache',
+                'tool_protocol',
+                'api_family',
+                'routed_api_family',
                 'input_modalities_json',
                 'output_modalities_json',
                 'prompt_family',
@@ -175,6 +238,9 @@ export class ProviderCatalogStore {
 
         const inputModalities = parseModalities(row.input_modalities_json);
         const outputModalities = parseModalities(row.output_modalities_json);
+        const toolProtocol = parseToolProtocol(row.tool_protocol);
+        const apiFamily = parseApiFamily(row.api_family);
+        const routedApiFamily = parseRoutedApiFamily(row.routed_api_family);
 
         return {
             supportsTools: row.supports_tools === 1,
@@ -187,6 +253,10 @@ export class ProviderCatalogStore {
                 row.supports_audio_output === null
                     ? outputModalities.includes('audio')
                     : row.supports_audio_output === 1,
+            ...(row.supports_prompt_cache !== null ? { supportsPromptCache: row.supports_prompt_cache === 1 } : {}),
+            ...(toolProtocol ? { toolProtocol } : {}),
+            ...(apiFamily ? { apiFamily } : {}),
+            ...(routedApiFamily ? { routedApiFamily } : {}),
             inputModalities,
             outputModalities,
             ...(row.prompt_family ? { promptFamily: row.prompt_family } : {}),
@@ -214,12 +284,17 @@ export class ProviderCatalogStore {
                 'supports_vision',
                 'supports_audio_input',
                 'supports_audio_output',
+                'supports_prompt_cache',
+                'tool_protocol',
+                'api_family',
+                'routed_api_family',
                 'input_modalities_json',
                 'output_modalities_json',
                 'prompt_family',
                 'context_length',
                 'pricing_json',
                 'raw_json',
+                'provider_settings_json',
                 'source',
             ])
             .where('profile_id', '=', profileId)
@@ -264,12 +339,18 @@ export class ProviderCatalogStore {
                     supports_vision: model.supportsVision ? 1 : 0,
                     supports_audio_input: model.supportsAudioInput ? 1 : 0,
                     supports_audio_output: model.supportsAudioOutput ? 1 : 0,
+                    supports_prompt_cache:
+                        model.supportsPromptCache === null ? null : model.supportsPromptCache ? 1 : 0,
+                    tool_protocol: model.toolProtocol,
+                    api_family: model.apiFamily,
+                    routed_api_family: model.routedApiFamily,
                     input_modalities_json: JSON.stringify(model.inputModalities),
                     output_modalities_json: JSON.stringify(model.outputModalities),
                     prompt_family: model.promptFamily,
                     context_length: model.contextLength,
                     pricing_json: JSON.stringify(model.pricing),
                     raw_json: JSON.stringify(model.raw),
+                    provider_settings_json: JSON.stringify(model.providerSettings),
                     source: model.source,
                     updated_at: updatedAt,
                 }))
@@ -280,6 +361,16 @@ export class ProviderCatalogStore {
             modelCount: normalizedModels.length,
             changed: true,
         };
+    }
+
+    async clearModels(profileId: string, providerId: RuntimeProviderId): Promise<void> {
+        const { db } = getPersistence();
+
+        await db
+            .deleteFrom('provider_model_catalog')
+            .where('profile_id', '=', profileId)
+            .where('provider_id', '=', providerId)
+            .execute();
     }
 
     async upsertDiscoverySnapshot(input: {

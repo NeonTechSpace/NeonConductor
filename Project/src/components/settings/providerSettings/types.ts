@@ -1,4 +1,4 @@
-import type { ProviderModelRecord } from '@/app/backend/persistence/types';
+import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 
 import type {
     KiloDynamicSort,
@@ -25,14 +25,17 @@ export interface ProviderListItem {
     authState: string;
     authMethod: string;
     availableAuthMethods: string[];
-    endpointProfile: {
-        value: string;
+    connectionProfile: {
+        optionProfileId: string;
         label: string;
+        options: Array<{
+            value: string;
+            label: string;
+        }>;
+        baseUrlOverride?: string;
+        resolvedBaseUrl: string | null;
+        organizationId?: string | null;
     };
-    endpointProfiles: Array<{
-        value: string;
-        label: string;
-    }>;
     apiKeyCta: {
         label: string;
         url: string;
@@ -41,7 +44,9 @@ export interface ProviderListItem {
         catalogStrategy: 'dynamic' | 'static';
         supportsKiloRouting: boolean;
         supportsModelProviderListing: boolean;
-        supportsEndpointProfiles: boolean;
+        supportsConnectionOptions: boolean;
+        supportsCustomBaseUrl: boolean;
+        supportsOrganizationScope: boolean;
     };
 }
 
@@ -56,7 +61,7 @@ export type ProviderCredentialSummaryView = ProviderCredentialSummary;
 
 export type ProviderCredentialValueView = ProviderCredentialValue | null;
 
-export type ProviderModelOption = ProviderModelRecord;
+export type ProviderModelOption = ModelPickerOption;
 
 export interface KiloRoutingDraft {
     routingMode: KiloRoutingMode;
@@ -69,4 +74,3 @@ export interface KiloRoutingSectionPreference extends KiloModelRoutingPreference
 }
 
 export type KiloModelProviderOption = KiloModelProviderInfo;
-

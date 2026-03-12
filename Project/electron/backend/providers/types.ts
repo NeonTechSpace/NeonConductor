@@ -5,13 +5,29 @@ import type {
     KiloDynamicSort,
     ProviderAuthMethod,
     RuntimeMessagePartType,
-    RuntimeOpenAITransport,
+    RuntimeRequestedTransportFamily,
     RuntimeReasoningEffort,
     RuntimeReasoningSummary,
     RuntimeRunOptions,
 } from '@/app/backend/runtime/contracts';
 
 export type ProviderModelModality = 'text' | 'audio' | 'image' | 'video' | 'pdf';
+export type ProviderToolProtocol =
+    | 'openai_responses'
+    | 'openai_chat_completions'
+    | 'kilo_gateway'
+    | 'provider_native'
+    | 'anthropic_messages'
+    | 'google_generativeai';
+export type ProviderRuntimeTransportFamily = ProviderToolProtocol;
+
+export type ProviderApiFamily =
+    | 'openai_compatible'
+    | 'kilo_gateway'
+    | 'provider_native'
+    | 'anthropic_messages'
+    | 'google_generativeai';
+export type ProviderRoutedApiFamily = Exclude<ProviderApiFamily, 'kilo_gateway'>;
 
 export interface ProviderModelCapabilities {
     supportsTools: boolean;
@@ -19,6 +35,10 @@ export interface ProviderModelCapabilities {
     supportsVision: boolean;
     supportsAudioInput: boolean;
     supportsAudioOutput: boolean;
+    supportsPromptCache?: boolean;
+    toolProtocol?: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     inputModalities: ProviderModelModality[];
     outputModalities: ProviderModelModality[];
     promptFamily?: string;
@@ -30,6 +50,7 @@ export interface ProviderCatalogModel {
     upstreamProvider?: string;
     isFree: boolean;
     capabilities: ProviderModelCapabilities;
+    providerSettings?: Record<string, unknown>;
     contextLength?: number;
     pricing: Record<string, unknown>;
     raw: Record<string, unknown>;
@@ -50,9 +71,14 @@ export interface NormalizedModelMetadata {
     supportsVision?: boolean;
     supportsAudioInput?: boolean;
     supportsAudioOutput?: boolean;
+    supportsPromptCache?: boolean;
+    toolProtocol?: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     inputModalities?: ProviderModelModality[];
     outputModalities?: ProviderModelModality[];
     promptFamily?: string;
+    providerSettings?: Record<string, unknown>;
     contextLength?: number;
     maxOutputTokens?: number;
     inputPrice?: number;
@@ -105,6 +131,9 @@ export interface ProviderMetadataAdapter {
         apiKey?: string;
         accessToken?: string;
         organizationId?: string;
+        endpointProfile?: string;
+        optionProfileId?: string;
+        resolvedBaseUrl?: string;
         force?: boolean;
     }): Promise<ProviderCatalogSyncResult>;
 }
@@ -138,8 +167,8 @@ export interface ProviderRuntimePart {
 }
 
 export interface ProviderRuntimeTransportSelection {
-    selected: 'responses' | 'chat_completions';
-    requested: RuntimeOpenAITransport;
+    selected: ProviderRuntimeTransportFamily;
+    requested: RuntimeRequestedTransportFamily;
     degraded: boolean;
     degradedReason?: string;
 }
@@ -170,7 +199,7 @@ export interface ProviderRuntimeCacheOptions {
 }
 
 export interface ProviderRuntimeTransportOptions {
-    openai: RuntimeOpenAITransport;
+    family: RuntimeRequestedTransportFamily;
 }
 
 export interface ProviderRuntimeInput {
@@ -179,6 +208,9 @@ export interface ProviderRuntimeInput {
     runId: string;
     providerId: FirstPartyProviderId;
     modelId: string;
+    toolProtocol: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     promptText: string;
     contextMessages?: Array<{
         role: 'system' | 'user' | 'assistant' | 'tool';
@@ -193,6 +225,33 @@ export interface ProviderRuntimeInput {
                   mimeType: ComposerImageAttachmentInput['mimeType'];
                   width: number;
                   height: number;
+              }
+            | {
+                  type: 'reasoning';
+                  text: string;
+                  detailType?: string;
+                  detailId?: string;
+                  detailFormat?: string;
+                  detailSignature?: string;
+                  detailIndex?: number;
+              }
+            | {
+                  type: 'reasoning_summary';
+                  text: string;
+                  detailType?: string;
+                  detailId?: string;
+                  detailFormat?: string;
+                  detailSignature?: string;
+                  detailIndex?: number;
+              }
+            | {
+                  type: 'reasoning_encrypted';
+                  opaque: unknown;
+                  detailType?: string;
+                  detailId?: string;
+                  detailFormat?: string;
+                  detailSignature?: string;
+                  detailIndex?: number;
               }
             | {
                   type: 'tool_call';

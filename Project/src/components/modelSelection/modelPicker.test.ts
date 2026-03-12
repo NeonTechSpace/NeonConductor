@@ -2,11 +2,32 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import {
     getModelLabelCollisionIndex,
     getOptionDisplayText,
     ModelPicker,
 } from '@/web/components/modelSelection/modelPicker';
+
+function createOption(input: Partial<ModelPickerOption> & Pick<ModelPickerOption, 'id' | 'label'>): ModelPickerOption {
+    return {
+        id: input.id,
+        label: input.label,
+        supportsTools: input.supportsTools ?? true,
+        supportsVision: input.supportsVision ?? false,
+        supportsReasoning: input.supportsReasoning ?? false,
+        capabilityBadges: input.capabilityBadges ?? [],
+        compatibilityState: input.compatibilityState ?? 'compatible',
+        ...(input.providerId ? { providerId: input.providerId } : {}),
+        ...(input.providerLabel ? { providerLabel: input.providerLabel } : {}),
+        ...(input.sourceProvider ? { sourceProvider: input.sourceProvider } : {}),
+        ...(input.source ? { source: input.source } : {}),
+        ...(input.promptFamily ? { promptFamily: input.promptFamily } : {}),
+        ...(input.price !== undefined ? { price: input.price } : {}),
+        ...(input.latency !== undefined ? { latency: input.latency } : {}),
+        ...(input.tps !== undefined ? { tps: input.tps } : {}),
+    };
+}
 
 describe('model picker', () => {
     it('renders a dedicated trigger button for Kilo models', () => {
@@ -15,17 +36,17 @@ describe('model picker', () => {
                 providerId: 'kilo',
                 selectedModelId: 'kilo/auto',
                 models: [
-                    {
+                    createOption({
                         id: 'kilo/auto',
                         label: 'Kilo Auto',
                         price: 12,
                         latency: 90,
                         tps: 120,
-                    },
-                    {
+                    }),
+                    createOption({
                         id: 'kilo/code',
                         label: 'Kilo Code',
-                    },
+                    }),
                 ],
                 ariaLabel: 'Model',
                 placeholder: 'Select model',
@@ -45,10 +66,10 @@ describe('model picker', () => {
                 providerId: 'openai',
                 selectedModelId: 'openai/gpt-5',
                 models: [
-                    {
+                    createOption({
                         id: 'openai/gpt-5',
                         label: 'GPT-5',
-                    },
+                    }),
                 ],
                 ariaLabel: 'Model',
                 placeholder: 'Select model',
@@ -67,18 +88,18 @@ describe('model picker', () => {
                 providerId: undefined,
                 selectedModelId: 'kilo/auto',
                 models: [
-                    {
+                    createOption({
                         id: 'kilo/auto',
                         label: 'Kilo Auto',
                         providerId: 'kilo',
                         providerLabel: 'Kilo',
-                    },
-                    {
+                    }),
+                    createOption({
                         id: 'openai/gpt-5',
                         label: 'GPT-5',
                         providerId: 'openai',
                         providerLabel: 'OpenAI',
-                    },
+                    }),
                 ],
                 ariaLabel: 'Model',
                 placeholder: 'Select model',
@@ -93,18 +114,18 @@ describe('model picker', () => {
 
     it('disambiguates same-label kilo models with secondary context', () => {
         const models = [
-            {
+            createOption({
                 id: 'kilo/auto-openai',
                 label: 'Kilo Auto Free',
                 providerId: 'kilo',
                 sourceProvider: 'OpenAI',
-            },
-            {
+            }),
+            createOption({
                 id: 'kilo/auto-anthropic',
                 label: 'Kilo Auto Free',
                 providerId: 'kilo',
                 sourceProvider: 'Anthropic',
-            },
+            }),
         ];
         const collisionIndex = getModelLabelCollisionIndex(models);
 
@@ -127,14 +148,49 @@ describe('model picker', () => {
 
     it('keeps non-collided kilo labels unchanged', () => {
         const models = [
-            {
+            createOption({
                 id: 'kilo/auto',
                 label: 'Kilo Auto',
                 providerId: 'kilo',
-            },
+            }),
         ];
         const collisionIndex = getModelLabelCollisionIndex(models);
 
         expect(getOptionDisplayText(models[0]!, collisionIndex)).toBe('Kilo Auto');
+    });
+
+    it('switches to the popover picker when capability badges or incompatibility reasons are present', () => {
+        const html = renderToStaticMarkup(
+            createElement(ModelPicker, {
+                providerId: 'openai',
+                selectedModelId: 'openai/gpt-5',
+                models: [
+                    createOption({
+                        id: 'openai/gpt-5',
+                        label: 'GPT-5',
+                        providerId: 'openai',
+                        providerLabel: 'OpenAI',
+                        capabilityBadges: [
+                            {
+                                key: 'native_tools',
+                                label: 'Native Tools',
+                            },
+                            {
+                                key: 'protocol',
+                                label: 'Responses',
+                            },
+                        ],
+                        compatibilityState: 'incompatible',
+                        compatibilityReason: 'This mode requires native tool calling.',
+                    }),
+                ],
+                ariaLabel: 'Model',
+                placeholder: 'Select model',
+                onSelectModel: () => {},
+            })
+        );
+
+        expect(html).toContain('<button');
+        expect(html).not.toContain('<select');
     });
 });

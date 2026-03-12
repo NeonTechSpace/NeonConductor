@@ -134,6 +134,7 @@ export async function persistRunStart(input: {
         profileId: input.input.profileId,
         sessionId: input.input.sessionId,
         cache: input.prepared.resolvedCache,
+        run,
     });
     await emitTransportSelectionEvent({
         runId: run.id,
@@ -147,6 +148,7 @@ export async function persistRunStart(input: {
                 ? { degradedReason: input.prepared.initialTransport.degradedReason }
                 : {}),
         },
+        run,
     });
 
     return {

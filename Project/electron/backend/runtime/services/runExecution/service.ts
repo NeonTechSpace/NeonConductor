@@ -7,11 +7,13 @@ import { sessionContextService } from '@/app/backend/runtime/services/context/se
 import type { RunExecutionError } from '@/app/backend/runtime/services/runExecution/errors';
 import { persistRunStart } from '@/app/backend/runtime/services/runExecution/persistRunStart';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
+import { toRejectedStartResult } from '@/app/backend/runtime/services/runExecution/rejection';
 import { runToTerminalState } from '@/app/backend/runtime/services/runExecution/runToTerminalState';
 import { moveRunToAbortedState } from '@/app/backend/runtime/services/runExecution/terminalState';
 import type { StartRunInput, StartRunResult } from '@/app/backend/runtime/services/runExecution/types';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import { appLog } from '@/app/main/logging';
+import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 
 interface ActiveRun {
     profileId: string;
@@ -25,18 +27,9 @@ function createSessionKey(profileId: string, sessionId: string): string {
     return `${profileId}:${sessionId}`;
 }
 
-function toRejectedStartResult(error: RunExecutionError): Extract<StartRunResult, { accepted: false }> {
-    return {
-        accepted: false,
-        reason: 'rejected',
-        code: error.code,
-        message: error.message,
-    };
-}
-
 function toTransportSelection(input: {
-    selected: 'responses' | 'chat_completions';
-    requested: StartRunInput['runtimeOptions']['transport']['openai'];
+    selected: ProviderRuntimeTransportFamily;
+    requested: StartRunInput['runtimeOptions']['transport']['family'];
     degraded: boolean;
     degradedReason?: string;
 }): ProviderRuntimeTransportSelection {
@@ -84,6 +77,11 @@ export class RunExecutionService {
             const error = {
                 code: 'invalid_mode',
                 message: `Thread mode "${sessionThread.thread.topLevelTab}" does not match tab "${input.topLevelTab}".`,
+                action: {
+                    code: 'mode_invalid',
+                    modeKey: input.modeKey,
+                    topLevelTab: input.topLevelTab,
+                },
             } satisfies RunExecutionError;
 
             appLog.warn({
@@ -99,8 +97,7 @@ export class RunExecutionService {
                     }
                 ),
             });
-
-            return toRejectedStartResult(error);
+            return toRejectedStartResult(error, input);
         }
 
         const workspaceContext = await workspaceContextService.resolveForSession({
@@ -136,7 +133,7 @@ export class RunExecutionService {
                     }
                 ),
             });
-            return toRejectedStartResult(preparedResult.error);
+            return toRejectedStartResult(preparedResult.error, input);
         }
 
         const prepared = preparedResult.value;
@@ -164,6 +161,9 @@ export class RunExecutionService {
             prompt: input.prompt,
             providerId: prepared.activeTarget.providerId,
             modelId: prepared.activeTarget.modelId,
+            toolProtocol: prepared.runtimeProtocol,
+            ...(prepared.apiFamily ? { apiFamily: prepared.apiFamily } : {}),
+            ...(prepared.routedApiFamily ? { routedApiFamily: prepared.routedApiFamily } : {}),
             authMethod: prepared.resolvedAuth.authMethod,
             runtimeOptions: input.runtimeOptions,
             cache: prepared.resolvedCache,
@@ -180,10 +180,29 @@ export class RunExecutionService {
             ...(workspaceContext.kind === 'worktree' ? { worktreeId: workspaceContext.worktree.id } : {}),
             assistantMessageId: persisted.assistantMessageId,
             signal: controller.signal,
-        }).finally(() => {
-            this.activeRuns.delete(persisted.run.id);
-            this.activeRunsBySession.delete(createSessionKey(input.profileId, input.sessionId));
-        });
+        })
+            .catch((error: unknown) => {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                appLog.error({
+                    tag: 'run-execution',
+                    message: 'Background run execution terminated with an unhandled error after start.',
+                    ...withCorrelationContext(
+                        { requestId: input.requestId, correlationId: input.correlationId },
+                        {
+                            profileId: input.profileId,
+                            sessionId: input.sessionId,
+                            runId: persisted.run.id,
+                            providerId: prepared.activeTarget.providerId,
+                            modelId: prepared.activeTarget.modelId,
+                            error: errorMessage,
+                        }
+                    ),
+                });
+            })
+            .finally(() => {
+                this.activeRuns.delete(persisted.run.id);
+                this.activeRunsBySession.delete(createSessionKey(input.profileId, input.sessionId));
+            });
 
         this.activeRuns.set(persisted.run.id, {
             profileId: input.profileId,

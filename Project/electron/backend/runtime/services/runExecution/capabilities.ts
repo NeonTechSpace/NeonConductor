@@ -25,7 +25,15 @@ export function validateRunCapabilities(input: ValidateRunCapabilitiesInput): Ru
         runtimeOptions: input.runtimeOptions,
     });
     if (validation.isErr()) {
-        return errRunExecution('runtime_option_invalid', validation.error.message);
+        return errRunExecution('runtime_option_invalid', validation.error.message, {
+            action: {
+                code: 'runtime_options_invalid',
+                providerId: input.providerId,
+                modelId: input.modelId,
+                modeKey: input.mode.modeKey,
+                detail: 'generic',
+            },
+        });
     }
 
     if (
@@ -37,7 +45,15 @@ export function validateRunCapabilities(input: ValidateRunCapabilitiesInput): Ru
     ) {
         return errRunExecution(
             'runtime_option_invalid',
-            `Model "${input.modelId}" does not support native tool calling and cannot run in mode "${input.mode.modeKey}".`
+            `Model "${input.modelId}" does not support native tool calling and cannot run in mode "${input.mode.modeKey}".`,
+            {
+                action: {
+                    code: 'model_tools_required',
+                    providerId: input.providerId,
+                    modelId: input.modelId,
+                    modeKey: input.mode.modeKey,
+                },
+            }
         );
     }
 

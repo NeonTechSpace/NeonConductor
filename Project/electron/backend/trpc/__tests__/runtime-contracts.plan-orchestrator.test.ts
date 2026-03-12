@@ -43,6 +43,11 @@ describe('runtime contracts: planning and orchestrator', () => {
         }
         expect(blockedPlanMode.code).toBe('mode_policy_invalid');
         expect(blockedPlanMode.message).toContain('planning-only');
+        expect(blockedPlanMode.action).toEqual({
+            code: 'mode_invalid',
+            modeKey: 'plan',
+            topLevelTab: 'agent',
+        });
 
         const setActive = await caller.mode.setActive({
             profileId,

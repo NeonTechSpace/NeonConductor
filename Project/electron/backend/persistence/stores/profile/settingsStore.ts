@@ -1,11 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
-import { isJsonString, nowIso, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+import {
+    isJsonString,
+    nowIso,
+    parseJsonValue,
+    type JsonValueGuard,
+} from '@/app/backend/persistence/stores/shared/utils';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 
 export class SettingsStore {
-    async getStringOptional(profileId: string, key: string): Promise<string | undefined> {
+    private async getValueJsonOptional(profileId: string, key: string): Promise<string | undefined> {
         const { db } = getPersistence();
 
         const row = await db
@@ -15,11 +20,25 @@ export class SettingsStore {
             .where('key', '=', key)
             .executeTakeFirst();
 
-        if (!row) {
+        return row?.value_json;
+    }
+
+    async getStringOptional(profileId: string, key: string): Promise<string | undefined> {
+        const valueJson = await this.getValueJsonOptional(profileId, key);
+        if (!valueJson) {
             return undefined;
         }
 
-        return parseJsonValue(row.value_json, undefined, isJsonString);
+        return parseJsonValue(valueJson, undefined, isJsonString);
+    }
+
+    async getJsonOptional<T>(profileId: string, key: string, isValid: JsonValueGuard<T>): Promise<T | undefined> {
+        const valueJson = await this.getValueJsonOptional(profileId, key);
+        if (!valueJson) {
+            return undefined;
+        }
+
+        return parseJsonValue(valueJson, undefined, isValid);
     }
 
     async getString(profileId: string, key: string, fallback: string): Promise<string> {
@@ -37,6 +56,10 @@ export class SettingsStore {
     }
 
     async setString(profileId: string, key: string, value: string): Promise<void> {
+        await this.setJson(profileId, key, value);
+    }
+
+    async setJson(profileId: string, key: string, value: string | number | boolean | Record<string, unknown>): Promise<void> {
         const { db } = getPersistence();
 
         await db

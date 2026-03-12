@@ -1,4 +1,3 @@
-import { buildAutoCacheKey } from '@/app/backend/providers/behaviors/cacheKey';
 import {
     errProviderBehavior,
     okProviderBehavior,
@@ -14,54 +13,9 @@ function isReasoningRequested(runtimeOptions: RuntimeRunOptions): boolean {
     );
 }
 
-function resolveCacheKey(input: {
-    profileId: string;
-    sessionId: string;
-    cacheScopeKey?: string;
-    modelId: string;
-    runtimeOptions: RuntimeRunOptions;
-}): string {
-    if (input.runtimeOptions.cache.strategy === 'manual') {
-        return input.runtimeOptions.cache.key ?? '';
-    }
-
-    return buildAutoCacheKey({
-        profileId: input.profileId,
-        scopeKey: input.cacheScopeKey ?? input.sessionId,
-        providerId: 'kilo',
-        modelId: input.modelId,
-    });
-}
-
 export const kiloRuntimeBehavior: ProviderRuntimeBehavior = {
     providerId: 'kilo',
-    resolveInitialTransport(runtimeOptions) {
-        return {
-            requested: runtimeOptions.transport.openai,
-            selected: 'chat_completions',
-            degraded: false,
-        };
-    },
-    resolveCache(input) {
-        const key = resolveCacheKey(input);
-        if (key.trim().length === 0) {
-            return errProviderBehavior('cache_key_invalid', 'Cache key resolution failed: cache key is empty.');
-        }
-
-        return okProviderBehavior({
-            strategy: input.runtimeOptions.cache.strategy,
-            key,
-            applied: true,
-        });
-    },
     validateRunOptions(input) {
-        if (input.runtimeOptions.transport.openai !== 'auto') {
-            return errProviderBehavior(
-                'runtime_option_invalid',
-                `OpenAI transport override "${input.runtimeOptions.transport.openai}" is not supported for provider "kilo".`
-            );
-        }
-
         if (!input.modelCapabilities.supportsReasoning && isReasoningRequested(input.runtimeOptions)) {
             return errProviderBehavior(
                 'runtime_option_invalid',

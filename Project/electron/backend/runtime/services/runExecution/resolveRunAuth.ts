@@ -20,7 +20,13 @@ export async function resolveRunAuth(input: {
     if (!state || state.authMethod === 'none' || state.authState === 'logged_out') {
         return errRunExecution(
             'provider_not_authenticated',
-            `Provider "${input.providerId}" is not authenticated/configured.`
+            `Provider "${input.providerId}" is not authenticated/configured.`,
+            {
+                action: {
+                    code: 'provider_not_runnable',
+                    providerId: input.providerId,
+                },
+            }
         );
     }
 
@@ -28,7 +34,13 @@ export async function resolveRunAuth(input: {
         if (state.authState !== 'configured' && state.authState !== 'authenticated') {
             return errRunExecution(
                 'provider_auth_invalid_state',
-                `Provider "${input.providerId}" auth state "${state.authState}" is not runnable for API key mode.`
+                `Provider "${input.providerId}" auth state "${state.authState}" is not runnable for API key mode.`,
+                {
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.providerId,
+                    },
+                }
             );
         }
 
@@ -36,7 +48,13 @@ export async function resolveRunAuth(input: {
         if (!apiKey) {
             return errRunExecution(
                 'provider_secret_missing',
-                `Provider "${input.providerId}" API key is missing from secret store.`
+                `Provider "${input.providerId}" API key is missing from secret store.`,
+                {
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.providerId,
+                    },
+                }
             );
         }
 
@@ -51,7 +69,13 @@ export async function resolveRunAuth(input: {
         if (state.authState !== 'authenticated') {
             return errRunExecution(
                 'provider_auth_invalid_state',
-                `Provider "${input.providerId}" auth state "${state.authState}" is not runnable for OAuth/device mode.`
+                `Provider "${input.providerId}" auth state "${state.authState}" is not runnable for OAuth/device mode.`,
+                {
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.providerId,
+                    },
+                }
             );
         }
 
@@ -59,7 +83,13 @@ export async function resolveRunAuth(input: {
         if (!accessToken) {
             return errRunExecution(
                 'provider_secret_missing',
-                `Provider "${input.providerId}" access token is missing from secret store.`
+                `Provider "${input.providerId}" access token is missing from secret store.`,
+                {
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.providerId,
+                    },
+                }
             );
         }
 
@@ -72,6 +102,12 @@ export async function resolveRunAuth(input: {
 
     return errRunExecution(
         'provider_auth_unsupported',
-        `Provider "${input.providerId}" auth method is not supported for runtime.`
+        `Provider "${input.providerId}" auth method is not supported for runtime.`,
+        {
+            action: {
+                code: 'provider_not_runnable',
+                providerId: input.providerId,
+            },
+        }
     );
 }

@@ -3,20 +3,50 @@ import {
     okProviderAdapter,
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
+import { executeHttpFallback } from '@/app/backend/providers/adapters/httpFallback';
+import {
+    emitRuntimeLifecycleSelection,
+    failRuntimeAdapter,
+    mapHttpFallbackFailureStage,
+} from '@/app/backend/providers/adapters/runtimeLifecycle';
+import { unsupportedProviderNativeRuntime } from '@/app/backend/providers/adapters/providerNative';
+import {
+    consumeKiloAnthropicRoutedStreamResponse,
+    emitKiloAnthropicRoutedPayload,
+} from '@/app/backend/providers/adapters/kilo/anthropicRouted';
+import {
+    buildKiloGeminiRoutedBody,
+    consumeKiloGeminiRoutedStreamResponse,
+    emitKiloGeminiRoutedPayload,
+} from '@/app/backend/providers/adapters/kilo/geminiRouted';
 import {
     buildKiloRuntimeBody,
     buildKiloRuntimeHeaders,
     resolveKiloRuntimeAuthToken,
 } from '@/app/backend/providers/adapters/kilo/headers';
 import { parseChatCompletionsPayload } from '@/app/backend/providers/adapters/runtimePayload';
-import {
-    consumeChatCompletionsStreamResponse,
-    emitParsedCompletion,
-    isEventStreamResponse,
-} from '@/app/backend/providers/adapters/streaming';
+import { getRuntimeFamilyDefinition, resolveRuntimeFamilyExecutionPath } from '@/app/backend/providers/runtimeFamilies';
+import { consumeChatCompletionsStreamResponse, emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
 import { KILO_GATEWAY_BASE_URL } from '@/app/backend/providers/kiloGatewayClient/constants';
 import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
-import { appLog } from '@/app/main/logging';
+
+type KiloRoutedRuntimeFamily = 'openai_compatible' | 'anthropic_messages' | 'google_generativeai';
+
+interface KiloRoutedRuntimeHandler {
+    buildBody: (input: ProviderRuntimeInput) => Record<string, unknown>;
+    emitStreamResponse: (input: {
+        response: Response;
+        handlers: ProviderRuntimeHandlers;
+        startedAt: number;
+        runtimeInput: ProviderRuntimeInput;
+    }) => Promise<ProviderAdapterResult<void>>;
+    emitPayload: (input: {
+        payload: unknown;
+        handlers: ProviderRuntimeHandlers;
+        startedAt: number;
+        runtimeInput: ProviderRuntimeInput;
+    }) => Promise<ProviderAdapterResult<void>>;
+}
 
 function failKiloRuntime(
     input: ProviderRuntimeInput,
@@ -24,28 +54,123 @@ function failKiloRuntime(
     code: string,
     error: string
 ): ProviderAdapterResult<never> {
-    appLog.warn({
-        tag: 'provider.kilo',
-        message: `Kilo runtime ${context} failed.`,
-        runId: input.runId,
-        profileId: input.profileId,
-        sessionId: input.sessionId,
-        modelId: input.modelId,
+    return failRuntimeAdapter({
+        input,
+        logTag: 'provider.kilo',
+        runtimeLabel: 'Kilo runtime',
+        context,
         code,
         error,
     });
-
-    return errProviderAdapter('provider_request_failed', error);
 }
 
-function shouldRetryWithoutStreaming(status: number): boolean {
-    return status === 400 || status === 404 || status === 405 || status === 415 || status === 422;
+function resolveKiloRoutedRuntimeFamily(input: ProviderRuntimeInput): ProviderAdapterResult<KiloRoutedRuntimeFamily> {
+    if (!input.routedApiFamily) {
+        return errProviderAdapter(
+            'invalid_payload',
+            `Model "${input.modelId}" is missing required Kilo routed upstream family metadata.`
+        );
+    }
+
+    if (
+        input.routedApiFamily === 'openai_compatible' ||
+        input.routedApiFamily === 'anthropic_messages' ||
+        input.routedApiFamily === 'google_generativeai'
+    ) {
+        return okProviderAdapter(input.routedApiFamily);
+    }
+
+    return errProviderAdapter(
+        'invalid_payload',
+        `Model "${input.modelId}" routes through unsupported Kilo upstream family "${input.routedApiFamily}".`
+    );
 }
+
+const kiloRoutedRuntimeHandlers: Record<KiloRoutedRuntimeFamily, KiloRoutedRuntimeHandler> = {
+    openai_compatible: {
+        buildBody: (input) => buildKiloRuntimeBody(input),
+        emitStreamResponse: async (input) =>
+            consumeChatCompletionsStreamResponse({
+                response: input.response,
+                handlers: input.handlers,
+                startedAt: input.startedAt,
+            }),
+        emitPayload: async (input) => {
+            const parsed = parseChatCompletionsPayload(input.payload);
+            if (parsed.isErr()) {
+                return errProviderAdapter(parsed.error.code, parsed.error.message);
+            }
+
+            return emitParsedCompletion(parsed.value, input.handlers, input.startedAt);
+        },
+    },
+    anthropic_messages: {
+        buildBody: (input) => buildKiloRuntimeBody(input),
+        emitStreamResponse: async (input) =>
+            consumeKiloAnthropicRoutedStreamResponse({
+                response: input.response,
+                handlers: input.handlers,
+                startedAt: input.startedAt,
+                includeEncrypted: input.runtimeInput.runtimeOptions.reasoning.includeEncrypted,
+            }),
+        emitPayload: async (input) =>
+            emitKiloAnthropicRoutedPayload({
+                payload: input.payload,
+                handlers: input.handlers,
+                startedAt: input.startedAt,
+                includeEncrypted: input.runtimeInput.runtimeOptions.reasoning.includeEncrypted,
+            }),
+    },
+    google_generativeai: {
+        buildBody: (input) => buildKiloGeminiRoutedBody(input),
+        emitStreamResponse: async (input) =>
+            consumeKiloGeminiRoutedStreamResponse({
+                response: input.response,
+                handlers: input.handlers,
+                startedAt: input.startedAt,
+                includeEncrypted: input.runtimeInput.runtimeOptions.reasoning.includeEncrypted,
+            }),
+        emitPayload: async (input) =>
+            emitKiloGeminiRoutedPayload({
+                payload: input.payload,
+                handlers: input.handlers,
+                startedAt: input.startedAt,
+                includeEncrypted: input.runtimeInput.runtimeOptions.reasoning.includeEncrypted,
+            }),
+    },
+};
 
 export async function streamKiloRuntime(
     input: ProviderRuntimeInput,
     handlers: ProviderRuntimeHandlers
 ): Promise<ProviderAdapterResult<void>> {
+    const executionPath = resolveRuntimeFamilyExecutionPath(input.toolProtocol);
+
+    if (executionPath === 'provider_native') {
+        return unsupportedProviderNativeRuntime(input);
+    }
+
+    if (executionPath !== 'kilo_gateway') {
+        return failKiloRuntime(
+            input,
+            'protocol dispatch',
+            'invalid_payload',
+            `Model "${input.modelId}" declares unsupported protocol "${input.toolProtocol}" for the Kilo adapter.`
+        );
+    }
+
+    const routedFamilyResult = resolveKiloRoutedRuntimeFamily(input);
+    if (routedFamilyResult.isErr()) {
+        return failKiloRuntime(
+            input,
+            'routed family dispatch',
+            routedFamilyResult.error.code,
+            routedFamilyResult.error.message
+        );
+    }
+    const routedFamily = routedFamilyResult.value;
+    const routedHandler = kiloRoutedRuntimeHandlers[routedFamily];
+
     const tokenResult = resolveKiloRuntimeAuthToken(input);
     if (tokenResult.isErr()) {
         return failKiloRuntime(input, 'auth resolution', tokenResult.error.code, tokenResult.error.message);
@@ -53,112 +178,68 @@ export async function streamKiloRuntime(
     const token = tokenResult.value;
     const startedAt = Date.now();
 
-    if (handlers.onTransportSelected) {
-        await handlers.onTransportSelected({
-            selected: 'chat_completions',
-            requested: input.runtimeOptions.transport.openai,
+    await emitRuntimeLifecycleSelection({
+        handlers,
+        transportSelection: {
+            selected: getRuntimeFamilyDefinition('kilo_gateway').transportFamily,
+            requested: input.runtimeOptions.transport.family,
             degraded: false,
-        });
-    }
-    if (handlers.onCacheResolved) {
-        await handlers.onCacheResolved(input.cache);
-    }
+        },
+        cacheResult: input.cache,
+    });
 
-    let response: Response;
-    try {
-        response = await fetch(`${KILO_GATEWAY_BASE_URL}/chat/completions`, {
-            method: 'POST',
-            headers: buildKiloRuntimeHeaders({
-                token,
-                ...(input.organizationId ? { organizationId: input.organizationId } : {}),
-                modelId: input.modelId,
-                ...(input.cache.applied && input.cache.key
-                    ? {
-                          cacheKey: input.cache.key,
-                      }
-                    : {}),
+    const requestBody = routedHandler.buildBody(input);
+    const requestHeaders = buildKiloRuntimeHeaders({
+        token,
+        ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+        modelId: input.modelId,
+        ...(input.routedApiFamily ? { routedApiFamily: input.routedApiFamily } : {}),
+        ...(input.cache.applied && input.cache.key
+            ? {
+                  cacheKey: input.cache.key,
+              }
+            : {}),
+    });
+    const execution = await executeHttpFallback({
+        signal: input.signal,
+        streamRequest: {
+            url: `${KILO_GATEWAY_BASE_URL}/chat/completions`,
+            headers: requestHeaders,
+            body: requestBody,
+        },
+        fallbackRequest: {
+            url: `${KILO_GATEWAY_BASE_URL}/chat/completions`,
+            headers: requestHeaders,
+            body: {
+                ...requestBody,
+                stream: false,
+            },
+        },
+        consumeStreamResponse: (response) =>
+            routedHandler.emitStreamResponse({
+                response,
+                handlers,
+                startedAt,
+                runtimeInput: input,
             }),
-            body: JSON.stringify(buildKiloRuntimeBody(input)),
-            signal: input.signal,
-        });
-    } catch (error) {
+        emitPayload: (payload) =>
+            routedHandler.emitPayload({
+                payload,
+                handlers,
+                startedAt,
+                runtimeInput: input,
+            }),
+        formatHttpFailure: ({ response }) =>
+            `Kilo runtime completion failed: ${String(response.status)} ${response.statusText}`,
+    });
+    if (execution.isErr()) {
         return failKiloRuntime(
             input,
-            'request',
-            'provider_request_unavailable',
-            error instanceof Error ? error.message : 'Kilo runtime request failed before receiving a response.'
+            mapHttpFallbackFailureStage(execution.error.stage),
+            execution.error.code,
+            execution.error.message
         );
     }
 
-    if (!response.ok) {
-        if (!shouldRetryWithoutStreaming(response.status)) {
-            return failKiloRuntime(
-                input,
-                'request',
-                'provider_request_failed',
-                `Kilo runtime completion failed: ${String(response.status)} ${response.statusText}`
-            );
-        }
-
-        try {
-            response = await fetch(`${KILO_GATEWAY_BASE_URL}/chat/completions`, {
-                method: 'POST',
-                headers: buildKiloRuntimeHeaders({
-                    token,
-                    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
-                    modelId: input.modelId,
-                    ...(input.cache.applied && input.cache.key
-                        ? {
-                              cacheKey: input.cache.key,
-                          }
-                        : {}),
-                }),
-                body: JSON.stringify({
-                    ...buildKiloRuntimeBody(input),
-                    stream: false,
-                }),
-                signal: input.signal,
-            });
-        } catch (error) {
-            return failKiloRuntime(
-                input,
-                'request fallback',
-                'provider_request_unavailable',
-                error instanceof Error ? error.message : 'Kilo runtime request failed before receiving a response.'
-            );
-        }
-
-        if (!response.ok) {
-            return failKiloRuntime(
-                input,
-                'request fallback',
-                'provider_request_failed',
-                `Kilo runtime completion failed: ${String(response.status)} ${response.statusText}`
-            );
-        }
-    }
-
-    if (isEventStreamResponse(response)) {
-        const streamed = await consumeChatCompletionsStreamResponse({
-            response,
-            handlers,
-            startedAt,
-        });
-        if (streamed.isErr()) {
-            return failKiloRuntime(input, 'payload parse', streamed.error.code, streamed.error.message);
-        }
-        return okProviderAdapter(undefined);
-    }
-
-    let payload: unknown;
-    try {
-        payload = await response.json();
-    } catch {
-        payload = {};
-    }
-    const parsed = parseChatCompletionsPayload(payload);
-    if (parsed.isErr()) {
-        return failKiloRuntime(input, 'payload parse', parsed.error.code, parsed.error.message);
-    }
-    return emitParsedCompletion(parsed.value, handlers, startedAt);
+    return okProviderAdapter(undefined);
 }

@@ -100,7 +100,7 @@ export function ProviderStatusSection({
                         </div>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Endpoint</dt>
-                            <dd className='min-w-0 break-words'>{provider.endpointProfile.label}</dd>
+                            <dd className='min-w-0 break-words'>{provider.connectionProfile.label}</dd>
                         </div>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Token expiry</dt>

@@ -60,7 +60,7 @@ export interface RunsTable {
     cache_key: string | null;
     cache_applied: 0 | 1 | null;
     cache_skip_reason: string | null;
-    transport_openai_preference: string | null;
+    transport_requested_family: string | null;
     transport_selected: string | null;
     transport_degraded_reason: string | null;
     started_at: string | null;
@@ -480,9 +480,14 @@ export interface ProviderModelCatalogTable {
     supports_vision: 0 | 1 | null;
     supports_audio_input: 0 | 1 | null;
     supports_audio_output: 0 | 1 | null;
+    supports_prompt_cache: 0 | 1 | null;
+    tool_protocol: string | null;
+    api_family: string | null;
+    routed_api_family: string | null;
     input_modalities_json: string | null;
     output_modalities_json: string | null;
     prompt_family: string | null;
+    provider_settings_json: string | null;
     context_length: number | null;
     pricing_json: string;
     raw_json: string;

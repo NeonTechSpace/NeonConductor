@@ -43,6 +43,8 @@ export interface ProviderDefinition {
     endpointProfiles: ProviderEndpointProfileDefinition[];
     supportsKiloRouting: boolean;
     supportsModelProviderListing: boolean;
+    supportsCustomBaseUrl: boolean;
+    supportsOrganizationScope: boolean;
 }
 
 const providerDefinitions: Record<FirstPartyProviderId, ProviderDefinition> = {
@@ -55,6 +57,8 @@ const providerDefinitions: Record<FirstPartyProviderId, ProviderDefinition> = {
         endpointProfiles: [{ value: 'gateway', label: 'Gateway', isDefault: true }],
         supportsKiloRouting: true,
         supportsModelProviderListing: true,
+        supportsCustomBaseUrl: false,
+        supportsOrganizationScope: true,
     },
     openai: {
         id: 'openai',
@@ -65,6 +69,8 @@ const providerDefinitions: Record<FirstPartyProviderId, ProviderDefinition> = {
         endpointProfiles: [{ value: 'default', label: 'Default', isDefault: true }],
         supportsKiloRouting: false,
         supportsModelProviderListing: false,
+        supportsCustomBaseUrl: true,
+        supportsOrganizationScope: false,
     },
     zai: {
         id: 'zai',
@@ -78,6 +84,8 @@ const providerDefinitions: Record<FirstPartyProviderId, ProviderDefinition> = {
         ],
         supportsKiloRouting: false,
         supportsModelProviderListing: false,
+        supportsCustomBaseUrl: true,
+        supportsOrganizationScope: false,
     },
     moonshot: {
         id: 'moonshot',
@@ -91,6 +99,8 @@ const providerDefinitions: Record<FirstPartyProviderId, ProviderDefinition> = {
         ],
         supportsKiloRouting: false,
         supportsModelProviderListing: false,
+        supportsCustomBaseUrl: true,
+        supportsOrganizationScope: false,
     },
 };
 

@@ -1,5 +1,5 @@
 import { messageStore } from '@/app/backend/persistence/stores';
-import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
+import type { MessagePartRecord, MessageRecord, RunRecord } from '@/app/backend/persistence/types';
 import type { ProviderRuntimePart, ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
 import { isReasoningPart } from '@/app/backend/runtime/services/runExecution/parts';
 import type { RunCacheResolution } from '@/app/backend/runtime/services/runExecution/types';
@@ -15,6 +15,7 @@ export async function emitCacheResolutionEvent(input: {
     profileId: string;
     sessionId: string;
     cache: RunCacheResolution;
+    run: RunRecord;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -27,6 +28,7 @@ export async function emitCacheResolutionEvent(input: {
             profileId: input.profileId,
             sessionId: input.sessionId,
             cache: input.cache,
+            run: input.run,
         },
         })
     );
@@ -37,6 +39,7 @@ export async function emitTransportSelectionEvent(input: {
     profileId: string;
     sessionId: string;
     selection: ProviderRuntimeTransportSelection;
+    run: RunRecord;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -49,6 +52,7 @@ export async function emitTransportSelectionEvent(input: {
             profileId: input.profileId,
             sessionId: input.sessionId,
             transport: input.selection,
+            run: input.run,
         },
         })
     );

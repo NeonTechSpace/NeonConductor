@@ -8,6 +8,7 @@ import type {
     RuntimeProviderId,
     RuntimeRunOptions,
 } from '@/app/backend/runtime/contracts';
+import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 
 export interface CreateRunInput {
@@ -24,7 +25,7 @@ export interface CreateRunInput {
         reason?: string;
     };
     transport: {
-        selected?: 'responses' | 'chat_completions';
+        selected?: ProviderRuntimeTransportFamily;
         degradedReason?: string;
     };
 }
@@ -38,7 +39,7 @@ export interface FinalizeRunInput {
 export interface UpdateRunRuntimeMetadataInput {
     cacheApplied?: boolean;
     cacheSkipReason?: string;
-    transportSelected?: 'responses' | 'chat_completions';
+    transportSelected?: ProviderRuntimeTransportFamily;
     transportDegradedReason?: string;
 }
 
@@ -66,7 +67,7 @@ export class RunStore {
                 cache_key: input.cache.key ?? null,
                 cache_applied: input.cache.applied ? 1 : 0,
                 cache_skip_reason: input.cache.reason ?? null,
-                transport_openai_preference: input.runtimeOptions.transport.openai,
+                transport_requested_family: input.runtimeOptions.transport.family,
                 transport_selected: input.transport.selected ?? null,
                 transport_degraded_reason: input.transport.degradedReason ?? null,
                 started_at: now,
@@ -122,7 +123,7 @@ export class RunStore {
             updated_at: string;
             cache_applied?: 0 | 1;
             cache_skip_reason?: string | null;
-            transport_selected?: 'responses' | 'chat_completions' | null;
+            transport_selected?: ProviderRuntimeTransportFamily | null;
             transport_degraded_reason?: string | null;
         } = {
             updated_at: now,

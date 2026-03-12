@@ -134,7 +134,7 @@ describe('persistence stores: profile and provider domain', () => {
                         strategy: 'auto',
                     },
                     transport: {
-                        openai: 'auto',
+                        family: 'auto',
                     },
                 },
                 cache: {
@@ -143,7 +143,7 @@ describe('persistence stores: profile and provider domain', () => {
                     reason: 'unsupported_transport',
                 },
                 transport: {
-                    selected: 'responses',
+                    selected: 'openai_responses',
                 },
             });
         }

@@ -3,6 +3,7 @@ import { getProviderAdapter } from '@/app/backend/providers/adapters';
 import { isSupportedProviderId } from '@/app/backend/providers/registry';
 import type { ProviderRuntimeInput, ProviderRuntimePart } from '@/app/backend/providers/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import { resolveRuntimeProtocol } from '@/app/backend/runtime/services/runExecution/protocol';
 import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
 import { appLog } from '@/app/main/logging';
 
@@ -132,6 +133,35 @@ async function generateAiTitle(input: {
         return undefined;
     }
 
+    const modelCapabilities = await providerStore.getModelCapabilities(input.profileId, providerId, input.aiModel);
+    if (!modelCapabilities) {
+        return undefined;
+    }
+
+    const runtimeProtocol = await resolveRuntimeProtocol({
+        profileId: input.profileId,
+        providerId,
+        modelId: input.aiModel,
+        modelCapabilities,
+        authMethod: auth.value.authMethod,
+        runtimeOptions: {
+            reasoning: {
+                effort: 'none',
+                summary: 'none',
+                includeEncrypted: false,
+            },
+            cache: {
+                strategy: 'auto',
+            },
+            transport: {
+                family: 'auto',
+            },
+        },
+    });
+    if (runtimeProtocol.isErr()) {
+        return undefined;
+    }
+
     const adapter = getProviderAdapter(providerId);
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -146,6 +176,9 @@ async function generateAiTitle(input: {
             runId: 'run_title_generation',
             providerId,
             modelId: input.aiModel,
+            toolProtocol: runtimeProtocol.value.toolProtocol,
+            ...(runtimeProtocol.value.apiFamily ? { apiFamily: runtimeProtocol.value.apiFamily } : {}),
+            ...(runtimeProtocol.value.routedApiFamily ? { routedApiFamily: runtimeProtocol.value.routedApiFamily } : {}),
             promptText:
                 'Return a concise thread title (max 70 chars) based on the user request. Return title text only.',
             contextMessages: [
@@ -165,7 +198,7 @@ async function generateAiTitle(input: {
                     strategy: 'auto',
                 },
                 transport: {
-                    openai: 'auto',
+                    family: 'auto',
                 },
             },
             cache: {

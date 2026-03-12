@@ -59,7 +59,7 @@ describe('persistence stores: conversation domain', () => {
                     strategy: 'auto',
                 },
                 transport: {
-                    openai: 'auto',
+                    family: 'auto',
                 },
             },
             cache: {
@@ -68,7 +68,7 @@ describe('persistence stores: conversation domain', () => {
                 reason: 'unsupported_transport',
             },
             transport: {
-                selected: 'responses',
+                selected: 'openai_responses',
             },
         });
         await sessionStore.markRunPending(profileId, session.session.id, run.id);
@@ -160,7 +160,7 @@ describe('persistence stores: conversation domain', () => {
                     strategy: 'auto',
                 },
                 transport: {
-                    openai: 'auto',
+                    family: 'auto',
                 },
             },
             cache: {
@@ -169,7 +169,7 @@ describe('persistence stores: conversation domain', () => {
                 reason: 'unsupported_transport',
             },
             transport: {
-                selected: 'responses',
+                selected: 'openai_responses',
             },
         });
         await sessionStore.markRunPending(profileId, session.session.id, run.id);

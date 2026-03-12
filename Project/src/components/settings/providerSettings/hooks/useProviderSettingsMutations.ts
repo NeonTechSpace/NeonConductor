@@ -11,7 +11,6 @@ interface UseProviderSettingsMutationsInput {
     profileId: string;
     selectedProviderId: RuntimeProviderId | undefined;
     setStatusMessage: (value: string | undefined) => void;
-    setApiKeyInput: (value: string) => void;
     setActiveAuthFlow: (value: ActiveAuthFlow | undefined) => void;
 }
 
@@ -83,7 +82,6 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 return;
             }
 
-            input.setApiKeyInput('');
             input.setStatusMessage('API key saved. Provider is ready.');
             patchProviderCache({
                 utils,
@@ -106,14 +104,14 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
         },
     });
 
-    const setEndpointProfileMutation = trpc.provider.setEndpointProfile.useMutation({
-        onSuccess: ({ endpointProfile, defaults, models, provider }) => {
-            input.setStatusMessage('Endpoint profile updated.');
+    const setConnectionProfileMutation = trpc.provider.setConnectionProfile.useMutation({
+        onSuccess: ({ connectionProfile, defaults, models, provider }) => {
+            input.setStatusMessage('Connection profile updated.');
             patchProviderCache({
                 utils,
                 profileId: input.profileId,
                 providerId: selectedProviderId,
-                endpointProfile,
+                connectionProfile,
                 defaults,
                 models,
                 ...(provider ? { provider } : {}),
@@ -262,7 +260,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
     return {
         setDefaultMutation,
         setApiKeyMutation,
-        setEndpointProfileMutation,
+        setConnectionProfileMutation,
         syncCatalogMutation,
         setModelRoutingPreferenceMutation,
         setOrganizationMutation,

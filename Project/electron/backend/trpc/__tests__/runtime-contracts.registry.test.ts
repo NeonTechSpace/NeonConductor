@@ -422,7 +422,7 @@ name: Docs Lookup
             runtimeOptions: {
                 ...defaultRuntimeOptions,
                 transport: {
-                    openai: 'chat',
+                    family: 'openai_chat_completions',
                 },
             },
             providerId: 'openai',

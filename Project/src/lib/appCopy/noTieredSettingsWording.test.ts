@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const thisDirectory = dirname(fileURLToPath(import.meta.url));
-const researchPlanPath = resolve(thisDirectory, '../../../../Research/NeonConductor Plan.md');
+const researchPlanPath = resolve(thisDirectory, '../../../../Research/NeonConductor MVP Roadmap.md');
 
 describe('settings wording regression', () => {
-    it('does not reintroduce tiered settings language into the research plan', () => {
+    it('does not reintroduce tiered settings language into the MVP roadmap', () => {
         const contents = readFileSync(researchPlanPath, 'utf8');
 
         expect(contents).not.toMatch(/basic\/advanced variants/i);

@@ -10,7 +10,7 @@ export function createProviderSettingsActions(input: {
     profileId: string;
     selectedProviderId: RuntimeProviderId | undefined;
     selectedModelId: string;
-    apiKeyInput: string;
+    currentOptionProfileId: string;
     activeAuthFlow: ActiveAuthFlow | undefined;
     kiloModelProviderIds: string[];
     kiloRoutingDraft:
@@ -43,8 +43,14 @@ export function createProviderSettingsActions(input: {
                 pinnedProviderId?: string;
             }) => Promise<void>;
         };
-        setEndpointProfileMutation: {
-            mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; value: string }) => Promise<void>;
+        setConnectionProfileMutation: {
+            mutateAsync: (input: {
+                profileId: string;
+                providerId: RuntimeProviderId;
+                optionProfileId: string;
+                baseUrlOverride?: string | null;
+                organizationId?: string | null;
+            }) => Promise<void>;
         };
         setOrganizationMutation: {
             mutateAsync: (input: {
@@ -174,15 +180,28 @@ export function createProviderSettingsActions(input: {
                 pinnedProviderId: providerId,
             });
         },
-        changeEndpointProfile: async (value: string) => {
+        changeConnectionProfile: async (value: string) => {
             if (!input.selectedProviderId) {
                 return;
             }
 
-            await input.mutations.setEndpointProfileMutation.mutateAsync({
+            await input.mutations.setConnectionProfileMutation.mutateAsync({
                 profileId: input.profileId,
                 providerId: input.selectedProviderId,
-                value,
+                optionProfileId: value,
+            });
+        },
+        saveBaseUrlOverride: async (baseUrlOverrideInput: string) => {
+            if (!input.selectedProviderId) {
+                return;
+            }
+
+            const normalizedBaseUrlOverride = baseUrlOverrideInput.trim();
+            await input.mutations.setConnectionProfileMutation.mutateAsync({
+                profileId: input.profileId,
+                providerId: input.selectedProviderId,
+                optionProfileId: input.currentOptionProfileId,
+                baseUrlOverride: normalizedBaseUrlOverride.length > 0 ? normalizedBaseUrlOverride : null,
             });
         },
         changeOrganization: async (organizationId?: string) => {
@@ -196,7 +215,7 @@ export function createProviderSettingsActions(input: {
                 ...(organizationId ? { organizationId } : { organizationId: null }),
             });
         },
-        saveApiKey: async () => {
+        saveApiKey: async (apiKeyInput: string) => {
             if (!input.selectedProviderId) {
                 return;
             }
@@ -204,7 +223,7 @@ export function createProviderSettingsActions(input: {
             await input.mutations.setApiKeyMutation.mutateAsync({
                 profileId: input.profileId,
                 providerId: input.selectedProviderId,
-                apiKey: input.apiKeyInput.trim(),
+                apiKey: apiKeyInput.trim(),
             });
         },
         startOAuthDevice: async () => {

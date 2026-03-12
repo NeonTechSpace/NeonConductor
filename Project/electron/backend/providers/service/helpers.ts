@@ -1,6 +1,6 @@
 import { providerStore } from '@/app/backend/persistence/stores';
 import type { ProviderAuthStateRecord } from '@/app/backend/persistence/types';
-import { toSupportedProviderIdResult } from '@/app/backend/providers/registry';
+import { toSupportedProviderIdResult, type FirstPartyProviderId } from '@/app/backend/providers/registry';
 import {
     errProviderService,
     okProviderService,
@@ -21,7 +21,7 @@ export function defaultAuthState(profileId: string, providerId: RuntimeProviderI
 
 export async function ensureSupportedProvider(
     providerId: RuntimeProviderId
-): Promise<ProviderServiceResult<RuntimeProviderId>> {
+): Promise<ProviderServiceResult<FirstPartyProviderId>> {
     const supportedProviderIdResult = toSupportedProviderIdResult(providerId);
     if (supportedProviderIdResult.isErr()) {
         return errProviderService('provider_not_supported', supportedProviderIdResult.error.message);

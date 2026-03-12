@@ -17,14 +17,6 @@ function tryAssertProviderId(value: string): RuntimeProviderId | undefined {
     return supportedProviderIdResult.value;
 }
 
-async function resolveFirstModelForProvider(
-    profileId: string,
-    providerId: RuntimeProviderId
-): Promise<string | undefined> {
-    const models = await providerStore.listModels(profileId, providerId);
-    return models.at(0)?.id;
-}
-
 export async function resolveRunTarget(input: {
     profileId: string;
     providerId?: string;
@@ -59,39 +51,15 @@ export async function resolveRunTarget(input: {
     if (providerId && !modelId) {
         if (defaults.providerId === providerId && defaults.modelId.trim().length > 0) {
             modelId = defaults.modelId;
-        } else {
-            modelId = await resolveFirstModelForProvider(input.profileId, providerId);
         }
     }
 
     if (!providerId || !modelId) {
-        const providers = await providerStore.listProviders();
-        for (const provider of providers) {
-            const firstModel = await resolveFirstModelForProvider(input.profileId, provider.id);
-            if (!firstModel) {
-                continue;
-            }
-
-            providerId = provider.id;
-            modelId = firstModel;
-            break;
-        }
-    }
-
-    if (!providerId || !modelId) {
-        return errRunExecution('provider_model_missing', 'No model available for any configured provider.');
+        return errRunExecution('provider_model_missing', 'No explicit provider/model target could be resolved.');
     }
 
     const modelExists = await providerStore.modelExists(input.profileId, providerId, modelId);
     if (!modelExists) {
-        const fallbackModel = await resolveFirstModelForProvider(input.profileId, providerId);
-        if (fallbackModel && fallbackModel !== modelId) {
-            return okRunExecution({
-                providerId,
-                modelId: fallbackModel,
-            });
-        }
-
         return errRunExecution(
             'provider_model_not_available',
             `Model "${modelId}" is not available for provider "${providerId}".`

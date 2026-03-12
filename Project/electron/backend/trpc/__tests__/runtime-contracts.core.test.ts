@@ -191,6 +191,11 @@ describe('runtime contracts: core flows', () => {
         }
         expect(invalidModeForTab.code).toBe('invalid_mode');
         expect(invalidModeForTab.message).toContain('invalid for tab');
+        expect(invalidModeForTab.action).toEqual({
+            code: 'mode_invalid',
+            modeKey: 'code',
+            topLevelTab: 'chat',
+        });
 
         await expect(
             caller.session.startRun({

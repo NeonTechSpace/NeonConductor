@@ -1,7 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { build } from 'vite';
 import { resolveViteConfig } from 'vite-plugin-electron';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -58,7 +57,8 @@ describe('preload build config', () => {
             entry: 'electron/main/preload/splash.ts',
             formats: ['cjs'],
         });
-        expect(buildConfig?.rollupOptions?.output).toMatchObject({
+        expect(buildConfig?.rolldownOptions?.output).toMatchObject({
+            codeSplitting: false,
             format: 'cjs',
         });
     });

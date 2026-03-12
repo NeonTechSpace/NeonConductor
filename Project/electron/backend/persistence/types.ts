@@ -20,7 +20,7 @@ import type {
     ProviderSecretKind,
     PermissionPolicy,
     PermissionScopeKind,
-    RuntimeOpenAITransport,
+    RuntimeRequestedTransportFamily,
     RuntimeMessagePartType,
     RuntimeReasoningEffort,
     RuntimeReasoningSummary,
@@ -33,6 +33,12 @@ import type {
     WorktreeRecord as RuntimeWorktreeRecord,
     WorkspaceRootRecord as RuntimeWorkspaceRootRecord,
 } from '@/app/backend/runtime/contracts';
+import type {
+    ProviderApiFamily,
+    ProviderRoutedApiFamily,
+    ProviderRuntimeTransportFamily,
+    ProviderToolProtocol,
+} from '@/app/backend/providers/types';
 
 export interface SessionSummaryRecord {
     id: EntityId<'sess'>;
@@ -121,10 +127,15 @@ export interface ProviderModelRecord {
     supportsVision: boolean;
     supportsAudioInput: boolean;
     supportsAudioOutput: boolean;
+    supportsPromptCache?: boolean;
+    toolProtocol?: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     reasoningEfforts?: RuntimeReasoningEffort[];
     promptFamily?: string;
+    providerSettings?: Record<string, unknown>;
     contextLength?: number;
     maxOutputTokens?: number;
     inputPrice?: number;
@@ -425,8 +436,8 @@ export interface RunRecord {
         reason?: string;
     };
     transport?: {
-        openaiPreference: RuntimeOpenAITransport;
-        selected?: 'responses' | 'chat_completions';
+        requestedFamily: RuntimeRequestedTransportFamily;
+        selected?: ProviderRuntimeTransportFamily;
         degradedReason?: string;
     };
     startedAt?: string;

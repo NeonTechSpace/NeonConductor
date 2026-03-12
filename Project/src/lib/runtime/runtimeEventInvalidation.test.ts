@@ -71,7 +71,7 @@ function createUtilsMock(calls: InvalidationCall[]) {
             listModels: createInvalidateLeaf(calls, 'provider.listModels'),
             getAuthState: createInvalidateLeaf(calls, 'provider.getAuthState'),
             getAccountContext: createInvalidateLeaf(calls, 'provider.getAccountContext'),
-            getEndpointProfile: createInvalidateLeaf(calls, 'provider.getEndpointProfile'),
+            getConnectionProfile: createInvalidateLeaf(calls, 'provider.getConnectionProfile'),
             getModelRoutingPreference: createInvalidateLeaf(calls, 'provider.getModelRoutingPreference'),
             listModelProviders: createInvalidateLeaf(calls, 'provider.listModelProviders'),
             getUsageSummary: createInvalidateLeaf(calls, 'provider.getUsageSummary'),
@@ -208,6 +208,151 @@ describe('invalidateQueriesForRuntimeEvent', () => {
 
         expect(calls).toEqual([]);
         expect(setQueriesDataMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('patches started runs into run and session caches without invalidation', async () => {
+        const calls: InvalidationCall[] = [];
+        const utils = createUtilsMock(calls);
+
+        await invalidateQueriesForRuntimeEvent(
+            utils as never,
+            createEvent({
+                entityType: 'run',
+                domain: 'run',
+                operation: 'status',
+                entityId: 'run_started',
+                payload: {
+                    profileId: 'profile_default',
+                    sessionId: 'sess_selected',
+                    run: {
+                        id: 'run_started',
+                        sessionId: 'sess_selected',
+                        profileId: 'profile_default',
+                        prompt: 'Hello',
+                        status: 'running',
+                        providerId: 'openai',
+                        modelId: 'openai/gpt-5',
+                        authMethod: 'api_key',
+                        transport: {
+                            requestedFamily: 'auto',
+                            selected: 'openai_responses',
+                        },
+                        cache: {
+                            strategy: 'auto',
+                            applied: false,
+                        },
+                        createdAt: '2026-03-13T10:00:00.000Z',
+                        updatedAt: '2026-03-13T10:00:00.000Z',
+                    },
+                },
+            })
+        );
+
+        expect(calls).toEqual([]);
+        expect(utils.session.listRuns.setData).toHaveBeenCalledTimes(1);
+        expect(utils.session.status.setData).toHaveBeenCalledTimes(1);
+        expect(utils.session.list.setData).toHaveBeenCalledTimes(1);
+
+        const listRunsUpdater = utils.session.listRuns.setData.mock.calls[0]?.[1] as
+            | ((current: { runs: Array<{ id: string; status: string }> }) => { runs: Array<{ id: string; status: string }> })
+            | undefined;
+        expect(listRunsUpdater?.({ runs: [] }).runs[0]?.id).toBe('run_started');
+
+        const statusUpdater = utils.session.status.setData.mock.calls[0]?.[1] as
+            | ((current: { found: true; session: { id: string; runStatus: string }; activeRunId: string | null }) => {
+                  found: true;
+                  session: { id: string; runStatus: string };
+                  activeRunId: string | null;
+              })
+            | undefined;
+        expect(
+            statusUpdater?.({
+                found: true,
+                session: {
+                    id: 'sess_selected',
+                    runStatus: 'pending',
+                },
+                activeRunId: null,
+            }).activeRunId
+        ).toBe('run_started');
+    });
+
+    it('patches terminal runs and clears activeRunId without invalidation', async () => {
+        const calls: InvalidationCall[] = [];
+        const utils = createUtilsMock(calls);
+
+        await invalidateQueriesForRuntimeEvent(
+            utils as never,
+            createEvent({
+                entityType: 'run',
+                domain: 'run',
+                operation: 'status',
+                entityId: 'run_finished',
+                eventType: 'run.failed',
+                payload: {
+                    profileId: 'profile_default',
+                    sessionId: 'sess_selected',
+                    run: {
+                        id: 'run_finished',
+                        sessionId: 'sess_selected',
+                        profileId: 'profile_default',
+                        prompt: 'Hello',
+                        status: 'error',
+                        providerId: 'openai',
+                        modelId: 'openai/gpt-5',
+                        authMethod: 'api_key',
+                        errorCode: 'provider_request_failed',
+                        errorMessage: 'boom',
+                        transport: {
+                            requestedFamily: 'auto',
+                            selected: 'openai_responses',
+                        },
+                        cache: {
+                            strategy: 'auto',
+                            applied: false,
+                        },
+                        createdAt: '2026-03-13T10:00:00.000Z',
+                        updatedAt: '2026-03-13T10:01:00.000Z',
+                    },
+                },
+            })
+        );
+
+        expect(calls).toEqual([]);
+
+        const statusUpdater = utils.session.status.setData.mock.calls[0]?.[1] as
+            | ((current: { found: true; session: { id: string; runStatus: string }; activeRunId: string | null }) => {
+                  found: true;
+                  session: { id: string; runStatus: string };
+                  activeRunId: string | null;
+              })
+            | undefined;
+        const nextStatus = statusUpdater?.({
+            found: true,
+            session: {
+                id: 'sess_selected',
+                runStatus: 'running',
+            },
+            activeRunId: 'run_finished',
+        });
+        expect(nextStatus?.activeRunId).toBeNull();
+        expect(nextStatus?.session.runStatus).toBe('error');
+
+        const sessionListUpdater = utils.session.list.setData.mock.calls[0]?.[1] as
+            | ((current: { sessions: Array<{ id: string; runStatus: string }> }) => {
+                  sessions: Array<{ id: string; runStatus: string }>;
+              })
+            | undefined;
+        expect(
+            sessionListUpdater?.({
+                sessions: [
+                    {
+                        id: 'sess_selected',
+                        runStatus: 'running',
+                    },
+                ],
+            }).sessions[0]?.runStatus
+        ).toBe('error');
     });
 
     it('keeps provider auth events scoped to provider queries', async () => {

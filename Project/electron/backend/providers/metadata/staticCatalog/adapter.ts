@@ -14,7 +14,7 @@ function isStaticProvider(providerId: FirstPartyProviderId): providerId is Stati
 
 export async function syncStaticCatalog(
     providerId: FirstPartyProviderId,
-    input: { profileId: string }
+    input: { profileId: string; endpointProfile?: string }
 ): Promise<ProviderCatalogSyncResult> {
     if (!isStaticProvider(providerId)) {
         return {
@@ -26,17 +26,21 @@ export async function syncStaticCatalog(
         };
     }
 
-    const endpointProfileResult = await resolveEndpointProfile(input.profileId, providerId);
-    if (endpointProfileResult.isErr()) {
-        return {
-            ok: false,
-            status: 'error',
-            providerId,
-            reason: 'sync_failed',
-            detail: endpointProfileResult.error.message,
-        };
+    let endpointProfile = input.endpointProfile;
+    if (!endpointProfile) {
+        const endpointProfileResult = await resolveEndpointProfile(input.profileId, providerId);
+        if (endpointProfileResult.isErr()) {
+            return {
+                ok: false,
+                status: 'error',
+                providerId,
+                reason: 'sync_failed',
+                detail: endpointProfileResult.error.message,
+            };
+        }
+
+        endpointProfile = endpointProfileResult.value;
     }
-    const endpointProfile = endpointProfileResult.value;
     const definitions = listStaticModelDefinitions(providerId, endpointProfile);
     const models = definitions.map((definition) => toStaticProviderCatalogModel(definition, endpointProfile));
 

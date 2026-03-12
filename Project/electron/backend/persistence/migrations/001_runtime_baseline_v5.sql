@@ -341,8 +341,17 @@ CREATE TABLE "runs" (
     cache_key TEXT NULL,
     cache_applied INTEGER NULL CHECK (cache_applied IN (0, 1)),
     cache_skip_reason TEXT NULL,
-    transport_openai_preference TEXT NULL CHECK (transport_openai_preference IN ('responses', 'chat', 'auto')),
-    transport_selected TEXT NULL CHECK (transport_selected IN ('responses', 'chat_completions')),
+    transport_requested_family TEXT NULL CHECK (transport_requested_family IN ('auto', 'openai_responses', 'openai_chat_completions')),
+    transport_selected TEXT NULL CHECK (
+        transport_selected IN (
+            'openai_responses',
+            'openai_chat_completions',
+            'kilo_gateway',
+            'provider_native',
+            'anthropic_messages',
+            'google_generativeai'
+        )
+    ),
     transport_degraded_reason TEXT NULL,
     started_at TEXT NULL,
     completed_at TEXT NULL,

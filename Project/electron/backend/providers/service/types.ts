@@ -1,6 +1,7 @@
 import type { ProviderRecord } from '@/app/backend/persistence/types';
 import type { ProviderCatalogStrategy } from '@/app/backend/providers/registry';
 import type {
+    ProviderConnectionProfile,
     KiloModelProviderInfo,
     ProviderAuthMethod,
     ProviderCredentialSummary,
@@ -13,14 +14,7 @@ export interface ProviderListItem extends ProviderRecord {
     authMethod: ProviderAuthMethod | 'none';
     authState: string;
     availableAuthMethods: ProviderAuthMethod[];
-    endpointProfile: {
-        value: string;
-        label: string;
-    };
-    endpointProfiles: Array<{
-        value: string;
-        label: string;
-    }>;
+    connectionProfile: ProviderConnectionProfile;
     apiKeyCta: {
         label: string;
         url: string;
@@ -29,7 +23,9 @@ export interface ProviderListItem extends ProviderRecord {
         catalogStrategy: ProviderCatalogStrategy;
         supportsKiloRouting: boolean;
         supportsModelProviderListing: boolean;
-        supportsEndpointProfiles: boolean;
+        supportsConnectionOptions: boolean;
+        supportsCustomBaseUrl: boolean;
+        supportsOrganizationScope: boolean;
     };
 }
 
@@ -44,15 +40,7 @@ export interface ProviderSyncResult {
 
 export type KiloModelProviderOption = KiloModelProviderInfo;
 
-export interface ProviderEndpointProfileResult {
-    providerId: RuntimeProviderId;
-    value: string;
-    label: string;
-    options: Array<{
-        value: string;
-        label: string;
-    }>;
-}
+export type ProviderConnectionProfileResult = ProviderConnectionProfile;
 
 export type ProviderCredentialSummaryResult = ProviderCredentialSummary;
 

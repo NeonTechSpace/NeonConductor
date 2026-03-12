@@ -11,7 +11,7 @@ import {
     HEADER_ORGANIZATION_ID,
     HEADER_TASK_ID,
 } from '@/app/backend/providers/kiloGatewayClient/constants';
-import type { ProviderRuntimeInput } from '@/app/backend/providers/types';
+import type { ProviderRuntimeInput, ProviderRoutedApiFamily } from '@/app/backend/providers/types';
 
 export function resolveKiloRuntimeAuthToken(input: ProviderRuntimeInput): ProviderAdapterResult<string> {
     const token = input.accessToken ?? input.apiKey;
@@ -22,7 +22,7 @@ export function resolveKiloRuntimeAuthToken(input: ProviderRuntimeInput): Provid
     return okProviderAdapter(token);
 }
 
-function mapReasoningEffort(
+export function mapReasoningEffort(
     effort: ProviderRuntimeInput['runtimeOptions']['reasoning']['effort']
 ): 'minimal' | 'low' | 'medium' | 'high' | undefined {
     if (effort === 'none') {
@@ -40,6 +40,7 @@ export function buildKiloRuntimeHeaders(input: {
     organizationId?: string;
     modelId: string;
     cacheKey?: string;
+    routedApiFamily?: ProviderRoutedApiFamily;
 }): Record<string, string> {
     const headers: Record<string, string> = {
         Authorization: `Bearer ${input.token}`,
@@ -62,7 +63,44 @@ export function buildKiloRuntimeHeaders(input: {
         headers[HEADER_TASK_ID] = input.cacheKey;
     }
 
+    if (input.routedApiFamily === 'anthropic_messages') {
+        headers['x-anthropic-beta'] = 'fine-grained-tool-streaming-2025-05-14';
+    }
+
     return headers;
+}
+
+export function buildKiloProviderPreferences(input: ProviderRuntimeInput): Record<string, unknown> | undefined {
+    let providerPreferences: Record<string, unknown> | undefined;
+
+    if (input.kiloRouting) {
+        if (input.kiloRouting.mode === 'dynamic') {
+            if (input.kiloRouting.sort !== 'default') {
+                providerPreferences = {
+                    sort: input.kiloRouting.sort,
+                };
+            }
+        } else {
+            providerPreferences = {
+                order: [input.kiloRouting.providerId],
+                only: [input.kiloRouting.providerId],
+                allow_fallbacks: false,
+            };
+        }
+    }
+
+    if (
+        input.tools &&
+        input.tools.length > 0 &&
+        (input.routedApiFamily === 'anthropic_messages' || input.routedApiFamily === 'google_generativeai')
+    ) {
+        providerPreferences = {
+            ...(providerPreferences ?? {}),
+            require_parameters: true,
+        };
+    }
+
+    return providerPreferences;
 }
 
 export function buildKiloRuntimeBody(input: ProviderRuntimeInput): Record<string, unknown> {
@@ -209,20 +247,9 @@ export function buildKiloRuntimeBody(input: ProviderRuntimeInput): Record<string
         };
     }
 
-    if (input.kiloRouting) {
-        if (input.kiloRouting.mode === 'dynamic') {
-            if (input.kiloRouting.sort !== 'default') {
-                body['provider'] = {
-                    sort: input.kiloRouting.sort,
-                };
-            }
-        } else {
-            body['provider'] = {
-                order: [input.kiloRouting.providerId],
-                only: [input.kiloRouting.providerId],
-                allow_fallbacks: false,
-            };
-        }
+    const providerPreferences = buildKiloProviderPreferences(input);
+    if (providerPreferences) {
+        body['provider'] = providerPreferences;
     }
 
     return body;

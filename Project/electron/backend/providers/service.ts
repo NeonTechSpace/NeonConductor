@@ -2,10 +2,12 @@ import { providerStore } from '@/app/backend/persistence/stores';
 import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { AuthExecutionResult } from '@/app/backend/providers/auth/errors';
 import type { ProviderAccountContextResult, PollAuthResult, StartAuthResult } from '@/app/backend/providers/auth/types';
+import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
+import { getProviderDefinition } from '@/app/backend/providers/registry';
 import { syncCatalog } from '@/app/backend/providers/service/catalogSync';
-import { getEndpointProfileState, setEndpointProfileState } from '@/app/backend/providers/service/endpointProfiles';
-import { errProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
+import { getConnectionProfileState, setConnectionProfileState } from '@/app/backend/providers/service/endpointProfiles';
+import { errProviderService, okProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
 import {
     getModelRoutingPreference,
     listModelProviders,
@@ -29,7 +31,7 @@ import type {
     ProviderCredentialSummaryResult,
     ProviderCredentialValueResult,
     KiloModelProviderOption,
-    ProviderEndpointProfileResult,
+    ProviderConnectionProfileResult,
     ProviderListItem,
     ProviderSyncResult,
 } from '@/app/backend/providers/service/types';
@@ -43,6 +45,15 @@ import type {
 } from '@/app/backend/runtime/contracts';
 
 class ProviderManagementService {
+    private async invalidateCatalogAfterAuthMutation(profileId: string, providerId: RuntimeProviderId): Promise<void> {
+        if (providerId === 'kilo') {
+            await providerMetadataOrchestrator.invalidateProviderScope(profileId, providerId);
+            return;
+        }
+
+        await providerMetadataOrchestrator.flushProviderScope(profileId, providerId);
+    }
+
     async listProviders(profileId: string): Promise<ProviderListItem[]> {
         return listProviders(profileId);
     }
@@ -114,7 +125,12 @@ class ProviderManagementService {
         apiKey: string,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<ProviderAuthStateRecord>> {
-        return providerAuthExecutionService.setApiKey(profileId, providerId, apiKey, context);
+        const result = await providerAuthExecutionService.setApiKey(profileId, providerId, apiKey, context);
+        if (result.isOk()) {
+            await this.invalidateCatalogAfterAuthMutation(profileId, providerId);
+        }
+
+        return result;
     }
 
     async clearAuth(
@@ -122,7 +138,12 @@ class ProviderManagementService {
         providerId: RuntimeProviderId,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<{ cleared: boolean; authState: ProviderAuthStateRecord }>> {
-        return providerAuthExecutionService.clearAuth(profileId, providerId, context);
+        const result = await providerAuthExecutionService.clearAuth(profileId, providerId, context);
+        if (result.isOk()) {
+            await this.invalidateCatalogAfterAuthMutation(profileId, providerId);
+        }
+
+        return result;
     }
 
     async startAuth(
@@ -136,14 +157,24 @@ class ProviderManagementService {
         input: { profileId: string; providerId: RuntimeProviderId; flowId: string },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<PollAuthResult>> {
-        return providerAuthExecutionService.pollAuth(input, context);
+        const result = await providerAuthExecutionService.pollAuth(input, context);
+        if (result.isOk() && result.value.state.authState !== 'pending') {
+            await this.invalidateCatalogAfterAuthMutation(input.profileId, input.providerId);
+        }
+
+        return result;
     }
 
     async completeAuth(
         input: { profileId: string; providerId: RuntimeProviderId; flowId: string; code?: string },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<PollAuthResult>> {
-        return providerAuthExecutionService.completeAuth(input, context);
+        const result = await providerAuthExecutionService.completeAuth(input, context);
+        if (result.isOk()) {
+            await this.invalidateCatalogAfterAuthMutation(input.profileId, input.providerId);
+        }
+
+        return result;
     }
 
     async cancelAuth(
@@ -158,7 +189,12 @@ class ProviderManagementService {
         providerId: RuntimeProviderId,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<ProviderAuthStateRecord>> {
-        return providerAuthExecutionService.refreshAuth(profileId, providerId, context);
+        const result = await providerAuthExecutionService.refreshAuth(profileId, providerId, context);
+        if (result.isOk()) {
+            await this.invalidateCatalogAfterAuthMutation(profileId, providerId);
+        }
+
+        return result;
     }
 
     async getAccountContext(
@@ -168,23 +204,60 @@ class ProviderManagementService {
         return providerAuthExecutionService.getAccountContext(profileId, providerId);
     }
 
-    async getEndpointProfile(
+    async getConnectionProfile(
         profileId: string,
         providerId: RuntimeProviderId
-    ): Promise<ProviderServiceResult<ProviderEndpointProfileResult>> {
-        return getEndpointProfileState(profileId, providerId);
+    ): Promise<ProviderServiceResult<ProviderConnectionProfileResult>> {
+        const stateResult = await getConnectionProfileState(profileId, providerId);
+        if (stateResult.isErr()) {
+            return errProviderService(stateResult.error.code, stateResult.error.message);
+        }
+
+        const authState = await providerAuthExecutionService.getAuthState(profileId, providerId);
+        return okProviderService({
+            ...stateResult.value,
+            ...(authState.organizationId ? { organizationId: authState.organizationId } : {}),
+        });
     }
 
-    async setEndpointProfile(
+    async setConnectionProfile(
         profileId: string,
         providerId: RuntimeProviderId,
-        value: string,
+        input: {
+            optionProfileId: string;
+            baseUrlOverride?: string | null;
+            organizationId?: string | null;
+        },
         context?: { requestId?: string; correlationId?: string }
-    ): Promise<ProviderServiceResult<ProviderEndpointProfileResult>> {
-        const stateResult = await setEndpointProfileState(profileId, providerId, value);
-        if (stateResult.isErr()) {
-            return stateResult;
+    ): Promise<ProviderServiceResult<ProviderConnectionProfileResult>> {
+        const providerDefinition = getProviderDefinition(providerId);
+        if (input.organizationId !== undefined && !providerDefinition.supportsOrganizationScope) {
+            return errProviderService(
+                'invalid_payload',
+                `Provider "${providerId}" does not support organization-scoped connection profiles.`
+            );
         }
+
+        const stateResult = await setConnectionProfileState(profileId, providerId, {
+            optionProfileId: input.optionProfileId,
+            ...(input.baseUrlOverride !== undefined ? { baseUrlOverride: input.baseUrlOverride } : {}),
+        });
+        if (stateResult.isErr()) {
+            return errProviderService(stateResult.error.code, stateResult.error.message);
+        }
+
+        if (providerId === 'kilo' && input.organizationId !== undefined) {
+            const organizationResult = await providerAuthExecutionService.setOrganization(
+                profileId,
+                providerId,
+                input.organizationId
+            );
+            if (organizationResult.isErr()) {
+                return errProviderService('invalid_payload', organizationResult.error.message);
+            }
+        }
+
+        await providerMetadataOrchestrator.invalidateProviderScope(profileId, providerId);
 
         const syncResult = await syncCatalog(profileId, providerId, true, context);
         if (syncResult.isErr()) {
@@ -205,7 +278,11 @@ class ProviderManagementService {
             }
         }
 
-        return stateResult;
+        const authState = await providerAuthExecutionService.getAuthState(profileId, providerId);
+        return okProviderService({
+            ...stateResult.value,
+            ...(authState.organizationId ? { organizationId: authState.organizationId } : {}),
+        });
     }
 
     async setOrganization(
@@ -213,7 +290,12 @@ class ProviderManagementService {
         providerId: 'kilo',
         organizationId?: string | null
     ): Promise<AuthExecutionResult<ProviderAccountContextResult>> {
-        return providerAuthExecutionService.setOrganization(profileId, providerId, organizationId);
+        const result = await providerAuthExecutionService.setOrganization(profileId, providerId, organizationId);
+        if (result.isOk()) {
+            await providerMetadataOrchestrator.invalidateProviderScope(profileId, providerId);
+        }
+
+        return result;
     }
 
     async syncCatalog(

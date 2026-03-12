@@ -17,7 +17,7 @@ import type {
     ProviderClearAuthInput,
     ProviderCompleteAuthInput,
     ProviderGetCredentialInput,
-    ProviderGetEndpointProfileInput,
+    ProviderGetConnectionProfileInput,
     ProviderGetAccountContextInput,
     ProviderListAuthMethodsInput,
     ProviderListModelProvidersInput,
@@ -25,7 +25,7 @@ import type {
     ProviderListProvidersInput,
     ProviderPollAuthInput,
     ProviderRefreshAuthInput,
-    ProviderSetEndpointProfileInput,
+    ProviderSetConnectionProfileInput,
     ProviderGetModelRoutingPreferenceInput,
     ProviderSetModelRoutingPreferenceInput,
     ProviderSetApiKeyInput,
@@ -164,17 +164,23 @@ export function parseProviderSetOrganizationInput(input: unknown): ProviderSetOr
     };
 }
 
-export function parseProviderGetEndpointProfileInput(input: unknown): ProviderGetEndpointProfileInput {
+export function parseProviderGetConnectionProfileInput(input: unknown): ProviderGetConnectionProfileInput {
     return parseProviderByIdInput(input);
 }
 
-export function parseProviderSetEndpointProfileInput(input: unknown): ProviderSetEndpointProfileInput {
+export function parseProviderSetConnectionProfileInput(input: unknown): ProviderSetConnectionProfileInput {
     const source = readObject(input, 'input');
+    const baseUrlOverride =
+        source.baseUrlOverride === null ? null : readOptionalString(source.baseUrlOverride, 'baseUrlOverride');
+    const organizationId =
+        source.organizationId === null ? null : readOptionalString(source.organizationId, 'organizationId');
 
     return {
         profileId: readProfileId(source),
         providerId: readProviderId(source.providerId, 'providerId'),
-        value: readString(source.value, 'value'),
+        optionProfileId: readString(source.optionProfileId, 'optionProfileId'),
+        ...(baseUrlOverride !== undefined ? { baseUrlOverride } : {}),
+        ...(organizationId !== undefined ? { organizationId } : {}),
     };
 }
 
@@ -253,8 +259,8 @@ export const providerCompleteAuthInputSchema = createParser(parseProviderComplet
 export const providerCancelAuthInputSchema = createParser(parseProviderCancelAuthInput);
 export const providerRefreshAuthInputSchema = createParser(parseProviderRefreshAuthInput);
 export const providerGetAccountContextInputSchema = createParser(parseProviderGetAccountContextInput);
-export const providerGetEndpointProfileInputSchema = createParser(parseProviderGetEndpointProfileInput);
-export const providerSetEndpointProfileInputSchema = createParser(parseProviderSetEndpointProfileInput);
+export const providerGetConnectionProfileInputSchema = createParser(parseProviderGetConnectionProfileInput);
+export const providerSetConnectionProfileInputSchema = createParser(parseProviderSetConnectionProfileInput);
 export const providerSetOrganizationInputSchema = createParser(parseProviderSetOrganizationInput);
 export const providerGetModelRoutingPreferenceInputSchema = createParser(parseProviderGetModelRoutingPreferenceInput);
 export const providerSetModelRoutingPreferenceInputSchema = createParser(parseProviderSetModelRoutingPreferenceInput);

@@ -4,7 +4,7 @@ import type {
     RuntimeReasoningEffort,
     RuntimeReasoningSummary,
     RuntimeCacheStrategy,
-    RuntimeOpenAITransport,
+    RuntimeRequestedTransportFamily,
     SessionKind,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts/enums';
@@ -49,7 +49,7 @@ export interface RuntimeCacheOptions {
 }
 
 export interface RuntimeTransportOptions {
-    openai: RuntimeOpenAITransport;
+    family: RuntimeRequestedTransportFamily;
 }
 
 export interface RuntimeRunOptions {

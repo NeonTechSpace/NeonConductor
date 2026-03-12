@@ -4,11 +4,9 @@ import type { RuntimeProviderId } from '@/shared/contracts';
 
 export function resetProviderSettingsState(input: {
     setActiveAuthFlow: (value: ActiveAuthFlow | undefined) => void;
-    setApiKeyInput: (value: string) => void;
     setStatusMessage: (value: string | undefined) => void;
 }): void {
     input.setActiveAuthFlow(undefined);
-    input.setApiKeyInput('');
     input.setStatusMessage(undefined);
 }
 

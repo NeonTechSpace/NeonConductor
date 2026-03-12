@@ -1,13 +1,10 @@
 import { streamOpenAICompatibleRuntime } from '@/app/backend/providers/adapters/openaiCompatible/runtime';
-import { resolveEndpointProfile } from '@/app/backend/providers/service/endpointProfiles';
+import { resolveConnectionProfile } from '@/app/backend/providers/service/endpointProfiles';
 import type {
     ProviderAdapterResult,
     ProviderRuntimeHandlers,
     ProviderRuntimeInput,
 } from '@/app/backend/providers/types';
-
-const ZAI_CODING_BASE_URL = process.env['ZAI_CODING_BASE_URL']?.trim() || 'https://api.z.ai/api/coding/paas/v4';
-const ZAI_GENERAL_BASE_URL = process.env['ZAI_GENERAL_BASE_URL']?.trim() || 'https://api.z.ai/api/paas/v4';
 
 function buildEndpoint(baseUrl: string, path: string): string {
     const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
@@ -15,9 +12,13 @@ function buildEndpoint(baseUrl: string, path: string): string {
 }
 
 async function resolveZaiEndpoints(profileId: string) {
-    const endpointProfileResult = await resolveEndpointProfile(profileId, 'zai');
-    const endpointProfile = endpointProfileResult.isErr() ? 'coding_international' : endpointProfileResult.value;
-    const baseUrl = endpointProfile === 'general_international' ? ZAI_GENERAL_BASE_URL : ZAI_CODING_BASE_URL;
+    const connectionProfileResult = await resolveConnectionProfile(profileId, 'zai');
+    const baseUrl = connectionProfileResult.isErr()
+        ? 'https://api.z.ai/api/coding/paas/v4'
+        : connectionProfileResult.value.resolvedBaseUrl;
+    if (!baseUrl) {
+        throw new Error('Expected Z.AI endpoint base URL to resolve.');
+    }
     return {
         chatCompletionsUrl: buildEndpoint(baseUrl, '/chat/completions'),
         responsesUrl: buildEndpoint(baseUrl, '/responses'),

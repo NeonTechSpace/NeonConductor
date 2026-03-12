@@ -1,6 +1,12 @@
 import { providerStore } from '@/app/backend/persistence/stores';
-import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
-import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
+import type {
+    ComposerImageAttachmentInput,
+    ModeDefinition,
+    RuntimeProviderId,
+    RuntimeRunOptions,
+    TopLevelTab,
+} from '@/app/backend/runtime/contracts';
+import { assessRunTargetCompatibility } from '@/app/backend/runtime/services/runExecution/compatibility';
 import type { ResolvedRunAuth, ResolvedRunTarget } from '@/app/backend/runtime/services/runExecution/types';
 
 export interface RunnableRunTarget {
@@ -8,39 +14,75 @@ export interface RunnableRunTarget {
     auth: ResolvedRunAuth;
 }
 
-export async function resolveFirstRunnableRunTarget(
-    profileId: string,
-    excluded?: { providerId: RuntimeProviderId; modelId: string }
-): Promise<RunnableRunTarget | null> {
-    const providers = await providerStore.listProviders();
+interface CompatibleRunTargetInput {
+    profileId: string;
+    topLevelTab: TopLevelTab;
+    mode: ModeDefinition;
+    runtimeOptions: RuntimeRunOptions;
+    attachments?: ComposerImageAttachmentInput[];
+    preferredTarget?: { providerId: RuntimeProviderId; modelId: string };
+    excluded?: { providerId: RuntimeProviderId; modelId: string };
+}
 
+async function tryResolveCompatibleTarget(
+    input: CompatibleRunTargetInput,
+    candidate: { providerId: RuntimeProviderId; modelId: string }
+): Promise<RunnableRunTarget | null> {
+    if (
+        input.excluded &&
+        input.excluded.providerId === candidate.providerId &&
+        input.excluded.modelId === candidate.modelId
+    ) {
+        return null;
+    }
+
+    const assessment = await assessRunTargetCompatibility({
+        profileId: input.profileId,
+        providerId: candidate.providerId,
+        modelId: candidate.modelId,
+        topLevelTab: input.topLevelTab,
+        mode: input.mode,
+        runtimeOptions: input.runtimeOptions,
+        ...(input.attachments ? { attachments: input.attachments } : {}),
+    });
+    if (!assessment.compatible) {
+        return null;
+    }
+
+    return {
+        target: {
+            providerId: candidate.providerId,
+            modelId: candidate.modelId,
+        },
+        auth: assessment.auth,
+    };
+}
+
+export async function resolveFirstRunnableRunTarget(
+    input: CompatibleRunTargetInput
+): Promise<RunnableRunTarget | null> {
+    if (input.preferredTarget) {
+        const preferred = await tryResolveCompatibleTarget(input, input.preferredTarget);
+        if (preferred) {
+            return preferred;
+        }
+    }
+
+    const providers = await providerStore.listProviders();
     for (const provider of providers) {
-        const models = await providerStore.listModels(profileId, provider.id);
+        const models = await providerStore.listModels(input.profileId, provider.id);
         if (models.length === 0) {
             continue;
         }
 
-        const authResult = await resolveRunAuth({
-            profileId,
-            providerId: provider.id,
-        });
-        if (authResult.isErr()) {
-            continue;
-        }
-        const auth: ResolvedRunAuth = authResult.value;
-
         for (const model of models) {
-            if (excluded && excluded.providerId === provider.id && excluded.modelId === model.id) {
-                continue;
+            const compatible = await tryResolveCompatibleTarget(input, {
+                providerId: provider.id,
+                modelId: model.id,
+            });
+            if (compatible) {
+                return compatible;
             }
-
-            return {
-                target: {
-                    providerId: provider.id,
-                    modelId: model.id,
-                },
-                auth,
-            };
         }
     }
 

@@ -3,7 +3,7 @@ import { trpc } from '@/web/trpc/client';
 import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type {
     KiloModelProviderOption,
-    ProviderEndpointProfileResult,
+    ProviderConnectionProfileResult,
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
 
@@ -18,7 +18,7 @@ type ProviderDefaultsData = Awaited<ReturnType<TrpcUtils['provider']['getDefault
 type ProviderModelsData = Awaited<ReturnType<TrpcUtils['provider']['listModels']['fetch']>>;
 type ProviderAuthStateData = Awaited<ReturnType<TrpcUtils['provider']['getAuthState']['fetch']>>;
 type ProviderAccountContextData = Awaited<ReturnType<TrpcUtils['provider']['getAccountContext']['fetch']>>;
-type ProviderEndpointProfileData = Awaited<ReturnType<TrpcUtils['provider']['getEndpointProfile']['fetch']>>;
+type ProviderConnectionProfileData = Awaited<ReturnType<TrpcUtils['provider']['getConnectionProfile']['fetch']>>;
 type ProviderModelProvidersData = Awaited<ReturnType<TrpcUtils['provider']['listModelProviders']['fetch']>>;
 type ProviderRoutingPreferenceData = Awaited<ReturnType<TrpcUtils['provider']['getModelRoutingPreference']['fetch']>>;
 type ShellBootstrapData = Awaited<ReturnType<TrpcUtils['runtime']['getShellBootstrap']['fetch']>>;
@@ -74,7 +74,7 @@ export function patchProviderCache(input: {
     models?: ProviderModelRecord[];
     authState?: ProviderAuthStateRecord;
     accountContext?: ProviderAccountContextData;
-    endpointProfile?: ProviderEndpointProfileResult;
+    connectionProfile?: ProviderConnectionProfileResult;
     routingPreference?: KiloModelRoutingPreference;
     routingProviders?: KiloModelProviderOption[];
     routingModelId?: string;
@@ -145,15 +145,15 @@ export function patchProviderCache(input: {
         );
     }
 
-    if (input.endpointProfile) {
-        input.utils.provider.getEndpointProfile.setData(
+    if (input.connectionProfile) {
+        input.utils.provider.getConnectionProfile.setData(
             {
                 profileId: input.profileId,
                 providerId: input.providerId,
             },
             {
-                endpointProfile: input.endpointProfile,
-            } satisfies ProviderEndpointProfileData
+                connectionProfile: input.connectionProfile,
+            } satisfies ProviderConnectionProfileData
         );
     }
 

@@ -1,6 +1,6 @@
 import { getProviderCatalogBehavior } from '@/app/backend/providers/behaviors';
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
-import type { ProviderCatalogModel } from '@/app/backend/providers/types';
+import type { ProviderApiFamily, ProviderCatalogModel, ProviderToolProtocol } from '@/app/backend/providers/types';
 
 export interface StaticProviderModelDefinition {
     providerId: Exclude<FirstPartyProviderId, 'kilo'>;
@@ -13,6 +13,9 @@ export interface StaticProviderModelDefinition {
     supportsVision?: boolean;
     supportsAudioInput?: boolean;
     supportsAudioOutput?: boolean;
+    supportsPromptCache?: boolean;
+    toolProtocol?: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
     inputModalities?: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     outputModalities?: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     promptFamily?: string;
@@ -41,6 +44,9 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        supportsPromptCache: true,
+        toolProtocol: 'openai_responses',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 400_000,
@@ -56,6 +62,9 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        supportsPromptCache: true,
+        toolProtocol: 'openai_responses',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 400_000,
@@ -71,6 +80,9 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        supportsPromptCache: true,
+        toolProtocol: 'openai_responses',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 400_000,
@@ -87,6 +99,9 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        supportsPromptCache: true,
+        toolProtocol: 'openai_responses',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         promptFamily: 'codex',
@@ -103,6 +118,9 @@ const OPENAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        supportsPromptCache: true,
+        toolProtocol: 'openai_responses',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         promptFamily: 'codex',
@@ -124,6 +142,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 128_000,
@@ -141,6 +161,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 128_000,
@@ -158,6 +180,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 128_000,
@@ -176,6 +200,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 128_000,
@@ -194,6 +220,8 @@ const ZAI_MODELS: StaticProviderModelDefinition[] = [
         supportsTools: true,
         supportsReasoning: true,
         supportsVision: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_IMAGE_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 128_000,
@@ -217,6 +245,8 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         promptFamily: 'codex',
@@ -234,6 +264,8 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 262_144,
@@ -250,6 +282,8 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 128_000,
@@ -269,6 +303,8 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 262_144,
@@ -285,6 +321,8 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
         },
         supportsTools: true,
         supportsReasoning: true,
+        toolProtocol: 'openai_chat_completions',
+        apiFamily: 'openai_compatible',
         inputModalities: TEXT_INPUT,
         outputModalities: TEXT_OUTPUT,
         contextLength: 262_144,
@@ -375,6 +413,11 @@ export function toStaticProviderCatalogModel(
             ...(definition.supportsAudioOutput !== undefined
                 ? { supportsAudioOutput: definition.supportsAudioOutput }
                 : {}),
+            ...(definition.supportsPromptCache !== undefined
+                ? { supportsPromptCache: definition.supportsPromptCache }
+                : {}),
+            ...(definition.toolProtocol ? { toolProtocol: definition.toolProtocol } : {}),
+            ...(definition.apiFamily ? { apiFamily: definition.apiFamily } : {}),
         },
         ...(definition.contextLength !== undefined ? { contextLength: definition.contextLength } : {}),
         pricing: toPricing(definition),

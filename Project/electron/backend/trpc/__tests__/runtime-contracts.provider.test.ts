@@ -1,7 +1,8 @@
+import { Buffer } from 'node:buffer';
 import { describe, expect, it, vi } from 'vitest';
 
-
 import { normalizeCatalogMetadata, toProviderCatalogUpsert } from '@/app/backend/providers/metadata/normalize';
+import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
 import {
     listStaticModelDefinitions,
     toStaticProviderCatalogModel,
@@ -18,6 +19,17 @@ import {
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
+
+function buildTinyPngBase64(): string {
+    return Buffer.from(
+        Uint8Array.from([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x04, 0x00, 0x00, 0x00, 0xb5, 0x1c, 0x0c, 0x02, 0x00, 0x00, 0x00,
+            0x0b, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0xfc, 0xff, 0x1f, 0x00, 0x02, 0xeb, 0x01, 0xf6, 0xcf, 0x28,
+            0x14, 0xac, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ])
+    ).toString('base64');
+}
 
 describe('runtime contracts: provider and account flows', () => {
     const profileId = runtimeContractProfileId;
@@ -84,6 +96,72 @@ describe('runtime contracts: provider and account flows', () => {
         expect(latestRun.providerId).toBe('openai');
     });
 
+    it('fails closed when an explicit model is unavailable instead of falling back', async () => {
+        const caller = createCaller();
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-explicit-model-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Explicit unavailable model thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Try the missing model',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/not-a-real-model',
+        });
+        expect(started.accepted).toBe(false);
+        if (started.accepted) {
+            throw new Error('Expected explicit unavailable model to be rejected.');
+        }
+        expect(started.code).toBe('provider_model_not_available');
+        expect(started.message).toContain('openai/not-a-real-model');
+        expect(started.action).toEqual({
+            code: 'model_unavailable',
+            providerId: 'openai',
+            modelId: 'openai/not-a-real-model',
+        });
+    });
+
+    it('returns typed provider auth guidance when an explicit provider is not runnable', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Explicit unauthenticated provider thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Try the disconnected provider',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(false);
+        if (started.accepted) {
+            throw new Error('Expected unauthenticated provider to be rejected.');
+        }
+        expect(started.code).toBe('provider_not_authenticated');
+        expect(started.action).toEqual({
+            code: 'provider_not_runnable',
+            providerId: 'openai',
+        });
+    });
 
     it('fails closed on invalid runtime options combinations', async () => {
         const caller = createCaller();
@@ -117,7 +195,7 @@ describe('runtime contracts: provider and account flows', () => {
                         strategy: 'manual',
                     },
                     transport: {
-                        openai: 'auto',
+                        family: 'auto',
                     },
                 },
                 providerId: 'openai',
@@ -125,7 +203,6 @@ describe('runtime contracts: provider and account flows', () => {
             })
         ).rejects.toThrow('runtimeOptions.cache.key');
     });
-
 
     it('rejects tool-capable agent runs when the selected model does not support native tools', async () => {
         const caller = createCaller();
@@ -162,6 +239,7 @@ describe('runtime contracts: provider and account flows', () => {
                             supports_vision,
                             supports_audio_input,
                             supports_audio_output,
+                            tool_protocol,
                             input_modalities_json,
                             output_modalities_json,
                             prompt_family,
@@ -171,7 +249,7 @@ describe('runtime contracts: provider and account flows', () => {
                             source,
                             updated_at
                         )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
@@ -186,6 +264,7 @@ describe('runtime contracts: provider and account flows', () => {
                 0,
                 0,
                 0,
+                'openai_responses',
                 JSON.stringify(['text']),
                 JSON.stringify(['text']),
                 null,
@@ -222,8 +301,268 @@ describe('runtime contracts: provider and account flows', () => {
         }
         expect(started.code).toBe('runtime_option_invalid');
         expect(started.message).toContain('does not support native tool calling');
+        expect(started.action).toEqual({
+            code: 'model_tools_required',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+            modeKey: 'code',
+        });
     });
 
+    it('rejects explicit non-vision targets when attachments are present', async () => {
+        const caller = createCaller();
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-non-vision-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/gpt-5-no-vision', 'openai', 'GPT 5 No Vision', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            tool_protocol,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/gpt-5-no-vision',
+                'GPT 5 No Vision',
+                'openai',
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                'openai_responses',
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Explicit non-vision model thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Describe this image',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-vision',
+            attachments: [
+                {
+                    clientId: 'img-no-vision',
+                    mimeType: 'image/png',
+                    bytesBase64: buildTinyPngBase64(),
+                    width: 1,
+                    height: 1,
+                    sha256: 'no-vision-image',
+                },
+            ],
+        });
+        expect(started.accepted).toBe(false);
+        if (started.accepted) {
+            throw new Error('Expected explicit non-vision model to be rejected.');
+        }
+        expect(started.code).toBe('runtime_option_invalid');
+        expect(started.message).toContain('does not support image input');
+        expect(started.action).toEqual({
+            code: 'model_vision_required',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-vision',
+        });
+    });
+
+    it('skips incompatible omitted-target defaults and selects a compatible vision model for attachments', async () => {
+        const caller = createCaller();
+        const completionFetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            content: 'Vision-compatible fallback response',
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 12,
+                    completion_tokens: 8,
+                    total_tokens: 20,
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', completionFetchMock);
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-vision-fallback-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/a-text-only-default', 'openai', 'A Text Only Default', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            tool_protocol,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/a-text-only-default',
+                'A Text Only Default',
+                'openai',
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                'openai_responses',
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const changed = await caller.provider.setDefault({
+            profileId,
+            providerId: 'openai',
+            modelId: 'openai/a-text-only-default',
+        });
+        expect(changed.success).toBe(true);
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Implicit vision fallback thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Describe this image',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            attachments: [
+                {
+                    clientId: 'img-implicit-vision',
+                    mimeType: 'image/png',
+                    bytesBase64: buildTinyPngBase64(),
+                    width: 1,
+                    height: 1,
+                    sha256: 'implicit-vision-image',
+                },
+            ],
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected compatible vision model to be auto-selected.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+        const runs = await caller.session.listRuns({
+            profileId,
+            sessionId: created.session.id,
+        });
+        const selectedModelId = runs.runs[0]?.modelId;
+        expect(runs.runs[0]?.providerId).toBe('openai');
+        expect(selectedModelId).not.toBe('openai/a-text-only-default');
+
+        const models = await caller.provider.listModels({
+            profileId,
+            providerId: 'openai',
+        });
+        const selectedModel = models.models.find((model) => model.id === selectedModelId);
+        expect(selectedModel?.supportsVision).toBe(true);
+    });
 
     it('persists provider default in memory and lists models', async () => {
         const caller = createCaller();
@@ -254,7 +593,6 @@ describe('runtime contracts: provider and account flows', () => {
         expect(defaultProvider?.id).toBe('openai');
         expect(providersBefore.providers.some((item) => item.id === 'kilo')).toBe(true);
     });
-
 
     it('supports provider auth control plane and static catalog sync remains explicit', async () => {
         const caller = createCaller();
@@ -303,7 +641,6 @@ describe('runtime contracts: provider and account flows', () => {
         ).toBe(false);
     });
 
-
     it('auto-backfills static openai catalogs from the local registry', async () => {
         const caller = createCaller();
 
@@ -347,7 +684,6 @@ describe('runtime contracts: provider and account flows', () => {
         expect(codex?.promptFamily).toBe('codex');
         expect(models.models.some((model) => model.id === 'openai/gpt-5' && model.supportsVision)).toBe(true);
     });
-
 
     it('syncs kilo catalog with dynamic capability metadata from gateway discovery', async () => {
         const caller = createCaller();
@@ -438,6 +774,8 @@ describe('runtime contracts: provider and account flows', () => {
         expect(kiloAuto.inputModalities.includes('image')).toBe(true);
         expect(kiloAuto.promptFamily).toBe('codex');
         expect(kiloAuto.contextLength).toBe(200000);
+        expect(kiloAuto.apiFamily).toBe('kilo_gateway');
+        expect(kiloAuto.routedApiFamily).toBe('openai_compatible');
     });
 
     it('keeps distinct kilo model ids when discovery returns the same visible label twice', async () => {
@@ -536,6 +874,10 @@ describe('runtime contracts: provider and account flows', () => {
         expect(models.models.some((model) => model.id === 'kilo/auto-openai')).toBe(true);
         expect(models.models.some((model) => model.id === 'kilo/auto-anthropic')).toBe(true);
         expect(models.models.filter((model) => model.label === 'Kilo Auto Free')).toHaveLength(2);
+        expect(models.models.find((model) => model.id === 'kilo/auto-openai')?.routedApiFamily).toBe('openai_compatible');
+        expect(models.models.find((model) => model.id === 'kilo/auto-anthropic')?.routedApiFamily).toBe(
+            'anthropic_messages'
+        );
     });
 
     it('persists kilo browser auth and exposes the stored session token through provider credential queries', async () => {
@@ -809,7 +1151,6 @@ describe('runtime contracts: provider and account flows', () => {
         );
     });
 
-
     it('supports openai oauth device auth start and pending polling', async () => {
         const caller = createCaller();
         vi.stubGlobal(
@@ -854,7 +1195,6 @@ describe('runtime contracts: provider and account flows', () => {
         expect(polled.flow.status).toBe('pending');
         expect(polled.state.authState).toBe('pending');
     });
-
 
     it('supports openai oauth pkce completion and refresh', async () => {
         const caller = createCaller();
@@ -908,7 +1248,6 @@ describe('runtime contracts: provider and account flows', () => {
         const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
         expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
     });
-
 
     it('reads openai subscription rate limits from wham usage for oauth sessions', async () => {
         const caller = createCaller();
@@ -988,7 +1327,6 @@ describe('runtime contracts: provider and account flows', () => {
         expect(headers['ChatGPT-Account-Id']).toBe('account_wham');
     });
 
-
     it('returns unavailable openai subscription rate limits for api-key auth', async () => {
         const caller = createCaller();
         const configured = await caller.provider.setApiKey({
@@ -1004,6 +1342,1106 @@ describe('runtime contracts: provider and account flows', () => {
         expect(result.rateLimits.limits).toEqual([]);
     });
 
+    it('round-trips provider metadata fields through provider.listModels and runtime.getShellBootstrap', async () => {
+        const caller = createCaller();
+
+        const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
+        const gpt5 = models.models.find((model) => model.id === 'openai/gpt-5');
+        expect(gpt5).toBeDefined();
+        if (!gpt5) {
+            throw new Error('Expected openai/gpt-5 in the OpenAI catalog.');
+        }
+
+        expect(gpt5.supportsPromptCache).toBe(true);
+        expect(gpt5.apiFamily).toBe('openai_compatible');
+        expect(gpt5.toolProtocol).toBe('openai_responses');
+
+        const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
+        const shellGpt5 = shellBootstrap.providerModels.find((model) => model.id === 'openai/gpt-5');
+        expect(shellGpt5).toBeDefined();
+        if (!shellGpt5) {
+            throw new Error('Expected openai/gpt-5 in runtime shell bootstrap.');
+        }
+
+        expect(shellGpt5.supportsPromptCache).toBe(true);
+        expect(shellGpt5.apiFamily).toBe('openai_compatible');
+        expect(shellGpt5.toolProtocol).toBe('openai_responses');
+    });
+
+    it('round-trips Kilo routed upstream family metadata through provider.listModels and runtime.getShellBootstrap', async () => {
+        const caller = createCaller();
+
+        await providerCatalogStore.replaceModels(profileId, 'kilo', [
+            {
+                modelId: 'anthropic/claude-sonnet-4.5',
+                label: 'Claude Sonnet 4.5',
+                upstreamProvider: 'anthropic',
+                supportsTools: true,
+                supportsReasoning: true,
+                supportsVision: true,
+                supportsAudioInput: false,
+                supportsAudioOutput: false,
+                toolProtocol: 'kilo_gateway',
+                apiFamily: 'kilo_gateway',
+                routedApiFamily: 'anthropic_messages',
+                inputModalities: ['text', 'image'],
+                outputModalities: ['text'],
+                pricing: {},
+                raw: {},
+                source: 'test',
+            },
+        ]);
+        await providerMetadataOrchestrator.flushProviderScope(profileId, 'kilo');
+
+        const models = await caller.provider.listModels({ profileId, providerId: 'kilo' });
+        const claude = models.models.find((model) => model.id === 'anthropic/claude-sonnet-4.5');
+        expect(claude).toBeDefined();
+        if (!claude) {
+            throw new Error('Expected anthropic/claude-sonnet-4.5 in the Kilo catalog.');
+        }
+
+        expect(claude.apiFamily).toBe('kilo_gateway');
+        expect(claude.routedApiFamily).toBe('anthropic_messages');
+        expect(claude.toolProtocol).toBe('kilo_gateway');
+
+        const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
+        const shellClaude = shellBootstrap.providerModels.find((model) => model.id === 'anthropic/claude-sonnet-4.5');
+        expect(shellClaude).toBeDefined();
+        if (!shellClaude) {
+            throw new Error('Expected anthropic/claude-sonnet-4.5 in runtime shell bootstrap.');
+        }
+
+        expect(shellClaude.apiFamily).toBe('kilo_gateway');
+        expect(shellClaude.routedApiFamily).toBe('anthropic_messages');
+        expect(shellClaude.toolProtocol).toBe('kilo_gateway');
+    });
+
+    it('executes Kilo-routed Gemini models on the Kilo transport and preserves routed reasoning parts', async () => {
+        const caller = createCaller();
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            reasoning_details: [
+                                {
+                                    type: 'reasoning.summary',
+                                    summary: 'Need the README first',
+                                    id: 'call_readme',
+                                    format: 'google-gemini-v1',
+                                    index: 0,
+                                },
+                            ],
+                            content: 'Gemini via Kilo',
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 10,
+                    completion_tokens: 8,
+                    total_tokens: 18,
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'kilo',
+            apiKey: 'kilo-gemini-routed-key',
+        });
+        expect(configured.success).toBe(true);
+
+        await providerCatalogStore.replaceModels(profileId, 'kilo', [
+            {
+                modelId: 'google/gemini-2.5-pro',
+                label: 'Gemini 2.5 Pro',
+                upstreamProvider: 'google',
+                supportsTools: true,
+                supportsReasoning: true,
+                supportsVision: true,
+                supportsAudioInput: false,
+                supportsAudioOutput: false,
+                toolProtocol: 'kilo_gateway',
+                apiFamily: 'kilo_gateway',
+                routedApiFamily: 'google_generativeai',
+                inputModalities: ['text', 'image'],
+                outputModalities: ['text'],
+                pricing: {},
+                raw: {},
+                source: 'test',
+            },
+        ]);
+        await providerMetadataOrchestrator.flushProviderScope(profileId, 'kilo');
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Kilo routed Gemini thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Explain the plan',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'kilo',
+            modelId: 'google/gemini-2.5-pro',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected Kilo-routed Gemini run to start.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+        const runs = await caller.session.listRuns({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(runs.runs[0]?.providerId).toBe('kilo');
+        expect(runs.runs[0]?.transport?.selected).toBe('kilo_gateway');
+
+        const { sqlite } = getPersistence();
+        const assistantParts = sqlite
+            .prepare(
+                `
+                    SELECT mp.part_type AS partType, mp.payload_json AS payloadJson
+                    FROM message_parts mp
+                    INNER JOIN messages m ON m.id = mp.message_id
+                    WHERE m.session_id = ? AND m.role = 'assistant'
+                    ORDER BY mp.sequence ASC
+                `
+            )
+            .all(created.session.id) as Array<{
+            partType: string;
+            payloadJson: string;
+        }>;
+
+        expect(assistantParts.some((part) => part.partType === 'reasoning_summary')).toBe(true);
+        const reasoningSummaryPart = assistantParts.find((part) => part.partType === 'reasoning_summary');
+        expect(reasoningSummaryPart).toBeDefined();
+        if (!reasoningSummaryPart) {
+            throw new Error('Expected a persisted Gemini reasoning summary part.');
+        }
+        expect(JSON.parse(reasoningSummaryPart.payloadJson)).toMatchObject({
+            text: 'Need the README first',
+            detailType: 'reasoning.summary',
+            detailId: 'call_readme',
+            detailFormat: 'google-gemini-v1',
+            detailIndex: 0,
+        });
+    });
+
+    it('round-trips connection profile base URL overrides through provider settings contracts', async () => {
+        const caller = createCaller();
+
+        const updated = await caller.provider.setConnectionProfile({
+            profileId,
+            providerId: 'openai',
+            optionProfileId: 'default',
+            baseUrlOverride: 'https://custom-openai-gateway.example/v1',
+        });
+        expect(updated.connectionProfile.baseUrlOverride).toBe('https://custom-openai-gateway.example/v1');
+        expect(updated.connectionProfile.resolvedBaseUrl).toBe('https://custom-openai-gateway.example/v1');
+
+        const fetched = await caller.provider.getConnectionProfile({
+            profileId,
+            providerId: 'openai',
+        });
+        expect(fetched.connectionProfile.baseUrlOverride).toBe('https://custom-openai-gateway.example/v1');
+        expect(fetched.connectionProfile.resolvedBaseUrl).toBe('https://custom-openai-gateway.example/v1');
+
+        const providers = await caller.provider.listProviders({ profileId });
+        const openAiProvider = providers.providers.find((provider) => provider.id === 'openai');
+        expect(openAiProvider?.connectionProfile.baseUrlOverride).toBe('https://custom-openai-gateway.example/v1');
+        expect(openAiProvider?.connectionProfile.resolvedBaseUrl).toBe('https://custom-openai-gateway.example/v1');
+    });
+
+    it('returns the correct moonshot model set immediately after endpoint profile changes', async () => {
+        const caller = createCaller();
+
+        const standardModels = await caller.provider.listModels({ profileId, providerId: 'moonshot' });
+        expect(standardModels.models.some((model) => model.id === 'moonshot/kimi-for-coding')).toBe(false);
+
+        const codingProfile = await caller.provider.setConnectionProfile({
+            profileId,
+            providerId: 'moonshot',
+            optionProfileId: 'coding_plan',
+        });
+        expect(codingProfile.models.some((model) => model.id === 'moonshot/kimi-for-coding')).toBe(true);
+
+        const standardProfile = await caller.provider.setConnectionProfile({
+            profileId,
+            providerId: 'moonshot',
+            optionProfileId: 'standard_api',
+        });
+        expect(standardProfile.models.some((model) => model.id === 'moonshot/kimi-for-coding')).toBe(false);
+    });
+
+    it('refreshes kilo organization-scoped catalogs instead of reusing stale models', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((url: string, init?: RequestInit) => {
+                const headers = (init?.headers ?? {}) as Record<string, string>;
+                const organizationId = headers['X-KiloCode-OrganizationId'] ?? null;
+                const modelId = organizationId === 'org_b' ? 'kilo/org-b' : 'kilo/org-a';
+                const label = organizationId === 'org_b' ? 'Kilo Org B' : 'Kilo Org A';
+
+                if (url.endsWith('/models')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: [
+                                {
+                                    id: modelId,
+                                    name: label,
+                                    owned_by: 'openai',
+                                    context_length: 200000,
+                                    supported_parameters: ['tools'],
+                                    architecture: {
+                                        input_modalities: ['text'],
+                                        output_modalities: ['text'],
+                                    },
+                                    pricing: {},
+                                },
+                            ],
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/providers')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: [{ id: 'openai', label: 'OpenAI' }],
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/models-by-provider')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: [{ provider: 'openai', models: [modelId] }],
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                id: 'acct_kilo',
+                                displayName: 'Neon User',
+                                emailMasked: 'n***@example.com',
+                                organizations: [
+                                    {
+                                        organization_id: 'org_a',
+                                        name: 'Org A',
+                                        is_active: organizationId !== 'org_b',
+                                        entitlement: {},
+                                    },
+                                    {
+                                        organization_id: 'org_b',
+                                        name: 'Org B',
+                                        is_active: organizationId === 'org_b',
+                                        entitlement: {},
+                                    },
+                                ],
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile/balance')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                balance: 18.42,
+                                currency: 'USD',
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/defaults') || url.endsWith('/api/organizations/org_b/defaults')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {},
+                        }),
+                    });
+                }
+
+                return Promise.resolve({
+                    ok: false,
+                    status: 404,
+                    statusText: 'Not Found',
+                    json: () => ({}),
+                });
+            })
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'kilo',
+            apiKey: 'kilo-api-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const initialModels = await caller.provider.listModels({ profileId, providerId: 'kilo' });
+        expect(initialModels.models.some((model) => model.id === 'kilo/org-a')).toBe(true);
+        expect(initialModels.models.some((model) => model.id === 'kilo/org-b')).toBe(false);
+
+        const organizationResult = await caller.provider.setOrganization({
+            profileId,
+            providerId: 'kilo',
+            organizationId: 'org_b',
+        });
+        expect(organizationResult.models.some((model) => model.id === 'kilo/org-b')).toBe(true);
+        expect(organizationResult.models.some((model) => model.id === 'kilo/org-a')).toBe(false);
+    });
+
+    it('persists the resolved native transport selected from model protocol metadata', async () => {
+        const caller = createCaller();
+        const fetchMock = vi.fn((url: string) => {
+            if (url.includes('/responses')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        output: [
+                            {
+                                type: 'message',
+                                content: [
+                                    {
+                                        type: 'output_text',
+                                        text: 'Responses protocol path',
+                                    },
+                                ],
+                            },
+                        ],
+                        usage: {
+                            input_tokens: 10,
+                            output_tokens: 12,
+                            total_tokens: 22,
+                        },
+                    }),
+                });
+            }
+
+            if (url.includes('/chat/completions')) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'Chat completions protocol path',
+                                },
+                            },
+                        ],
+                        usage: {
+                            prompt_tokens: 10,
+                            completion_tokens: 12,
+                            total_tokens: 22,
+                        },
+                    }),
+                });
+            }
+
+            return Promise.resolve({
+                ok: false,
+                status: 404,
+                statusText: 'Not Found',
+                json: () => ({}),
+            });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-protocol-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const openAiSession = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Responses protocol thread',
+            kind: 'local',
+        });
+        const openAiStart = await caller.session.startRun({
+            profileId,
+            sessionId: openAiSession.session.id,
+            prompt: 'Use responses protocol',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(openAiStart.accepted).toBe(true);
+        if (!openAiStart.accepted) {
+            throw new Error('Expected OpenAI run to start.');
+        }
+        await waitForRunStatus(caller, profileId, openAiSession.session.id, 'completed');
+        const openAiRuns = await caller.session.listRuns({
+            profileId,
+            sessionId: openAiSession.session.id,
+        });
+        expect(openAiRuns.runs[0]?.transport?.selected).toBe('openai_responses');
+
+        const moonshotConfigured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'moonshot',
+            apiKey: 'moonshot-protocol-key',
+        });
+        expect(moonshotConfigured.success).toBe(true);
+
+        const moonshotSession = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Chat completions protocol thread',
+            kind: 'local',
+        });
+        const moonshotStart = await caller.session.startRun({
+            profileId,
+            sessionId: moonshotSession.session.id,
+            prompt: 'Use chat completions protocol',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'moonshot',
+            modelId: 'moonshot/kimi-latest',
+        });
+        expect(moonshotStart.accepted).toBe(true);
+        if (!moonshotStart.accepted) {
+            throw new Error('Expected Moonshot run to start.');
+        }
+        await waitForRunStatus(caller, profileId, moonshotSession.session.id, 'completed');
+        const moonshotRuns = await caller.session.listRuns({
+            profileId,
+            sessionId: moonshotSession.session.id,
+        });
+        expect(moonshotRuns.runs[0]?.transport?.selected).toBe('openai_chat_completions');
+    });
+
+    it('fails closed for provider-native models on incompatible provider paths', async () => {
+        const caller = createCaller();
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-native-specialization-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            supports_prompt_cache,
+                            tool_protocol,
+                            api_family,
+                            provider_settings_json,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/minimax-native',
+                'MiniMax Native',
+                'minimax',
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                'provider_native',
+                'provider_native',
+                JSON.stringify({ providerNativeId: 'minimax_openai_compat' }),
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Provider native protocol thread',
+            kind: 'local',
+        });
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Try the provider native model',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/minimax-native',
+        });
+
+        expect(started.accepted).toBe(false);
+        if (started.accepted) {
+            throw new Error('Expected provider-native model to be rejected without specialization.');
+        }
+        expect(started.code).toBe('runtime_option_invalid');
+        expect(started.message).toContain('provider-native runtime specialization');
+        expect(started.action).toEqual({
+            code: 'provider_native_unsupported',
+            providerId: 'openai',
+            modelId: 'openai/minimax-native',
+        });
+    });
+
+    it('executes provider-native models through the registered MiniMax specialization', async () => {
+        const caller = createCaller();
+        const originalOpenAIBaseUrl = process.env['OPENAI_BASE_URL'];
+        process.env['OPENAI_BASE_URL'] = 'https://api.minimax.io/v1';
+
+        try {
+            const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'MiniMax provider-native response',
+                                    reasoning_details: [
+                                        {
+                                            type: 'reasoning.text',
+                                            text: 'Reasoning block',
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        usage: {
+                            prompt_tokens: 11,
+                            completion_tokens: 7,
+                            total_tokens: 18,
+                        },
+                    }),
+                })
+            );
+            vi.stubGlobal('fetch', fetchMock);
+
+            const configured = await caller.provider.setApiKey({
+                profileId,
+                providerId: 'openai',
+                apiKey: 'openai-minimax-compatible-key',
+            });
+            expect(configured.success).toBe(true);
+
+            const { sqlite } = getPersistence();
+            const now = new Date().toISOString();
+            sqlite
+                .prepare(
+                    `
+                        INSERT OR REPLACE INTO provider_model_catalog
+                            (
+                                profile_id,
+                                provider_id,
+                                model_id,
+                                label,
+                                upstream_provider,
+                                is_free,
+                                supports_tools,
+                                supports_reasoning,
+                                supports_vision,
+                                supports_audio_input,
+                                supports_audio_output,
+                                supports_prompt_cache,
+                                tool_protocol,
+                                api_family,
+                                provider_settings_json,
+                                input_modalities_json,
+                                output_modalities_json,
+                                prompt_family,
+                                context_length,
+                                pricing_json,
+                                raw_json,
+                                source,
+                                updated_at
+                            )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `
+                )
+                .run(
+                    profileId,
+                    'openai',
+                    'openai/minimax-native',
+                    'MiniMax Native',
+                    'minimax',
+                    0,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'provider_native',
+                    'provider_native',
+                    JSON.stringify({ providerNativeId: 'minimax_openai_compat' }),
+                    JSON.stringify(['text']),
+                    JSON.stringify(['text']),
+                    null,
+                    128000,
+                    '{}',
+                    '{}',
+                    'test',
+                    now
+                );
+
+            const created = await createSessionInScope(caller, profileId, {
+                scope: 'detached',
+                title: 'Provider native specialization thread',
+                kind: 'local',
+            });
+            const started = await caller.session.startRun({
+                profileId,
+                sessionId: created.session.id,
+                prompt: 'Use the provider native specialization',
+                topLevelTab: 'chat',
+                modeKey: 'chat',
+                runtimeOptions: defaultRuntimeOptions,
+                providerId: 'openai',
+                modelId: 'openai/minimax-native',
+            });
+
+            expect(started.accepted).toBe(true);
+            if (!started.accepted) {
+                throw new Error('Expected provider-native specialization run to start.');
+            }
+
+            await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+            const runs = await caller.session.listRuns({
+                profileId,
+                sessionId: created.session.id,
+            });
+            expect(runs.runs[0]?.transport?.selected).toBe('provider_native');
+
+            const firstRequestInit = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+            expect(firstRequestInit).toBeDefined();
+            const firstRequestBody =
+                firstRequestInit && typeof firstRequestInit.body === 'string'
+                    ? JSON.parse(firstRequestInit.body)
+                    : undefined;
+            expect(firstRequestBody?.['reasoning_split']).toBe(true);
+        } finally {
+            if (originalOpenAIBaseUrl === undefined) {
+                delete process.env['OPENAI_BASE_URL'];
+            } else {
+                process.env['OPENAI_BASE_URL'] = originalOpenAIBaseUrl;
+            }
+        }
+    });
+
+    it('rejects MiniMax-looking provider-native models that lack trusted specialization metadata', async () => {
+        const caller = createCaller();
+        const originalOpenAIBaseUrl = process.env['OPENAI_BASE_URL'];
+        process.env['OPENAI_BASE_URL'] = 'https://api.minimax.io/v1';
+
+        try {
+            const configured = await caller.provider.setApiKey({
+                profileId,
+                providerId: 'openai',
+                apiKey: 'openai-minimax-untrusted-key',
+            });
+            expect(configured.success).toBe(true);
+
+            const { sqlite } = getPersistence();
+            const now = new Date().toISOString();
+            sqlite
+                .prepare(
+                    `
+                        INSERT OR REPLACE INTO provider_model_catalog
+                            (
+                                profile_id,
+                                provider_id,
+                                model_id,
+                                label,
+                                upstream_provider,
+                                is_free,
+                                supports_tools,
+                                supports_reasoning,
+                                supports_vision,
+                                supports_audio_input,
+                                supports_audio_output,
+                                supports_prompt_cache,
+                                tool_protocol,
+                                api_family,
+                                input_modalities_json,
+                                output_modalities_json,
+                                prompt_family,
+                                context_length,
+                                pricing_json,
+                                raw_json,
+                                source,
+                                updated_at
+                            )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `
+                )
+                .run(
+                    profileId,
+                    'openai',
+                    'openai/minimax-legacy',
+                    'MiniMax Legacy',
+                    'minimax',
+                    0,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'provider_native',
+                    'provider_native',
+                    JSON.stringify(['text']),
+                    JSON.stringify(['text']),
+                    null,
+                    128000,
+                    '{}',
+                    '{}',
+                    'test',
+                    now
+                );
+
+            const created = await createSessionInScope(caller, profileId, {
+                scope: 'detached',
+                title: 'Untrusted provider native thread',
+                kind: 'local',
+            });
+            const started = await caller.session.startRun({
+                profileId,
+                sessionId: created.session.id,
+                prompt: 'Try the untrusted provider native model',
+                topLevelTab: 'chat',
+                modeKey: 'chat',
+                runtimeOptions: defaultRuntimeOptions,
+                providerId: 'openai',
+                modelId: 'openai/minimax-legacy',
+            });
+
+            expect(started.accepted).toBe(false);
+            if (started.accepted) {
+                throw new Error('Expected untrusted provider-native model to be rejected.');
+            }
+            expect(started.code).toBe('runtime_option_invalid');
+            expect(started.action).toEqual({
+                code: 'provider_native_unsupported',
+                providerId: 'openai',
+                modelId: 'openai/minimax-legacy',
+            });
+        } finally {
+            if (originalOpenAIBaseUrl === undefined) {
+                delete process.env['OPENAI_BASE_URL'];
+            } else {
+                process.env['OPENAI_BASE_URL'] = originalOpenAIBaseUrl;
+            }
+        }
+    });
+
+    it('fails provider-native runs closed when MiniMax native stream frames are malformed', async () => {
+        const caller = createCaller();
+        const originalOpenAIBaseUrl = process.env['OPENAI_BASE_URL'];
+        process.env['OPENAI_BASE_URL'] = 'https://api.minimax.io/v1';
+
+        try {
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue(
+                    new Response('data: {"choices":[}\n\ndata: [DONE]\n\n', {
+                        headers: {
+                            'content-type': 'text/event-stream',
+                        },
+                    })
+                )
+            );
+
+            const configured = await caller.provider.setApiKey({
+                profileId,
+                providerId: 'openai',
+                apiKey: 'openai-minimax-malformed-stream-key',
+            });
+            expect(configured.success).toBe(true);
+
+            const { sqlite } = getPersistence();
+            const now = new Date().toISOString();
+            sqlite
+                .prepare(
+                    `
+                        INSERT OR REPLACE INTO provider_model_catalog
+                            (
+                                profile_id,
+                                provider_id,
+                                model_id,
+                                label,
+                                upstream_provider,
+                                is_free,
+                                supports_tools,
+                                supports_reasoning,
+                                supports_vision,
+                                supports_audio_input,
+                                supports_audio_output,
+                                supports_prompt_cache,
+                                tool_protocol,
+                                api_family,
+                                provider_settings_json,
+                                input_modalities_json,
+                                output_modalities_json,
+                                prompt_family,
+                                context_length,
+                                pricing_json,
+                                raw_json,
+                                source,
+                                updated_at
+                            )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `
+                )
+                .run(
+                    profileId,
+                    'openai',
+                    'openai/minimax-native',
+                    'MiniMax Native',
+                    'minimax',
+                    0,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'provider_native',
+                    'provider_native',
+                    JSON.stringify({ providerNativeId: 'minimax_openai_compat' }),
+                    JSON.stringify(['text']),
+                    JSON.stringify(['text']),
+                    null,
+                    128000,
+                    '{}',
+                    '{}',
+                    'test',
+                    now
+                );
+
+            const created = await createSessionInScope(caller, profileId, {
+                scope: 'detached',
+                title: 'Provider native malformed stream thread',
+                kind: 'local',
+            });
+            const started = await caller.session.startRun({
+                profileId,
+                sessionId: created.session.id,
+                prompt: 'Use the provider native specialization with malformed frames',
+                topLevelTab: 'chat',
+                modeKey: 'chat',
+                runtimeOptions: defaultRuntimeOptions,
+                providerId: 'openai',
+                modelId: 'openai/minimax-native',
+            });
+
+            expect(started.accepted).toBe(true);
+            if (!started.accepted) {
+                throw new Error('Expected malformed provider-native run to start and then fail closed.');
+            }
+
+            await waitForRunStatus(caller, profileId, created.session.id, 'error');
+            const runs = await caller.session.listRuns({
+                profileId,
+                sessionId: created.session.id,
+            });
+            expect(runs.runs[0]?.errorCode).toBe('invalid_payload');
+            expect(runs.runs[0]?.errorMessage).toContain('invalid JSON payload');
+        } finally {
+            if (originalOpenAIBaseUrl === undefined) {
+                delete process.env['OPENAI_BASE_URL'];
+            } else {
+                process.env['OPENAI_BASE_URL'] = originalOpenAIBaseUrl;
+            }
+        }
+    });
+
+    it('skips prompt cache application when the selected kilo model does not support it', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((_url: string) =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'Kilo no-cache response',
+                                },
+                            },
+                        ],
+                        usage: {
+                            prompt_tokens: 10,
+                            completion_tokens: 12,
+                            total_tokens: 22,
+                        },
+                    }),
+                })
+            )
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'kilo',
+            apiKey: 'kilo-no-cache-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            supports_prompt_cache,
+                            tool_protocol,
+                            api_family,
+                            routed_api_family,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'kilo',
+                'kilo/no-cache',
+                'Kilo No Cache',
+                'openai',
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                'kilo_gateway',
+                'kilo_gateway',
+                'openai_compatible',
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Kilo no-cache thread',
+            kind: 'local',
+        });
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Run without prompt cache support',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'kilo',
+            modelId: 'kilo/no-cache',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected Kilo no-cache run to start.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+        const runs = await caller.session.listRuns({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(runs.runs[0]?.cache?.applied).toBe(false);
+        expect(runs.runs[0]?.cache?.reason).toBe('model_unsupported');
+    });
 
     it('rejects unsupported provider ids at contract boundaries and allows anthropic models through supported providers', async () => {
         const caller = createCaller();
@@ -1049,4 +2487,283 @@ describe('runtime contracts: provider and account flows', () => {
         expect(setDefault.success).toBe(true);
     });
 
+    it('starts direct Anthropic models on an Anthropic-compatible custom provider path', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => ({
+                    id: 'msg_direct_claude',
+                    type: 'message',
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Direct Anthropic response',
+                        },
+                    ],
+                    usage: {
+                        input_tokens: 12,
+                        output_tokens: 9,
+                    },
+                }),
+                headers: {
+                    get: () => 'application/json',
+                },
+            })
+        );
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-direct-anthropic-key',
+        });
+        expect(configured.success).toBe(true);
+        const connectionProfileUpdated = await caller.provider.setConnectionProfile({
+            profileId,
+            providerId: 'openai',
+            optionProfileId: 'default',
+            baseUrlOverride: 'https://api.anthropic.com/v1',
+        });
+        expect(connectionProfileUpdated.connectionProfile.resolvedBaseUrl).toBe('https://api.anthropic.com/v1');
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/claude-custom', 'openai', 'Claude Custom', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            supports_prompt_cache,
+                            tool_protocol,
+                            api_family,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            provider_settings_json,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/claude-custom',
+                'Claude Custom',
+                'anthropic',
+                0,
+                1,
+                1,
+                1,
+                0,
+                0,
+                0,
+                'anthropic_messages',
+                'anthropic_messages',
+                JSON.stringify(['text', 'image']),
+                JSON.stringify(['text']),
+                null,
+                JSON.stringify({}),
+                200000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Direct anthropic thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Try the direct anthropic runtime',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/claude-custom',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected direct Anthropic model to start.');
+        }
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+        const runs = await caller.session.listRuns({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(runs.runs[0]?.transport?.selected).toBe('anthropic_messages');
+        expect(runs.runs[0]?.errorCode).toBeUndefined();
+    });
+
+    it('starts direct Gemini models on a Gemini-compatible custom provider path', async () => {
+        const caller = createCaller();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => ({
+                    candidates: [
+                        {
+                            content: {
+                                parts: [
+                                    {
+                                        text: 'Direct Gemini response',
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                    usageMetadata: {
+                        promptTokenCount: 12,
+                        candidatesTokenCount: 9,
+                        totalTokenCount: 21,
+                    },
+                }),
+                headers: {
+                    get: () => 'application/json',
+                },
+            })
+        );
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-direct-gemini-key',
+        });
+        expect(configured.success).toBe(true);
+        const connectionProfileUpdated = await caller.provider.setConnectionProfile({
+            profileId,
+            providerId: 'openai',
+            optionProfileId: 'default',
+            baseUrlOverride: 'https://generativelanguage.googleapis.com/v1beta',
+        });
+        expect(connectionProfileUpdated.connectionProfile.resolvedBaseUrl).toBe('https://generativelanguage.googleapis.com/v1beta');
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/gemini-custom', 'openai', 'Gemini Custom', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            supports_prompt_cache,
+                            tool_protocol,
+                            api_family,
+                            provider_settings_json,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/gemini-custom',
+                'Gemini Custom',
+                'google',
+                0,
+                1,
+                1,
+                1,
+                0,
+                0,
+                0,
+                'google_generativeai',
+                'google_generativeai',
+                JSON.stringify({ runtime: 'google_generativeai' }),
+                JSON.stringify(['text', 'image']),
+                JSON.stringify(['text']),
+                null,
+                200000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Direct Gemini thread',
+            kind: 'local',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Try the direct Gemini runtime',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gemini-custom',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected direct Gemini model to start.');
+        }
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+        const runs = await caller.session.listRuns({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(runs.runs[0]?.transport?.selected).toBe('google_generativeai');
+        expect(runs.runs[0]?.errorCode).toBeUndefined();
+    });
 });

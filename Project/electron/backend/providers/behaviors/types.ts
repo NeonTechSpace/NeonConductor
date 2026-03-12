@@ -3,17 +3,8 @@ import { err, ok, type Result } from 'neverthrow';
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
 import type { ProviderAuthMethod, RuntimeRunOptions } from '@/app/backend/runtime/contracts';
-import type { RunCacheResolution, RunTransportResolution } from '@/app/backend/runtime/services/runExecution/types';
 
 export type ProviderBilledVia = 'kilo_gateway' | 'openai_api' | 'openai_subscription' | 'zai_api' | 'moonshot_api';
-
-export interface ProviderRuntimeCacheInput {
-    profileId: string;
-    sessionId: string;
-    cacheScopeKey?: string;
-    modelId: string;
-    runtimeOptions: RuntimeRunOptions;
-}
 
 export interface ProviderRuntimeValidationInput {
     modelId: string;
@@ -43,8 +34,6 @@ export function errProviderBehavior(code: ProviderBehaviorErrorCode, message: st
 
 export interface ProviderRuntimeBehavior {
     readonly providerId: FirstPartyProviderId;
-    resolveInitialTransport(runtimeOptions: RuntimeRunOptions): RunTransportResolution;
-    resolveCache(input: ProviderRuntimeCacheInput): ProviderBehaviorResult<RunCacheResolution>;
     validateRunOptions(input: ProviderRuntimeValidationInput): ProviderBehaviorResult<void>;
     resolveBilledVia(authMethod: ProviderAuthMethod | 'none'): ProviderBilledVia;
 }

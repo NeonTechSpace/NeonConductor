@@ -11,9 +11,7 @@ interface CreateThreadInput {
 interface UseConversationSidebarStateInput {
     topLevelTab: TopLevelTab;
     isCreatingThread: boolean;
-    isAddingTag: boolean;
     onCreateThread: (input: CreateThreadInput) => Promise<void>;
-    onAddTagToThread: (threadId: string, label: string) => Promise<void>;
 }
 
 function modeLabel(topLevelTab: TopLevelTab): string {
@@ -30,7 +28,6 @@ export function useConversationSidebarState(input: UseConversationSidebarStateIn
     const [newThreadTitle, setNewThreadTitle] = useState('');
     const [newThreadScope, setNewThreadScope] = useState<'detached' | 'workspace'>('detached');
     const [newThreadWorkspace, setNewThreadWorkspace] = useState('');
-    const [newTagLabel, setNewTagLabel] = useState('');
 
     async function createThread(): Promise<void> {
         if (input.isCreatingThread) {
@@ -58,20 +55,6 @@ export function useConversationSidebarState(input: UseConversationSidebarStateIn
         setNewThreadTitle('');
     }
 
-    async function addTagToThread(selectedThreadId: string | undefined): Promise<void> {
-        if (input.isAddingTag || !selectedThreadId) {
-            return;
-        }
-
-        const label = newTagLabel.trim();
-        if (label.length === 0) {
-            return;
-        }
-
-        await input.onAddTagToThread(selectedThreadId, label);
-        setNewTagLabel('');
-    }
-
     return {
         newThreadTitle,
         setNewThreadTitle,
@@ -79,10 +62,7 @@ export function useConversationSidebarState(input: UseConversationSidebarStateIn
         setNewThreadScope,
         newThreadWorkspace,
         setNewThreadWorkspace,
-        newTagLabel,
-        setNewTagLabel,
         createThread,
-        addTagToThread,
     };
 }
 

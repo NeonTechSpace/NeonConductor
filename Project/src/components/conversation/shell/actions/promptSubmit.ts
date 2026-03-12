@@ -1,9 +1,9 @@
 import {
+    formatRunStartRejection,
     isEntityId,
-    isProviderRunnable,
-    toActionableRunError,
     type RunTargetSelection,
 } from '@/web/components/conversation/shell/workspace/helpers';
+import { isProviderRunnable, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
 import type { RuntimeRunOptions } from '@/shared/contracts';
 import type {
@@ -24,7 +24,7 @@ interface ProviderAuthView {
 
 type PlanStartSuccessResult = { plan: PlanRecordView };
 type RunStartAcceptedResult = { accepted: true };
-type RunStartRejectedResult = { accepted: false; message?: string };
+type RunStartRejectedResult = RunStartRejectedResultLike;
 
 function isAcceptedRunResult<
     TRunStartAcceptedResult extends RunStartAcceptedResult,
@@ -105,9 +105,20 @@ export async function submitPrompt<
     }
 
     const selectedProvider = input.providerById.get(input.resolvedRunTarget.providerId);
-    const providerLabel = selectedProvider?.label ?? input.resolvedRunTarget.providerId;
     if (selectedProvider && !isProviderRunnable(selectedProvider.authState, selectedProvider.authMethod)) {
-        input.onError(toActionableRunError('Provider is not authenticated.', selectedProvider.label));
+        input.onError(
+            formatRunStartRejection({
+                rejection: {
+                    accepted: false,
+                    message: `Provider "${input.resolvedRunTarget.providerId}" is not authenticated/configured.`,
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.resolvedRunTarget.providerId,
+                    },
+                },
+                providerById: input.providerById,
+            })
+        );
         return;
     }
 
@@ -126,15 +137,19 @@ export async function submitPrompt<
             runtimeOptions: input.runtimeOptions,
         });
         if (!isAcceptedRunResult(result)) {
-            const message = typeof result.message === 'string' ? result.message : 'Run start was rejected.';
-            input.onError(toActionableRunError(message, providerLabel));
+            input.onError(
+                formatRunStartRejection({
+                    rejection: result,
+                    providerById: input.providerById,
+                })
+            );
             return;
         }
         input.onPromptCleared();
         input.onRunStarted(result);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        input.onError(toActionableRunError(message, providerLabel));
+        input.onError(`Run failed: ${message}`);
     }
 }
 

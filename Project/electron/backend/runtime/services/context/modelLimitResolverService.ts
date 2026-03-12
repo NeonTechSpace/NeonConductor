@@ -1,6 +1,6 @@
 import { modelLimitOverrideStore, providerStore } from '@/app/backend/persistence/stores';
 import { findStaticModelDefinition } from '@/app/backend/providers/metadata/staticCatalog/registry';
-import { resolveEndpointProfile } from '@/app/backend/providers/service/endpointProfiles';
+import { resolveConnectionProfile } from '@/app/backend/providers/service/endpointProfiles';
 import type { ResolvedModelLimits, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 type BaseModelLimitSource = Exclude<ResolvedModelLimits['source'], 'mixed'>;
@@ -34,12 +34,12 @@ async function readStaticModelLimits(
         return null;
     }
 
-    const endpointProfileResult = await resolveEndpointProfile(profileId, providerId);
-    if (endpointProfileResult.isErr()) {
+    const connectionProfileResult = await resolveConnectionProfile(profileId, providerId);
+    if (connectionProfileResult.isErr()) {
         return null;
     }
 
-    const definition = findStaticModelDefinition(providerId, endpointProfileResult.value, modelId);
+    const definition = findStaticModelDefinition(providerId, connectionProfileResult.value.optionProfileId, modelId);
     if (!definition) {
         return null;
     }

@@ -1,4 +1,4 @@
-import { startTransition, useState, useTransition } from 'react';
+import { startTransition, useTransition } from 'react';
 
 import { applyConversationSessionCacheUpdate } from '@/web/components/conversation/shell/conversationShellCache';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
@@ -13,8 +13,6 @@ import {
     upsertTagRecord,
     upsertThreadListRecord,
 } from '@/web/components/conversation/sidebar/sidebarCache';
-import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
-import { SECONDARY_QUERY_OPTIONS } from '@/web/lib/query/secondaryQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
 import type { ConversationRecord, TagRecord, ThreadListRecord, ThreadRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
@@ -136,16 +134,7 @@ export function ConversationSidebarPane({
     deleteWorkspaceThreads,
 }: ConversationSidebarPaneProps) {
     const utils = trpc.useUtils();
-    const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>(undefined);
     const [, startSelectionTransition] = useTransition();
-    const [workspaceDeleteTarget, setWorkspaceDeleteTarget] = useState<
-        | {
-              workspaceFingerprint: string;
-              workspaceLabel: string;
-          }
-        | undefined
-    >(undefined);
-    const [includeFavoriteThreads, setIncludeFavoriteThreads] = useState(false);
     const selectedThread = threads.find((thread) => thread.id === selectedThreadId);
     const threadListQueryInput = {
         profileId,
@@ -156,21 +145,9 @@ export function ConversationSidebarPane({
         ...(workspaceFilter ? { workspaceFingerprint: workspaceFilter } : {}),
         sort,
     };
-    const workspaceDeletePreviewQuery = trpc.conversation.getWorkspaceThreadDeletePreview.useQuery(
-        {
-            profileId,
-            workspaceFingerprint: workspaceDeleteTarget?.workspaceFingerprint ?? '',
-            includeFavorites: includeFavoriteThreads,
-        },
-        {
-            enabled: Boolean(workspaceDeleteTarget),
-            ...SECONDARY_QUERY_OPTIONS,
-        }
-    );
-
     return (
-        <>
-            <ConversationSidebar
+        <ConversationSidebar
+                profileId={profileId}
                 buckets={buckets}
                 threads={threads}
                 tags={tags}
@@ -185,7 +162,7 @@ export function ConversationSidebarPane({
                 groupView={groupView}
                 isCreatingThread={isCreatingThread}
                 isAddingTag={isAddingTag}
-                {...(feedbackMessage ? { feedbackMessage } : {})}
+                isDeletingWorkspaceThreads={isDeletingWorkspaceThreads}
                 {...(statusMessage ? { statusMessage, statusTone } : {})}
                 onTopLevelTabChange={(nextTab) => {
                     startTransition(() => {
@@ -235,19 +212,45 @@ export function ConversationSidebarPane({
                         );
                     });
                 }}
-                onToggleThreadFavorite={(threadId, nextFavorite) => {
+                onToggleThreadFavorite={async (threadId, nextFavorite) => {
                     if (!isEntityId(threadId, 'thr')) {
-                        return;
+                        throw new Error('Favorite status could not be updated.');
                     }
 
-                    void (async () => {
-                        setFeedbackMessage(undefined);
-                        const currentThread = threads.find((thread) => thread.id === threadId);
-                        if (!currentThread) {
-                            return;
+                    const currentThread = threads.find((thread) => thread.id === threadId);
+                    if (!currentThread) {
+                        throw new Error('Favorite status could not be updated.');
+                    }
+
+                    const previousThreadList = utils.conversation.listThreads.getData(threadListQueryInput);
+                    utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
+                        if (!current) {
+                            return current;
                         }
 
-                        const previousThreadList = utils.conversation.listThreads.getData(threadListQueryInput);
+                        return {
+                            ...current,
+                            threads: patchThreadListRecord(current.threads, {
+                                ...currentThread,
+                                isFavorite: nextFavorite,
+                            }),
+                        };
+                    });
+
+                    try {
+                        const result = await setThreadFavorite({
+                            profileId,
+                            threadId,
+                            isFavorite: nextFavorite,
+                        });
+                        if (!result.updated || !result.thread) {
+                            if (previousThreadList) {
+                                utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
+                            }
+                            throw new Error('Favorite status could not be updated.');
+                        }
+                        const updatedThread = result.thread;
+
                         utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
                             if (!current) {
                                 return current;
@@ -255,54 +258,15 @@ export function ConversationSidebarPane({
 
                             return {
                                 ...current,
-                                threads: patchThreadListRecord(current.threads, {
-                                    ...currentThread,
-                                    isFavorite: nextFavorite,
-                                }),
+                                threads: patchThreadListRecord(current.threads, updatedThread),
                             };
                         });
-
-                        try {
-                            const result = await setThreadFavorite({
-                                profileId,
-                                threadId,
-                                isFavorite: nextFavorite,
-                            });
-                            if (!result.updated || !result.thread) {
-                                setFeedbackMessage('Favorite status could not be updated.');
-                                if (previousThreadList) {
-                                    utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
-                                }
-                                return;
-                            }
-                            const updatedThread = result.thread;
-
-                            utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
-                                if (!current) {
-                                    return current;
-                                }
-
-                                return {
-                                    ...current,
-                                    threads: patchThreadListRecord(current.threads, updatedThread),
-                                };
-                            });
-                        } catch (error) {
-                            if (previousThreadList) {
-                                utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
-                            }
-                            setFeedbackMessage(
-                                error instanceof Error ? error.message : 'Favorite status could not be updated.'
-                            );
+                    } catch (error) {
+                        if (previousThreadList) {
+                            utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
                         }
-                    })();
-                }}
-                onRequestWorkspaceDelete={(workspaceFingerprint, workspaceLabel) => {
-                    setIncludeFavoriteThreads(false);
-                    setWorkspaceDeleteTarget({
-                        workspaceFingerprint,
-                        workspaceLabel,
-                    });
+                        throw error instanceof Error ? error : new Error('Favorite status could not be updated.');
+                    }
                 }}
                 onScopeFilterChange={(scope) => {
                     startTransition(() => {
@@ -330,7 +294,6 @@ export function ConversationSidebarPane({
                     });
                 }}
                 onCreateThread={async (input) => {
-                    setFeedbackMessage(undefined);
                     const result = await createThread({
                         profileId,
                         topLevelTab,
@@ -374,8 +337,9 @@ export function ConversationSidebarPane({
                         });
                         if (!starterSession.created) {
                             onSelectSessionId(undefined);
-                            setFeedbackMessage('The starter session could not be created automatically.');
-                            return;
+                            return {
+                                feedbackMessage: 'The starter session could not be created automatically.',
+                            };
                         }
 
                         utils.session.listRuns.setData(
@@ -397,19 +361,18 @@ export function ConversationSidebarPane({
                         onSelectSessionId(starterSession.session.id);
                     } catch (error) {
                         onSelectSessionId(undefined);
-                        setFeedbackMessage(
-                            error instanceof Error
-                                ? error.message
-                                : 'The starter session could not be created automatically.'
-                        );
+                        return {
+                            feedbackMessage:
+                                error instanceof Error
+                                    ? error.message
+                                    : 'The starter session could not be created automatically.',
+                        };
                     }
                 }}
                 onAddTagToThread={async (threadId, label) => {
                     if (!isEntityId(threadId, 'thr')) {
-                        return;
+                        throw new Error('Thread tags could not be updated.');
                     }
-
-                    setFeedbackMessage(undefined);
                     const previousTags = utils.conversation.listTags.getData({ profileId });
                     const previousShellBootstrap = utils.runtime.getShellBootstrap.getData({ profileId });
 
@@ -424,8 +387,7 @@ export function ConversationSidebarPane({
                             (tagId): tagId is EntityId<'tag'> => isEntityId(tagId, 'tag')
                         );
                         if (validTagIds.length !== nextTagIds.length) {
-                            setFeedbackMessage('The selected tag could not be applied to this thread.');
-                            return;
+                            throw new Error('The selected tag could not be applied to this thread.');
                         }
 
                         utils.conversation.listTags.setData({ profileId }, (current) => {
@@ -477,165 +439,99 @@ export function ConversationSidebarPane({
                         if (previousShellBootstrap) {
                             utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
                         }
-                        setFeedbackMessage(error instanceof Error ? error.message : 'Thread tags could not be updated.');
+                        throw error instanceof Error ? error : new Error('Thread tags could not be updated.');
                     }
                 }}
-            />
-            <ConfirmDialog
-                open={Boolean(workspaceDeleteTarget)}
-                title='Clear workspace threads'
-                message={
-                    workspaceDeleteTarget
-                        ? `Delete threads for ${workspaceDeleteTarget.workspaceLabel}. Favorites are protected unless you explicitly include them.`
-                        : ''
-                }
-                confirmLabel='Delete threads'
-                destructive
-                busy={isDeletingWorkspaceThreads || workspaceDeletePreviewQuery.isLoading}
-                confirmDisabled={(workspaceDeletePreviewQuery.data?.deletableThreadCount ?? 0) === 0}
-                onCancel={() => {
-                    setWorkspaceDeleteTarget(undefined);
-                    setIncludeFavoriteThreads(false);
-                }}
-                onConfirm={() => {
-                    if (!workspaceDeleteTarget) {
-                        return;
+            onDeleteWorkspaceThreads={async ({ workspaceFingerprint, includeFavoriteThreads }) => {
+                const previousBucketList = utils.conversation.listBuckets.getData({ profileId });
+                const previousThreadList = utils.conversation.listThreads.getData(threadListQueryInput);
+                const previousTagList = utils.conversation.listTags.getData({ profileId });
+                const previousShellBootstrap = utils.runtime.getShellBootstrap.getData({ profileId });
+                const previousSessionList = utils.session.list.getData({ profileId });
+
+                try {
+                    const result = await deleteWorkspaceThreads({
+                        profileId,
+                        workspaceFingerprint,
+                        includeFavorites: includeFavoriteThreads,
+                    });
+                    if (selectedThreadId && result.deletedThreadIds.includes(selectedThreadId)) {
+                        onSelectThreadId(undefined);
+                        onSelectSessionId(undefined);
+                        onSelectRunId(undefined);
+                    } else if (selectedSessionId && result.sessionIds.includes(selectedSessionId)) {
+                        onSelectSessionId(undefined);
+                        onSelectRunId(undefined);
+                    } else if (
+                        selectedThread &&
+                        selectedThread.workspaceFingerprint === workspaceFingerprint &&
+                        result.deletedThreadIds.length > 0
+                    ) {
+                        onSelectSessionId(undefined);
+                        onSelectRunId(undefined);
                     }
 
-                    void (async () => {
-                        const previousBucketList = utils.conversation.listBuckets.getData({ profileId });
-                        const previousThreadList = utils.conversation.listThreads.getData(threadListQueryInput);
-                        const previousTagList = utils.conversation.listTags.getData({ profileId });
-                        const previousShellBootstrap = utils.runtime.getShellBootstrap.getData({ profileId });
-                        const previousSessionList = utils.session.list.getData({ profileId });
-
-                        try {
-                            const result = await deleteWorkspaceThreads({
-                                profileId,
-                                workspaceFingerprint: workspaceDeleteTarget.workspaceFingerprint,
-                                includeFavorites: includeFavoriteThreads,
-                            });
-                            if (selectedThreadId && result.deletedThreadIds.includes(selectedThreadId)) {
-                                onSelectThreadId(undefined);
-                                onSelectSessionId(undefined);
-                                onSelectRunId(undefined);
-                            } else if (
-                                selectedSessionId &&
-                                result.sessionIds.includes(selectedSessionId)
-                            ) {
-                                onSelectSessionId(undefined);
-                                onSelectRunId(undefined);
-                            } else if (
-                                selectedThread &&
-                                selectedThread.workspaceFingerprint === workspaceDeleteTarget.workspaceFingerprint &&
-                                result.deletedThreadIds.length > 0
-                            ) {
-                                onSelectSessionId(undefined);
-                                onSelectRunId(undefined);
-                            }
-
-                            const deletedSidebarRecords = removeDeletedSidebarRecords({
-                                buckets,
-                                threads,
-                                tags,
-                                threadTags: previousShellBootstrap?.threadTags ?? [],
-                                deletedThreadIds: result.deletedThreadIds,
-                                deletedTagIds: result.deletedTagIds,
-                                deletedConversationIds: result.deletedConversationIds,
-                            });
-                            utils.conversation.listBuckets.setData({ profileId }, {
-                                buckets: deletedSidebarRecords.buckets,
-                            });
-                            utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
-                                if (!current) {
-                                    return current;
-                                }
-
-                                return {
-                                    ...current,
-                                    threads: deletedSidebarRecords.threads,
-                                };
-                            });
-                            utils.conversation.listTags.setData({ profileId }, {
-                                tags: deletedSidebarRecords.tags,
-                            });
-                            if (previousShellBootstrap) {
-                                utils.runtime.getShellBootstrap.setData({ profileId }, {
-                                    ...previousShellBootstrap,
-                                    threadTags: deletedSidebarRecords.threadTags,
-                                });
-                            }
-                            if (previousSessionList) {
-                                utils.session.list.setData(
-                                    { profileId },
-                                    {
-                                        sessions: previousSessionList.sessions.filter(
-                                            (session) => !result.sessionIds.includes(session.id)
-                                        ),
-                                    }
-                                );
-                            }
-
-                            setWorkspaceDeleteTarget(undefined);
-                            setIncludeFavoriteThreads(false);
-                        } catch (error) {
-                            if (previousBucketList) {
-                                utils.conversation.listBuckets.setData({ profileId }, previousBucketList);
-                            }
-                            if (previousThreadList) {
-                                utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
-                            }
-                            if (previousTagList) {
-                                utils.conversation.listTags.setData({ profileId }, previousTagList);
-                            }
-                            if (previousShellBootstrap) {
-                                utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
-                            }
-                            if (previousSessionList) {
-                                utils.session.list.setData({ profileId }, previousSessionList);
-                            }
-                            setFeedbackMessage(
-                                error instanceof Error
-                                    ? error.message
-                                    : 'Workspace threads could not be deleted.'
-                            );
+                    const deletedSidebarRecords = removeDeletedSidebarRecords({
+                        buckets,
+                        threads,
+                        tags,
+                        threadTags: previousShellBootstrap?.threadTags ?? [],
+                        deletedThreadIds: result.deletedThreadIds,
+                        deletedTagIds: result.deletedTagIds,
+                        deletedConversationIds: result.deletedConversationIds,
+                    });
+                    utils.conversation.listBuckets.setData({ profileId }, {
+                        buckets: deletedSidebarRecords.buckets,
+                    });
+                    utils.conversation.listThreads.setData(threadListQueryInput, (current) => {
+                        if (!current) {
+                            return current;
                         }
-                    })();
-                }}>
-                <div className='space-y-3 text-sm'>
-                    <div className='rounded-lg border border-amber-500/20 bg-amber-500/5 p-3'>
-                        <p className='font-medium text-foreground'>
-                            {workspaceDeletePreviewQuery.data?.deletableThreadCount ?? 0} thread
-                            {(workspaceDeletePreviewQuery.data?.deletableThreadCount ?? 0) === 1 ? '' : 's'} will be
-                            deleted.
-                        </p>
-                        <p className='text-muted-foreground mt-1 text-xs'>
-                            {workspaceDeletePreviewQuery.data?.favoriteThreadCount ?? 0} favorite
-                            {(workspaceDeletePreviewQuery.data?.favoriteThreadCount ?? 0) === 1 ? '' : 's'} detected out
-                            of {workspaceDeletePreviewQuery.data?.totalThreadCount ?? 0} total workspace threads.
-                        </p>
-                    </div>
-                    {(workspaceDeletePreviewQuery.data?.favoriteThreadCount ?? 0) > 0 ? (
-                        <label className='flex items-start gap-2'>
-                            <input
-                                type='checkbox'
-                                className='mt-0.5'
-                                checked={includeFavoriteThreads}
-                                onChange={(event) => {
-                                    setIncludeFavoriteThreads(event.target.checked);
-                                }}
-                            />
-                            <span>
-                                Also delete favorite threads
-                                <span className='text-muted-foreground block text-xs'>
-                                    Default is safe: favorites stay unless you check this.
-                                </span>
-                            </span>
-                        </label>
-                    ) : null}
-                </div>
-            </ConfirmDialog>
-        </>
+
+                        return {
+                            ...current,
+                            threads: deletedSidebarRecords.threads,
+                        };
+                    });
+                    utils.conversation.listTags.setData({ profileId }, {
+                        tags: deletedSidebarRecords.tags,
+                    });
+                    if (previousShellBootstrap) {
+                        utils.runtime.getShellBootstrap.setData({ profileId }, {
+                            ...previousShellBootstrap,
+                            threadTags: deletedSidebarRecords.threadTags,
+                        });
+                    }
+                    if (previousSessionList) {
+                        utils.session.list.setData(
+                            { profileId },
+                            {
+                                sessions: previousSessionList.sessions.filter(
+                                    (session) => !result.sessionIds.includes(session.id)
+                                ),
+                            }
+                        );
+                    }
+                } catch (error) {
+                    if (previousBucketList) {
+                        utils.conversation.listBuckets.setData({ profileId }, previousBucketList);
+                    }
+                    if (previousThreadList) {
+                        utils.conversation.listThreads.setData(threadListQueryInput, previousThreadList);
+                    }
+                    if (previousTagList) {
+                        utils.conversation.listTags.setData({ profileId }, previousTagList);
+                    }
+                    if (previousShellBootstrap) {
+                        utils.runtime.getShellBootstrap.setData({ profileId }, previousShellBootstrap);
+                    }
+                    if (previousSessionList) {
+                        utils.session.list.setData({ profileId }, previousSessionList);
+                    }
+                    throw error instanceof Error ? error : new Error('Workspace threads could not be deleted.');
+                }
+            }}
+        />
     );
 }
 

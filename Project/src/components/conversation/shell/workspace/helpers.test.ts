@@ -19,7 +19,7 @@ describe('runtime run options', () => {
                 strategy: 'auto',
             },
             transport: {
-                openai: 'auto',
+                family: 'auto',
             },
         });
     });
@@ -40,7 +40,7 @@ describe('runtime run options', () => {
                 strategy: 'auto',
             },
             transport: {
-                openai: 'auto',
+                family: 'auto',
             },
         });
     });

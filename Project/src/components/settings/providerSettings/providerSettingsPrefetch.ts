@@ -11,7 +11,7 @@ interface ProviderSettingsPrefetchInput {
             getAuthState: {
                 prefetch: (input: { profileId: string; providerId: RuntimeProviderId }) => Promise<void>;
             };
-            getEndpointProfile: {
+            getConnectionProfile: {
                 prefetch: (input: { profileId: string; providerId: RuntimeProviderId }) => Promise<void>;
             };
             getUsageSummary: {
@@ -40,7 +40,7 @@ export function prefetchProviderSettingsData(input: ProviderSettingsPrefetchInpu
             profileId: input.profileId,
             providerId: input.providerId,
         }),
-        input.trpcUtils.provider.getEndpointProfile.prefetch({
+        input.trpcUtils.provider.getConnectionProfile.prefetch({
             profileId: input.profileId,
             providerId: input.providerId,
         }),

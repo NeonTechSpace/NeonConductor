@@ -2,7 +2,7 @@ import {
     providerAuthMethods,
     providerIds,
     runtimeCacheStrategies,
-    runtimeOpenAITransports,
+    runtimeRequestedTransportFamilies,
     runtimeReasoningEfforts,
     runtimeReasoningSummaries,
 } from '@/app/backend/runtime/contracts/enums';
@@ -133,6 +133,11 @@ export function parseRuntimeRunOptions(value: unknown): RuntimeRunOptions {
     const reasoningSource = readObject(source.reasoning, 'runtimeOptions.reasoning');
     const cacheSource = readObject(source.cache, 'runtimeOptions.cache');
     const transportSource = readObject(source.transport, 'runtimeOptions.transport');
+    if ('openai' in transportSource) {
+        throw new Error(
+            'Invalid "runtimeOptions.transport": legacy "openai" is no longer supported; use "family" instead.'
+        );
+    }
 
     const cacheStrategy = readEnumValue(cacheSource.strategy, 'runtimeOptions.cache.strategy', runtimeCacheStrategies);
     const cacheKey = readOptionalString(cacheSource.key, 'runtimeOptions.cache.key');
@@ -167,7 +172,11 @@ export function parseRuntimeRunOptions(value: unknown): RuntimeRunOptions {
                       strategy: cacheStrategy,
                   },
         transport: {
-            openai: readEnumValue(transportSource.openai, 'runtimeOptions.transport.openai', runtimeOpenAITransports),
+            family: readEnumValue(
+                transportSource.family,
+                'runtimeOptions.transport.family',
+                runtimeRequestedTransportFamilies
+            ),
         },
     };
 }

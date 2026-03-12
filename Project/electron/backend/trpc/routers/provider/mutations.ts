@@ -7,7 +7,7 @@ import {
     providerRefreshAuthInputSchema,
     providerSetApiKeyInputSchema,
     providerSetDefaultInputSchema,
-    providerSetEndpointProfileInputSchema,
+    providerSetConnectionProfileInputSchema,
     providerSetModelRoutingPreferenceInputSchema,
     providerSetOrganizationInputSchema,
     providerStartAuthInputSchema,
@@ -142,20 +142,24 @@ export const providerMutationProcedures = {
 
         return { state: stateResult.value };
     }),
-    setEndpointProfile: publicProcedure
-        .input(providerSetEndpointProfileInputSchema)
+    setConnectionProfile: publicProcedure
+        .input(providerSetConnectionProfileInputSchema)
         .mutation(async ({ input, ctx }) => {
-            const endpointResult = await providerManagementService.setEndpointProfile(
+            const connectionProfileResult = await providerManagementService.setConnectionProfile(
                 input.profileId,
                 input.providerId,
-                input.value,
+                {
+                    optionProfileId: input.optionProfileId,
+                    ...(input.baseUrlOverride !== undefined ? { baseUrlOverride: input.baseUrlOverride } : {}),
+                    ...(input.organizationId !== undefined ? { organizationId: input.organizationId } : {}),
+                },
                 {
                     requestId: ctx.requestId,
                     correlationId: ctx.correlationId,
                 }
             );
-            if (endpointResult.isErr()) {
-                throwWithCode(endpointResult.error.code, endpointResult.error.message);
+            if (connectionProfileResult.isErr()) {
+                throwWithCode(connectionProfileResult.error.code, connectionProfileResult.error.message);
             }
 
             const [provider, defaults, models] = await Promise.all([
@@ -173,8 +177,8 @@ export const providerMutationProcedures = {
                 payload: {
                     profileId: input.profileId,
                     providerId: input.providerId,
-                    value: endpointResult.value.value,
-                    endpointProfile: endpointResult.value,
+                    value: connectionProfileResult.value.optionProfileId,
+                    connectionProfile: connectionProfileResult.value,
                     defaults,
                     models: models.value,
                     ...(provider ? { provider } : {}),
@@ -182,7 +186,7 @@ export const providerMutationProcedures = {
             });
 
             return {
-                endpointProfile: endpointResult.value,
+                connectionProfile: connectionProfileResult.value,
                 defaults,
                 models: models.value,
                 ...(provider ? { provider } : {}),

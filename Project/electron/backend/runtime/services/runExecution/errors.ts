@@ -1,5 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 
+import type { RunStartRejectionAction } from '@/app/backend/runtime/contracts';
+
 export type RunExecutionErrorCode =
     | 'invalid_mode'
     | 'mode_not_available'
@@ -20,6 +22,7 @@ export type RunExecutionErrorCode =
 export interface RunExecutionError {
     code: RunExecutionErrorCode;
     message: string;
+    action?: RunStartRejectionAction;
 }
 
 export type RunExecutionResult<T> = Result<T, RunExecutionError>;
@@ -28,9 +31,16 @@ export function okRunExecution<T>(value: T): RunExecutionResult<T> {
     return ok(value);
 }
 
-export function errRunExecution(code: RunExecutionErrorCode, message: string): RunExecutionResult<never> {
+export function errRunExecution(
+    code: RunExecutionErrorCode,
+    message: string,
+    options?: {
+        action?: RunStartRejectionAction;
+    }
+): RunExecutionResult<never> {
     return err({
         code,
         message,
+        ...(options?.action ? { action: options.action } : {}),
     });
 }

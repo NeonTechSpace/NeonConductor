@@ -42,6 +42,7 @@
 - Make code understandable through names, boundaries, and structure first.
 - Add sparse inline comments only when they reduce real ambiguity around non-obvious logic, invariants, failure modes, or surprising choices.
 - Use markdown docs for cross-cutting architecture, lifecycle flows, precedence rules, subsystem contracts, and contributor workflows that span multiple modules.
+- Do not create new markdown docs outside the `Research` folder unless the user explicitly permits it.
 - Do not use markdown docs as a band-aid for unclear local code.
 - Do not add noisy comments that only restate obvious code.
 
@@ -90,6 +91,15 @@
 - Prefer `useEffectEvent` when an effect needs the latest values without widening the effect dependency surface.
 - Prefer `startTransition` for non-urgent UI updates and `useDeferredValue` for deferred reads such as search filtering or heavy derived views.
 - React Compiler is the default optimization path; add `useMemo`, `useCallback`, or `memo` only for proven compiler gaps or profiling-backed regressions.
+- Keep hot interaction state local.
+  Transient input text, drag state, hover state, inline drafts, and other high-frequency UI state must live at the lowest boundary that actually needs to coordinate it.
+  Do not lift hot state into large shells, workspace layouts, or top-level feature coordinators when only a leaf or small subtree needs it.
+- Prefer virtualization for genuinely large or unbounded collection surfaces.
+  Use TanStack Virtual by default for list-like views that can grow materially over time, such as long rails, large tables, or other continuously growing collections.
+  Do not add virtualization blindly to highly dynamic chat/transcript surfaces; first validate scroll anchoring, streaming behavior, and interaction semantics, then virtualize if the surface is still a real hotspot.
+- Treat render-boundary shape as architecture, not micro-optimization.
+  React Compiler does not fix state ownership mistakes: if a rapidly changing state value is owned high in the tree, broad rerenders are expected.
+  Prefer smaller feature boundaries and local state over broad prop threading through large conversation or settings surfaces.
 - For independent async work, start early, await late, and use `Promise.all` instead of avoidable waterfalls.
 - Do not write `useEffect(async () => ...)`; keep the effect synchronous and call an inner async function when needed.
 

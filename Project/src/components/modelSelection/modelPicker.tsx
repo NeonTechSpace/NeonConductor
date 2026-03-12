@@ -1,23 +1,11 @@
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import type { ModelCapabilityBadge, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { Button } from '@/web/components/ui/button';
 import { cn } from '@/web/lib/utils';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
-
-export interface ModelPickerOption {
-    id: string;
-    label: string;
-    providerId?: RuntimeProviderId | string;
-    providerLabel?: string;
-    sourceProvider?: string;
-    source?: string;
-    promptFamily?: string;
-    price?: number;
-    latency?: number;
-    tps?: number;
-}
 
 interface ModelPickerProps {
     providerId: RuntimeProviderId | string | undefined;
@@ -120,11 +108,11 @@ export function getOptionDisplayText(
 }
 
 function getGroupKey(option: ModelPickerOption): string {
-    return option.providerId === 'kilo' ? 'kilo' : option.providerId ?? 'other';
+    return option.providerId === 'kilo' ? 'kilo' : (option.providerId ?? 'other');
 }
 
 function getGroupLabel(option: ModelPickerOption): string {
-    return option.providerId === 'kilo' ? 'Kilo' : option.providerLabel ?? option.providerId ?? 'Other';
+    return option.providerId === 'kilo' ? 'Kilo' : (option.providerLabel ?? option.providerId ?? 'Other');
 }
 
 function getGroupOrder(key: string): number {
@@ -196,6 +184,10 @@ function getModelDescription(option: ModelPickerOption): string {
     }
 
     return `${option.providerLabel ?? option.providerId ?? 'Custom'} provider model.`;
+}
+
+function formatCapabilityBadge(badge: ModelCapabilityBadge): string {
+    return badge.label;
 }
 
 function PopoverModelPicker(props: ModelPickerProps) {
@@ -277,7 +269,7 @@ function PopoverModelPicker(props: ModelPickerProps) {
                     {selectedOption?.label
                         ? getOptionDisplayText(selectedOption, labelCollisionIndex)
                         : props.models.length === 0
-                          ? 'No runnable models available'
+                          ? 'No models available'
                           : props.placeholder}
                 </span>
                 <ChevronDown className='h-4 w-4 shrink-0 opacity-70' />
@@ -307,7 +299,9 @@ function PopoverModelPicker(props: ModelPickerProps) {
 
                     <div id={listboxId} role='listbox' className='max-h-96 overflow-y-auto p-2'>
                         {groups.length === 0 ? (
-                            <div className='text-muted-foreground px-3 py-6 text-sm'>No models matched that search.</div>
+                            <div className='text-muted-foreground px-3 py-6 text-sm'>
+                                No models matched that search.
+                            </div>
                         ) : (
                             groups.map((group) => (
                                 <div key={group.key} className='mb-2 last:mb-0'>
@@ -317,11 +311,15 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                     <div className='space-y-1'>
                                         {group.options.map((option) => {
                                             const metricBadges = [
-                                                formatMetric(option.price) ? `Price ${formatMetric(option.price)}` : undefined,
+                                                formatMetric(option.price)
+                                                    ? `Price ${formatMetric(option.price)}`
+                                                    : undefined,
                                                 formatMetric(option.latency)
                                                     ? `Latency ${formatMetric(option.latency)}`
                                                     : undefined,
-                                                formatMetric(option.tps) ? `TPS ${formatMetric(option.tps)}` : undefined,
+                                                formatMetric(option.tps)
+                                                    ? `TPS ${formatMetric(option.tps)}`
+                                                    : undefined,
                                             ].filter((badge): badge is string => Boolean(badge));
                                             const selected = option.id === props.selectedModelId;
 
@@ -332,10 +330,14 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                                     role='option'
                                                     aria-selected={selected}
                                                     className={cn(
-                                                        'hover:bg-accent focus-visible:ring-ring w-full rounded-xl border px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:outline-none',
+                                                        'focus-visible:ring-ring w-full rounded-xl border px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:outline-none',
                                                         selected
                                                             ? 'border-primary bg-primary/10 shadow-sm'
-                                                            : 'border-transparent bg-transparent'
+                                                            : option.compatibilityState === 'incompatible'
+                                                              ? 'border-destructive/30 bg-destructive/5 hover:bg-destructive/10'
+                                                              : option.compatibilityState === 'warning'
+                                                                ? 'border-border bg-amber-500/5 hover:bg-amber-500/10'
+                                                                : 'hover:bg-accent border-transparent bg-transparent'
                                                     )}
                                                     onClick={() => {
                                                         props.onSelectOption?.(option);
@@ -350,18 +352,40 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                                             <p className='text-muted-foreground mt-1 text-xs leading-5'>
                                                                 {getModelDescription(option)}
                                                             </p>
+                                                            {option.compatibilityReason ? (
+                                                                <p
+                                                                    className={cn(
+                                                                        'mt-1 text-xs leading-5',
+                                                                        option.compatibilityState === 'incompatible'
+                                                                            ? 'text-destructive'
+                                                                            : option.compatibilityState === 'warning'
+                                                                              ? 'text-amber-700 dark:text-amber-300'
+                                                                              : 'text-muted-foreground'
+                                                                    )}>
+                                                                    {option.compatibilityReason}
+                                                                </p>
+                                                            ) : null}
                                                         </div>
                                                         {selected ? (
                                                             <Check className='text-primary mt-0.5 h-4 w-4 shrink-0' />
                                                         ) : null}
                                                     </div>
-                                                    {metricBadges.length > 0 || option.sourceProvider ? (
+                                                    {metricBadges.length > 0 ||
+                                                    option.sourceProvider ||
+                                                    option.capabilityBadges.length > 0 ? (
                                                         <div className='mt-2 flex flex-wrap gap-2'>
                                                             {option.sourceProvider ? (
                                                                 <span className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
                                                                     {option.sourceProvider}
                                                                 </span>
                                                             ) : null}
+                                                            {option.capabilityBadges.map((badge) => (
+                                                                <span
+                                                                    key={`${option.id}:${badge.key}`}
+                                                                    className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
+                                                                    {formatCapabilityBadge(badge)}
+                                                                </span>
+                                                            ))}
                                                             {metricBadges.map((badge) => (
                                                                 <span
                                                                     key={`${option.id}:${badge}`}
@@ -386,6 +410,12 @@ function PopoverModelPicker(props: ModelPickerProps) {
 }
 
 function shouldUsePopoverPicker(props: ModelPickerProps): boolean {
+    if (
+        props.models.some((option) => option.capabilityBadges.length > 0 || option.compatibilityState !== 'compatible')
+    ) {
+        return true;
+    }
+
     if (props.providerId === 'kilo') {
         return true;
     }
@@ -421,7 +451,7 @@ export function ModelPicker(props: ModelPickerProps) {
             className='border-border bg-background h-10 min-w-0 rounded-xl border px-3 text-sm'
             disabled={props.disabled || props.models.length === 0}>
             {props.models.length === 0 ? (
-                <option value=''>No runnable models available</option>
+                <option value=''>No models available</option>
             ) : (
                 <>
                     <option value='' disabled>

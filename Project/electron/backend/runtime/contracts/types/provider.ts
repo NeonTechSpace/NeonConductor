@@ -94,18 +94,27 @@ export type ProviderRefreshAuthInput = ProviderByIdInput;
 
 export type ProviderGetAccountContextInput = ProviderByIdInput;
 
-export type ProviderEndpointProfileValue =
-    | 'gateway'
-    | 'default'
-    | 'coding_international'
-    | 'general_international'
-    | 'coding_plan'
-    | 'standard_api';
+export type ProviderGetConnectionProfileInput = ProviderByIdInput;
 
-export type ProviderGetEndpointProfileInput = ProviderByIdInput;
+export interface ProviderSetConnectionProfileInput extends ProviderByIdInput {
+    optionProfileId: string;
+    baseUrlOverride?: string | null;
+    organizationId?: string | null;
+}
 
-export interface ProviderSetEndpointProfileInput extends ProviderByIdInput {
+export interface ProviderConnectionProfileOption {
     value: string;
+    label: string;
+}
+
+export interface ProviderConnectionProfile {
+    providerId: RuntimeProviderId;
+    optionProfileId: string;
+    label: string;
+    options: ProviderConnectionProfileOption[];
+    baseUrlOverride?: string;
+    resolvedBaseUrl: string | null;
+    organizationId?: string | null;
 }
 
 export interface ProviderSetOrganizationInput extends ProfileInput {

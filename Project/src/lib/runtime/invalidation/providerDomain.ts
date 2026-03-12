@@ -21,7 +21,7 @@ function isProviderDefaultEvent(event: RuntimeEventRecordV1, context: RuntimeEve
     );
 }
 
-function isProviderEndpointProfileEvent(event: RuntimeEventRecordV1): boolean {
+function isProviderConnectionProfileEvent(event: RuntimeEventRecordV1): boolean {
     return hasPayloadKey(event, 'value');
 }
 
@@ -64,15 +64,15 @@ export async function invalidateProviderQueries(
         );
     }
 
-    if (isProviderEndpointProfileEvent(event)) {
+    if (isProviderConnectionProfileEvent(event)) {
         addInvalidation(
             invalidations,
             context.profileId && context.providerId
-                ? utils.provider.getEndpointProfile.invalidate({
+                ? utils.provider.getConnectionProfile.invalidate({
                       profileId: context.profileId,
                       providerId: context.providerId,
                   })
-                : utils.provider.getEndpointProfile.invalidate()
+                : utils.provider.getConnectionProfile.invalidate()
         );
     }
 

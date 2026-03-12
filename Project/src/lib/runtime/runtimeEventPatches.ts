@@ -19,13 +19,14 @@ import type {
     MessageRecord,
     ProviderAuthStateRecord,
     ProviderModelRecord,
+    RunRecord,
     RuntimeEventRecordV1,
     SessionSummaryRecord,
     TagRecord,
     ThreadRecord,
     ThreadTagRecord,
 } from '@/app/backend/persistence/types';
-import type { KiloModelProviderOption, ProviderEndpointProfileResult, ProviderListItem } from '@/app/backend/providers/service/types';
+import type { KiloModelProviderOption, ProviderConnectionProfileResult, ProviderListItem } from '@/app/backend/providers/service/types';
 
 import {
     executionEnvironmentModes,
@@ -34,6 +35,10 @@ import {
     providerAuthMethods,
     providerAuthStates,
     providerIds,
+    runStatuses,
+    runtimeReasoningEfforts,
+    runtimeReasoningSummaries,
+    runtimeRequestedTransportFamilies,
     topLevelTabs,
 } from '@/shared/contracts';
 import type { KiloModelRoutingPreference } from '@/shared/contracts';
@@ -310,8 +315,7 @@ function readProviderListItem(value: unknown): ProviderListItem | undefined {
               .map((entry) => readLiteral(entry, providerAuthMethods))
               .filter((entry): entry is (typeof providerAuthMethods)[number] => entry !== undefined)
         : undefined;
-    const endpointProfileValue = value['endpointProfile'];
-    const endpointProfilesValue = value['endpointProfiles'];
+    const connectionProfileValue = value['connectionProfile'];
     const apiKeyCtaValue = value['apiKeyCta'];
     const featuresValue = value['features'];
     if (
@@ -322,17 +326,20 @@ function readProviderListItem(value: unknown): ProviderListItem | undefined {
         !authMethod ||
         !authState ||
         !availableAuthMethods ||
-        !isRecord(endpointProfileValue) ||
+        !isRecord(connectionProfileValue) ||
         !isRecord(apiKeyCtaValue) ||
-        !isRecord(featuresValue) ||
-        !Array.isArray(endpointProfilesValue)
+        !isRecord(featuresValue)
     ) {
         return undefined;
     }
 
-    const endpointProfileLabel = readString(endpointProfileValue['label']);
-    const endpointProfileOptionValue = readString(endpointProfileValue['value']);
-    const endpointProfiles = endpointProfilesValue
+    const connectionProfileLabel = readString(connectionProfileValue['label']);
+    const connectionProfileOptionValue = readString(connectionProfileValue['optionProfileId']);
+    const connectionProfileOptionsValue = connectionProfileValue['options'];
+    if (!Array.isArray(connectionProfileOptionsValue)) {
+        return undefined;
+    }
+    const connectionProfileOptions = connectionProfileOptionsValue
         .map((entry) => {
             if (!isRecord(entry)) {
                 return undefined;
@@ -353,17 +360,27 @@ function readProviderListItem(value: unknown): ProviderListItem | undefined {
     const catalogStrategy = readLiteral(featuresValue['catalogStrategy'], providerCatalogStrategies);
     const supportsKiloRouting = readBoolean(featuresValue['supportsKiloRouting']);
     const supportsModelProviderListing = readBoolean(featuresValue['supportsModelProviderListing']);
-    const supportsEndpointProfiles = readBoolean(featuresValue['supportsEndpointProfiles']);
+    const supportsConnectionOptions = readBoolean(featuresValue['supportsConnectionOptions']);
+    const supportsCustomBaseUrl = readBoolean(featuresValue['supportsCustomBaseUrl']);
+    const supportsOrganizationScope = readBoolean(featuresValue['supportsOrganizationScope']);
+    const baseUrlOverride = readString(connectionProfileValue['baseUrlOverride']);
+    const resolvedBaseUrl = readString(connectionProfileValue['resolvedBaseUrl']);
+    const organizationId =
+        connectionProfileValue['organizationId'] === null
+            ? null
+            : readString(connectionProfileValue['organizationId']);
     if (
-        !endpointProfileOptionValue ||
-        !endpointProfileLabel ||
-        endpointProfiles.length !== endpointProfilesValue.length ||
+        !connectionProfileOptionValue ||
+        !connectionProfileLabel ||
+        connectionProfileOptions.length !== connectionProfileOptionsValue.length ||
         !apiKeyCtaLabel ||
         !apiKeyCtaUrl ||
         !catalogStrategy ||
         supportsKiloRouting === undefined ||
         supportsModelProviderListing === undefined ||
-        supportsEndpointProfiles === undefined
+        supportsConnectionOptions === undefined ||
+        supportsCustomBaseUrl === undefined ||
+        supportsOrganizationScope === undefined
     ) {
         return undefined;
     }
@@ -376,11 +393,15 @@ function readProviderListItem(value: unknown): ProviderListItem | undefined {
         authMethod,
         authState,
         availableAuthMethods,
-        endpointProfile: {
-            value: endpointProfileOptionValue,
-            label: endpointProfileLabel,
+        connectionProfile: {
+            providerId: id,
+            optionProfileId: connectionProfileOptionValue,
+            label: connectionProfileLabel,
+            options: connectionProfileOptions,
+            ...(baseUrlOverride ? { baseUrlOverride } : {}),
+            resolvedBaseUrl: resolvedBaseUrl ?? null,
+            ...(organizationId !== undefined ? { organizationId } : {}),
         },
-        endpointProfiles,
         apiKeyCta: {
             label: apiKeyCtaLabel,
             url: apiKeyCtaUrl,
@@ -389,7 +410,9 @@ function readProviderListItem(value: unknown): ProviderListItem | undefined {
             catalogStrategy,
             supportsKiloRouting,
             supportsModelProviderListing,
-            supportsEndpointProfiles,
+            supportsConnectionOptions,
+            supportsCustomBaseUrl,
+            supportsOrganizationScope,
         },
     };
 }
@@ -427,13 +450,13 @@ function readProviderAuthState(value: unknown): ProviderAuthStateRecord | undefi
     };
 }
 
-function readEndpointProfile(value: unknown): ProviderEndpointProfileResult | undefined {
+function readConnectionProfile(value: unknown): ProviderConnectionProfileResult | undefined {
     if (!isRecord(value) || !Array.isArray(value['options'])) {
         return undefined;
     }
 
     const providerId = readLiteral(value['providerId'], providerIds);
-    const optionValue = readString(value['value']);
+    const optionValue = readString(value['optionProfileId']);
     const label = readString(value['label']);
     const options = value['options']
         .map((entry) => {
@@ -455,11 +478,18 @@ function readEndpointProfile(value: unknown): ProviderEndpointProfileResult | un
         return undefined;
     }
 
+    const baseUrlOverride = readString(value['baseUrlOverride']);
+    const resolvedBaseUrl = readString(value['resolvedBaseUrl']);
+    const organizationId = value['organizationId'] === null ? null : readString(value['organizationId']);
+
     return {
         providerId,
-        value: optionValue,
+        optionProfileId: optionValue,
         label,
         options,
+        ...(baseUrlOverride ? { baseUrlOverride } : {}),
+        resolvedBaseUrl: resolvedBaseUrl ?? null,
+        ...(organizationId !== undefined ? { organizationId } : {}),
     };
 }
 
@@ -703,6 +733,118 @@ function readMessageRecord(value: unknown): MessageRecord | undefined {
     };
 }
 
+function readRunRecord(value: unknown): RunRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const sessionId = readString(value['sessionId']);
+    const profileId = readString(value['profileId']);
+    const promptValue = value['prompt'];
+    const prompt = typeof promptValue === 'string' ? promptValue : undefined;
+    const status = readLiteral(value['status'], runStatuses);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    if (
+        !id ||
+        !isEntityId(id, 'run') ||
+        !sessionId ||
+        !isEntityId(sessionId, 'sess') ||
+        !profileId ||
+        prompt === undefined ||
+        !status ||
+        !createdAt ||
+        !updatedAt
+    ) {
+        return undefined;
+    }
+
+    const providerId = readLiteral(value['providerId'], providerIds);
+    const modelId = readString(value['modelId']);
+    const authMethod = readLiteral(value['authMethod'], [...providerAuthMethods, 'none'] as const);
+    const startedAt = readString(value['startedAt']);
+    const completedAt = readString(value['completedAt']);
+    const abortedAt = readString(value['abortedAt']);
+    const errorCode = readString(value['errorCode']);
+    const errorMessage = readString(value['errorMessage']);
+    const reasoningValue = value['reasoning'];
+    const cacheValue = value['cache'];
+    const transportValue = value['transport'];
+
+    const reasoning =
+        isRecord(reasoningValue) &&
+        readLiteral(reasoningValue['effort'], runtimeReasoningEfforts) &&
+        readLiteral(reasoningValue['summary'], runtimeReasoningSummaries) &&
+        readBoolean(reasoningValue['includeEncrypted']) !== undefined
+            ? {
+                  effort: readLiteral(reasoningValue['effort'], runtimeReasoningEfforts)!,
+                  summary: readLiteral(reasoningValue['summary'], runtimeReasoningSummaries)!,
+                  includeEncrypted: readBoolean(reasoningValue['includeEncrypted'])!,
+              }
+            : undefined;
+
+    const cache =
+        isRecord(cacheValue) &&
+        readLiteral(cacheValue['strategy'], ['auto', 'manual'] as const) &&
+        readBoolean(cacheValue['applied']) !== undefined
+            ? (() => {
+                  const key = readString(cacheValue['key']);
+                  const reason = readString(cacheValue['reason']);
+                  return {
+                      strategy: readLiteral(cacheValue['strategy'], ['auto', 'manual'] as const)!,
+                      applied: readBoolean(cacheValue['applied'])!,
+                      ...(key ? { key } : {}),
+                      ...(reason ? { reason } : {}),
+                  };
+              })()
+            : undefined;
+
+    const transport =
+        isRecord(transportValue) && readLiteral(transportValue['requestedFamily'], runtimeRequestedTransportFamilies)
+            ? (() => {
+                  const selected = readLiteral(
+                      transportValue['selected'],
+                      [
+                          'openai_responses',
+                          'openai_chat_completions',
+                          'kilo_gateway',
+                          'provider_native',
+                          'anthropic_messages',
+                          'google_generativeai',
+                      ] as const
+                  );
+                  const degradedReason = readString(transportValue['degradedReason']);
+                  return {
+                      requestedFamily: readLiteral(transportValue['requestedFamily'], runtimeRequestedTransportFamilies)!,
+                      ...(selected ? { selected } : {}),
+                      ...(degradedReason ? { degradedReason } : {}),
+                  };
+              })()
+            : undefined;
+
+    return {
+        id,
+        sessionId,
+        profileId,
+        prompt,
+        status,
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
+        ...(authMethod ? { authMethod } : {}),
+        ...(reasoning ? { reasoning } : {}),
+        ...(cache ? { cache } : {}),
+        ...(transport ? { transport } : {}),
+        ...(startedAt ? { startedAt } : {}),
+        ...(completedAt ? { completedAt } : {}),
+        ...(abortedAt ? { abortedAt } : {}),
+        ...(errorCode ? { errorCode } : {}),
+        ...(errorMessage ? { errorMessage } : {}),
+        createdAt,
+        updatedAt,
+    };
+}
+
 function upsertMessagePartRecord(messageParts: MessagePartRecord[], nextPart: MessagePartRecord): MessagePartRecord[] {
     return [...messageParts.filter((candidate) => candidate.id !== nextPart.id), nextPart].sort((left, right) => {
         if (left.createdAt !== right.createdAt) {
@@ -711,6 +853,20 @@ function upsertMessagePartRecord(messageParts: MessagePartRecord[], nextPart: Me
 
         return left.sequence - right.sequence;
     });
+}
+
+function upsertRunRecord(runs: RunRecord[], nextRun: RunRecord): RunRecord[] {
+    return [nextRun, ...runs.filter((candidate) => candidate.id !== nextRun.id)].sort((left, right) =>
+        right.createdAt.localeCompare(left.createdAt)
+    );
+}
+
+function resolveSessionActiveRunId(currentActiveRunId: RunRecord['id'] | null, run: RunRecord): RunRecord['id'] | null {
+    if (run.status === 'running') {
+        return run.id;
+    }
+
+    return currentActiveRunId === run.id ? null : currentActiveRunId;
 }
 
 export function applyRuntimeEventPatches(
@@ -918,6 +1074,65 @@ export function applyRuntimeEventPatches(
         return true;
     }
 
+    if (event.domain === 'run') {
+        const run = readRunRecord(event.payload['run']);
+        if (!run) {
+            return false;
+        }
+
+        utils.session.listRuns.setData(
+            {
+                profileId: run.profileId,
+                sessionId: run.sessionId,
+            },
+            (current) =>
+                current
+                    ? {
+                          runs: upsertRunRecord(current.runs, run),
+                      }
+                    : current
+        );
+
+        utils.session.status.setData(
+            {
+                profileId: run.profileId,
+                sessionId: run.sessionId,
+            },
+            (current) =>
+                current && current.found
+                    ? {
+                          ...current,
+                          session: {
+                              ...current.session,
+                              runStatus: run.status,
+                          },
+                          activeRunId: resolveSessionActiveRunId(current.activeRunId, run),
+                      }
+                    : current
+        );
+
+        utils.session.list.setData(
+            {
+                profileId: run.profileId,
+            },
+            (current) =>
+                current
+                    ? {
+                          sessions: current.sessions.map((session) =>
+                              session.id === run.sessionId
+                                  ? {
+                                        ...session,
+                                        runStatus: run.status,
+                                  }
+                                  : session
+                          ),
+                      }
+                    : current
+        );
+
+        return true;
+    }
+
     if (event.domain === 'tag') {
         const tag = readTagRecord(event.payload['tag']);
         if (!tag) {
@@ -972,12 +1187,12 @@ export function applyRuntimeEventPatches(
         const defaults = readProviderDefaults(event.payload['defaults']);
         const models = readProviderModels(event.payload['models']);
         const state = readProviderAuthState(event.payload['state']);
-        const endpointProfile = readEndpointProfile(event.payload['endpointProfile']);
+        const connectionProfile = readConnectionProfile(event.payload['connectionProfile']);
         const preference = readRoutingPreference(event.payload['preference']);
         const providers = readModelProviderOptions(event.payload['providers']);
         const modelId = readString(event.payload['modelId']);
 
-        if (!provider && !defaults && !models && !state && !endpointProfile && !preference && !providers) {
+        if (!provider && !defaults && !models && !state && !connectionProfile && !preference && !providers) {
             return false;
         }
 
@@ -989,7 +1204,7 @@ export function applyRuntimeEventPatches(
             ...(defaults ? { defaults } : {}),
             ...(models ? { models } : {}),
             ...(state ? { authState: state } : {}),
-            ...(endpointProfile ? { endpointProfile } : {}),
+            ...(connectionProfile ? { connectionProfile } : {}),
             ...(preference ? { routingPreference: preference } : {}),
             ...(providers ? { routingProviders: providers } : {}),
             ...(modelId ? { routingModelId: modelId } : {}),

@@ -51,6 +51,7 @@ interface UseConversationShellComposerInput<
     maxImageAttachmentsPerMessage: number;
     imageCompressionConcurrency: number;
     imageAttachmentBlockedReason?: string;
+    submitBlockedReason?: string;
     startPlan: (input: PlanStartInput) => Promise<TPlanStartResult>;
     startRun: (input: SessionStartRunInput) => Promise<TRunStartAcceptedResult | TRunStartRejectedResult>;
     onPlanStarted: (result: TPlanStartResult) => void;
@@ -61,17 +62,12 @@ export function useConversationShellComposer<
     TPlanStartResult extends { plan: PlanRecordView },
     TRunStartAcceptedResult extends { accepted: true },
     TRunStartRejectedResult extends { accepted: false; message?: string },
->(
-    input: UseConversationShellComposerInput<
-        TPlanStartResult,
-        TRunStartAcceptedResult,
-        TRunStartRejectedResult
-    >
-) {
-    const [prompt, setPrompt] = useState('');
+>(input: UseConversationShellComposerInput<TPlanStartResult, TRunStartAcceptedResult, TRunStartRejectedResult>) {
     const [pendingImages, setPendingImages] = useState<ComposerPendingImage[]>([]);
     const [runSubmitError, setRunSubmitError] = useState<string | undefined>(undefined);
+    const [promptResetKey, setPromptResetKey] = useState(0);
     const pendingImagesRef = useRef<ComposerPendingImage[]>([]);
+    const promptRef = useRef('');
 
     useEffect(() => {
         pendingImagesRef.current = pendingImages;
@@ -131,55 +127,48 @@ export function useConversationShellComposer<
     }
 
     function startCompressingImage(image: ComposerPendingImage) {
-        void prepareComposerImageAttachment(image.sourceFile, image.clientId)
-            .then((preparedResult) => {
-                if (preparedResult.isErr()) {
-                    const message = preparedResult.error.message;
-                    setPendingImages((current) =>
-                        current.map((candidate) =>
-                            candidate.clientId === image.clientId
-                                ? toFailedImageState(candidate, message)
-                                : candidate
-                        )
-                    );
-                    failImageAttachment(message);
-                    return;
+        void prepareComposerImageAttachment(image.sourceFile, image.clientId).then((preparedResult) => {
+            if (preparedResult.isErr()) {
+                const message = preparedResult.error.message;
+                setPendingImages((current) =>
+                    current.map((candidate) =>
+                        candidate.clientId === image.clientId ? toFailedImageState(candidate, message) : candidate
+                    )
+                );
+                failImageAttachment(message);
+                return;
+            }
+
+            const prepared = preparedResult.value;
+            setPendingImages((current) => {
+                const existing = current.find((candidate) => candidate.clientId === image.clientId);
+                if (!existing) {
+                    return current;
                 }
 
-                const prepared = preparedResult.value;
-                setPendingImages((current) => {
-                    const existing = current.find((candidate) => candidate.clientId === image.clientId);
-                    if (!existing) {
-                        return current;
-                    }
-
-                    const nextTotalBytes =
-                        summarizeReadyImageBytes(current, image.clientId) + prepared.byteSize;
-                    if (nextTotalBytes > MAX_COMPOSER_TOTAL_IMAGE_BYTES) {
-                        return current.map((candidate) =>
-                            candidate.clientId === image.clientId
-                                ? toFailedImageState(
-                                      candidate,
-                                      'Attached images exceed the 6 MB total payload limit.'
-                                  )
-                                : candidate
-                        );
-                    }
-
-                    releasePendingImageResources(existing);
+                const nextTotalBytes = summarizeReadyImageBytes(current, image.clientId) + prepared.byteSize;
+                if (nextTotalBytes > MAX_COMPOSER_TOTAL_IMAGE_BYTES) {
                     return current.map((candidate) =>
                         candidate.clientId === image.clientId
-                            ? {
-                                  ...candidate,
-                                  previewUrl: prepared.previewUrl,
-                                  status: 'ready',
-                                  attachment: prepared.attachment,
-                                  byteSize: prepared.byteSize,
-                              }
+                            ? toFailedImageState(candidate, 'Attached images exceed the 6 MB total payload limit.')
                             : candidate
                     );
-                });
+                }
+
+                releasePendingImageResources(existing);
+                return current.map((candidate) =>
+                    candidate.clientId === image.clientId
+                        ? {
+                              ...candidate,
+                              previewUrl: prepared.previewUrl,
+                              status: 'ready',
+                              attachment: prepared.attachment,
+                              byteSize: prepared.byteSize,
+                          }
+                        : candidate
+                );
             });
+        });
     }
 
     function onAddImageFiles(inputFiles: FileList | File[]) {
@@ -236,11 +225,7 @@ export function useConversationShellComposer<
         }
 
         setPendingImages((current) =>
-            current.map((candidate) =>
-                candidate.clientId === clientId
-                    ? toQueuedImageState(candidate)
-                    : candidate
-            )
+            current.map((candidate) => (candidate.clientId === clientId ? toQueuedImageState(candidate) : candidate))
         );
     }
 
@@ -251,7 +236,9 @@ export function useConversationShellComposer<
             return;
         }
 
-        const queuedImages = pendingImages.filter((image) => image.status === 'queued').slice(0, availableCompressionSlots);
+        const queuedImages = pendingImages
+            .filter((image) => image.status === 'queued')
+            .slice(0, availableCompressionSlots);
         if (queuedImages.length === 0) {
             return;
         }
@@ -270,32 +257,34 @@ export function useConversationShellComposer<
         image.status === 'ready' && image.attachment ? [image.attachment] : []
     );
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
-    const hasSubmittableContent = prompt.trim().length > 0 || readyAttachments.length > 0;
 
     return {
-        prompt,
         pendingImages,
+        promptResetKey,
         hasBlockingPendingImages,
-        hasSubmittableContent,
         runSubmitError,
         setRunSubmitError,
         clearRunSubmitError: () => {
             setRunSubmitError(undefined);
         },
         resetComposer: () => {
-            setPrompt('');
+            promptRef.current = '';
+            setPromptResetKey((current) => current + 1);
             clearPendingImages();
             setRunSubmitError(undefined);
         },
-        onPromptChange: (nextPrompt: string) => {
+        onPromptEdited: () => {
             setRunSubmitError(undefined);
-            setPrompt(nextPrompt);
         },
         onAddImageFiles,
         onRemovePendingImage: removePendingImage,
         onRetryPendingImage: retryPendingImage,
-        onSubmitPrompt: () => {
-            if (!hasSubmittableContent) {
+        onSubmitPrompt: (prompt: string) => {
+            promptRef.current = prompt;
+            const hasPromptContent = prompt.trim().length > 0;
+            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0;
+
+            if (!hasSubmittableComposerContent) {
                 return;
             }
             if (hasBlockingPendingImages) {
@@ -308,12 +297,13 @@ export function useConversationShellComposer<
                 );
                 return;
             }
+            if (input.submitBlockedReason) {
+                setRunSubmitError(input.submitBlockedReason);
+                return;
+            }
 
-            void submitPromptFromComposer<
-                TPlanStartResult,
-                TRunStartAcceptedResult
-            >({
-                prompt,
+            void submitPromptFromComposer<TPlanStartResult, TRunStartAcceptedResult>({
+                prompt: promptRef.current,
                 ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
                 isStartingRun: input.isStartingRun,
                 selectedSessionId: input.selectedSessionId,
@@ -330,7 +320,8 @@ export function useConversationShellComposer<
                 startRun: input.startRun,
                 onPromptCleared: () => {
                     setRunSubmitError(undefined);
-                    setPrompt('');
+                    promptRef.current = '';
+                    setPromptResetKey((current) => current + 1);
                     clearPendingImages();
                 },
                 onPlanStarted: (result) => {
@@ -346,4 +337,3 @@ export function useConversationShellComposer<
         },
     };
 }
-

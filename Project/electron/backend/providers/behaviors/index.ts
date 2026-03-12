@@ -4,6 +4,5 @@ export type {
     ProviderCatalogBehavior,
     ProviderCatalogCapabilityInput,
     ProviderRuntimeBehavior,
-    ProviderRuntimeCacheInput,
     ProviderRuntimeValidationInput,
 } from '@/app/backend/providers/behaviors/types';

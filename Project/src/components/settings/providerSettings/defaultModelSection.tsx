@@ -1,5 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 
+import { getModelRuntimeNotes } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import type { ProviderModelOption } from '@/web/components/settings/providerSettings/types';
 import { Button } from '@/web/components/ui/button';
@@ -28,6 +29,8 @@ export function ProviderDefaultModelSection({
     onSyncCatalog,
 }: ProviderDefaultModelSectionProps) {
     const isKilo = selectedProviderId === 'kilo';
+    const selectedModel = models.find((model) => model.id === selectedModelId);
+    const selectedModelNotes = selectedModel ? getModelRuntimeNotes(selectedModel).slice(0, 2) : [];
 
     return (
         <section className='border-border/70 bg-card/40 space-y-3 rounded-2xl border p-4'>
@@ -63,6 +66,23 @@ export function ProviderDefaultModelSection({
                             ? 'Selecting a different model updates the saved default immediately.'
                             : 'Select a model to save it as the default.'}
                 </p>
+                {selectedModel?.compatibilityReason ? (
+                    <p
+                        className={`text-[11px] leading-5 ${
+                            selectedModel.compatibilityState === 'warning'
+                                ? 'text-amber-700 dark:text-amber-300'
+                                : selectedModel.compatibilityState === 'incompatible'
+                                  ? 'text-destructive'
+                                  : 'text-muted-foreground'
+                        }`}>
+                        {selectedModel.compatibilityReason}
+                    </p>
+                ) : null}
+                {selectedModelNotes.length > 0 ? (
+                    <p className='text-muted-foreground text-[11px] leading-5'>
+                        Runtime notes: {selectedModelNotes.join(' ')}
+                    </p>
+                ) : null}
             </div>
             {isKilo ? (
                 <details className='border-border/70 bg-background/70 rounded-2xl border p-4'>

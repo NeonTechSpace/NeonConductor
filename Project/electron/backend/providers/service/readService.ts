@@ -13,7 +13,7 @@ import type {
 } from '@/app/backend/persistence/types';
 import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
 import { getProviderDefinition } from '@/app/backend/providers/registry';
-import { getEndpointProfileState, resolveApiKeyCta } from '@/app/backend/providers/service/endpointProfiles';
+import { getConnectionProfileState, resolveApiKeyCta } from '@/app/backend/providers/service/endpointProfiles';
 import {
     errProviderService,
     okProviderService,
@@ -41,18 +41,19 @@ export async function listProviders(profileId: string): Promise<ProviderListItem
         providers.map(async (provider) => {
             const authState = authStateByProvider.get(provider.id) ?? defaultAuthState(profileId, provider.id);
             const definition = getProviderDefinition(provider.id);
-            const endpointProfileResult = await getEndpointProfileState(profileId, provider.id);
-            const endpointProfile = endpointProfileResult.isErr()
+            const connectionProfileResult = await getConnectionProfileState(profileId, provider.id);
+            const connectionProfile = connectionProfileResult.isErr()
                 ? {
                       providerId: provider.id,
-                      value: definition.endpointProfiles[0]?.value ?? 'default',
+                      optionProfileId: definition.endpointProfiles[0]?.value ?? 'default',
                       label: definition.endpointProfiles[0]?.label ?? 'Default',
                       options: definition.endpointProfiles.map((profile) => ({
                           value: profile.value,
                           label: profile.label,
                       })),
+                      resolvedBaseUrl: null,
                   }
-                : endpointProfileResult.value;
+                : connectionProfileResult.value;
             const apiKeyCtaResult = await resolveApiKeyCta(profileId, provider.id);
             const apiKeyCta = apiKeyCtaResult.isErr()
                 ? { label: 'Get API Key', url: 'https://kilocode.ai' }
@@ -63,17 +64,21 @@ export async function listProviders(profileId: string): Promise<ProviderListItem
                 authMethod: authState.authMethod,
                 authState: authState.authState,
                 availableAuthMethods: definition.authMethods,
-                endpointProfile: {
-                    value: endpointProfile.value,
-                    label: endpointProfile.label,
+                connectionProfile: {
+                    ...connectionProfile,
+                    ...(authState.organizationId ? { organizationId: authState.organizationId } : {}),
                 },
-                endpointProfiles: endpointProfile.options,
                 apiKeyCta,
                 features: {
                     catalogStrategy: definition.catalogStrategy,
                     supportsKiloRouting: definition.supportsKiloRouting,
                     supportsModelProviderListing: definition.supportsModelProviderListing,
-                    supportsEndpointProfiles: definition.endpointProfiles.length > 1,
+                    supportsConnectionOptions:
+                        definition.endpointProfiles.length > 1 ||
+                        definition.supportsCustomBaseUrl ||
+                        definition.supportsOrganizationScope,
+                    supportsCustomBaseUrl: definition.supportsCustomBaseUrl,
+                    supportsOrganizationScope: definition.supportsOrganizationScope,
                 },
             };
         })

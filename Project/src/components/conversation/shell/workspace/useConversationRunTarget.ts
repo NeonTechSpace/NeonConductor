@@ -1,10 +1,10 @@
+import { isProviderId, type RunTargetSelection } from '@/web/components/conversation/shell/workspace/helpers';
 import {
-    isProviderId,
-    isProviderRunnable,
-    modelExists,
-    resolveLatestRunTarget,
-    type RunTargetSelection,
-} from '@/web/components/conversation/shell/workspace/helpers';
+    buildModelPickerOption,
+    getModelCompatibilityPriority,
+    isCompatibleModelOption,
+    type ModelPickerOption,
+} from '@/web/components/modelSelection/modelCapabilities';
 
 import type { ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
@@ -23,11 +23,13 @@ interface UseConversationRunTargetInput {
     sessionOverride?: { providerId?: RuntimeProviderId; modelId?: string };
     runs: RunRecord[];
     requiresTools?: boolean;
+    modeKey?: string;
+    hasPendingImageAttachments?: boolean;
+    imageAttachmentsAllowed?: boolean;
 }
 
 export function useConversationRunTarget(input: UseConversationRunTargetInput) {
     const providerById = new Map(input.providers.map((provider) => [provider.id, provider]));
-    const modelFilterOptions = input.requiresTools ? { requiresTools: true as const } : undefined;
 
     const modelsByProvider = new Map<RuntimeProviderId, ProviderModelRecord[]>();
     for (const model of input.providerModels) {
@@ -36,11 +38,49 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         modelsByProvider.set(model.providerId, existing);
     }
 
+    const modelOptions = input.providers.flatMap((provider) =>
+        (modelsByProvider.get(provider.id) ?? []).map((model) =>
+            buildModelPickerOption({
+                model,
+                provider,
+                compatibilityContext: {
+                    surface: 'conversation',
+                    requiresTools: input.requiresTools,
+                    ...(input.modeKey ? { modeKey: input.modeKey } : {}),
+                    hasPendingImageAttachments: input.hasPendingImageAttachments,
+                    imageAttachmentsAllowed: input.imageAttachmentsAllowed,
+                },
+            })
+        )
+    );
+    const optionsByKey = new Map(
+        modelOptions.map((option) => [`${option.providerId ?? 'unknown'}:${option.id}`, option] as const)
+    );
+    const hasCompatibleOptions = modelOptions.some((option) => isCompatibleModelOption(option));
+
+    function getOption(providerId: RuntimeProviderId, modelId: string): ModelPickerOption | undefined {
+        return optionsByKey.get(`${providerId}:${modelId}`);
+    }
+
+    function modelExists(providerId: RuntimeProviderId, modelId: string): boolean {
+        return getOption(providerId, modelId) !== undefined;
+    }
+
+    function canAutoResolve(option: ModelPickerOption | undefined): option is ModelPickerOption {
+        if (!option) {
+            return false;
+        }
+
+        if (!hasCompatibleOptions) {
+            return true;
+        }
+
+        return isCompatibleModelOption(option);
+    }
+
     let resolvedRunTarget: RunTargetSelection | undefined;
     if (input.sessionOverride?.providerId && input.sessionOverride.modelId) {
-        if (
-            modelExists(modelsByProvider, input.sessionOverride.providerId, input.sessionOverride.modelId, modelFilterOptions)
-        ) {
+        if (modelExists(input.sessionOverride.providerId, input.sessionOverride.modelId)) {
             resolvedRunTarget = {
                 providerId: input.sessionOverride.providerId,
                 modelId: input.sessionOverride.modelId,
@@ -49,9 +89,21 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
     }
 
     if (!resolvedRunTarget) {
-        const fromLatestRun = resolveLatestRunTarget(input.runs, modelsByProvider, modelFilterOptions);
-        if (fromLatestRun) {
-            resolvedRunTarget = fromLatestRun;
+        for (const run of input.runs) {
+            if (!isProviderId(run.providerId) || typeof run.modelId !== 'string') {
+                continue;
+            }
+
+            const candidate = getOption(run.providerId, run.modelId);
+            if (!canAutoResolve(candidate)) {
+                continue;
+            }
+
+            resolvedRunTarget = {
+                providerId: run.providerId,
+                modelId: run.modelId,
+            };
+            break;
         }
     }
 
@@ -59,7 +111,7 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         !resolvedRunTarget &&
         input.defaults &&
         isProviderId(input.defaults.providerId) &&
-        modelExists(modelsByProvider, input.defaults.providerId, input.defaults.modelId, modelFilterOptions)
+        canAutoResolve(getOption(input.defaults.providerId, input.defaults.modelId))
     ) {
         resolvedRunTarget = {
             providerId: input.defaults.providerId,
@@ -68,46 +120,20 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
     }
 
     if (!resolvedRunTarget) {
-        for (const provider of input.providers) {
-            const models = (modelsByProvider.get(provider.id) ?? []).filter(
-                (model) => !input.requiresTools || model.supportsTools
-            );
-            if (models.length === 0) {
-                continue;
+        const rankedModelOptions = [...modelOptions].sort((left, right) => {
+            const priorityDifference = getModelCompatibilityPriority(left) - getModelCompatibilityPriority(right);
+            if (priorityDifference !== 0) {
+                return priorityDifference;
             }
 
-            if (isProviderRunnable(provider.authState, provider.authMethod)) {
-                const firstModel = models[0];
-                if (!firstModel) {
-                    continue;
-                }
-                resolvedRunTarget = {
-                    providerId: provider.id,
-                    modelId: firstModel.id,
-                };
-                break;
-            }
-        }
-    }
-
-    if (!resolvedRunTarget) {
-        for (const provider of input.providers) {
-            const models = (modelsByProvider.get(provider.id) ?? []).filter(
-                (model) => !input.requiresTools || model.supportsTools
-            );
-            if (models.length === 0) {
-                continue;
-            }
-
-            const firstModel = models[0];
-            if (!firstModel) {
-                continue;
-            }
+            return 0;
+        });
+        const firstModel = rankedModelOptions[0];
+        if (firstModel?.providerId && isProviderId(firstModel.providerId)) {
             resolvedRunTarget = {
-                providerId: provider.id,
+                providerId: firstModel.providerId,
                 modelId: firstModel.id,
             };
-            break;
         }
     }
 
@@ -119,33 +145,10 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
                   (model) => model.id === selectedModelIdForComposer
               )
             : undefined;
-
-    const modelOptions = input.providers.flatMap((provider) => {
-        const providerModels = (modelsByProvider.get(provider.id) ?? []).filter(
-            (model) => !input.requiresTools || model.supportsTools
-        );
-        if (providerModels.length === 0) {
-            return [];
-        }
-
-        if (provider.id !== 'kilo' && !isProviderRunnable(provider.authState, provider.authMethod)) {
-            return [];
-        }
-
-        return providerModels.map((model) => ({
-            id: model.id,
-            label: model.label,
-            providerId: provider.id,
-            providerLabel: provider.label,
-            ...(model.sourceProvider ? { sourceProvider: model.sourceProvider } : {}),
-            ...(model.source ? { source: model.source } : {}),
-            ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
-            ...(model.reasoningEfforts ? { reasoningEfforts: model.reasoningEfforts } : {}),
-            ...(model.price !== undefined ? { price: model.price } : {}),
-            ...(model.latency !== undefined ? { latency: model.latency } : {}),
-            ...(model.tps !== undefined ? { tps: model.tps } : {}),
-        }));
-    });
+    const selectedModelOptionForComposer =
+        selectedProviderIdForComposer && selectedModelIdForComposer
+            ? getOption(selectedProviderIdForComposer, selectedModelIdForComposer)
+            : undefined;
 
     return {
         providerById,
@@ -154,6 +157,7 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         selectedProviderIdForComposer,
         selectedModelIdForComposer,
         selectedModelForComposer,
+        selectedModelOptionForComposer,
         modelOptions,
     };
 }

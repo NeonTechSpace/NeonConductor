@@ -1,4 +1,10 @@
-import type { ProviderRuntimeToolDefinition, ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
+import type {
+    ProviderApiFamily,
+    ProviderRuntimeToolDefinition,
+    ProviderRoutedApiFamily,
+    ProviderRuntimeTransportSelection,
+    ProviderToolProtocol,
+} from '@/app/backend/providers/types';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import { ensureCheckpointForRun } from '@/app/backend/runtime/services/checkpoint/service';
 import { executeRun, isAbortError } from '@/app/backend/runtime/services/runExecution/executeRun';
@@ -16,6 +22,9 @@ export async function runToTerminalState(input: {
     prompt: string;
     providerId: RuntimeProviderId;
     modelId: string;
+    toolProtocol: ProviderToolProtocol;
+    apiFamily?: ProviderApiFamily;
+    routedApiFamily?: ProviderRoutedApiFamily;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: StartRunInput['runtimeOptions'];
     cache: RunCacheResolution;

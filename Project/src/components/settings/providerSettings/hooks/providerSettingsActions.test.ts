@@ -10,7 +10,7 @@ describe('provider settings actions', () => {
             profileId: 'profile_default',
             selectedProviderId: 'kilo',
             selectedModelId: 'kilo/auto',
-            apiKeyInput: '',
+            currentOptionProfileId: 'gateway',
             activeAuthFlow: undefined,
             kiloModelProviderIds: ['openai'],
             kiloRoutingDraft: {
@@ -23,7 +23,7 @@ describe('provider settings actions', () => {
                 setDefaultMutation: { mutateAsync: setDefaultMutateAsync },
                 syncCatalogMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setModelRoutingPreferenceMutation: { mutateAsync },
-                setEndpointProfileMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setConnectionProfileMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setOrganizationMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setApiKeyMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 startAuthMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
@@ -57,6 +57,43 @@ describe('provider settings actions', () => {
             profileId: 'profile_default',
             providerId: 'kilo',
             modelId: 'kilo/code',
+        });
+    });
+
+    it('persists custom base URL overrides through the connection profile mutation', async () => {
+        const setConnectionProfileMutateAsync = vi.fn().mockResolvedValue(undefined);
+        const actions = createProviderSettingsActions({
+            profileId: 'profile_default',
+            selectedProviderId: 'openai',
+            selectedModelId: 'openai/gpt-5',
+            currentOptionProfileId: 'default',
+            activeAuthFlow: undefined,
+            kiloModelProviderIds: [],
+            kiloRoutingDraft: undefined,
+            setSelectedProviderId: vi.fn(),
+            setStatusMessage: vi.fn(),
+            onPreviewProvider: vi.fn(),
+            mutations: {
+                setDefaultMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                syncCatalogMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setModelRoutingPreferenceMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setConnectionProfileMutation: { mutateAsync: setConnectionProfileMutateAsync },
+                setOrganizationMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setApiKeyMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                startAuthMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                pollAuthMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                cancelAuthMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                openExternalUrlMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+            },
+        });
+
+        await actions.saveBaseUrlOverride('https://custom-openai-gateway.example/v1');
+
+        expect(setConnectionProfileMutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            providerId: 'openai',
+            optionProfileId: 'default',
+            baseUrlOverride: 'https://custom-openai-gateway.example/v1',
         });
     });
 });

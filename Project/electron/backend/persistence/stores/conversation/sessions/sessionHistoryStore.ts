@@ -207,7 +207,7 @@ export class SessionHistoryStore {
                                 cache_key: run.cache_key,
                                 cache_applied: run.cache_applied,
                                 cache_skip_reason: run.cache_skip_reason,
-                                transport_openai_preference: run.transport_openai_preference,
+                                transport_requested_family: run.transport_requested_family,
                                 transport_selected: run.transport_selected,
                                 transport_degraded_reason: run.transport_degraded_reason,
                                 started_at: run.started_at,

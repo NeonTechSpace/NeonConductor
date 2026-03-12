@@ -23,11 +23,26 @@ const KILO_MODEL_SEED: Array<{
     label: string;
     supportsTools: boolean;
     supportsReasoning: boolean;
+    routedApiFamily: 'openai_compatible';
     contextLength?: number;
     maxOutputTokens?: number;
 }> = [
-    { id: 'kilo/auto', providerId: 'kilo', label: 'Kilo Auto', supportsTools: true, supportsReasoning: true },
-    { id: 'kilo/code', providerId: 'kilo', label: 'Kilo Code', supportsTools: true, supportsReasoning: true },
+    {
+        id: 'kilo/auto',
+        providerId: 'kilo',
+        label: 'Kilo Auto',
+        supportsTools: true,
+        supportsReasoning: true,
+        routedApiFamily: 'openai_compatible',
+    },
+    {
+        id: 'kilo/code',
+        providerId: 'kilo',
+        label: 'Kilo Code',
+        supportsTools: true,
+        supportsReasoning: true,
+        routedApiFamily: 'openai_compatible',
+    },
 ] as const;
 
 function listDefaultStaticCatalogModels() {
@@ -183,16 +198,21 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
                     supports_vision,
                     supports_audio_input,
                     supports_audio_output,
+                    supports_prompt_cache,
+                    tool_protocol,
+                    api_family,
+                    routed_api_family,
                     input_modalities_json,
                     output_modalities_json,
                     prompt_family,
+                    provider_settings_json,
                     context_length,
                     pricing_json,
                     raw_json,
                     source,
                     updated_at
                 )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
     );
     const insertProviderAuthState = sqlite.prepare(
@@ -310,8 +330,13 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
             0,
             0,
             0,
+            null,
+            'kilo_gateway',
+            'kilo_gateway',
+            model.routedApiFamily,
             JSON.stringify(['text']),
             JSON.stringify(['text']),
+            null,
             null,
             model.contextLength ?? null,
             '{}',
@@ -335,9 +360,18 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
             model.catalogModel.capabilities.supportsVision ? 1 : 0,
             model.catalogModel.capabilities.supportsAudioInput ? 1 : 0,
             model.catalogModel.capabilities.supportsAudioOutput ? 1 : 0,
+            model.catalogModel.capabilities.supportsPromptCache === undefined
+                ? null
+                : model.catalogModel.capabilities.supportsPromptCache
+                  ? 1
+                  : 0,
+            model.catalogModel.capabilities.toolProtocol ?? null,
+            model.catalogModel.capabilities.apiFamily ?? null,
+            model.catalogModel.capabilities.routedApiFamily ?? null,
             JSON.stringify(model.catalogModel.capabilities.inputModalities),
             JSON.stringify(model.catalogModel.capabilities.outputModalities),
             model.catalogModel.capabilities.promptFamily ?? null,
+            JSON.stringify(model.catalogModel.providerSettings ?? {}),
             model.catalogModel.contextLength ?? null,
             JSON.stringify(model.catalogModel.pricing),
             JSON.stringify(model.catalogModel.raw),

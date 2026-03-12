@@ -1,5 +1,7 @@
 import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
 import {
+    createReasoningEncryptedPart,
+    createReasoningTextPart,
     createTextPart,
     createToolCallPart,
     createToolResultPart,
@@ -70,6 +72,50 @@ function extractReplayParts(parts: MessagePartRecord[]): RunContextPart[] {
             const textPart = createTextPart(text);
             if (textPart) {
                 replayParts.push(textPart);
+            }
+            continue;
+        }
+
+        if (part.partType === 'reasoning' || part.partType === 'reasoning_summary') {
+            const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
+            const reasoningPart = createReasoningTextPart({
+                type: part.partType,
+                text,
+                ...(typeof part.payload['detailType'] === 'string' ? { detailType: part.payload['detailType'] } : {}),
+                ...(typeof part.payload['detailId'] === 'string' ? { detailId: part.payload['detailId'] } : {}),
+                ...(typeof part.payload['detailFormat'] === 'string'
+                    ? { detailFormat: part.payload['detailFormat'] }
+                    : {}),
+                ...(typeof part.payload['detailSignature'] === 'string'
+                    ? { detailSignature: part.payload['detailSignature'] }
+                    : {}),
+                ...(typeof part.payload['detailIndex'] === 'number'
+                    ? { detailIndex: part.payload['detailIndex'] }
+                    : {}),
+            });
+            if (reasoningPart) {
+                replayParts.push(reasoningPart);
+            }
+            continue;
+        }
+
+        if (part.partType === 'reasoning_encrypted') {
+            const encryptedPart = createReasoningEncryptedPart({
+                opaque: part.payload['opaque'],
+                ...(typeof part.payload['detailType'] === 'string' ? { detailType: part.payload['detailType'] } : {}),
+                ...(typeof part.payload['detailId'] === 'string' ? { detailId: part.payload['detailId'] } : {}),
+                ...(typeof part.payload['detailFormat'] === 'string'
+                    ? { detailFormat: part.payload['detailFormat'] }
+                    : {}),
+                ...(typeof part.payload['detailSignature'] === 'string'
+                    ? { detailSignature: part.payload['detailSignature'] }
+                    : {}),
+                ...(typeof part.payload['detailIndex'] === 'number'
+                    ? { detailIndex: part.payload['detailIndex'] }
+                    : {}),
+            });
+            if (encryptedPart) {
+                replayParts.push(encryptedPart);
             }
             continue;
         }

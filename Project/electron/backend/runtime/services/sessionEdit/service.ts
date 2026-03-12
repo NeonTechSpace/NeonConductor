@@ -14,7 +14,7 @@ const DEFAULT_RUNTIME_OPTIONS: RuntimeRunOptions = {
         strategy: 'auto',
     },
     transport: {
-        openai: 'auto',
+        family: 'auto',
     },
 };
 

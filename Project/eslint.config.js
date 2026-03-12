@@ -51,6 +51,7 @@ const validatedFsAuthorityGlobs = [
     'electron/backend/runtime/services/toolExecution/handlers/listFiles.ts',
     'electron/backend/runtime/services/toolExecution/handlers/readFile.ts',
     'electron/backend/runtime/services/worktree/git.ts',
+    'electron/main/preload/buildConfig.ts',
     'electron/main/logging/fileDrain.ts',
 ];
 const processBridgeGlobs = [
@@ -61,6 +62,7 @@ const processBridgeGlobs = [
 const validatedFsTestGlobs = [
     'electron/backend/trpc/__tests__/runtime-contracts.shared.ts',
     'electron/backend/trpc/__tests__/runtime-contracts.core.test.ts',
+    'electron/main/preload/buildConfig.test.ts',
 ];
 
 const sharedTypeLanguageOptions = {
@@ -330,7 +332,7 @@ export default [
         },
     },
     {
-        files: ['vite.config.ts'],
+        files: ['vite.config.ts', 'electron/main/preload/buildConfig.ts'],
         rules: {
             'no-restricted-imports': 'off',
         },

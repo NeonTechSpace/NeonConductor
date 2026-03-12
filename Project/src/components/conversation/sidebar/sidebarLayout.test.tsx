@@ -51,6 +51,7 @@ describe('conversation sidebar layout', () => {
     it('moves top-level tabs into the rail and keeps thread creation out of the default flow', () => {
         const html = renderToStaticMarkup(
             <ConversationSidebar
+                profileId='profile_default'
                 buckets={buckets}
                 threads={threads}
                 tags={tags}
@@ -63,11 +64,11 @@ describe('conversation sidebar layout', () => {
                 groupView='workspace'
                 isCreatingThread={false}
                 isAddingTag={false}
+                isDeletingWorkspaceThreads={false}
                 onTopLevelTabChange={vi.fn()}
                 onSelectThread={vi.fn()}
                 onToggleTagFilter={vi.fn()}
-                onToggleThreadFavorite={vi.fn()}
-                onRequestWorkspaceDelete={vi.fn()}
+                onToggleThreadFavorite={vi.fn(async () => {})}
                 onScopeFilterChange={vi.fn()}
                 onWorkspaceFilterChange={vi.fn()}
                 onSortChange={vi.fn()}
@@ -75,6 +76,7 @@ describe('conversation sidebar layout', () => {
                 onGroupViewChange={vi.fn()}
                 onCreateThread={vi.fn(async () => {})}
                 onAddTagToThread={vi.fn(async () => {})}
+                onDeleteWorkspaceThreads={vi.fn(async () => {})}
             />
         );
 

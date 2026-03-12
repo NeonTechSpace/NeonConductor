@@ -1,6 +1,5 @@
 import type { ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
 
-import { providerIds } from '@/shared/contracts';
 import type {
     EntityId,
     EntityIdPrefix,
@@ -8,6 +7,8 @@ import type {
     RuntimeReasoningEffort,
     RuntimeRunOptions,
 } from '@/shared/contracts';
+import { providerIds } from '@/shared/contracts';
+import { formatRuntimeCapabilityIssue, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
 export const DEFAULT_REASONING_EFFORT: RuntimeReasoningEffort = 'medium';
 
@@ -16,7 +17,7 @@ const DEFAULT_RUN_OPTION_BASE: Pick<RuntimeRunOptions, 'cache' | 'transport'> = 
         strategy: 'auto',
     },
     transport: {
-        openai: 'auto',
+        family: 'auto',
     },
 };
 
@@ -74,18 +75,6 @@ export function isProviderId(value: string | undefined): value is RuntimeProvide
     return providerIds.some((providerId) => providerId === value);
 }
 
-export function isProviderRunnable(authState: string, authMethod: string): boolean {
-    if (authMethod === 'none') {
-        return false;
-    }
-
-    if (authMethod === 'api_key') {
-        return authState === 'configured' || authState === 'authenticated';
-    }
-
-    return authState === 'authenticated';
-}
-
 export function modelExists(
     modelsByProvider: Map<RuntimeProviderId, ProviderModelRecord[]>,
     providerId: RuntimeProviderId,
@@ -124,23 +113,16 @@ export function resolveLatestRunTarget(
     return undefined;
 }
 
-export function toActionableRunError(message: string, providerLabel: string): string {
-    const normalized = message.toLowerCase();
-    if (
-        normalized.includes('not authenticated') ||
-        normalized.includes('auth state') ||
-        normalized.includes('missing from secret store')
-    ) {
-        if (providerLabel.toLowerCase() === 'kilo') {
-            return 'Kilo is not authenticated. Open Settings > Kilo and sign in before running.';
-        }
+export function formatRunStartRejection(input: {
+    rejection: RunStartRejectedResultLike;
+    providerById: Map<RuntimeProviderId, { label: string }>;
+}): string {
+    const formatInput = {
+        surface: 'run_rejection' as const,
+        providerById: input.providerById,
+        ...(input.rejection.action ? { issue: input.rejection.action } : {}),
+        ...(input.rejection.message ? { message: input.rejection.message } : {}),
+    };
 
-        return `${providerLabel} is not authenticated. Open Settings > Providers and connect it before running.`;
-    }
-
-    if (normalized.includes('planning-only')) {
-        return message;
-    }
-
-    return `Run failed: ${message}`;
+    return formatRuntimeCapabilityIssue(formatInput);
 }

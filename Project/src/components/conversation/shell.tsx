@@ -28,6 +28,7 @@ import {
 import { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 import { ConversationSidebarPane } from '@/web/components/conversation/sidebar/conversationSidebarPane';
+import { buildModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
@@ -63,11 +64,11 @@ export function ConversationShell({
     onBootChromeReadyChange,
 }: ConversationShellProps) {
     const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
-    const [contextFeedbackMessage, setContextFeedbackMessage] = useState<string | undefined>(undefined);
-    const [contextFeedbackTone, setContextFeedbackTone] = useState<'success' | 'error' | 'info'>('info');
     const [focusComposerRequestKey, setFocusComposerRequestKey] = useState(0);
     const [requestedReasoningEffort, setRequestedReasoningEffort] =
         useState<RuntimeReasoningEffort>(DEFAULT_REASONING_EFFORT);
+    const isPlanningComposerMode = modeKey === 'plan' && (topLevelTab === 'agent' || topLevelTab === 'orchestrator');
+    const imageAttachmentsAllowed = topLevelTab !== 'orchestrator' && !isPlanningComposerMode;
     const uiState = useConversationUiState(profileId);
     const utils = trpc.useUtils();
     const queries = useConversationQueries({
@@ -180,6 +181,8 @@ export function ConversationShell({
         defaults: queries.shellBootstrapQuery.data?.defaults,
         runs: [],
         requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
+        modeKey,
+        imageAttachmentsAllowed,
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
     });
     const shellViewModel = useConversationShellViewModel({
@@ -197,6 +200,8 @@ export function ConversationShell({
         defaults: queries.shellBootstrapQuery.data?.defaults,
         runs: shellViewModel.sessionRunSelection.runs,
         requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
+        modeKey,
+        imageAttachmentsAllowed,
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
     });
     const selectedSessionId = shellViewModel.sessionRunSelection.selection.resolvedSessionId;
@@ -217,17 +222,18 @@ export function ConversationShell({
             ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
             : {}),
     };
-    const isPlanningComposerMode = modeKey === 'plan' && (topLevelTab === 'agent' || topLevelTab === 'orchestrator');
     const selectedModelSupportsReasoning = Boolean(runTargetState.selectedModelForComposer?.supportsReasoning);
     const supportedReasoningEfforts =
         runTargetState.selectedProviderIdForComposer === 'kilo'
-            ? (runTargetState.selectedModelForComposer?.reasoningEfforts?.filter(
+            ? runTargetState.selectedModelForComposer?.reasoningEfforts?.filter(
                   (effort): effort is Exclude<RuntimeReasoningEffort, 'none'> => effort !== 'none'
-              ) ?? [])
+              )
             : undefined;
     const canAdjustReasoningEffort =
         selectedModelSupportsReasoning &&
-        (supportedReasoningEfforts === undefined || supportedReasoningEfforts.length > 0);
+        (runTargetState.selectedProviderIdForComposer === 'kilo'
+            ? supportedReasoningEfforts !== undefined && supportedReasoningEfforts.length > 0
+            : supportedReasoningEfforts === undefined || supportedReasoningEfforts.length > 0);
     const effectiveReasoningEffort =
         selectedModelSupportsReasoning &&
         canAdjustReasoningEffort &&
@@ -240,15 +246,17 @@ export function ConversationShell({
         supportsReasoning: selectedModelSupportsReasoning,
         reasoningEffort: effectiveReasoningEffort,
     });
-    const canAttachImages =
-        topLevelTab !== 'orchestrator' &&
-        !isPlanningComposerMode &&
-        Boolean(runTargetState.selectedModelForComposer?.supportsVision);
-    const imageAttachmentBlockedReason = isPlanningComposerMode
+    const preComposerCanAttachImages =
+        imageAttachmentsAllowed && Boolean(runTargetState.selectedModelOptionForComposer?.supportsVision);
+    const preComposerImageAttachmentBlockedReason = !imageAttachmentsAllowed
         ? 'Image attachments are only available for executable runs.'
-        : runTargetState.selectedModelForComposer?.supportsVision
+        : runTargetState.selectedModelOptionForComposer?.supportsVision
           ? undefined
           : 'Select a vision-capable model to attach images.';
+    const preComposerSubmitBlockedReason =
+        runTargetState.selectedModelOptionForComposer?.compatibilityState === 'incompatible'
+            ? runTargetState.selectedModelOptionForComposer.compatibilityReason
+            : undefined;
     const contextStateQuery = trpc.context.getResolvedState.useQuery(contextStateQueryInput, {
         enabled:
             hasSelectedSession &&
@@ -273,12 +281,15 @@ export function ConversationShell({
         providerById: runTargetState.providerById,
         runtimeOptions,
         isStartingRun: mutations.startRunMutation.isPending,
-        canAttachImages,
+        canAttachImages: preComposerCanAttachImages,
         maxImageAttachmentsPerMessage:
             composerMediaSettings?.maxImageAttachmentsPerMessage ?? DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
         imageCompressionConcurrency:
             composerMediaSettings?.imageCompressionConcurrency ?? DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
-        ...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {}),
+        ...(preComposerImageAttachmentBlockedReason
+            ? { imageAttachmentBlockedReason: preComposerImageAttachmentBlockedReason }
+            : {}),
+        ...(preComposerSubmitBlockedReason ? { submitBlockedReason: preComposerSubmitBlockedReason } : {}),
         startPlan: mutations.planStartMutation.mutateAsync,
         startRun: mutations.startRunMutation.mutateAsync,
         onPlanStarted: (result: PlanStartResult) => {
@@ -302,6 +313,44 @@ export function ConversationShell({
             });
         },
     });
+    const composerModelOptions =
+        queries.shellBootstrapQuery.data?.providers.flatMap((provider) =>
+            (runTargetState.modelsByProvider.get(provider.id) ?? []).map((model) =>
+                buildModelPickerOption({
+                    model,
+                    provider,
+                    compatibilityContext: {
+                        surface: 'conversation',
+                        requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
+                        modeKey,
+                        hasPendingImageAttachments: composer.pendingImages.length > 0,
+                        imageAttachmentsAllowed,
+                    },
+                })
+            )
+        ) ?? [];
+    const selectedComposerModelOption =
+        runTargetState.selectedProviderIdForComposer && runTargetState.selectedModelIdForComposer
+            ? composerModelOptions.find(
+                  (option) =>
+                      option.providerId === runTargetState.selectedProviderIdForComposer &&
+                      option.id === runTargetState.selectedModelIdForComposer
+              )
+            : undefined;
+    const selectedModelCompatibilityReason =
+        selectedComposerModelOption?.compatibilityReason ??
+        runTargetState.selectedModelOptionForComposer?.compatibilityReason;
+    const selectedModelCompatibilityState =
+        selectedComposerModelOption?.compatibilityState ??
+        runTargetState.selectedModelOptionForComposer?.compatibilityState;
+    const canAttachImages = imageAttachmentsAllowed && Boolean(selectedComposerModelOption?.supportsVision);
+    const imageAttachmentBlockedReason = !imageAttachmentsAllowed
+        ? 'Image attachments are only available for executable runs.'
+        : selectedComposerModelOption?.supportsVision
+          ? undefined
+          : composer.pendingImages.length > 0
+            ? 'This model cannot accept image attachments.'
+            : 'Select a vision-capable model to attach images.';
     const editFlow = useConversationShellEditFlow({
         profileId,
         topLevelTab,
@@ -605,6 +654,139 @@ export function ConversationShell({
         planOrchestrator,
         workspaceActions,
     });
+    const workspaceSectionProps = {
+        header: {
+            selectedThread: shellViewModel.selectedThread,
+            streamState,
+            ...(streamErrorMessage !== undefined ? { streamErrorMessage } : {}),
+            lastSequence: queries.shellBootstrapQuery.data?.lastSequence ?? 0,
+            tabSwitchNotice,
+        },
+        panel: {
+            profileId,
+            sessions: shellViewModel.sessionRunSelection.sessions,
+            runs: shellViewModel.sessionRunSelection.runs,
+            messages: shellViewModel.sessionRunSelection.messages,
+            partsByMessageId: shellViewModel.sessionRunSelection.partsByMessageId,
+            ...(selectedSessionId ? { selectedSessionId } : {}),
+            ...(selectedRunId ? { selectedRunId } : {}),
+            executionPreset: queries.shellBootstrapQuery.data?.executionPreset ?? 'standard',
+            workspaceScope: shellViewModel.workspaceScope,
+            pendingPermissions: shellViewModel.pendingPermissions,
+            ...(shellViewModel.permissionWorkspaces ? { permissionWorkspaces: shellViewModel.permissionWorkspaces } : {}),
+            pendingImages: composer.pendingImages,
+            isCreatingSession: mutations.createSessionMutation.isPending,
+            isStartingRun: mutations.startRunMutation.isPending || mutations.planStartMutation.isPending,
+            isResolvingPermission: mutations.resolvePermissionMutation.isPending,
+            canCreateSession: Boolean(uiState.selectedThreadId),
+            selectedProviderId: runTargetState.selectedProviderIdForComposer,
+            selectedModelId: runTargetState.selectedModelIdForComposer,
+            topLevelTab,
+            activeModeKey: modeKey,
+            modes,
+            reasoningEffort: effectiveReasoningEffort,
+            selectedModelSupportsReasoning,
+            ...(supportedReasoningEfforts !== undefined ? { supportedReasoningEfforts } : {}),
+            maxImageAttachmentsPerMessage:
+                composerMediaSettings?.maxImageAttachmentsPerMessage ??
+                DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
+            canAttachImages,
+            ...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {}),
+            ...(routingBadge !== undefined ? { routingBadge } : {}),
+            ...workspaceSectionState,
+            promptResetKey: composer.promptResetKey,
+            modelOptions: composerModelOptions,
+            ...(selectedModelCompatibilityState ? { selectedModelCompatibilityState } : {}),
+            ...(selectedModelCompatibilityReason ? { selectedModelCompatibilityReason } : {}),
+            runErrorMessage: composer.runSubmitError,
+            ...(contextStateQuery.data ? { contextState: contextStateQuery.data } : {}),
+            canCompactContext:
+                topLevelTab !== 'orchestrator' && hasSelectedSession && Boolean(contextStateQuery.data?.compactable),
+            isCompactingContext: mutations.compactSessionMutation.isPending,
+            onSelectSession: sessionActions.onSelectSession,
+            onSelectRun: uiState.setSelectedRunId,
+            onProviderChange: (providerId: string) => {
+                if (!isProviderId(providerId)) {
+                    return;
+                }
+                sessionActions.onProviderChange(
+                    providerId,
+                    composerModelOptions.find(
+                        (option) => option.providerId === providerId && option.compatibilityState === 'compatible'
+                    )?.id ?? composerModelOptions.find((option) => option.providerId === providerId)?.id
+                );
+            },
+            onModelChange: (modelId: string) => {
+                sessionActions.onModelChange(runTargetState.selectedProviderIdForComposer, modelId);
+            },
+            onReasoningEffortChange: setRequestedReasoningEffort,
+            onModeChange,
+            onCreateSession: sessionActions.onCreateSession,
+            onPromptEdited: composer.onPromptEdited,
+            onAddImageFiles: composer.onAddImageFiles,
+            onRemovePendingImage: composer.onRemovePendingImage,
+            onRetryPendingImage: composer.onRetryPendingImage,
+            onSubmitPrompt: composer.onSubmitPrompt,
+            onCompactContext: () => {
+                if (!hasSelectedSession) {
+                    return Promise.resolve({
+                        tone: 'error' as const,
+                        message: 'Context compaction is unavailable because no session is selected.',
+                    });
+                }
+
+                return mutations.compactSessionMutation
+                    .mutateAsync({
+                        profileId,
+                        sessionId: contextSessionId,
+                        providerId: contextProviderId,
+                        modelId: contextModelId,
+                        topLevelTab,
+                        modeKey,
+                        ...(shellViewModel.selectedThread?.workspaceFingerprint
+                            ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
+                            : {}),
+                    })
+                    .then((result) => {
+                        setResolvedContextStateCache({
+                            utils,
+                            queryInput: contextStateQueryInput,
+                            state: result.resolvedState,
+                        });
+                        return {
+                            tone: 'success' as const,
+                            message: 'Context compacted for the current session.',
+                        };
+                    })
+                    .catch((error: unknown) => ({
+                        tone: 'error' as const,
+                        message: error instanceof Error ? error.message : 'Context compaction failed.',
+                    }));
+            },
+            onResolvePermission: (
+                requestId: Parameters<typeof workspaceActions.resolvePermission>[0]['requestId'],
+                resolution: Parameters<typeof workspaceActions.resolvePermission>[0]['resolution'],
+                selectedApprovalResource?: Parameters<typeof workspaceActions.resolvePermission>[0] extends {
+                    selectedApprovalResource?: infer T;
+                }
+                    ? T
+                    : never
+            ) => {
+                void workspaceActions.resolvePermission(
+                    selectedApprovalResource
+                        ? { requestId, resolution, selectedApprovalResource }
+                        : { requestId, resolution }
+                );
+            },
+            onEditMessage: editFlow.onEditMessage,
+            onBranchFromMessage: editFlow.onBranchFromMessage,
+            modePanel: workspacePanels.modePanel,
+            executionEnvironmentPanel: workspacePanels.executionEnvironmentPanel,
+            attachedSkillsPanel: workspacePanels.attachedSkillsPanel,
+            diffCheckpointPanel: workspacePanels.diffCheckpointPanel,
+            focusComposerRequestKey,
+        },
+    } as const;
 
     return (
         <main className='bg-background flex h-full min-h-0 min-w-0 flex-1 overflow-hidden'>
@@ -653,127 +835,7 @@ export function ConversationShell({
             />
 
             <ConversationWorkspaceSection
-                profileId={profileId}
-                selectedThread={shellViewModel.selectedThread}
-                selectedSessionId={selectedSessionId}
-                selectedRunId={selectedRunId}
-                streamState={streamState}
-                streamErrorMessage={streamErrorMessage}
-                lastSequence={queries.shellBootstrapQuery.data?.lastSequence ?? 0}
-                tabSwitchNotice={tabSwitchNotice}
-                sessions={shellViewModel.sessionRunSelection.sessions}
-                runs={shellViewModel.sessionRunSelection.runs}
-                messages={shellViewModel.sessionRunSelection.messages}
-                partsByMessageId={shellViewModel.sessionRunSelection.partsByMessageId}
-                executionPreset={queries.shellBootstrapQuery.data?.executionPreset ?? 'standard'}
-                workspaceScope={shellViewModel.workspaceScope}
-                pendingPermissions={shellViewModel.pendingPermissions}
-                permissionWorkspaces={shellViewModel.permissionWorkspaces}
-                prompt={composer.prompt}
-                pendingImages={composer.pendingImages}
-                isCreatingSession={mutations.createSessionMutation.isPending}
-                isStartingRun={mutations.startRunMutation.isPending || mutations.planStartMutation.isPending}
-                isResolvingPermission={mutations.resolvePermissionMutation.isPending}
-                canCreateSession={Boolean(uiState.selectedThreadId)}
-                selectedProviderId={runTargetState.selectedProviderIdForComposer}
-                selectedModelId={runTargetState.selectedModelIdForComposer}
-                topLevelTab={topLevelTab}
-                activeModeKey={modeKey}
-                modes={modes}
-                reasoningEffort={effectiveReasoningEffort}
-                selectedModelSupportsReasoning={selectedModelSupportsReasoning}
-                {...(supportedReasoningEfforts !== undefined ? { supportedReasoningEfforts } : {})}
-                maxImageAttachmentsPerMessage={
-                    composerMediaSettings?.maxImageAttachmentsPerMessage ??
-                    DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE
-                }
-                canAttachImages={canAttachImages}
-                {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
-                routingBadge={routingBadge}
-                {...workspaceSectionState}
-                modelOptions={runTargetState.modelOptions}
-                runErrorMessage={composer.runSubmitError}
-                {...(contextStateQuery.data ? { contextState: contextStateQuery.data } : {})}
-                {...(contextFeedbackMessage
-                    ? {
-                          contextFeedbackMessage,
-                          contextFeedbackTone,
-                      }
-                    : {})}
-                canCompactContext={
-                    topLevelTab !== 'orchestrator' && hasSelectedSession && Boolean(contextStateQuery.data?.compactable)
-                }
-                isCompactingContext={mutations.compactSessionMutation.isPending}
-                onSelectSession={sessionActions.onSelectSession}
-                onSelectRun={uiState.setSelectedRunId}
-                onProviderChange={(providerId) => {
-                    if (!isProviderId(providerId)) {
-                        return;
-                    }
-                    sessionActions.onProviderChange(
-                        providerId,
-                        runTargetState.modelsByProvider.get(providerId)?.at(0)?.id
-                    );
-                }}
-                onModelChange={(modelId) => {
-                    sessionActions.onModelChange(runTargetState.selectedProviderIdForComposer, modelId);
-                }}
-                onReasoningEffortChange={setRequestedReasoningEffort}
-                onModeChange={onModeChange}
-                onCreateSession={sessionActions.onCreateSession}
-                onPromptChange={composer.onPromptChange}
-                onAddImageFiles={composer.onAddImageFiles}
-                onRemovePendingImage={composer.onRemovePendingImage}
-                onRetryPendingImage={composer.onRetryPendingImage}
-                onSubmitPrompt={composer.onSubmitPrompt}
-                onCompactContext={() => {
-                    if (!hasSelectedSession) {
-                        return;
-                    }
-
-                    setContextFeedbackMessage(undefined);
-                    void mutations.compactSessionMutation
-                        .mutateAsync({
-                            profileId,
-                            sessionId: contextSessionId,
-                            providerId: contextProviderId,
-                            modelId: contextModelId,
-                            topLevelTab,
-                            modeKey,
-                            ...(shellViewModel.selectedThread?.workspaceFingerprint
-                                ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
-                                : {}),
-                        })
-                        .then((result) => {
-                            setResolvedContextStateCache({
-                                utils,
-                                queryInput: contextStateQueryInput,
-                                state: result.resolvedState,
-                            });
-                            setContextFeedbackTone('success');
-                            setContextFeedbackMessage('Context compacted for the current session.');
-                        })
-                        .catch((error: unknown) => {
-                            setContextFeedbackTone('error');
-                            setContextFeedbackMessage(
-                                error instanceof Error ? error.message : 'Context compaction failed.'
-                            );
-                        });
-                }}
-                onResolvePermission={(requestId, resolution, selectedApprovalResource) => {
-                    void workspaceActions.resolvePermission(
-                        selectedApprovalResource
-                            ? { requestId, resolution, selectedApprovalResource }
-                            : { requestId, resolution }
-                    );
-                }}
-                onEditMessage={editFlow.onEditMessage}
-                onBranchFromMessage={editFlow.onBranchFromMessage}
-                modePanel={workspacePanels.modePanel}
-                executionEnvironmentPanel={workspacePanels.executionEnvironmentPanel}
-                attachedSkillsPanel={workspacePanels.attachedSkillsPanel}
-                diffCheckpointPanel={workspacePanels.diffCheckpointPanel}
-                focusComposerRequestKey={focusComposerRequestKey}
+                {...workspaceSectionProps}
             />
 
             <MessageEditDialog

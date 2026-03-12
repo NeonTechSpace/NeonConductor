@@ -3,7 +3,7 @@ import {
     providerByIdInputSchema,
     providerGetCredentialInputSchema,
     providerGetAccountContextInputSchema,
-    providerGetEndpointProfileInputSchema,
+    providerGetConnectionProfileInputSchema,
     providerGetModelRoutingPreferenceInputSchema,
     providerListAuthMethodsInputSchema,
     providerListModelProvidersInputSchema,
@@ -88,14 +88,17 @@ export const providerQueryProcedures = {
 
         return result.value;
     }),
-    getEndpointProfile: publicProcedure.input(providerGetEndpointProfileInputSchema).query(async ({ input }) => {
-        const endpointResult = await providerManagementService.getEndpointProfile(input.profileId, input.providerId);
-        if (endpointResult.isErr()) {
-            throwWithCode(endpointResult.error.code, endpointResult.error.message);
+    getConnectionProfile: publicProcedure.input(providerGetConnectionProfileInputSchema).query(async ({ input }) => {
+        const connectionProfileResult = await providerManagementService.getConnectionProfile(
+            input.profileId,
+            input.providerId
+        );
+        if (connectionProfileResult.isErr()) {
+            throwWithCode(connectionProfileResult.error.code, connectionProfileResult.error.message);
         }
 
         return {
-            endpointProfile: endpointResult.value,
+            connectionProfile: connectionProfileResult.value,
         };
     }),
     getModelRoutingPreference: publicProcedure

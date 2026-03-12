@@ -1,0 +1,13 @@
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+index 0273c03850e61674ac6d091a119171842b7bc796..d3df9cd0c3b785fa72a58ae013aa77cfc781f068 100644
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -31,7 +31,7 @@ type RolldownBabelPresetItem = PresetItem | RolldownBabelPreset;
+ declare function defineRolldownBabelPreset(preset: RolldownBabelPreset): RolldownBabelPreset;
+ //#endregion
+ //#region src/options.d.ts
+-interface InnerTransformOptions extends Pick<InputOptions, 'assumptions' | 'auxiliaryCommentAfter' | 'auxiliaryCommentBefore' | 'exclude' | 'comments' | 'compact' | 'cwd' | 'generatorOpts' | 'include' | 'parserOpts' | 'plugins' | 'retainLines' | 'shouldPrintComment' | 'targets' | 'wrapPluginVisitorMethod'> {
++interface InnerTransformOptions extends Partial<Pick<InputOptions, 'assumptions' | 'auxiliaryCommentAfter' | 'auxiliaryCommentBefore' | 'exclude' | 'comments' | 'compact' | 'cwd' | 'generatorOpts' | 'include' | 'parserOpts' | 'plugins' | 'retainLines' | 'shouldPrintComment' | 'targets' | 'wrapPluginVisitorMethod'>> {
+   /**
+    * List of presets (a set of plugins) to load and use
+    *

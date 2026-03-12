@@ -85,11 +85,16 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
                 key?: string;
             };
             transport: {
-                openai: 'responses' | 'chat' | 'auto';
+                family: 'auto' | 'openai_responses' | 'openai_chat_completions';
             };
         };
         providerId?: string;
         modelId?: string;
+    }>();
+    expectTypeOf<Extract<Outputs['session']['startRun'], { accepted: false }>>().toExtend<{
+        accepted: false;
+        reason: 'not_found' | 'already_running' | 'rejected';
+        message?: string;
     }>();
     expectTypeOf<Inputs['session']['revert']>().toExtend<{
         profileId: string;
@@ -234,6 +239,22 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
             supportsTools: boolean;
             supportsReasoning: boolean;
             supportsVision: boolean;
+            supportsPromptCache?: boolean;
+            apiFamily?:
+                | 'openai_compatible'
+                | 'kilo_gateway'
+                | 'provider_native'
+                | 'anthropic_messages'
+                | 'google_generativeai';
+            routedApiFamily?: 'openai_compatible' | 'provider_native' | 'anthropic_messages' | 'google_generativeai';
+            toolProtocol?:
+                | 'openai_responses'
+                | 'openai_chat_completions'
+                | 'kilo_gateway'
+                | 'provider_native'
+                | 'anthropic_messages'
+                | 'google_generativeai';
+            providerSettings?: Record<string, unknown>;
             inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
             outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
             promptFamily?: string;
@@ -324,14 +345,16 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
             };
         };
     }>();
-    expectTypeOf<Inputs['provider']['getEndpointProfile']>().toExtend<{
+    expectTypeOf<Inputs['provider']['getConnectionProfile']>().toExtend<{
         profileId: string;
         providerId: string;
     }>();
-    expectTypeOf<Inputs['provider']['setEndpointProfile']>().toExtend<{
+    expectTypeOf<Inputs['provider']['setConnectionProfile']>().toExtend<{
         profileId: string;
         providerId: string;
-        value: string;
+        optionProfileId: string;
+        baseUrlOverride?: string | null;
+        organizationId?: string | null;
     }>();
     expectTypeOf<Inputs['provider']['getModelRoutingPreference']>().toExtend<{
         profileId: string;
@@ -409,7 +432,7 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
                 key?: string;
             };
             transport: {
-                openai: 'responses' | 'chat' | 'auto';
+                family: 'auto' | 'openai_responses' | 'openai_chat_completions';
             };
         };
         providerId?: string;
@@ -484,6 +507,25 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     }>();
     expectTypeOf<Outputs['runtime']['getShellBootstrap']>().toExtend<{
         lastSequence: number;
+        providerModels: Array<{
+            id: string;
+            supportsPromptCache?: boolean;
+            apiFamily?:
+                | 'openai_compatible'
+                | 'kilo_gateway'
+                | 'provider_native'
+                | 'anthropic_messages'
+                | 'google_generativeai';
+            routedApiFamily?: 'openai_compatible' | 'provider_native' | 'anthropic_messages' | 'google_generativeai';
+            toolProtocol?:
+                | 'openai_responses'
+                | 'openai_chat_completions'
+                | 'kilo_gateway'
+                | 'provider_native'
+                | 'anthropic_messages'
+                | 'google_generativeai';
+            providerSettings?: Record<string, unknown>;
+        }>;
         threadTags: Array<{
             threadId: string;
             tagId: string;
