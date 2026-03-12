@@ -58,6 +58,7 @@ export function KiloRoutingSection({
     onPinnedProviderChange,
 }: KiloRoutingSectionProps) {
     const hasProviders = providers.length > 0;
+    const canConfigureDynamicRouting = hasProviders && selectedModelId.trim().length > 0;
 
     return (
         <section className='space-y-4 rounded-[24px] border border-border/70 bg-card/40 p-4'>
@@ -96,7 +97,12 @@ export function KiloRoutingSection({
                     <span className='text-muted-foreground text-xs'>Dynamic sort</span>
                     <select
                         value={draft.sort}
-                        disabled={isSaving || isLoadingPreference || draft.routingMode !== 'dynamic'}
+                        disabled={
+                            isSaving ||
+                            isLoadingPreference ||
+                            draft.routingMode !== 'dynamic' ||
+                            !canConfigureDynamicRouting
+                        }
                         onChange={(event) => {
                             const nextValue = event.target.value;
                             if (isKiloDynamicSort(nextValue)) {
@@ -114,7 +120,7 @@ export function KiloRoutingSection({
                 <label className='space-y-1'>
                     <span className='text-muted-foreground text-xs'>Pinned provider</span>
                     <select
-                        value={draft.pinnedProviderId}
+                        value={draft.pinnedProviderId ?? ''}
                         disabled={
                             isSaving || isLoadingPreference || isLoadingProviders || draft.routingMode !== 'pinned'
                         }

@@ -83,6 +83,10 @@ export function toActionableRunError(message: string, providerLabel: string): st
         normalized.includes('auth state') ||
         normalized.includes('missing from secret store')
     ) {
+        if (providerLabel.toLowerCase() === 'kilo') {
+            return 'Kilo is not authenticated. Open Settings > Kilo and sign in before running.';
+        }
+
         return `${providerLabel} is not authenticated. Open Settings > Providers and connect it before running.`;
     }
 

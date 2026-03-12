@@ -1,10 +1,11 @@
 import { ProviderAuthenticationSection } from '@/web/components/settings/providerSettings/authenticationSection';
 import { ProviderDefaultModelSection } from '@/web/components/settings/providerSettings/defaultModelSection';
 import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
-import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
 import { ProviderSidebar } from '@/web/components/settings/providerSettings/providerSidebar';
 import { ProviderStatusSection } from '@/web/components/settings/providerSettings/providerStatusSection';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
+
+import { useEffect } from 'react';
 
 interface ProviderSettingsViewProps {
     profileId: string;
@@ -12,37 +13,52 @@ interface ProviderSettingsViewProps {
 
 export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
     const controller = useProviderSettingsController(profileId);
+    const customProviders = controller.providerItems.filter((provider) => provider.id !== 'kilo');
+    const selectedProvider =
+        controller.selectedProvider && controller.selectedProvider.id !== 'kilo' ? controller.selectedProvider : undefined;
+
+    useEffect(() => {
+        if (selectedProvider || customProviders.length === 0) {
+            return;
+        }
+
+        const fallbackProvider = customProviders.find((provider) => provider.isDefault) ?? customProviders[0];
+        if (!fallbackProvider) {
+            return;
+        }
+
+        controller.selectProvider(fallbackProvider.id);
+    }, [controller.selectProvider, customProviders, selectedProvider]);
 
     return (
         <section className='grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[264px_minmax(0,1fr)]'>
             <ProviderSidebar
-                providers={controller.providerItems}
-                selectedProviderId={controller.selectedProviderId}
+                title='Custom providers'
+                providers={customProviders}
+                selectedProviderId={selectedProvider?.id}
                 onSelectProvider={controller.selectProvider}
                 onPreviewProvider={controller.prefetchProvider}
             />
 
             <div className='min-h-0 min-w-0 overflow-y-auto p-4 md:p-5'>
-                {controller.selectedProvider ? (
+                {selectedProvider ? (
                     <div className='flex w-full min-w-0 flex-col gap-4'>
                         <SettingsFeedbackBanner message={controller.feedbackMessage} tone={controller.feedbackTone} />
                         <div className='flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between'>
                             <div className='min-w-0'>
-                                <h4 className='text-xl font-semibold text-balance'>
-                                    {controller.selectedProvider.label}
-                                </h4>
+                                <h4 className='text-xl font-semibold text-balance'>{selectedProvider.label}</h4>
                                 <p className='text-muted-foreground mt-1 max-w-3xl text-sm leading-6'>
-                                    Authentication, credential handling, default models, and provider-specific runtime
-                                    settings live here.
+                                    Connect and tune direct providers here. Kilo sign-in, Kilo default models, and
+                                    Kilo routing live in the dedicated Kilo section.
                                 </p>
                             </div>
                             <div className='border-border/70 bg-background/80 self-start rounded-full border px-3 py-1.5 text-xs font-medium'>
-                                {controller.selectedProvider.authState} via {controller.selectedProvider.authMethod.replace('_', ' ')}
+                                {selectedProvider.authState} via {selectedProvider.authMethod.replace('_', ' ')}
                             </div>
                         </div>
 
                         <ProviderStatusSection
-                            provider={controller.selectedProvider}
+                            provider={selectedProvider}
                             authState={controller.selectedAuthState}
                             accountContext={controller.kiloAccountContext}
                             usageSummary={controller.selectedProviderUsageSummary}
@@ -55,14 +71,14 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                         />
 
                         <ProviderAuthenticationSection
-                            selectedProviderId={controller.selectedProviderId}
-                            selectedProviderAuthState={controller.selectedProvider.authState}
-                            selectedProviderAuthMethod={controller.selectedProvider.authMethod}
+                            selectedProviderId={selectedProvider.id}
+                            selectedProviderAuthState={selectedProvider.authState}
+                            selectedProviderAuthMethod={selectedProvider.authMethod}
                             selectedAuthState={controller.selectedAuthState}
                             methods={controller.methods}
-                            endpointProfileValue={controller.selectedProvider.endpointProfile.value}
-                            endpointProfileOptions={controller.selectedProvider.endpointProfiles}
-                            apiKeyCta={controller.selectedProvider.apiKeyCta}
+                            endpointProfileValue={selectedProvider.endpointProfile.value}
+                            endpointProfileOptions={selectedProvider.endpointProfiles}
+                            apiKeyCta={selectedProvider.apiKeyCta}
                             apiKeyInput={controller.apiKeyInput}
                             isCredentialVisible={controller.isCredentialVisible}
                             activeAuthFlow={controller.activeAuthFlow}
@@ -107,7 +123,7 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                         />
 
                         <ProviderDefaultModelSection
-                            selectedProviderId={controller.selectedProviderId}
+                            selectedProviderId={selectedProvider.id}
                             selectedModelId={controller.selectedModelId}
                             models={controller.models}
                             isDefaultModel={controller.selectedIsDefaultModel}
@@ -122,30 +138,15 @@ export function ProviderSettingsView({ profileId }: ProviderSettingsViewProps) {
                             }}
                         />
 
-                        {controller.selectedProvider.features.supportsKiloRouting &&
-                        controller.selectedModelId.trim().length > 0 &&
-                        controller.kiloRoutingDraft ? (
-                            <KiloRoutingSection
-                                selectedModelId={controller.selectedModelId}
-                                draft={controller.kiloRoutingDraft}
-                                providers={controller.kiloModelProviders}
-                                isLoadingPreference={controller.queries.kiloRoutingPreferenceQuery.isLoading}
-                                isLoadingProviders={controller.queries.kiloModelProvidersQuery.isLoading}
-                                isSaving={controller.mutations.setModelRoutingPreferenceMutation.isPending}
-                                onModeChange={(mode) => {
-                                    void controller.changeRoutingMode(mode);
-                                }}
-                                onSortChange={(sort) => {
-                                    void controller.changeRoutingSort(sort);
-                                }}
-                                onPinnedProviderChange={(providerId) => {
-                                    void controller.changePinnedProvider(providerId);
-                                }}
-                            />
-                        ) : null}
                     </div>
                 ) : (
-                    <p className='text-muted-foreground text-sm'>No providers available.</p>
+                    <div className='border-border/70 bg-card/40 space-y-2 rounded-[24px] border p-5'>
+                        <p className='text-sm font-semibold'>No custom providers selected</p>
+                        <p className='text-muted-foreground text-sm leading-6'>
+                            Use the Kilo section for the default app experience. This area is reserved for direct
+                            OpenAI, Moonshot, and Z.AI credentials.
+                        </p>
+                    </div>
                 )}
             </div>
         </section>

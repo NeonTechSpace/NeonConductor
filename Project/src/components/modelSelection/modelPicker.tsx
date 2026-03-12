@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Search } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/web/components/ui/button';
 import { cn } from '@/web/lib/utils';
@@ -9,6 +9,8 @@ import type { RuntimeProviderId } from '@/shared/contracts';
 export interface ModelPickerOption {
     id: string;
     label: string;
+    providerId?: RuntimeProviderId | string;
+    providerLabel?: string;
     sourceProvider?: string;
     source?: string;
     promptFamily?: string;
@@ -27,6 +29,13 @@ interface ModelPickerProps {
     ariaLabel: string;
     placeholder: string;
     onSelectModel: (modelId: string) => void;
+    onSelectOption?: (option: ModelPickerOption) => void;
+}
+
+interface ModelGroup {
+    key: string;
+    label: string;
+    options: ModelPickerOption[];
 }
 
 function formatMetric(value: number | undefined): string | undefined {
@@ -37,70 +46,135 @@ function formatMetric(value: number | undefined): string | undefined {
     return String(value);
 }
 
-function getKiloModelDescription(model: ModelPickerOption): string {
-    if (model.id === 'kilo/auto') {
-        return 'Automatic Kilo routing across the gateway model catalog.';
+function stripSubProviderPrefix(label: string): string {
+    const colonIndex = label.indexOf(': ');
+    if (colonIndex < 0) {
+        return label;
     }
 
-    if (model.id === 'kilo/code') {
-        return 'Coding-focused Kilo routing with provider controls below.';
+    const prefix = label.slice(0, colonIndex).trim().toLowerCase();
+    if (prefix === 'kilo') {
+        return label;
     }
 
-    if (model.sourceProvider) {
-        return `Routes through ${model.sourceProvider}.`;
-    }
-
-    if (model.promptFamily) {
-        return `${model.promptFamily} profile.`;
-    }
-
-    return 'Kilo gateway model.';
+    return label.slice(colonIndex + 2);
 }
 
-function sortKiloModels(models: ModelPickerOption[]): ModelPickerOption[] {
-    const preferredOrder = new Map<string, number>([
-        ['kilo/auto', 0],
-        ['kilo/code', 1],
-    ]);
+function getDisplayLabel(option: ModelPickerOption): string {
+    if (option.providerId === 'kilo') {
+        return stripSubProviderPrefix(option.label);
+    }
 
-    return [...models].sort((left, right) => {
-        const leftOrder = preferredOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-        const rightOrder = preferredOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-        if (leftOrder !== rightOrder) {
-            return leftOrder - rightOrder;
+    return option.label;
+}
+
+function getGroupKey(option: ModelPickerOption): string {
+    return option.providerId === 'kilo' ? 'kilo' : option.providerId ?? 'other';
+}
+
+function getGroupLabel(option: ModelPickerOption): string {
+    return option.providerId === 'kilo' ? 'Kilo' : option.providerLabel ?? option.providerId ?? 'Other';
+}
+
+function getGroupOrder(key: string): number {
+    return key === 'kilo' ? 0 : 1;
+}
+
+function sortGroupedOptions(options: ModelPickerOption[]): ModelGroup[] {
+    const groups = new Map<string, ModelGroup>();
+    for (const option of options) {
+        const groupKey = getGroupKey(option);
+        const existingGroup = groups.get(groupKey);
+        if (existingGroup) {
+            existingGroup.options.push(option);
+            continue;
         }
 
-        return left.label.localeCompare(right.label);
-    });
+        groups.set(groupKey, {
+            key: groupKey,
+            label: getGroupLabel(option),
+            options: [option],
+        });
+    }
+
+    return [...groups.values()]
+        .sort((left, right) => {
+            const orderDifference = getGroupOrder(left.key) - getGroupOrder(right.key);
+            if (orderDifference !== 0) {
+                return orderDifference;
+            }
+
+            return left.label.localeCompare(right.label);
+        })
+        .map((group) => ({
+            ...group,
+            options: [...group.options].sort((left, right) => {
+                const preferredOrder = new Map<string, number>([
+                    ['kilo/auto', 0],
+                    ['kilo/code', 1],
+                ]);
+                const leftOrder = preferredOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+                const rightOrder = preferredOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+                if (leftOrder !== rightOrder) {
+                    return leftOrder - rightOrder;
+                }
+
+                return getDisplayLabel(left).localeCompare(getDisplayLabel(right));
+            }),
+        }));
 }
 
-function KiloModelPicker({
-    selectedModelId,
-    models,
-    disabled = false,
-    id,
-    ariaLabel,
-    placeholder,
-    onSelectModel,
-}: Omit<ModelPickerProps, 'providerId' | 'name'>) {
+function getModelDescription(option: ModelPickerOption): string {
+    if (option.id === 'kilo/auto') {
+        return 'Recommended starting point with automatic Kilo routing.';
+    }
+
+    if (option.id === 'kilo/code') {
+        return 'Coding-focused Kilo quick pick.';
+    }
+
+    if (option.providerId === 'kilo') {
+        if (option.sourceProvider) {
+            return `Kilo gateway model routed through ${option.sourceProvider}.`;
+        }
+        if (option.promptFamily) {
+            return `${option.promptFamily} profile on the Kilo gateway.`;
+        }
+
+        return 'Kilo gateway model.';
+    }
+
+    return `${option.providerLabel ?? option.providerId ?? 'Custom'} provider model.`;
+}
+
+function PopoverModelPicker(props: ModelPickerProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
-    const listboxId = useId();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
+    const listboxId = useId();
 
-    const sortedModels = sortKiloModels(models);
-    const selectedModel = sortedModels.find((model) => model.id === selectedModelId);
-    const filteredModels = sortedModels.filter((model) => {
+    const selectedOption = props.models.find((option) => option.id === props.selectedModelId);
+    const filteredOptions = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
         if (normalizedQuery.length === 0) {
-            return true;
+            return props.models;
         }
 
-        return [model.label, model.id, model.sourceProvider, model.promptFamily]
-            .filter((value): value is string => typeof value === 'string')
-            .some((value) => value.toLowerCase().includes(normalizedQuery));
-    });
+        return props.models.filter((option) =>
+            [
+                option.id,
+                option.label,
+                option.providerLabel,
+                option.providerId,
+                option.sourceProvider,
+                option.promptFamily,
+            ]
+                .filter((value): value is string => typeof value === 'string')
+                .some((value) => value.toLowerCase().includes(normalizedQuery))
+        );
+    }, [props.models, query]);
+    const groups = useMemo(() => sortGroupedOptions(filteredOptions), [filteredOptions]);
 
     useEffect(() => {
         if (!open) {
@@ -135,20 +209,24 @@ function KiloModelPicker({
     return (
         <div ref={containerRef} className='relative min-w-0'>
             <Button
-                {...(id ? { id } : {})}
+                {...(props.id ? { id: props.id } : {})}
                 type='button'
                 variant='outline'
                 className='h-10 w-full min-w-0 justify-between rounded-xl px-3 text-left'
-                aria-label={ariaLabel}
+                aria-label={props.ariaLabel}
                 aria-haspopup='listbox'
                 aria-expanded={open}
                 aria-controls={listboxId}
-                disabled={disabled || models.length === 0}
+                disabled={props.disabled || props.models.length === 0}
                 onClick={() => {
                     setOpen((current) => !current);
                 }}>
                 <span className='min-w-0 truncate'>
-                    {selectedModel?.label ?? (models.length === 0 ? 'No runnable models available' : placeholder)}
+                    {selectedOption?.label
+                        ? getDisplayLabel(selectedOption)
+                        : props.models.length === 0
+                          ? 'No runnable models available'
+                          : props.placeholder}
                 </span>
                 <ChevronDown className='h-4 w-4 shrink-0 opacity-70' />
             </Button>
@@ -157,7 +235,7 @@ function KiloModelPicker({
                 <div className='border-border bg-popover text-popover-foreground absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border shadow-xl'>
                     <div className='border-border bg-background/90 border-b px-3 py-3'>
                         <label className='sr-only' htmlFor={`${listboxId}-search`}>
-                            Search Kilo models
+                            Search models
                         </label>
                         <div className='border-border bg-background flex items-center gap-2 rounded-xl border px-3'>
                             <Search className='text-muted-foreground h-4 w-4 shrink-0' />
@@ -170,67 +248,83 @@ function KiloModelPicker({
                                     setQuery(event.target.value);
                                 }}
                                 className='h-10 w-full bg-transparent text-sm outline-none'
-                                placeholder='Search Kilo models'
+                                placeholder='Search models'
                             />
                         </div>
                     </div>
 
-                    <div id={listboxId} role='listbox' className='max-h-80 overflow-y-auto p-2'>
-                        {filteredModels.length === 0 ? (
-                            <div className='text-muted-foreground px-3 py-6 text-sm'>No Kilo models matched that search.</div>
+                    <div id={listboxId} role='listbox' className='max-h-96 overflow-y-auto p-2'>
+                        {groups.length === 0 ? (
+                            <div className='text-muted-foreground px-3 py-6 text-sm'>No models matched that search.</div>
                         ) : (
-                            filteredModels.map((model) => {
-                                const metricBadges = [
-                                    formatMetric(model.price) ? `Price ${formatMetric(model.price)}` : undefined,
-                                    formatMetric(model.latency) ? `Latency ${formatMetric(model.latency)}` : undefined,
-                                    formatMetric(model.tps) ? `TPS ${formatMetric(model.tps)}` : undefined,
-                                ].filter((badge): badge is string => Boolean(badge));
-                                const selected = model.id === selectedModelId;
+                            groups.map((group) => (
+                                <div key={group.key} className='mb-2 last:mb-0'>
+                                    <div className='text-muted-foreground px-2 py-1 text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                        {group.label}
+                                    </div>
+                                    <div className='space-y-1'>
+                                        {group.options.map((option) => {
+                                            const metricBadges = [
+                                                formatMetric(option.price) ? `Price ${formatMetric(option.price)}` : undefined,
+                                                formatMetric(option.latency)
+                                                    ? `Latency ${formatMetric(option.latency)}`
+                                                    : undefined,
+                                                formatMetric(option.tps) ? `TPS ${formatMetric(option.tps)}` : undefined,
+                                            ].filter((badge): badge is string => Boolean(badge));
+                                            const selected = option.id === props.selectedModelId;
 
-                                return (
-                                    <button
-                                        key={model.id}
-                                        type='button'
-                                        role='option'
-                                        aria-selected={selected}
-                                        className={cn(
-                                            'hover:bg-accent focus-visible:ring-ring w-full rounded-xl border px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:outline-none',
-                                            selected
-                                                ? 'border-primary bg-primary/10 shadow-sm'
-                                                : 'border-transparent bg-transparent'
-                                        )}
-                                        onClick={() => {
-                                            onSelectModel(model.id);
-                                            setOpen(false);
-                                        }}>
-                                        <div className='flex items-start justify-between gap-3'>
-                                            <div className='min-w-0'>
-                                                <p className='truncate text-sm font-medium'>{model.label}</p>
-                                                <p className='text-muted-foreground mt-1 text-xs leading-5'>
-                                                    {getKiloModelDescription(model)}
-                                                </p>
-                                            </div>
-                                            {selected ? <Check className='text-primary mt-0.5 h-4 w-4 shrink-0' /> : null}
-                                        </div>
-                                        {metricBadges.length > 0 || model.sourceProvider ? (
-                                            <div className='mt-2 flex flex-wrap gap-2'>
-                                                {model.sourceProvider ? (
-                                                    <span className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
-                                                        {model.sourceProvider}
-                                                    </span>
-                                                ) : null}
-                                                {metricBadges.map((badge) => (
-                                                    <span
-                                                        key={`${model.id}:${badge}`}
-                                                        className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
-                                                        {badge}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        ) : null}
-                                    </button>
-                                );
-                            })
+                                            return (
+                                                <button
+                                                    key={`${option.providerId ?? 'unknown'}:${option.id}`}
+                                                    type='button'
+                                                    role='option'
+                                                    aria-selected={selected}
+                                                    className={cn(
+                                                        'hover:bg-accent focus-visible:ring-ring w-full rounded-xl border px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:outline-none',
+                                                        selected
+                                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                                            : 'border-transparent bg-transparent'
+                                                    )}
+                                                    onClick={() => {
+                                                        props.onSelectOption?.(option);
+                                                        props.onSelectModel(option.id);
+                                                        setOpen(false);
+                                                    }}>
+                                                    <div className='flex items-start justify-between gap-3'>
+                                                        <div className='min-w-0'>
+                                                            <p className='truncate text-sm font-medium'>
+                                                                {getDisplayLabel(option)}
+                                                            </p>
+                                                            <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                                                {getModelDescription(option)}
+                                                            </p>
+                                                        </div>
+                                                        {selected ? (
+                                                            <Check className='text-primary mt-0.5 h-4 w-4 shrink-0' />
+                                                        ) : null}
+                                                    </div>
+                                                    {metricBadges.length > 0 || option.sourceProvider ? (
+                                                        <div className='mt-2 flex flex-wrap gap-2'>
+                                                            {option.sourceProvider ? (
+                                                                <span className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
+                                                                    {option.sourceProvider}
+                                                                </span>
+                                                            ) : null}
+                                                            {metricBadges.map((badge) => (
+                                                                <span
+                                                                    key={`${option.id}:${badge}`}
+                                                                    className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
+                                                                    {badge}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : null}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>
@@ -239,9 +333,22 @@ function KiloModelPicker({
     );
 }
 
-export function ModelPicker(props: ModelPickerProps) {
+function shouldUsePopoverPicker(props: ModelPickerProps): boolean {
     if (props.providerId === 'kilo') {
-        return <KiloModelPicker {...props} />;
+        return true;
+    }
+
+    const providerIds = new Set(
+        props.models
+            .map((option) => option.providerId)
+            .filter((providerId): providerId is string => typeof providerId === 'string')
+    );
+    return providerIds.size > 1;
+}
+
+export function ModelPicker(props: ModelPickerProps) {
+    if (shouldUsePopoverPicker(props)) {
+        return <PopoverModelPicker {...props} />;
     }
 
     return (
@@ -251,6 +358,10 @@ export function ModelPicker(props: ModelPickerProps) {
             aria-label={props.ariaLabel}
             value={props.selectedModelId}
             onChange={(event) => {
+                const selectedOption = props.models.find((option) => option.id === event.target.value);
+                if (selectedOption) {
+                    props.onSelectOption?.(selectedOption);
+                }
                 props.onSelectModel(event.target.value);
             }}
             className='border-border bg-background h-10 min-w-0 rounded-xl border px-3 text-sm'
@@ -263,8 +374,8 @@ export function ModelPicker(props: ModelPickerProps) {
                         {props.placeholder}
                     </option>
                     {props.models.map((model) => (
-                        <option key={model.id} value={model.id}>
-                            {model.label}
+                        <option key={`${model.providerId ?? 'single'}:${model.id}`} value={model.id}>
+                            {getDisplayLabel(model)}
                         </option>
                     ))}
                 </>

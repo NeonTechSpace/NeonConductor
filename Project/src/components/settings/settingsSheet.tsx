@@ -30,15 +30,15 @@ const SECTION_LABELS: Record<SettingsSection, string> = {
 };
 
 const SECTION_DESCRIPTIONS: Record<SettingsSection, string> = {
-    kilo: 'Account identity, organization membership, and balance snapshots.',
-    providers: 'Provider auth, credentials, default models, and runtime configuration.',
+    kilo: 'Sign-in state, default Kilo model, account session, and organization snapshots.',
+    providers: 'Direct provider credentials, endpoint profiles, and BYOK defaults.',
     profiles: 'Execution presets and profile selection.',
     context: 'Workspace and context budgeting settings.',
     agents: 'Registry-backed agents and skills.',
 };
 
 export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: SettingsSheetProps) {
-    const [activeSection, setActiveSection] = useState<SettingsSection>('providers');
+    const [activeSection, setActiveSection] = useState<SettingsSection>('kilo');
     const sectionButtonRefs = useRef<Record<SettingsSection, HTMLButtonElement | null>>({
         kilo: null,
         providers: null,
@@ -70,7 +70,7 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
                             Settings
                         </h2>
                         <p id='settings-sheet-description' className='text-muted-foreground text-xs leading-5'>
-                            Provider configuration stays in Providers. Kilo is a separate account profile surface.
+                            Kilo is the default app path. Direct provider credentials live separately in Providers.
                         </p>
                     </div>
 

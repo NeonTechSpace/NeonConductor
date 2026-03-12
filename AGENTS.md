@@ -106,3 +106,4 @@
 
 ## Practical Rule
 - Every PR must leave the touched area clearer than it was.
+- Before assuming the git worktree is dirty or in a standard branch-based state, check whether `jj` is managing the workspace and whether Git is detached because of that workflow.

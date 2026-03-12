@@ -111,10 +111,11 @@ interface SessionWorkspacePanelProps {
           }
         | undefined;
     runDiffOverview?: DiffOverview;
-    providerOptions: Array<{ id: string; label: string; authState: string }>;
     modelOptions: Array<{
         id: string;
         label: string;
+        providerId?: string;
+        providerLabel?: string;
         sourceProvider?: string;
         source?: string;
         promptFamily?: string;
@@ -214,7 +215,6 @@ export function SessionWorkspacePanel({
     registrySummary,
     agentContextSummary,
     runDiffOverview,
-    providerOptions,
     modelOptions,
     runErrorMessage,
     contextState,
@@ -413,7 +413,7 @@ export function SessionWorkspacePanel({
                             canAttachImages={canAttachImages}
                             {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
                             {...(routingBadge !== undefined ? { routingBadge } : {})}
-                            providerOptions={providerOptions}
+                            {...(selectedProviderStatus ? { selectedProviderStatus } : {})}
                             modelOptions={modelOptions}
                             runErrorMessage={runErrorMessage}
                             {...(contextState ? { contextState } : {})}

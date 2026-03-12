@@ -9,15 +9,11 @@ import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
 import type { ResolvedContextState, TopLevelTab } from '@/shared/contracts';
 
-interface ProviderOption {
-    id: string;
-    label: string;
-    authState: string;
-}
-
 interface ModelOption {
     id: string;
     label: string;
+    providerId?: string;
+    providerLabel?: string;
     sourceProvider?: string;
     source?: string;
     promptFamily?: string;
@@ -53,7 +49,11 @@ interface ComposerActionPanelProps {
     canAttachImages: boolean;
     imageAttachmentBlockedReason?: string;
     routingBadge?: string;
-    providerOptions: ProviderOption[];
+    selectedProviderStatus?: {
+        label: string;
+        authState: string;
+        authMethod: string;
+    };
     modelOptions: ModelOption[];
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
@@ -124,7 +124,7 @@ export function ComposerActionPanel({
     canAttachImages,
     imageAttachmentBlockedReason,
     routingBadge,
-    providerOptions,
+    selectedProviderStatus,
     modelOptions,
     runErrorMessage,
     contextState,
@@ -160,6 +160,9 @@ export function ComposerActionPanel({
     const hasSubmittableContent = prompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
     const hasUnsupportedPendingImages = pendingImages.length > 0 && !canAttachImages;
     const shouldShowModePicker = topLevelTab !== 'chat';
+    const compactConnectionLabel = selectedProviderStatus
+        ? `${selectedProviderStatus.label} · ${selectedProviderStatus.authState.replace('_', ' ')}`
+        : undefined;
     const attachmentStatusMessage = hasUnsupportedPendingImages
         ? imageAttachmentBlockedReason ?? 'Select a vision-capable model to send attached images.'
         : hasBlockingPendingImages
@@ -225,8 +228,8 @@ export function ComposerActionPanel({
                 <div
                     className={`grid gap-3 ${
                         shouldShowModePicker
-                            ? 'xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1.2fr)]'
-                            : 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'
+                            ? 'xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]'
+                            : 'grid-cols-1'
                     }`}>
                     {shouldShowModePicker ? (
                         <div className='space-y-1'>
@@ -252,48 +255,35 @@ export function ComposerActionPanel({
                     <div className='space-y-1'>
                         <label
                             className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'
-                            htmlFor='composer-provider-select'>
-                            Provider
-                        </label>
-                        <select
-                            id='composer-provider-select'
-                            name='composerProvider'
-                            value={selectedProviderId ?? ''}
-                            onChange={(event) => {
-                                onProviderChange(event.target.value);
-                            }}
-                            className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
-                            disabled={disabled || providerOptions.length === 0}>
-                            <option value='' disabled>
-                                Select provider
-                            </option>
-                            {providerOptions.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.label} ({provider.authState})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className='space-y-1'>
-                        <label
-                            className='text-muted-foreground block text-[11px] font-semibold tracking-[0.12em] uppercase'
                             htmlFor='composer-model-select'>
                             Model
                         </label>
                         <ModelPicker
                             id='composer-model-select'
                             name='composerModel'
-                            providerId={selectedProviderId}
+                            providerId={undefined}
                             selectedModelId={selectedModelId ?? ''}
                             models={modelOptions}
                             disabled={disabled || modelOptions.length === 0}
                             ariaLabel='Model'
                             placeholder='Select model'
+                            onSelectOption={(option) => {
+                                if (option.providerId && option.providerId !== selectedProviderId) {
+                                    onProviderChange(option.providerId);
+                                }
+                            }}
                             onSelectModel={onModelChange}
                         />
                     </div>
                 </div>
-                {routingBadge ? <p className='text-muted-foreground text-xs'>{routingBadge}</p> : null}
+                {compactConnectionLabel || routingBadge ? (
+                    <div className='flex flex-wrap gap-x-4 gap-y-1'>
+                        {compactConnectionLabel ? (
+                            <p className='text-muted-foreground text-xs'>{compactConnectionLabel}</p>
+                        ) : null}
+                        {routingBadge ? <p className='text-muted-foreground text-xs'>{routingBadge}</p> : null}
+                    </div>
+                ) : null}
                 {runErrorMessage ? (
                     <p aria-live='polite' className='text-destructive text-xs'>
                         {runErrorMessage}

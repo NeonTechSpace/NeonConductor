@@ -79,7 +79,47 @@ describe('submitPrompt', () => {
         });
 
         expect(onError).toHaveBeenCalledWith(
-            'OpenAI is not authenticated. Open Settings > Providers to connect it before running.'
+            'OpenAI is not authenticated. Open Settings > Providers and connect it before running.'
+        );
+    });
+
+    it('routes Kilo auth errors to the Kilo settings surface', async () => {
+        const onError = vi.fn();
+
+        await submitPrompt({
+            prompt: 'Ship it',
+            isStartingRun: false,
+            selectedSessionId: 'sess_test',
+            isPlanningMode: false,
+            profileId: 'profile_default',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            workspaceFingerprint: undefined,
+            resolvedRunTarget: {
+                providerId: 'kilo',
+                modelId: 'kilo/auto',
+            },
+            runtimeOptions: DEFAULT_RUN_OPTIONS,
+            providerById: new Map([
+                [
+                    'kilo',
+                    {
+                        label: 'Kilo',
+                        authState: 'logged_out',
+                        authMethod: 'device_code',
+                    },
+                ],
+            ]),
+            startPlan: vi.fn(),
+            startRun: vi.fn(),
+            onPromptCleared: vi.fn(),
+            onPlanStarted: vi.fn(),
+            onRunStarted: vi.fn(),
+            onError,
+        });
+
+        expect(onError).toHaveBeenCalledWith(
+            'Kilo is not authenticated. Open Settings > Kilo and sign in before running.'
         );
     });
 

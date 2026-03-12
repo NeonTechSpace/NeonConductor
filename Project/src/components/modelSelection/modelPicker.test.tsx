@@ -55,4 +55,34 @@ describe('model picker', () => {
         expect(html).toContain('GPT-5');
         expect(html).not.toContain('Search Kilo models');
     });
+
+    it('uses the grouped popover picker when models span multiple providers', () => {
+        const html = renderToStaticMarkup(
+            <ModelPicker
+                providerId={undefined}
+                selectedModelId='kilo/auto'
+                models={[
+                    {
+                        id: 'kilo/auto',
+                        label: 'Kilo Auto',
+                        providerId: 'kilo',
+                        providerLabel: 'Kilo',
+                    },
+                    {
+                        id: 'openai/gpt-5',
+                        label: 'GPT-5',
+                        providerId: 'openai',
+                        providerLabel: 'OpenAI',
+                    },
+                ]}
+                ariaLabel='Model'
+                placeholder='Select model'
+                onSelectModel={() => {}}
+            />
+        );
+
+        expect(html).toContain('<button');
+        expect(html).toContain('Kilo Auto');
+        expect(html).not.toContain('<select');
+    });
 });

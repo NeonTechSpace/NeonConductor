@@ -18,25 +18,7 @@ interface UseProviderSettingsMutationsInput {
 export function useProviderSettingsMutations(input: UseProviderSettingsMutationsInput) {
     const utils = trpc.useUtils();
     const selectedProviderId = input.selectedProviderId ?? 'openai';
-    type ProviderListQueryData = Awaited<ReturnType<typeof utils.provider.listProviders.fetch>>;
     type ProviderAuthStateQueryData = Awaited<ReturnType<typeof utils.provider.getAuthState.fetch>>;
-
-    const updateProviderListItem = (
-        providerId: RuntimeProviderId,
-        updater: (provider: ProviderListQueryData['providers'][number]) => ProviderListQueryData['providers'][number]
-    ) => {
-        utils.provider.listProviders.setData({ profileId: input.profileId }, (current) => {
-            if (!current) {
-                return current;
-            }
-
-            return {
-                providers: current.providers.map((provider) =>
-                    provider.id === providerId ? updater(provider) : provider
-                ),
-            };
-        });
-    };
 
     const setAuthStateCache = (providerId: RuntimeProviderId, state: ProviderAuthStateRecord) => {
         const nextAuthState: ProviderAuthStateQueryData = {
@@ -51,11 +33,12 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             },
             nextAuthState
         );
-        updateProviderListItem(providerId, (provider) => ({
-            ...provider,
-            authState: state.authState,
-            authMethod: state.authMethod,
-        }));
+        patchProviderCache({
+            utils,
+            profileId: input.profileId,
+            providerId,
+            authState: state,
+        });
     };
 
     const setDefaultMutation = trpc.provider.setDefault.useMutation({
@@ -89,6 +72,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                     })),
                 };
             });
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 
@@ -101,21 +85,12 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
 
             input.setApiKeyInput('');
             input.setStatusMessage('API key saved. Provider is ready.');
-            utils.provider.getAuthState.setData(
-                {
-                    profileId: input.profileId,
-                    providerId: variables.providerId,
-                },
-                {
-                    found: true,
-                    state: result.state,
-                }
-            );
-            updateProviderListItem(variables.providerId, (provider) => ({
-                ...provider,
-                authState: result.state.authState,
-                authMethod: result.state.authMethod,
-            }));
+            patchProviderCache({
+                utils,
+                profileId: input.profileId,
+                providerId: variables.providerId,
+                authState: result.state,
+            });
             void utils.provider.getCredentialSummary.invalidate({
                 profileId: input.profileId,
                 providerId: variables.providerId,
@@ -127,6 +102,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 
@@ -163,6 +139,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 models: result.models,
                 ...(result.provider ? { provider: result.provider } : {}),
             });
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 
@@ -192,6 +169,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 models: result.models,
                 ...(result.provider ? { provider: result.provider } : {}),
             });
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 
@@ -226,6 +204,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 
@@ -245,6 +224,13 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                     profileId: input.profileId,
                     providerId: 'kilo',
                 });
+                void syncCatalogMutation
+                    .mutateAsync({
+                        profileId: input.profileId,
+                        providerId: 'kilo',
+                        force: true,
+                    })
+                    .catch(() => undefined);
             }
             void utils.provider.getCredentialSummary.invalidate({
                 profileId: input.profileId,
@@ -257,6 +243,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 
@@ -268,6 +255,7 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             if (variables.providerId === 'openai') {
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
+            void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
         },
     });
 

@@ -207,6 +207,13 @@ export function ProviderAuthenticationSection({
     const canUseApiKey = methods.includes('api_key');
     const activeFlowForSelectedProvider =
         activeAuthFlow?.providerId === selectedProviderId ? activeAuthFlow : undefined;
+    const isAuthenticated = effectiveAuthState === 'authenticated';
+    const kiloCredentialLabel =
+        credentialSummary?.credentialSource === 'access_token'
+            ? 'Browser session token is stored locally for Kilo.'
+            : credentialSummary?.credentialSource === 'api_key'
+              ? 'An API key is stored locally for Kilo.'
+              : 'Kilo account access is ready in this profile.';
 
     return (
         <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
@@ -227,35 +234,48 @@ export function ProviderAuthenticationSection({
             <div className='space-y-4'>
                 {isKilo ? (
                     <div className='border-primary/20 bg-primary/5 space-y-4 rounded-[24px] border p-4'>
-                        <div className='space-y-1'>
-                            <p className='text-sm font-semibold'>Sign in with Kilo</p>
-                            <p className='text-muted-foreground text-xs leading-5'>
-                                Press the login button and finish the authorization in your browser. Neon Conductor
-                                keeps the account session and syncs your Kilo account context after approval.
-                            </p>
-                        </div>
+                        {isAuthenticated && !activeFlowForSelectedProvider ? (
+                            <div className='border-border/70 bg-background/80 rounded-2xl border p-4'>
+                                <p className='text-sm font-semibold'>Kilo connected</p>
+                                <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                    {kiloCredentialLabel} Default model selection is ready immediately, and the catalog
+                                    refreshes automatically when needed.
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className='space-y-1'>
+                                    <p className='text-sm font-semibold'>Sign in with Kilo</p>
+                                    <p className='text-muted-foreground text-xs leading-5'>
+                                        Press the login button and finish the authorization in your browser. Neon
+                                        Conductor keeps the account session and syncs your Kilo account context after
+                                        approval.
+                                    </p>
+                                </div>
 
-                        <div className='flex flex-wrap gap-2'>
-                            {canStartDeviceCode ? (
-                                <Button
-                                    type='button'
-                                    size='sm'
-                                    disabled={isStartingAuth || !selectedProviderId}
-                                    onClick={onStartDeviceCode}>
-                                    {isStartingAuth ? 'Opening browser…' : 'Log In to Kilo'}
-                                </Button>
-                            ) : null}
-                            {activeFlowForSelectedProvider?.verificationUri ? (
-                                <Button
-                                    type='button'
-                                    size='sm'
-                                    variant='outline'
-                                    disabled={isOpeningVerificationPage}
-                                    onClick={onOpenVerificationPage}>
-                                    {isOpeningVerificationPage ? 'Opening…' : 'Open Browser Again'}
-                                </Button>
-                            ) : null}
-                        </div>
+                                <div className='flex flex-wrap gap-2'>
+                                    {canStartDeviceCode ? (
+                                        <Button
+                                            type='button'
+                                            size='sm'
+                                            disabled={isStartingAuth || !selectedProviderId}
+                                            onClick={onStartDeviceCode}>
+                                            {isStartingAuth ? 'Opening browser…' : 'Log In to Kilo'}
+                                        </Button>
+                                    ) : null}
+                                    {activeFlowForSelectedProvider?.verificationUri ? (
+                                        <Button
+                                            type='button'
+                                            size='sm'
+                                            variant='outline'
+                                            disabled={isOpeningVerificationPage}
+                                            onClick={onOpenVerificationPage}>
+                                            {isOpeningVerificationPage ? 'Opening…' : 'Open Browser Again'}
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            </>
+                        )}
 
                         {activeFlowForSelectedProvider ? (
                             <div className='border-border/70 bg-background/80 rounded-2xl border p-4'>
@@ -365,28 +385,52 @@ export function ProviderAuthenticationSection({
                 )}
 
                 <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]'>
-                    {canUseApiKey ? (
-                        <ApiKeyField
-                            selectedProviderId={selectedProviderId}
-                            apiKeyInput={apiKeyInput}
-                            isCredentialVisible={isCredentialVisible}
-                            isSavingApiKey={isSavingApiKey}
-                            onApiKeyInputChange={onApiKeyInputChange}
-                            onSaveApiKey={onSaveApiKey}
-                            onRevealStoredCredential={onRevealStoredCredential}
-                            onHideStoredCredential={onHideStoredCredential}
-                            onCopyStoredCredential={onCopyStoredCredential}
-                            {...(credentialSummary ? { credentialSummary } : {})}
-                            {...(apiKeyCta ? { apiKeyCta } : {})}
-                            compactIntro={
-                                isKilo
-                                    ? 'Keep this for manual or support-driven setups. The normal Kilo path is browser login.'
-                                    : 'Use an API key when you want direct token-based access instead of an interactive login.'
-                            }
-                        />
-                    ) : null}
+                    <div className='min-w-0'>
+                        {canUseApiKey
+                            ? isKilo
+                                ? (
+                                      <details className='border-border/70 bg-background/75 rounded-[24px] border p-4'>
+                                          <summary className='cursor-pointer list-none text-sm font-semibold'>
+                                              Advanced API key access
+                                          </summary>
+                                          <div className='mt-3'>
+                                              <ApiKeyField
+                                                  selectedProviderId={selectedProviderId}
+                                                  apiKeyInput={apiKeyInput}
+                                                  isCredentialVisible={isCredentialVisible}
+                                                  isSavingApiKey={isSavingApiKey}
+                                                  onApiKeyInputChange={onApiKeyInputChange}
+                                                  onSaveApiKey={onSaveApiKey}
+                                                  onRevealStoredCredential={onRevealStoredCredential}
+                                                  onHideStoredCredential={onHideStoredCredential}
+                                                  onCopyStoredCredential={onCopyStoredCredential}
+                                                  {...(credentialSummary ? { credentialSummary } : {})}
+                                                  {...(apiKeyCta ? { apiKeyCta } : {})}
+                                                  compactIntro='Keep this for manual or support-driven setups. The normal Kilo path is browser login.'
+                                              />
+                                          </div>
+                                      </details>
+                                  )
+                                : (
+                                      <ApiKeyField
+                                          selectedProviderId={selectedProviderId}
+                                          apiKeyInput={apiKeyInput}
+                                          isCredentialVisible={isCredentialVisible}
+                                          isSavingApiKey={isSavingApiKey}
+                                          onApiKeyInputChange={onApiKeyInputChange}
+                                          onSaveApiKey={onSaveApiKey}
+                                          onRevealStoredCredential={onRevealStoredCredential}
+                                          onHideStoredCredential={onHideStoredCredential}
+                                          onCopyStoredCredential={onCopyStoredCredential}
+                                          {...(credentialSummary ? { credentialSummary } : {})}
+                                          {...(apiKeyCta ? { apiKeyCta } : {})}
+                                          compactIntro='Use an API key when you want direct token-based access instead of an interactive login.'
+                                      />
+                                  )
+                            : null}
+                    </div>
 
-                    <div className='border-border/70 bg-background/70 space-y-4 rounded-[24px] border p-4'>
+                    <div className='border-border/70 bg-background/70 min-w-0 space-y-4 rounded-[24px] border p-4'>
                         <div className='space-y-1'>
                             <p className='text-sm font-semibold'>Connection details</p>
                             <p className='text-muted-foreground text-xs leading-5'>

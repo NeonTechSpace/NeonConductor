@@ -22,9 +22,9 @@ export function selectProviderWithReset(input: {
 }
 
 export function resolvePinnedProviderId(input: {
-    pinnedProviderId: string;
+    pinnedProviderId?: string;
     availableProviderIds: string[];
 }): string | undefined {
-    return input.pinnedProviderId || input.availableProviderIds[0];
+    return input.pinnedProviderId?.trim() || input.availableProviderIds[0];
 }
 

@@ -112,26 +112,29 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
               )
             : undefined;
 
-    const providerOptions = input.providers
-        .filter((provider) => (modelsByProvider.get(provider.id) ?? []).length > 0)
-        .map((provider) => ({
-            id: provider.id,
-            label: provider.label,
-            authState: provider.authState,
-        }));
+    const modelOptions = input.providers.flatMap((provider) => {
+        const providerModels = modelsByProvider.get(provider.id) ?? [];
+        if (providerModels.length === 0) {
+            return [];
+        }
 
-    const modelOptions = !selectedProviderIdForComposer
-        ? []
-        : (modelsByProvider.get(selectedProviderIdForComposer) ?? []).map((model) => ({
-              id: model.id,
-              label: model.label,
-              ...(model.sourceProvider ? { sourceProvider: model.sourceProvider } : {}),
-              ...(model.source ? { source: model.source } : {}),
-              ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
-              ...(model.price !== undefined ? { price: model.price } : {}),
-              ...(model.latency !== undefined ? { latency: model.latency } : {}),
-              ...(model.tps !== undefined ? { tps: model.tps } : {}),
-          }));
+        if (provider.id !== 'kilo' && !isProviderRunnable(provider.authState, provider.authMethod)) {
+            return [];
+        }
+
+        return providerModels.map((model) => ({
+            id: model.id,
+            label: model.label,
+            providerId: provider.id,
+            providerLabel: provider.label,
+            ...(model.sourceProvider ? { sourceProvider: model.sourceProvider } : {}),
+            ...(model.source ? { source: model.source } : {}),
+            ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
+            ...(model.price !== undefined ? { price: model.price } : {}),
+            ...(model.latency !== undefined ? { latency: model.latency } : {}),
+            ...(model.tps !== undefined ? { tps: model.tps } : {}),
+        }));
+    });
 
     return {
         providerById,
@@ -140,7 +143,6 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         selectedProviderIdForComposer,
         selectedModelIdForComposer,
         selectedModelForComposer,
-        providerOptions,
         modelOptions,
     };
 }

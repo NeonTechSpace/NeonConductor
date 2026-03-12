@@ -107,9 +107,7 @@ export async function submitPrompt<
     const selectedProvider = input.providerById.get(input.resolvedRunTarget.providerId);
     const providerLabel = selectedProvider?.label ?? input.resolvedRunTarget.providerId;
     if (selectedProvider && !isProviderRunnable(selectedProvider.authState, selectedProvider.authMethod)) {
-        input.onError(
-            `${selectedProvider.label} is not authenticated. Open Settings > Providers to connect it before running.`
-        );
+        input.onError(toActionableRunError('Provider is not authenticated.', selectedProvider.label));
         return;
     }
 

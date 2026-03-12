@@ -61,7 +61,7 @@ export type ProviderModelOption = ProviderModelRecord;
 export interface KiloRoutingDraft {
     routingMode: KiloRoutingMode;
     sort: KiloDynamicSort;
-    pinnedProviderId: string;
+    pinnedProviderId?: string;
 }
 
 export interface KiloRoutingSectionPreference extends KiloModelRoutingPreference {

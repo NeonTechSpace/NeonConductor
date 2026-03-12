@@ -66,7 +66,6 @@ function buildBaseKiloRoutingDraft(input: {
         return {
             routingMode: 'dynamic',
             sort: 'default',
-            pinnedProviderId: '',
         };
     }
 
@@ -74,14 +73,13 @@ function buildBaseKiloRoutingDraft(input: {
         return {
             routingMode: 'dynamic',
             sort: input.preference.sort ?? 'default',
-            pinnedProviderId: '',
         };
     }
 
     return {
         routingMode: 'pinned',
         sort: 'default',
-        pinnedProviderId: input.preference.pinnedProviderId ?? '',
+        ...(input.preference.pinnedProviderId ? { pinnedProviderId: input.preference.pinnedProviderId } : {}),
     };
 }
 
@@ -119,7 +117,7 @@ export function useKiloRoutingDraft(input: UseKiloRoutingDraftInput) {
                     sort: nextDraft.sort,
                 });
             } else {
-                if (nextDraft.pinnedProviderId.trim().length === 0) {
+                if (!nextDraft.pinnedProviderId || nextDraft.pinnedProviderId.trim().length === 0) {
                     input.setStatusMessage('Select a provider before enabling pinned routing.');
                     setOptimisticDraftState({
                         key: draftKey,

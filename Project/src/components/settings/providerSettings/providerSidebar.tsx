@@ -5,6 +5,7 @@ import { SettingsSelectionRail } from '@/web/components/settings/shared/settings
 import type { RuntimeProviderId } from '@/shared/contracts';
 
 interface ProviderSidebarProps {
+    title?: string;
     providers: ProviderListItem[];
     selectedProviderId: RuntimeProviderId | undefined;
     onSelectProvider: (providerId: RuntimeProviderId) => void;
@@ -12,6 +13,7 @@ interface ProviderSidebarProps {
 }
 
 export function ProviderSidebar({
+    title = 'Providers',
     providers,
     selectedProviderId,
     onSelectProvider,
@@ -19,7 +21,7 @@ export function ProviderSidebar({
 }: ProviderSidebarProps) {
     return (
         <SettingsSelectionRail
-            title='Providers'
+            title={title}
             ariaLabel='Provider list'
             {...(selectedProviderId ? { selectedId: selectedProviderId } : {})}
             onSelect={(providerId) => {

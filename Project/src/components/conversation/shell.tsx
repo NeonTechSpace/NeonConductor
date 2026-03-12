@@ -575,7 +575,6 @@ export function ConversationShell({
                 {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
                 routingBadge={routingBadge}
                 {...workspaceSectionState}
-                providerOptions={runTargetState.providerOptions}
                 modelOptions={runTargetState.modelOptions}
                 runErrorMessage={composer.runSubmitError}
                 {...(contextStateQuery.data ? { contextState: contextStateQuery.data } : {})}

@@ -16,7 +16,7 @@ export function createProviderSettingsActions(input: {
     kiloRoutingDraft:
         | {
               sort: 'default' | 'price' | 'throughput' | 'latency';
-              pinnedProviderId: string;
+              pinnedProviderId?: string;
           }
         | undefined;
     setSelectedProviderId: (value: RuntimeProviderId) => void;
@@ -131,15 +131,20 @@ export function createProviderSettingsActions(input: {
                 await saveKiloRoutingPreference({
                     routingMode: 'dynamic',
                     sort: input.kiloRoutingDraft.sort,
-                    pinnedProviderId: '',
                 });
                 return;
             }
 
-            const pinnedProviderId = resolvePinnedProviderId({
-                pinnedProviderId: input.kiloRoutingDraft.pinnedProviderId,
-                availableProviderIds: input.kiloModelProviderIds,
-            });
+            const pinnedProviderId = resolvePinnedProviderId(
+                input.kiloRoutingDraft.pinnedProviderId
+                    ? {
+                          pinnedProviderId: input.kiloRoutingDraft.pinnedProviderId,
+                          availableProviderIds: input.kiloModelProviderIds,
+                      }
+                    : {
+                          availableProviderIds: input.kiloModelProviderIds,
+                      }
+            );
             if (!pinnedProviderId) {
                 input.setStatusMessage('No available providers to pin for this model.');
                 return;
@@ -155,7 +160,6 @@ export function createProviderSettingsActions(input: {
             await saveKiloRoutingPreference({
                 routingMode: 'dynamic',
                 sort,
-                pinnedProviderId: '',
             });
         },
         changePinnedProvider: async (providerId: string) => {

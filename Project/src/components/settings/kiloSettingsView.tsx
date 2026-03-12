@@ -1,10 +1,14 @@
+import { ProviderAuthenticationSection } from '@/web/components/settings/providerSettings/authenticationSection';
+import { ProviderDefaultModelSection } from '@/web/components/settings/providerSettings/defaultModelSection';
 import { formatDateTime, formatInteger } from '@/web/components/settings/providerSettings/helpers';
 import { KiloAccountSection } from '@/web/components/settings/providerSettings/kiloAccountSection';
-import { useKiloAccountSettingsController } from '@/web/components/settings/hooks/useKiloAccountSettingsController';
+import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
+import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 interface KiloSettingsViewProps {
     profileId: string;
@@ -32,13 +36,43 @@ function SummaryCard(input: { label: string; value: ReactNode; meta?: string }) 
 }
 
 export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
-    const controller = useKiloAccountSettingsController(profileId);
+    const controller = useProviderSettingsController(profileId, { initialProviderId: 'kilo' });
+    const [requestedInitialCatalogRefresh, setRequestedInitialCatalogRefresh] = useState(false);
+    const selectedProvider = controller.selectedProvider;
+    const effectiveAuthState = controller.selectedAuthState?.authState ?? selectedProvider?.authState ?? 'logged_out';
+    const shouldShowRoutingSection =
+        selectedProvider?.features.supportsKiloRouting === true &&
+        controller.selectedModelId.trim().length > 0 &&
+        Boolean(controller.kiloRoutingDraft) &&
+        controller.kiloModelProviders.length > 1;
 
-    if (!controller.provider || controller.provider.id !== 'kilo') {
+    useEffect(() => {
+        if (
+            selectedProvider?.id !== 'kilo' ||
+            requestedInitialCatalogRefresh ||
+            effectiveAuthState !== 'authenticated' ||
+            controller.models.length > 0 ||
+            controller.mutations.syncCatalogMutation.isPending
+        ) {
+            return;
+        }
+
+        setRequestedInitialCatalogRefresh(true);
+        void controller.syncCatalog();
+    }, [
+        controller.models.length,
+        controller.mutations.syncCatalogMutation.isPending,
+        controller.syncCatalog,
+        effectiveAuthState,
+        requestedInitialCatalogRefresh,
+        selectedProvider?.id,
+    ]);
+
+    if (!selectedProvider || selectedProvider.id !== 'kilo') {
         return <p className='text-muted-foreground p-5 text-sm'>Kilo is not available for this profile.</p>;
     }
 
-    const accountContext = controller.accountContext;
+    const accountContext = controller.kiloAccountContext;
     const activeOrganization = accountContext?.organizations.find((organization) => organization.isActive);
 
     return (
@@ -49,14 +83,14 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                         <p className='text-primary text-[11px] font-semibold tracking-[0.18em] uppercase'>Kilo</p>
                         <div className='flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between'>
                             <div className='space-y-1'>
-                                <h4 className='text-xl font-semibold text-balance'>Kilo account profile</h4>
+                                <h4 className='text-xl font-semibold text-balance'>Kilo account and model setup</h4>
                                 <p className='text-muted-foreground max-w-3xl text-sm leading-6'>
-                                    Review the synced Kilo identity, organization membership, and balance snapshots here.
-                                    Provider login, default model selection, and routing stay in the Providers section.
+                                    Sign in to Kilo, choose the default Kilo model, and review the synced identity,
+                                    organization membership, and balance snapshots here.
                                 </p>
                             </div>
                             <div className='border-border/70 bg-background/80 rounded-full border px-3 py-1.5 text-xs font-medium'>
-                                Auth {controller.authState?.authState ?? controller.provider.authState}
+                                Auth {effectiveAuthState}
                             </div>
                         </div>
                     </div>
@@ -73,8 +107,8 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                             label='Email'
                             value={<SensitiveValue value={accountContext?.emailMasked} category='email' />}
                             meta={
-                                controller.authState?.tokenExpiresAt
-                                    ? `Token ${formatDateTime(controller.authState.tokenExpiresAt)}`
+                                controller.selectedAuthState?.tokenExpiresAt
+                                    ? `Token ${formatDateTime(controller.selectedAuthState.tokenExpiresAt)}`
                                     : 'Token expiry unavailable'
                             }
                         />
@@ -99,12 +133,107 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                         />
                     </div>
 
+                    <ProviderAuthenticationSection
+                        selectedProviderId='kilo'
+                        selectedProviderAuthState={selectedProvider.authState}
+                        selectedProviderAuthMethod={selectedProvider.authMethod}
+                        selectedAuthState={controller.selectedAuthState}
+                        methods={controller.methods}
+                        endpointProfileValue={selectedProvider.endpointProfile.value}
+                        endpointProfileOptions={selectedProvider.endpointProfiles}
+                        apiKeyCta={selectedProvider.apiKeyCta}
+                        apiKeyInput={controller.apiKeyInput}
+                        isCredentialVisible={controller.isCredentialVisible}
+                        activeAuthFlow={controller.activeAuthFlow}
+                        isSavingApiKey={controller.mutations.setApiKeyMutation.isPending}
+                        isSavingEndpointProfile={controller.mutations.setEndpointProfileMutation.isPending}
+                        isStartingAuth={controller.mutations.startAuthMutation.isPending}
+                        isPollingAuth={controller.mutations.pollAuthMutation.isPending}
+                        isCancellingAuth={controller.mutations.cancelAuthMutation.isPending}
+                        isOpeningVerificationPage={controller.mutations.openExternalUrlMutation.isPending}
+                        onApiKeyInputChange={controller.setApiKeyInput}
+                        onEndpointProfileChange={(value) => {
+                            void controller.changeEndpointProfile(value);
+                        }}
+                        onSaveApiKey={() => {
+                            void controller.saveApiKey();
+                        }}
+                        onRevealStoredCredential={() => {
+                            void controller.revealStoredCredential();
+                        }}
+                        onHideStoredCredential={controller.hideStoredCredential}
+                        onCopyStoredCredential={() => {
+                            void controller.copyStoredCredential();
+                        }}
+                        onStartOAuthDevice={() => {
+                            void controller.startOAuthDevice();
+                        }}
+                        onStartDeviceCode={() => {
+                            void controller.startDeviceCode();
+                        }}
+                        onPollNow={() => {
+                            void controller.pollNow();
+                        }}
+                        onCancelFlow={() => {
+                            void controller.cancelFlow();
+                        }}
+                        onOpenVerificationPage={() => {
+                            void controller.openVerificationPage();
+                        }}
+                        {...(controller.credentialSummary ? { credentialSummary: controller.credentialSummary } : {})}
+                    />
+
+                    <ProviderDefaultModelSection
+                        selectedProviderId='kilo'
+                        selectedModelId={controller.selectedModelId}
+                        models={controller.models}
+                        isDefaultModel={controller.selectedIsDefaultModel}
+                        isSavingDefault={controller.mutations.setDefaultMutation.isPending}
+                        isSyncingCatalog={controller.mutations.syncCatalogMutation.isPending}
+                        onSelectModel={controller.setSelectedModelId}
+                        onSetDefault={() => {
+                            void controller.setDefaultModel();
+                        }}
+                        onSyncCatalog={() => {
+                            void controller.syncCatalog();
+                        }}
+                    />
+
+                    {shouldShowRoutingSection ? (
+                        <details className='border-border/70 bg-card/40 rounded-[24px] border p-4'>
+                            <summary className='cursor-pointer list-none text-sm font-semibold'>Advanced routing</summary>
+                            <p className='text-muted-foreground mt-2 text-xs leading-5'>
+                                Fine-tune which upstream provider Kilo should prefer only after choosing a model that
+                                actually supports multiple backing providers.
+                            </p>
+                            <div className='mt-4'>
+                                <KiloRoutingSection
+                                    selectedModelId={controller.selectedModelId}
+                                    draft={controller.kiloRoutingDraft!}
+                                    providers={controller.kiloModelProviders}
+                                    isLoadingPreference={controller.queries.kiloRoutingPreferenceQuery.isLoading}
+                                    isLoadingProviders={controller.queries.kiloModelProvidersQuery.isLoading}
+                                    isSaving={controller.mutations.setModelRoutingPreferenceMutation.isPending}
+                                    onModeChange={(mode) => {
+                                        void controller.changeRoutingMode(mode);
+                                    }}
+                                    onSortChange={(sort) => {
+                                        void controller.changeRoutingSort(sort);
+                                    }}
+                                    onPinnedProviderChange={(providerId) => {
+                                        void controller.changePinnedProvider(providerId);
+                                    }}
+                                />
+                            </div>
+                        </details>
+                    ) : null}
+
                     <div className='grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]'>
                         <div className='space-y-5'>
                             <KiloAccountSection
                                 accountContext={accountContext}
-                                isLoading={controller.isLoading}
-                                isSavingOrganization={controller.isSavingOrganization}
+                                isLoading={controller.queries.accountContextQuery.isLoading}
+                                isSavingOrganization={controller.mutations.setOrganizationMutation.isPending}
                                 onOrganizationChange={(organizationId) => {
                                     void controller.changeOrganization(organizationId);
                                 }}
@@ -114,11 +243,11 @@ export function KiloSettingsView({ profileId }: KiloSettingsViewProps) {
                         <div className='space-y-4'>
                             <SummaryCard
                                 label='Session'
-                                value={controller.authState?.authState ?? controller.provider.authState}
+                                value={effectiveAuthState}
                                 meta={
-                                    controller.authState?.tokenExpiresAt
-                                        ? `Token ${formatDateTime(controller.authState.tokenExpiresAt)}`
-                                        : 'Provider login state is managed in Providers'
+                                    controller.selectedAuthState?.tokenExpiresAt
+                                        ? `Token ${formatDateTime(controller.selectedAuthState.tokenExpiresAt)}`
+                                        : 'Browser sign-in is the recommended Kilo flow.'
                                 }
                             />
                             <SummaryCard

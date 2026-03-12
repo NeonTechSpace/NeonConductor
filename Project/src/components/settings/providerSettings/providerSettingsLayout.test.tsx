@@ -3,19 +3,59 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsController', () => ({
     useProviderSettingsController: () => ({
-        providerItems: [],
-        selectedProviderId: 'kilo',
+        providerItems: [
+            {
+                id: 'kilo',
+                label: 'Kilo',
+                authState: 'authenticated',
+                authMethod: 'device_code',
+                endpointProfile: { value: 'gateway' },
+                endpointProfiles: [],
+                apiKeyCta: null,
+                isDefault: true,
+                availableAuthMethods: ['device_code', 'api_key'],
+                features: {
+                    supportsKiloRouting: true,
+                    catalogStrategy: 'dynamic',
+                    supportsModelProviderListing: true,
+                    supportsEndpointProfiles: true,
+                },
+            },
+            {
+                id: 'openai',
+                label: 'OpenAI',
+                authState: 'logged_out',
+                authMethod: 'oauth_device',
+                endpointProfile: { value: 'default' },
+                endpointProfiles: [],
+                apiKeyCta: null,
+                isDefault: false,
+                availableAuthMethods: ['oauth_device', 'api_key'],
+                features: {
+                    supportsKiloRouting: false,
+                    catalogStrategy: 'static',
+                    supportsModelProviderListing: false,
+                    supportsEndpointProfiles: false,
+                },
+            },
+        ],
+        selectedProviderId: 'openai',
         prefetchProvider: vi.fn(),
         selectProvider: vi.fn(),
         selectedProvider: {
-            id: 'kilo',
-            label: 'Kilo',
+            id: 'openai',
+            label: 'OpenAI',
             authState: 'logged_out',
-            authMethod: 'none',
+            authMethod: 'oauth_device',
             endpointProfile: { value: 'gateway' },
             endpointProfiles: [],
             apiKeyCta: null,
-            features: { supportsKiloRouting: false },
+            features: {
+                supportsKiloRouting: false,
+                catalogStrategy: 'static',
+                supportsModelProviderListing: false,
+                supportsEndpointProfiles: false,
+            },
         },
         selectedAuthState: undefined,
         kiloAccountContext: undefined,
@@ -105,5 +145,7 @@ describe('provider settings layout', () => {
 
         expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[264px_minmax(0,1fr)]');
         expect(html).toContain('min-h-0 min-w-0 overflow-y-auto p-4 md:p-5');
+        expect(html).toContain('Custom providers');
+        expect(html).toContain('OpenAI');
     });
 });
