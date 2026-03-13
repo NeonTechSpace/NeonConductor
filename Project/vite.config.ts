@@ -1,3 +1,5 @@
+import { builtinModules } from 'node:module';
+
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import { devtools } from '@tanstack/devtools-vite';
@@ -8,6 +10,16 @@ import electron from 'vite-plugin-electron';
 
 import { createPreloadBuildConfig } from './electron/main/preload/buildConfig';
 import { resolveElectronChildEnv } from './electron/main/runtime/electronChildEnv';
+
+const electronMainExternalModules = [
+    'electron',
+    'electron-updater',
+    'ws',
+    ...builtinModules.filter((moduleName) => !moduleName.startsWith('_')).flatMap((moduleName) => [
+        moduleName,
+        `node:${moduleName}`,
+    ]),
+];
 
 function buildPreloadOptions(input: string, outputFileName: string) {
     return {
@@ -56,6 +68,11 @@ export default defineConfig(async () => {
                     vite: {
                         resolve: {
                             tsconfigPaths: true,
+                        },
+                        build: {
+                            rollupOptions: {
+                                external: electronMainExternalModules,
+                            },
                         },
                     },
                 },

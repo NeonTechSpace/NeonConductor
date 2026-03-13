@@ -5,9 +5,11 @@
 
 import { app, BrowserWindow } from 'electron';
 import Store from 'electron-store';
-import { autoUpdater, type ProgressInfo } from 'electron-updater';
+import electronUpdater, { type ProgressInfo } from 'electron-updater';
 
 import { appLog } from '@/app/main/logging';
+
+const { autoUpdater } = electronUpdater;
 
 export type UpdateChannel = 'stable' | 'beta' | 'alpha';
 type UpdateRequestKind = 'startup' | 'manual' | 'switch';
