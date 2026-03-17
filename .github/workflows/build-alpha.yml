@@ -1,0 +1,20 @@
+name: Build Alpha
+
+on:
+  push:
+    tags:
+      - "v*-alpha.*"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  prerelease:
+    uses: ./.github/workflows/build-prerelease.yml
+    with:
+      channel: alpha
+      channel_title: Alpha
+      tag_pattern: v*-alpha.*
+      target_branch: dev
+    secrets: inherit

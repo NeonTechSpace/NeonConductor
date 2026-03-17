@@ -1,13 +1,23 @@
-name: Build Prerelease
+name: Build Prerelease Shared
 
 on:
-  push:
-    tags:
-      - "v*-alpha.*"
-      - "v*-beta.*"
+  workflow_call:
+    inputs:
+      channel:
+        required: true
+        type: string
+      channel_title:
+        required: true
+        type: string
+      tag_pattern:
+        required: true
+        type: string
+      target_branch:
+        required: true
+        type: string
 
 concurrency:
-  group: build-prerelease-${{ github.ref }}
+  group: build-prerelease-${{ inputs.channel }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -15,7 +25,77 @@ permissions:
   pull-requests: read
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      should_release: ${{ steps.guard.outputs.should_release }}
+      tag: ${{ steps.guard.outputs.tag }}
+      version: ${{ steps.guard.outputs.version }}
+      channel: ${{ steps.guard.outputs.channel }}
+      channel_title: ${{ steps.guard.outputs.channel_title }}
+      release_name: ${{ steps.guard.outputs.release_name }}
+      is_prerelease: ${{ steps.guard.outputs.is_prerelease }}
+      headline: ${{ steps.guard.outputs.headline }}
+    steps:
+      - name: Guard tag context
+        id: guard
+        shell: bash
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          CHANNEL_TITLE: ${{ inputs.channel_title }}
+          TAG_PATTERN: ${{ inputs.tag_pattern }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+
+          case "$CHANNEL" in
+            alpha)
+              CHANNEL_HEADLINE="The conductor has whipped up a new experimental version to try out. Use with caution, as it might be unstable."
+              ;;
+            beta)
+              CHANNEL_HEADLINE="The conductor has pushed these new updates to the preview stage. This update should be safe to try, right?"
+              ;;
+            *)
+              echo "Unsupported prerelease channel: $CHANNEL"
+              exit 1
+              ;;
+          esac
+
+          TAG="${REF_NAME:-}"
+          VERSION="${TAG#v}"
+          RELEASE_NAME="${CHANNEL_TITLE} ${VERSION}"
+
+          if [[ "${REF_TYPE:-}" != "tag" ]]; then
+            echo "Ref ${REF:-<unknown>} is not a tag. Skipping ${CHANNEL} prerelease workflow."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -z "$TAG" || "$TAG" != $TAG_PATTERN ]]; then
+            echo "Tag '$TAG' does not match expected pattern '$TAG_PATTERN' for ${CHANNEL}. Skipping."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "channel_title=$CHANNEL_TITLE" >> "$GITHUB_OUTPUT"
+          echo "release_name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "headline<<EOF"
+            echo "$CHANNEL_HEADLINE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
   build:
+    if: needs.guard.outputs.should_release == 'true'
+    needs: guard
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     defaults:
@@ -38,38 +118,17 @@ jobs:
           fetch-depth: 0
           path: s
 
-      - name: Parse tag
-        id: tag
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
-          if [[ "$TAG" == *"-alpha."* ]]; then
-            CHANNEL="alpha"
-          elif [[ "$TAG" == *"-beta."* ]]; then
-            CHANNEL="beta"
-          else
-            echo "Unsupported tag: $TAG"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-
       - name: Validate tag branch
         shell: bash
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
         run: |
           set -euo pipefail
           git fetch origin \
-            +refs/heads/dev:refs/remotes/origin/dev \
-            +refs/heads/prev:refs/remotes/origin/prev \
+            "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" \
             --force --tags
 
-          if [ "${{ steps.tag.outputs.channel }}" = "alpha" ]; then
-            target_ref="origin/dev"
-          else
-            target_ref="origin/prev"
-          fi
-
+          target_ref="origin/${TARGET_BRANCH}"
           target_head="$(git rev-parse "$target_ref")"
           if [[ "$GITHUB_SHA" != "$target_head" ]]; then
             echo "Tag commit $GITHUB_SHA is not the current head of $target_ref ($target_head)."
@@ -107,8 +166,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
-          VERSION="${{ steps.tag.outputs.version }}"
-          CHANNEL="${{ steps.tag.outputs.channel }}"
+          VERSION="${{ needs.guard.outputs.version }}"
+          CHANNEL="${{ needs.guard.outputs.channel }}"
           pnpm -C Project build
           pnpm -C Project exec electron-builder ${{ matrix.target_args }} -c electron-builder.json5 --publish never --config.extraMetadata.version="$VERSION" --config.publish.channel="$CHANNEL" --config.publish.releaseType=prerelease
 
@@ -116,8 +175,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ steps.tag.outputs.version }}"
-          CHANNEL="${{ steps.tag.outputs.channel }}"
+          VERSION="${{ needs.guard.outputs.version }}"
+          CHANNEL="${{ needs.guard.outputs.channel }}"
           RELEASE_DIR="Project/release/${VERSION}"
           STAGE_DIR="Project/release-assets"
           rm -rf "$STAGE_DIR"
@@ -139,12 +198,13 @@ jobs:
       - name: Upload release assets
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: release-assets-${{ matrix.os }}-${{ steps.tag.outputs.version }}
+          name: release-assets-${{ matrix.os }}-${{ needs.guard.outputs.version }}
           path: s/Project/release-assets/**
           if-no-files-found: error
 
   notes:
-    needs: build
+    if: needs.guard.outputs.should_release == 'true'
+    needs: [guard, build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -165,29 +225,18 @@ jobs:
         with:
           node-version: 24.13.1
 
-      - name: Parse prerelease context
+      - name: Resolve prerelease context
         id: ctx
         shell: bash
+        env:
+          TAG: ${{ needs.guard.outputs.tag }}
+          VERSION: ${{ needs.guard.outputs.version }}
+          CHANNEL: ${{ needs.guard.outputs.channel }}
+          CHANNEL_TITLE: ${{ needs.guard.outputs.channel_title }}
+          RELEASE_NAME: ${{ needs.guard.outputs.release_name }}
+          CHANNEL_HEADLINE: ${{ needs.guard.outputs.headline }}
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
-
-          if [[ "$TAG" == *"-alpha."* ]]; then
-            CHANNEL="alpha"
-            CHANNEL_TITLE="Alpha"
-            CHANNEL_HEADLINE="The conductor has whipped up a new experimental version to try out. Use with caution, as it might be unstable."
-          elif [[ "$TAG" == *"-beta."* ]]; then
-            CHANNEL="beta"
-            CHANNEL_TITLE="Beta"
-            CHANNEL_HEADLINE="The conductor has pushed these new updates to the preview stage. This update should be safe to try, right?"
-          else
-            echo "Unsupported tag: $TAG"
-            exit 1
-          fi
-
-          RELEASE_NAME="${CHANNEL_TITLE} ${VERSION}"
-
           git fetch --tags --force
           PREVIOUS_TAG="$(git tag --list "v*-${CHANNEL}.*" --sort=-v:refname | grep -Fxv "$TAG" | head -n1 || true)"
 
@@ -224,7 +273,8 @@ jobs:
           if-no-files-found: error
 
   publish_release:
-    needs: [build, notes]
+    if: needs.guard.outputs.should_release == 'true'
+    needs: [guard, build, notes]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

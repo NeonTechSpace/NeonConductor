@@ -4,6 +4,12 @@
 
 <div align="center">
 
+[![Alpha](https://img.shields.io/github/actions/workflow/status/Neonsy/NeonConductor/build-alpha.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=5A1730&label=Alpha)](https://github.com/Neonsy/NeonConductor/actions/workflows/build-alpha.yml)
+&nbsp;&nbsp;&nbsp;&nbsp;
+[![Beta](https://img.shields.io/github/actions/workflow/status/Neonsy/NeonConductor/build-beta.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=B0307B&label=Beta)](https://github.com/Neonsy/NeonConductor/actions/workflows/build-beta.yml)
+&nbsp;&nbsp;&nbsp;&nbsp;
+[![Stable](https://img.shields.io/github/actions/workflow/status/Neonsy/NeonConductor/build-stable.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=237DBE&label=Stable)](https://github.com/Neonsy/NeonConductor/actions/workflows/build-stable.yml)
+
 [![Issues](https://img.shields.io/github/issues/Neonsy/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=471838)](https://github.com/Neonsy/NeonConductor/issues)
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![Pull Requests](https://img.shields.io/github/issues-pr/Neonsy/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=1E40AF&label=PRs)](https://github.com/Neonsy/NeonConductor/pulls)
