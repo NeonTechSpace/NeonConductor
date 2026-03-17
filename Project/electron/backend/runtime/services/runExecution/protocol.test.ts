@@ -630,7 +630,7 @@ describe('resolveRuntimeProtocol', () => {
         expect(result.error.code).toBe('runtime_option_invalid');
     });
 
-    it('selects the OpenAI realtime websocket transport for realtime-capable OpenAI models', async () => {
+    it('selects the OpenAI realtime websocket transport for docs-confirmed OpenAI models outside the realtime family', async () => {
         resolveProviderRuntimePathContextMock.mockResolvedValueOnce({
             isOk: () => true,
             isErr: () => false,
@@ -645,17 +645,17 @@ describe('resolveRuntimeProtocol', () => {
         const result = await resolveRuntimeProtocol({
             profileId: 'profile_local_default',
             providerId: 'openai',
-            modelId: 'openai/gpt-realtime',
+            modelId: 'openai/gpt-5.4',
             modelCapabilities: {
                 supportsTools: true,
                 supportsReasoning: true,
-                supportsVision: false,
+                supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
                 supportsRealtimeWebSocket: true,
                 toolProtocol: 'openai_responses',
                 apiFamily: 'openai_compatible',
-                inputModalities: ['text'],
+                inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
             },
             authMethod: 'api_key',

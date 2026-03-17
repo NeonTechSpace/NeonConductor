@@ -657,8 +657,11 @@ describe('runtime contracts: provider and account flows', () => {
 
         const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
         expect(models.models.some((model) => model.id === 'openai/gpt-5')).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-5.4')).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-nano')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo-0125')).toBe(false);
     });
 
     it('syncs openai api catalog and keeps codex model ids', async () => {
@@ -679,6 +682,9 @@ describe('runtime contracts: provider and account flows', () => {
         expect(syncResult.modelCount).toBeGreaterThanOrEqual(5);
 
         const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
+        expect(models.models.some((model) => model.id === 'openai/gpt-5.4')).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo')).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo-1106')).toBe(false);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-nano')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
         const codex = models.models.find((model) => model.id === 'openai/gpt-5-codex');
@@ -1753,26 +1759,28 @@ describe('runtime contracts: provider and account flows', () => {
         const caller = createCaller();
 
         const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
-        const gpt5 = models.models.find((model) => model.id === 'openai/gpt-5');
-        expect(gpt5).toBeDefined();
-        if (!gpt5) {
-            throw new Error('Expected openai/gpt-5 in the OpenAI catalog.');
+        const gpt54 = models.models.find((model) => model.id === 'openai/gpt-5.4');
+        expect(gpt54).toBeDefined();
+        if (!gpt54) {
+            throw new Error('Expected openai/gpt-5.4 in the OpenAI catalog.');
         }
 
-        expect(gpt5.supportsPromptCache).toBe(true);
-        expect(gpt5.apiFamily).toBe('openai_compatible');
-        expect(gpt5.toolProtocol).toBe('openai_responses');
+        expect(gpt54.supportsPromptCache).toBe(true);
+        expect(gpt54.supportsRealtimeWebSocket).toBe(true);
+        expect(gpt54.apiFamily).toBe('openai_compatible');
+        expect(gpt54.toolProtocol).toBe('openai_responses');
 
         const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
-        const shellGpt5 = shellBootstrap.providerModels.find((model) => model.id === 'openai/gpt-5');
-        expect(shellGpt5).toBeDefined();
-        if (!shellGpt5) {
-            throw new Error('Expected openai/gpt-5 in runtime shell bootstrap.');
+        const shellGpt54 = shellBootstrap.providerModels.find((model) => model.id === 'openai/gpt-5.4');
+        expect(shellGpt54).toBeDefined();
+        if (!shellGpt54) {
+            throw new Error('Expected openai/gpt-5.4 in runtime shell bootstrap.');
         }
 
-        expect(shellGpt5.supportsPromptCache).toBe(true);
-        expect(shellGpt5.apiFamily).toBe('openai_compatible');
-        expect(shellGpt5.toolProtocol).toBe('openai_responses');
+        expect(shellGpt54.supportsPromptCache).toBe(true);
+        expect(shellGpt54.supportsRealtimeWebSocket).toBe(true);
+        expect(shellGpt54.apiFamily).toBe('openai_compatible');
+        expect(shellGpt54.toolProtocol).toBe('openai_responses');
     });
 
     it('round-trips Kilo routed upstream family metadata through provider.listModels and runtime.getShellBootstrap', async () => {
