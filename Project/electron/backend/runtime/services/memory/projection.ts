@@ -21,6 +21,8 @@ import type {
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import { memoryService } from '@/app/backend/runtime/services/memory/service';
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
+import { appLog } from '@/app/main/logging';
 
 interface ParsedFrontmatter {
     attributes: Record<string, unknown>;
@@ -583,6 +585,19 @@ class MemoryProjectionService {
         const relevantMemories = allMemories
             .filter((memory) => isMemoryRelevant(memory, resolvedContext.value))
             .sort(sortProjectedMemories);
+        const derivedSummariesResult = await advancedMemoryDerivationService.getDerivedSummaries(
+            input.profileId,
+            relevantMemories.map((memory) => memory.id)
+        );
+        if (derivedSummariesResult.isErr()) {
+            appLog.warn({
+                tag: 'memory-derived',
+                message: 'Advanced memory summaries failed during projection loading; continuing without derived metadata.',
+                profileId: input.profileId,
+                errorCode: derivedSummariesResult.error.code,
+                errorMessage: derivedSummariesResult.error.message,
+            });
+        }
 
         const scanned = await Promise.all(
             relevantMemories.map((memory) =>
@@ -594,7 +609,16 @@ class MemoryProjectionService {
 
         return okOp({
             paths,
-            scanned,
+            scanned: scanned.map((item) => {
+                const derivedSummary = derivedSummariesResult.isOk()
+                    ? derivedSummariesResult.value.get(item.projected.memory.id)
+                    : undefined;
+
+                return {
+                    ...item,
+                    projected: derivedSummary ? { ...item.projected, derivedSummary } : item.projected,
+                };
+            }),
         });
     }
 

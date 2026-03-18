@@ -10,6 +10,7 @@ import type {
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 
 interface ResolvedMemoryProvenance {
     workspaceFingerprint?: string;
@@ -47,6 +48,14 @@ function validateWorkspaceOnlyProvenance(input: {
 }
 
 class MemoryService {
+    private async refreshDerivedIndex(profileId: string, memoryIds: EntityId<'mem'>[], reason: string): Promise<void> {
+        await advancedMemoryDerivationService.refreshMemoryIdsSafely({
+            profileId,
+            memoryIds,
+            reason,
+        });
+    }
+
     private async resolveCreateProvenance(input: MemoryCreateInput): Promise<OperationalResult<ResolvedMemoryProvenance>> {
         if (input.scopeKind === 'global') {
             const validation = validateNoAdditionalProvenance(input);
@@ -151,19 +160,20 @@ class MemoryService {
             });
         }
 
-        return okOp(
-            await memoryStore.create({
-                profileId: input.profileId,
-                memoryType: input.memoryType,
-                scopeKind: input.scopeKind,
-                createdByKind: input.createdByKind,
-                title: input.title,
-                bodyMarkdown: input.bodyMarkdown,
-                ...(input.summaryText ? { summaryText: input.summaryText } : {}),
-                ...(input.metadata ? { metadata: input.metadata } : {}),
-                ...resolvedProvenance.value,
-            })
-        );
+        const createdMemory = await memoryStore.create({
+            profileId: input.profileId,
+            memoryType: input.memoryType,
+            scopeKind: input.scopeKind,
+            createdByKind: input.createdByKind,
+            title: input.title,
+            bodyMarkdown: input.bodyMarkdown,
+            ...(input.summaryText ? { summaryText: input.summaryText } : {}),
+            ...(input.metadata ? { metadata: input.metadata } : {}),
+            ...resolvedProvenance.value,
+        });
+        await this.refreshDerivedIndex(input.profileId, [createdMemory.id], 'create_memory');
+
+        return okOp(createdMemory);
     }
 
     async disableMemory(input: MemoryDisableInput): Promise<OperationalResult<MemoryRecord>> {
@@ -179,6 +189,7 @@ class MemoryService {
         if (!disabled) {
             return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
         }
+        await this.refreshDerivedIndex(input.profileId, [disabled.id], 'disable_memory');
 
         return okOp(disabled);
     }
@@ -203,6 +214,7 @@ class MemoryService {
         if (!updated) {
             return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
         }
+        await this.refreshDerivedIndex(input.profileId, [updated.id], 'update_memory');
 
         return okOp(updated);
     }
@@ -239,6 +251,11 @@ class MemoryService {
         if (!superseded) {
             return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
         }
+        await this.refreshDerivedIndex(
+            input.profileId,
+            [superseded.previous.id, superseded.replacement.id],
+            'supersede_memory'
+        );
 
         return okOp(superseded);
     }

@@ -8,6 +8,7 @@ import type {
     RetrievedMemorySummary,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 
@@ -66,6 +67,8 @@ interface RetrievedMemoryCandidate {
     memory: MemoryRecord;
     matchReason: RetrievedMemoryMatchReason;
     priority: number;
+    sourceMemoryId?: EntityId<'mem'>;
+    annotations?: string[];
 }
 
 interface RetrieveRelevantMemoryResult {
@@ -246,6 +249,7 @@ function buildRetrievedMemoryMessage(records: RetrievedMemoryRecord[], memoriesB
             `Scope: ${memory.scopeKind}`,
             `Match reason: ${record.matchReason}`,
             `Provenance: ${describeMemoryProvenance(memory)}`,
+            ...(record.annotations && record.annotations.length > 0 ? [`Notes: ${record.annotations.join(' ')}`] : []),
             'Details:',
             excerpt,
             ''
@@ -277,12 +281,7 @@ export class MemoryRetrievalService {
         });
 
         const candidates: RetrievedMemoryCandidate[] = [];
-        const seenMemoryIds = new Set<string>();
         for (const memory of activeMemories) {
-            if (seenMemoryIds.has(memory.id)) {
-                continue;
-            }
-
             const exactMatchReason = isExactScopeMatch({
                 memory,
                 ...(input.runId ? { runId: input.runId } : {}),
@@ -295,7 +294,6 @@ export class MemoryRetrievalService {
                     matchReason: exactMatchReason,
                     priority: scopePriority(memory.scopeKind),
                 });
-                seenMemoryIds.add(memory.id);
                 continue;
             }
 
@@ -314,21 +312,72 @@ export class MemoryRetrievalService {
                     matchReason: 'structured',
                     priority: 10 + scopePriority(memory.scopeKind),
                 });
-                seenMemoryIds.add(memory.id);
+            }
+        }
+
+        const baseCandidates = candidates
+            .sort((left, right) => {
+                if (left.priority !== right.priority) {
+                    return left.priority - right.priority;
+                }
+                if (left.memory.updatedAt !== right.memory.updatedAt) {
+                    return right.memory.updatedAt.localeCompare(left.memory.updatedAt);
+                }
+
+                return left.memory.id.localeCompare(right.memory.id);
+            });
+        const baseMemoryIds = Array.from(new Set(baseCandidates.map((candidate) => candidate.memory.id)));
+        const derivedExpansion = await advancedMemoryDerivationService.expandMatchedMemories({
+            profileId: input.profileId,
+            prompt: input.prompt,
+            matchedMemories: baseCandidates.map((candidate) => candidate.memory),
+        });
+        const derivedSummaryById = derivedExpansion.isOk() ? derivedExpansion.value.summaries : new Map();
+        const candidateMemoryIds = new Set(baseMemoryIds);
+        const combinedCandidates: RetrievedMemoryCandidate[] = [
+            ...baseCandidates.map((candidate) => ({
+                ...candidate,
+                ...(derivedSummaryById.get(candidate.memory.id)
+                    ? { annotations: derivedSummaryById.get(candidate.memory.id)?.hasTemporalHistory ? ['Current fact has temporal history.'] : [] }
+                    : {}),
+            })),
+        ];
+
+        if (derivedExpansion.isOk()) {
+            for (const derivedCandidate of derivedExpansion.value.candidates) {
+                if (candidateMemoryIds.has(derivedCandidate.memory.id)) {
+                    continue;
+                }
+
+                combinedCandidates.push({
+                    memory: derivedCandidate.memory,
+                    matchReason: derivedCandidate.matchReason,
+                    priority: derivedCandidate.matchReason === 'derived_temporal' ? 15 : 16,
+                    sourceMemoryId: derivedCandidate.sourceMemoryId,
+                    annotations: derivedCandidate.annotations,
+                });
+                candidateMemoryIds.add(derivedCandidate.memory.id);
+            }
+        }
+
+        for (const memory of activeMemories) {
+            if (candidateMemoryIds.has(memory.id)) {
                 continue;
             }
 
             const promptMatchCount = countPromptTermMatches(memory, promptTerms);
-            if (promptMatchCount > 0) {
-                candidates.push({
-                    memory,
-                    matchReason: 'prompt',
-                    priority: 20 + scopePriority(memory.scopeKind) * 10 - promptMatchCount,
-                });
+            if (promptMatchCount <= 0) {
+                continue;
             }
+
+            combinedCandidates.push({
+                memory,
+                matchReason: 'prompt',
+                priority: 20 + scopePriority(memory.scopeKind) * 10 - promptMatchCount,
+            });
         }
 
-        const orderedCandidates = candidates
+        const orderedCandidates = combinedCandidates
             .sort((left, right) => {
                 if (left.priority !== right.priority) {
                     return left.priority - right.priority;
@@ -347,6 +396,12 @@ export class MemoryRetrievalService {
             };
         }
 
+        const finalDerivedSummaries = await advancedMemoryDerivationService.getDerivedSummaries(
+            input.profileId,
+            orderedCandidates.map((candidate) => candidate.memory.id)
+        );
+        const finalDerivedSummaryById = finalDerivedSummaries.isOk() ? finalDerivedSummaries.value : new Map();
+
         const retrievedRecords: RetrievedMemoryRecord[] = orderedCandidates.map((candidate, index) => ({
             memoryId: candidate.memory.id,
             title: candidate.memory.title,
@@ -354,6 +409,11 @@ export class MemoryRetrievalService {
             scopeKind: candidate.memory.scopeKind,
             matchReason: candidate.matchReason,
             order: index + 1,
+            ...(candidate.sourceMemoryId ? { sourceMemoryId: candidate.sourceMemoryId } : {}),
+            ...(candidate.annotations && candidate.annotations.length > 0 ? { annotations: candidate.annotations } : {}),
+            ...(finalDerivedSummaryById.get(candidate.memory.id)
+                ? { derivedSummary: finalDerivedSummaryById.get(candidate.memory.id) }
+                : {}),
         }));
         const memoriesById = new Map(orderedCandidates.map((candidate) => [candidate.memory.id, candidate.memory] as const));
         const injectedMessage = buildRetrievedMemoryMessage(retrievedRecords, memoriesById);

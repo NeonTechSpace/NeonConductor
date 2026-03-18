@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { runStore, worktreeStore } from '@/app/backend/persistence/stores';
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
+import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import {
     createCaller,
     createSessionInScope,
@@ -708,5 +710,46 @@ describe('runtime contracts: memory', () => {
         const resynced = secondSync.projectedMemories.find((record) => record.memory.id === editableMemory.memory.id);
         expect(resynced?.syncState).toBe('edited');
         expect(readFileSync(projectedMemory.absolutePath, 'utf8')).toBe(editedContent);
+    });
+
+    it('keeps projection sync working when derived summaries fail', async () => {
+        const caller = createCaller();
+        const workspaceFingerprint = 'wsf_runtime_memory_projection_fail_soft';
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Memory projection fail-soft thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected projection fail-soft thread id.');
+
+        const memory = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId,
+            title: 'Projection fail-soft memory',
+            bodyMarkdown: 'Projection should still sync when the derived layer fails.',
+        });
+
+        const summarySpy = vi
+            .spyOn(advancedMemoryDerivationService, 'getDerivedSummaries')
+            .mockResolvedValue(errOp('request_failed', 'Derived summaries failed.'));
+
+        try {
+            const synced = await caller.memory.syncProjection({
+                profileId,
+                workspaceFingerprint,
+                threadId,
+            });
+            const projected = synced.projectedMemories.find((record) => record.memory.id === memory.memory.id);
+            expect(projected?.syncState).toBe('in_sync');
+            expect(projected?.derivedSummary).toBeUndefined();
+            expect(readFileSync(projected?.absolutePath ?? '', 'utf8')).toContain('Projection fail-soft memory');
+        } finally {
+            summarySpy.mockRestore();
+        }
     });
 });

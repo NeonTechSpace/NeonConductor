@@ -61,6 +61,15 @@ vi.mock('@/web/trpc/client', () => ({
                                 fileExists: true,
                                 observedContentHash: 'hash_1',
                                 fileUpdatedAt: '2026-03-18T10:05:00.000Z',
+                                derivedSummary: {
+                                    temporalStatus: 'current',
+                                    hasTemporalHistory: true,
+                                    predecessorMemoryIds: ['mem_0'],
+                                    successorMemoryId: 'mem_2',
+                                    linkedRunIds: ['run_1'],
+                                    linkedThreadIds: ['thr_1'],
+                                    linkedWorkspaceFingerprints: ['wsf_memory'],
+                                },
                             },
                         ],
                     },
@@ -152,6 +161,16 @@ describe('MemoryPanel', () => {
                             scopeKind: 'thread',
                             matchReason: 'exact_thread',
                             order: 1,
+                            annotations: ['Current fact has temporal history.'],
+                            derivedSummary: {
+                                temporalStatus: 'current',
+                                hasTemporalHistory: true,
+                                predecessorMemoryIds: ['mem_0'],
+                                successorMemoryId: 'mem_2',
+                                linkedRunIds: ['run_1'],
+                                linkedThreadIds: ['thr_1'],
+                                linkedWorkspaceFingerprints: ['wsf_memory'],
+                            },
                         },
                     ],
                     injectedTextLength: 240,
@@ -167,6 +186,9 @@ describe('MemoryPanel', () => {
         expect(html).toContain('completed run');
         expect(html).toContain('exact_thread');
         expect(html).toContain('retrieved');
+        expect(html).toContain('history');
+        expect(html).toContain('linked run');
+        expect(html).toContain('Temporal history: 1 prior fact');
         expect(html).toContain('Pending File Edits');
         expect(html).toContain('Editable memory v2');
         expect(html).toContain('Apply');

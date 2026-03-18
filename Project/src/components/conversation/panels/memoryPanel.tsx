@@ -70,6 +70,26 @@ function ScopeBadge({ label }: { label: string }) {
     );
 }
 
+function DerivedSummaryBadges({
+    derivedSummary,
+}: {
+    derivedSummary?: ProjectedMemoryRecord['derivedSummary'] | RetrievedMemorySummary['records'][number]['derivedSummary'];
+}) {
+    if (!derivedSummary) {
+        return null;
+    }
+
+    return (
+        <>
+            {derivedSummary.hasTemporalHistory ? <ScopeBadge label='history' /> : null}
+            {derivedSummary.linkedRunIds.length > 0 ? <ScopeBadge label='linked run' /> : null}
+            {derivedSummary.linkedThreadIds.length > 0 ? <ScopeBadge label='linked thread' /> : null}
+            {derivedSummary.linkedWorkspaceFingerprints.length > 0 ? <ScopeBadge label='linked workspace' /> : null}
+            {derivedSummary.temporalStatus ? <ScopeBadge label={derivedSummary.temporalStatus} /> : null}
+        </>
+    );
+}
+
 export function MemoryPanel({
     profileId,
     topLevelTab,
@@ -222,8 +242,12 @@ export function MemoryPanel({
                                     <ScopeBadge label={record.memoryType} />
                                     <ScopeBadge label={record.scopeKind} />
                                     <ScopeBadge label={record.matchReason} />
+                                    <DerivedSummaryBadges derivedSummary={record.derivedSummary} />
                                 </div>
                                 <p className='text-muted-foreground mt-1 text-xs'>{record.memoryId}</p>
+                                {record.annotations && record.annotations.length > 0 ? (
+                                    <p className='text-muted-foreground mt-1 text-[11px]'>{record.annotations.join(' ')}</p>
+                                ) : null}
                             </div>
                         ))}
                     </div>
@@ -254,6 +278,7 @@ export function MemoryPanel({
                                 <ScopeBadge label={projectedMemory.projectionTarget} />
                                 {projectedMemory.memory.createdByKind === 'system' ? <ScopeBadge label='system' /> : null}
                                 {retrievedMemoryById.has(projectedMemory.memory.id) ? <ScopeBadge label='retrieved' /> : null}
+                                <DerivedSummaryBadges derivedSummary={projectedMemory.derivedSummary} />
                                 {(() => {
                                     const runtimeMetadata = readRuntimeRunOutcomeMetadata(projectedMemory.memory.metadata);
                                     if (!runtimeMetadata) {
@@ -288,6 +313,13 @@ export function MemoryPanel({
                             </p>
                             {projectedMemory.parseError ? (
                                 <p className='text-destructive mt-2 text-xs'>{projectedMemory.parseError}</p>
+                            ) : null}
+                            {projectedMemory.derivedSummary?.hasTemporalHistory ? (
+                                <p className='text-muted-foreground mt-2 text-[11px]'>
+                                    Temporal history: {projectedMemory.derivedSummary.predecessorMemoryIds.length} prior fact
+                                    {projectedMemory.derivedSummary.predecessorMemoryIds.length === 1 ? '' : 's'}
+                                    {projectedMemory.derivedSummary.successorMemoryId ? ', plus a newer replacement' : ''}.
+                                </p>
                             ) : null}
                         </div>
                     ))

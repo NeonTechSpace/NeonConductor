@@ -1,1 +1,1 @@
-export type * from '@/app/backend/runtime/contracts/types/memory';
+export * from '@/app/backend/runtime/contracts/types/memory';

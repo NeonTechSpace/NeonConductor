@@ -1,7 +1,10 @@
 import type {
     ComposerMediaSettings,
     ContextCompactionSource,
+    MemoryCausalLinkRecord as RuntimeMemoryCausalLinkRecord,
+    MemoryDerivedSummary as RuntimeMemoryDerivedSummary,
     MemoryCreatedByKind,
+    MemoryTemporalFactRecord as RuntimeMemoryTemporalFactRecord,
     MemoryScopeKind,
     MemoryState,
     MemoryType,
@@ -91,6 +94,12 @@ export interface MemoryRecord {
     createdAt: string;
     updatedAt: string;
 }
+
+export type MemoryTemporalFactRecord = RuntimeMemoryTemporalFactRecord;
+
+export type MemoryCausalLinkRecord = RuntimeMemoryCausalLinkRecord;
+
+export type MemoryDerivedSummary = RuntimeMemoryDerivedSummary;
 
 export interface ProfileRecord {
     id: string;

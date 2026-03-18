@@ -1,6 +1,8 @@
 export type EntityIdPrefix =
     | 'ws'
     | 'mem'
+    | 'mfact'
+    | 'mlink'
     | 'thr'
     | 'wt'
     | 'run'

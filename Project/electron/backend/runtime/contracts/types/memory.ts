@@ -26,12 +26,77 @@ export interface MemoryRecord {
     updatedAt: string;
 }
 
+export const memoryTemporalFactStatuses = ['current', 'superseded', 'disabled'] as const;
+export type MemoryTemporalFactStatus = (typeof memoryTemporalFactStatuses)[number];
+
+export const memoryCausalRelationTypes = [
+    'derived_from',
+    'caused_by',
+    'supersedes',
+    'observed_in_run',
+    'observed_in_thread',
+    'observed_in_workspace',
+] as const;
+export type MemoryCausalRelationType =
+    | 'derived_from'
+    | 'caused_by'
+    | 'supersedes'
+    | 'observed_in_run'
+    | 'observed_in_thread'
+    | 'observed_in_workspace';
+
+export const memoryDerivedEntityKinds = ['memory', 'run', 'thread', 'workspace'] as const;
+export type MemoryDerivedEntityKind = (typeof memoryDerivedEntityKinds)[number];
+
+export interface MemoryTemporalFactRecord {
+    id: EntityId<'mfact'>;
+    profileId: string;
+    subjectKey: string;
+    factKind: MemoryType;
+    value: Record<string, unknown>;
+    status: MemoryTemporalFactStatus;
+    validFrom: string;
+    validTo?: string;
+    sourceMemoryId: EntityId<'mem'>;
+    sourceRunId?: EntityId<'run'>;
+    derivationVersion: number;
+    confidence?: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface MemoryCausalLinkRecord {
+    id: EntityId<'mlink'>;
+    profileId: string;
+    sourceEntityKind: MemoryDerivedEntityKind;
+    sourceEntityId: string;
+    targetEntityKind: MemoryDerivedEntityKind;
+    targetEntityId: string;
+    relationType: MemoryCausalRelationType;
+    sourceMemoryId: EntityId<'mem'>;
+    sourceRunId?: EntityId<'run'>;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface MemoryDerivedSummary {
+    temporalStatus?: MemoryTemporalFactStatus;
+    hasTemporalHistory: boolean;
+    predecessorMemoryIds: EntityId<'mem'>[];
+    successorMemoryId?: EntityId<'mem'>;
+    linkedRunIds: EntityId<'run'>[];
+    linkedThreadIds: EntityId<'thr'>[];
+    linkedWorkspaceFingerprints: string[];
+}
+
 export type RetrievedMemoryMatchReason =
     | 'exact_run'
     | 'exact_thread'
     | 'exact_workspace'
     | 'exact_global'
     | 'structured'
+    | 'derived_temporal'
+    | 'derived_causal'
     | 'prompt';
 
 export interface RetrievedMemoryRecord {
@@ -41,6 +106,9 @@ export interface RetrievedMemoryRecord {
     scopeKind: MemoryScopeKind;
     matchReason: RetrievedMemoryMatchReason;
     order: number;
+    sourceMemoryId?: EntityId<'mem'>;
+    annotations?: string[];
+    derivedSummary?: MemoryDerivedSummary;
 }
 
 export interface RetrievedMemorySummary {
@@ -112,6 +180,7 @@ export interface ProjectedMemoryRecord {
     fileUpdatedAt?: string;
     observedContentHash?: string;
     parseError?: string;
+    derivedSummary?: MemoryDerivedSummary;
 }
 
 export interface MemoryEditProposal {

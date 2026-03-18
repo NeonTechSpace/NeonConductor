@@ -9,6 +9,7 @@ export { marketplaceStore } from '@/app/backend/persistence/stores/registry/mark
 export { messageStore } from '@/app/backend/persistence/stores/conversation/messages/messageStore';
 export { messageMediaStore } from '@/app/backend/persistence/stores/conversation/messages/messageMediaStore';
 export { mcpStore } from '@/app/backend/persistence/stores/runtime/mcpStore';
+export { memoryDerivedStore } from '@/app/backend/persistence/stores/runtime/memoryDerivedStore';
 export { memoryStore } from '@/app/backend/persistence/stores/runtime/memoryStore';
 export { modelLimitOverrideStore } from '@/app/backend/persistence/stores/runtime/modelLimitOverrideStore';
 export { modeStore } from '@/app/backend/persistence/stores/registry/modeStore';

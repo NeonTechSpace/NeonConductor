@@ -551,6 +551,46 @@ CREATE TABLE memory_records (
     )
 );
 
+CREATE TABLE memory_temporal_facts (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    subject_key TEXT NOT NULL,
+    fact_kind TEXT NOT NULL CHECK (fact_kind IN ('semantic', 'episodic', 'procedural')),
+    value_json TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('current', 'superseded', 'disabled')),
+    valid_from TEXT NOT NULL,
+    valid_to TEXT NULL,
+    source_memory_id TEXT NOT NULL REFERENCES memory_records(id) ON DELETE CASCADE,
+    source_run_id TEXT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    derivation_version INTEGER NOT NULL CHECK (derivation_version > 0),
+    confidence REAL NULL CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE memory_causal_links (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    source_entity_kind TEXT NOT NULL CHECK (source_entity_kind IN ('memory', 'run', 'thread', 'workspace')),
+    source_entity_id TEXT NOT NULL,
+    target_entity_kind TEXT NOT NULL CHECK (target_entity_kind IN ('memory', 'run', 'thread', 'workspace')),
+    target_entity_id TEXT NOT NULL,
+    relation_type TEXT NOT NULL CHECK (
+        relation_type IN (
+            'derived_from',
+            'caused_by',
+            'supersedes',
+            'observed_in_run',
+            'observed_in_thread',
+            'observed_in_workspace'
+        )
+    ),
+    source_memory_id TEXT NOT NULL REFERENCES memory_records(id) ON DELETE CASCADE,
+    source_run_id TEXT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 -- Planning and orchestration.
 CREATE TABLE plan_records (
     id TEXT PRIMARY KEY,
@@ -881,6 +921,32 @@ CREATE INDEX idx_memory_records_profile_thread
 
 CREATE INDEX idx_memory_records_profile_run
     ON memory_records(profile_id, run_id);
+
+CREATE UNIQUE INDEX idx_memory_temporal_facts_profile_source_memory
+    ON memory_temporal_facts(profile_id, source_memory_id);
+
+CREATE INDEX idx_memory_temporal_facts_profile_subject_status
+    ON memory_temporal_facts(profile_id, subject_key, status);
+
+CREATE INDEX idx_memory_temporal_facts_profile_source_run
+    ON memory_temporal_facts(profile_id, source_run_id);
+
+CREATE UNIQUE INDEX idx_memory_causal_links_profile_unique_relation
+    ON memory_causal_links(
+        profile_id,
+        source_memory_id,
+        relation_type,
+        source_entity_kind,
+        source_entity_id,
+        target_entity_kind,
+        target_entity_id
+    );
+
+CREATE INDEX idx_memory_causal_links_profile_target_relation
+    ON memory_causal_links(profile_id, target_entity_kind, target_entity_id, relation_type);
+
+CREATE INDEX idx_memory_causal_links_profile_source_run
+    ON memory_causal_links(profile_id, source_run_id, relation_type);
 
 CREATE INDEX idx_plan_records_profile_session
     ON plan_records(profile_id, session_id, created_at DESC);

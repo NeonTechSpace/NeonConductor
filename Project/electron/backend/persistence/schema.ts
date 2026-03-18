@@ -71,6 +71,37 @@ export interface MemoryRecordsTable {
     updated_at: string;
 }
 
+export interface MemoryTemporalFactsTable {
+    id: string;
+    profile_id: string;
+    subject_key: string;
+    fact_kind: string;
+    value_json: string;
+    status: string;
+    valid_from: string;
+    valid_to: string | null;
+    source_memory_id: string;
+    source_run_id: string | null;
+    derivation_version: number;
+    confidence: number | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface MemoryCausalLinksTable {
+    id: string;
+    profile_id: string;
+    source_entity_kind: string;
+    source_entity_id: string;
+    target_entity_kind: string;
+    target_entity_id: string;
+    relation_type: string;
+    source_memory_id: string;
+    source_run_id: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface RunsTable {
     id: string;
     session_id: string;
@@ -626,6 +657,8 @@ export interface DatabaseSchema {
     session_attached_skills: SessionAttachedSkillsTable;
     session_attached_rules: SessionAttachedRulesTable;
     memory_records: MemoryRecordsTable;
+    memory_temporal_facts: MemoryTemporalFactsTable;
+    memory_causal_links: MemoryCausalLinksTable;
     runs: RunsTable;
     messages: MessagesTable;
     message_parts: MessagePartsTable;

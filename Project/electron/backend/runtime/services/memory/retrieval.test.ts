@@ -1,12 +1,14 @@
 import { writeFileSync } from 'node:fs';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { memoryStore } from '@/app/backend/persistence/stores';
 import type { ModeDefinition } from '@/app/backend/runtime/contracts';
 import { memoryService } from '@/app/backend/runtime/services/memory/service';
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import { buildRunContext } from '@/app/backend/runtime/services/runExecution/contextBuilder';
+import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import {
     createCaller,
     createSessionInScope,
@@ -275,5 +277,51 @@ describe('memoryRetrievalService', () => {
         });
         expect(afterRetrieval.proposals).toHaveLength(1);
         expect(afterRetrieval.proposals[0]?.proposedTitle).toBe('Projection safety memory edited');
+    });
+
+    it('falls back to scoped retrieval when the derived layer fails', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_retrieval_fail_soft',
+            title: 'Derived fail-soft thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected derived fail-soft thread id.');
+
+        const scopedMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId,
+            title: 'Fail-soft scoped memory',
+            bodyMarkdown: 'Use the scoped memory even if derivation breaks.',
+        });
+
+        const expandSpy = vi
+            .spyOn(advancedMemoryDerivationService, 'expandMatchedMemories')
+            .mockResolvedValue(errOp('request_failed', 'Derived retrieval failed.'));
+        const summariesSpy = vi
+            .spyOn(advancedMemoryDerivationService, 'getDerivedSummaries')
+            .mockResolvedValue(errOp('request_failed', 'Derived summaries failed.'));
+
+        try {
+            const retrieved = await memoryRetrievalService.retrieveRelevantMemory({
+                profileId,
+                sessionId: created.session.id,
+                topLevelTab: 'agent',
+                modeKey: 'code',
+                workspaceFingerprint: 'wsf_memory_retrieval_fail_soft',
+                prompt: 'Use the fail-soft scoped memory.',
+            });
+
+            expect(retrieved.summary?.records.map((record) => record.memoryId)).toContain(scopedMemory.memory.id);
+            expect(retrieved.summary?.records.some((record) => record.matchReason === 'derived_temporal')).toBe(false);
+        } finally {
+            expandSpy.mockRestore();
+            summariesSpy.mockRestore();
+        }
     });
 });

@@ -16,4 +16,4 @@ export type * from '@/shared/contracts/types/context';
 export * from '@/shared/contracts/types/composer';
 export type * from '@/shared/contracts/types/registry';
 export type * from '@/shared/contracts/types/worktree';
-export type * from '@/shared/contracts/types/memory';
+export * from '@/shared/contracts/types/memory';
