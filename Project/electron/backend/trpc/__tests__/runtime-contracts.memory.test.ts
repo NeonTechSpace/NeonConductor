@@ -13,6 +13,7 @@ import {
     registerRuntimeContractHooks,
     requireEntityId,
     runtimeContractProfileId,
+    waitForRunStatus,
     writeFileSync,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
@@ -220,6 +221,92 @@ describe('runtime contracts: memory', () => {
                 bodyMarkdown: 'Should fail.',
             })
         ).rejects.toThrow(/Only active memory can be superseded/i);
+    });
+
+    it('creates automatic finished-run memory after a completed run', async () => {
+        const caller = createCaller();
+        const completionFetchMock = vi.fn(async () => ({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            content: 'Completed automatic memory run.',
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 11,
+                    completion_tokens: 17,
+                    total_tokens: 28,
+                },
+            }),
+        }));
+        vi.stubGlobal('fetch', completionFetchMock);
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-memory-runtime-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_runtime_memory_completed_run',
+            title: 'Completed memory runtime thread',
+            kind: 'local',
+            topLevelTab: 'chat',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Capture this finished run automatically.',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected automatic memory run start to be accepted.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        let automaticMemory:
+            | (Awaited<ReturnType<typeof caller.memory.list>>['memories'][number])
+            | undefined;
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            const runScopedMemories = await caller.memory.list({
+                profileId,
+                scopeKind: 'run',
+            });
+            automaticMemory = runScopedMemories.memories.find(
+                (memory) =>
+                    memory.createdByKind === 'system' &&
+                    memory.metadata['source'] === 'runtime_run_outcome' &&
+                    memory.metadata['runStatus'] === 'completed'
+            );
+            if (automaticMemory) {
+                break;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+
+        expect(automaticMemory).toBeDefined();
+        if (!automaticMemory) {
+            throw new Error('Expected automatic finished-run memory.');
+        }
+        expect(automaticMemory.memoryType).toBe('episodic');
+        expect(automaticMemory.bodyMarkdown).toContain('Status: completed');
+        expect(automaticMemory.bodyMarkdown).toContain('Capture this finished run automatically.');
+        expect(automaticMemory.bodyMarkdown).toContain('total 28 tokens');
     });
 
     it('syncs memory projection files to workspace and global roots', async () => {

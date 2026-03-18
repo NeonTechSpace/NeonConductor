@@ -16,6 +16,26 @@ interface MemoryPanelProps {
     runId?: EntityId<'run'>;
 }
 
+function readRuntimeRunOutcomeMetadata(metadata: Record<string, unknown>): {
+    runStatus: 'completed' | 'error';
+    runId: string;
+} | null {
+    if (metadata['source'] !== 'runtime_run_outcome') {
+        return null;
+    }
+
+    const runStatus = metadata['runStatus'];
+    const runId = metadata['runId'];
+    if ((runStatus !== 'completed' && runStatus !== 'error') || typeof runId !== 'string' || runId.length === 0) {
+        return null;
+    }
+
+    return {
+        runStatus,
+        runId,
+    };
+}
+
 function SyncStateBadge({ syncState }: { syncState: ProjectedMemoryRecord['syncState'] }) {
     const label =
         syncState === 'in_sync'
@@ -203,10 +223,36 @@ export function MemoryPanel({
                                 <ScopeBadge label={projectedMemory.memory.memoryType} />
                                 <ScopeBadge label={projectedMemory.memory.scopeKind} />
                                 <ScopeBadge label={projectedMemory.projectionTarget} />
+                                {projectedMemory.memory.createdByKind === 'system' ? <ScopeBadge label='system' /> : null}
+                                {(() => {
+                                    const runtimeMetadata = readRuntimeRunOutcomeMetadata(projectedMemory.memory.metadata);
+                                    if (!runtimeMetadata) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <ScopeBadge
+                                            label={runtimeMetadata.runStatus === 'completed' ? 'completed run' : 'failed run'}
+                                        />
+                                    );
+                                })()}
                             </div>
                             <p className='text-muted-foreground mt-1 text-xs'>
                                 {projectedMemory.memory.summaryText ?? projectedMemory.memory.id}
                             </p>
+                            {(() => {
+                                const runtimeMetadata = readRuntimeRunOutcomeMetadata(projectedMemory.memory.metadata);
+                                if (!runtimeMetadata) {
+                                    return null;
+                                }
+
+                                return (
+                                    <p className='text-muted-foreground mt-1 text-[11px]'>
+                                        Automatic memory from {runtimeMetadata.runStatus === 'completed' ? 'completed' : 'failed'} run{' '}
+                                        {runtimeMetadata.runId}
+                                    </p>
+                                );
+                            })()}
                             <p className='text-muted-foreground mt-2 break-all text-[11px]'>
                                 {projectedMemory.absolutePath}
                             </p>

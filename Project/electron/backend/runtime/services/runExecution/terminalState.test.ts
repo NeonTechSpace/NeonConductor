@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { runStore, sessionStore } from '@/app/backend/persistence/stores';
 import type { RunRecord, RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
+import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { moveRunToAbortedState, moveRunToFailedState } from '@/app/backend/runtime/services/runExecution/terminalState';
 import { appLog } from '@/app/main/logging';
@@ -60,6 +61,7 @@ describe('run terminal state events', () => {
             createRuntimeEventRecord(event)
         );
         const infoSpy = vi.spyOn(appLog, 'info').mockImplementation(() => {});
+        const memorySpy = vi.spyOn(memoryRuntimeService, 'captureFinishedRunMemorySafely').mockResolvedValue();
 
         await moveRunToAbortedState({
             profileId: 'profile_test',
@@ -76,6 +78,7 @@ describe('run terminal state events', () => {
         const abortedEvent = appendSpy.mock.calls[0]?.[0] as { payload: { run: RunRecord } } | undefined;
         expect(abortedEvent?.payload.run.status).toBe('aborted');
         expect(infoSpy).toHaveBeenCalledTimes(1);
+        expect(memorySpy).not.toHaveBeenCalled();
     });
 
     it('emits run snapshots for failed runs', async () => {
@@ -91,6 +94,7 @@ describe('run terminal state events', () => {
             createRuntimeEventRecord(event)
         );
         const warnSpy = vi.spyOn(appLog, 'warn').mockImplementation(() => {});
+        const memorySpy = vi.spyOn(memoryRuntimeService, 'captureFinishedRunMemorySafely').mockResolvedValue();
 
         await moveRunToFailedState({
             profileId: 'profile_test',
@@ -111,5 +115,9 @@ describe('run terminal state events', () => {
         const failedEvent = appendSpy.mock.calls[0]?.[0] as { payload: { run: RunRecord } } | undefined;
         expect(failedEvent?.payload.run.errorCode).toBe('provider_request_failed');
         expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(memorySpy).toHaveBeenCalledWith({
+            profileId: 'profile_test',
+            runId: 'run_test',
+        });
     });
 });

@@ -1,5 +1,6 @@
 import { runStore, sessionStore } from '@/app/backend/persistence/stores';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
+import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
@@ -81,5 +82,10 @@ export async function moveRunToFailedState(input: {
         runId: input.runId,
         errorCode: input.errorCode,
         errorMessage: input.errorMessage,
+    });
+
+    await memoryRuntimeService.captureFinishedRunMemorySafely({
+        profileId: input.profileId,
+        runId: input.runId,
     });
 }

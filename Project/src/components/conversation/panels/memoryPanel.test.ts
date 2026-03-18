@@ -41,10 +41,14 @@ vi.mock('@/web/trpc/client', () => ({
                                     memoryType: 'procedural',
                                     scopeKind: 'thread',
                                     state: 'active',
-                                    createdByKind: 'user',
+                                    createdByKind: 'system',
                                     title: 'Editable memory',
                                     bodyMarkdown: 'Body',
-                                    metadata: {},
+                                    metadata: {
+                                        source: 'runtime_run_outcome',
+                                        runStatus: 'completed',
+                                        runId: 'run_1',
+                                    },
                                     threadId: 'thr_1',
                                     workspaceFingerprint: 'wsf_memory',
                                     createdAt: '2026-03-18T10:00:00.000Z',
@@ -78,10 +82,14 @@ vi.mock('@/web/trpc/client', () => ({
                                     memoryType: 'procedural',
                                     scopeKind: 'thread',
                                     state: 'active',
-                                    createdByKind: 'user',
+                                    createdByKind: 'system',
                                     title: 'Editable memory',
                                     bodyMarkdown: 'Body',
-                                    metadata: {},
+                                    metadata: {
+                                        source: 'runtime_run_outcome',
+                                        runStatus: 'completed',
+                                        runId: 'run_1',
+                                    },
                                     threadId: 'thr_1',
                                     workspaceFingerprint: 'wsf_memory',
                                     createdAt: '2026-03-18T10:00:00.000Z',
@@ -141,6 +149,8 @@ describe('MemoryPanel', () => {
         expect(html).toContain('Memory Projection');
         expect(html).toContain('C:/memory/global');
         expect(html).toContain('Editable memory');
+        expect(html).toContain('system');
+        expect(html).toContain('completed run');
         expect(html).toContain('Pending File Edits');
         expect(html).toContain('Editable memory v2');
         expect(html).toContain('Apply');

@@ -37,6 +37,7 @@ import { accumulateUsage } from '@/app/backend/runtime/services/runExecution/usa
 import type { UsageAccumulator } from '@/app/backend/runtime/services/runExecution/usage';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
 import { threadTitleService } from '@/app/backend/runtime/services/threadTitle/service';
 import { toolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
 import type { ToolExecutionResult } from '@/app/backend/runtime/services/toolExecution/types';
@@ -661,6 +662,11 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                     },
                 })
             );
+
+            await memoryRuntimeService.captureFinishedRunMemorySafely({
+                profileId: input.profileId,
+                runId: input.runId,
+            });
 
             return okRunExecution(undefined);
         }
