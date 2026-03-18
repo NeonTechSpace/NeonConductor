@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import type { EntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 import {
     runtimeContractProfileId,
@@ -23,6 +24,67 @@ registerRuntimeContractHooks();
 
 describe('runtime contracts: permissions and tooling', () => {
     const profileId = runtimeContractProfileId;
+
+    it('resolves seeded mode capabilities and runtime tool exposure explicitly', async () => {
+        const caller = createCaller();
+
+        const chatModes = await caller.mode.list({
+            profileId,
+            topLevelTab: 'chat',
+        });
+        expect(chatModes.modes.map((mode) => [mode.modeKey, mode.executionPolicy.toolCapabilities ?? []])).toEqual([
+            ['chat', []],
+        ]);
+
+        const agentModes = await caller.mode.list({
+            profileId,
+            topLevelTab: 'agent',
+        });
+        expect(agentModes.modes.map((mode) => [mode.modeKey, mode.executionPolicy.toolCapabilities ?? []])).toEqual([
+            ['ask', ['filesystem_read']],
+            ['code', ['filesystem_read', 'shell']],
+            ['debug', ['filesystem_read', 'shell']],
+            ['plan', []],
+        ]);
+
+        const orchestratorModes = await caller.mode.list({
+            profileId,
+            topLevelTab: 'orchestrator',
+        });
+        expect(
+            orchestratorModes.modes.map((mode) => [mode.modeKey, mode.executionPolicy.toolCapabilities ?? []])
+        ).toEqual([
+            ['debug', ['filesystem_read']],
+            ['orchestrate', ['filesystem_read']],
+            ['plan', []],
+        ]);
+
+        const askMode = agentModes.modes.find((mode) => mode.modeKey === 'ask');
+        const codeMode = agentModes.modes.find((mode) => mode.modeKey === 'code');
+        const orchestrateMode = orchestratorModes.modes.find((mode) => mode.modeKey === 'orchestrate');
+        const orchestratorDebugMode = orchestratorModes.modes.find((mode) => mode.modeKey === 'debug');
+        if (!askMode || !codeMode || !orchestrateMode || !orchestratorDebugMode) {
+            throw new Error('Expected seeded modes to exist for runtime tool exposure checks.');
+        }
+
+        expect((await resolveRuntimeToolsForMode({ mode: askMode })).map((tool) => tool.id)).toEqual([
+            'list_files',
+            'read_file',
+        ]);
+        expect((await resolveRuntimeToolsForMode({ mode: codeMode })).map((tool) => tool.id)).toEqual([
+            'list_files',
+            'read_file',
+            'run_command',
+        ]);
+        expect((await resolveRuntimeToolsForMode({ mode: orchestrateMode })).map((tool) => tool.id)).toEqual([
+            'list_files',
+            'read_file',
+        ]);
+        expect((await resolveRuntimeToolsForMode({ mode: orchestratorDebugMode })).map((tool) => tool.id)).toEqual([
+            'list_files',
+            'read_file',
+        ]);
+    });
 
     it('handles permission request, grant, deny, and idempotency', async () => {
         const caller = createCaller();

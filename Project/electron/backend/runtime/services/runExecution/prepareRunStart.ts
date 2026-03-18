@@ -188,7 +188,6 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
     }
 
     const toolDefinitions = await resolveRuntimeToolsForMode({
-        topLevelTab: input.topLevelTab,
         mode: resolvedModeResult.value.mode,
     });
     const runContextResult = await buildRunContext({

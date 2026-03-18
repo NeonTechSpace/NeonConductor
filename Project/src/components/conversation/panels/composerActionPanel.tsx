@@ -11,6 +11,7 @@ import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
 import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
+import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ResolvedContextState, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
@@ -40,7 +41,7 @@ interface ComposerActionPanelProps {
     selectedModelId: string | undefined;
     topLevelTab: TopLevelTab;
     activeModeKey: string;
-    modes: Array<{ id: string; modeKey: string; label: string }>;
+    modes: ConversationModeOption[];
     reasoningEffort: RuntimeReasoningEffort;
     selectedModelSupportsReasoning: boolean;
     supportedReasoningEfforts?: RuntimeReasoningEffort[];

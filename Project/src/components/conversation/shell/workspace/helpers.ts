@@ -1,4 +1,4 @@
-import type { ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
+import type { ModeDefinitionRecord, ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
 
 import type {
     EntityId,
@@ -48,19 +48,14 @@ export interface RunTargetSelection {
     modelId: string;
 }
 
-export function modeRequiresNativeTools(input: {
-    topLevelTab: 'chat' | 'agent' | 'orchestrator';
-    modeKey: string;
-}): boolean {
-    if (input.topLevelTab === 'chat') {
+export type ConversationModeOption = Pick<ModeDefinitionRecord, 'id' | 'modeKey' | 'label' | 'executionPolicy'>;
+
+export function modeRequiresNativeTools(mode: ConversationModeOption | undefined): boolean {
+    if (!mode || mode.executionPolicy.planningOnly) {
         return false;
     }
 
-    if (input.topLevelTab === 'agent') {
-        return input.modeKey !== 'ask' && input.modeKey !== 'plan';
-    }
-
-    return input.modeKey !== 'plan';
+    return (mode.executionPolicy.toolCapabilities?.length ?? 0) > 0;
 }
 
 export function isEntityId<P extends EntityIdPrefix>(value: string | undefined, prefix: P): value is EntityId<P> {

@@ -7,6 +7,7 @@ import {
     createCaller,
     createSessionInScope,
     defaultRuntimeOptions,
+    getPersistence,
     mkdirSync,
     path,
     rmSync,
@@ -36,6 +37,8 @@ describe('runtime contracts: registry and attached skills', () => {
 modeKey: review
 label: Global Review
 description: Global registry mode
+toolCapabilities:
+  - filesystem_read
 tags:
   - review
   - global
@@ -103,6 +106,8 @@ modeKey: review
 label: Workspace Review
 description: Workspace override
 precedence: 5
+toolCapabilities:
+  - filesystem_read
 tags:
   - review
   - workspace
@@ -188,6 +193,10 @@ tags:
             resolvedWorkspace.resolved.modes.find((mode) => mode.topLevelTab === 'agent' && mode.modeKey === 'review')
                 ?.label
         ).toBe('Workspace Review');
+        expect(
+            resolvedWorkspace.resolved.modes.find((mode) => mode.topLevelTab === 'agent' && mode.modeKey === 'review')
+                ?.executionPolicy.toolCapabilities
+        ).toEqual(['filesystem_read']);
         expect(resolvedWorkspace.resolved.modes.some((mode) => mode.modeKey === 'workspace-orchestrator')).toBe(false);
         expect(resolvedWorkspace.resolved.rulesets.find((ruleset) => ruleset.assetKey === 'coding_rules')?.name).toBe(
             'Workspace Rules'
@@ -289,6 +298,70 @@ tags:
         });
         expect(configured.success).toBe(true);
 
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/review-chat-test', 'openai', 'Review Chat Test', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            tool_protocol,
+                            api_family,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/review-chat-test',
+                'Review Chat Test',
+                'openai',
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                'openai_chat_completions',
+                'openai_compatible',
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
         const created = await createSessionInScope(caller, profileId, {
             scope: 'workspace',
             workspaceFingerprint,
@@ -320,6 +393,8 @@ tags:
             `---
 modeKey: review
 label: Global Review
+toolCapabilities:
+  - filesystem_read
 ---
 # Global Review Mode
 
@@ -333,6 +408,8 @@ label: Global Review
 modeKey: review
 label: Workspace Review
 precedence: 5
+toolCapabilities:
+  - filesystem_read
 ---
 # Workspace Review Mode
 
@@ -426,12 +503,12 @@ name: Docs Lookup
                 },
             },
             providerId: 'openai',
-            modelId: 'openai/gpt-5',
+            modelId: 'openai/review-chat-test',
         });
-        expect(started.accepted).toBe(true);
         if (!started.accepted) {
-            throw new Error('Expected registry-backed agent run to start.');
+            throw new Error(`Expected registry-backed agent run to start. ${JSON.stringify(started)}`);
         }
+        expect(started.accepted).toBe(true);
         await waitForRunStatus(caller, profileId, created.session.id, 'completed');
 
         const requestBody = requestBodies.at(-1);

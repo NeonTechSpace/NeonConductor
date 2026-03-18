@@ -1,6 +1,7 @@
 import { toolStore } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
-import type { ModeDefinition, TopLevelTab } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition } from '@/app/backend/runtime/contracts';
+import { modeAllowsToolCapabilities, modeRequiresNativeTools } from '@/app/backend/runtime/services/mode/toolCapabilities';
 
 const TOOL_INPUT_SCHEMAS: Record<string, ProviderRuntimeToolDefinition['inputSchema']> = {
     list_files: {
@@ -57,42 +58,18 @@ const TOOL_INPUT_SCHEMAS: Record<string, ProviderRuntimeToolDefinition['inputSch
     },
 };
 
-function modeCanUseNativeTools(input: {
-    topLevelTab: TopLevelTab;
-    mode: ModeDefinition;
-}): boolean {
-    if (input.mode.executionPolicy.planningOnly) {
-        return false;
-    }
-
-    if (input.topLevelTab === 'chat') {
-        return false;
-    }
-
-    if (input.topLevelTab === 'agent') {
-        return input.mode.executionPolicy.readOnly !== true;
-    }
-
-    return true;
+export function runModeRequiresNativeTools(input: { mode: ModeDefinition }): boolean {
+    return modeRequiresNativeTools(input.mode);
 }
 
-export function runModeRequiresNativeTools(input: {
-    topLevelTab: TopLevelTab;
-    mode: ModeDefinition;
-}): boolean {
-    return modeCanUseNativeTools(input);
-}
-
-export async function resolveRuntimeToolsForMode(input: {
-    topLevelTab: TopLevelTab;
-    mode: ModeDefinition;
-}): Promise<ProviderRuntimeToolDefinition[]> {
-    if (!modeCanUseNativeTools(input)) {
+export async function resolveRuntimeToolsForMode(input: { mode: ModeDefinition }): Promise<ProviderRuntimeToolDefinition[]> {
+    if (!modeRequiresNativeTools(input.mode)) {
         return [];
     }
 
     const storedTools = await toolStore.list();
     return storedTools
+        .filter((tool) => modeAllowsToolCapabilities(input.mode, tool.capabilities))
         .map((tool) => {
             const inputSchema = TOOL_INPUT_SCHEMAS[tool.id];
             if (!inputSchema) {

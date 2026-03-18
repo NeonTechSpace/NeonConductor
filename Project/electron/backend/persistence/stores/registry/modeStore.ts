@@ -5,19 +5,35 @@ import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
 import {
     registryScopes,
     registrySourceKinds,
+    toolCapabilities as knownToolCapabilities,
     topLevelTabs,
     type ModeExecutionPolicy,
+    type ToolCapability,
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
+
+function parseToolCapabilities(value: unknown): ToolCapability[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const capabilities = value.filter(
+        (capability): capability is ToolCapability =>
+            typeof capability === 'string' && knownToolCapabilities.includes(capability as ToolCapability)
+    );
+    return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
+}
 
 function parseExecutionPolicy(value: string): ModeExecutionPolicy {
     const parsed = parseJsonValue(value, {}, isJsonRecord);
     const planningOnly = parsed['planningOnly'];
     const readOnly = parsed['readOnly'];
+    const toolCapabilities = parseToolCapabilities(parsed['toolCapabilities']);
+    const normalizedToolCapabilities = toolCapabilities ?? (readOnly === true ? ['filesystem_read'] : undefined);
 
     return {
         ...(typeof planningOnly === 'boolean' ? { planningOnly } : {}),
-        ...(typeof readOnly === 'boolean' ? { readOnly } : {}),
+        ...(normalizedToolCapabilities ? { toolCapabilities: normalizedToolCapabilities } : {}),
     };
 }
 

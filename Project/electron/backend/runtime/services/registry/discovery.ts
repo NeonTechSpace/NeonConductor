@@ -2,7 +2,14 @@ import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
-import type { ModeExecutionPolicy, RegistryScope, RegistrySourceKind, TopLevelTab } from '@/app/backend/runtime/contracts';
+import type {
+    ModeExecutionPolicy,
+    RegistryScope,
+    RegistrySourceKind,
+    ToolCapability,
+    TopLevelTab,
+} from '@/app/backend/runtime/contracts';
+import { toolCapabilities as knownToolCapabilities } from '@/app/backend/runtime/contracts';
 import {
     loadRegistryAssetFiles,
     slugifyAssetKey,
@@ -35,6 +42,18 @@ function readTags(value: unknown): string[] | undefined {
         .map((item) => (typeof item === 'string' ? item.trim() : ''))
         .filter((item) => item.length > 0);
     return tags.length > 0 ? tags : undefined;
+}
+
+function readToolCapabilities(value: unknown): ToolCapability[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const capabilities = value.filter(
+        (capability): capability is ToolCapability =>
+            typeof capability === 'string' && knownToolCapabilities.includes(capability as ToolCapability)
+    );
+    return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
 }
 
 function mapModePrompt(bodyMarkdown: string): Record<string, unknown> {
@@ -91,10 +110,18 @@ interface DiscoveredAssetDraft extends Omit<DiscoveredAssetInput, 'workspaceFing
 function buildModeExecutionPolicy(input: {
     planningOnly?: boolean | undefined;
     readOnly?: boolean | undefined;
+    toolCapabilities?: ToolCapability[] | undefined;
 }): ModeExecutionPolicy {
+    const normalizedToolCapabilities: ToolCapability[] | undefined =
+        input.toolCapabilities && input.toolCapabilities.length > 0
+            ? Array.from(new Set(input.toolCapabilities))
+            : input.readOnly
+              ? ['filesystem_read']
+              : undefined;
+
     return {
         ...(input.planningOnly !== undefined ? { planningOnly: input.planningOnly } : {}),
-        ...(input.readOnly !== undefined ? { readOnly: input.readOnly } : {}),
+        ...(normalizedToolCapabilities ? { toolCapabilities: normalizedToolCapabilities } : {}),
     };
 }
 
@@ -335,6 +362,7 @@ export async function buildDiscoveredAssets(input: {
                 executionPolicy: buildModeExecutionPolicy({
                     planningOnly: readBoolean(file.parsed.attributes['planningOnly']),
                     readOnly: readBoolean(file.parsed.attributes['readOnly']),
+                    toolCapabilities: readToolCapabilities(file.parsed.attributes['toolCapabilities']),
                 }),
                 source: sourceKind,
                 sourceKind,

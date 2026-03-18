@@ -310,6 +310,138 @@ describe('runtime contracts: provider and account flows', () => {
         });
     });
 
+    it('rejects ask and orchestrator read modes when the selected model does not support native tools', async () => {
+        const caller = createCaller();
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-read-modes-no-tools-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+        sqlite
+            .prepare(
+                `
+                    INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('openai/gpt-5-no-tools', 'openai', 'GPT 5 No Tools', now, now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_model_catalog
+                        (
+                            profile_id,
+                            provider_id,
+                            model_id,
+                            label,
+                            upstream_provider,
+                            is_free,
+                            supports_tools,
+                            supports_reasoning,
+                            supports_vision,
+                            supports_audio_input,
+                            supports_audio_output,
+                            tool_protocol,
+                            input_modalities_json,
+                            output_modalities_json,
+                            prompt_family,
+                            context_length,
+                            pricing_json,
+                            raw_json,
+                            source,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'openai/gpt-5-no-tools',
+                'GPT 5 No Tools',
+                'openai',
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                'openai_responses',
+                JSON.stringify(['text']),
+                JSON.stringify(['text']),
+                null,
+                128000,
+                '{}',
+                '{}',
+                'test',
+                now
+            );
+
+        const askSession = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'ws_no_tools_agent_ask',
+            title: 'No Tools Agent Ask Thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const askStarted = await caller.session.startRun({
+            profileId,
+            sessionId: askSession.session.id,
+            prompt: 'Try to inspect the workspace safely',
+            topLevelTab: 'agent',
+            modeKey: 'ask',
+            workspaceFingerprint: 'ws_no_tools_agent_ask',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+        });
+        expect(askStarted.accepted).toBe(false);
+        if (askStarted.accepted) {
+            throw new Error('Expected ask mode to reject models without native tools.');
+        }
+        expect(askStarted.code).toBe('runtime_option_invalid');
+        expect(askStarted.action).toEqual({
+            code: 'model_tools_required',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+            modeKey: 'ask',
+        });
+
+        const orchestratorSession = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'ws_no_tools_orchestrator_debug',
+            title: 'No Tools Orchestrator Debug Thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+        const orchestratorStarted = await caller.session.startRun({
+            profileId,
+            sessionId: orchestratorSession.session.id,
+            prompt: 'Try to inspect the workspace from orchestrator debug',
+            topLevelTab: 'orchestrator',
+            modeKey: 'debug',
+            workspaceFingerprint: 'ws_no_tools_orchestrator_debug',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+        });
+        expect(orchestratorStarted.accepted).toBe(false);
+        if (orchestratorStarted.accepted) {
+            throw new Error('Expected orchestrator debug mode to reject models without native tools.');
+        }
+        expect(orchestratorStarted.code).toBe('runtime_option_invalid');
+        expect(orchestratorStarted.action).toEqual({
+            code: 'model_tools_required',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+            modeKey: 'debug',
+        });
+    });
+
     it('rejects explicit non-vision targets when attachments are present', async () => {
         const caller = createCaller();
         const configured = await caller.provider.setApiKey({

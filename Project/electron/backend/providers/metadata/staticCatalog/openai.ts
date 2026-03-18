@@ -80,7 +80,9 @@ function createStandardVisionModelDefinition(
         maxOutputTokens: 32_000,
         supportsVision: true,
         supportsReasoning: options.supportsReasoning,
-        supportsRealtimeWebSocket: options.supportsRealtimeWebSocket,
+        ...(options.supportsRealtimeWebSocket !== undefined
+            ? { supportsRealtimeWebSocket: options.supportsRealtimeWebSocket }
+            : {}),
         ...(options.supportsPromptCache !== undefined ? { supportsPromptCache: options.supportsPromptCache } : {}),
     });
 }

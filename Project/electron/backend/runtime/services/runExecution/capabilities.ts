@@ -38,7 +38,6 @@ export function validateRunCapabilities(input: ValidateRunCapabilitiesInput): Ru
 
     if (
         runModeRequiresNativeTools({
-            topLevelTab: input.topLevelTab,
             mode: input.mode,
         }) &&
         !input.modelCapabilities.supportsTools

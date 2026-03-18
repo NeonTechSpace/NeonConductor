@@ -1,5 +1,6 @@
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
+import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 
 import type {
@@ -100,7 +101,7 @@ export interface SessionWorkspacePanelProps {
     selectedModelId: string | undefined;
     topLevelTab: TopLevelTab;
     activeModeKey: string;
-    modes: Array<{ id: string; modeKey: string; label: string }>;
+    modes: ConversationModeOption[];
     reasoningEffort: RuntimeReasoningEffort;
     selectedModelSupportsReasoning: boolean;
     supportedReasoningEfforts?: RuntimeReasoningEffort[];

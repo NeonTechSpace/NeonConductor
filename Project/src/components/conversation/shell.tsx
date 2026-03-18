@@ -20,6 +20,7 @@ import { useConversationQueries } from '@/web/components/conversation/shell/quer
 import { buildConversationUiSyncPatch } from '@/web/components/conversation/shell/queries/useConversationSync';
 import {
     buildRuntimeRunOptions,
+    type ConversationModeOption,
     DEFAULT_REASONING_EFFORT,
     isEntityId,
     isProviderId,
@@ -50,7 +51,7 @@ interface ConversationShellProps {
     topLevelTab: TopLevelTab;
     selectedWorkspaceFingerprint?: string;
     modeKey: string;
-    modes: Array<{ id: string; modeKey: string; label: string }>;
+    modes: ConversationModeOption[];
     onModeChange: (modeKey: string) => void;
     onTopLevelTabChange: (nextTab: TopLevelTab) => void;
     onSelectedWorkspaceFingerprintChange?: (workspaceFingerprint: string | undefined) => void;
@@ -72,6 +73,8 @@ export function ConversationShell({
     onProfileChange,
     onBootChromeReadyChange,
 }: ConversationShellProps) {
+    const activeMode = modes.find((candidate) => candidate.modeKey === modeKey);
+    const activeModeRequiresNativeTools = modeRequiresNativeTools(activeMode);
     const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [focusComposerRequestKey, setFocusComposerRequestKey] = useState(0);
@@ -206,7 +209,7 @@ export function ConversationShell({
         ...(preferredWorkspacePreference ? { workspacePreference: preferredWorkspacePreference } : {}),
         ...(mainViewDraftTarget ? { mainViewDraft: mainViewDraftTarget } : {}),
         runs: [],
-        requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
+        requiresTools: activeModeRequiresNativeTools,
         modeKey,
         imageAttachmentsAllowed,
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
@@ -236,7 +239,7 @@ export function ConversationShell({
         ...(selectedWorkspacePreference ? { workspacePreference: selectedWorkspacePreference } : {}),
         ...(mainViewDraftTarget ? { mainViewDraft: mainViewDraftTarget } : {}),
         runs: shellViewModel.sessionRunSelection.runs,
-        requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
+        requiresTools: activeModeRequiresNativeTools,
         modeKey,
         imageAttachmentsAllowed,
         ...(sessionActions.sessionOverride ? { sessionOverride: sessionActions.sessionOverride } : {}),
@@ -368,7 +371,7 @@ export function ConversationShell({
                     provider,
                     compatibilityContext: {
                         surface: 'conversation',
-                        requiresTools: modeRequiresNativeTools({ topLevelTab, modeKey }),
+                        requiresTools: activeModeRequiresNativeTools,
                         modeKey,
                         hasPendingImageAttachments: composer.pendingImages.length > 0,
                         imageAttachmentsAllowed,

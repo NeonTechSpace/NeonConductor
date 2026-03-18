@@ -1,5 +1,7 @@
 import { permissionPolicyOverrideStore } from '@/app/backend/persistence/stores';
 import type { ExecutionPreset, PermissionPolicy, ToolCapability, TopLevelTab } from '@/app/backend/runtime/contracts';
+import { modeAllowsToolCapabilities } from '@/app/backend/runtime/services/mode/toolCapabilities';
+import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 
 export interface ResolvedPermissionPolicy {
     policy: PermissionPolicy;
@@ -17,43 +19,39 @@ function extractToolIdFromResource(resource: string): string | null {
     return toolId.length > 0 ? toolId : null;
 }
 
-function isMutatingTool(toolId: string): boolean {
-    return toolId === 'run_command';
-}
-
 function isReadOnlyCapabilitySet(capabilities: ToolCapability[]): boolean {
     return capabilities.length > 0 && capabilities.every((capability) => capability === 'filesystem_read');
 }
 
-function resolveModePolicy(
-    topLevelTab: TopLevelTab,
-    modeKey: string,
-    resource: string,
-    capabilities: ToolCapability[]
-): PermissionPolicy | null {
-    const toolId = extractToolIdFromResource(resource);
+async function resolveModePolicy(input: {
+    profileId: string;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    resource: string;
+    capabilities: ToolCapability[];
+    workspaceFingerprint?: string;
+}): Promise<PermissionPolicy | null> {
+    const toolId = extractToolIdFromResource(input.resource);
     if (!toolId) {
         return null;
     }
 
-    if (topLevelTab === 'chat') {
+    const modes = await resolveModesForTab({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+    });
+    const mode = modes.find((candidate) => candidate.modeKey === input.modeKey);
+    if (!mode || mode.executionPolicy.planningOnly) {
         return 'deny';
     }
 
-    if (modeKey === 'plan') {
+    if (!modeAllowsToolCapabilities(mode, input.capabilities)) {
         return 'deny';
     }
 
-    if (toolId === 'run_command') {
-        if (topLevelTab !== 'agent') {
-            return 'deny';
-        }
-
-        return modeKey === 'code' || modeKey === 'debug' ? null : 'deny';
-    }
-
-    if (topLevelTab === 'agent' && modeKey === 'ask') {
-        return isMutatingTool(toolId) || !isReadOnlyCapabilitySet(capabilities) ? 'deny' : 'allow';
+    if (input.topLevelTab === 'agent' && input.modeKey === 'ask') {
+        return isReadOnlyCapabilitySet(input.capabilities) ? 'allow' : 'deny';
     }
 
     return null;
@@ -86,7 +84,14 @@ export async function resolveEffectivePermissionPolicy(input: {
     workspaceFingerprint?: string;
     toolDefaultPolicy: PermissionPolicy;
 }): Promise<ResolvedPermissionPolicy> {
-    const modePolicy = resolveModePolicy(input.topLevelTab, input.modeKey, input.resource, input.capabilities);
+    const modePolicy = await resolveModePolicy({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        modeKey: input.modeKey,
+        resource: input.resource,
+        capabilities: input.capabilities,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+    });
     if (modePolicy) {
         return {
             policy: modePolicy,

@@ -1,9 +1,9 @@
-import type { RegistryScope, RegistrySourceKind, TopLevelTab } from '@/app/backend/runtime/contracts/enums';
+import type { RegistryScope, RegistrySourceKind, ToolCapability, TopLevelTab } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 
 export interface ModeExecutionPolicy {
     planningOnly?: boolean;
-    readOnly?: boolean;
+    toolCapabilities?: ToolCapability[];
 }
 
 export interface ModeDefinition {

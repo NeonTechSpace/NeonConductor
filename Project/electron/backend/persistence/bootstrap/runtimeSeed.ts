@@ -126,7 +126,9 @@ const MODE_SEED = [
         modeKey: 'chat',
         label: 'Chat',
         prompt: {},
-        executionPolicy: {},
+        executionPolicy: {
+            toolCapabilities: [],
+        },
     },
     {
         topLevelTab: 'agent',
@@ -142,14 +144,18 @@ const MODE_SEED = [
         modeKey: 'debug',
         label: 'Agent Debug',
         prompt: {},
-        executionPolicy: {},
+        executionPolicy: {
+            toolCapabilities: ['filesystem_read', 'shell'],
+        },
     },
     {
         topLevelTab: 'agent',
         modeKey: 'code',
         label: 'Agent Code',
         prompt: {},
-        executionPolicy: {},
+        executionPolicy: {
+            toolCapabilities: ['filesystem_read', 'shell'],
+        },
     },
     {
         topLevelTab: 'agent',
@@ -157,7 +163,7 @@ const MODE_SEED = [
         label: 'Agent Ask',
         prompt: {},
         executionPolicy: {
-            readOnly: true,
+            toolCapabilities: ['filesystem_read'],
         },
     },
     {
@@ -174,14 +180,18 @@ const MODE_SEED = [
         modeKey: 'orchestrate',
         label: 'Orchestrator Orchestrate',
         prompt: {},
-        executionPolicy: {},
+        executionPolicy: {
+            toolCapabilities: ['filesystem_read'],
+        },
     },
     {
         topLevelTab: 'orchestrator',
         modeKey: 'debug',
         label: 'Orchestrator Debug',
         prompt: {},
-        executionPolicy: {},
+        executionPolicy: {
+            toolCapabilities: ['filesystem_read'],
+        },
     },
 ] as const;
 
@@ -271,7 +281,7 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
     );
     const insertModeDefinition = sqlite.prepare(
         `
-            INSERT OR IGNORE INTO mode_definitions
+            INSERT OR REPLACE INTO mode_definitions
                 (
                     id,
                     profile_id,

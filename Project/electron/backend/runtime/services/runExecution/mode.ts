@@ -43,19 +43,5 @@ export async function resolveModeExecution(
         );
     }
 
-    if (input.topLevelTab === 'agent' && input.modeKey === 'ask' && !mode.executionPolicy.readOnly) {
-        return errRunExecution(
-            'mode_policy_invalid',
-            'agent.ask must be configured with a read-only execution policy.'
-        );
-    }
-
-    if (input.topLevelTab === 'agent' && input.modeKey !== 'ask' && mode.executionPolicy.readOnly) {
-        return errRunExecution(
-            'mode_policy_invalid',
-            `Mode "${input.modeKey}" cannot run with a read-only execution policy.`
-        );
-    }
-
     return okRunExecution({ mode });
 }
