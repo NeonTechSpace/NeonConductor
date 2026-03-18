@@ -9,15 +9,18 @@ import {
     readEntityId,
     readEnumValue,
     readObject,
+    readOptionalBoolean,
     readOptionalString,
     readProfileId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
+    ApplyMemoryEditProposalInput,
     MemoryByIdInput,
     MemoryCreateInput,
     MemoryDisableInput,
     MemoryListInput,
+    MemoryProjectionContextInput,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts/types';
 
@@ -105,8 +108,42 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
     };
 }
 
+export function parseMemoryProjectionContextInput(input: unknown): MemoryProjectionContextInput {
+    const source = readObject(input, 'input');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    const worktreeId =
+        source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const threadId =
+        source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
+    const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
+    const includeBroaderScopes = readOptionalBoolean(source.includeBroaderScopes, 'includeBroaderScopes');
+
+    return {
+        profileId: readProfileId(source),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        ...(worktreeId ? { worktreeId } : {}),
+        ...(threadId ? { threadId } : {}),
+        ...(runId ? { runId } : {}),
+        ...(includeBroaderScopes !== undefined ? { includeBroaderScopes } : {}),
+    };
+}
+
+export function parseApplyMemoryEditProposalInput(input: unknown): ApplyMemoryEditProposalInput {
+    const source = readObject(input, 'input');
+    const context = parseMemoryProjectionContextInput(input);
+
+    return {
+        ...context,
+        memoryId: readEntityId(source.memoryId, 'memoryId', 'mem'),
+        observedContentHash: readString(source.observedContentHash, 'observedContentHash'),
+        decision: readEnumValue(source.decision, 'decision', ['accept', 'reject'] as const),
+    };
+}
+
 export const memoryCreateInputSchema = createParser(parseMemoryCreateInput);
 export const memoryListInputSchema = createParser(parseMemoryListInput);
 export const memoryByIdInputSchema = createParser(parseMemoryByIdInput);
 export const memoryDisableInputSchema = createParser(parseMemoryDisableInput);
 export const memorySupersedeInputSchema = createParser(parseMemorySupersedeInput);
+export const memoryProjectionContextInputSchema = createParser(parseMemoryProjectionContextInput);
+export const applyMemoryEditProposalInputSchema = createParser(parseApplyMemoryEditProposalInput);

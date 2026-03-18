@@ -1003,6 +1003,7 @@ export function ConversationShell({
             executionEnvironmentPanel: workspacePanels.executionEnvironmentPanel,
             modeExecutionPanel: workspacePanels.modeExecutionPanel,
             contextAssetsPanel: workspacePanels.contextAssetsPanel,
+            memoryPanel: workspacePanels.memoryPanel,
             diffCheckpointPanel: workspacePanels.diffCheckpointPanel,
             focusComposerRequestKey,
         },

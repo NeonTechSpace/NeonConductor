@@ -76,6 +76,15 @@ interface CreateMemoryRecordInput {
     runId?: EntityId<'run'>;
 }
 
+interface UpdateMemoryEditableFieldsInput {
+    profileId: string;
+    memoryId: EntityId<'mem'>;
+    title: string;
+    bodyMarkdown: string;
+    summaryText?: string;
+    metadata?: Record<string, unknown>;
+}
+
 export class MemoryStore {
     async getById(profileId: string, memoryId: EntityId<'mem'>): Promise<MemoryRecord | null> {
         const { db } = getPersistence();
@@ -167,6 +176,25 @@ export class MemoryStore {
             })
             .where('profile_id', '=', profileId)
             .where('id', '=', memoryId)
+            .returningAll()
+            .executeTakeFirst();
+
+        return updated ? mapMemoryRecord(updated) : null;
+    }
+
+    async updateEditableFields(input: UpdateMemoryEditableFieldsInput): Promise<MemoryRecord | null> {
+        const { db } = getPersistence();
+        const updated = await db
+            .updateTable('memory_records')
+            .set({
+                title: input.title,
+                body_markdown: input.bodyMarkdown,
+                summary_text: input.summaryText ?? null,
+                metadata_json: JSON.stringify(input.metadata ?? {}),
+                updated_at: nowIso(),
+            })
+            .where('profile_id', '=', input.profileId)
+            .where('id', '=', input.memoryId)
             .returningAll()
             .executeTakeFirst();
 

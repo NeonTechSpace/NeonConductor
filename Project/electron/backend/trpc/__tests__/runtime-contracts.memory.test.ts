@@ -1,13 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { runStore } from '@/app/backend/persistence/stores';
+import { runStore, worktreeStore } from '@/app/backend/persistence/stores';
 import {
     createCaller,
     createSessionInScope,
     defaultRuntimeOptions,
+    getPersistence,
+    mkdtempSync,
+    os,
+    path,
+    readFileSync,
     registerRuntimeContractHooks,
     requireEntityId,
     runtimeContractProfileId,
+    writeFileSync,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
@@ -214,5 +220,301 @@ describe('runtime contracts: memory', () => {
                 bodyMarkdown: 'Should fail.',
             })
         ).rejects.toThrow(/Only active memory can be superseded/i);
+    });
+
+    it('syncs memory projection files to workspace and global roots', async () => {
+        const caller = createCaller();
+        const globalMemoryRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-global-'));
+        vi.stubEnv('NEONCONDUCTOR_GLOBAL_MEMORY_ROOT', globalMemoryRoot);
+        const workspaceFingerprint = 'wsf_runtime_memory_projection';
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Memory projection thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected projection thread id.');
+
+        const globalMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'global',
+            createdByKind: 'user',
+            title: 'Projection global memory',
+            bodyMarkdown: 'Global projection body.',
+        });
+        const threadMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId,
+            title: 'Projection thread memory',
+            bodyMarkdown: 'Thread projection body.',
+            metadata: {
+                source: 'manual',
+            },
+        });
+
+        const synced = await caller.memory.syncProjection({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+
+        expect(synced.paths.globalMemoryRoot).toBe(globalMemoryRoot);
+        expect(synced.paths.workspaceMemoryRoot).toMatch(/\.neonconductor[\\/]memory$/);
+        const projectedById = new Map(synced.projectedMemories.map((record) => [record.memory.id, record] as const));
+        const globalProjected = projectedById.get(globalMemory.memory.id);
+        const threadProjected = projectedById.get(threadMemory.memory.id);
+        expect(globalProjected?.syncState).toBe('in_sync');
+        expect(threadProjected?.syncState).toBe('in_sync');
+
+        const projectedThreadFile = threadProjected?.absolutePath;
+        if (!projectedThreadFile) {
+            throw new Error('Expected projected thread memory file.');
+        }
+
+        const projectedThreadContent = readFileSync(projectedThreadFile, 'utf8');
+        expect(projectedThreadContent).toContain('memoryType: "procedural"');
+        expect(projectedThreadContent).toContain('threadId:');
+        expect(projectedThreadContent).toContain('metadata: {"source":"manual"}');
+    });
+
+    it('keeps workspace memory projection pinned to the base workspace root when a worktree is selected', async () => {
+        const caller = createCaller();
+        const globalMemoryRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-worktree-global-'));
+        vi.stubEnv('NEONCONDUCTOR_GLOBAL_MEMORY_ROOT', globalMemoryRoot);
+        const workspaceFingerprint = 'wsf_runtime_memory_worktree_projection';
+        await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Memory worktree projection thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const workspaceRootRow = getPersistence().sqlite
+            .prepare('SELECT absolute_path FROM workspace_roots WHERE profile_id = ? AND fingerprint = ?')
+            .get(profileId, workspaceFingerprint) as { absolute_path: string } | undefined;
+        if (!workspaceRootRow) {
+            throw new Error('Expected workspace root for memory worktree projection test.');
+        }
+
+        const worktreePath = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-worktree-'));
+        const worktree = await worktreeStore.create({
+            profileId,
+            workspaceFingerprint,
+            branch: 'feature/memory-projection',
+            baseBranch: 'main',
+            absolutePath: worktreePath,
+            label: 'memory-worktree',
+            status: 'ready',
+        });
+
+        const workspaceMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'workspace',
+            createdByKind: 'user',
+            workspaceFingerprint,
+            title: 'Workspace projected memory',
+            bodyMarkdown: 'Workspace projection body.',
+        });
+
+        const synced = await caller.memory.syncProjection({
+            profileId,
+            workspaceFingerprint,
+            worktreeId: worktree.id,
+        });
+
+        expect(synced.paths.workspaceMemoryRoot).toBe(
+            path.join(workspaceRootRow.absolute_path, '.neonconductor', 'memory')
+        );
+        const projected = synced.projectedMemories.find((record) => record.memory.id === workspaceMemory.memory.id);
+        expect(projected?.projectionTarget).toBe('workspace');
+        expect(projected?.absolutePath).toBe(
+            path.join(
+                workspaceRootRow.absolute_path,
+                '.neonconductor',
+                'memory',
+                'semantic',
+                `workspace--${workspaceMemory.memory.id}.md`
+            )
+        );
+    });
+
+    it('scans, applies, and rejects projected memory edits through reviewed proposals', async () => {
+        const caller = createCaller();
+        const globalMemoryRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-review-'));
+        vi.stubEnv('NEONCONDUCTOR_GLOBAL_MEMORY_ROOT', globalMemoryRoot);
+        const workspaceFingerprint = 'wsf_runtime_memory_review';
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Memory review thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected review thread id.');
+
+        const editableMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId,
+            title: 'Editable memory',
+            bodyMarkdown: 'Original body.',
+            metadata: {
+                source: 'manual',
+            },
+        });
+
+        const synced = await caller.memory.syncProjection({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        const projectedMemory = synced.projectedMemories.find((record) => record.memory.id === editableMemory.memory.id);
+        if (!projectedMemory) {
+            throw new Error('Expected synced projected memory.');
+        }
+
+        writeFileSync(
+            projectedMemory.absolutePath,
+            `---\nid: "${editableMemory.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "active"\ntitle: "Editable memory v2"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":2}\n---\nUpdated projection body.\n`,
+            'utf8'
+        );
+
+        const scanned = await caller.memory.scanProjectionEdits({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        expect(scanned.proposals).toHaveLength(1);
+        expect(scanned.proposals[0]?.reviewAction).toBe('update');
+
+        const proposal = scanned.proposals[0];
+        if (!proposal) {
+            throw new Error('Expected memory edit proposal.');
+        }
+
+        const applied = await caller.memory.applyProjectionEdit({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+            memoryId: proposal.memory.id,
+            observedContentHash: proposal.observedContentHash,
+            decision: 'accept',
+        });
+        expect(applied.appliedAction).toBe('update');
+        expect(applied.memory.title).toBe('Editable memory v2');
+        expect(applied.memory.metadata).toEqual({ source: 'projection', revision: 2 });
+
+        writeFileSync(
+            projectedMemory.absolutePath,
+            `---\nid: "${applied.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "active"\ntitle: "Editable memory rejected"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":3}\n---\nRejected projection body.\n`,
+            'utf8'
+        );
+
+        const rejectScan = await caller.memory.scanProjectionEdits({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        expect(rejectScan.proposals).toHaveLength(1);
+        const rejectProposal = rejectScan.proposals[0];
+        if (!rejectProposal) {
+            throw new Error('Expected rejectable memory edit proposal.');
+        }
+
+        const rejected = await caller.memory.applyProjectionEdit({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+            memoryId: rejectProposal.memory.id,
+            observedContentHash: rejectProposal.observedContentHash,
+            decision: 'reject',
+        });
+        expect(rejected.decision).toBe('reject');
+        expect(rejected.memory.title).toBe('Editable memory v2');
+
+        writeFileSync(projectedMemory.absolutePath, 'not valid frontmatter', 'utf8');
+
+        const parseErrorScan = await caller.memory.scanProjectionEdits({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        expect(parseErrorScan.proposals).toHaveLength(0);
+        expect(parseErrorScan.parseErrors).toHaveLength(1);
+    });
+
+    it('does not overwrite edited projected memory files during sync', async () => {
+        const caller = createCaller();
+        const globalMemoryRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-sync-preserve-'));
+        vi.stubEnv('NEONCONDUCTOR_GLOBAL_MEMORY_ROOT', globalMemoryRoot);
+        const workspaceFingerprint = 'wsf_runtime_memory_sync_preserve';
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Memory sync preserve thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected preserve thread id.');
+
+        const editableMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId,
+            title: 'Sync preserve memory',
+            bodyMarkdown: 'Original projection body.',
+        });
+
+        const firstSync = await caller.memory.syncProjection({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        const projectedMemory = firstSync.projectedMemories.find((record) => record.memory.id === editableMemory.memory.id);
+        if (!projectedMemory) {
+            throw new Error('Expected projected memory for sync preservation test.');
+        }
+
+        const editedContent =
+            `---\n` +
+            `id: "${editableMemory.memory.id}"\n` +
+            `memoryType: "procedural"\n` +
+            `scopeKind: "thread"\n` +
+            `state: "active"\n` +
+            `title: "Sync preserve edited"\n` +
+            `threadId: "${threadId}"\n` +
+            `workspaceFingerprint: "${workspaceFingerprint}"\n` +
+            `metadata: {"edited":true}\n` +
+            `---\n` +
+            `Preserve this edited body.\n`;
+        writeFileSync(projectedMemory.absolutePath, editedContent, 'utf8');
+
+        const editedScan = await caller.memory.scanProjectionEdits({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        expect(editedScan.proposals).toHaveLength(1);
+        expect(editedScan.proposals[0]?.proposedTitle).toBe('Sync preserve edited');
+
+        const secondSync = await caller.memory.syncProjection({
+            profileId,
+            workspaceFingerprint,
+            threadId,
+        });
+        const resynced = secondSync.projectedMemories.find((record) => record.memory.id === editableMemory.memory.id);
+        expect(resynced?.syncState).toBe('edited');
+        expect(readFileSync(projectedMemory.absolutePath, 'utf8')).toBe(editedContent);
     });
 });

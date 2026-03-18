@@ -6,6 +6,7 @@ import type {
     MemoryCreateInput,
     MemoryDisableInput,
     MemoryListInput,
+    MemoryRecord as RuntimeMemoryRecord,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
@@ -180,6 +181,30 @@ class MemoryService {
         }
 
         return okOp(disabled);
+    }
+
+    async updateMemory(input: {
+        profileId: string;
+        memoryId: EntityId<'mem'>;
+        title: string;
+        bodyMarkdown: string;
+        summaryText?: string;
+        metadata?: Record<string, unknown>;
+    }): Promise<OperationalResult<RuntimeMemoryRecord>> {
+        const existing = await memoryStore.getById(input.profileId, input.memoryId);
+        if (!existing) {
+            return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
+        }
+        if (existing.state !== 'active') {
+            return errOp('invalid_input', 'Only active memory can be updated.');
+        }
+
+        const updated = await memoryStore.updateEditableFields(input);
+        if (!updated) {
+            return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
+        }
+
+        return okOp(updated);
     }
 
     async supersedeMemory(

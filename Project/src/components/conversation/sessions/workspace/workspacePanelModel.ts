@@ -126,6 +126,7 @@ export interface SessionWorkspacePanelProps {
     executionEnvironmentPanel?: ReactNode;
     modeExecutionPanel?: ReactNode;
     contextAssetsPanel?: ReactNode;
+    memoryPanel?: ReactNode;
     diffCheckpointPanel?: ReactNode;
     promptResetKey?: number;
     focusComposerRequestKey?: number;

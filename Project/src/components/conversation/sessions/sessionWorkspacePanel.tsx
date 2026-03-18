@@ -57,6 +57,7 @@ export function SessionWorkspacePanel({
     executionEnvironmentPanel,
     modeExecutionPanel,
     contextAssetsPanel,
+    memoryPanel,
     diffCheckpointPanel,
     promptResetKey,
     focusComposerRequestKey,
@@ -159,6 +160,16 @@ export function SessionWorkspacePanel({
                       label: 'Context assets',
                       description: 'Preset-aware manual rules and explicit skill context for this session.',
                       content: contextAssetsPanel,
+                  } satisfies WorkspaceInspectorSection,
+              ]
+            : []),
+        ...(memoryPanel
+            ? [
+                  {
+                      id: 'memory',
+                      label: 'Memory',
+                      description: 'Projected memory files, reviewable edits, and scope-aware memory status.',
+                      content: memoryPanel,
                   } satisfies WorkspaceInspectorSection,
               ]
             : []),

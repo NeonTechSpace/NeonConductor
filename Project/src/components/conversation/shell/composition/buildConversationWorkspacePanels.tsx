@@ -2,6 +2,7 @@ import { useConversationShellViewModel } from '@/web/components/conversation/hoo
 import { ContextAssetsPanel } from '@/web/components/conversation/panels/contextAssetsPanel';
 import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
 import { ExecutionEnvironmentPanel } from '@/web/components/conversation/panels/executionEnvironmentPanel';
+import { MemoryPanel } from '@/web/components/conversation/panels/memoryPanel';
 import { ModeExecutionPanel } from '@/web/components/conversation/panels/modeExecutionPanel';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { buildConversationPlanOrchestrator } from '@/web/components/conversation/shell/composition/buildConversationPlanOrchestrator';
@@ -154,6 +155,21 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                     missingAttachedSkillKeys={input.shellViewModel.missingAttachedSkillKeys}
                 />
             ) : undefined,
+        memoryPanel: selectedThread ? (
+            <MemoryPanel
+                profileId={input.profileId}
+                topLevelTab={input.topLevelTab}
+                modeKey={input.modeKey}
+                {...(selectedThread.workspaceFingerprint
+                    ? { workspaceFingerprint: selectedThread.workspaceFingerprint }
+                    : {})}
+                {...(input.shellViewModel.effectiveSelectedWorktreeId
+                    ? { worktreeId: input.shellViewModel.effectiveSelectedWorktreeId }
+                    : {})}
+                {...(isEntityId(selectedThread.id, 'thr') ? { threadId: selectedThread.id } : {})}
+                {...(isEntityId(input.selectedRunId, 'run') ? { runId: input.selectedRunId } : {})}
+            />
+        ) : undefined,
         diffCheckpointPanel:
             input.topLevelTab !== 'chat' ? (
                 <DiffCheckpointPanel
