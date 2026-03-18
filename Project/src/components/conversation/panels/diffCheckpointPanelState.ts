@@ -37,6 +37,22 @@ export function buildRollbackWarningLines(
         lines.push('Later checkpoints from other chats exist on this same target. This rollback is high risk.');
     }
 
+    if (preview.hasChangeset && preview.canRevertSafely && preview.recommendedAction === 'revert_changeset') {
+        lines.push('Safer action available: revert only this run changeset instead of restoring the whole target.');
+    }
+
+    if (preview.hasChangeset && !preview.canRevertSafely) {
+        if (preview.revertBlockedReason === 'changeset_empty') {
+            lines.push('This checkpoint recorded no file changes, so there is nothing to revert.');
+        } else if (preview.revertBlockedReason === 'target_drifted') {
+            lines.push('The live files have drifted since this checkpoint. Revert changeset is blocked to avoid partial undo.');
+        } else if (preview.revertBlockedReason === 'workspace_unresolved') {
+            lines.push('The current execution target could not be resolved, so revert changeset is unavailable.');
+        } else {
+            lines.push('Revert changeset is unavailable because the recorded state could not be validated safely.');
+        }
+    }
+
     if (preview.affectedSessions.length > 0) {
         lines.push(`Affected chats: ${preview.affectedSessions.map((session) => session.threadTitle).join(', ')}`);
     }

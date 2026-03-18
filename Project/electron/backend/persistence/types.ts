@@ -470,6 +470,38 @@ export interface CheckpointRecord {
     updatedAt: string;
 }
 
+export interface CheckpointChangesetEntryRecord {
+    changesetId?: EntityId<'chg'>;
+    relativePath: string;
+    changeKind: 'added' | 'modified' | 'deleted';
+    beforeBlobSha256?: string;
+    beforeByteSize?: number;
+    beforeBytes?: Uint8Array;
+    afterBlobSha256?: string;
+    afterByteSize?: number;
+    afterBytes?: Uint8Array;
+}
+
+export interface CheckpointChangesetRecord {
+    id: EntityId<'chg'>;
+    profileId: string;
+    checkpointId: EntityId<'ckpt'>;
+    sourceChangesetId?: EntityId<'chg'>;
+    sessionId: EntityId<'sess'>;
+    threadId: EntityId<'thr'>;
+    runId?: EntityId<'run'>;
+    executionTargetKey: string;
+    executionTargetKind: 'workspace' | 'worktree';
+    executionTargetLabel: string;
+    createdByKind: 'system' | 'user';
+    changesetKind: 'run_capture' | 'revert';
+    summary: string;
+    changeCount: number;
+    createdAt: string;
+    updatedAt: string;
+    entries: CheckpointChangesetEntryRecord[];
+}
+
 export type WorktreeRecord = RuntimeWorktreeRecord;
 
 export interface RunRecord {

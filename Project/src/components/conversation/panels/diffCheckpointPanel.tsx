@@ -112,6 +112,23 @@ export function DiffCheckpointPanel({
             setRollbackTargetId(undefined);
         },
     });
+    const revertChangesetMutation = trpc.checkpoint.revertChangeset.useMutation({
+        onSuccess: (result) => {
+            if (!result.reverted) {
+                setFeedbackMessage(result.message ?? 'Changeset revert could not be completed.');
+                return;
+            }
+
+            setFeedbackMessage('Changeset revert completed.');
+            setConfirmRollbackId(undefined);
+        },
+        onError: (error) => {
+            setFeedbackMessage(error.message);
+        },
+        onSettled: () => {
+            setRollbackTargetId(undefined);
+        },
+    });
 
     const prefetchPatch = (path: string) => {
         if (!selectedDiff) {
@@ -131,6 +148,10 @@ export function DiffCheckpointPanel({
         rollbackPreviewQuery.data?.found && rollbackPreviewQuery.data.preview.checkpointId === confirmRollbackId
             ? buildRollbackWarningLines(rollbackPreviewQuery.data.preview)
             : null;
+    const selectedPreview =
+        rollbackPreviewQuery.data?.found && rollbackPreviewQuery.data.preview.checkpointId === confirmRollbackId
+            ? rollbackPreviewQuery.data.preview
+            : undefined;
 
     return (
         <section className='border-border bg-card/80 mt-3 rounded-2xl border p-4 shadow-sm'>
@@ -232,7 +253,7 @@ export function DiffCheckpointPanel({
                                                         type='button'
                                                         size='sm'
                                                         className='h-11'
-                                                        disabled={disabled || rollbackMutation.isPending}
+                                                        disabled={disabled || rollbackMutation.isPending || revertChangesetMutation.isPending}
                                                         onClick={() => {
                                                             setFeedbackMessage(undefined);
                                                             setConfirmRollbackId((current) =>
@@ -240,19 +261,21 @@ export function DiffCheckpointPanel({
                                                             );
                                                         }}>
                                                         {rollbackMutation.isPending && rollbackTargetId === checkpoint.id
-                                                            ? 'Rolling Back…'
+                                                            ? 'Restoring…'
+                                                            : revertChangesetMutation.isPending && rollbackTargetId === checkpoint.id
+                                                              ? 'Reverting…'
                                                             : confirmRollbackId === checkpoint.id
                                                               ? 'Cancel'
-                                                              : 'Rollback'}
+                                                              : 'Actions'}
                                                     </Button>
                                                 </div>
                                                 {confirmRollbackId === checkpoint.id ? (
                                                     <div className='border-border bg-background/60 mt-3 rounded-md border p-3'>
                                                         <p className='text-sm'>
-                                                            Roll back this workspace to <span className='font-medium'>{checkpoint.id}</span>?
+                                                            Choose how to go back from <span className='font-medium'>{checkpoint.id}</span>.
                                                         </p>
                                                         <p className='text-muted-foreground mt-1 text-xs'>
-                                                            Restore the native snapshot for{' '}
+                                                            Backend guidance is based on the current shared-target risk for{' '}
                                                             <span className='font-medium'>{checkpoint.executionTargetLabel}</span>.
                                                         </p>
                                                         <div className='mt-2 space-y-1 text-xs'>
@@ -262,6 +285,11 @@ export function DiffCheckpointPanel({
                                                             <p className='text-muted-foreground'>
                                                                 Snapshot: {String(checkpoint.snapshotFileCount)} files
                                                             </p>
+                                                            {selectedPreview?.changeset ? (
+                                                                <p className='text-muted-foreground'>
+                                                                    Changeset: {selectedPreview.changeset.summary}
+                                                                </p>
+                                                            ) : null}
                                                             {rollbackPreviewQuery.isPending && selectedCheckpoint?.id === checkpoint.id ? (
                                                                 <p className='text-muted-foreground'>Checking whether other chats share this target…</p>
                                                             ) : null}
@@ -285,8 +313,17 @@ export function DiffCheckpointPanel({
                                                             <Button
                                                                 type='button'
                                                                 size='sm'
+                                                                variant={
+                                                                    selectedPreview?.recommendedAction === 'restore_checkpoint'
+                                                                        ? 'default'
+                                                                        : 'outline'
+                                                                }
                                                                 className='h-11'
-                                                                disabled={rollbackMutation.isPending}
+                                                                disabled={
+                                                                    rollbackMutation.isPending ||
+                                                                    revertChangesetMutation.isPending ||
+                                                                    rollbackPreviewQuery.isPending
+                                                                }
                                                                 onClick={() => {
                                                                     setRollbackTargetId(checkpoint.id);
                                                                     setFeedbackMessage(undefined);
@@ -296,14 +333,47 @@ export function DiffCheckpointPanel({
                                                                         confirm: true,
                                                                     });
                                                                 }}>
-                                                                Confirm Rollback
+                                                                {rollbackMutation.isPending && rollbackTargetId === checkpoint.id
+                                                                    ? 'Restoring…'
+                                                                    : 'Restore Checkpoint'}
                                                             </Button>
+                                                            {selectedPreview?.hasChangeset ? (
+                                                                <Button
+                                                                    type='button'
+                                                                    size='sm'
+                                                                    variant={
+                                                                        selectedPreview.recommendedAction === 'revert_changeset'
+                                                                            ? 'default'
+                                                                            : 'outline'
+                                                                    }
+                                                                    className='h-11'
+                                                                    disabled={
+                                                                        rollbackMutation.isPending ||
+                                                                        revertChangesetMutation.isPending ||
+                                                                        rollbackPreviewQuery.isPending ||
+                                                                        !selectedPreview.canRevertSafely
+                                                                    }
+                                                                    onClick={() => {
+                                                                        setRollbackTargetId(checkpoint.id);
+                                                                        setFeedbackMessage(undefined);
+                                                                        void revertChangesetMutation.mutateAsync({
+                                                                            profileId,
+                                                                            checkpointId: checkpoint.id,
+                                                                            confirm: true,
+                                                                        });
+                                                                    }}>
+                                                                    {revertChangesetMutation.isPending &&
+                                                                    rollbackTargetId === checkpoint.id
+                                                                        ? 'Reverting…'
+                                                                        : 'Revert Changeset'}
+                                                                </Button>
+                                                            ) : null}
                                                             <Button
                                                                 type='button'
                                                                 size='sm'
                                                                 variant='outline'
                                                                 className='h-11'
-                                                                disabled={rollbackMutation.isPending}
+                                                                disabled={rollbackMutation.isPending || revertChangesetMutation.isPending}
                                                                 onClick={() => {
                                                                     setConfirmRollbackId(undefined);
                                                                 }}>

@@ -1,6 +1,21 @@
-import { checkpointSnapshotStore, checkpointStore, diffStore, runStore, threadStore } from '@/app/backend/persistence/stores';
-import type { CheckpointRecord, DiffArtifact, DiffRecord } from '@/app/backend/persistence/types';
+import {
+    checkpointChangesetStore,
+    checkpointSnapshotStore,
+    checkpointStore,
+    diffStore,
+    runStore,
+    threadStore,
+} from '@/app/backend/persistence/stores';
 import type {
+    CheckpointChangesetRecord,
+    CheckpointRecord,
+    DiffArtifact,
+    DiffRecord,
+} from '@/app/backend/persistence/types';
+import type {
+    ChangesetRecord,
+    CheckpointRevertChangesetInput,
+    CheckpointRevertChangesetResult,
     CheckpointRollbackInput,
     CheckpointRollbackPreview,
     CheckpointRollbackPreviewInput,
@@ -9,6 +24,12 @@ import type {
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import { isEntityId } from '@/app/backend/runtime/contracts';
+import {
+    buildSnapshotIndexFromCapture,
+    buildSnapshotIndexFromEntries,
+    deriveChangesetFromSnapshots,
+    evaluateRevertApplicability,
+} from '@/app/backend/runtime/services/checkpoint/changeset';
 import {
     listAffectedSessionsForExecutionTarget,
     resolveCheckpointExecutionTarget,
@@ -19,6 +40,10 @@ import {
     restoreExecutionTargetSnapshot,
 } from '@/app/backend/runtime/services/checkpoint/nativeSnapshot';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
+
+type CheckpointSummary = NonNullable<CheckpointRollbackResult['checkpoint']>;
+type SafetyCheckpointSummary = NonNullable<CheckpointRollbackResult['safetyCheckpoint']>;
+type RevertSafetyCheckpointSummary = NonNullable<CheckpointRevertChangesetResult['safetyCheckpoint']>;
 
 function isMutatingCheckpointMode(topLevelTab: TopLevelTab, modeKey: string): boolean {
     return (topLevelTab === 'agent' && modeKey === 'code') || topLevelTab === 'orchestrator';
@@ -71,6 +96,23 @@ function summarizeCheckpoint(input: {
     return input.runId
         ? `Before ${input.topLevelTab}.${input.modeKey} run ${input.runId}`
         : `Automatic checkpoint for ${input.executionTargetLabel}`;
+}
+
+function mapChangesetRecord(record: CheckpointChangesetRecord): ChangesetRecord {
+    return {
+        id: record.id,
+        checkpointId: record.checkpointId,
+        ...(record.sourceChangesetId ? { sourceChangesetId: record.sourceChangesetId } : {}),
+        sessionId: record.sessionId,
+        threadId: record.threadId,
+        ...(record.runId ? { runId: record.runId } : {}),
+        executionTargetKey: record.executionTargetKey,
+        executionTargetKind: record.executionTargetKind,
+        executionTargetLabel: record.executionTargetLabel,
+        changesetKind: record.changesetKind,
+        changeCount: record.changeCount,
+        summary: record.summary,
+    };
 }
 
 async function createNativeCheckpointForResolvedTarget(input: {
@@ -209,16 +251,127 @@ async function captureRunDiffArtifact(input: {
     };
 }
 
+async function captureRunChangeset(input: {
+    profileId: string;
+    runId: NonNullable<CheckpointRecord['runId']>;
+    topLevelTab: CheckpointRecord['topLevelTab'];
+    modeKey: string;
+    workspaceContext: ResolvedWorkspaceContext;
+}): Promise<CheckpointChangesetRecord | null> {
+    if (!isMutatingCheckpointMode(input.topLevelTab, input.modeKey)) {
+        return null;
+    }
+
+    const checkpoint = await checkpointStore.getByRunId(input.profileId, input.runId);
+    if (!checkpoint) {
+        return null;
+    }
+
+    const executionTarget = resolveCheckpointExecutionTarget(input.workspaceContext);
+    if (!executionTarget || executionTarget.executionTargetKey !== checkpoint.executionTargetKey) {
+        return null;
+    }
+
+    const snapshotEntries = await checkpointSnapshotStore.listSnapshotEntries(checkpoint.id);
+    if (snapshotEntries.length === 0 && checkpoint.snapshotFileCount > 0) {
+        return null;
+    }
+
+    const currentSnapshotResult = await captureExecutionTargetSnapshot({
+        workspaceRootPath: executionTarget.absolutePath,
+    });
+    if (currentSnapshotResult.isErr()) {
+        return null;
+    }
+
+    const derivedChangeset = deriveChangesetFromSnapshots({
+        beforeFiles: buildSnapshotIndexFromEntries(snapshotEntries),
+        afterFiles: buildSnapshotIndexFromCapture(currentSnapshotResult.value.files),
+    });
+
+    return checkpointChangesetStore.replaceForCheckpoint({
+        profileId: input.profileId,
+        checkpointId: checkpoint.id,
+        sessionId: checkpoint.sessionId,
+        threadId: checkpoint.threadId,
+        ...(checkpoint.runId ? { runId: checkpoint.runId } : {}),
+        executionTargetKey: checkpoint.executionTargetKey,
+        executionTargetKind: checkpoint.executionTargetKind,
+        executionTargetLabel: checkpoint.executionTargetLabel,
+        createdByKind: 'system',
+        changesetKind: 'run_capture',
+        summary: derivedChangeset.summary,
+        entries: derivedChangeset.entries,
+    });
+}
+
+async function assessRevertAction(input: {
+    profileId: string;
+    checkpoint: CheckpointRecord;
+}): Promise<{
+    changeset: CheckpointChangesetRecord | null;
+    canRevertSafely: boolean;
+    revertBlockedReason?: CheckpointRollbackPreview['revertBlockedReason'];
+}> {
+    const changeset = await checkpointChangesetStore.getByCheckpointId(input.profileId, input.checkpoint.id);
+    if (!changeset) {
+        return {
+            changeset: null,
+            canRevertSafely: false,
+            revertBlockedReason: 'changeset_missing',
+        };
+    }
+
+    const workspaceContext = await workspaceContextService.resolveExplicit({
+        profileId: input.profileId,
+        workspaceFingerprint: input.checkpoint.workspaceFingerprint,
+        ...(input.checkpoint.worktreeId ? { worktreeId: input.checkpoint.worktreeId } : {}),
+    });
+    const executionTarget = resolveCheckpointExecutionTarget(workspaceContext);
+    if (!executionTarget || executionTarget.executionTargetKey !== input.checkpoint.executionTargetKey) {
+        return {
+            changeset,
+            canRevertSafely: false,
+            revertBlockedReason: 'workspace_unresolved',
+        };
+    }
+
+    const currentSnapshotResult = await captureExecutionTargetSnapshot({
+        workspaceRootPath: executionTarget.absolutePath,
+    });
+    if (currentSnapshotResult.isErr()) {
+        return {
+            changeset,
+            canRevertSafely: false,
+            revertBlockedReason: 'snapshot_invalid',
+        };
+    }
+
+    const applicability = evaluateRevertApplicability(
+        changeset,
+        buildSnapshotIndexFromCapture(currentSnapshotResult.value.files)
+    );
+    return {
+        changeset,
+        canRevertSafely: applicability.canRevertSafely,
+        ...(applicability.reason ? { revertBlockedReason: applicability.reason } : {}),
+    };
+}
+
 async function buildRollbackPreview(input: {
     profileId: string;
     checkpoint: CheckpointRecord;
 }): Promise<CheckpointRollbackPreview> {
-    const [affectedSessions, targetCheckpoints] = await Promise.all([
+    const [affectedSessions, targetCheckpoints, revertAssessment] = await Promise.all([
         listAffectedSessionsForExecutionTarget({
             profileId: input.profileId,
             executionTargetKey: input.checkpoint.executionTargetKey,
         }),
         checkpointStore.listByExecutionTargetKey(input.profileId, input.checkpoint.executionTargetKey),
+        assessRevertAction({
+            profileId: input.profileId,
+            checkpoint: input.checkpoint,
+        }),
     ]);
 
     const isSharedTarget = affectedSessions.some((session) => session.sessionId !== input.checkpoint.sessionId);
@@ -228,6 +381,11 @@ async function buildRollbackPreview(input: {
             candidate.sessionId !== input.checkpoint.sessionId &&
             candidate.createdAt > input.checkpoint.createdAt
     );
+    const highRisk = isSharedTarget || hasLaterForeignChanges;
+    const recommendedAction =
+        highRisk && revertAssessment.changeset && revertAssessment.canRevertSafely
+            ? 'revert_changeset'
+            : 'restore_checkpoint';
 
     return {
         checkpointId: input.checkpoint.id,
@@ -236,9 +394,59 @@ async function buildRollbackPreview(input: {
         executionTargetLabel: input.checkpoint.executionTargetLabel,
         isSharedTarget,
         hasLaterForeignChanges,
-        isHighRisk: isSharedTarget || hasLaterForeignChanges,
+        isHighRisk: highRisk,
         affectedSessions,
+        hasChangeset: Boolean(revertAssessment.changeset),
+        ...(revertAssessment.changeset ? { changeset: mapChangesetRecord(revertAssessment.changeset) } : {}),
+        recommendedAction,
+        canRevertSafely: revertAssessment.canRevertSafely,
+        ...(revertAssessment.revertBlockedReason
+            ? { revertBlockedReason: revertAssessment.revertBlockedReason }
+            : {}),
     };
+}
+
+function checkpointSummary(record: CheckpointRecord): CheckpointSummary {
+    return {
+        id: record.id,
+        sessionId: record.sessionId,
+        threadId: record.threadId,
+        ...(record.runId ? { runId: record.runId } : {}),
+        topLevelTab: record.topLevelTab,
+        modeKey: record.modeKey,
+    };
+}
+
+function rollbackSafetyCheckpointSummary(record: CheckpointRecord): SafetyCheckpointSummary {
+    return checkpointSummary(record);
+}
+
+function revertSafetyCheckpointSummary(record: CheckpointRecord): RevertSafetyCheckpointSummary {
+    return checkpointSummary(record);
+}
+
+function mapRestoreFailureReason(
+    reason: 'snapshot_invalid' | 'restore_failed'
+): Extract<CheckpointRollbackResult['reason'], 'snapshot_invalid' | 'restore_failed'> {
+    return reason;
+}
+
+function mapRevertFailureReason(
+    reason: CheckpointRollbackPreview['revertBlockedReason']
+): Extract<
+    CheckpointRevertChangesetResult['reason'],
+    'changeset_missing' | 'changeset_empty' | 'workspace_unresolved' | 'snapshot_invalid' | 'target_drifted'
+> {
+    if (
+        reason === 'changeset_missing' ||
+        reason === 'changeset_empty' ||
+        reason === 'workspace_unresolved' ||
+        reason === 'snapshot_invalid'
+    ) {
+        return reason;
+    }
+
+    return 'target_drifted';
 }
 
 export async function ensureCheckpointForRun(input: {
@@ -366,8 +574,35 @@ export async function captureCheckpointDiffForRun(input: {
     topLevelTab: CheckpointRecord['topLevelTab'];
     modeKey: string;
     workspaceContext: ResolvedWorkspaceContext;
-}): Promise<{ diff: DiffRecord; checkpoint?: CheckpointRecord } | null> {
-    return captureRunDiffArtifact(input);
+}): Promise<{
+    diff?: DiffRecord;
+    checkpoint?: CheckpointRecord;
+    changeset?: CheckpointChangesetRecord;
+} | null> {
+    if (!isMutatingCheckpointMode(input.topLevelTab, input.modeKey)) {
+        return null;
+    }
+
+    const [diffResult, changeset] = await Promise.all([
+        captureRunDiffArtifact(input),
+        captureRunChangeset({
+            profileId: input.profileId,
+            runId: input.runId,
+            topLevelTab: input.topLevelTab,
+            modeKey: input.modeKey,
+            workspaceContext: input.workspaceContext,
+        }),
+    ]);
+
+    if (!diffResult && !changeset) {
+        return null;
+    }
+
+    return {
+        ...(diffResult?.diff ? { diff: diffResult.diff } : {}),
+        ...(diffResult?.checkpoint ? { checkpoint: diffResult.checkpoint } : {}),
+        ...(changeset ? { changeset } : {}),
+    };
 }
 
 export async function getRollbackPreview(
@@ -445,14 +680,7 @@ export async function rollbackCheckpoint(input: CheckpointRollbackInput): Promis
             reason: 'snapshot_invalid',
             message: 'Checkpoint snapshot data is missing.',
             preview,
-            safetyCheckpoint: {
-                id: safetyCheckpoint.id,
-                sessionId: safetyCheckpoint.sessionId,
-                threadId: safetyCheckpoint.threadId,
-                ...(safetyCheckpoint.runId ? { runId: safetyCheckpoint.runId } : {}),
-                topLevelTab: safetyCheckpoint.topLevelTab,
-                modeKey: safetyCheckpoint.modeKey,
-            },
+            safetyCheckpoint: rollbackSafetyCheckpointSummary(safetyCheckpoint),
         };
     }
 
@@ -466,38 +694,176 @@ export async function rollbackCheckpoint(input: CheckpointRollbackInput): Promis
     if (restoreResult.isErr()) {
         return {
             rolledBack: false,
-            reason: restoreResult.error.reason,
+            reason: mapRestoreFailureReason(restoreResult.error.reason),
             message: restoreResult.error.detail,
             preview,
-            safetyCheckpoint: {
-                id: safetyCheckpoint.id,
-                sessionId: safetyCheckpoint.sessionId,
-                threadId: safetyCheckpoint.threadId,
-                ...(safetyCheckpoint.runId ? { runId: safetyCheckpoint.runId } : {}),
-                topLevelTab: safetyCheckpoint.topLevelTab,
-                modeKey: safetyCheckpoint.modeKey,
-            },
+            safetyCheckpoint: rollbackSafetyCheckpointSummary(safetyCheckpoint),
         };
     }
 
     return {
         rolledBack: true,
-        checkpoint: {
-            id: checkpoint.id,
-            sessionId: checkpoint.sessionId,
-            threadId: checkpoint.threadId,
-            ...(checkpoint.runId ? { runId: checkpoint.runId } : {}),
-            topLevelTab: checkpoint.topLevelTab,
-            modeKey: checkpoint.modeKey,
-        },
+        checkpoint: checkpointSummary(checkpoint),
         preview,
-        safetyCheckpoint: {
-            id: safetyCheckpoint.id,
-            sessionId: safetyCheckpoint.sessionId,
-            threadId: safetyCheckpoint.threadId,
-            ...(safetyCheckpoint.runId ? { runId: safetyCheckpoint.runId } : {}),
-            topLevelTab: safetyCheckpoint.topLevelTab,
-            modeKey: safetyCheckpoint.modeKey,
-        },
+        safetyCheckpoint: rollbackSafetyCheckpointSummary(safetyCheckpoint),
+    };
+}
+
+export async function revertCheckpointChangeset(
+    input: CheckpointRevertChangesetInput
+): Promise<CheckpointRevertChangesetResult> {
+    const checkpoint = await checkpointStore.getById(input.profileId, input.checkpointId);
+    if (!checkpoint) {
+        return {
+            reverted: false,
+            reason: 'not_found',
+        };
+    }
+
+    const preview = await buildRollbackPreview({
+        profileId: input.profileId,
+        checkpoint,
+    });
+    if (!input.confirm) {
+        return {
+            reverted: false,
+            reason: 'confirmation_required',
+            message: 'Changeset revert requires explicit confirmation.',
+            preview,
+        };
+    }
+
+    if (!preview.changeset) {
+        return {
+            reverted: false,
+            reason: 'changeset_missing',
+            message: 'This checkpoint does not have a revertable changeset yet.',
+            preview,
+        };
+    }
+
+    if (!preview.canRevertSafely || preview.revertBlockedReason) {
+        return {
+            reverted: false,
+            reason: mapRevertFailureReason(preview.revertBlockedReason ?? 'target_drifted'),
+            message:
+                preview.revertBlockedReason === 'changeset_empty'
+                    ? 'This checkpoint has no file changes to revert.'
+                    : 'Changeset revert is not safe on the current filesystem state.',
+            preview,
+            changeset: preview.changeset,
+        };
+    }
+
+    const workspaceContext = await workspaceContextService.resolveExplicit({
+        profileId: input.profileId,
+        workspaceFingerprint: checkpoint.workspaceFingerprint,
+        ...(checkpoint.worktreeId ? { worktreeId: checkpoint.worktreeId } : {}),
+    });
+    const executionTarget = resolveCheckpointExecutionTarget(workspaceContext);
+    if (!executionTarget || executionTarget.executionTargetKey !== checkpoint.executionTargetKey) {
+        return {
+            reverted: false,
+            reason: 'workspace_unresolved',
+            message: 'Workspace root could not be resolved for this changeset.',
+            preview,
+            changeset: preview.changeset,
+        };
+    }
+
+    const safetyCheckpoint = await createNativeCheckpointForResolvedTarget({
+        profileId: input.profileId,
+        sessionId: checkpoint.sessionId,
+        threadId: checkpoint.threadId,
+        topLevelTab: checkpoint.topLevelTab,
+        modeKey: checkpoint.modeKey,
+        workspaceContext,
+        createdByKind: 'system',
+        checkpointKind: 'safety',
+        summary: `Safety checkpoint before reverting changes from ${checkpoint.id}`,
+    });
+
+    const changesetRecord = await checkpointChangesetStore.getByCheckpointId(input.profileId, checkpoint.id);
+    if (!changesetRecord) {
+        return {
+            reverted: false,
+            reason: 'changeset_missing',
+            message: 'This checkpoint does not have a revertable changeset yet.',
+            preview,
+            changeset: preview.changeset,
+            safetyCheckpoint: revertSafetyCheckpointSummary(safetyCheckpoint),
+        };
+    }
+
+    const currentSnapshotResult = await captureExecutionTargetSnapshot({
+        workspaceRootPath: executionTarget.absolutePath,
+    });
+    if (currentSnapshotResult.isErr()) {
+        return {
+            reverted: false,
+            reason: 'snapshot_invalid',
+            message: currentSnapshotResult.error.detail,
+            preview,
+            changeset: mapChangesetRecord(changesetRecord),
+            safetyCheckpoint: revertSafetyCheckpointSummary(safetyCheckpoint),
+        };
+    }
+
+    const applicability = evaluateRevertApplicability(
+        changesetRecord,
+        buildSnapshotIndexFromCapture(currentSnapshotResult.value.files)
+    );
+    if (!applicability.canRevertSafely || !applicability.restoredFiles) {
+        return {
+            reverted: false,
+            reason: mapRevertFailureReason(applicability.reason ?? 'target_drifted'),
+            message: 'Changeset revert is not safe on the current filesystem state.',
+            preview,
+            changeset: mapChangesetRecord(changesetRecord),
+            safetyCheckpoint: revertSafetyCheckpointSummary(safetyCheckpoint),
+        };
+    }
+
+    const restoreResult = await restoreExecutionTargetSnapshot({
+        workspaceRootPath: executionTarget.absolutePath,
+        files: applicability.restoredFiles,
+    });
+    if (restoreResult.isErr()) {
+        return {
+            reverted: false,
+            reason: 'revert_failed',
+            message: restoreResult.error.detail,
+            preview,
+            changeset: mapChangesetRecord(changesetRecord),
+            safetyCheckpoint: revertSafetyCheckpointSummary(safetyCheckpoint),
+        };
+    }
+
+    const safetySnapshotEntries = await checkpointSnapshotStore.listSnapshotEntries(safetyCheckpoint.id);
+    const revertChangeset = await checkpointChangesetStore.replaceForCheckpoint({
+        profileId: input.profileId,
+        checkpointId: safetyCheckpoint.id,
+        sourceChangesetId: changesetRecord.id,
+        sessionId: safetyCheckpoint.sessionId,
+        threadId: safetyCheckpoint.threadId,
+        executionTargetKey: safetyCheckpoint.executionTargetKey,
+        executionTargetKind: safetyCheckpoint.executionTargetKind,
+        executionTargetLabel: safetyCheckpoint.executionTargetLabel,
+        createdByKind: 'system',
+        changesetKind: 'revert',
+        summary: `Reverted ${changesetRecord.summary.toLowerCase()}`,
+        entries: deriveChangesetFromSnapshots({
+            beforeFiles: buildSnapshotIndexFromEntries(safetySnapshotEntries),
+            afterFiles: buildSnapshotIndexFromCapture(applicability.restoredFiles),
+        }).entries,
+    });
+
+    return {
+        reverted: true,
+        checkpoint: checkpointSummary(checkpoint),
+        preview,
+        changeset: mapChangesetRecord(changesetRecord),
+        safetyCheckpoint: revertSafetyCheckpointSummary(safetyCheckpoint),
+        revertChangeset: mapChangesetRecord(revertChangeset),
     };
 }

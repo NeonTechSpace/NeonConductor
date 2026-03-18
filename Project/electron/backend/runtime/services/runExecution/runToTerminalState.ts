@@ -76,49 +76,55 @@ export async function runToTerminalState(input: {
         const executionResult = await executeRun({
             ...input,
             onBeforeFinalize: async () => {
-                const artifactResult = await captureCheckpointDiffForRun({
-                    profileId: input.profileId,
-                    runId: input.runId,
-                    sessionId: input.sessionId,
-                    topLevelTab: input.topLevelTab,
-                    modeKey: input.modeKey,
-                    workspaceContext: input.workspaceContext,
-                });
-                if (!artifactResult) {
+                try {
+                    const artifactResult = await captureCheckpointDiffForRun({
+                        profileId: input.profileId,
+                        runId: input.runId,
+                        sessionId: input.sessionId,
+                        topLevelTab: input.topLevelTab,
+                        modeKey: input.modeKey,
+                        workspaceContext: input.workspaceContext,
+                    });
+                    if (!artifactResult) {
+                        return;
+                    }
+
+                    if (artifactResult.diff) {
+                        await runtimeEventLogService.append(
+                            runtimeUpsertEvent({
+                                entityType: 'diff',
+                                domain: 'diff',
+                                entityId: artifactResult.diff.id,
+                                eventType: 'diff.captured',
+                                payload: {
+                                    profileId: input.profileId,
+                                    sessionId: input.sessionId,
+                                    runId: input.runId,
+                                    diff: artifactResult.diff,
+                                },
+                            })
+                        );
+                    }
+
+                    if (artifactResult.checkpoint) {
+                        await runtimeEventLogService.append(
+                            runtimeUpsertEvent({
+                                entityType: 'checkpoint',
+                                domain: 'checkpoint',
+                                entityId: artifactResult.checkpoint.id,
+                                eventType: 'checkpoint.created',
+                                payload: {
+                                    profileId: input.profileId,
+                                    sessionId: input.sessionId,
+                                    runId: input.runId,
+                                    checkpoint: artifactResult.checkpoint,
+                                    diff: artifactResult.diff ?? null,
+                                },
+                            })
+                        );
+                    }
+                } catch {
                     return;
-                }
-
-                await runtimeEventLogService.append(
-                    runtimeUpsertEvent({
-                        entityType: 'diff',
-                        domain: 'diff',
-                        entityId: artifactResult.diff.id,
-                        eventType: 'diff.captured',
-                        payload: {
-                            profileId: input.profileId,
-                            sessionId: input.sessionId,
-                            runId: input.runId,
-                            diff: artifactResult.diff,
-                        },
-                    })
-                );
-
-                if (artifactResult.checkpoint) {
-                    await runtimeEventLogService.append(
-                        runtimeUpsertEvent({
-                            entityType: 'checkpoint',
-                            domain: 'checkpoint',
-                            entityId: artifactResult.checkpoint.id,
-                            eventType: 'checkpoint.created',
-                            payload: {
-                                profileId: input.profileId,
-                                sessionId: input.sessionId,
-                                runId: input.runId,
-                                checkpoint: artifactResult.checkpoint,
-                                diff: artifactResult.diff,
-                            },
-                        })
-                    );
                 }
             },
         });

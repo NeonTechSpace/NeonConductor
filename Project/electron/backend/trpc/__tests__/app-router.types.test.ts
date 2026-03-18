@@ -167,6 +167,11 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         checkpointId: string;
         confirm: boolean;
     }>();
+    expectTypeOf<Inputs['checkpoint']['revertChangeset']>().toExtend<{
+        profileId: string;
+        checkpointId: string;
+        confirm: boolean;
+    }>();
 
     expectTypeOf<Inputs['mode']['list']>().toExtend<{
         profileId: string;

@@ -387,6 +387,36 @@ export interface CheckpointSnapshotEntriesTable {
     created_at: string;
 }
 
+export interface CheckpointChangesetsTable {
+    id: string;
+    profile_id: string;
+    checkpoint_id: string;
+    source_changeset_id: string | null;
+    session_id: string;
+    thread_id: string;
+    run_id: string | null;
+    execution_target_key: string;
+    execution_target_kind: string;
+    execution_target_label: string;
+    created_by_kind: string;
+    changeset_kind: string;
+    summary: string;
+    change_count: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CheckpointChangesetEntriesTable {
+    changeset_id: string;
+    relative_path: string;
+    change_kind: string;
+    before_blob_sha256: string | null;
+    before_byte_size: number | null;
+    after_blob_sha256: string | null;
+    after_byte_size: number | null;
+    created_at: string;
+}
+
 export interface WorktreesTable {
     id: string;
     profile_id: string;
@@ -706,6 +736,8 @@ export interface DatabaseSchema {
     checkpoints: CheckpointsTable;
     checkpoint_snapshot_blobs: CheckpointSnapshotBlobsTable;
     checkpoint_snapshot_entries: CheckpointSnapshotEntriesTable;
+    checkpoint_changesets: CheckpointChangesetsTable;
+    checkpoint_changeset_entries: CheckpointChangesetEntriesTable;
     worktrees: WorktreesTable;
     mode_definitions: ModeDefinitionsTable;
     rulesets: RulesetsTable;

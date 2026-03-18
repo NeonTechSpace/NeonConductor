@@ -477,6 +477,42 @@ CREATE TABLE checkpoint_snapshot_entries (
     PRIMARY KEY (checkpoint_id, relative_path)
 );
 
+CREATE TABLE checkpoint_changesets (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    checkpoint_id TEXT NOT NULL UNIQUE REFERENCES checkpoints(id) ON DELETE CASCADE,
+    source_changeset_id TEXT NULL REFERENCES checkpoint_changesets(id) ON DELETE SET NULL,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+    run_id TEXT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    execution_target_key TEXT NOT NULL,
+    execution_target_kind TEXT NOT NULL CHECK (execution_target_kind IN ('workspace', 'worktree')),
+    execution_target_label TEXT NOT NULL,
+    created_by_kind TEXT NOT NULL CHECK (created_by_kind IN ('system', 'user')),
+    changeset_kind TEXT NOT NULL CHECK (changeset_kind IN ('run_capture', 'revert')),
+    summary TEXT NOT NULL,
+    change_count INTEGER NOT NULL CHECK (change_count >= 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE checkpoint_changeset_entries (
+    changeset_id TEXT NOT NULL REFERENCES checkpoint_changesets(id) ON DELETE CASCADE,
+    relative_path TEXT NOT NULL,
+    change_kind TEXT NOT NULL CHECK (change_kind IN ('added', 'modified', 'deleted')),
+    before_blob_sha256 TEXT NULL REFERENCES checkpoint_snapshot_blobs(sha256) ON DELETE RESTRICT,
+    before_byte_size INTEGER NULL CHECK (before_byte_size IS NULL OR before_byte_size >= 0),
+    after_blob_sha256 TEXT NULL REFERENCES checkpoint_snapshot_blobs(sha256) ON DELETE RESTRICT,
+    after_byte_size INTEGER NULL CHECK (after_byte_size IS NULL OR after_byte_size >= 0),
+    created_at TEXT NOT NULL,
+    CHECK (
+        (change_kind = 'added' AND before_blob_sha256 IS NULL AND before_byte_size IS NULL AND after_blob_sha256 IS NOT NULL AND after_byte_size IS NOT NULL) OR
+        (change_kind = 'modified' AND before_blob_sha256 IS NOT NULL AND before_byte_size IS NOT NULL AND after_blob_sha256 IS NOT NULL AND after_byte_size IS NOT NULL) OR
+        (change_kind = 'deleted' AND before_blob_sha256 IS NOT NULL AND before_byte_size IS NOT NULL AND after_blob_sha256 IS NULL AND after_byte_size IS NULL)
+    ),
+    PRIMARY KEY (changeset_id, relative_path)
+);
+
 -- Registry assets and session context attachments.
 CREATE TABLE mode_definitions (
     id TEXT PRIMARY KEY,
@@ -920,6 +956,21 @@ CREATE INDEX idx_checkpoints_profile_thread_created_at
 
 CREATE INDEX idx_checkpoint_snapshot_entries_blob_sha256
     ON checkpoint_snapshot_entries(blob_sha256);
+
+CREATE INDEX idx_checkpoint_changesets_profile_target_created_at
+    ON checkpoint_changesets(profile_id, execution_target_key, created_at DESC);
+
+CREATE INDEX idx_checkpoint_changesets_profile_session_created_at
+    ON checkpoint_changesets(profile_id, session_id, created_at DESC);
+
+CREATE INDEX idx_checkpoint_changesets_source_changeset_id
+    ON checkpoint_changesets(source_changeset_id);
+
+CREATE INDEX idx_checkpoint_changeset_entries_before_blob_sha256
+    ON checkpoint_changeset_entries(before_blob_sha256);
+
+CREATE INDEX idx_checkpoint_changeset_entries_after_blob_sha256
+    ON checkpoint_changeset_entries(after_blob_sha256);
 
 CREATE UNIQUE INDEX idx_mode_definitions_profile_registry_asset
     ON mode_definitions(profile_id, top_level_tab, scope, ifnull(workspace_fingerprint, ''), asset_key);

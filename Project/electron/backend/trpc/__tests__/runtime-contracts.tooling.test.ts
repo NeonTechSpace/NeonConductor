@@ -1544,7 +1544,7 @@ describe('runtime contracts: permissions and tooling', () => {
     }, 15_000);
 
 
-    it('records unsupported diff artifacts for non-git mutation runs and still supports native rollback', async () => {
+    it('records unsupported diff artifacts for non-git mutation runs and supports native changeset revert', async () => {
         const caller = createCaller();
         const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-diff-unsupported-'));
         let resolveFetch: (() => void) | undefined;
@@ -1677,22 +1677,25 @@ describe('runtime contracts: permissions and tooling', () => {
             throw new Error('Expected rollback preview for non-git checkpoint.');
         }
         expect(preview.preview.isSharedTarget).toBe(false);
+        expect(preview.preview.hasChangeset).toBe(true);
+        expect(preview.preview.changeset?.changeCount).toBe(1);
+        expect(preview.preview.recommendedAction).toBe('restore_checkpoint');
+        expect(preview.preview.canRevertSafely).toBe(true);
 
-        writeFileSync(path.join(workspacePath, 'notes.txt'), 'drifted\n');
-        const rollback = await caller.checkpoint.rollback({
+        const reverted = await caller.checkpoint.revertChangeset({
             profileId,
             checkpointId: checkpoint.id,
             confirm: true,
         });
-        expect(rollback.rolledBack).toBe(true);
+        expect(reverted.reverted).toBe(true);
         expect(() => readFileSync(path.join(workspacePath, 'notes.txt'), 'utf8')).toThrow();
 
         rmSync(workspacePath, { recursive: true, force: true });
     });
 
-    it('surfaces shared-target rollback risk when two chats point at the same workspace path', async () => {
+    it('captures empty no-op changesets cleanly and blocks revert when there is nothing to undo', async () => {
         const caller = createCaller();
-        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-checkpoint-shared-target-'));
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-checkpoint-empty-changeset-'));
 
         vi.stubGlobal(
             'fetch',
@@ -1704,7 +1707,7 @@ describe('runtime contracts: permissions and tooling', () => {
                     choices: [
                         {
                             message: {
-                                content: 'mutation complete',
+                                content: 'no mutation complete',
                             },
                         },
                     ],
@@ -1714,6 +1717,130 @@ describe('runtime contracts: permissions and tooling', () => {
                         total_tokens: 30,
                     },
                 }),
+            })
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-empty-changeset-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Empty Changeset Thread',
+        });
+        const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected empty changeset thread id.');
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === threadId);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for empty changeset thread.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'local',
+        });
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Do not change files',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: workspaceThread.workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected empty changeset run to start.');
+        }
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const checkpoints = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        const checkpoint = checkpoints.checkpoints[0];
+        if (!checkpoint) {
+            throw new Error('Expected checkpoint for empty changeset run.');
+        }
+
+        const preview = await caller.checkpoint.previewRollback({
+            profileId,
+            checkpointId: checkpoint.id,
+        });
+        expect(preview.found).toBe(true);
+        if (!preview.found) {
+            throw new Error('Expected rollback preview for empty changeset run.');
+        }
+        expect(preview.preview.hasChangeset).toBe(true);
+        expect(preview.preview.changeset?.changeCount).toBe(0);
+        expect(preview.preview.canRevertSafely).toBe(false);
+        expect(preview.preview.revertBlockedReason).toBe('changeset_empty');
+
+        const reverted = await caller.checkpoint.revertChangeset({
+            profileId,
+            checkpointId: checkpoint.id,
+            confirm: true,
+        });
+        expect(reverted.reverted).toBe(false);
+        expect(reverted.reason).toBe('changeset_empty');
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    });
+
+    it('surfaces shared-target rollback risk and recommends changeset revert when two chats point at the same workspace path', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-checkpoint-shared-target-'));
+        let fetchCallCount = 0;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockImplementation(async () => {
+                fetchCallCount += 1;
+                if (fetchCallCount === 1) {
+                    writeFileSync(path.join(workspacePath, 'first.txt'), 'first change\n');
+                } else {
+                    writeFileSync(path.join(workspacePath, 'second.txt'), 'second change\n');
+                }
+
+                return {
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: () => ({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'mutation complete',
+                                },
+                            },
+                        ],
+                        usage: {
+                            prompt_tokens: 10,
+                            completion_tokens: 20,
+                            total_tokens: 30,
+                        },
+                    }),
+                };
             })
         );
 
@@ -1820,6 +1947,9 @@ describe('runtime contracts: permissions and tooling', () => {
         expect(preview.preview.isSharedTarget).toBe(true);
         expect(preview.preview.hasLaterForeignChanges).toBe(true);
         expect(preview.preview.isHighRisk).toBe(true);
+        expect(preview.preview.hasChangeset).toBe(true);
+        expect(preview.preview.canRevertSafely).toBe(true);
+        expect(preview.preview.recommendedAction).toBe('revert_changeset');
         expect(preview.preview.affectedSessions).toHaveLength(2);
         expect(preview.preview.affectedSessions.map((session) => session.threadTitle).sort()).toEqual([
             'Shared Target A',
@@ -1828,5 +1958,135 @@ describe('runtime contracts: permissions and tooling', () => {
 
         rmSync(workspacePath, { recursive: true, force: true });
     }, 15_000);
+
+    it('fails changeset revert closed when the current target has drifted from the recorded post-run state', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-checkpoint-drifted-revert-'));
+        let resolveFetch: (() => void) | undefined;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                () =>
+                    new Promise((resolve) => {
+                        resolveFetch = () => {
+                            resolve({
+                                ok: true,
+                                status: 200,
+                                statusText: 'OK',
+                                json: () => ({
+                                    choices: [
+                                        {
+                                            message: {
+                                                content: 'mutation complete',
+                                            },
+                                        },
+                                    ],
+                                    usage: {
+                                        prompt_tokens: 10,
+                                        completion_tokens: 20,
+                                        total_tokens: 30,
+                                    },
+                                }),
+                            });
+                        };
+                    })
+            )
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-drifted-revert-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Drifted Revert Thread',
+        });
+        const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected drifted revert thread id.');
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === threadId);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for drifted revert thread.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'local',
+        });
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Change notes',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: workspaceThread.workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected drifted revert run to start.');
+        }
+
+        await vi.waitFor(() => {
+            expect(resolveFetch).toBeTypeOf('function');
+        });
+        writeFileSync(path.join(workspacePath, 'notes.txt'), 'new content\n');
+        resolveFetch?.();
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const checkpoints = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        const checkpoint = checkpoints.checkpoints[0];
+        if (!checkpoint) {
+            throw new Error('Expected checkpoint for drifted revert run.');
+        }
+
+        writeFileSync(path.join(workspacePath, 'notes.txt'), 'drifted\n');
+
+        const preview = await caller.checkpoint.previewRollback({
+            profileId,
+            checkpointId: checkpoint.id,
+        });
+        expect(preview.found).toBe(true);
+        if (!preview.found) {
+            throw new Error('Expected rollback preview for drifted revert run.');
+        }
+        expect(preview.preview.hasChangeset).toBe(true);
+        expect(preview.preview.canRevertSafely).toBe(false);
+        expect(preview.preview.revertBlockedReason).toBe('target_drifted');
+
+        const reverted = await caller.checkpoint.revertChangeset({
+            profileId,
+            checkpointId: checkpoint.id,
+            confirm: true,
+        });
+        expect(reverted.reverted).toBe(false);
+        expect(reverted.reason).toBe('target_drifted');
+        expect(readFileSync(path.join(workspacePath, 'notes.txt'), 'utf8')).toBe('drifted\n');
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    });
 
 });

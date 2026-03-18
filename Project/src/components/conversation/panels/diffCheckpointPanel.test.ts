@@ -57,6 +57,21 @@ describe('buildRollbackWarningLines', () => {
                 isSharedTarget: false,
                 hasLaterForeignChanges: false,
                 isHighRisk: false,
+                hasChangeset: true,
+                changeset: {
+                    id: 'chg_1',
+                    checkpointId: 'ckpt_1',
+                    sessionId: 'sess_1',
+                    threadId: 'thr_1',
+                    executionTargetKey: 'workspace:c:/repo',
+                    executionTargetKind: 'workspace',
+                    executionTargetLabel: 'Workspace Root',
+                    changesetKind: 'run_capture',
+                    changeCount: 1,
+                    summary: '1 changed file',
+                },
+                recommendedAction: 'restore_checkpoint',
+                canRevertSafely: true,
                 affectedSessions: [
                     {
                         sessionId: 'sess_1',
@@ -80,6 +95,21 @@ describe('buildRollbackWarningLines', () => {
                 isSharedTarget: true,
                 hasLaterForeignChanges: true,
                 isHighRisk: true,
+                hasChangeset: true,
+                changeset: {
+                    id: 'chg_2',
+                    checkpointId: 'ckpt_2',
+                    sessionId: 'sess_1',
+                    threadId: 'thr_1',
+                    executionTargetKey: 'workspace:c:/repo',
+                    executionTargetKind: 'workspace',
+                    executionTargetLabel: 'Workspace Root',
+                    changesetKind: 'run_capture',
+                    changeCount: 2,
+                    summary: '2 changed files',
+                },
+                recommendedAction: 'revert_changeset',
+                canRevertSafely: true,
                 affectedSessions: [
                     {
                         sessionId: 'sess_1',
@@ -100,6 +130,7 @@ describe('buildRollbackWarningLines', () => {
             lines: [
                 'This target is shared. Rolling back here will also affect other chats on the same resolved path.',
                 'Later checkpoints from other chats exist on this same target. This rollback is high risk.',
+                'Safer action available: revert only this run changeset instead of restoring the whole target.',
                 'Affected chats: Chat A, Chat B',
             ],
         });

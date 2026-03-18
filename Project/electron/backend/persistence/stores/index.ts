@@ -1,5 +1,6 @@
 export { accountSnapshotStore } from '@/app/backend/persistence/stores/provider/accountSnapshotStore';
 export { checkpointStore } from '@/app/backend/persistence/stores/runtime/checkpointStore';
+export { checkpointChangesetStore } from '@/app/backend/persistence/stores/runtime/checkpointChangesetStore';
 export { checkpointSnapshotStore } from '@/app/backend/persistence/stores/runtime/checkpointSnapshotStore';
 export { appComposerMediaSettingsStore } from '@/app/backend/persistence/stores/runtime/appComposerMediaSettingsStore';
 export { appContextSettingsStore } from '@/app/backend/persistence/stores/runtime/appContextSettingsStore';

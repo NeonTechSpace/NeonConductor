@@ -1,10 +1,17 @@
 import {
     checkpointCreateInputSchema,
     checkpointListInputSchema,
+    checkpointRevertChangesetInputSchema,
     checkpointRollbackInputSchema,
     checkpointRollbackPreviewInputSchema,
 } from '@/app/backend/runtime/contracts';
-import { createCheckpoint, getRollbackPreview, listCheckpoints, rollbackCheckpoint } from '@/app/backend/runtime/services/checkpoint/service';
+import {
+    createCheckpoint,
+    getRollbackPreview,
+    listCheckpoints,
+    revertCheckpointChangeset,
+    rollbackCheckpoint,
+} from '@/app/backend/runtime/services/checkpoint/service';
 import { runtimeStatusEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
@@ -48,14 +55,41 @@ export const checkpointRouter = router({
                     domain: 'checkpoint',
                     entityId: result.checkpoint.id,
                     eventType: 'checkpoint.rolled_back',
-                        payload: {
-                            profileId: input.profileId,
-                            checkpointId: result.checkpoint.id,
-                            sessionId: result.checkpoint.sessionId,
-                            runId: result.checkpoint.runId ?? null,
-                            topLevelTab: result.checkpoint.topLevelTab,
-                            modeKey: result.checkpoint.modeKey,
-                            requestId: ctx.requestId,
+                    payload: {
+                        profileId: input.profileId,
+                        checkpointId: result.checkpoint.id,
+                        sessionId: result.checkpoint.sessionId,
+                        runId: result.checkpoint.runId ?? null,
+                        topLevelTab: result.checkpoint.topLevelTab,
+                        modeKey: result.checkpoint.modeKey,
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                    },
+                })
+            );
+        }
+
+        return result;
+    }),
+    revertChangeset: publicProcedure.input(checkpointRevertChangesetInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await revertCheckpointChangeset(input);
+        if (result.reverted && result.checkpoint && result.revertChangeset) {
+            await runtimeEventLogService.append(
+                runtimeStatusEvent({
+                    entityType: 'checkpoint',
+                    domain: 'checkpoint',
+                    entityId: result.checkpoint.id,
+                    eventType: 'checkpoint.changeset_reverted',
+                    payload: {
+                        profileId: input.profileId,
+                        checkpointId: result.checkpoint.id,
+                        changesetId: result.changeset?.id ?? null,
+                        revertChangesetId: result.revertChangeset.id,
+                        sessionId: result.checkpoint.sessionId,
+                        runId: result.checkpoint.runId ?? null,
+                        topLevelTab: result.checkpoint.topLevelTab,
+                        modeKey: result.checkpoint.modeKey,
+                        requestId: ctx.requestId,
                         correlationId: ctx.correlationId,
                     },
                 })
