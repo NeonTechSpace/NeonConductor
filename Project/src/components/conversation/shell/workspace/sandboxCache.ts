@@ -1,11 +1,11 @@
 import { patchThreadListRecord } from '@/web/components/conversation/sidebar/sidebarCache';
 import { trpc } from '@/web/trpc/client';
 
-import type { ThreadRecord, WorktreeRecord } from '@/app/backend/persistence/types';
+import type { ThreadRecord, SandboxRecord } from '@/app/backend/persistence/types';
 
 type TrpcUtils = ReturnType<typeof trpc.useUtils>;
 type ThreadListData = Awaited<ReturnType<TrpcUtils['conversation']['listThreads']['fetch']>>;
-type WorktreeListData = Awaited<ReturnType<TrpcUtils['worktree']['list']['fetch']>>;
+type SandboxListData = Awaited<ReturnType<TrpcUtils['sandbox']['list']['fetch']>>;
 type ShellBootstrapData = Awaited<ReturnType<TrpcUtils['runtime']['getShellBootstrap']['fetch']>>;
 
 interface ThreadListInput {
@@ -18,28 +18,28 @@ interface ThreadListInput {
     sort?: 'latest' | 'alphabetical';
 }
 
-function removeWorktrees(current: WorktreeRecord[], removedIds: readonly string[]): WorktreeRecord[] {
+function removeSandboxes(current: SandboxRecord[], removedIds: readonly string[]): SandboxRecord[] {
     const removedIdSet = new Set(removedIds);
-    return current.filter((worktree) => !removedIdSet.has(worktree.id));
+    return current.filter((sandbox) => !removedIdSet.has(sandbox.id));
 }
 
-function upsertWorktree(current: WorktreeRecord[], worktree: WorktreeRecord): WorktreeRecord[] {
-    return [worktree, ...current.filter((candidate) => candidate.id !== worktree.id)].sort((left, right) =>
+function upsertSandbox(current: SandboxRecord[], sandbox: SandboxRecord): SandboxRecord[] {
+    return [sandbox, ...current.filter((candidate) => candidate.id !== sandbox.id)].sort((left, right) =>
         right.updatedAt.localeCompare(left.updatedAt)
     );
 }
 
-export function patchWorktreeCaches(input: {
+export function patchSandboxCaches(input: {
     utils: TrpcUtils;
     profileId: string;
     listThreadsInput: ThreadListInput;
     thread?: ThreadRecord;
-    worktree?: WorktreeRecord;
-    removedWorktreeIds?: string[];
+    sandbox?: SandboxRecord;
+    removedSandboxIds?: string[];
 }) {
     const nextThread = input.thread;
-    const nextWorktree = input.worktree;
-    const removedWorktreeIds = input.removedWorktreeIds ?? [];
+    const nextSandbox = input.sandbox;
+    const removedSandboxIds = input.removedSandboxIds ?? [];
 
     if (nextThread) {
         input.utils.conversation.listThreads.setData(
@@ -54,11 +54,11 @@ export function patchWorktreeCaches(input: {
         );
     }
 
-    if (nextWorktree) {
-        input.utils.worktree.list.setData(
+    if (nextSandbox) {
+        input.utils.sandbox.list.setData(
             { profileId: input.profileId },
-            (current: WorktreeListData | undefined) => ({
-                worktrees: upsertWorktree(current?.worktrees ?? [], nextWorktree),
+            (current: SandboxListData | undefined) => ({
+                sandboxes: upsertSandbox(current?.sandboxes ?? [], nextSandbox),
             })
         );
         input.utils.runtime.getShellBootstrap.setData(
@@ -67,19 +67,19 @@ export function patchWorktreeCaches(input: {
                 current
                     ? {
                           ...current,
-                          worktrees: upsertWorktree(current.worktrees, nextWorktree),
+                          sandboxes: upsertSandbox(current.sandboxes, nextSandbox),
                       }
                     : current
         );
     }
 
-    if (removedWorktreeIds.length > 0) {
-        input.utils.worktree.list.setData(
+    if (removedSandboxIds.length > 0) {
+        input.utils.sandbox.list.setData(
             { profileId: input.profileId },
-            (current: WorktreeListData | undefined) =>
+            (current: SandboxListData | undefined) =>
                 current
                     ? {
-                          worktrees: removeWorktrees(current.worktrees, removedWorktreeIds),
+                          sandboxes: removeSandboxes(current.sandboxes, removedSandboxIds),
                       }
                     : current
         );
@@ -89,7 +89,7 @@ export function patchWorktreeCaches(input: {
                 current
                     ? {
                           ...current,
-                          worktrees: removeWorktrees(current.worktrees, removedWorktreeIds),
+                          sandboxes: removeSandboxes(current.sandboxes, removedSandboxIds),
                       }
                     : current
         );

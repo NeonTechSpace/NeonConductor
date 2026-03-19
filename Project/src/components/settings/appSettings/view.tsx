@@ -49,7 +49,7 @@ export function AppSettingsView() {
                     <div className='space-y-1'>
                         <p className='text-sm font-semibold'>Factory reset app data</p>
                         <p className='text-muted-foreground text-xs leading-5'>
-                            Deletes all app-owned chats, profiles, permissions, provider state, managed worktrees,
+                            Deletes all app-owned chats, profiles, permissions, provider state, managed sandboxes,
                             registry assets, and logs. Workspace-local <code className='rounded bg-black/5 px-1 py-0.5 text-[11px]'>.neonconductor</code> files are not removed.
                         </p>
                     </div>

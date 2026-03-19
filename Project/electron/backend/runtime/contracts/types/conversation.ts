@@ -27,9 +27,7 @@ export interface ConversationCreateThreadInput extends ProfileInput {
     workspacePath?: string;
     title: string;
     executionEnvironmentMode?: ExecutionEnvironmentMode;
-    executionBranch?: string;
-    baseBranch?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }
 
 export interface ConversationRenameThreadInput extends ProfileInput {
@@ -45,9 +43,7 @@ export interface ConversationSetThreadFavoriteInput extends ProfileInput {
 export interface ConversationSetThreadExecutionEnvironmentInput extends ProfileInput {
     threadId: EntityId<'thr'>;
     mode: ExecutionEnvironmentMode;
-    executionBranch?: string;
-    baseBranch?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }
 
 export type ConversationListTagsInput = ProfileInput;

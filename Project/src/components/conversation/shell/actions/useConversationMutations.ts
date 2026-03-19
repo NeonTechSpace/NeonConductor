@@ -20,9 +20,9 @@ export function useConversationMutations() {
         orchestratorAbortMutation: trpc.orchestrator.abort.useMutation(),
         setEditPreferenceMutation: trpc.conversation.setEditPreference.useMutation(),
         resolvePermissionMutation: trpc.permission.resolve.useMutation(),
-        configureThreadWorktreeMutation: trpc.worktree.configureThread.useMutation(),
-        refreshWorktreeMutation: trpc.worktree.refresh.useMutation(),
-        removeWorktreeMutation: trpc.worktree.remove.useMutation(),
-        removeOrphanedWorktreesMutation: trpc.worktree.removeOrphaned.useMutation(),
+        configureThreadSandboxMutation: trpc.sandbox.configureThread.useMutation(),
+        refreshSandboxMutation: trpc.sandbox.refresh.useMutation(),
+        removeSandboxMutation: trpc.sandbox.remove.useMutation(),
+        removeOrphanedSandboxesMutation: trpc.sandbox.removeOrphaned.useMutation(),
     };
 }

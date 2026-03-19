@@ -190,7 +190,7 @@ export function useConversationShellEditFlow(input: UseConversationShellEditFlow
                         ...(input.selectedThread?.workspaceFingerprint
                             ? { workspaceFingerprint: input.selectedThread.workspaceFingerprint }
                             : {}),
-                        ...(input.selectedThread?.worktreeId ? { worktreeId: input.selectedThread.worktreeId } : {}),
+                        ...(input.selectedThread?.sandboxId ? { sandboxId: input.selectedThread.sandboxId } : {}),
                     })
                     .then(async (result) => {
                         if (!result.edited) {

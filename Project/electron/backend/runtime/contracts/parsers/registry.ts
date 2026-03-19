@@ -17,12 +17,12 @@ import type {
 export function parseRegistryRefreshInput(input: unknown): RegistryRefreshInput {
     const source = readObject(input, 'input');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const worktreeId = source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
     return {
         profileId: readProfileId(source),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
     };
 }
 
@@ -33,7 +33,7 @@ export function parseRegistryListResolvedInput(input: unknown): RegistryListReso
 export function parseRegistrySearchSkillsInput(input: unknown): RegistrySearchSkillsInput {
     const source = readObject(input, 'input');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const worktreeId = source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
     const query = readOptionalString(source.query, 'query');
     const topLevelTab =
         source.topLevelTab !== undefined ? readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs) : undefined;
@@ -43,7 +43,7 @@ export function parseRegistrySearchSkillsInput(input: unknown): RegistrySearchSk
         profileId: readProfileId(source),
         ...(query ? { query } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
         ...(topLevelTab ? { topLevelTab } : {}),
         ...(modeKey ? { modeKey } : {}),
     };

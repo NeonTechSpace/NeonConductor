@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
-import { patchWorktreeCaches } from '@/web/components/conversation/shell/workspace/worktreeCache';
+import { patchSandboxCaches } from '@/web/components/conversation/shell/workspace/sandboxCache';
 import { trpc } from '@/web/trpc/client';
 
 import type { PermissionRecord } from '@/app/backend/persistence/types';
@@ -66,32 +66,25 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
         },
         async configureThreadExecution(payload: {
             threadId: EntityId<'thr'>;
-            executionInput: Pick<
-                ConversationSetThreadExecutionEnvironmentInput,
-                'mode' | 'executionBranch' | 'baseBranch' | 'worktreeId'
-            >;
+            executionInput: Pick<ConversationSetThreadExecutionEnvironmentInput, 'mode' | 'sandboxId'>;
         }) {
-            const selectedWorktreeId =
-                payload.executionInput.mode === 'worktree' && isEntityId(payload.executionInput.worktreeId, 'wt')
-                    ? payload.executionInput.worktreeId
+            const selectedSandboxId =
+                payload.executionInput.mode === 'sandbox' && isEntityId(payload.executionInput.sandboxId, 'sb')
+                    ? payload.executionInput.sandboxId
                     : undefined;
             try {
-                const result = await input.mutations.configureThreadWorktreeMutation.mutateAsync({
+                const result = await input.mutations.configureThreadSandboxMutation.mutateAsync({
                     profileId: input.profileId,
                     threadId: payload.threadId,
                     mode: payload.executionInput.mode,
-                    ...(payload.executionInput.executionBranch
-                        ? { executionBranch: payload.executionInput.executionBranch }
-                        : {}),
-                    ...(payload.executionInput.baseBranch ? { baseBranch: payload.executionInput.baseBranch } : {}),
-                    ...(selectedWorktreeId ? { worktreeId: selectedWorktreeId } : {}),
+                    ...(selectedSandboxId ? { sandboxId: selectedSandboxId } : {}),
                 });
-                patchWorktreeCaches({
+                patchSandboxCaches({
                     utils,
                     profileId: input.profileId,
                     listThreadsInput: input.listThreadsInput,
                     thread: result.thread,
-                    ...(result.worktree ? { worktree: result.worktree } : {}),
+                    ...(result.sandbox ? { sandbox: result.sandbox } : {}),
                 });
                 setFeedbackTone('success');
                 setFeedbackMessage('Execution environment updated.');
@@ -101,79 +94,79 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
                 throw error;
             }
         },
-        async refreshWorktree(worktreeId: `wt_${string}`) {
+        async refreshSandbox(sandboxId: `sb_${string}`) {
             try {
-                const result = await input.mutations.refreshWorktreeMutation.mutateAsync({
+                const result = await input.mutations.refreshSandboxMutation.mutateAsync({
                     profileId: input.profileId,
-                    worktreeId,
+                    sandboxId,
                 });
-                if (!result.refreshed || !result.worktree) {
+                if (!result.refreshed || !result.sandbox) {
                     const message = result.reason === 'not_found'
-                        ? 'Managed worktree no longer exists.'
-                        : 'Managed worktree refresh failed.';
+                        ? 'Managed sandbox no longer exists.'
+                        : 'Managed sandbox refresh failed.';
                     setFeedbackTone('error');
                     setFeedbackMessage(message);
                     return;
                 }
-                patchWorktreeCaches({
+                patchSandboxCaches({
                     utils,
                     profileId: input.profileId,
                     listThreadsInput: input.listThreadsInput,
-                    worktree: result.worktree,
+                    sandbox: result.sandbox,
                 });
                 setFeedbackTone('success');
-                setFeedbackMessage('Managed worktree status refreshed.');
+                setFeedbackMessage('Managed sandbox status refreshed.');
             } catch (error: unknown) {
                 setFeedbackTone('error');
-                setFeedbackMessage(error instanceof Error ? error.message : 'Managed worktree refresh failed.');
+                setFeedbackMessage(error instanceof Error ? error.message : 'Managed sandbox refresh failed.');
                 throw error;
             }
         },
-        async removeWorktree(worktreeId: `wt_${string}`) {
+        async removeSandbox(sandboxId: `sb_${string}`) {
             try {
-                const result = await input.mutations.removeWorktreeMutation.mutateAsync({
+                const result = await input.mutations.removeSandboxMutation.mutateAsync({
                     profileId: input.profileId,
-                    worktreeId,
+                    sandboxId,
                     removeFiles: true,
                 });
-                if (!result.removed || !result.worktreeId) {
+                if (!result.removed || !result.sandboxId) {
                     setFeedbackTone('error');
-                    setFeedbackMessage(result.message ?? 'Managed worktree removal failed.');
+                    setFeedbackMessage(result.message ?? 'Managed sandbox removal failed.');
                     return;
                 }
-                patchWorktreeCaches({
+                patchSandboxCaches({
                     utils,
                     profileId: input.profileId,
                     listThreadsInput: input.listThreadsInput,
-                    removedWorktreeIds: [result.worktreeId],
+                    removedSandboxIds: [result.sandboxId],
                 });
                 setFeedbackTone('success');
-                setFeedbackMessage('Managed worktree removed.');
+                setFeedbackMessage('Managed sandbox removed.');
             } catch (error: unknown) {
                 setFeedbackTone('error');
-                setFeedbackMessage(error instanceof Error ? error.message : 'Managed worktree removal failed.');
+                setFeedbackMessage(error instanceof Error ? error.message : 'Managed sandbox removal failed.');
                 throw error;
             }
         },
-        async removeOrphanedWorktrees(workspaceFingerprint: string | undefined) {
+        async removeOrphanedSandboxes(workspaceFingerprint: string | undefined) {
             try {
-                const result = await input.mutations.removeOrphanedWorktreesMutation.mutateAsync({
+                const result = await input.mutations.removeOrphanedSandboxesMutation.mutateAsync({
                     profileId: input.profileId,
                     ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
                 });
-                if (result.removedWorktreeIds.length > 0) {
-                    patchWorktreeCaches({
+                if (result.removedSandboxIds.length > 0) {
+                    patchSandboxCaches({
                         utils,
                         profileId: input.profileId,
                         listThreadsInput: input.listThreadsInput,
-                        removedWorktreeIds: result.removedWorktreeIds,
+                        removedSandboxIds: result.removedSandboxIds,
                     });
                 }
                 setFeedbackTone('success');
-                setFeedbackMessage('Removed orphaned managed worktrees.');
+                setFeedbackMessage('Removed orphaned managed sandboxes.');
             } catch (error: unknown) {
                 setFeedbackTone('error');
-                setFeedbackMessage(error instanceof Error ? error.message : 'Orphaned worktree cleanup failed.');
+                setFeedbackMessage(error instanceof Error ? error.message : 'Orphaned sandbox cleanup failed.');
                 throw error;
             }
         },

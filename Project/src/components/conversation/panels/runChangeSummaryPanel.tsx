@@ -105,7 +105,7 @@ export function RunChangeSummaryPanel({ selectedRunId, overview, onJumpToDiffs }
                             <p className='text-muted-foreground mt-1 text-xs'>
                                 {overview.topDirectories[0]
                                     ? `${String(overview.topDirectories[0].fileCount)} files touched`
-                                    : 'Waiting for git-backed stats'}
+                                    : 'Waiting for directory stats'}
                             </p>
                         </div>
                     </div>

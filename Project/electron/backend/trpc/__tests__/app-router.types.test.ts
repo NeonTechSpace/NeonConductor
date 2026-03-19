@@ -19,7 +19,7 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     expectTypeOf<Inputs['session']['create']>().toExtend<{
         profileId: string;
         threadId: string;
-        kind: 'local' | 'worktree' | 'cloud';
+        kind: 'local' | 'sandbox' | 'cloud';
     }>();
 
     expectTypeOf<Inputs['conversation']['listBuckets']>().toExtend<{
@@ -157,10 +157,35 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     expectTypeOf<Inputs['checkpoint']['create']>().toExtend<{
         profileId: string;
         runId: string;
+        milestoneTitle: string;
     }>();
     expectTypeOf<Inputs['checkpoint']['list']>().toExtend<{
         profileId: string;
         sessionId: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['promoteToMilestone']>().toExtend<{
+        profileId: string;
+        checkpointId: string;
+        milestoneTitle: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['renameMilestone']>().toExtend<{
+        profileId: string;
+        checkpointId: string;
+        milestoneTitle: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['deleteMilestone']>().toExtend<{
+        profileId: string;
+        checkpointId: string;
+        confirm: boolean;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['previewCleanup']>().toExtend<{
+        profileId: string;
+        sessionId: string;
+    }>();
+    expectTypeOf<Inputs['checkpoint']['applyCleanup']>().toExtend<{
+        profileId: string;
+        sessionId: string;
+        confirm: boolean;
     }>();
     expectTypeOf<Inputs['checkpoint']['rollback']>().toExtend<{
         profileId: string;
@@ -676,7 +701,7 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
             modeKey: string;
             summary: string;
             executionTargetKey: string;
-            executionTargetKind: 'workspace' | 'worktree';
+            executionTargetKind: 'workspace' | 'sandbox';
             executionTargetLabel: string;
             createdByKind: 'system' | 'user';
             checkpointKind: 'auto' | 'safety' | 'named';

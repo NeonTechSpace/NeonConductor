@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRollbackWarningLines, resolveSelectedDiffPath } from '@/web/components/conversation/panels/diffCheckpointPanelState';
+import {
+    buildRollbackWarningLines,
+    describeRetentionDisposition,
+    filterVisibleCheckpoints,
+    resolveSelectedDiffPath,
+} from '@/web/components/conversation/panels/diffCheckpointPanelState';
 
 describe('resolveSelectedDiffPath', () => {
     it('keeps the preferred path while it still exists and falls back when it disappears', () => {
@@ -134,5 +139,29 @@ describe('buildRollbackWarningLines', () => {
                 'Affected chats: Chat A, Chat B',
             ],
         });
+    });
+});
+
+describe('checkpoint milestone helpers', () => {
+    it('filters milestone-only history and labels retention states', () => {
+        const checkpoints = [
+            {
+                id: 'ckpt_1',
+                checkpointKind: 'auto',
+                summary: 'Auto checkpoint',
+            },
+            {
+                id: 'ckpt_2',
+                checkpointKind: 'named',
+                summary: 'Release milestone',
+                milestoneTitle: 'Release milestone',
+            },
+        ] as const;
+
+        expect(filterVisibleCheckpoints(checkpoints as never, false)).toEqual(checkpoints);
+        expect(filterVisibleCheckpoints(checkpoints as never, true)).toEqual([checkpoints[1]]);
+        expect(describeRetentionDisposition('milestone')).toBe('Milestone');
+        expect(describeRetentionDisposition('protected_recent')).toBe('Protected recent');
+        expect(describeRetentionDisposition('eligible_for_cleanup')).toBe('Cleanup eligible');
     });
 });

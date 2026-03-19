@@ -35,7 +35,7 @@ function mapCheckpointChangesetRecord(row: {
         threadId: parseEntityId(row.thread_id, 'checkpoint_changesets.thread_id', 'thr'),
         ...(row.run_id ? { runId: parseEntityId(row.run_id, 'checkpoint_changesets.run_id', 'run') } : {}),
         executionTargetKey: row.execution_target_key,
-        executionTargetKind: row.execution_target_kind === 'worktree' ? 'worktree' : 'workspace',
+        executionTargetKind: row.execution_target_kind === 'sandbox' ? 'sandbox' : 'workspace',
         executionTargetLabel: row.execution_target_label,
         createdByKind: row.created_by_kind === 'user' ? 'user' : 'system',
         changesetKind: row.changeset_kind === 'revert' ? 'revert' : 'run_capture',
@@ -248,6 +248,30 @@ export class CheckpointChangesetStore {
             profileId,
             changesetId,
         });
+    }
+
+    async listChangeCountsByCheckpointIds(
+        profileId: string,
+        checkpointIds: CheckpointRecord['id'][]
+    ): Promise<Map<CheckpointRecord['id'], number>> {
+        if (checkpointIds.length === 0) {
+            return new Map();
+        }
+
+        const { db } = getPersistence();
+        const rows = await db
+            .selectFrom('checkpoint_changesets')
+            .select(['checkpoint_id', 'change_count'])
+            .where('profile_id', '=', profileId)
+            .where('checkpoint_id', 'in', checkpointIds)
+            .execute();
+
+        return new Map(
+            rows.map((row) => [
+                parseEntityId(row.checkpoint_id, 'checkpoint_changesets.checkpoint_id', 'ckpt'),
+                row.change_count,
+            ])
+        );
     }
 
     private async getByIdInternal(input: {

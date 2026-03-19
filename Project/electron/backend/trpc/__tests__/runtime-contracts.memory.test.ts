@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runStore, worktreeStore } from '@/app/backend/persistence/stores';
+import { runStore, sandboxStore } from '@/app/backend/persistence/stores';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import {
@@ -476,15 +476,15 @@ describe('runtime contracts: memory', () => {
         expect(projectedThreadContent).toContain('metadata: {"source":"manual"}');
     });
 
-    it('keeps workspace memory projection pinned to the base workspace root when a worktree is selected', async () => {
+    it('keeps workspace memory projection pinned to the base workspace root when a sandbox is selected', async () => {
         const caller = createCaller();
-        const globalMemoryRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-worktree-global-'));
+        const globalMemoryRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-sandbox-global-'));
         vi.stubEnv('NEONCONDUCTOR_GLOBAL_MEMORY_ROOT', globalMemoryRoot);
-        const workspaceFingerprint = 'wsf_runtime_memory_worktree_projection';
+        const workspaceFingerprint = 'wsf_runtime_memory_sandbox_projection';
         await createSessionInScope(caller, profileId, {
             scope: 'workspace',
             workspaceFingerprint,
-            title: 'Memory worktree projection thread',
+            title: 'Memory sandbox projection thread',
             kind: 'local',
             topLevelTab: 'agent',
         });
@@ -493,18 +493,17 @@ describe('runtime contracts: memory', () => {
             .prepare('SELECT absolute_path FROM workspace_roots WHERE profile_id = ? AND fingerprint = ?')
             .get(profileId, workspaceFingerprint) as { absolute_path: string } | undefined;
         if (!workspaceRootRow) {
-            throw new Error('Expected workspace root for memory worktree projection test.');
+            throw new Error('Expected workspace root for memory sandbox projection test.');
         }
 
-        const worktreePath = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-worktree-'));
-        const worktree = await worktreeStore.create({
+        const sandboxPath = mkdtempSync(path.join(os.tmpdir(), 'nc-memory-sandbox-'));
+        const sandbox = await sandboxStore.create({
             profileId,
             workspaceFingerprint,
-            branch: 'feature/memory-projection',
-            baseBranch: 'main',
-            absolutePath: worktreePath,
-            label: 'memory-worktree',
+            absolutePath: sandboxPath,
+            label: 'memory-sandbox',
             status: 'ready',
+            creationStrategy: 'copy',
         });
 
         const workspaceMemory = await caller.memory.create({
@@ -520,7 +519,7 @@ describe('runtime contracts: memory', () => {
         const synced = await caller.memory.syncProjection({
             profileId,
             workspaceFingerprint,
-            worktreeId: worktree.id,
+            sandboxId: sandbox.id,
         });
 
         expect(synced.paths.workspaceMemoryRoot).toBe(

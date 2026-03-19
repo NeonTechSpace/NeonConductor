@@ -410,7 +410,7 @@ async function scanProjectedMemory(candidate: CandidateProjection): Promise<Scan
 export async function resolveMemoryProjectionPaths(input: {
     profileId: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }): Promise<MemoryProjectionPaths> {
     const overrideMemoryRoot = process.env['NEONCONDUCTOR_GLOBAL_MEMORY_ROOT']?.trim();
     const globalMemoryRoot =
@@ -427,14 +427,14 @@ export async function resolveMemoryProjectionPaths(input: {
     const workspaceRoot = await workspaceContextService.resolveExplicit({
         profileId: input.profileId,
         workspaceFingerprint: input.workspaceFingerprint,
-        ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+        ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
     });
     return {
         globalMemoryRoot,
-        ...(workspaceRoot.kind === 'workspace' || workspaceRoot.kind === 'worktree'
+        ...(workspaceRoot.kind === 'workspace' || workspaceRoot.kind === 'sandbox'
             ? {
                   workspaceMemoryRoot: path.join(
-                      workspaceRoot.kind === 'worktree'
+                      workspaceRoot.kind === 'sandbox'
                           ? workspaceRoot.baseWorkspace.absolutePath
                           : workspaceRoot.absolutePath,
                       '.neonconductor',
@@ -575,7 +575,7 @@ class MemoryProjectionService {
                 ...(resolvedContext.value.workspaceFingerprint
                     ? { workspaceFingerprint: resolvedContext.value.workspaceFingerprint }
                     : {}),
-                ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+                ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
             }),
             memoryStore.listByProfile({
                 profileId: input.profileId,

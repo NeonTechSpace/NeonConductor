@@ -45,12 +45,12 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                 topLevelTab={input.topLevelTab}
                 selectedThread={input.shellViewModel.selectedThread}
                 workspaceScope={input.shellViewModel.workspaceScope}
-                worktrees={input.shellViewModel.visibleManagedWorktrees}
+                sandboxes={input.shellViewModel.visibleManagedSandboxes}
                 busy={
-                    input.mutations.configureThreadWorktreeMutation.isPending ||
-                    input.mutations.refreshWorktreeMutation.isPending ||
-                    input.mutations.removeWorktreeMutation.isPending ||
-                    input.mutations.removeOrphanedWorktreesMutation.isPending
+                    input.mutations.configureThreadSandboxMutation.isPending ||
+                    input.mutations.refreshSandboxMutation.isPending ||
+                    input.mutations.removeSandboxMutation.isPending ||
+                    input.mutations.removeOrphanedSandboxesMutation.isPending
                 }
                 {...(input.workspaceActions.feedbackMessage
                     ? {
@@ -62,19 +62,15 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                     if (!input.shellViewModel.selectedThread || !isEntityId(input.shellViewModel.selectedThread.id, 'thr')) {
                         return;
                     }
-                    if (executionInput.mode === 'worktree') {
-                        if (!isEntityId(executionInput.worktreeId, 'wt')) {
+                    if (executionInput.mode === 'sandbox') {
+                        if (!isEntityId(executionInput.sandboxId, 'sb')) {
                             return;
                         }
                         void input.workspaceActions.configureThreadExecution({
                             threadId: input.shellViewModel.selectedThread.id,
                             executionInput: {
                                 mode: executionInput.mode,
-                                ...(executionInput.executionBranch
-                                    ? { executionBranch: executionInput.executionBranch }
-                                    : {}),
-                                ...(executionInput.baseBranch ? { baseBranch: executionInput.baseBranch } : {}),
-                                worktreeId: executionInput.worktreeId,
+                                sandboxId: executionInput.sandboxId,
                             },
                         });
                         return;
@@ -83,27 +79,23 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                         threadId: input.shellViewModel.selectedThread.id,
                         executionInput: {
                             mode: executionInput.mode,
-                            ...(executionInput.executionBranch
-                                ? { executionBranch: executionInput.executionBranch }
-                                : {}),
-                            ...(executionInput.baseBranch ? { baseBranch: executionInput.baseBranch } : {}),
                         },
                     });
                 }}
-                onRefreshWorktree={(worktreeId) => {
-                    if (!isEntityId(worktreeId, 'wt')) {
+                onRefreshSandbox={(sandboxId) => {
+                    if (!isEntityId(sandboxId, 'sb')) {
                         return;
                     }
-                    void input.workspaceActions.refreshWorktree(worktreeId);
+                    void input.workspaceActions.refreshSandbox(sandboxId);
                 }}
-                onRemoveWorktree={(worktreeId) => {
-                    if (!isEntityId(worktreeId, 'wt')) {
+                onRemoveSandbox={(sandboxId) => {
+                    if (!isEntityId(sandboxId, 'sb')) {
                         return;
                     }
-                    void input.workspaceActions.removeWorktree(worktreeId);
+                    void input.workspaceActions.removeSandbox(sandboxId);
                 }}
                 onRemoveOrphaned={() => {
-                    void input.workspaceActions.removeOrphanedWorktrees(
+                    void input.workspaceActions.removeOrphanedSandboxes(
                         input.shellViewModel.selectedThread?.workspaceFingerprint
                     );
                 }}
@@ -147,8 +139,8 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                     {...(input.shellViewModel.selectedThread?.workspaceFingerprint
                         ? { workspaceFingerprint: input.shellViewModel.selectedThread.workspaceFingerprint }
                         : {})}
-                    {...(input.shellViewModel.effectiveSelectedWorktreeId
-                        ? { worktreeId: input.shellViewModel.effectiveSelectedWorktreeId }
+                    {...(input.shellViewModel.effectiveSelectedSandboxId
+                        ? { sandboxId: input.shellViewModel.effectiveSelectedSandboxId }
                         : {})}
                     attachedRules={input.shellViewModel.attachedRules}
                     missingAttachedRuleKeys={input.shellViewModel.missingAttachedRuleKeys}
@@ -164,8 +156,8 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                 {...(selectedThread.workspaceFingerprint
                     ? { workspaceFingerprint: selectedThread.workspaceFingerprint }
                     : {})}
-                {...(input.shellViewModel.effectiveSelectedWorktreeId
-                    ? { worktreeId: input.shellViewModel.effectiveSelectedWorktreeId }
+                {...(input.shellViewModel.effectiveSelectedSandboxId
+                    ? { sandboxId: input.shellViewModel.effectiveSelectedSandboxId }
                     : {})}
                 {...(isEntityId(selectedThread.id, 'thr') ? { threadId: selectedThread.id } : {})}
                 {...(isEntityId(input.selectedRunId, 'run') ? { runId: input.selectedRunId } : {})}

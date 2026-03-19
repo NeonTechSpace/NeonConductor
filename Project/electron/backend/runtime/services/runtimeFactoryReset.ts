@@ -14,12 +14,11 @@ import {
     type OperationalResult,
 } from '@/app/backend/runtime/services/common/operationalError';
 import { planFullReset } from '@/app/backend/runtime/services/runtimeReset/full';
-import { removeManagedGitWorktree } from '@/app/backend/runtime/services/worktree/git';
+import { removeManagedSandbox } from '@/app/backend/runtime/services/sandbox/filesystem';
 import { appLog, flushAppLogger } from '@/app/main/logging';
 
-interface FactoryResetWorktreeTarget {
-    workspaceRootPath: string | null;
-    worktreePath: string;
+interface FactoryResetSandboxTarget {
+    sandboxPath: string;
 }
 
 export interface RuntimeFactoryResetService {
@@ -64,34 +63,32 @@ async function removeDirectoryTree(rootPath: string): Promise<number> {
     return entryCount;
 }
 
-async function collectManagedWorktreeTargets(): Promise<FactoryResetWorktreeTarget[]> {
+async function collectManagedSandboxTargets(): Promise<FactoryResetSandboxTarget[]> {
     const { db } = getPersistence();
     const rows = await db
-        .selectFrom('worktrees as worktree')
+        .selectFrom('sandboxes as sandbox')
         .leftJoin('workspace_roots as workspaceRoot', (join) =>
             join
-                .onRef('workspaceRoot.profile_id', '=', 'worktree.profile_id')
-                .onRef('workspaceRoot.fingerprint', '=', 'worktree.workspace_fingerprint')
+                .onRef('workspaceRoot.profile_id', '=', 'sandbox.profile_id')
+                .onRef('workspaceRoot.fingerprint', '=', 'sandbox.workspace_fingerprint')
         )
         .select([
-            'worktree.absolute_path as worktreePath',
-            'workspaceRoot.absolute_path as workspaceRootPath',
+            'sandbox.absolute_path as sandboxPath',
         ])
         .execute();
 
     return rows.map((row) => ({
-        worktreePath: row.worktreePath,
-        workspaceRootPath: row.workspaceRootPath,
+        sandboxPath: row.sandboxPath,
     }));
 }
 
-async function cleanupManagedWorktrees(rootPath: string): Promise<number> {
-    const targets = await collectManagedWorktreeTargets();
+async function cleanupManagedSandboxes(rootPath: string): Promise<number> {
+    const targets = await collectManagedSandboxTargets();
     const entryCount = await countRecursiveEntries(rootPath);
 
     for (const target of targets) {
         try {
-            await access(target.worktreePath);
+            await access(target.sandboxPath);
         } catch (error) {
             if (isMissingPathError(error)) {
                 continue;
@@ -100,18 +97,17 @@ async function cleanupManagedWorktrees(rootPath: string): Promise<number> {
             throw error;
         }
 
-        if (target.workspaceRootPath) {
-            const removed = await removeManagedGitWorktree({
-                workspaceRootPath: target.workspaceRootPath,
-                worktreePath: target.worktreePath,
+        {
+            const removed = await removeManagedSandbox({
+                sandboxPath: target.sandboxPath,
                 removeFiles: true,
             });
-            if (removed.isOk()) {
+            if (removed.ok) {
                 continue;
             }
         }
 
-        await rm(target.worktreePath, { recursive: true, force: true });
+        await rm(target.sandboxPath, { recursive: true, force: true });
     }
 
     await rm(rootPath, { recursive: true, force: true });
@@ -131,12 +127,12 @@ class RuntimeFactoryResetServiceImpl implements RuntimeFactoryResetService {
 
         try {
             const { db } = getPersistence();
-            const { globalAssetsRoot, logsRoot, managedWorktreesRoot } = getPersistenceStoragePaths();
+            const { globalAssetsRoot, logsRoot, managedSandboxesRoot } = getPersistenceStoragePaths();
             const plan = await planFullReset(db);
 
             const cleanupCounts: RuntimeFactoryResetCleanupCounts = {
                 providerSecrets: plan.counts.providerSecrets,
-                managedWorktreeEntries: await cleanupManagedWorktrees(managedWorktreesRoot),
+                managedSandboxEntries: await cleanupManagedSandboxes(managedSandboxesRoot),
                 globalAssetEntries: await removeDirectoryTree(globalAssetsRoot),
                 logEntries: 0,
             };

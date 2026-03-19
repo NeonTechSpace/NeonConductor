@@ -9,18 +9,18 @@ import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common'
 
 export interface RegistryRefreshInput extends ProfileInput {
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }
 
 export interface RegistryListResolvedInput extends ProfileInput {
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }
 
 export interface RegistrySearchSkillsInput extends ProfileInput {
     query?: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     topLevelTab?: TopLevelTab;
     modeKey?: string;
 }
@@ -28,7 +28,7 @@ export interface RegistrySearchSkillsInput extends ProfileInput {
 export interface RegistrySearchRulesInput extends ProfileInput {
     query?: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     topLevelTab?: TopLevelTab;
     modeKey?: string;
 }

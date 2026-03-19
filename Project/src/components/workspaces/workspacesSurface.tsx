@@ -292,7 +292,7 @@ export function WorkspacesSurface({
         },
         PROGRESSIVE_QUERY_OPTIONS
     );
-    const worktreesQuery = trpc.worktree.list.useQuery(
+    const sandboxesQuery = trpc.sandbox.list.useQuery(
         {
             profileId,
             ...(selectedWorkspaceFingerprint ? { workspaceFingerprint: selectedWorkspaceFingerprint } : {}),
@@ -376,7 +376,7 @@ export function WorkspacesSurface({
     const selectedWorkspaceSessions = selectedWorkspaceFingerprint
         ? allSessions.filter((session) => selectedWorkspaceThreadIds.has(session.threadId))
         : [];
-    const selectedWorkspaceWorktrees = worktreesQuery.data?.worktrees ?? [];
+    const selectedWorkspaceSandboxes = sandboxesQuery.data?.sandboxes ?? [];
     const selectedWorkspaceRegistry = registryQuery.data;
     const pendingDeleteWorkspace = confirmDeleteWorkspaceFingerprint
         ? workspaceRoots.find((workspaceRoot) => workspaceRoot.fingerprint === confirmDeleteWorkspaceFingerprint)
@@ -480,7 +480,7 @@ export function WorkspacesSurface({
                 <div className='space-y-1'>
                     <h2 className='text-sm font-semibold tracking-[0.18em] uppercase'>Workspaces</h2>
                     <p className='text-muted-foreground text-xs leading-5'>
-                        Register roots once, then keep sessions, worktrees, and registry state anchored to them.
+                        Register roots once, then keep sessions, sandboxes, and registry state anchored to them.
                     </p>
                 </div>
 
@@ -580,9 +580,9 @@ export function WorkspacesSurface({
                                 <p className='text-muted-foreground mt-2 text-xs'>Runnable sessions currently linked to these threads.</p>
                             </article>
                             <article className='border-border/70 bg-card/55 rounded-[22px] border p-4'>
-                                <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase'>Worktrees</p>
-                                <p className='mt-2 text-2xl font-semibold'>{selectedWorkspaceWorktrees.length}</p>
-                                <p className='text-muted-foreground mt-2 text-xs'>Managed worktrees for execution branches.</p>
+                                <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase'>Sandboxes</p>
+                                <p className='mt-2 text-2xl font-semibold'>{selectedWorkspaceSandboxes.length}</p>
+                                <p className='text-muted-foreground mt-2 text-xs'>Managed sandboxes for isolated execution.</p>
                             </article>
                             <article className='border-border/70 bg-card/55 rounded-[22px] border p-4'>
                                 <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase'>Last updated</p>
@@ -628,7 +628,7 @@ export function WorkspacesSurface({
                                     <div className='space-y-1'>
                                         <p className='text-sm font-semibold'>Registry and execution context</p>
                                         <p className='text-muted-foreground text-xs leading-5'>
-                                            Workspace-local rules, skills, and worktrees live here instead of being buried in
+                                            Workspace-local rules, skills, and sandboxes live here instead of being buried in
                                             settings.
                                         </p>
                                     </div>
@@ -737,7 +737,7 @@ export function WorkspacesSurface({
                             New workspace
                         </h2>
                         <p id='workspace-create-description' className='text-muted-foreground text-sm'>
-                            Register the workspace once here, then use it across sessions, worktrees, and registry flows.
+                            Register the workspace once here, then use it across sessions, sandboxes, and registry flows.
                         </p>
                     </div>
 

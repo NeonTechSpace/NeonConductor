@@ -79,10 +79,8 @@ export function parseConversationCreateThreadInput(input: unknown): Conversation
         source.executionEnvironmentMode !== undefined
             ? readEnumValue(source.executionEnvironmentMode, 'executionEnvironmentMode', executionEnvironmentModes)
             : undefined;
-    const executionBranch = readOptionalString(source.executionBranch, 'executionBranch');
-    const baseBranch = readOptionalString(source.baseBranch, 'baseBranch');
-    const worktreeId =
-        source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId =
+        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
     if (scope === 'workspace' && !workspacePath) {
         throw new Error('Invalid "workspacePath": required when scope is "workspace".');
@@ -91,14 +89,14 @@ export function parseConversationCreateThreadInput(input: unknown): Conversation
     if (scope !== 'workspace' && workspacePath) {
         throw new Error('Invalid "workspacePath": allowed only when scope is "workspace".');
     }
-    if (scope !== 'workspace' && (executionEnvironmentMode || executionBranch || baseBranch || worktreeId)) {
+    if (scope !== 'workspace' && (executionEnvironmentMode || sandboxId)) {
         throw new Error('Execution environment fields are allowed only when scope is "workspace".');
     }
-    if (executionEnvironmentMode === 'worktree' && !worktreeId) {
-        throw new Error('Invalid "worktreeId": required when executionEnvironmentMode is "worktree".');
+    if (executionEnvironmentMode === 'sandbox' && !sandboxId) {
+        throw new Error('Invalid "sandboxId": required when executionEnvironmentMode is "sandbox".');
     }
-    if (worktreeId && executionEnvironmentMode !== 'worktree') {
-        throw new Error('Invalid "worktreeId": allowed only when executionEnvironmentMode is "worktree".');
+    if (sandboxId && executionEnvironmentMode !== 'sandbox') {
+        throw new Error('Invalid "sandboxId": allowed only when executionEnvironmentMode is "sandbox".');
     }
 
     return {
@@ -107,9 +105,7 @@ export function parseConversationCreateThreadInput(input: unknown): Conversation
         scope,
         ...(workspacePath ? { workspacePath } : {}),
         ...(executionEnvironmentMode ? { executionEnvironmentMode } : {}),
-        ...(executionBranch ? { executionBranch } : {}),
-        ...(baseBranch ? { baseBranch } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
         title: readString(source.title, 'title'),
     };
 }
@@ -139,25 +135,21 @@ export function parseConversationSetThreadExecutionEnvironmentInput(
 ): ConversationSetThreadExecutionEnvironmentInput {
     const source = readObject(input, 'input');
     const mode = readEnumValue(source.mode, 'mode', executionEnvironmentModes);
-    const executionBranch = readOptionalString(source.executionBranch, 'executionBranch');
-    const baseBranch = readOptionalString(source.baseBranch, 'baseBranch');
-    const worktreeId =
-        source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId =
+        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
-    if (mode === 'worktree' && !worktreeId) {
-        throw new Error('Invalid "worktreeId": required when mode is "worktree".');
+    if (mode === 'sandbox' && !sandboxId) {
+        throw new Error('Invalid "sandboxId": required when mode is "sandbox".');
     }
-    if (mode !== 'worktree' && worktreeId) {
-        throw new Error('Invalid "worktreeId": allowed only when mode is "worktree".');
+    if (mode !== 'sandbox' && sandboxId) {
+        throw new Error('Invalid "sandboxId": allowed only when mode is "sandbox".');
     }
 
     return {
         profileId: readProfileId(source),
         threadId: readEntityId(source.threadId, 'threadId', 'thr'),
         mode,
-        ...(executionBranch ? { executionBranch } : {}),
-        ...(baseBranch ? { baseBranch } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
     };
 }
 

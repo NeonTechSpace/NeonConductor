@@ -1,4 +1,4 @@
-export type EnvironmentDraft = 'local' | 'new_worktree' | 'worktree';
+export type EnvironmentDraft = 'local' | 'new_sandbox' | 'sandbox';
 
 export type ExecutionEnvironmentScope =
     | {
@@ -8,27 +8,21 @@ export type ExecutionEnvironmentScope =
           kind: 'workspace';
           label: string;
           absolutePath: string;
-          executionEnvironmentMode: 'local' | 'new_worktree';
-          executionBranch?: string;
-          baseBranch?: string;
+          executionEnvironmentMode: 'local' | 'new_sandbox';
       }
     | {
-          kind: 'worktree';
+          kind: 'sandbox';
           label: string;
           absolutePath: string;
-          branch: string;
-          baseBranch: string;
           baseWorkspaceLabel: string;
           baseWorkspacePath: string;
-          worktreeId: string;
+          sandboxId: string;
       };
 
 export interface ExecutionEnvironmentDraftState {
     scopeKey: string;
     draftMode: EnvironmentDraft;
-    branch: string;
-    baseBranch: string;
-    selectedWorktreeId: string;
+    selectedSandboxId: string;
 }
 
 export function getExecutionEnvironmentScopeKey(input: ExecutionEnvironmentScope): string {
@@ -36,11 +30,11 @@ export function getExecutionEnvironmentScopeKey(input: ExecutionEnvironmentScope
         return 'detached';
     }
 
-    if (input.kind === 'worktree') {
-        return `worktree:${input.worktreeId}:${input.branch}:${input.baseBranch}`;
+    if (input.kind === 'sandbox') {
+        return `sandbox:${input.sandboxId}:${input.absolutePath}`;
     }
 
-    return `workspace:${input.absolutePath}:${input.executionEnvironmentMode}:${input.executionBranch ?? ''}:${input.baseBranch ?? ''}`;
+    return `workspace:${input.absolutePath}:${input.executionEnvironmentMode}`;
 }
 
 export function resolveExecutionEnvironmentDraftState(input: {
@@ -52,13 +46,11 @@ export function resolveExecutionEnvironmentDraftState(input: {
         return input.draftState;
     }
 
-    if (input.workspaceScope.kind === 'worktree') {
+    if (input.workspaceScope.kind === 'sandbox') {
         return {
             scopeKey,
-            draftMode: 'worktree',
-            branch: input.workspaceScope.branch,
-            baseBranch: input.workspaceScope.baseBranch,
-            selectedWorktreeId: input.workspaceScope.worktreeId,
+            draftMode: 'sandbox',
+            selectedSandboxId: input.workspaceScope.sandboxId,
         };
     }
 
@@ -66,17 +58,13 @@ export function resolveExecutionEnvironmentDraftState(input: {
         return {
             scopeKey,
             draftMode: input.workspaceScope.executionEnvironmentMode,
-            branch: input.workspaceScope.executionBranch ?? '',
-            baseBranch: input.workspaceScope.baseBranch ?? '',
-            selectedWorktreeId: '',
+            selectedSandboxId: '',
         };
     }
 
     return {
         scopeKey,
         draftMode: 'local',
-        branch: '',
-        baseBranch: '',
-        selectedWorktreeId: '',
+        selectedSandboxId: '',
     };
 }

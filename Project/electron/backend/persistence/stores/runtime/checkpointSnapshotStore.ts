@@ -92,6 +92,30 @@ export class CheckpointSnapshotStore {
             bytes: row.bytes_blob,
         }));
     }
+
+    async pruneUnreferencedBlobs(): Promise<number> {
+        const { sqlite } = getPersistence();
+        const result = sqlite
+            .prepare(
+                `
+                    DELETE FROM checkpoint_snapshot_blobs
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM checkpoint_snapshot_entries
+                        WHERE checkpoint_snapshot_entries.blob_sha256 = checkpoint_snapshot_blobs.sha256
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM checkpoint_changeset_entries
+                        WHERE checkpoint_changeset_entries.before_blob_sha256 = checkpoint_snapshot_blobs.sha256
+                           OR checkpoint_changeset_entries.after_blob_sha256 = checkpoint_snapshot_blobs.sha256
+                    )
+                `
+            )
+            .run();
+
+        return Number(result.changes);
+    }
 }
 
 export const checkpointSnapshotStore = new CheckpointSnapshotStore();

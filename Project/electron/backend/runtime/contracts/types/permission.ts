@@ -60,7 +60,7 @@ export interface ToolInvokeInput extends ProfileInput {
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }
 
 export interface McpByServerInput {

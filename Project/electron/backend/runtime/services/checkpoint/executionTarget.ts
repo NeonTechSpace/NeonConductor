@@ -7,11 +7,11 @@ import { workspaceContextService } from '@/app/backend/runtime/services/workspac
 
 export interface CheckpointExecutionTarget {
     executionTargetKey: string;
-    executionTargetKind: 'workspace' | 'worktree';
+    executionTargetKind: 'workspace' | 'sandbox';
     executionTargetLabel: string;
     absolutePath: string;
     workspaceFingerprint: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
 }
 
 const unresolvedWorkspacePath = 'Unresolved workspace root';
@@ -26,7 +26,7 @@ export function normalizeExecutionTargetPath(absolutePath: string): string {
 
 export function isResolvedWorkspaceExecutionContext(
     workspaceContext: ResolvedWorkspaceContext
-): workspaceContext is Extract<ResolvedWorkspaceContext, { kind: 'workspace' | 'worktree' }> {
+): workspaceContext is Extract<ResolvedWorkspaceContext, { kind: 'workspace' | 'sandbox' }> {
     return workspaceContext.kind !== 'detached' && workspaceContext.absolutePath !== unresolvedWorkspacePath;
 }
 
@@ -39,14 +39,14 @@ export function resolveCheckpointExecutionTarget(
 
     const normalizedPath = normalizeExecutionTargetPath(workspaceContext.absolutePath);
     const pathKey = toPathKey(normalizedPath);
-    if (workspaceContext.kind === 'worktree') {
+    if (workspaceContext.kind === 'sandbox') {
         return {
-            executionTargetKey: `worktree:${pathKey}`,
-            executionTargetKind: 'worktree',
+            executionTargetKey: `sandbox:${pathKey}`,
+            executionTargetKind: 'sandbox',
             executionTargetLabel: workspaceContext.label,
             absolutePath: normalizedPath,
             workspaceFingerprint: workspaceContext.workspaceFingerprint,
-            worktreeId: workspaceContext.worktree.id,
+            sandboxId: workspaceContext.sandbox.id,
         };
     }
 
@@ -70,7 +70,7 @@ export async function listAffectedSessionsForExecutionTarget(input: {
         const workspaceContext = await workspaceContextService.resolveForSession({
             profileId: input.profileId,
             sessionId: session.id,
-            allowLazyWorktreeCreation: false,
+            allowLazySandboxCreation: false,
         });
         if (!workspaceContext) {
             continue;

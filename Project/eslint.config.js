@@ -48,16 +48,15 @@ const validatedFsAuthorityGlobs = [
     'electron/backend/runtime/services/context/tokenizerRuntime.ts',
     'electron/backend/runtime/services/registry/filesystem.ts',
     'electron/backend/runtime/services/runtimeFactoryReset.ts',
+    'electron/backend/runtime/services/sandbox/filesystem.ts',
     'electron/backend/runtime/services/toolExecution/handlers/listFiles.ts',
     'electron/backend/runtime/services/toolExecution/handlers/readFile.ts',
-    'electron/backend/runtime/services/worktree/git.ts',
     'electron/main/preload/buildConfig.ts',
     'electron/main/logging/fileDrain.ts',
 ];
 const processBridgeGlobs = [
     'electron/backend/runtime/services/checkpoint/gitWorkspace.ts',
     'electron/backend/runtime/services/toolExecution/handlers/runCommand.ts',
-    'electron/backend/runtime/services/worktree/git.ts',
 ];
 const validatedFsTestGlobs = [
     'electron/backend/trpc/__tests__/runtime-contracts.shared.ts',

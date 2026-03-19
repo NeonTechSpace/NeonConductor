@@ -88,7 +88,7 @@ function buildResolvedRegistryView(input: {
 export async function listResolvedRegistry(input: {
     profileId: string;
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
 }): Promise<RegistryListResolvedResult> {
     const [paths, allModes, allRulesets, allSkillfiles] = await Promise.all([
         resolveRegistryPaths(input),
@@ -118,7 +118,7 @@ export async function searchResolvedSkillfiles(input: {
     profileId: string;
     query?: string;
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
     topLevelTab?: 'chat' | 'agent' | 'orchestrator';
     modeKey?: string;
 }): Promise<SkillfileDefinitionRecord[]> {
@@ -151,7 +151,7 @@ export async function searchResolvedRulesets(input: {
     profileId: string;
     query?: string;
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
     topLevelTab?: 'chat' | 'agent' | 'orchestrator';
     modeKey?: string;
 }): Promise<RulesetDefinitionRecord[]> {
@@ -228,7 +228,7 @@ export async function resolveSkillfilesByAssetKeys(input: {
     profileId: string;
     assetKeys: string[];
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
     topLevelTab: 'chat' | 'agent' | 'orchestrator';
     modeKey: string;
 }): Promise<{ skillfiles: SkillfileDefinitionRecord[]; missingAssetKeys: string[] }> {
@@ -251,7 +251,7 @@ export async function resolveRulesetsByAssetKeys(input: {
     profileId: string;
     assetKeys: string[];
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
     topLevelTab: 'chat' | 'agent' | 'orchestrator';
     modeKey: string;
 }): Promise<{ rulesets: RulesetDefinitionRecord[]; missingAssetKeys: string[] }> {
@@ -273,7 +273,7 @@ export async function resolveRulesetsByAssetKeys(input: {
 export async function refreshRegistry(input: {
     profileId: string;
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
 }): Promise<RegistryRefreshResult> {
     const paths = await resolveRegistryPaths(input);
     const globalAssets = await buildDiscoveredAssets({

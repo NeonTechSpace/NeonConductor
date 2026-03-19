@@ -365,8 +365,8 @@ export function ConversationShell({
         topLevelTab,
         modeKey,
         workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
-        ...(shellViewModel.effectiveSelectedWorktreeId
-            ? { worktreeId: shellViewModel.effectiveSelectedWorktreeId }
+        ...(shellViewModel.effectiveSelectedSandboxId
+            ? { sandboxId: shellViewModel.effectiveSelectedSandboxId }
             : {}),
         resolvedRunTarget: runTargetState.resolvedRunTarget,
         providerById: runTargetState.providerById,
@@ -600,11 +600,11 @@ export function ConversationShell({
             return;
         }
 
-        void utils.worktree.list.prefetch({
+        void utils.sandbox.list.prefetch({
             profileId,
             workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint,
         });
-    }, [profileId, shellViewModel.selectedThread?.workspaceFingerprint, topLevelTab, utils.worktree.list]);
+    }, [profileId, shellViewModel.selectedThread?.workspaceFingerprint, topLevelTab, utils.sandbox.list]);
 
     const refetchSelectedConversationState = useEffectEvent(() => {
         if (!hasSelectedSession) {

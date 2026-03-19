@@ -111,8 +111,8 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
 export function parseMemoryProjectionContextInput(input: unknown): MemoryProjectionContextInput {
     const source = readObject(input, 'input');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const worktreeId =
-        source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId =
+        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
     const threadId =
         source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
     const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
@@ -121,7 +121,7 @@ export function parseMemoryProjectionContextInput(input: unknown): MemoryProject
     return {
         profileId: readProfileId(source),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
         ...(threadId ? { threadId } : {}),
         ...(runId ? { runId } : {}),
         ...(includeBroaderScopes !== undefined ? { includeBroaderScopes } : {}),

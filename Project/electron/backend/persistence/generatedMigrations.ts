@@ -263,16 +263,15 @@ CREATE TABLE workspace_roots (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE worktrees (
+CREATE TABLE sandboxes (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     workspace_fingerprint TEXT NOT NULL REFERENCES workspace_roots(fingerprint) ON DELETE CASCADE,
-    branch TEXT NOT NULL,
-    base_branch TEXT NOT NULL,
     absolute_path TEXT NOT NULL,
     path_key TEXT NOT NULL,
     label TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('pending', 'ready', 'missing', 'broken', 'removed')),
+    creation_strategy TEXT NOT NULL CHECK (creation_strategy IN ('clone', 'copy')),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     last_used_at TEXT NOT NULL
@@ -289,9 +288,7 @@ CREATE TABLE threads (
     delegated_from_orchestrator_run_id TEXT NULL,
     last_assistant_at TEXT NULL,
     execution_environment_mode TEXT NOT NULL DEFAULT 'local',
-    execution_branch TEXT NULL,
-    base_branch TEXT NULL,
-    worktree_id TEXT NULL REFERENCES worktrees(id) ON DELETE SET NULL,
+    sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
     is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -318,8 +315,8 @@ CREATE TABLE sessions (
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('local', 'worktree', 'cloud')),
-    worktree_id TEXT NULL REFERENCES worktrees(id) ON DELETE SET NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('local', 'sandbox', 'cloud')),
+    sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
     delegated_from_orchestrator_run_id TEXT NULL,
     run_status TEXT NOT NULL CHECK (run_status IN ('idle', 'running', 'completed', 'aborted', 'error')),
     pending_completion_run_id TEXT NULL,
@@ -443,12 +440,13 @@ CREATE TABLE checkpoints (
     run_id TEXT NULL,
     diff_id TEXT NULL,
     workspace_fingerprint TEXT NOT NULL,
-    worktree_id TEXT NULL REFERENCES worktrees(id) ON DELETE SET NULL,
+    sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
     execution_target_key TEXT NOT NULL,
-    execution_target_kind TEXT NOT NULL CHECK (execution_target_kind IN ('workspace', 'worktree')),
+    execution_target_kind TEXT NOT NULL CHECK (execution_target_kind IN ('workspace', 'sandbox')),
     execution_target_label TEXT NOT NULL,
     created_by_kind TEXT NOT NULL CHECK (created_by_kind IN ('system', 'user')),
     checkpoint_kind TEXT NOT NULL CHECK (checkpoint_kind IN ('auto', 'safety', 'named')),
+    milestone_title TEXT NULL,
     snapshot_file_count INTEGER NOT NULL CHECK (snapshot_file_count >= 0),
     top_level_tab TEXT NOT NULL,
     mode_key TEXT NOT NULL,
@@ -486,7 +484,7 @@ CREATE TABLE checkpoint_changesets (
     thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
     run_id TEXT NULL REFERENCES runs(id) ON DELETE CASCADE,
     execution_target_key TEXT NOT NULL,
-    execution_target_kind TEXT NOT NULL CHECK (execution_target_kind IN ('workspace', 'worktree')),
+    execution_target_kind TEXT NOT NULL CHECK (execution_target_kind IN ('workspace', 'sandbox')),
     execution_target_label TEXT NOT NULL,
     created_by_kind TEXT NOT NULL CHECK (created_by_kind IN ('system', 'user')),
     changeset_kind TEXT NOT NULL CHECK (changeset_kind IN ('run_capture', 'revert')),
@@ -858,14 +856,14 @@ CREATE UNIQUE INDEX idx_workspace_roots_profile_path_key
 CREATE INDEX idx_workspace_roots_profile_updated_at
     ON workspace_roots(profile_id, updated_at DESC);
 
-CREATE UNIQUE INDEX idx_worktrees_profile_path_key
-    ON worktrees(profile_id, path_key);
+CREATE UNIQUE INDEX idx_sandboxes_profile_path_key
+    ON sandboxes(profile_id, path_key);
 
-CREATE UNIQUE INDEX idx_worktrees_profile_workspace_branch
-    ON worktrees(profile_id, workspace_fingerprint, branch);
+CREATE UNIQUE INDEX idx_sandboxes_profile_workspace_label
+    ON sandboxes(profile_id, workspace_fingerprint, label);
 
-CREATE INDEX idx_worktrees_profile_workspace_updated_at
-    ON worktrees(profile_id, workspace_fingerprint, updated_at DESC);
+CREATE INDEX idx_sandboxes_profile_workspace_updated_at
+    ON sandboxes(profile_id, workspace_fingerprint, updated_at DESC);
 
 CREATE INDEX idx_threads_profile_conversation_updated_at
     ON threads(profile_id, conversation_id, updated_at DESC);
@@ -885,8 +883,8 @@ CREATE INDEX idx_threads_profile_parent_updated_at
 CREATE INDEX idx_threads_profile_root_updated_at
     ON threads(profile_id, root_thread_id, updated_at DESC);
 
-CREATE INDEX idx_threads_profile_worktree_updated_at
-    ON threads(profile_id, worktree_id, updated_at DESC);
+CREATE INDEX idx_threads_profile_sandbox_updated_at
+    ON threads(profile_id, sandbox_id, updated_at DESC);
 
 CREATE UNIQUE INDEX idx_tags_profile_label
     ON tags(profile_id, label);
@@ -906,8 +904,8 @@ CREATE INDEX idx_sessions_profile_thread_updated_at
 CREATE INDEX idx_sessions_delegated_orchestrator_run_id
     ON sessions(delegated_from_orchestrator_run_id);
 
-CREATE INDEX idx_sessions_profile_worktree_updated_at
-    ON sessions(profile_id, worktree_id, updated_at DESC);
+CREATE INDEX idx_sessions_profile_sandbox_updated_at
+    ON sessions(profile_id, sandbox_id, updated_at DESC);
 
 CREATE INDEX idx_runs_profile_created_at
     ON runs(profile_id, created_at DESC);

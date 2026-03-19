@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { checkpointChangesetStore, checkpointSnapshotStore, checkpointStore } from '@/app/backend/persistence/stores';
 import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import type { EntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 import {
@@ -711,6 +712,7 @@ describe('runtime contracts: permissions and tooling', () => {
             scope: 'workspace',
             workspacePath,
             title: 'Diff Checkpoint Thread',
+            executionEnvironmentMode: 'local',
         });
         const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected workspace agent thread id.');
         const listedThreads = await caller.conversation.listThreads({
@@ -1592,6 +1594,7 @@ describe('runtime contracts: permissions and tooling', () => {
             scope: 'workspace',
             workspacePath,
             title: 'Unsupported Diff Thread',
+            executionEnvironmentMode: 'local',
         });
         const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected unsupported workspace thread id.');
         const listedThreads = await caller.conversation.listThreads({
@@ -1857,6 +1860,7 @@ describe('runtime contracts: permissions and tooling', () => {
             scope: 'workspace',
             workspacePath,
             title: 'Shared Target A',
+            executionEnvironmentMode: 'local',
         });
         const secondThread = await caller.conversation.createThread({
             profileId,
@@ -1864,6 +1868,7 @@ describe('runtime contracts: permissions and tooling', () => {
             scope: 'workspace',
             workspacePath,
             title: 'Shared Target B',
+            executionEnvironmentMode: 'local',
         });
         const listedThreads = await caller.conversation.listThreads({
             profileId,
@@ -2007,6 +2012,7 @@ describe('runtime contracts: permissions and tooling', () => {
             scope: 'workspace',
             workspacePath,
             title: 'Drifted Revert Thread',
+            executionEnvironmentMode: 'local',
         });
         const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected drifted revert thread id.');
         const listedThreads = await caller.conversation.listThreads({
@@ -2085,6 +2091,300 @@ describe('runtime contracts: permissions and tooling', () => {
         expect(reverted.reverted).toBe(false);
         expect(reverted.reason).toBe('target_drifted');
         expect(readFileSync(path.join(workspacePath, 'notes.txt'), 'utf8')).toBe('drifted\n');
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    });
+
+    it('creates, renames, and deletes milestone checkpoints without breaking rollback preview', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-checkpoint-milestone-'));
+        let resolveFetch: (() => void) | undefined;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                () =>
+                    new Promise((resolve) => {
+                        resolveFetch = () => {
+                            resolve({
+                                ok: true,
+                                status: 200,
+                                statusText: 'OK',
+                                json: () => ({
+                                    choices: [
+                                        {
+                                            message: {
+                                                content: 'milestone mutation complete',
+                                            },
+                                        },
+                                    ],
+                                    usage: {
+                                        prompt_tokens: 10,
+                                        completion_tokens: 20,
+                                        total_tokens: 30,
+                                    },
+                                }),
+                            });
+                        };
+                    })
+            )
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-milestone-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Milestone Thread',
+            executionEnvironmentMode: 'local',
+        });
+        const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected milestone thread id.');
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === threadId);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for milestone thread.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'local',
+        });
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Create milestone source checkpoint',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: workspaceThread.workspaceFingerprint,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error('Expected milestone run to start.');
+        }
+
+        await vi.waitFor(() => {
+            expect(resolveFetch).toBeTypeOf('function');
+        });
+        writeFileSync(path.join(workspacePath, 'milestone.txt'), 'milestone change\n');
+        resolveFetch?.();
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const firstList = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        const autoCheckpoint = firstList.checkpoints[0];
+        if (!autoCheckpoint) {
+            throw new Error('Expected checkpoint before milestone promotion.');
+        }
+        expect(autoCheckpoint.checkpointKind).toBe('auto');
+
+        const createdMilestone = await caller.checkpoint.create({
+            profileId,
+            runId: started.runId,
+            milestoneTitle: 'Release cut',
+        });
+        expect(createdMilestone.created).toBe(true);
+        expect(createdMilestone.checkpoint?.id).toBe(autoCheckpoint.id);
+        expect(createdMilestone.checkpoint?.checkpointKind).toBe('named');
+        expect(createdMilestone.checkpoint?.milestoneTitle).toBe('Release cut');
+
+        const preview = await caller.checkpoint.previewRollback({
+            profileId,
+            checkpointId: autoCheckpoint.id,
+        });
+        expect(preview.found).toBe(true);
+        if (!preview.found) {
+            throw new Error('Expected rollback preview after milestone promotion.');
+        }
+        expect(preview.preview.hasChangeset).toBe(true);
+
+        const renamed = await caller.checkpoint.renameMilestone({
+            profileId,
+            checkpointId: autoCheckpoint.id,
+            milestoneTitle: 'Release milestone',
+        });
+        expect(renamed.renamed).toBe(true);
+        expect(renamed.checkpoint?.milestoneTitle).toBe('Release milestone');
+
+        const listedMilestones = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(listedMilestones.checkpoints[0]?.checkpointKind).toBe('named');
+        expect(listedMilestones.checkpoints[0]?.milestoneTitle).toBe('Release milestone');
+        expect(listedMilestones.checkpoints[0]?.retentionDisposition).toBe('milestone');
+
+        const deleted = await caller.checkpoint.deleteMilestone({
+            profileId,
+            checkpointId: autoCheckpoint.id,
+            confirm: true,
+        });
+        expect(deleted.deleted).toBe(true);
+
+        const listedAfterDelete = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(listedAfterDelete.checkpoints).toHaveLength(0);
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    });
+
+    it('previews and applies manual retention cleanup without touching current workspace files', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-checkpoint-retention-'));
+        const pathKey = process.platform === 'win32' ? workspacePath.toLowerCase() : workspacePath;
+        const executionTargetKey = `workspace:${pathKey}`;
+        const { sqlite } = getPersistence();
+
+        writeFileSync(path.join(workspacePath, 'keep.txt'), 'keep me\n');
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Retention Thread',
+            executionEnvironmentMode: 'local',
+        });
+        const threadId = requireEntityId(thread.thread.id, 'thr', 'Expected retention thread id.');
+        const listedThreads = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'agent',
+            showAllModes: true,
+            groupView: 'workspace',
+            scope: 'workspace',
+            sort: 'latest',
+        });
+        const workspaceThread = listedThreads.threads.find((item) => item.id === threadId);
+        if (!workspaceThread?.workspaceFingerprint) {
+            throw new Error('Expected workspace fingerprint for retention thread.');
+        }
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'local',
+        });
+        if (!created.created) {
+            throw new Error(`Expected session creation success, received "${created.reason}".`);
+        }
+
+        const seededCheckpoints: EntityId<'ckpt'>[] = [];
+        for (let index = 0; index < 24; index += 1) {
+            const checkpoint = await checkpointStore.create({
+                profileId,
+                sessionId: created.session.id,
+                threadId,
+                workspaceFingerprint: workspaceThread.workspaceFingerprint,
+                executionTargetKey,
+                executionTargetKind: 'workspace',
+                executionTargetLabel: 'Retention Workspace',
+                createdByKind: index === 23 ? 'user' : 'system',
+                checkpointKind: index === 23 ? 'named' : 'auto',
+                ...(index === 23 ? { milestoneTitle: 'Pinned milestone' } : {}),
+                snapshotFileCount: 1,
+                topLevelTab: 'agent',
+                modeKey: 'code',
+                summary: index === 23 ? 'Pinned milestone' : `Checkpoint ${String(index)}`,
+            });
+            seededCheckpoints.push(checkpoint.id);
+
+            await checkpointSnapshotStore.replaceSnapshot({
+                checkpointId: checkpoint.id,
+                files: [
+                    {
+                        relativePath: `snap-${String(index)}.txt`,
+                        bytes: Buffer.from(`snapshot-${String(index)}`),
+                    },
+                ],
+            });
+
+            if (index < 3) {
+                await checkpointChangesetStore.replaceForCheckpoint({
+                    profileId,
+                    checkpointId: checkpoint.id,
+                    sessionId: created.session.id,
+                    threadId,
+                    executionTargetKey,
+                    executionTargetKind: 'workspace',
+                    executionTargetLabel: 'Retention Workspace',
+                    createdByKind: 'system',
+                    changesetKind: 'run_capture',
+                    summary: `Checkpoint ${String(index)} changed one file`,
+                    entries: [
+                        {
+                            relativePath: `snap-${String(index)}.txt`,
+                            changeKind: 'modified',
+                            beforeBytes: Buffer.from(`before-${String(index)}`),
+                            afterBytes: Buffer.from(`after-${String(index)}`),
+                        },
+                    ],
+                });
+            }
+
+            const createdAt = new Date(Date.UTC(2026, 2, 19, 12, 0, index)).toISOString();
+            sqlite
+                .prepare(`UPDATE checkpoints SET created_at = ?, updated_at = ? WHERE id = ?`)
+                .run(createdAt, createdAt, checkpoint.id);
+        }
+
+        const preview = await caller.checkpoint.previewCleanup({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(preview.milestoneCount).toBe(1);
+        expect(preview.protectedRecentCount).toBe(20);
+        expect(preview.eligibleCount).toBe(3);
+        expect(preview.candidates).toHaveLength(3);
+        expect(preview.candidates.map((candidate) => candidate.summary)).toEqual([
+            'Checkpoint 2',
+            'Checkpoint 1',
+            'Checkpoint 0',
+        ]);
+
+        const apply = await caller.checkpoint.applyCleanup({
+            profileId,
+            sessionId: created.session.id,
+            confirm: true,
+        });
+        expect(apply.cleanedUp).toBe(true);
+        expect(apply.deletedCount).toBe(3);
+        expect(apply.prunedBlobCount).toBeGreaterThan(0);
+        expect(readFileSync(path.join(workspacePath, 'keep.txt'), 'utf8')).toBe('keep me\n');
+
+        const afterCleanup = await caller.checkpoint.list({
+            profileId,
+            sessionId: created.session.id,
+        });
+        expect(afterCleanup.checkpoints).toHaveLength(21);
+        expect(afterCleanup.checkpoints.some((checkpoint) => checkpoint.summary === 'Pinned milestone')).toBe(true);
+        expect(afterCleanup.checkpoints.some((checkpoint) => checkpoint.summary === 'Checkpoint 0')).toBe(false);
+        expect(afterCleanup.checkpoints.some((checkpoint) => checkpoint.summary === 'Checkpoint 1')).toBe(false);
+        expect(afterCleanup.checkpoints.some((checkpoint) => checkpoint.summary === 'Checkpoint 2')).toBe(false);
 
         rmSync(workspacePath, { recursive: true, force: true });
     });

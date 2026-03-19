@@ -5,7 +5,7 @@ export type EntityIdPrefix =
     | 'mlink'
     | 'chg'
     | 'thr'
-    | 'wt'
+    | 'sb'
     | 'run'
     | 'msg'
     | 'part'

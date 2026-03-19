@@ -108,8 +108,8 @@ function createUtilsMock(calls: InvalidationCall[]) {
         mcp: {
             listServers: createInvalidateLeaf(calls, 'mcp.listServers'),
         },
-        worktree: {
-            list: createInvalidateLeaf(calls, 'worktree.list'),
+        sandbox: {
+            list: createInvalidateLeaf(calls, 'sandbox.list'),
         },
     };
 }

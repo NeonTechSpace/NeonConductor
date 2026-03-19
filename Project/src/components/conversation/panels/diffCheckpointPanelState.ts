@@ -1,4 +1,4 @@
-import type { DiffRecord } from '@/app/backend/persistence/types';
+import type { CheckpointRecord, DiffRecord } from '@/app/backend/persistence/types';
 import type { CheckpointRollbackPreview } from '@/app/backend/runtime/contracts';
 
 export function resolveSelectedDiffPath(input: {
@@ -61,4 +61,33 @@ export function buildRollbackWarningLines(
         tone: preview.isSharedTarget || preview.hasLaterForeignChanges ? 'warning' : 'isolated',
         lines,
     };
+}
+
+export function filterVisibleCheckpoints(
+    checkpoints: CheckpointRecord[],
+    milestonesOnly: boolean
+): CheckpointRecord[] {
+    if (!milestonesOnly) {
+        return checkpoints;
+    }
+
+    return checkpoints.filter((checkpoint) => checkpoint.checkpointKind === 'named');
+}
+
+export function describeRetentionDisposition(
+    retentionDisposition: CheckpointRecord['retentionDisposition']
+): string | null {
+    if (retentionDisposition === 'milestone') {
+        return 'Milestone';
+    }
+
+    if (retentionDisposition === 'protected_recent') {
+        return 'Protected recent';
+    }
+
+    if (retentionDisposition === 'eligible_for_cleanup') {
+        return 'Cleanup eligible';
+    }
+
+    return null;
 }

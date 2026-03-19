@@ -11,27 +11,25 @@ import type { TopLevelTab } from '@/shared/contracts';
 
 function buildWorkspaceScope(input: {
     selectedThread: ReturnType<typeof useThreadSidebarState>['visibleThreads'][number] | undefined;
-    selectedManagedWorktree:
-        | NonNullable<ReturnType<typeof useConversationQueries>['shellBootstrapQuery']['data']>['worktrees'][number]
+    selectedManagedSandbox:
+        | NonNullable<ReturnType<typeof useConversationQueries>['shellBootstrapQuery']['data']>['sandboxes'][number]
         | undefined;
     selectedWorkspaceRoot:
         | NonNullable<ReturnType<typeof useConversationQueries>['shellBootstrapQuery']['data']>['workspaceRoots'][number]
         | undefined;
 }) {
-    const { selectedManagedWorktree, selectedThread, selectedWorkspaceRoot } = input;
+    const { selectedManagedSandbox, selectedThread, selectedWorkspaceRoot } = input;
     if (!selectedThread?.workspaceFingerprint) {
         return { kind: 'detached' as const };
     }
-    if (selectedManagedWorktree) {
+    if (selectedManagedSandbox) {
         return {
-            kind: 'worktree' as const,
-            label: selectedManagedWorktree.label,
-            absolutePath: selectedManagedWorktree.absolutePath,
-            branch: selectedManagedWorktree.branch,
-            baseBranch: selectedManagedWorktree.baseBranch,
+            kind: 'sandbox' as const,
+            label: selectedManagedSandbox.label,
+            absolutePath: selectedManagedSandbox.absolutePath,
             baseWorkspaceLabel: selectedWorkspaceRoot?.label ?? selectedThread.workspaceFingerprint,
             baseWorkspacePath: selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
-            worktreeId: selectedManagedWorktree.id,
+            sandboxId: selectedManagedSandbox.id,
         };
     }
 
@@ -40,9 +38,7 @@ function buildWorkspaceScope(input: {
         label: selectedWorkspaceRoot?.label ?? selectedThread.workspaceFingerprint,
         absolutePath: selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
         executionEnvironmentMode:
-            selectedThread.executionEnvironmentMode === 'worktree' ? 'local' : selectedThread.executionEnvironmentMode,
-        ...(selectedThread.executionBranch ? { executionBranch: selectedThread.executionBranch } : {}),
-        ...(selectedThread.baseBranch ? { baseBranch: selectedThread.baseBranch } : {}),
+            selectedThread.executionEnvironmentMode === 'sandbox' ? 'local' : selectedThread.executionEnvironmentMode,
     };
 }
 
@@ -69,7 +65,7 @@ export function useConversationShellViewModel(input: {
             ...(selectedThread?.workspaceFingerprint
                 ? { workspaceFingerprint: selectedThread.workspaceFingerprint }
                 : {}),
-            ...(selectedThread?.worktreeId ? { worktreeId: selectedThread.worktreeId } : {}),
+            ...(selectedThread?.sandboxId ? { sandboxId: selectedThread.sandboxId } : {}),
         },
         {
             enabled: input.topLevelTab !== 'chat',
@@ -84,9 +80,9 @@ export function useConversationShellViewModel(input: {
             { label: workspaceRoot.label, absolutePath: workspaceRoot.absolutePath },
         ])
     );
-    const visibleManagedWorktrees = selectedThread?.workspaceFingerprint
-        ? (input.queries.shellBootstrapQuery.data?.worktrees ?? []).filter(
-              (worktree) => worktree.workspaceFingerprint === selectedThread.workspaceFingerprint
+    const visibleManagedSandboxes = selectedThread?.workspaceFingerprint
+        ? (input.queries.shellBootstrapQuery.data?.sandboxes ?? []).filter(
+              (sandbox) => sandbox.workspaceFingerprint === selectedThread.workspaceFingerprint
           )
         : [];
     const sessionRunSelection = useSessionRunSelection({
@@ -101,18 +97,18 @@ export function useConversationShellViewModel(input: {
     const selectedSession = sessionRunSelection.selection.resolvedSessionId
         ? sessionRunSelection.sessions.find((session) => session.id === sessionRunSelection.selection.resolvedSessionId)
         : undefined;
-    const selectedManagedWorktree =
+    const selectedManagedSandbox =
         selectedThread?.workspaceFingerprint &&
-        (selectedSession?.worktreeId ?? selectedThread.worktreeId)
-            ? input.queries.shellBootstrapQuery.data?.worktrees.find(
-                  (worktree) => worktree.id === (selectedSession?.worktreeId ?? selectedThread.worktreeId)
+        (selectedSession?.sandboxId ?? selectedThread.sandboxId)
+            ? input.queries.shellBootstrapQuery.data?.sandboxes.find(
+                  (sandbox) => sandbox.id === (selectedSession?.sandboxId ?? selectedThread.sandboxId)
               )
             : undefined;
-    const selectedThreadWorktreeId = isEntityId(selectedThread?.worktreeId, 'wt') ? selectedThread.worktreeId : undefined;
-    const selectedSessionWorktreeId = isEntityId(selectedSession?.worktreeId, 'wt')
-        ? selectedSession.worktreeId
+    const selectedThreadSandboxId = isEntityId(selectedThread?.sandboxId, 'sb') ? selectedThread.sandboxId : undefined;
+    const selectedSessionSandboxId = isEntityId(selectedSession?.sandboxId, 'sb')
+        ? selectedSession.sandboxId
         : undefined;
-    const effectiveSelectedWorktreeId = selectedSessionWorktreeId ?? selectedThreadWorktreeId;
+    const effectiveSelectedSandboxId = selectedSessionSandboxId ?? selectedThreadSandboxId;
     const selectedProviderStatus = input.runTargetState.selectedProviderIdForComposer
         ? input.runTargetState.providerById.get(input.runTargetState.selectedProviderIdForComposer)
         : undefined;
@@ -139,9 +135,9 @@ export function useConversationShellViewModel(input: {
         registryResolvedQuery,
         pendingPermissions,
         permissionWorkspaces,
-        visibleManagedWorktrees,
+        visibleManagedSandboxes,
         sessionRunSelection,
-        effectiveSelectedWorktreeId,
+        effectiveSelectedSandboxId,
         selectedProviderStatus,
         selectedModelLabel,
         selectedUsageSummary,
@@ -152,7 +148,7 @@ export function useConversationShellViewModel(input: {
         activeModeLabel,
         workspaceScope: buildWorkspaceScope({
             selectedThread,
-            selectedManagedWorktree,
+            selectedManagedSandbox,
             selectedWorkspaceRoot,
         }),
     };

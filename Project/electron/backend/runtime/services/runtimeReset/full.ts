@@ -39,7 +39,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         kiloModelRoutingPreferences,
         profiles,
         workspaceRoots,
-        worktrees,
+        sandboxes,
     ] = await Promise.all([
         db.selectFrom('settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
         db.selectFrom('app_context_settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
@@ -98,7 +98,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
             .selectFrom('workspace_roots')
             .select((eb) => eb.fn.count<number>('fingerprint').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('worktrees').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db.selectFrom('sandboxes').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
     ]);
 
     return {
@@ -135,7 +135,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         kiloModelRoutingPreferences: kiloModelRoutingPreferences?.count ?? 0,
         profiles: profiles?.count ?? 0,
         workspaceRoots: workspaceRoots?.count ?? 0,
-        worktrees: worktrees?.count ?? 0,
+        sandboxes: sandboxes?.count ?? 0,
     };
 }
 
@@ -163,7 +163,7 @@ async function applyFullReset(db: RuntimeResetDatabase): Promise<void> {
     await db.deleteFrom('provider_discovery_snapshots').execute();
     await db.deleteFrom('kilo_model_routing_preferences').execute();
     await db.deleteFrom('permission_policy_overrides').execute();
-    await db.deleteFrom('worktrees').execute();
+    await db.deleteFrom('sandboxes').execute();
     await db.deleteFrom('workspace_roots').execute();
     await db.deleteFrom('marketplace_packages').execute();
     await db.deleteFrom('provider_models').execute();

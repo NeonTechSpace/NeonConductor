@@ -39,7 +39,7 @@ export const EMPTY_COUNTS: RuntimeResetCounts = {
     kiloModelRoutingPreferences: 0,
     profiles: 0,
     workspaceRoots: 0,
-    worktrees: 0,
+    sandboxes: 0,
 };
 
 export interface PlannedRuntimeResetOperation {

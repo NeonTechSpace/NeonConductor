@@ -11,7 +11,7 @@ interface MemoryPanelProps {
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;
     retrievedMemory?: RetrievedMemorySummary;
@@ -95,7 +95,7 @@ export function MemoryPanel({
     topLevelTab,
     modeKey,
     workspaceFingerprint,
-    worktreeId,
+    sandboxId,
     threadId,
     runId,
     retrievedMemory,
@@ -107,7 +107,7 @@ export function MemoryPanel({
     const queryInput = {
         profileId,
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
         ...(threadId ? { threadId } : {}),
         ...(runId ? { runId } : {}),
         includeBroaderScopes,

@@ -224,17 +224,24 @@ describe('runtime contracts: core flows', () => {
         sqlite
             .prepare(
                 `
-                    INSERT INTO rulesets (id, profile_id, workspace_fingerprint, name, body_markdown, source, enabled, precedence, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO rulesets (
+                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
+                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_workspace_target',
                 profileId,
+                'ruleset.workspace.target',
+                'workspace',
                 'wsf_runtime_contracts',
                 'Workspace Rules',
                 '# Rules',
                 'user',
+                'workspace_file',
+                'manual',
                 1,
                 100,
                 now,
@@ -243,17 +250,23 @@ describe('runtime contracts: core flows', () => {
         sqlite
             .prepare(
                 `
-                    INSERT INTO skillfiles (id, profile_id, workspace_fingerprint, name, body_markdown, source, enabled, precedence, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO skillfiles (
+                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
+                        source_kind, enabled, precedence, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'skill_workspace_target',
                 profileId,
+                'skill.workspace.target',
+                'workspace',
                 'wsf_runtime_contracts',
                 'Workspace Skillfile',
                 '# Skill',
                 'user',
+                'workspace_file',
                 1,
                 100,
                 now,
@@ -262,17 +275,24 @@ describe('runtime contracts: core flows', () => {
         sqlite
             .prepare(
                 `
-                    INSERT INTO rulesets (id, profile_id, workspace_fingerprint, name, body_markdown, source, enabled, precedence, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO rulesets (
+                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
+                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_workspace_other',
                 profileId,
+                'ruleset.workspace.other',
+                'workspace',
                 'wsf_other_workspace',
                 'Other Rules',
                 '# Rules',
                 'user',
+                'workspace_file',
+                'manual',
                 1,
                 100,
                 now,
@@ -343,17 +363,24 @@ describe('runtime contracts: core flows', () => {
         sqlite
             .prepare(
                 `
-                    INSERT INTO rulesets (id, profile_id, workspace_fingerprint, name, body_markdown, source, enabled, precedence, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO rulesets (
+                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
+                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_profile_other',
                 otherProfileId,
+                'ruleset.profile.other',
+                'global',
                 null,
                 'Other Profile Rules',
                 '# Rules',
                 'user',
+                'global_file',
+                'manual',
                 1,
                 100,
                 now,
@@ -477,9 +504,9 @@ describe('runtime contracts: core flows', () => {
             writeFileSync(path.join(storagePaths.globalAssetsRoot, 'skills', 'sample.md'), '# skill');
             mkdirSync(storagePaths.logsRoot, { recursive: true });
             writeFileSync(path.join(storagePaths.logsRoot, '2026-03-08.ndjson'), '{"event":"log"}\n');
-            const managedWorktreePath = path.join(storagePaths.managedWorktreesRoot, 'workspace', 'feature-reset');
-            mkdirSync(managedWorktreePath, { recursive: true });
-            writeFileSync(path.join(managedWorktreePath, 'README.md'), 'managed worktree');
+            const managedSandboxPath = path.join(storagePaths.managedSandboxesRoot, 'workspace', 'feature-reset');
+            mkdirSync(managedSandboxPath, { recursive: true });
+            writeFileSync(path.join(managedSandboxPath, 'README.md'), 'managed sandbox');
 
             const now = new Date().toISOString();
             const threadWorkspaceFingerprint = sqlite
@@ -507,34 +534,32 @@ describe('runtime contracts: core flows', () => {
             sqlite
                 .prepare(
                     `
-                        INSERT INTO worktrees
+                        INSERT INTO sandboxes
                             (
                                 id,
                                 profile_id,
                                 workspace_fingerprint,
-                                branch,
-                                base_branch,
                                 absolute_path,
                                 path_key,
                                 label,
                                 status,
+                                creation_strategy,
                                 created_at,
                                 updated_at,
                                 last_used_at
                             )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `
                 )
                 .run(
-                    'wt_factory_reset',
+                    'sb_factory_reset',
                     profileId,
                     threadWorkspaceFingerprint.workspaceFingerprint,
-                    'feature-reset',
-                    'main',
-                    managedWorktreePath,
-                    process.platform === 'win32' ? managedWorktreePath.toLowerCase() : managedWorktreePath,
-                    'Factory Reset Worktree',
+                    managedSandboxPath,
+                    process.platform === 'win32' ? managedSandboxPath.toLowerCase() : managedSandboxPath,
+                    'Factory Reset Sandbox',
                     'ready',
+                    'copy',
                     now,
                     now,
                     now
@@ -548,11 +573,11 @@ describe('runtime contracts: core flows', () => {
             expect(result.resetProfileId).toBe(profileId);
             expect(result.counts.profiles).toBe(2);
             expect(result.counts.workspaceRoots).toBe(1);
-            expect(result.counts.worktrees).toBe(1);
+            expect(result.counts.sandboxes).toBe(1);
             expect(result.cleanupCounts.providerSecrets).toBe(1);
             expect(result.cleanupCounts.globalAssetEntries).toBeGreaterThan(0);
             expect(result.cleanupCounts.logEntries).toBeGreaterThan(0);
-            expect(result.cleanupCounts.managedWorktreeEntries).toBeGreaterThan(0);
+            expect(result.cleanupCounts.managedSandboxEntries).toBeGreaterThan(0);
 
             const snapshot = await caller.runtime.getDiagnosticSnapshot({ profileId: result.resetProfileId });
             expect(snapshot.profiles).toHaveLength(1);
@@ -564,17 +589,17 @@ describe('runtime contracts: core flows', () => {
             const remainingWorkspaceRoots = sqlite
                 .prepare('SELECT COUNT(*) AS count FROM workspace_roots')
                 .get() as { count: number };
-            const remainingWorktrees = sqlite.prepare('SELECT COUNT(*) AS count FROM worktrees').get() as {
+            const remainingSandboxes = sqlite.prepare('SELECT COUNT(*) AS count FROM sandboxes').get() as {
                 count: number;
             };
             const remainingProfiles = sqlite.prepare('SELECT COUNT(*) AS count FROM profiles').get() as { count: number };
             expect(remainingWorkspaceRoots.count).toBe(0);
-            expect(remainingWorktrees.count).toBe(0);
+            expect(remainingSandboxes.count).toBe(0);
             expect(remainingProfiles.count).toBe(1);
 
             expect(existsSync(storagePaths.globalAssetsRoot)).toBe(false);
             expect(existsSync(storagePaths.logsRoot)).toBe(false);
-            expect(existsSync(storagePaths.managedWorktreesRoot)).toBe(false);
+            expect(existsSync(storagePaths.managedSandboxesRoot)).toBe(false);
             expect(readFileSync(workspaceLocalRuntimeFile, 'utf8')).toBe('keep me');
             expect(() => sqlite.prepare('SELECT 1').get()).not.toThrow();
         } finally {

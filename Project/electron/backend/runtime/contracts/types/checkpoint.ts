@@ -4,11 +4,38 @@ import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common'
 
 export interface CheckpointCreateInput extends ProfileInput {
     runId: EntityId<'run'>;
+    milestoneTitle: string;
 }
 
 export interface CheckpointListInput extends ProfileInput {
     sessionId: EntityId<'sess'>;
 }
+
+export interface CheckpointPromoteMilestoneInput extends ProfileInput {
+    checkpointId: EntityId<'ckpt'>;
+    milestoneTitle: string;
+}
+
+export interface CheckpointRenameMilestoneInput extends ProfileInput {
+    checkpointId: EntityId<'ckpt'>;
+    milestoneTitle: string;
+}
+
+export interface CheckpointDeleteMilestoneInput extends ProfileInput {
+    checkpointId: EntityId<'ckpt'>;
+    confirm: boolean;
+}
+
+export interface CheckpointCleanupPreviewInput extends ProfileInput {
+    sessionId: EntityId<'sess'>;
+}
+
+export interface CheckpointCleanupApplyInput extends ProfileInput {
+    sessionId: EntityId<'sess'>;
+    confirm: boolean;
+}
+
+export type CheckpointRetentionDisposition = 'milestone' | 'protected_recent' | 'eligible_for_cleanup';
 
 export interface CheckpointRollbackPreviewInput extends ProfileInput {
     checkpointId: EntityId<'ckpt'>;
@@ -22,17 +49,49 @@ export interface ChangesetRecord {
     threadId: EntityId<'thr'>;
     runId?: EntityId<'run'>;
     executionTargetKey: string;
-    executionTargetKind: 'workspace' | 'worktree';
+    executionTargetKind: 'workspace' | 'sandbox';
     executionTargetLabel: string;
     changesetKind: 'run_capture' | 'revert';
     changeCount: number;
     summary: string;
 }
 
+export interface CheckpointCleanupCandidate {
+    checkpointId: EntityId<'ckpt'>;
+    checkpointKind: 'auto' | 'safety' | 'named';
+    milestoneTitle?: string;
+    summary: string;
+    snapshotFileCount: number;
+    changesetChangeCount: number;
+    createdAt: string;
+}
+
+export interface CheckpointCleanupPreview {
+    sessionId: EntityId<'sess'>;
+    retentionPolicy: {
+        protectedRecentPerSession: number;
+        protectedRecentPerExecutionTarget: number;
+    };
+    milestoneCount: number;
+    protectedRecentCount: number;
+    eligibleCount: number;
+    candidates: CheckpointCleanupCandidate[];
+}
+
+export interface CheckpointCleanupApplyResult {
+    cleanedUp: boolean;
+    reason?: 'confirmation_required';
+    message?: string;
+    preview: CheckpointCleanupPreview;
+    deletedCheckpointIds?: EntityId<'ckpt'>[];
+    deletedCount?: number;
+    prunedBlobCount?: number;
+}
+
 export interface CheckpointRollbackPreview {
     checkpointId: EntityId<'ckpt'>;
     executionTargetKey: string;
-    executionTargetKind: 'workspace' | 'worktree';
+    executionTargetKind: 'workspace' | 'sandbox';
     executionTargetLabel: string;
     isSharedTarget: boolean;
     hasLaterForeignChanges: boolean;

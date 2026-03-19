@@ -37,7 +37,7 @@ export interface StartRunInput {
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     requestId?: string;
     correlationId?: string;
     runtimeOptions: RuntimeRunOptions;

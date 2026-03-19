@@ -11,9 +11,7 @@ describe('execution environment draft state', () => {
             kind: 'workspace',
             label: 'Workspace',
             absolutePath: 'C:\\workspace',
-            executionEnvironmentMode: 'new_worktree',
-            executionBranch: 'feature/server',
-            baseBranch: 'main',
+            executionEnvironmentMode: 'new_sandbox',
         } as const;
 
         expect(
@@ -21,43 +19,35 @@ describe('execution environment draft state', () => {
                 workspaceScope: workspaceScope as never,
                 draftState: {
                     scopeKey: getExecutionEnvironmentScopeKey(workspaceScope as never),
-                    draftMode: 'worktree',
-                    branch: 'feature/draft',
-                    baseBranch: 'develop',
-                    selectedWorktreeId: 'wt_1',
+                    draftMode: 'sandbox',
+                    selectedSandboxId: 'sb_1',
                 },
             })
         ).toEqual({
             scopeKey: getExecutionEnvironmentScopeKey(workspaceScope as never),
-            draftMode: 'worktree',
-            branch: 'feature/draft',
-            baseBranch: 'develop',
-            selectedWorktreeId: 'wt_1',
+            draftMode: 'sandbox',
+            selectedSandboxId: 'sb_1',
         });
 
         expect(
             resolveExecutionEnvironmentDraftState({
                 workspaceScope: {
                     ...workspaceScope,
-                    executionBranch: 'feature/other',
+                    absolutePath: 'C:\\workspace-2',
                 } as never,
                 draftState: {
                     scopeKey: getExecutionEnvironmentScopeKey(workspaceScope as never),
-                    draftMode: 'worktree',
-                    branch: 'feature/draft',
-                    baseBranch: 'develop',
-                    selectedWorktreeId: 'wt_1',
+                    draftMode: 'sandbox',
+                    selectedSandboxId: 'sb_1',
                 },
             })
         ).toEqual({
             scopeKey: getExecutionEnvironmentScopeKey({
                 ...workspaceScope,
-                executionBranch: 'feature/other',
+                absolutePath: 'C:\\workspace-2',
             } as never),
-            draftMode: 'new_worktree',
-            branch: 'feature/other',
-            baseBranch: 'main',
-            selectedWorktreeId: '',
+            draftMode: 'new_sandbox',
+            selectedSandboxId: '',
         });
     });
 });

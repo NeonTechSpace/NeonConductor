@@ -208,7 +208,7 @@ function ThreadRow({
                                 {runSummary}
                             </span>
                         ) : null}
-                        {thread.worktreeId ? (
+                        {thread.sandboxId ? (
                             <span className='inline-flex items-center gap-1 rounded-full border border-border/70 px-2 py-0.5'>
                                 <GitBranch className='h-3 w-3' />
                                 Branch-linked

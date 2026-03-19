@@ -105,7 +105,7 @@ export class RunExecutionService {
             profileId: input.profileId,
             sessionId: input.sessionId,
             topLevelTab: input.topLevelTab,
-            allowLazyWorktreeCreation: input.topLevelTab !== 'chat',
+            allowLazySandboxCreation: input.topLevelTab !== 'chat',
         });
         if (!workspaceContext) {
             return {
@@ -113,10 +113,25 @@ export class RunExecutionService {
                 reason: 'not_found',
             };
         }
+        if (
+            input.topLevelTab !== 'chat' &&
+            (sessionThread.thread.executionEnvironmentMode === 'new_sandbox' ||
+                sessionThread.thread.executionEnvironmentMode === 'sandbox') &&
+            workspaceContext.kind !== 'sandbox'
+        ) {
+            return toRejectedStartResult(
+                {
+                    code: 'provider_request_unavailable',
+                    message:
+                        'Managed sandbox could not be materialized. Switch this thread to local workspace mode to allow shared-path editing.',
+                },
+                input
+            );
+        }
 
         const preparedResult = await prepareRunStart({
             ...input,
-            ...(workspaceContext.kind === 'worktree' ? { worktreeId: workspaceContext.worktree.id } : {}),
+            ...(workspaceContext.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
         });
         if (preparedResult.isErr()) {
             appLog.warn({
@@ -183,7 +198,7 @@ export class RunExecutionService {
             ...(prepared.kiloRouting ? { kiloRouting: prepared.kiloRouting } : {}),
             ...(prepared.runContext ? { contextMessages: prepared.runContext.messages } : {}),
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-            ...(workspaceContext.kind === 'worktree' ? { worktreeId: workspaceContext.worktree.id } : {}),
+            ...(workspaceContext.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
             workspaceContext,
             assistantMessageId: persisted.assistantMessageId,
             signal: controller.signal,

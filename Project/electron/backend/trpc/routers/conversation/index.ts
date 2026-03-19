@@ -136,9 +136,7 @@ export const conversationRouter = router({
             title: input.title,
             topLevelTab,
             ...(input.executionEnvironmentMode ? { executionEnvironmentMode: input.executionEnvironmentMode } : {}),
-            ...(input.executionBranch ? { executionBranch: input.executionBranch } : {}),
-            ...(input.baseBranch ? { baseBranch: input.baseBranch } : {}),
-            ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+            ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
         })).match((value) => value, (error) => raiseMappedTrpcError(error, toTrpcError));
 
         await runtimeEventLogService.append(

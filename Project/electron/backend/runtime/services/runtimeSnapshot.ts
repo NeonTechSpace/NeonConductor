@@ -20,7 +20,7 @@ import {
     tagStore,
     threadStore,
     toolStore,
-    worktreeStore,
+    sandboxStore,
     workspaceRootStore,
 } from '@/app/backend/persistence/stores';
 import type { RuntimeSnapshotV1 } from '@/app/backend/persistence/types';
@@ -83,7 +83,7 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
                 lastSequence,
                 conversations,
                 workspaceRoots,
-                worktrees,
+                sandboxes,
                 threads,
                 tags,
                 threadTags,
@@ -116,7 +116,7 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
                 runtimeEventStore.getLastSequence(),
                 conversationStore.listBuckets(profileId),
                 workspaceRootStore.listByProfile(profileId),
-                worktreeStore.listByProfile(profileId),
+                sandboxStore.listByProfile(profileId),
                 threadStore.list({
                     profileId,
                     activeTab: 'chat',
@@ -158,7 +158,7 @@ class RuntimeSnapshotServiceImpl implements RuntimeSnapshotService {
                 mcpServers,
                 conversations,
                 workspaceRoots,
-                worktrees,
+                sandboxes,
                 threads,
                 tags,
                 threadTags,

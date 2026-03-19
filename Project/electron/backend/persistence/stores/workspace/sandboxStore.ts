@@ -3,8 +3,8 @@ import path from 'node:path';
 import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
-import type { WorktreeRecord } from '@/app/backend/persistence/types';
-import { worktreeStatuses } from '@/app/backend/runtime/contracts';
+import type { SandboxRecord } from '@/app/backend/persistence/types';
+import { sandboxStatuses } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 
 function toPathKey(absolutePath: string): string {
@@ -15,114 +15,109 @@ function canonicalizeAbsolutePath(value: string): string {
     return path.resolve(value.trim());
 }
 
-function mapWorktreeRecord(row: {
+function mapSandboxRecord(row: {
     id: string;
     profile_id: string;
     workspace_fingerprint: string;
-    branch: string;
-    base_branch: string;
     absolute_path: string;
     label: string;
     status: string;
+    creation_strategy: 'clone' | 'copy';
     created_at: string;
     updated_at: string;
     last_used_at: string;
-}): WorktreeRecord {
+}): SandboxRecord {
     return {
-        id: parseEntityId(row.id, 'worktrees.id', 'wt'),
+        id: parseEntityId(row.id, 'sandboxes.id', 'sb'),
         profileId: row.profile_id,
         workspaceFingerprint: row.workspace_fingerprint,
-        branch: row.branch,
-        baseBranch: row.base_branch,
         absolutePath: row.absolute_path,
         label: row.label,
-        status: parseEnumValue(row.status, 'worktrees.status', worktreeStatuses),
+        status: parseEnumValue(row.status, 'sandboxes.status', sandboxStatuses),
+        creationStrategy: row.creation_strategy,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         lastUsedAt: row.last_used_at,
     };
 }
 
-export class WorktreeStore {
-    async listByProfile(profileId: string): Promise<WorktreeRecord[]> {
+export class SandboxStore {
+    async listByProfile(profileId: string): Promise<SandboxRecord[]> {
         const { db } = getPersistence();
         const rows = await db
-            .selectFrom('worktrees')
+            .selectFrom('sandboxes')
             .selectAll()
             .where('profile_id', '=', profileId)
             .where('status', '!=', 'removed')
             .orderBy('updated_at', 'desc')
-            .orderBy('branch', 'asc')
+            .orderBy('label', 'asc')
             .execute();
 
-        return rows.map(mapWorktreeRecord);
+        return rows.map(mapSandboxRecord);
     }
 
-    async listByWorkspace(profileId: string, workspaceFingerprint: string): Promise<WorktreeRecord[]> {
+    async listByWorkspace(profileId: string, workspaceFingerprint: string): Promise<SandboxRecord[]> {
         const { db } = getPersistence();
         const rows = await db
-            .selectFrom('worktrees')
+            .selectFrom('sandboxes')
             .selectAll()
             .where('profile_id', '=', profileId)
             .where('workspace_fingerprint', '=', workspaceFingerprint)
             .where('status', '!=', 'removed')
             .orderBy('updated_at', 'desc')
-            .orderBy('branch', 'asc')
+            .orderBy('label', 'asc')
             .execute();
 
-        return rows.map(mapWorktreeRecord);
+        return rows.map(mapSandboxRecord);
     }
 
-    async getById(profileId: string, worktreeId: string): Promise<WorktreeRecord | null> {
+    async getById(profileId: string, sandboxId: string): Promise<SandboxRecord | null> {
         const { db } = getPersistence();
         const row = await db
-            .selectFrom('worktrees')
+            .selectFrom('sandboxes')
             .selectAll()
             .where('profile_id', '=', profileId)
-            .where('id', '=', worktreeId)
+            .where('id', '=', sandboxId)
             .executeTakeFirst();
 
-        return row ? mapWorktreeRecord(row) : null;
+        return row ? mapSandboxRecord(row) : null;
     }
 
-    async getByBranch(profileId: string, workspaceFingerprint: string, branch: string): Promise<WorktreeRecord | null> {
+    async getByAbsolutePath(profileId: string, absolutePath: string): Promise<SandboxRecord | null> {
         const { db } = getPersistence();
+        const canonicalAbsolutePath = canonicalizeAbsolutePath(absolutePath);
         const row = await db
-            .selectFrom('worktrees')
+            .selectFrom('sandboxes')
             .selectAll()
             .where('profile_id', '=', profileId)
-            .where('workspace_fingerprint', '=', workspaceFingerprint)
-            .where('branch', '=', branch)
-            .where('status', '!=', 'removed')
+            .where('path_key', '=', toPathKey(canonicalAbsolutePath))
             .executeTakeFirst();
 
-        return row ? mapWorktreeRecord(row) : null;
+        return row ? mapSandboxRecord(row) : null;
     }
 
     async create(input: {
         profileId: string;
         workspaceFingerprint: string;
-        branch: string;
-        baseBranch: string;
         absolutePath: string;
         label: string;
-        status: WorktreeRecord['status'];
-    }): Promise<WorktreeRecord> {
+        status: SandboxRecord['status'];
+        creationStrategy: SandboxRecord['creationStrategy'];
+    }): Promise<SandboxRecord> {
         const { db } = getPersistence();
         const now = nowIso();
         const absolutePath = canonicalizeAbsolutePath(input.absolutePath);
         const inserted = await db
-            .insertInto('worktrees')
+            .insertInto('sandboxes')
             .values({
-                id: createEntityId('wt'),
+                id: createEntityId('sb'),
                 profile_id: input.profileId,
                 workspace_fingerprint: input.workspaceFingerprint,
-                branch: input.branch,
-                base_branch: input.baseBranch,
                 absolute_path: absolutePath,
                 path_key: toPathKey(absolutePath),
                 label: input.label,
                 status: input.status,
+                creation_strategy: input.creationStrategy,
                 created_at: now,
                 updated_at: now,
                 last_used_at: now,
@@ -130,105 +125,99 @@ export class WorktreeStore {
             .returningAll()
             .executeTakeFirstOrThrow();
 
-        return mapWorktreeRecord(inserted);
+        return mapSandboxRecord(inserted);
     }
 
     async update(input: {
         profileId: string;
-        worktreeId: string;
+        sandboxId: string;
         absolutePath?: string;
         label?: string;
-        status?: WorktreeRecord['status'];
-        branch?: string;
-        baseBranch?: string;
+        status?: SandboxRecord['status'];
         touchLastUsed?: boolean;
-    }): Promise<WorktreeRecord | null> {
+    }): Promise<SandboxRecord | null> {
         const { db } = getPersistence();
         const now = nowIso();
         const absolutePath = input.absolutePath ? canonicalizeAbsolutePath(input.absolutePath) : undefined;
         const updated = await db
-            .updateTable('worktrees')
+            .updateTable('sandboxes')
             .set({
                 ...(absolutePath ? { absolute_path: absolutePath, path_key: toPathKey(absolutePath) } : {}),
                 ...(input.label ? { label: input.label } : {}),
                 ...(input.status ? { status: input.status } : {}),
-                ...(input.branch ? { branch: input.branch } : {}),
-                ...(input.baseBranch ? { base_branch: input.baseBranch } : {}),
                 ...(input.touchLastUsed ? { last_used_at: now } : {}),
                 updated_at: now,
             })
             .where('profile_id', '=', input.profileId)
-            .where('id', '=', input.worktreeId)
+            .where('id', '=', input.sandboxId)
             .returningAll()
             .executeTakeFirst();
 
-        return updated ? mapWorktreeRecord(updated) : null;
+        return updated ? mapSandboxRecord(updated) : null;
     }
 
-    async delete(profileId: string, worktreeId: string): Promise<boolean> {
+    async delete(profileId: string, sandboxId: string): Promise<boolean> {
         const { db } = getPersistence();
         const deleted = await db
-            .deleteFrom('worktrees')
+            .deleteFrom('sandboxes')
             .where('profile_id', '=', profileId)
-            .where('id', '=', worktreeId)
+            .where('id', '=', sandboxId)
             .returning('id')
             .executeTakeFirst();
 
         return Boolean(deleted);
     }
 
-    async listOrphaned(profileId: string): Promise<WorktreeRecord[]> {
+    async listOrphaned(profileId: string): Promise<SandboxRecord[]> {
         const { db } = getPersistence();
         const rows = await db
-            .selectFrom('worktrees')
+            .selectFrom('sandboxes')
             .leftJoin('threads', (join) =>
-                join.onRef('threads.worktree_id', '=', 'worktrees.id').onRef('threads.profile_id', '=', 'worktrees.profile_id')
+                join.onRef('threads.sandbox_id', '=', 'sandboxes.id').onRef('threads.profile_id', '=', 'sandboxes.profile_id')
             )
             .leftJoin('sessions', (join) =>
-                join.onRef('sessions.worktree_id', '=', 'worktrees.id').onRef('sessions.profile_id', '=', 'worktrees.profile_id')
+                join.onRef('sessions.sandbox_id', '=', 'sandboxes.id').onRef('sessions.profile_id', '=', 'sandboxes.profile_id')
             )
             .select([
-                'worktrees.id',
-                'worktrees.profile_id',
-                'worktrees.workspace_fingerprint',
-                'worktrees.branch',
-                'worktrees.base_branch',
-                'worktrees.absolute_path',
-                'worktrees.label',
-                'worktrees.status',
-                'worktrees.created_at',
-                'worktrees.updated_at',
-                'worktrees.last_used_at',
+                'sandboxes.id',
+                'sandboxes.profile_id',
+                'sandboxes.workspace_fingerprint',
+                'sandboxes.absolute_path',
+                'sandboxes.label',
+                'sandboxes.status',
+                'sandboxes.creation_strategy',
+                'sandboxes.created_at',
+                'sandboxes.updated_at',
+                'sandboxes.last_used_at',
             ])
-            .where('worktrees.profile_id', '=', profileId)
-            .where('worktrees.status', '!=', 'removed')
+            .where('sandboxes.profile_id', '=', profileId)
+            .where('sandboxes.status', '!=', 'removed')
             .groupBy([
-                'worktrees.id',
-                'worktrees.profile_id',
-                'worktrees.workspace_fingerprint',
-                'worktrees.branch',
-                'worktrees.base_branch',
-                'worktrees.absolute_path',
-                'worktrees.label',
-                'worktrees.status',
-                'worktrees.created_at',
-                'worktrees.updated_at',
-                'worktrees.last_used_at',
+                'sandboxes.id',
+                'sandboxes.profile_id',
+                'sandboxes.workspace_fingerprint',
+                'sandboxes.absolute_path',
+                'sandboxes.label',
+                'sandboxes.status',
+                'sandboxes.creation_strategy',
+                'sandboxes.created_at',
+                'sandboxes.updated_at',
+                'sandboxes.last_used_at',
             ])
             .having((eb) => eb.fn.count('threads.id'), '=', 0)
             .having((eb) => eb.fn.count('sessions.id'), '=', 0)
             .execute();
 
-        return rows.map(mapWorktreeRecord);
+        return rows.map(mapSandboxRecord);
     }
 
-    async hasRunningSession(profileId: string, worktreeId: string): Promise<boolean> {
+    async hasRunningSession(profileId: string, sandboxId: string): Promise<boolean> {
         const { db } = getPersistence();
         const row = await db
             .selectFrom('sessions')
             .select('id')
             .where('profile_id', '=', profileId)
-            .where('worktree_id', '=', worktreeId)
+            .where('sandbox_id', '=', sandboxId)
             .where('run_status', '=', 'running')
             .executeTakeFirst();
 
@@ -236,5 +225,5 @@ export class WorktreeStore {
     }
 }
 
-export const worktreeStore = new WorktreeStore();
+export const sandboxStore = new SandboxStore();
 

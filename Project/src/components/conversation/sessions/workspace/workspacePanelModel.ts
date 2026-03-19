@@ -38,19 +38,15 @@ export type WorkspaceScope =
           kind: 'workspace';
           label: string;
           absolutePath: string;
-          executionEnvironmentMode: 'local' | 'new_worktree';
-          executionBranch?: string;
-          baseBranch?: string;
+          executionEnvironmentMode: 'local' | 'new_sandbox';
       }
     | {
-          kind: 'worktree';
+          kind: 'sandbox';
           label: string;
           absolutePath: string;
-          branch: string;
-          baseBranch: string;
           baseWorkspaceLabel: string;
           baseWorkspacePath: string;
-          worktreeId: string;
+          sandboxId: string;
       };
 
 export interface ProviderStatusSummary {

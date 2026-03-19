@@ -4,14 +4,14 @@ export type FirstPartyProviderId = (typeof firstPartyProviderIds)[number];
 export const conversationScopes = ['detached', 'workspace'] as const;
 export type ConversationScope = (typeof conversationScopes)[number];
 
-export const sessionKinds = ['local', 'worktree', 'cloud'] as const;
+export const sessionKinds = ['local', 'sandbox', 'cloud'] as const;
 export type SessionKind = (typeof sessionKinds)[number];
 
-export const executionEnvironmentModes = ['local', 'new_worktree', 'worktree'] as const;
+export const executionEnvironmentModes = ['local', 'new_sandbox', 'sandbox'] as const;
 export type ExecutionEnvironmentMode = (typeof executionEnvironmentModes)[number];
 
-export const worktreeStatuses = ['pending', 'ready', 'missing', 'broken', 'removed'] as const;
-export type WorktreeStatus = (typeof worktreeStatuses)[number];
+export const sandboxStatuses = ['pending', 'ready', 'missing', 'broken', 'removed'] as const;
+export type SandboxStatus = (typeof sandboxStatuses)[number];
 
 export const conversationThreadSorts = ['latest', 'alphabetical'] as const;
 export type ConversationThreadSort = (typeof conversationThreadSorts)[number];

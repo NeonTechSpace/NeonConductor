@@ -1,4 +1,7 @@
 import { Buffer } from 'node:buffer';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -187,6 +190,149 @@ describe('runtime contracts: conversation and runs', () => {
                     typeof entry === 'object' && entry !== null && (entry as { type?: unknown }).type === 'input_image'
             )
         ).toBe(true);
+    });
+
+    it('defaults mutating workspace threads to sticky sandboxes and lazily materializes them on first run', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-sandbox-default-'));
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => ({
+                    choices: [
+                        {
+                            message: {
+                                content: 'sandboxed run complete',
+                            },
+                        },
+                    ],
+                    usage: {
+                        prompt_tokens: 10,
+                        completion_tokens: 20,
+                        total_tokens: 30,
+                    },
+                }),
+            })
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-sandbox-default-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const agentThread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Agent sandbox default',
+        });
+        const orchestratorThread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'orchestrator',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Orchestrator sandbox default',
+        });
+        const chatThread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'chat',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Chat local default',
+        });
+
+        expect(agentThread.thread.executionEnvironmentMode).toBe('new_sandbox');
+        expect(orchestratorThread.thread.executionEnvironmentMode).toBe('new_sandbox');
+        expect(chatThread.thread.executionEnvironmentMode).toBe('local');
+        expect(agentThread.thread.sandboxId).toBeUndefined();
+
+        const session = await caller.session.create({
+            profileId,
+            threadId: requireEntityId(agentThread.thread.id, 'thr', 'Expected agent thread id.'),
+            kind: 'local',
+        });
+        expect(session.created).toBe(true);
+        if (!session.created) {
+            throw new Error('Expected sandbox-default session creation.');
+        }
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: session.session.id,
+            prompt: 'Create the sandbox now',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(true);
+        if (!started.accepted) {
+            throw new Error(`Expected sandbox-default run start, received "${started.reason}".`);
+        }
+        expect(started.thread?.executionEnvironmentMode).toBe('sandbox');
+        expect(started.thread?.sandboxId).toEqual(expect.stringMatching(/^sb_/));
+        await waitForRunStatus(caller, profileId, session.session.id, 'completed');
+
+        rmSync(workspacePath, { recursive: true, force: true });
+    });
+
+    it('fails closed when managed sandbox materialization is unavailable', async () => {
+        const caller = createCaller();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-sandbox-fail-closed-'));
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-sandbox-fail-closed-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const thread = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'workspace',
+            workspacePath,
+            title: 'Sandbox fail closed',
+        });
+        expect(thread.thread.executionEnvironmentMode).toBe('new_sandbox');
+
+        const session = await caller.session.create({
+            profileId,
+            threadId: requireEntityId(thread.thread.id, 'thr', 'Expected sandbox fail-closed thread id.'),
+            kind: 'local',
+        });
+        expect(session.created).toBe(true);
+        if (!session.created) {
+            throw new Error('Expected sandbox fail-closed session creation.');
+        }
+
+        rmSync(workspacePath, { recursive: true, force: true });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: session.session.id,
+            prompt: 'This should fail before touching the workspace',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started.accepted).toBe(false);
+        if (started.accepted) {
+            throw new Error('Expected sandbox materialization failure to reject the run.');
+        }
+        expect(started.reason).toBe('rejected');
+        expect(started.code).toBe('provider_request_unavailable');
+        expect(started.message).toContain('Managed sandbox');
     });
 
     it('supports session lifecycle with run execution, abort, and revert', async () => {

@@ -11,8 +11,8 @@ export function ProfileDangerSection({ isPending, onOpenFactoryReset }: ProfileD
             <div className='space-y-1'>
                 <p className='text-sm font-semibold'>Factory Reset App Data</p>
                 <p className='text-muted-foreground text-xs'>
-                    Deletes all app-owned chats, profiles, permissions, provider state, worktree records, managed
-                    worktrees, global assets, and logs. Workspace-local
+                    Deletes all app-owned chats, profiles, permissions, provider state, sandbox records, managed
+                    sandboxes, global assets, and logs. Workspace-local
                     <code className='mx-1 rounded bg-black/5 px-1 py-0.5 text-[11px]'>.neonconductor</code>
                     files inside your repositories are not removed.
                 </p>

@@ -218,7 +218,7 @@ async function ensureDirectory(pathToEnsure: string): Promise<void> {
 export async function resolveRegistryPaths(input: {
     profileId: string;
     workspaceFingerprint?: string;
-    worktreeId?: `wt_${string}`;
+    sandboxId?: `sb_${string}`;
 }): Promise<RegistryPaths> {
     const { globalAssetsRoot } = getPersistenceStoragePaths();
 
@@ -231,11 +231,11 @@ export async function resolveRegistryPaths(input: {
     const workspaceRoot = await workspaceContextService.resolveExplicit({
         profileId: input.profileId,
         workspaceFingerprint: input.workspaceFingerprint,
-        ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+        ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
     });
     return {
         globalAssetsRoot,
-        ...(workspaceRoot.kind === 'workspace' || workspaceRoot.kind === 'worktree'
+        ...(workspaceRoot.kind === 'workspace' || workspaceRoot.kind === 'sandbox'
             ? {
                   workspaceAssetsRoot: path.join(workspaceRoot.absolutePath, '.neonconductor'),
               }

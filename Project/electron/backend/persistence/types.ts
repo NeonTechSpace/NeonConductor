@@ -38,7 +38,7 @@ import type {
     SkillfileDefinition,
     TopLevelTab,
     ToolCapability,
-    WorktreeRecord as RuntimeWorktreeRecord,
+    SandboxRecord as RuntimeSandboxRecord,
     WorkspaceRootRecord as RuntimeWorkspaceRootRecord,
 } from '@/app/backend/runtime/contracts';
 import type {
@@ -53,8 +53,8 @@ export interface SessionSummaryRecord {
     profileId: string;
     conversationId: string;
     threadId: string;
-    kind: 'local' | 'worktree' | 'cloud';
-    worktreeId?: EntityId<'wt'>;
+    kind: 'local' | 'sandbox' | 'cloud';
+    sandboxId?: EntityId<'sb'>;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     runStatus: RunStatus;
     turnCount: number;
@@ -374,9 +374,7 @@ export interface ThreadRecord {
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     isFavorite: boolean;
     executionEnvironmentMode: ExecutionEnvironmentMode;
-    executionBranch?: string;
-    baseBranch?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     lastAssistantAt?: string;
     createdAt: string;
     updatedAt: string;
@@ -456,12 +454,14 @@ export interface CheckpointRecord {
     runId?: EntityId<'run'>;
     diffId?: string;
     workspaceFingerprint: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     executionTargetKey: string;
-    executionTargetKind: 'workspace' | 'worktree';
+    executionTargetKind: 'workspace' | 'sandbox';
     executionTargetLabel: string;
     createdByKind: 'system' | 'user';
     checkpointKind: 'auto' | 'safety' | 'named';
+    milestoneTitle?: string;
+    retentionDisposition?: 'milestone' | 'protected_recent' | 'eligible_for_cleanup';
     snapshotFileCount: number;
     topLevelTab: TopLevelTab;
     modeKey: string;
@@ -491,7 +491,7 @@ export interface CheckpointChangesetRecord {
     threadId: EntityId<'thr'>;
     runId?: EntityId<'run'>;
     executionTargetKey: string;
-    executionTargetKind: 'workspace' | 'worktree';
+    executionTargetKind: 'workspace' | 'sandbox';
     executionTargetLabel: string;
     createdByKind: 'system' | 'user';
     changesetKind: 'run_capture' | 'revert';
@@ -502,7 +502,7 @@ export interface CheckpointChangesetRecord {
     entries: CheckpointChangesetEntryRecord[];
 }
 
-export type WorktreeRecord = RuntimeWorktreeRecord;
+export type SandboxRecord = RuntimeSandboxRecord;
 
 export interface RunRecord {
     id: EntityId<'run'>;
@@ -755,7 +755,7 @@ export interface RuntimeSnapshotV1 {
     mcpServers: McpServerRecord[];
     conversations: ConversationRecord[];
     workspaceRoots: WorkspaceRootRecord[];
-    worktrees: WorktreeRecord[];
+    sandboxes: SandboxRecord[];
     threads: ThreadRecord[];
     tags: TagRecord[];
     threadTags: ThreadTagRecord[];

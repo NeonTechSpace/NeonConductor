@@ -14,8 +14,16 @@ import type {
 } from '@/app/backend/persistence/types';
 import type {
     ChangesetRecord,
+    CheckpointCleanupApplyInput,
+    CheckpointCleanupApplyResult,
+    CheckpointCleanupPreview,
+    CheckpointCleanupPreviewInput,
+    CheckpointCreateInput,
+    CheckpointDeleteMilestoneInput,
+    CheckpointPromoteMilestoneInput,
     CheckpointRevertChangesetInput,
     CheckpointRevertChangesetResult,
+    CheckpointRenameMilestoneInput,
     CheckpointRollbackInput,
     CheckpointRollbackPreview,
     CheckpointRollbackPreviewInput,
@@ -39,11 +47,22 @@ import {
     captureExecutionTargetSnapshot,
     restoreExecutionTargetSnapshot,
 } from '@/app/backend/runtime/services/checkpoint/nativeSnapshot';
+import {
+    applyRetentionDispositions,
+    buildCleanupPreview,
+    classifyCheckpointRetention,
+} from '@/app/backend/runtime/services/checkpoint/retention';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
 type CheckpointSummary = NonNullable<CheckpointRollbackResult['checkpoint']>;
 type SafetyCheckpointSummary = NonNullable<CheckpointRollbackResult['safetyCheckpoint']>;
 type RevertSafetyCheckpointSummary = NonNullable<CheckpointRevertChangesetResult['safetyCheckpoint']>;
+type CheckpointCreateResult = {
+    created: boolean;
+    reason?: 'not_found' | 'unsupported_run';
+    diff?: DiffRecord;
+    checkpoint?: CheckpointRecord;
+};
 
 function isMutatingCheckpointMode(topLevelTab: TopLevelTab, modeKey: string): boolean {
     return (topLevelTab === 'agent' && modeKey === 'code') || topLevelTab === 'orchestrator';
@@ -125,6 +144,7 @@ async function createNativeCheckpointForResolvedTarget(input: {
     workspaceContext: ResolvedWorkspaceContext;
     createdByKind: CheckpointRecord['createdByKind'];
     checkpointKind: CheckpointRecord['checkpointKind'];
+    milestoneTitle?: string;
     summary?: string;
 }): Promise<CheckpointRecord> {
     if (input.runId) {
@@ -152,12 +172,13 @@ async function createNativeCheckpointForResolvedTarget(input: {
         threadId: input.threadId,
         ...(input.runId ? { runId: input.runId } : {}),
         workspaceFingerprint: executionTarget.workspaceFingerprint,
-        ...(executionTarget.worktreeId ? { worktreeId: executionTarget.worktreeId } : {}),
+        ...(executionTarget.sandboxId ? { sandboxId: executionTarget.sandboxId } : {}),
         executionTargetKey: executionTarget.executionTargetKey,
         executionTargetKind: executionTarget.executionTargetKind,
         executionTargetLabel: executionTarget.executionTargetLabel,
         createdByKind: input.createdByKind,
         checkpointKind: input.checkpointKind,
+        ...(input.milestoneTitle ? { milestoneTitle: input.milestoneTitle } : {}),
         snapshotFileCount: snapshotResult.value.fileCount,
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
@@ -184,6 +205,40 @@ async function createNativeCheckpointForResolvedTarget(input: {
     }
 }
 
+async function loadRetentionState(input: {
+    profileId: string;
+    sessionId: CheckpointRecord['sessionId'];
+}): Promise<{
+    sessionCheckpoints: CheckpointRecord[];
+    decoratedCheckpoints: CheckpointRecord[];
+    preview: CheckpointCleanupPreview;
+}> {
+    const [sessionCheckpoints, profileCheckpoints] = await Promise.all([
+        checkpointStore.listBySession(input.profileId, input.sessionId),
+        checkpointStore.listByProfile(input.profileId),
+    ]);
+    const retentionDispositions = classifyCheckpointRetention({
+        sessionCheckpoints,
+        profileCheckpoints,
+    });
+    const decoratedCheckpoints = applyRetentionDispositions(sessionCheckpoints, retentionDispositions);
+    const changesetCounts = await checkpointChangesetStore.listChangeCountsByCheckpointIds(
+        input.profileId,
+        sessionCheckpoints.map((checkpoint) => checkpoint.id)
+    );
+
+    return {
+        sessionCheckpoints,
+        decoratedCheckpoints,
+        preview: buildCleanupPreview({
+            sessionId: input.sessionId,
+            checkpoints: sessionCheckpoints,
+            retentionDispositions,
+            changesetCounts,
+        }),
+    };
+}
+
 async function captureRunDiffArtifact(input: {
     profileId: string;
     sessionId: CheckpointRecord['sessionId'];
@@ -207,7 +262,7 @@ async function captureRunDiffArtifact(input: {
     }
 
     const artifact =
-        input.workspaceContext.kind === 'workspace' || input.workspaceContext.kind === 'worktree'
+        input.workspaceContext.kind === 'workspace' || input.workspaceContext.kind === 'sandbox'
             ? await captureGitWorkspaceArtifact({
                   workspaceRootPath: input.workspaceContext.absolutePath,
                   workspaceLabel: input.workspaceContext.label,
@@ -242,7 +297,7 @@ async function captureRunDiffArtifact(input: {
         profileId: input.profileId,
         checkpointId: existingCheckpoint.id,
         diffId: diff.id,
-        summary: summarizeDiff(diff),
+        summary: existingCheckpoint.checkpointKind === 'named' ? existingCheckpoint.summary : summarizeDiff(diff),
     });
 
     return {
@@ -325,7 +380,7 @@ async function assessRevertAction(input: {
     const workspaceContext = await workspaceContextService.resolveExplicit({
         profileId: input.profileId,
         workspaceFingerprint: input.checkpoint.workspaceFingerprint,
-        ...(input.checkpoint.worktreeId ? { worktreeId: input.checkpoint.worktreeId } : {}),
+        ...(input.checkpoint.sandboxId ? { sandboxId: input.checkpoint.sandboxId } : {}),
     });
     const executionTarget = resolveCheckpointExecutionTarget(workspaceContext);
     if (!executionTarget || executionTarget.executionTargetKey !== input.checkpoint.executionTargetKey) {
@@ -483,15 +538,13 @@ export async function listCheckpoints(input: {
     profileId: string;
     sessionId: CheckpointRecord['sessionId'];
 }): Promise<{ checkpoints: CheckpointRecord[] }> {
+    const retentionState = await loadRetentionState(input);
     return {
-        checkpoints: await checkpointStore.listBySession(input.profileId, input.sessionId),
+        checkpoints: retentionState.decoratedCheckpoints,
     };
 }
 
-export async function createCheckpoint(input: {
-    profileId: string;
-    runId: NonNullable<CheckpointRecord['runId']>;
-}): Promise<{ created: boolean; reason?: 'not_found' | 'unsupported_run'; diff?: DiffRecord; checkpoint?: CheckpointRecord }> {
+export async function createCheckpoint(input: CheckpointCreateInput): Promise<CheckpointCreateResult> {
     const run = await runStore.getById(input.runId);
     if (!run || run.profileId !== input.profileId) {
         return {
@@ -521,10 +574,45 @@ export async function createCheckpoint(input: {
         };
     }
 
+    const existingCheckpoint = await checkpointStore.getByRunId(input.profileId, run.id);
+    if (existingCheckpoint) {
+        const workspaceContext = await workspaceContextService.resolveForSession({
+            profileId: input.profileId,
+            sessionId: run.sessionId,
+            allowLazySandboxCreation: false,
+        });
+        const checkpoint =
+            existingCheckpoint.checkpointKind === 'named'
+                ? await checkpointStore.renameMilestone({
+                      profileId: input.profileId,
+                      checkpointId: existingCheckpoint.id,
+                      milestoneTitle: input.milestoneTitle,
+                  })
+                : await checkpointStore.updateMilestone({
+                      profileId: input.profileId,
+                      checkpointId: existingCheckpoint.id,
+                      milestoneTitle: input.milestoneTitle,
+                  });
+        const diffResult = await captureRunDiffArtifact({
+            profileId: input.profileId,
+            sessionId: run.sessionId,
+            runId: run.id,
+            topLevelTab: sessionThread.thread.topLevelTab,
+            modeKey,
+            workspaceContext: workspaceContext ?? { kind: 'detached' },
+        });
+
+        return {
+            created: Boolean(checkpoint),
+            ...(diffResult?.diff ? { diff: diffResult.diff } : {}),
+            checkpoint: checkpoint ?? diffResult?.checkpoint ?? existingCheckpoint,
+        };
+    }
+
     const workspaceContext = await workspaceContextService.resolveForSession({
         profileId: input.profileId,
         sessionId: run.sessionId,
-        allowLazyWorktreeCreation: false,
+        allowLazySandboxCreation: false,
     });
     if (!workspaceContext || !resolveCheckpointExecutionTarget(workspaceContext)) {
         return {
@@ -549,6 +637,8 @@ export async function createCheckpoint(input: {
         workspaceContext,
         createdByKind: 'user',
         checkpointKind: 'named',
+        milestoneTitle: input.milestoneTitle,
+        summary: input.milestoneTitle,
     });
 
     const diffResult = await captureRunDiffArtifact({
@@ -564,6 +654,117 @@ export async function createCheckpoint(input: {
         created: true,
         ...(diffResult?.diff ? { diff: diffResult.diff } : {}),
         checkpoint: diffResult?.checkpoint ?? checkpoint,
+    };
+}
+
+export async function promoteCheckpointToMilestone(input: CheckpointPromoteMilestoneInput): Promise<{
+    promoted: boolean;
+    reason?: 'not_found';
+    checkpoint?: CheckpointRecord;
+}> {
+    const checkpoint = await checkpointStore.updateMilestone(input);
+    if (!checkpoint) {
+        return {
+            promoted: false,
+            reason: 'not_found',
+        };
+    }
+
+    return {
+        promoted: true,
+        checkpoint,
+    };
+}
+
+export async function renameCheckpointMilestone(input: CheckpointRenameMilestoneInput): Promise<{
+    renamed: boolean;
+    reason?: 'not_found';
+    checkpoint?: CheckpointRecord;
+}> {
+    const checkpoint = await checkpointStore.renameMilestone(input);
+    if (!checkpoint) {
+        return {
+            renamed: false,
+            reason: 'not_found',
+        };
+    }
+
+    return {
+        renamed: true,
+        checkpoint,
+    };
+}
+
+export async function deleteCheckpointMilestone(input: CheckpointDeleteMilestoneInput): Promise<{
+    deleted: boolean;
+    reason?: 'confirmation_required' | 'not_found' | 'not_milestone';
+    prunedBlobCount?: number;
+    checkpoint?: CheckpointSummary;
+}> {
+    const checkpoint = await checkpointStore.getById(input.profileId, input.checkpointId);
+    if (!checkpoint) {
+        return {
+            deleted: false,
+            reason: 'not_found',
+        };
+    }
+
+    if (checkpoint.checkpointKind !== 'named') {
+        return {
+            deleted: false,
+            reason: 'not_milestone',
+        };
+    }
+
+    if (!input.confirm) {
+        return {
+            deleted: false,
+            reason: 'confirmation_required',
+        };
+    }
+
+    const deleted = await checkpointStore.deleteById(input.profileId, input.checkpointId);
+    const prunedBlobCount = deleted ? await checkpointSnapshotStore.pruneUnreferencedBlobs() : 0;
+
+    return {
+        deleted,
+        ...(deleted ? { checkpoint: checkpointSummary(checkpoint) } : {}),
+        ...(deleted ? { prunedBlobCount } : {}),
+    };
+}
+
+export async function previewCheckpointCleanup(
+    input: CheckpointCleanupPreviewInput
+): Promise<CheckpointCleanupPreview> {
+    const retentionState = await loadRetentionState(input);
+    return retentionState.preview;
+}
+
+export async function applyCheckpointCleanup(
+    input: CheckpointCleanupApplyInput
+): Promise<CheckpointCleanupApplyResult> {
+    const retentionState = await loadRetentionState(input);
+    if (!input.confirm) {
+        return {
+            cleanedUp: false,
+            reason: 'confirmation_required',
+            message: 'Checkpoint cleanup requires explicit confirmation.',
+            preview: retentionState.preview,
+        };
+    }
+
+    const deletedCheckpointIds = await checkpointStore.deleteByIds(
+        input.profileId,
+        retentionState.preview.candidates.map((candidate) => candidate.checkpointId)
+    );
+    const prunedBlobCount = await checkpointSnapshotStore.pruneUnreferencedBlobs();
+
+    return {
+        cleanedUp: true,
+        preview: retentionState.preview,
+        deletedCheckpointIds,
+        deletedCount: deletedCheckpointIds.length,
+        prunedBlobCount,
     };
 }
 
@@ -649,7 +850,7 @@ export async function rollbackCheckpoint(input: CheckpointRollbackInput): Promis
     const workspaceContext = await workspaceContextService.resolveExplicit({
         profileId: input.profileId,
         workspaceFingerprint: checkpoint.workspaceFingerprint,
-        ...(checkpoint.worktreeId ? { worktreeId: checkpoint.worktreeId } : {}),
+        ...(checkpoint.sandboxId ? { sandboxId: checkpoint.sandboxId } : {}),
     });
     const executionTarget = resolveCheckpointExecutionTarget(workspaceContext);
     if (!executionTarget || executionTarget.executionTargetKey !== checkpoint.executionTargetKey) {
@@ -758,7 +959,7 @@ export async function revertCheckpointChangeset(
     const workspaceContext = await workspaceContextService.resolveExplicit({
         profileId: input.profileId,
         workspaceFingerprint: checkpoint.workspaceFingerprint,
-        ...(checkpoint.worktreeId ? { worktreeId: checkpoint.worktreeId } : {}),
+        ...(checkpoint.sandboxId ? { sandboxId: checkpoint.sandboxId } : {}),
     });
     const executionTarget = resolveCheckpointExecutionTarget(workspaceContext);
     if (!executionTarget || executionTarget.executionTargetKey !== checkpoint.executionTargetKey) {

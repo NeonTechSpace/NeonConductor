@@ -16,7 +16,7 @@ export * from '@/app/backend/runtime/contracts/parsers/runtime';
 export * from '@/app/backend/runtime/contracts/parsers/context';
 export * from '@/app/backend/runtime/contracts/parsers/composer';
 export * from '@/app/backend/runtime/contracts/parsers/registry';
-export * from '@/app/backend/runtime/contracts/parsers/worktree';
+export * from '@/app/backend/runtime/contracts/parsers/sandbox';
 export * from '@/app/backend/runtime/contracts/parsers/memory';
 
 export const unknownInputSchema = arktype('unknown');

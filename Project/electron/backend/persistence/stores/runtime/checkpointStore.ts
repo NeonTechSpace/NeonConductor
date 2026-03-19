@@ -13,12 +13,13 @@ function mapCheckpointRecord(row: {
     run_id: string | null;
     diff_id: string | null;
     workspace_fingerprint: string;
-    worktree_id: string | null;
+    sandbox_id: string | null;
     execution_target_key: string;
     execution_target_kind: string;
     execution_target_label: string;
     created_by_kind: string;
     checkpoint_kind: string;
+    milestone_title: string | null;
     snapshot_file_count: number;
     top_level_tab: string;
     mode_key: string;
@@ -34,14 +35,15 @@ function mapCheckpointRecord(row: {
         ...(row.run_id ? { runId: parseEntityId(row.run_id, 'checkpoints.run_id', 'run') } : {}),
         ...(row.diff_id ? { diffId: row.diff_id } : {}),
         workspaceFingerprint: row.workspace_fingerprint,
-        ...(row.worktree_id ? { worktreeId: parseEntityId(row.worktree_id, 'checkpoints.worktree_id', 'wt') } : {}),
+        ...(row.sandbox_id ? { sandboxId: parseEntityId(row.sandbox_id, 'checkpoints.sandbox_id', 'sb') } : {}),
         executionTargetKey: row.execution_target_key,
         executionTargetKind:
-            row.execution_target_kind === 'worktree' ? 'worktree' : 'workspace',
+            row.execution_target_kind === 'sandbox' ? 'sandbox' : 'workspace',
         executionTargetLabel: row.execution_target_label,
         createdByKind: row.created_by_kind === 'user' ? 'user' : 'system',
         checkpointKind:
             row.checkpoint_kind === 'safety' ? 'safety' : row.checkpoint_kind === 'named' ? 'named' : 'auto',
+        ...(row.milestone_title ? { milestoneTitle: row.milestone_title } : {}),
         snapshotFileCount: row.snapshot_file_count,
         topLevelTab: parseEnumValue(row.top_level_tab, 'checkpoints.top_level_tab', topLevelTabs),
         modeKey: row.mode_key,
@@ -59,12 +61,13 @@ const CHECKPOINT_COLUMNS = [
     'run_id',
     'diff_id',
     'workspace_fingerprint',
-    'worktree_id',
+    'sandbox_id',
     'execution_target_key',
     'execution_target_kind',
     'execution_target_label',
     'created_by_kind',
     'checkpoint_kind',
+    'milestone_title',
     'snapshot_file_count',
     'top_level_tab',
     'mode_key',
@@ -80,12 +83,13 @@ interface CheckpointInsertInput {
     runId?: CheckpointRecord['runId'];
     diffId?: string;
     workspaceFingerprint: string;
-    worktreeId?: CheckpointRecord['worktreeId'];
+    sandboxId?: CheckpointRecord['sandboxId'];
     executionTargetKey: string;
     executionTargetKind: CheckpointRecord['executionTargetKind'];
     executionTargetLabel: string;
     createdByKind: CheckpointRecord['createdByKind'];
     checkpointKind: CheckpointRecord['checkpointKind'];
+    milestoneTitle?: string;
     snapshotFileCount: number;
     topLevelTab: CheckpointRecord['topLevelTab'];
     modeKey: string;
@@ -113,12 +117,13 @@ export class CheckpointStore {
                 run_id: input.runId ?? null,
                 diff_id: input.diffId ?? null,
                 workspace_fingerprint: input.workspaceFingerprint,
-                worktree_id: input.worktreeId ?? null,
+                sandbox_id: input.sandboxId ?? null,
                 execution_target_key: input.executionTargetKey,
                 execution_target_kind: input.executionTargetKind,
                 execution_target_label: input.executionTargetLabel,
                 created_by_kind: input.createdByKind,
                 checkpoint_kind: input.checkpointKind,
+                milestone_title: input.milestoneTitle ?? null,
                 snapshot_file_count: input.snapshotFileCount,
                 top_level_tab: input.topLevelTab,
                 mode_key: input.modeKey,
@@ -148,6 +153,50 @@ export class CheckpointStore {
             })
             .where('profile_id', '=', input.profileId)
             .where('id', '=', input.checkpointId)
+            .returning(CHECKPOINT_COLUMNS)
+            .executeTakeFirst();
+
+        return updated ? mapCheckpointRecord(updated) : null;
+    }
+
+    async updateMilestone(input: {
+        profileId: string;
+        checkpointId: CheckpointRecord['id'];
+        milestoneTitle: string;
+    }): Promise<CheckpointRecord | null> {
+        const { db } = getPersistence();
+        const updated = await db
+            .updateTable('checkpoints')
+            .set({
+                checkpoint_kind: 'named',
+                milestone_title: input.milestoneTitle,
+                summary: input.milestoneTitle,
+                updated_at: nowIso(),
+            })
+            .where('profile_id', '=', input.profileId)
+            .where('id', '=', input.checkpointId)
+            .returning(CHECKPOINT_COLUMNS)
+            .executeTakeFirst();
+
+        return updated ? mapCheckpointRecord(updated) : null;
+    }
+
+    async renameMilestone(input: {
+        profileId: string;
+        checkpointId: CheckpointRecord['id'];
+        milestoneTitle: string;
+    }): Promise<CheckpointRecord | null> {
+        const { db } = getPersistence();
+        const updated = await db
+            .updateTable('checkpoints')
+            .set({
+                milestone_title: input.milestoneTitle,
+                summary: input.milestoneTitle,
+                updated_at: nowIso(),
+            })
+            .where('profile_id', '=', input.profileId)
+            .where('id', '=', input.checkpointId)
+            .where('checkpoint_kind', '=', 'named')
             .returning(CHECKPOINT_COLUMNS)
             .executeTakeFirst();
 
@@ -230,6 +279,22 @@ export class CheckpointStore {
             .executeTakeFirst();
 
         return Boolean(deleted);
+    }
+
+    async deleteByIds(profileId: string, checkpointIds: CheckpointRecord['id'][]): Promise<CheckpointRecord['id'][]> {
+        if (checkpointIds.length === 0) {
+            return [];
+        }
+
+        const { db } = getPersistence();
+        const deletedRows = await db
+            .deleteFrom('checkpoints')
+            .where('profile_id', '=', profileId)
+            .where('id', 'in', checkpointIds)
+            .returning('id')
+            .execute();
+
+        return deletedRows.map((row) => parseEntityId(row.id, 'checkpoints.id', 'ckpt'));
     }
 }
 

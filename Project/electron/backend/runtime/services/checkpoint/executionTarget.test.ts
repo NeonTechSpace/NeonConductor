@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveCheckpointExecutionTarget } from '@/app/backend/runtime/services/checkpoint/executionTarget';
 
 describe('resolveCheckpointExecutionTarget', () => {
-    it('distinguishes base workspace targets from worktree targets', () => {
+    it('distinguishes base workspace targets from sandbox targets', () => {
         const workspaceTarget = resolveCheckpointExecutionTarget({
             kind: 'workspace',
             workspaceFingerprint: 'ws_1',
@@ -11,21 +11,20 @@ describe('resolveCheckpointExecutionTarget', () => {
             absolutePath: 'C:/repo',
             executionEnvironmentMode: 'local',
         });
-        const worktreeTarget = resolveCheckpointExecutionTarget({
-            kind: 'worktree',
+        const sandboxTarget = resolveCheckpointExecutionTarget({
+            kind: 'sandbox',
             workspaceFingerprint: 'ws_1',
-            label: 'Feature Worktree',
-            absolutePath: 'C:/repo/.worktrees/feature',
-            executionEnvironmentMode: 'worktree',
-            worktree: {
-                id: 'wt_1',
+            label: 'Feature Sandbox',
+            absolutePath: 'C:/repo/.sandboxes/feature',
+            executionEnvironmentMode: 'sandbox',
+            sandbox: {
+                id: 'sb_1',
                 profileId: 'profile_local_default',
                 workspaceFingerprint: 'ws_1',
-                branch: 'feature/native-checkpoints',
-                baseBranch: 'main',
-                absolutePath: 'C:/repo/.worktrees/feature',
-                label: 'Feature Worktree',
+                absolutePath: 'C:/repo/.sandboxes/feature',
+                label: 'Feature Sandbox',
                 status: 'ready',
+                creationStrategy: 'copy',
                 createdAt: '2026-03-18T10:00:00.000Z',
                 updatedAt: '2026-03-18T10:00:00.000Z',
                 lastUsedAt: '2026-03-18T10:00:00.000Z',
@@ -37,15 +36,15 @@ describe('resolveCheckpointExecutionTarget', () => {
         });
 
         expect(workspaceTarget).not.toBeNull();
-        expect(worktreeTarget).not.toBeNull();
-        if (!workspaceTarget || !worktreeTarget) {
+        expect(sandboxTarget).not.toBeNull();
+        if (!workspaceTarget || !sandboxTarget) {
             throw new Error('Expected execution targets to resolve.');
         }
 
         expect(workspaceTarget.executionTargetKind).toBe('workspace');
-        expect(worktreeTarget.executionTargetKind).toBe('worktree');
-        expect(workspaceTarget.executionTargetKey).not.toBe(worktreeTarget.executionTargetKey);
+        expect(sandboxTarget.executionTargetKind).toBe('sandbox');
+        expect(workspaceTarget.executionTargetKey).not.toBe(sandboxTarget.executionTargetKey);
         expect(workspaceTarget.executionTargetKey.startsWith('workspace:')).toBe(true);
-        expect(worktreeTarget.executionTargetKey.startsWith('worktree:')).toBe(true);
+        expect(sandboxTarget.executionTargetKey.startsWith('sandbox:')).toBe(true);
     });
 });

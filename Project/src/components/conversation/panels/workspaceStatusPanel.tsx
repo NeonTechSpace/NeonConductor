@@ -10,22 +10,18 @@ interface WorkspaceStatusPanelProps {
               kind: 'detached';
           }
         | {
-              kind: 'workspace';
-              label: string;
-              absolutePath: string;
-              executionEnvironmentMode: 'local' | 'new_worktree';
-              executionBranch?: string;
-              baseBranch?: string;
-          }
-        | {
-              kind: 'worktree';
-              label: string;
-              absolutePath: string;
-              branch: string;
-              baseBranch: string;
-              baseWorkspaceLabel: string;
-              baseWorkspacePath: string;
-              worktreeId: string;
+          kind: 'workspace';
+          label: string;
+          absolutePath: string;
+          executionEnvironmentMode: 'local' | 'new_sandbox';
+      }
+    | {
+          kind: 'sandbox';
+          label: string;
+          absolutePath: string;
+          baseWorkspaceLabel: string;
+          baseWorkspacePath: string;
+          sandboxId: string;
           };
     provider:
         | {
@@ -106,17 +102,17 @@ export function WorkspaceStatusPanel({
                 value={
                     workspaceScope.kind === 'detached'
                         ? 'Detached'
-                        : workspaceScope.kind === 'worktree'
-                          ? workspaceScope.branch
+                        : workspaceScope.kind === 'sandbox'
+                          ? workspaceScope.label
                           : workspaceScope.label
                 }
                 detail={
                     workspaceScope.kind === 'detached'
                         ? `${executionPreset} preset · detached chat has no file authority`
-                        : workspaceScope.kind === 'worktree'
-                          ? `${executionPreset} preset · managed worktree · ${workspaceScope.absolutePath}`
-                          : workspaceScope.executionEnvironmentMode === 'new_worktree'
-                            ? `${executionPreset} preset · queued managed worktree from ${workspaceScope.absolutePath}`
+                        : workspaceScope.kind === 'sandbox'
+                          ? `${executionPreset} preset · managed sandbox · ${workspaceScope.absolutePath}`
+                          : workspaceScope.executionEnvironmentMode === 'new_sandbox'
+                            ? `${executionPreset} preset · queued managed sandbox from ${workspaceScope.absolutePath}`
                             : `${executionPreset} preset · local workspace · ${workspaceScope.absolutePath}`
                 }
             />

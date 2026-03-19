@@ -40,7 +40,7 @@ export async function runToTerminalState(input: {
     kiloRouting?: ResolvedKiloRouting;
     contextMessages?: RunContextMessage[];
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     workspaceContext: ResolvedWorkspaceContext;
     assistantMessageId: EntityId<'msg'>;
     signal: AbortSignal;

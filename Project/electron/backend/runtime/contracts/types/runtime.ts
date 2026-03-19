@@ -10,7 +10,7 @@ import type {
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
-import type { WorktreeRecord } from '@/app/backend/runtime/contracts/types/worktree';
+import type { SandboxRecord } from '@/app/backend/runtime/contracts/types/sandbox';
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 export interface StreamEventEnvelope {
@@ -61,7 +61,7 @@ export interface RuntimeShellBootstrap {
     executionPreset: ExecutionPreset;
     workspaceRoots: WorkspaceRootRecord[];
     workspacePreferences: WorkspacePreferenceRecord[];
-    worktrees: WorktreeRecord[];
+    sandboxes: SandboxRecord[];
     defaults: {
         providerId: string;
         modelId: string;
@@ -124,7 +124,7 @@ export interface RuntimeResetCounts {
     kiloModelRoutingPreferences: number;
     profiles: number;
     workspaceRoots: number;
-    worktrees: number;
+    sandboxes: number;
 }
 
 export interface RuntimeResetResult {
@@ -136,7 +136,7 @@ export interface RuntimeResetResult {
 
 export interface RuntimeFactoryResetCleanupCounts {
     providerSecrets: number;
-    managedWorktreeEntries: number;
+    managedSandboxEntries: number;
     globalAssetEntries: number;
     logEntries: number;
 }

@@ -201,7 +201,7 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
 
     invalidations.push(toVoidPromise(utils.profile.getExecutionPreset.invalidate()));
     invalidations.push(toVoidPromise(utils.runtime.listWorkspaceRoots.invalidate()));
-    invalidations.push(toVoidPromise(utils.worktree.list.invalidate()));
+    invalidations.push(toVoidPromise(utils.sandbox.list.invalidate()));
     invalidations.push(toVoidPromise(utils.session.getAttachedRules.invalidate()));
     invalidations.push(toVoidPromise(utils.session.getAttachedSkills.invalidate()));
     invalidations.push(toVoidPromise(utils.conversation.getEditPreference.invalidate()));

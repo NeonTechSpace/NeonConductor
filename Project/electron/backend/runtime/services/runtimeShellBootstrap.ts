@@ -1,4 +1,4 @@
-import { runtimeEventStore, tagStore, workspaceRootStore, worktreeStore } from '@/app/backend/persistence/stores';
+import { runtimeEventStore, tagStore, workspaceRootStore, sandboxStore } from '@/app/backend/persistence/stores';
 import { providerManagementService } from '@/app/backend/providers/service';
 import type { RuntimeShellBootstrap } from '@/app/backend/runtime/contracts';
 import { getExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
@@ -20,7 +20,7 @@ class RuntimeShellBootstrapServiceImpl implements RuntimeShellBootstrapService {
             executionPreset,
             workspaceRoots,
             workspacePreferences,
-            worktrees,
+            sandboxes,
         ] =
             await Promise.all([
             runtimeEventStore.getLastSequence(),
@@ -32,7 +32,7 @@ class RuntimeShellBootstrapServiceImpl implements RuntimeShellBootstrapService {
             getExecutionPreset(profileId),
             workspaceRootStore.listByProfile(profileId),
             listWorkspacePreferences(profileId),
-            worktreeStore.listByProfile(profileId),
+            sandboxStore.listByProfile(profileId),
         ]);
 
         return {
@@ -45,7 +45,7 @@ class RuntimeShellBootstrapServiceImpl implements RuntimeShellBootstrapService {
             executionPreset,
             workspaceRoots,
             workspacePreferences,
-            worktrees,
+            sandboxes,
         };
     }
 }

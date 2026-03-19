@@ -1,18 +1,28 @@
 import {
+    checkpointCleanupApplyInputSchema,
+    checkpointCleanupPreviewInputSchema,
     checkpointCreateInputSchema,
+    checkpointDeleteMilestoneInputSchema,
     checkpointListInputSchema,
+    checkpointPromoteMilestoneInputSchema,
+    checkpointRenameMilestoneInputSchema,
     checkpointRevertChangesetInputSchema,
     checkpointRollbackInputSchema,
     checkpointRollbackPreviewInputSchema,
 } from '@/app/backend/runtime/contracts';
 import {
+    applyCheckpointCleanup,
     createCheckpoint,
+    deleteCheckpointMilestone,
     getRollbackPreview,
     listCheckpoints,
+    previewCheckpointCleanup,
+    promoteCheckpointToMilestone,
+    renameCheckpointMilestone,
     revertCheckpointChangeset,
     rollbackCheckpoint,
 } from '@/app/backend/runtime/services/checkpoint/service';
-import { runtimeStatusEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
+import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 
@@ -21,16 +31,15 @@ export const checkpointRouter = router({
         const result = await createCheckpoint(input);
         if (result.checkpoint) {
             await runtimeEventLogService.append(
-                runtimeUpsertEvent({
+                runtimeStatusEvent({
                     entityType: 'checkpoint',
                     domain: 'checkpoint',
                     entityId: result.checkpoint.id,
-                    eventType: 'checkpoint.created',
+                    eventType: 'checkpoint.milestone_saved',
                     payload: {
                         profileId: input.profileId,
+                        sessionId: result.checkpoint.sessionId,
                         runId: input.runId,
-                        checkpoint: result.checkpoint,
-                        diff: result.diff ?? null,
                         requestId: ctx.requestId,
                         correlationId: ctx.correlationId,
                     },
@@ -42,6 +51,101 @@ export const checkpointRouter = router({
     }),
     list: publicProcedure.input(checkpointListInputSchema).query(async ({ input }) => {
         return listCheckpoints(input);
+    }),
+    promoteToMilestone: publicProcedure
+        .input(checkpointPromoteMilestoneInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const result = await promoteCheckpointToMilestone(input);
+            if (result.checkpoint) {
+                await runtimeEventLogService.append(
+                    runtimeStatusEvent({
+                        entityType: 'checkpoint',
+                        domain: 'checkpoint',
+                        entityId: result.checkpoint.id,
+                        eventType: 'checkpoint.milestone_promoted',
+                        payload: {
+                            profileId: input.profileId,
+                            sessionId: result.checkpoint.sessionId,
+                            checkpointId: result.checkpoint.id,
+                            requestId: ctx.requestId,
+                            correlationId: ctx.correlationId,
+                        },
+                    })
+                );
+            }
+
+            return result;
+        }),
+    renameMilestone: publicProcedure
+        .input(checkpointRenameMilestoneInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const result = await renameCheckpointMilestone(input);
+            if (result.checkpoint) {
+                await runtimeEventLogService.append(
+                    runtimeStatusEvent({
+                        entityType: 'checkpoint',
+                        domain: 'checkpoint',
+                        entityId: result.checkpoint.id,
+                        eventType: 'checkpoint.milestone_renamed',
+                        payload: {
+                            profileId: input.profileId,
+                            sessionId: result.checkpoint.sessionId,
+                            checkpointId: result.checkpoint.id,
+                            requestId: ctx.requestId,
+                            correlationId: ctx.correlationId,
+                        },
+                    })
+                );
+            }
+
+            return result;
+        }),
+    deleteMilestone: publicProcedure.input(checkpointDeleteMilestoneInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await deleteCheckpointMilestone(input);
+        if (result.deleted && result.checkpoint) {
+            await runtimeEventLogService.append(
+                runtimeStatusEvent({
+                    entityType: 'checkpoint',
+                    domain: 'checkpoint',
+                    entityId: input.checkpointId,
+                    eventType: 'checkpoint.milestone_deleted',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: result.checkpoint.sessionId,
+                        checkpointId: input.checkpointId,
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                    },
+                })
+            );
+        }
+
+        return result;
+    }),
+    previewCleanup: publicProcedure.input(checkpointCleanupPreviewInputSchema).query(async ({ input }) => {
+        return previewCheckpointCleanup(input);
+    }),
+    applyCleanup: publicProcedure.input(checkpointCleanupApplyInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await applyCheckpointCleanup(input);
+        if (result.cleanedUp) {
+            await runtimeEventLogService.append(
+                runtimeStatusEvent({
+                    entityType: 'checkpoint',
+                    domain: 'checkpoint',
+                    entityId: input.sessionId,
+                    eventType: 'checkpoint.cleanup_applied',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        deletedCheckpointIds: result.deletedCheckpointIds ?? [],
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                    },
+                })
+            );
+        }
+
+        return result;
     }),
     previewRollback: publicProcedure.input(checkpointRollbackPreviewInputSchema).query(async ({ input }) => {
         return getRollbackPreview(input);

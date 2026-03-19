@@ -13,7 +13,7 @@ interface ContextAssetsPanelProps {
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     attachedRules: RulesetDefinition[];
     missingAttachedRuleKeys: string[];
     attachedSkills: SkillfileDefinition[];
@@ -55,7 +55,7 @@ export function ContextAssetsPanel({
     topLevelTab,
     modeKey,
     workspaceFingerprint,
-    worktreeId,
+    sandboxId,
     attachedRules,
     missingAttachedRuleKeys,
     attachedSkills,
@@ -71,7 +71,7 @@ export function ContextAssetsPanel({
         modeKey,
         ...(debouncedQuery.length > 0 ? { query: debouncedQuery } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
     };
     const searchRulesQuery = trpc.registry.searchRules.useQuery(queryInput, PROGRESSIVE_QUERY_OPTIONS);
     const searchSkillsQuery = trpc.registry.searchSkills.useQuery(queryInput, PROGRESSIVE_QUERY_OPTIONS);

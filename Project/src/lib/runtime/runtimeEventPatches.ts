@@ -146,9 +146,7 @@ function readThreadRecord(value: unknown): ThreadRecord | undefined {
     }
 
     const parentThreadId = readString(value['parentThreadId']);
-    const executionBranch = readString(value['executionBranch']);
-    const baseBranch = readString(value['baseBranch']);
-    const worktreeId = readString(value['worktreeId']);
+    const sandboxId = readString(value['sandboxId']);
     const lastAssistantAt = readString(value['lastAssistantAt']);
 
     return {
@@ -164,9 +162,7 @@ function readThreadRecord(value: unknown): ThreadRecord | undefined {
             : {}),
         isFavorite,
         executionEnvironmentMode,
-        ...(executionBranch ? { executionBranch } : {}),
-        ...(baseBranch ? { baseBranch } : {}),
-        ...(worktreeId && isEntityId(worktreeId, 'wt') ? { worktreeId } : {}),
+        ...(sandboxId && isEntityId(sandboxId, 'sb') ? { sandboxId } : {}),
         ...(lastAssistantAt ? { lastAssistantAt } : {}),
         createdAt,
         updatedAt,
@@ -182,12 +178,12 @@ function readSessionSummaryRecord(value: unknown): SessionSummaryRecord | undefi
     const profileId = readString(value['profileId']);
     const conversationId = readString(value['conversationId']);
     const threadId = readString(value['threadId']);
-    const kind = readLiteral(value['kind'], ['local', 'worktree', 'cloud'] as const);
+    const kind = readLiteral(value['kind'], ['local', 'sandbox', 'cloud'] as const);
     const runStatus = readLiteral(value['runStatus'], runStatuses);
     const turnCount = readNumber(value['turnCount']);
     const createdAt = readString(value['createdAt']);
     const updatedAt = readString(value['updatedAt']);
-    const worktreeId = readString(value['worktreeId']);
+    const sandboxId = readString(value['sandboxId']);
     const delegatedFromOrchestratorRunId = readString(value['delegatedFromOrchestratorRunId']);
     if (
         !id ||
@@ -210,7 +206,7 @@ function readSessionSummaryRecord(value: unknown): SessionSummaryRecord | undefi
         conversationId,
         threadId,
         kind,
-        ...(worktreeId && isEntityId(worktreeId, 'wt') ? { worktreeId } : {}),
+        ...(sandboxId && isEntityId(sandboxId, 'sb') ? { sandboxId } : {}),
         ...(delegatedFromOrchestratorRunId && isEntityId(delegatedFromOrchestratorRunId, 'orch')
             ? { delegatedFromOrchestratorRunId }
             : {}),
@@ -284,7 +280,7 @@ function readCheckpointRecord(value: unknown): CheckpointRecord | undefined {
     const diffId = value['diffId'] === null ? null : readString(value['diffId']);
     const workspaceFingerprint = readString(value['workspaceFingerprint']);
     const executionTargetKey = readString(value['executionTargetKey']);
-    const executionTargetKind = readLiteral(value['executionTargetKind'], ['workspace', 'worktree'] as const);
+    const executionTargetKind = readLiteral(value['executionTargetKind'], ['workspace', 'sandbox'] as const);
     const executionTargetLabel = readString(value['executionTargetLabel']);
     const createdByKind = readLiteral(value['createdByKind'], ['system', 'user'] as const);
     const checkpointKind = readLiteral(value['checkpointKind'], ['auto', 'safety', 'named'] as const);
@@ -294,7 +290,7 @@ function readCheckpointRecord(value: unknown): CheckpointRecord | undefined {
     const summary = readString(value['summary']);
     const createdAt = readString(value['createdAt']);
     const updatedAt = readString(value['updatedAt']);
-    const worktreeId = readString(value['worktreeId']);
+    const sandboxId = readString(value['sandboxId']);
     if (
         !id ||
         !isEntityId(id, 'ckpt') ||
@@ -327,7 +323,7 @@ function readCheckpointRecord(value: unknown): CheckpointRecord | undefined {
         ...(runId && isEntityId(runId, 'run') ? { runId } : {}),
         ...(diffId ? { diffId } : {}),
         workspaceFingerprint,
-        ...(worktreeId && isEntityId(worktreeId, 'wt') ? { worktreeId } : {}),
+        ...(sandboxId && isEntityId(sandboxId, 'sb') ? { sandboxId } : {}),
         executionTargetKey,
         executionTargetKind,
         executionTargetLabel,

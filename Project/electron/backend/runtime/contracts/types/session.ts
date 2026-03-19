@@ -67,7 +67,7 @@ export interface SessionStartRunInput extends SessionByIdInput {
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     runtimeOptions: RuntimeRunOptions;
 }
 
@@ -81,7 +81,7 @@ export interface SessionEditInput extends SessionByIdInput {
     providerId?: RuntimeProviderId;
     modelId?: string;
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     runtimeOptions?: RuntimeRunOptions;
 }
 

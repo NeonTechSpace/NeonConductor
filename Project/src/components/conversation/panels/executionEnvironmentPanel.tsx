@@ -7,7 +7,7 @@ import {
 } from '@/web/components/conversation/panels/executionEnvironmentPanelState';
 import { Button } from '@/web/components/ui/button';
 
-import type { ThreadListRecord, WorktreeRecord } from '@/app/backend/persistence/types';
+import type { ThreadListRecord, SandboxRecord } from '@/app/backend/persistence/types';
 
 import type { TopLevelTab } from '@/shared/contracts';
 
@@ -15,18 +15,16 @@ interface ExecutionEnvironmentPanelProps {
     topLevelTab: TopLevelTab;
     selectedThread: ThreadListRecord | undefined;
     workspaceScope: ExecutionEnvironmentScope;
-    worktrees: WorktreeRecord[];
+    sandboxes: SandboxRecord[];
     busy: boolean;
     feedbackMessage?: string;
     feedbackTone?: 'success' | 'error' | 'info';
     onConfigureThread: (input: {
-        mode: 'local' | 'new_worktree' | 'worktree';
-        executionBranch?: string;
-        baseBranch?: string;
-        worktreeId?: string;
+        mode: 'local' | 'new_sandbox' | 'sandbox';
+        sandboxId?: string;
     }) => void;
-    onRefreshWorktree: (worktreeId: string) => void;
-    onRemoveWorktree: (worktreeId: string) => void;
+    onRefreshSandbox: (sandboxId: string) => void;
+    onRemoveSandbox: (sandboxId: string) => void;
     onRemoveOrphaned: () => void;
 }
 
@@ -34,13 +32,13 @@ export function ExecutionEnvironmentPanel({
     topLevelTab,
     selectedThread,
     workspaceScope,
-    worktrees,
+    sandboxes,
     busy,
     feedbackMessage,
     feedbackTone = 'info',
     onConfigureThread,
-    onRefreshWorktree,
-    onRemoveWorktree,
+    onRefreshSandbox,
+    onRemoveSandbox,
     onRemoveOrphaned,
 }: ExecutionEnvironmentPanelProps) {
     const [draftState, setDraftState] = useState<ExecutionEnvironmentDraftState | undefined>(undefined);
@@ -49,9 +47,7 @@ export function ExecutionEnvironmentPanel({
         draftState,
     });
     const draftMode = resolvedDraftState.draftMode;
-    const branch = resolvedDraftState.branch;
-    const baseBranch = resolvedDraftState.baseBranch;
-    const selectedWorktreeId = resolvedDraftState.selectedWorktreeId;
+    const selectedSandboxId = resolvedDraftState.selectedSandboxId;
 
     if (!selectedThread) {
         return null;
@@ -63,7 +59,7 @@ export function ExecutionEnvironmentPanel({
                 <p className='text-sm font-semibold'>Conversation Branching</p>
                 <p className='text-muted-foreground mt-1 text-xs'>
                     Chat uses read-only conversation branches only. Selecting “Conversation Branches” in the sidebar
-                    changes message lineage, not the filesystem. Chat never creates a managed worktree.
+                    changes message lineage, not the filesystem. Chat never creates a managed sandbox.
                 </p>
             </section>
         );
@@ -75,7 +71,7 @@ export function ExecutionEnvironmentPanel({
                 <p className='text-sm font-semibold'>Execution Environment</p>
                 <p className='text-muted-foreground mt-1 text-xs'>
                     Detached threads have no filesystem authority. Use a workspace thread to choose between the local
-                    workspace and a managed worktree environment.
+                    workspace and a managed sandbox environment.
                 </p>
             </section>
         );
@@ -87,13 +83,13 @@ export function ExecutionEnvironmentPanel({
                 <div>
                     <p className='text-sm font-semibold'>Execution Environment</p>
                     <p className='text-muted-foreground mt-1 text-xs'>
-                        Agent and orchestrator threads can run in the local workspace or a managed worktree. This is
-                        separate from chat-style conversation branching.
+                        Agent and orchestrator threads can run in the local workspace or a managed sandbox. Sandbox
+                        materialization stays lazy until the first mutating run.
                     </p>
                 </div>
                 <div className='text-muted-foreground text-right text-xs [font-variant-numeric:tabular-nums]'>
-                    <p>{worktrees.length} managed</p>
-                    <p>{workspaceScope.kind === 'worktree' ? workspaceScope.branch : 'local workspace'}</p>
+                    <p>{sandboxes.length} managed</p>
+                    <p>{workspaceScope.kind === 'sandbox' ? workspaceScope.label : 'local workspace'}</p>
                 </div>
             </div>
 
@@ -112,71 +108,51 @@ export function ExecutionEnvironmentPanel({
                 </Button>
                 <Button
                     type='button'
-                    variant={draftMode === 'new_worktree' ? 'secondary' : 'outline'}
+                    variant={draftMode === 'new_sandbox' ? 'secondary' : 'outline'}
                     disabled={busy}
                     onClick={() => {
                         setDraftState({
                             ...resolvedDraftState,
-                            draftMode: 'new_worktree',
+                            draftMode: 'new_sandbox',
                         });
                     }}>
-                    New Worktree
+                    Managed Sandbox
                 </Button>
                 <Button
                     type='button'
-                    variant={draftMode === 'worktree' ? 'secondary' : 'outline'}
-                    disabled={busy || worktrees.length === 0}
+                    variant={draftMode === 'sandbox' ? 'secondary' : 'outline'}
+                    disabled={busy || sandboxes.length === 0}
                     onClick={() => {
                         setDraftState({
                             ...resolvedDraftState,
-                            draftMode: 'worktree',
+                            draftMode: 'sandbox',
                         });
                     }}>
-                    Existing Worktree
+                    Existing Sandbox
                 </Button>
             </div>
 
-            {draftMode === 'new_worktree' ? (
-                <div className='mt-3 grid gap-2 md:grid-cols-2'>
-                    <input
-                        value={branch}
-                        onChange={(event) => {
-                            setDraftState({
-                                ...resolvedDraftState,
-                                branch: event.target.value,
-                            });
-                        }}
-                        className='border-border bg-background h-11 rounded-xl border px-3 text-sm'
-                        placeholder='feature/my-branch'
-                    />
-                    <input
-                        value={baseBranch}
-                        onChange={(event) => {
-                            setDraftState({
-                                ...resolvedDraftState,
-                                baseBranch: event.target.value,
-                            });
-                        }}
-                        className='border-border bg-background h-11 rounded-xl border px-3 text-sm'
-                        placeholder='base branch (optional)'
-                    />
+            {draftMode === 'new_sandbox' ? (
+                <div className='border-border bg-background/60 text-muted-foreground mt-3 rounded-xl border px-3 py-2 text-xs'>
+                    This thread will receive its own sticky managed sandbox on the first mutating run. The app will not
+                    fall back to the local workspace if sandbox materialization fails.
                 </div>
             ) : null}
 
-            {draftMode === 'worktree' ? (
+            {draftMode === 'sandbox' ? (
                 <select
-                    value={selectedWorktreeId}
+                    value={selectedSandboxId}
                     onChange={(event) => {
                         setDraftState({
                             ...resolvedDraftState,
-                            selectedWorktreeId: event.target.value,
+                            selectedSandboxId: event.target.value,
                         });
                     }}
                     className='border-border bg-background mt-3 h-11 w-full rounded-xl border px-3 text-sm'>
-                    <option value=''>Select managed worktree</option>
-                    {worktrees.map((worktree) => (
-                        <option key={worktree.id} value={worktree.id}>
-                            {worktree.branch} · {worktree.label} · {worktree.status}
+                    <option value=''>Select managed sandbox</option>
+                    {sandboxes.map((sandbox) => (
+                        <option key={sandbox.id} value={sandbox.id}>
+                            {sandbox.label} · {sandbox.status}
                         </option>
                     ))}
                 </select>
@@ -185,37 +161,27 @@ export function ExecutionEnvironmentPanel({
             <div className='mt-3 flex flex-wrap gap-2'>
                 <Button
                     type='button'
-                    disabled={
-                        busy ||
-                        (draftMode === 'new_worktree' && branch.trim().length === 0) ||
-                        (draftMode === 'worktree' && selectedWorktreeId.trim().length === 0)
-                    }
+                    disabled={busy || (draftMode === 'sandbox' && selectedSandboxId.trim().length === 0)}
                     onClick={() => {
                         onConfigureThread({
                             mode: draftMode,
-                            ...(draftMode === 'new_worktree' && branch.trim().length > 0
-                                ? { executionBranch: branch.trim() }
-                                : {}),
-                            ...(draftMode === 'new_worktree' && baseBranch.trim().length > 0
-                                ? { baseBranch: baseBranch.trim() }
-                                : {}),
-                            ...(draftMode === 'worktree' ? { worktreeId: selectedWorktreeId } : {}),
+                            ...(draftMode === 'sandbox' ? { sandboxId: selectedSandboxId } : {}),
                         });
                     }}>
                     {draftMode === 'local'
                         ? 'Use Local Workspace'
-                        : draftMode === 'new_worktree'
-                          ? 'Queue Managed Worktree'
-                          : 'Attach Managed Worktree'}
+                        : draftMode === 'new_sandbox'
+                          ? 'Use Managed Sandbox'
+                          : 'Attach Existing Sandbox'}
                 </Button>
-                {workspaceScope.kind === 'worktree' ? (
+                {workspaceScope.kind === 'sandbox' ? (
                     <>
                         <Button
                             type='button'
                             variant='outline'
                             disabled={busy}
                             onClick={() => {
-                                onRefreshWorktree(workspaceScope.worktreeId);
+                                onRefreshSandbox(workspaceScope.sandboxId);
                             }}>
                             Refresh Status
                         </Button>
@@ -224,13 +190,13 @@ export function ExecutionEnvironmentPanel({
                             variant='outline'
                             disabled={busy}
                             onClick={() => {
-                                onRemoveWorktree(workspaceScope.worktreeId);
+                                onRemoveSandbox(workspaceScope.sandboxId);
                             }}>
-                            Remove Worktree
+                            Remove Sandbox
                         </Button>
                     </>
                 ) : null}
-                <Button type='button' variant='outline' disabled={busy || worktrees.length === 0} onClick={onRemoveOrphaned}>
+                <Button type='button' variant='outline' disabled={busy || sandboxes.length === 0} onClick={onRemoveOrphaned}>
                     Cleanup Orphaned
                 </Button>
             </div>
@@ -250,20 +216,19 @@ export function ExecutionEnvironmentPanel({
             ) : null}
 
             <div className='text-muted-foreground mt-3 text-xs'>
-                {workspaceScope.kind === 'worktree' ? (
+                {workspaceScope.kind === 'sandbox' ? (
                     <p>
-                        Running in managed worktree <span className='font-medium text-foreground'>{workspaceScope.branch}</span>
-                        {' '}from {workspaceScope.baseWorkspaceLabel}. Filesystem operations, diffs, checkpoints, and shell
+                        Running in managed sandbox <span className='font-medium text-foreground'>{workspaceScope.label}</span>
+                        {' '}from {workspaceScope.baseWorkspaceLabel}. Filesystem operations, checkpoints, and shell
                         commands use {workspaceScope.absolutePath}.
                     </p>
                 ) : (
                     <p>
-                        Running in the local workspace at {workspaceScope.absolutePath}. If you queue a new worktree, it
-                        will be created lazily on the first run that needs a real execution environment.
+                        Running in the local workspace at {workspaceScope.absolutePath}. Managed sandbox mode creates a
+                        sticky per-thread execution target on first mutating run.
                     </p>
                 )}
             </div>
         </section>
     );
 }
-

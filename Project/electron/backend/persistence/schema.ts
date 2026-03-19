@@ -30,7 +30,7 @@ export interface SessionsTable {
     conversation_id: string;
     thread_id: string;
     kind: string;
-    worktree_id: string | null;
+    sandbox_id: string | null;
     delegated_from_orchestrator_run_id: string | null;
     run_status: string;
     pending_completion_run_id: string | null;
@@ -315,9 +315,7 @@ export interface ThreadsTable {
     delegated_from_orchestrator_run_id: string | null;
     is_favorite: 0 | 1;
     execution_environment_mode: string;
-    execution_branch: string | null;
-    base_branch: string | null;
-    worktree_id: string | null;
+    sandbox_id: string | null;
     last_assistant_at: string | null;
     created_at: string;
     updated_at: string;
@@ -358,12 +356,13 @@ export interface CheckpointsTable {
     run_id: string | null;
     diff_id: string | null;
     workspace_fingerprint: string;
-    worktree_id: string | null;
+    sandbox_id: string | null;
     execution_target_key: string;
     execution_target_kind: string;
     execution_target_label: string;
     created_by_kind: string;
     checkpoint_kind: string;
+    milestone_title: string | null;
     snapshot_file_count: number;
     top_level_tab: string;
     mode_key: string;
@@ -417,16 +416,15 @@ export interface CheckpointChangesetEntriesTable {
     created_at: string;
 }
 
-export interface WorktreesTable {
+export interface SandboxesTable {
     id: string;
     profile_id: string;
     workspace_fingerprint: string;
-    branch: string;
-    base_branch: string;
     absolute_path: string;
     path_key: string;
     label: string;
     status: string;
+    creation_strategy: 'clone' | 'copy';
     created_at: string;
     updated_at: string;
     last_used_at: string;
@@ -738,7 +736,7 @@ export interface DatabaseSchema {
     checkpoint_snapshot_entries: CheckpointSnapshotEntriesTable;
     checkpoint_changesets: CheckpointChangesetsTable;
     checkpoint_changeset_entries: CheckpointChangesetEntriesTable;
-    worktrees: WorktreesTable;
+    sandboxes: SandboxesTable;
     mode_definitions: ModeDefinitionsTable;
     rulesets: RulesetsTable;
     skillfiles: SkillfilesTable;

@@ -38,7 +38,7 @@ interface UseConversationShellComposerInput<
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint: string | undefined;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     resolvedRunTarget:
         | {
               providerId: RuntimeProviderId;
@@ -331,7 +331,7 @@ export function useConversationShellComposer<
                 topLevelTab: input.topLevelTab,
                 modeKey: input.modeKey,
                 workspaceFingerprint: input.workspaceFingerprint,
-                ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+                ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
                 resolvedRunTarget: input.resolvedRunTarget,
                 runtimeOptions: input.runtimeOptions,
                 providerById: input.providerById,

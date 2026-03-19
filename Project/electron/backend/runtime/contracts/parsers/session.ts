@@ -85,8 +85,8 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
     const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
     const modelId = readOptionalString(source.modelId, 'modelId');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const worktreeId =
-        source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId =
+        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
     const attachments =
         source.attachments !== undefined
             ? readArray(source.attachments, 'attachments').map((value, index) =>
@@ -106,7 +106,7 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
         topLevelTab: readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs),
         modeKey: readString(source.modeKey, 'modeKey'),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
         runtimeOptions,
         ...(providerId ? { providerId } : {}),
@@ -188,8 +188,8 @@ export function parseSessionEditInput(input: unknown): SessionEditInput {
     const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
     const modelId = readOptionalString(source.modelId, 'modelId');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const worktreeId =
-        source.worktreeId !== undefined ? readEntityId(source.worktreeId, 'worktreeId', 'wt') : undefined;
+    const sandboxId =
+        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
     const runtimeOptions =
         source.runtimeOptions !== undefined ? parseRuntimeRunOptions(source.runtimeOptions) : undefined;
     const modeKey = readOptionalString(source.modeKey, 'modeKey');
@@ -206,7 +206,7 @@ export function parseSessionEditInput(input: unknown): SessionEditInput {
         ...(modeKey ? { modeKey } : {}),
         ...(autoStartRun !== undefined ? { autoStartRun } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-        ...(worktreeId ? { worktreeId } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
         ...(runtimeOptions ? { runtimeOptions } : {}),
         ...(providerId ? { providerId } : {}),
         ...(modelId ? { modelId } : {}),

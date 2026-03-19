@@ -174,7 +174,7 @@ export class SessionHistoryStore {
                     conversation_id: input.sourceSession.conversation_id,
                     thread_id: input.branchThreadId,
                     kind: input.sourceSession.kind,
-                    worktree_id: input.sourceSession.worktree_id,
+                    sandbox_id: input.sourceSession.sandbox_id,
                     run_status: 'idle',
                     pending_completion_run_id: null,
                     created_at: createdAt,

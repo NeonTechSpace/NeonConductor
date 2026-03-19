@@ -83,7 +83,7 @@ export class ToolExecutionService {
             const workspaceContext = await workspaceContextService.resolveExplicit({
                 profileId: input.profileId,
                 ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+                ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
             });
             if (workspaceContext.kind === 'detached') {
                 const policy = {

@@ -21,7 +21,7 @@ export interface PersistenceStoragePaths {
     runtimeRoot: string;
     userDataRoot: string;
     globalAssetsRoot: string;
-    managedWorktreesRoot: string;
+    managedSandboxesRoot: string;
     logsRoot: string;
 }
 
@@ -185,7 +185,7 @@ export function getPersistenceStoragePaths(): PersistenceStoragePaths {
         runtimeRoot,
         userDataRoot,
         globalAssetsRoot: path.join(runtimeRoot, 'assets'),
-        managedWorktreesRoot: path.join(runtimeRoot, 'worktrees'),
+        managedSandboxesRoot: path.join(runtimeRoot, 'sandboxes'),
         logsRoot: path.join(userDataRoot, 'logs'),
     };
 }

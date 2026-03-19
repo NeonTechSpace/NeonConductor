@@ -158,7 +158,7 @@ export interface ExecuteRunInput {
               providerId: string;
           };
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     assistantMessageId: EntityId<'msg'>;
     signal: AbortSignal;
     onBeforeFinalize?: () => Promise<void>;
@@ -694,7 +694,7 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                 topLevelTab: input.topLevelTab,
                 modeKey: input.modeKey,
                 ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+                ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
                 args: toolCall.args,
             });
 

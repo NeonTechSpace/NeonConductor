@@ -15,5 +15,5 @@ export * from '@/app/backend/runtime/contracts/types/runtime';
 export * from '@/app/backend/runtime/contracts/types/context';
 export * from '@/app/backend/runtime/contracts/types/composer';
 export * from '@/app/backend/runtime/contracts/types/registry';
-export * from '@/app/backend/runtime/contracts/types/worktree';
+export * from '@/app/backend/runtime/contracts/types/sandbox';
 export * from '@/app/backend/runtime/contracts/types/memory';

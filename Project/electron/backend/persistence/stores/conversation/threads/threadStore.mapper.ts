@@ -13,9 +13,7 @@ export interface ThreadRow {
     delegated_from_orchestrator_run_id: string | null;
     is_favorite: 0 | 1;
     execution_environment_mode: string;
-    execution_branch: string | null;
-    base_branch: string | null;
-    worktree_id: string | null;
+    sandbox_id: string | null;
     last_assistant_at: string | null;
     created_at: string;
     updated_at: string;
@@ -52,9 +50,7 @@ export function mapThreadRecord(row: ThreadRow): ThreadRecord {
             'threads.execution_environment_mode',
             executionEnvironmentModes
         ),
-        ...(row.execution_branch ? { executionBranch: row.execution_branch } : {}),
-        ...(row.base_branch ? { baseBranch: row.base_branch } : {}),
-        ...(row.worktree_id ? { worktreeId: parseEntityId(row.worktree_id, 'threads.worktree_id', 'wt') } : {}),
+        ...(row.sandbox_id ? { sandboxId: parseEntityId(row.sandbox_id, 'threads.sandbox_id', 'sb') } : {}),
         ...(row.last_assistant_at ? { lastAssistantAt: row.last_assistant_at } : {}),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -85,9 +81,7 @@ export function mapThreadListRecord(row: ThreadListRow): ThreadListRecord {
             'threads.execution_environment_mode',
             executionEnvironmentModes
         ),
-        ...(row.execution_branch ? { executionBranch: row.execution_branch } : {}),
-        ...(row.base_branch ? { baseBranch: row.base_branch } : {}),
-        ...(row.worktree_id ? { worktreeId: parseEntityId(row.worktree_id, 'threads.worktree_id', 'wt') } : {}),
+        ...(row.sandbox_id ? { sandboxId: parseEntityId(row.sandbox_id, 'threads.sandbox_id', 'sb') } : {}),
         ...(row.last_assistant_at ? { lastAssistantAt: row.last_assistant_at } : {}),
         createdAt: row.created_at,
         updatedAt: row.updated_at,

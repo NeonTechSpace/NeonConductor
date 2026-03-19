@@ -58,7 +58,7 @@ export async function createSessionInScope(
         scope: 'detached' | 'workspace';
         workspaceFingerprint?: string;
         title: string;
-        kind: 'local' | 'worktree' | 'cloud';
+        kind: 'local' | 'sandbox' | 'cloud';
         topLevelTab?: 'chat' | 'agent' | 'orchestrator';
     }
 ) {

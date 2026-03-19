@@ -40,5 +40,5 @@ export { skillfileStore } from '@/app/backend/persistence/stores/registry/skillf
 export { tagStore } from '@/app/backend/persistence/stores/conversation/threads/tagStore';
 export { threadStore } from '@/app/backend/persistence/stores/conversation/threads/threadStore';
 export { toolStore } from '@/app/backend/persistence/stores/runtime/toolStore';
-export { worktreeStore } from '@/app/backend/persistence/stores/workspace/worktreeStore';
+export { sandboxStore } from '@/app/backend/persistence/stores/workspace/sandboxStore';
 export { workspaceRootStore } from '@/app/backend/persistence/stores/workspace/workspaceRootStore';

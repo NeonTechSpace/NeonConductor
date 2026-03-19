@@ -154,7 +154,7 @@ export interface MemorySupersedeInput extends MemoryByIdInput {
 
 export interface MemoryProjectionContextInput extends ProfileInput {
     workspaceFingerprint?: string;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;
     includeBroaderScopes?: boolean;

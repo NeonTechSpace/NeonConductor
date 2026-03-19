@@ -35,7 +35,7 @@ function mapSessionSummary(row: SessionRow, turnCount: number): SessionSummaryRe
         conversationId: row.conversation_id,
         threadId: row.thread_id,
         kind: parseEnumValue(row.kind, 'sessions.kind', sessionKinds),
-        ...(row.worktree_id ? { worktreeId: parseEntityId(row.worktree_id, 'sessions.worktree_id', 'wt') } : {}),
+        ...(row.sandbox_id ? { sandboxId: parseEntityId(row.sandbox_id, 'sessions.sandbox_id', 'sb') } : {}),
         ...(row.delegated_from_orchestrator_run_id
             ? {
                   delegatedFromOrchestratorRunId: parseEntityId(
@@ -158,7 +158,7 @@ export class SessionStore {
         const now = nowIso();
         const thread = await db
             .selectFrom('threads')
-            .select(['id', 'conversation_id', 'worktree_id', 'execution_environment_mode'])
+            .select(['id', 'conversation_id', 'sandbox_id', 'execution_environment_mode'])
             .where('id', '=', threadId)
             .where('profile_id', '=', profileId)
             .executeTakeFirst();
@@ -169,8 +169,8 @@ export class SessionStore {
         const resolvedKind =
             kind === 'cloud'
                 ? kind
-                : thread.worktree_id || thread.execution_environment_mode === 'worktree'
-                  ? 'worktree'
+                : thread.sandbox_id || thread.execution_environment_mode === 'sandbox'
+                  ? 'sandbox'
                   : 'local';
         const inserted = await db
             .insertInto('sessions')
@@ -180,7 +180,7 @@ export class SessionStore {
                 conversation_id: thread.conversation_id,
                 thread_id: thread.id,
                 kind: resolvedKind,
-                worktree_id: thread.worktree_id,
+                sandbox_id: thread.sandbox_id,
                 delegated_from_orchestrator_run_id: options?.delegatedFromOrchestratorRunId ?? null,
                 run_status: 'idle',
                 pending_completion_run_id: null,
@@ -310,17 +310,17 @@ export class SessionStore {
         }
     }
 
-    async setWorktreeBinding(input: {
+    async setSandboxBinding(input: {
         profileId: string;
         sessionId: EntityId<'sess'>;
-        worktreeId?: EntityId<'wt'>;
+        sandboxId?: EntityId<'sb'>;
     }): Promise<SessionSummaryRecord | null> {
         const { db } = getPersistence();
         const updated = await db
             .updateTable('sessions')
             .set({
-                worktree_id: input.worktreeId ?? null,
-                kind: input.worktreeId ? 'worktree' : 'local',
+                sandbox_id: input.sandboxId ?? null,
+                kind: input.sandboxId ? 'sandbox' : 'local',
                 updated_at: nowIso(),
             })
             .where('id', '=', input.sessionId)

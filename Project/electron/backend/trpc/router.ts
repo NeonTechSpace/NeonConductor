@@ -23,7 +23,7 @@ import { sessionRouter } from '@/app/backend/trpc/routers/session';
 import { systemRouter } from '@/app/backend/trpc/routers/system';
 import { toolRouter } from '@/app/backend/trpc/routers/tool';
 import { updatesRouter } from '@/app/backend/trpc/routers/updates';
-import { worktreeRouter } from '@/app/backend/trpc/routers/worktree';
+import { sandboxRouter } from '@/app/backend/trpc/routers/sandbox';
 
 export const appRouter = router({
     runtime: runtimeRouter,
@@ -44,7 +44,7 @@ export const appRouter = router({
     orchestrator: orchestratorRouter,
     profile: profileRouter,
     system: systemRouter,
-    worktree: worktreeRouter,
+    sandbox: sandboxRouter,
     updates: updatesRouter,
 });
 

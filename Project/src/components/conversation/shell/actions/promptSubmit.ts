@@ -48,7 +48,7 @@ interface SubmitPromptInput<
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint: string | undefined;
-    worktreeId?: EntityId<'wt'>;
+    sandboxId?: EntityId<'sb'>;
     resolvedRunTarget: RunTargetSelection | undefined;
     runtimeOptions: RuntimeRunOptions;
     providerById: Map<RuntimeProviderId, ProviderAuthView>;
@@ -140,7 +140,7 @@ export async function submitPrompt<
             modelId: input.resolvedRunTarget.modelId,
             ...(attachments.length > 0 ? { attachments } : {}),
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-            ...(input.worktreeId ? { worktreeId: input.worktreeId } : {}),
+            ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
             runtimeOptions: input.runtimeOptions,
         });
         if (!isAcceptedRunResult(result)) {

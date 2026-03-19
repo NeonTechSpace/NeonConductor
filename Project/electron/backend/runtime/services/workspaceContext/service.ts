@@ -1,13 +1,13 @@
-import { conversationStore, sessionStore, threadStore, workspaceRootStore, worktreeStore } from '@/app/backend/persistence/stores';
+import { conversationStore, sessionStore, threadStore, workspaceRootStore, sandboxStore } from '@/app/backend/persistence/stores';
 import type { ThreadRecord } from '@/app/backend/persistence/types';
 import type { EntityId, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
-import { worktreeService } from '@/app/backend/runtime/services/worktree/service';
+import { sandboxService } from '@/app/backend/runtime/services/sandbox/service';
 
 async function resolveWorkspaceBoundContext(input: {
     profileId: string;
     workspaceFingerprint: string;
     thread: ThreadRecord;
-    sessionWorktreeId?: EntityId<'wt'>;
+    sessionSandboxId?: EntityId<'sb'>;
 }): Promise<ResolvedWorkspaceContext> {
     const workspaceRoot = await workspaceRootStore.getByFingerprint(input.profileId, input.workspaceFingerprint);
     if (!workspaceRoot) {
@@ -16,23 +16,21 @@ async function resolveWorkspaceBoundContext(input: {
             workspaceFingerprint: input.workspaceFingerprint,
             label: input.workspaceFingerprint,
             absolutePath: 'Unresolved workspace root',
-            executionEnvironmentMode: input.thread.executionEnvironmentMode === 'worktree' ? 'local' : input.thread.executionEnvironmentMode,
-            ...(input.thread.executionBranch ? { executionBranch: input.thread.executionBranch } : {}),
-            ...(input.thread.baseBranch ? { baseBranch: input.thread.baseBranch } : {}),
+            executionEnvironmentMode: input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
         };
     }
 
-    const effectiveWorktreeId = input.sessionWorktreeId ?? input.thread.worktreeId;
-    if (effectiveWorktreeId) {
-        const worktree = await worktreeStore.getById(input.profileId, effectiveWorktreeId);
-        if (worktree) {
+    const effectiveSandboxId = input.sessionSandboxId ?? input.thread.sandboxId;
+    if (effectiveSandboxId) {
+        const sandbox = await sandboxStore.getById(input.profileId, effectiveSandboxId);
+        if (sandbox) {
             return {
-                kind: 'worktree',
+                kind: 'sandbox',
                 workspaceFingerprint: input.workspaceFingerprint,
-                label: worktree.label,
-                absolutePath: worktree.absolutePath,
-                executionEnvironmentMode: 'worktree',
-                worktree,
+                label: sandbox.label,
+                absolutePath: sandbox.absolutePath,
+                executionEnvironmentMode: 'sandbox',
+                sandbox,
                 baseWorkspace: {
                     label: workspaceRoot.label,
                     absolutePath: workspaceRoot.absolutePath,
@@ -46,9 +44,7 @@ async function resolveWorkspaceBoundContext(input: {
         workspaceFingerprint: input.workspaceFingerprint,
         label: workspaceRoot.label,
         absolutePath: workspaceRoot.absolutePath,
-        executionEnvironmentMode: input.thread.executionEnvironmentMode === 'worktree' ? 'local' : input.thread.executionEnvironmentMode,
-        ...(input.thread.executionBranch ? { executionBranch: input.thread.executionBranch } : {}),
-        ...(input.thread.baseBranch ? { baseBranch: input.thread.baseBranch } : {}),
+        executionEnvironmentMode: input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
     };
 }
 
@@ -57,7 +53,7 @@ export class WorkspaceContextService {
         profileId: string;
         sessionId: EntityId<'sess'>;
         topLevelTab?: ThreadRecord['topLevelTab'];
-        allowLazyWorktreeCreation?: boolean;
+        allowLazySandboxCreation?: boolean;
     }): Promise<ResolvedWorkspaceContext | null> {
         const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
         if (!sessionThread) {
@@ -69,13 +65,13 @@ export class WorkspaceContextService {
         }
 
         let thread = sessionThread.thread;
-        let sessionWorktreeId = sessionThread.sessionWorktreeId;
+        let sessionSandboxId = sessionThread.sessionSandboxId;
         if (
-            input.allowLazyWorktreeCreation &&
-            thread.executionEnvironmentMode === 'new_worktree' &&
+            input.allowLazySandboxCreation &&
+            thread.executionEnvironmentMode === 'new_sandbox' &&
             thread.topLevelTab !== 'chat'
         ) {
-            const created = await worktreeService.materializeThreadWorktree({
+            const created = await sandboxService.materializeThreadSandbox({
                 profileId: input.profileId,
                 thread,
                 workspaceFingerprint: sessionThread.workspaceFingerprint,
@@ -83,32 +79,30 @@ export class WorkspaceContextService {
             if (created.isOk() && created.value) {
                 thread = {
                     ...thread,
-                    executionEnvironmentMode: 'worktree',
-                    executionBranch: created.value.branch,
-                    baseBranch: created.value.baseBranch,
-                    worktreeId: created.value.id,
+                    executionEnvironmentMode: 'sandbox',
+                    sandboxId: created.value.id,
                 };
-                const updatedSession = await sessionStore.setWorktreeBinding({
+                const updatedSession = await sessionStore.setSandboxBinding({
                     profileId: input.profileId,
                     sessionId: input.sessionId,
-                    worktreeId: created.value.id,
+                    sandboxId: created.value.id,
                 });
-                sessionWorktreeId = updatedSession?.worktreeId ?? created.value.id;
+                sessionSandboxId = updatedSession?.sandboxId ?? created.value.id;
             }
-        } else if (!sessionWorktreeId && thread.worktreeId) {
-            const updatedSession = await sessionStore.setWorktreeBinding({
+        } else if (!sessionSandboxId && thread.sandboxId) {
+            const updatedSession = await sessionStore.setSandboxBinding({
                 profileId: input.profileId,
                 sessionId: input.sessionId,
-                worktreeId: thread.worktreeId,
+                sandboxId: thread.sandboxId,
             });
-            sessionWorktreeId = updatedSession?.worktreeId ?? thread.worktreeId;
+            sessionSandboxId = updatedSession?.sandboxId ?? thread.sandboxId;
         }
 
         return resolveWorkspaceBoundContext({
             profileId: input.profileId,
             workspaceFingerprint: sessionThread.workspaceFingerprint,
             thread,
-            ...(sessionWorktreeId ? { sessionWorktreeId } : {}),
+            ...(sessionSandboxId ? { sessionSandboxId } : {}),
         });
     }
 
@@ -133,7 +127,7 @@ export class WorkspaceContextService {
     async resolveExplicit(input: {
         profileId: string;
         workspaceFingerprint?: string;
-        worktreeId?: EntityId<'wt'>;
+        sandboxId?: EntityId<'sb'>;
     }): Promise<ResolvedWorkspaceContext> {
         if (!input.workspaceFingerprint) {
             return { kind: 'detached' };
@@ -150,16 +144,16 @@ export class WorkspaceContextService {
             };
         }
 
-        if (input.worktreeId) {
-            const worktree = await worktreeStore.getById(input.profileId, input.worktreeId);
-            if (worktree) {
+        if (input.sandboxId) {
+            const sandbox = await sandboxStore.getById(input.profileId, input.sandboxId);
+            if (sandbox) {
                 return {
-                    kind: 'worktree',
+                    kind: 'sandbox',
                     workspaceFingerprint: input.workspaceFingerprint,
-                    label: worktree.label,
-                    absolutePath: worktree.absolutePath,
-                    executionEnvironmentMode: 'worktree',
-                    worktree,
+                    label: sandbox.label,
+                    absolutePath: sandbox.absolutePath,
+                    executionEnvironmentMode: 'sandbox',
+                    sandbox,
                     baseWorkspace: {
                         label: workspaceRoot.label,
                         absolutePath: workspaceRoot.absolutePath,

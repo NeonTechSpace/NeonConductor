@@ -25,11 +25,11 @@ function createSystemMessage(label: string, body: string): RunContextMessage {
 function buildWorkspacePrelude(input: {
     workspaceContext: Exclude<Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>, null | { kind: 'detached' }>;
 }): RunContextMessage {
-    if (input.workspaceContext.kind === 'worktree') {
+    if (input.workspaceContext.kind === 'sandbox') {
         return createSystemMessage(
             'Execution environment',
             [
-                `This session runs inside the managed worktree "${input.workspaceContext.label}" at ${input.workspaceContext.absolutePath}.`,
+                `This session runs inside the managed sandbox "${input.workspaceContext.label}" at ${input.workspaceContext.absolutePath}.`,
                 `The base workspace is "${input.workspaceContext.baseWorkspace.label}" at ${input.workspaceContext.baseWorkspace.absolutePath}.`,
                 'If any provider or tool output refers to a generic alias like "/workspace", treat it as an alias only and prefer these concrete paths.',
             ].join(' ')
@@ -154,7 +154,7 @@ export async function buildSessionSystemPrelude(input: {
               profileId: input.profileId,
               sessionId: input.sessionId,
               topLevelTab: input.topLevelTab,
-              allowLazyWorktreeCreation: false,
+              allowLazySandboxCreation: false,
           })
         : null;
     const contextualRulesets = resolveContextualAssetDefinitions({
