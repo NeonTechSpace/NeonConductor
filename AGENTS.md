@@ -39,6 +39,8 @@
 - Do not let folders become dumping grounds.
 - Group by responsibility, not convenience.
 - Keep folder fan-out reasonable: a folder with too many unrelated files increases cognitive load and should be split into clearer subfolders.
+- Narrow exceptions are allowed only for generated artifacts and the single canonical alpha baseline migration, where centralization is intentional.
+- These exceptions do not relax the standard for handwritten source, handwritten tests, or ordinary file-backed assets.
 
 ### 4.5) Prefer Self-Explanatory Code Before More Documentation
 - Make code understandable through names, boundaries, and structure first.
