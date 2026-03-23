@@ -1,4 +1,4 @@
-export const firstPartyProviderIds = ['kilo', 'openai', 'zai', 'moonshot'] as const;
+export const firstPartyProviderIds = ['kilo', 'openai', 'openai_codex', 'zai', 'moonshot'] as const;
 export type FirstPartyProviderId = (typeof firstPartyProviderIds)[number];
 
 export const conversationScopes = ['detached', 'workspace'] as const;

@@ -576,6 +576,8 @@ CREATE TABLE mode_definitions (
     workspace_fingerprint TEXT NULL,
     origin_path TEXT NULL,
     description TEXT NULL,
+    when_to_use TEXT NULL,
+    groups_json TEXT NOT NULL DEFAULT '[]',
     tags_json TEXT NOT NULL DEFAULT '[]',
     enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
     precedence INTEGER NOT NULL DEFAULT 0,

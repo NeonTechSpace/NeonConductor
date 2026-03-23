@@ -21,10 +21,13 @@ interface OpenAIModelOptions {
     recommended?: boolean;
 }
 
-function createOpenAIResponsesModelDefinition(options: OpenAIModelOptions): StaticProviderModelDefinition {
+function createOpenAIResponsesModelDefinition(
+    providerId: 'openai' | 'openai_codex',
+    options: OpenAIModelOptions
+): StaticProviderModelDefinition {
     return {
-        providerId: 'openai',
-        modelId: `openai/${options.modelName}`,
+        providerId,
+        modelId: `${providerId}/${options.modelName}`,
         label: options.label,
         availabilityByEndpointProfile: DEFAULT_AVAILABILITY,
         ...(options.recommended ? { recommendedByEndpointProfile: DEFAULT_RECOMMENDED } : {}),
@@ -48,11 +51,12 @@ function createOpenAIResponsesModelDefinition(options: OpenAIModelOptions): Stat
 }
 
 function createGpt5FamilyModelDefinition(
+    providerId: 'openai' | 'openai_codex',
     modelName: string,
     label: string,
-    options: Pick<OpenAIModelOptions, 'promptFamily' | 'recommended'> = {}
+    options: Pick<OpenAIModelOptions, 'promptFamily' | 'recommended' | 'supportsRealtimeWebSocket'> = {}
 ): StaticProviderModelDefinition {
-    return createOpenAIResponsesModelDefinition({
+    return createOpenAIResponsesModelDefinition(providerId, {
         modelName,
         label,
         contextLength: 400_000,
@@ -60,12 +64,13 @@ function createGpt5FamilyModelDefinition(
         supportsReasoning: true,
         supportsVision: true,
         supportsPromptCache: true,
-        supportsRealtimeWebSocket: true,
+        supportsRealtimeWebSocket: options.supportsRealtimeWebSocket ?? true,
         ...options,
     });
 }
 
 function createStandardVisionModelDefinition(
+    providerId: 'openai' | 'openai_codex',
     modelName: string,
     label: string,
     options: Pick<OpenAIModelOptions, 'supportsReasoning' | 'supportsPromptCache' | 'supportsRealtimeWebSocket'> = {
@@ -73,7 +78,7 @@ function createStandardVisionModelDefinition(
         supportsRealtimeWebSocket: true,
     }
 ): StaticProviderModelDefinition {
-    return createOpenAIResponsesModelDefinition({
+    return createOpenAIResponsesModelDefinition(providerId, {
         modelName,
         label,
         contextLength: 128_000,
@@ -88,11 +93,12 @@ function createStandardVisionModelDefinition(
 }
 
 function createStandardTextModelDefinition(
+    providerId: 'openai' | 'openai_codex',
     modelName: string,
     label: string,
     options: Pick<OpenAIModelOptions, 'contextLength' | 'maxOutputTokens' | 'supportsReasoning' | 'supportsPromptCache' | 'supportsRealtimeWebSocket'>
 ): StaticProviderModelDefinition {
-    return createOpenAIResponsesModelDefinition({
+    return createOpenAIResponsesModelDefinition(providerId, {
         modelName,
         label,
         supportsVision: false,
@@ -101,83 +107,92 @@ function createStandardTextModelDefinition(
 }
 
 export const OPENAI_MODELS: StaticProviderModelDefinition[] = [
-    createStandardTextModelDefinition('gpt-3.5-turbo', 'GPT-3.5 Turbo', {
+    createStandardTextModelDefinition('openai', 'gpt-3.5-turbo', 'GPT-3.5 Turbo', {
         contextLength: 16_000,
         maxOutputTokens: 4_000,
         supportsReasoning: false,
         supportsRealtimeWebSocket: true,
     }),
-    createStandardVisionModelDefinition('gpt-4.1', 'GPT-4.1'),
-    createStandardVisionModelDefinition('gpt-4.1-mini', 'GPT-4.1 Mini'),
-    createStandardVisionModelDefinition('gpt-4.1-nano', 'GPT-4.1 Nano'),
-    createStandardVisionModelDefinition('gpt-4o', 'GPT-4o'),
-    createStandardVisionModelDefinition('gpt-4o-mini', 'GPT-4o Mini'),
-    createGpt5FamilyModelDefinition('gpt-5', 'GPT-5'),
-    createGpt5FamilyModelDefinition('gpt-5-chat-latest', 'GPT-5 Chat Latest'),
-    createGpt5FamilyModelDefinition('gpt-5-codex', 'GPT-5 Codex', {
+    createStandardVisionModelDefinition('openai', 'gpt-4.1', 'GPT-4.1'),
+    createStandardVisionModelDefinition('openai', 'gpt-4.1-mini', 'GPT-4.1 Mini'),
+    createStandardVisionModelDefinition('openai', 'gpt-4.1-nano', 'GPT-4.1 Nano'),
+    createStandardVisionModelDefinition('openai', 'gpt-4o', 'GPT-4o'),
+    createStandardVisionModelDefinition('openai', 'gpt-4o-mini', 'GPT-4o Mini'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5', 'GPT-5'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5-chat-latest', 'GPT-5 Chat Latest'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5-mini', 'GPT-5 Mini'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5-nano', 'GPT-5 Nano'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5-pro', 'GPT-5 Pro'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.1', 'GPT-5.1'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.1-chat-latest', 'GPT-5.1 Chat Latest'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.2', 'GPT-5.2'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.2-chat-latest', 'GPT-5.2 Chat Latest'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.2-pro', 'GPT-5.2 Pro'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.3-chat-latest', 'GPT-5.3 Chat Latest'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.4', 'GPT-5.4'),
+    createGpt5FamilyModelDefinition('openai', 'gpt-5.4-pro', 'GPT-5.4 Pro'),
+    createStandardTextModelDefinition('openai', 'gpt-realtime', 'GPT Realtime', {
+        contextLength: 128_000,
+        maxOutputTokens: 32_000,
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+    createStandardTextModelDefinition('openai', 'gpt-realtime-1.5', 'GPT Realtime 1.5', {
+        contextLength: 128_000,
+        maxOutputTokens: 32_000,
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+    createStandardTextModelDefinition('openai', 'gpt-realtime-mini', 'GPT Realtime Mini', {
+        contextLength: 128_000,
+        maxOutputTokens: 32_000,
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+    createStandardTextModelDefinition('openai', 'o1', 'o1', {
+        contextLength: 128_000,
+        maxOutputTokens: 32_000,
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+    createStandardVisionModelDefinition('openai', 'o3', 'o3', {
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+    createStandardVisionModelDefinition('openai', 'o3-mini', 'o3 Mini', {
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+    createStandardVisionModelDefinition('openai', 'o4-mini', 'o4 Mini', {
+        supportsReasoning: true,
+        supportsRealtimeWebSocket: true,
+    }),
+];
+
+export const OPENAI_CODEX_MODELS: StaticProviderModelDefinition[] = [
+    createGpt5FamilyModelDefinition('openai_codex', 'gpt-5-codex', 'GPT-5 Codex', {
         promptFamily: 'codex',
         recommended: true,
+        supportsRealtimeWebSocket: false,
     }),
-    createGpt5FamilyModelDefinition('gpt-5-mini', 'GPT-5 Mini'),
-    createGpt5FamilyModelDefinition('gpt-5-nano', 'GPT-5 Nano'),
-    createGpt5FamilyModelDefinition('gpt-5-pro', 'GPT-5 Pro'),
-    createGpt5FamilyModelDefinition('gpt-5.1', 'GPT-5.1'),
-    createGpt5FamilyModelDefinition('gpt-5.1-chat-latest', 'GPT-5.1 Chat Latest'),
-    createGpt5FamilyModelDefinition('gpt-5.1-codex', 'GPT-5.1 Codex', {
+    createGpt5FamilyModelDefinition('openai_codex', 'gpt-5.1-codex', 'GPT-5.1 Codex', {
         promptFamily: 'codex',
+        supportsRealtimeWebSocket: false,
     }),
-    createGpt5FamilyModelDefinition('gpt-5.1-codex-max', 'GPT-5.1 Codex Max', {
+    createGpt5FamilyModelDefinition('openai_codex', 'gpt-5.1-codex-max', 'GPT-5.1 Codex Max', {
         promptFamily: 'codex',
+        supportsRealtimeWebSocket: false,
     }),
-    createGpt5FamilyModelDefinition('gpt-5.1-codex-mini', 'GPT-5.1 Codex Mini', {
+    createGpt5FamilyModelDefinition('openai_codex', 'gpt-5.1-codex-mini', 'GPT-5.1 Codex Mini', {
         promptFamily: 'codex',
+        supportsRealtimeWebSocket: false,
     }),
-    createGpt5FamilyModelDefinition('gpt-5.2', 'GPT-5.2'),
-    createGpt5FamilyModelDefinition('gpt-5.2-chat-latest', 'GPT-5.2 Chat Latest'),
-    createGpt5FamilyModelDefinition('gpt-5.2-codex', 'GPT-5.2 Codex', {
+    createGpt5FamilyModelDefinition('openai_codex', 'gpt-5.2-codex', 'GPT-5.2 Codex', {
         promptFamily: 'codex',
+        supportsRealtimeWebSocket: false,
     }),
-    createGpt5FamilyModelDefinition('gpt-5.2-pro', 'GPT-5.2 Pro'),
-    createGpt5FamilyModelDefinition('gpt-5.3-chat-latest', 'GPT-5.3 Chat Latest'),
-    createGpt5FamilyModelDefinition('gpt-5.3-codex', 'GPT-5.3 Codex', {
+    createGpt5FamilyModelDefinition('openai_codex', 'gpt-5.3-codex', 'GPT-5.3 Codex', {
         promptFamily: 'codex',
-    }),
-    createGpt5FamilyModelDefinition('gpt-5.4', 'GPT-5.4'),
-    createGpt5FamilyModelDefinition('gpt-5.4-pro', 'GPT-5.4 Pro'),
-    createStandardTextModelDefinition('gpt-realtime', 'GPT Realtime', {
-        contextLength: 128_000,
-        maxOutputTokens: 32_000,
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
-    }),
-    createStandardTextModelDefinition('gpt-realtime-1.5', 'GPT Realtime 1.5', {
-        contextLength: 128_000,
-        maxOutputTokens: 32_000,
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
-    }),
-    createStandardTextModelDefinition('gpt-realtime-mini', 'GPT Realtime Mini', {
-        contextLength: 128_000,
-        maxOutputTokens: 32_000,
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
-    }),
-    createStandardTextModelDefinition('o1', 'o1', {
-        contextLength: 128_000,
-        maxOutputTokens: 32_000,
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
-    }),
-    createStandardVisionModelDefinition('o3', 'o3', {
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
-    }),
-    createStandardVisionModelDefinition('o3-mini', 'o3 Mini', {
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
-    }),
-    createStandardVisionModelDefinition('o4-mini', 'o4 Mini', {
-        supportsReasoning: true,
-        supportsRealtimeWebSocket: true,
+        supportsRealtimeWebSocket: false,
     }),
 ];

@@ -167,7 +167,7 @@ function unavailable(input: {
     detail?: string;
 }): OpenAISubscriptionRateLimitsSummary {
     const summary: OpenAISubscriptionRateLimitsSummary = {
-        providerId: 'openai',
+        providerId: 'openai_codex',
         source: 'unavailable',
         fetchedAt: input.fetchedAt,
         limits: [],
@@ -193,13 +193,13 @@ export async function getOpenAISubscriptionRateLimits(profileId: string): Promis
         message: 'Fetching OpenAI subscription rate limits from WHAM usage endpoint.',
         profileId,
     });
-    const authState = await providerAuthStore.getByProfileAndProvider(profileId, 'openai');
+    const authState = await providerAuthStore.getByProfileAndProvider(profileId, 'openai_codex');
     if (!authState || authState.authMethod === 'none' || authState.authMethod === 'api_key') {
         return unavailable({
             profileId,
             fetchedAt,
             reason: 'oauth_required',
-            detail: 'OpenAI subscription limits are available only with OAuth-authenticated OpenAI sessions.',
+            detail: 'OpenAI Codex subscription limits are available only with OAuth-authenticated OpenAI Codex sessions.',
         });
     }
 
@@ -212,7 +212,7 @@ export async function getOpenAISubscriptionRateLimits(profileId: string): Promis
         });
     }
 
-    const accessToken = await readProviderSecretValue(profileId, 'openai', 'access_token');
+    const accessToken = await readProviderSecretValue(profileId, 'openai_codex', 'access_token');
     if (!accessToken) {
         return unavailable({
             profileId,
@@ -289,7 +289,7 @@ export async function getOpenAISubscriptionRateLimits(profileId: string): Promis
         });
 
         return {
-            providerId: 'openai',
+            providerId: 'openai_codex',
             source: 'chatgpt_wham',
             fetchedAt,
             ...(parsed.value.planType ? { planType: parsed.value.planType } : {}),

@@ -9,7 +9,7 @@ export const OPENAI_OAUTH_DEVICE_CODE_URL =
     process.env['OPENAI_OAUTH_DEVICE_CODE_URL']?.trim() || 'https://auth.openai.com/oauth/device/code';
 export const OPENAI_OAUTH_CLIENT_ID = process.env['OPENAI_OAUTH_CLIENT_ID']?.trim() || 'openai-codex';
 export const OPENAI_OAUTH_REDIRECT_URI =
-    process.env['OPENAI_OAUTH_REDIRECT_URI']?.trim() || 'http://127.0.0.1:1455/provider/openai/callback';
+    process.env['OPENAI_OAUTH_REDIRECT_URI']?.trim() || 'http://127.0.0.1:1455/provider/openai_codex/callback';
 
 export function getAuthMethodsForProvider(providerId: RuntimeProviderId): ProviderAuthMethod[] {
     return getProviderDefinition(providerId).authMethods;

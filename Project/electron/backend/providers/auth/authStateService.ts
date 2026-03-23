@@ -8,6 +8,7 @@ import {
 import type { ProviderAuthStateRecord } from '@/app/backend/persistence/types';
 import { errAuthExecution, okAuthExecution, type AuthExecutionResult } from '@/app/backend/providers/auth/errors';
 import { writeProviderSecretValue } from '@/app/backend/providers/auth/providerSecrets';
+import { getAuthMethodsForProvider } from '@/app/backend/providers/auth/constants';
 import type { FlowAuthMethod } from '@/app/backend/providers/auth/types';
 import { assertSupportedProviderId } from '@/app/backend/providers/registry';
 import { providerSecretKinds, type RuntimeProviderId } from '@/app/backend/runtime/contracts';
@@ -65,6 +66,10 @@ export async function setApiKey(
     const normalized = apiKey.trim();
     if (normalized.length === 0) {
         return errAuthExecution('invalid_payload', 'Invalid "apiKey": expected non-empty string.');
+    }
+
+    if (!getAuthMethodsForProvider(providerId).includes('api_key')) {
+        return errAuthExecution('method_not_supported', `Provider "${providerId}" does not support API-key authentication.`);
     }
 
     await writeProviderSecretValue({

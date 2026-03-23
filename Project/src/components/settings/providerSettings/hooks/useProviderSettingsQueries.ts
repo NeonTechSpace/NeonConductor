@@ -119,7 +119,7 @@ export function useProviderSettingsQueries(input: UseProviderSettingsQueriesInpu
             profileId: input.profileId,
         },
         {
-            enabled: resolvedSelectedProviderId === 'openai',
+            enabled: resolvedSelectedProviderId === 'openai_codex',
             ...PROGRESSIVE_QUERY_OPTIONS,
         }
     );
@@ -129,7 +129,7 @@ export function useProviderSettingsQueries(input: UseProviderSettingsQueriesInpu
             profileId: input.profileId,
         },
         {
-            enabled: resolvedSelectedProviderId === 'openai',
+            enabled: resolvedSelectedProviderId === 'openai_codex',
             ...PROGRESSIVE_QUERY_OPTIONS,
         }
     );

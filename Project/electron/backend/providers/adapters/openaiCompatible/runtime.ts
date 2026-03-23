@@ -42,9 +42,14 @@ function toUpstreamModelId(modelId: string, modelPrefix: string): string {
 }
 
 function resolveAuthToken(input: ProviderRuntimeInput, label: string): ProviderAdapterResult<string> {
-    const token = input.accessToken ?? input.apiKey;
+    const token = input.providerId === 'openai_codex' ? input.accessToken : input.apiKey;
     if (!token) {
-        return errProviderAdapter('auth_missing', `${label} runtime execution requires API key or OAuth access token.`);
+        return errProviderAdapter(
+            'auth_missing',
+            input.providerId === 'openai_codex'
+                ? `${label} runtime execution requires an OAuth access token.`
+                : `${label} runtime execution requires an API key.`
+        );
     }
 
     return okProviderAdapter(token);

@@ -1,4 +1,5 @@
 import { providerStore } from '@/app/backend/persistence/stores';
+import { normalizeOpenAIBoundaryForProfile } from '@/app/backend/providers/openAIBoundaryNormalization';
 import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { AuthExecutionResult } from '@/app/backend/providers/auth/errors';
 import type { ProviderAccountContextResult, PollAuthResult, StartAuthResult } from '@/app/backend/providers/auth/types';
@@ -51,6 +52,23 @@ import type {
 } from '@/app/backend/runtime/contracts';
 
 class ProviderManagementService {
+    private readonly openAIBoundaryNormalization = new Map<string, Promise<void>>();
+
+    private async ensureOpenAIBoundaryNormalized(profileId: string): Promise<void> {
+        const inFlight = this.openAIBoundaryNormalization.get(profileId);
+        if (inFlight) {
+            return inFlight;
+        }
+
+        const normalization = normalizeOpenAIBoundaryForProfile(profileId);
+        this.openAIBoundaryNormalization.set(profileId, normalization);
+        try {
+            await normalization;
+        } finally {
+            this.openAIBoundaryNormalization.delete(profileId);
+        }
+    }
+
     private async invalidateCatalogAfterAuthMutation(profileId: string, providerId: RuntimeProviderId): Promise<void> {
         if (providerId === 'kilo') {
             await providerMetadataOrchestrator.invalidateProviderScope(profileId, providerId);
@@ -61,6 +79,7 @@ class ProviderManagementService {
     }
 
     async listProviders(profileId: string): Promise<ProviderListItem[]> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return listProviders(profileId);
     }
 
@@ -68,22 +87,27 @@ class ProviderManagementService {
         profileId: string,
         providerId: RuntimeProviderId
     ): Promise<ProviderServiceResult<ProviderModelRecord[]>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return listModels(profileId, providerId);
     }
 
     async listModelsByProfile(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return listModelsByProfile(profileId);
     }
 
     async getDefaults(profileId: string): Promise<{ providerId: string; modelId: string }> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return getDefaults(profileId);
     }
 
     async setDefault(profileId: string, providerId: RuntimeProviderId, modelId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return setDefault(profileId, providerId, modelId);
     }
 
     async getSpecialistDefaults(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return getSpecialistDefaults(profileId);
     }
 
@@ -94,10 +118,12 @@ class ProviderManagementService {
         providerId: RuntimeProviderId;
         modelId: string;
     }) {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         return setSpecialistDefault(input);
     }
 
     async getAuthState(profileId: string, providerId: RuntimeProviderId): Promise<ProviderAuthStateRecord> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return providerAuthExecutionService.getAuthState(profileId, providerId);
     }
 
@@ -105,6 +131,7 @@ class ProviderManagementService {
         profileId: string,
         providerId: RuntimeProviderId
     ): Promise<ProviderServiceResult<ProviderCredentialSummaryResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return getCredentialSummary(profileId, providerId);
     }
 
@@ -112,26 +139,32 @@ class ProviderManagementService {
         profileId: string,
         providerId: RuntimeProviderId
     ): Promise<ProviderServiceResult<ProviderCredentialValueResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return getCredentialValue(profileId, providerId);
     }
 
     async listAuthStates(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return listAuthStates(profileId);
     }
 
     async listDiscoverySnapshots(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return listDiscoverySnapshots(profileId);
     }
 
     async listUsageSummaries(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return listUsageSummaries(profileId);
     }
 
     async getOpenAISubscriptionUsage(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return getOpenAISubscriptionUsage(profileId);
     }
 
     async getOpenAISubscriptionRateLimits(profileId: string) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return getOpenAISubscriptionRateLimits(profileId);
     }
 
@@ -145,6 +178,7 @@ class ProviderManagementService {
         apiKey: string,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<ProviderAuthStateRecord>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         const result = await providerAuthExecutionService.setApiKey(profileId, providerId, apiKey, context);
         if (result.isOk()) {
             await this.invalidateCatalogAfterAuthMutation(profileId, providerId);
@@ -158,6 +192,7 @@ class ProviderManagementService {
         providerId: RuntimeProviderId,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<{ cleared: boolean; authState: ProviderAuthStateRecord }>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         const result = await providerAuthExecutionService.clearAuth(profileId, providerId, context);
         if (result.isOk()) {
             await this.invalidateCatalogAfterAuthMutation(profileId, providerId);
@@ -170,6 +205,7 @@ class ProviderManagementService {
         input: { profileId: string; providerId: RuntimeProviderId; method: ProviderAuthMethod },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<StartAuthResult>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         return providerAuthExecutionService.startAuth(input, context);
     }
 
@@ -177,6 +213,7 @@ class ProviderManagementService {
         input: { profileId: string; providerId: RuntimeProviderId; flowId: string },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<PollAuthResult>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         const result = await providerAuthExecutionService.pollAuth(input, context);
         if (result.isOk() && result.value.state.authState !== 'pending') {
             await this.invalidateCatalogAfterAuthMutation(input.profileId, input.providerId);
@@ -189,6 +226,7 @@ class ProviderManagementService {
         input: { profileId: string; providerId: RuntimeProviderId; flowId: string; code?: string },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<PollAuthResult>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         const result = await providerAuthExecutionService.completeAuth(input, context);
         if (result.isOk()) {
             await this.invalidateCatalogAfterAuthMutation(input.profileId, input.providerId);
@@ -201,6 +239,7 @@ class ProviderManagementService {
         input: { profileId: string; providerId: RuntimeProviderId; flowId: string },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<PollAuthResult>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         return providerAuthExecutionService.cancelAuth(input, context);
     }
 
@@ -209,6 +248,7 @@ class ProviderManagementService {
         providerId: RuntimeProviderId,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<AuthExecutionResult<ProviderAuthStateRecord>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         const result = await providerAuthExecutionService.refreshAuth(profileId, providerId, context);
         if (result.isOk()) {
             await this.invalidateCatalogAfterAuthMutation(profileId, providerId);
@@ -221,6 +261,7 @@ class ProviderManagementService {
         profileId: string,
         providerId: RuntimeProviderId
     ): Promise<AuthExecutionResult<ProviderAccountContextResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return providerAuthExecutionService.getAccountContext(profileId, providerId);
     }
 
@@ -228,6 +269,7 @@ class ProviderManagementService {
         profileId: string,
         providerId: RuntimeProviderId
     ): Promise<ProviderServiceResult<ProviderConnectionProfileResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         const stateResult = await getConnectionProfileState(profileId, providerId);
         if (stateResult.isErr()) {
             return errProviderService(stateResult.error.code, stateResult.error.message);
@@ -244,6 +286,7 @@ class ProviderManagementService {
         profileId: string,
         providerId: RuntimeProviderId
     ) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         if (providerId !== 'openai') {
             return errProviderService(
                 'invalid_payload',
@@ -259,6 +302,7 @@ class ProviderManagementService {
         providerId: RuntimeProviderId,
         mode: import('@/app/backend/runtime/contracts').OpenAIExecutionMode
     ) {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         if (providerId !== 'openai') {
             return errProviderService(
                 'invalid_payload',
@@ -279,6 +323,7 @@ class ProviderManagementService {
         },
         context?: { requestId?: string; correlationId?: string }
     ): Promise<ProviderServiceResult<ProviderConnectionProfileResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         const providerDefinition = getProviderDefinition(providerId);
         if (input.organizationId !== undefined && !providerDefinition.supportsOrganizationScope) {
             return errProviderService(
@@ -339,6 +384,7 @@ class ProviderManagementService {
         providerId: 'kilo',
         organizationId?: string | null
     ): Promise<AuthExecutionResult<ProviderAccountContextResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         const result = await providerAuthExecutionService.setOrganization(profileId, providerId, organizationId);
         if (result.isOk()) {
             await providerMetadataOrchestrator.invalidateProviderScope(profileId, providerId);
@@ -353,22 +399,26 @@ class ProviderManagementService {
         force = false,
         context?: { requestId?: string; correlationId?: string }
     ): Promise<ProviderServiceResult<ProviderSyncResult>> {
+        await this.ensureOpenAIBoundaryNormalized(profileId);
         return syncCatalog(profileId, providerId, force, context);
     }
 
     async getModelRoutingPreference(
         input: ProviderGetModelRoutingPreferenceInput
     ): Promise<ProviderServiceResult<KiloModelRoutingPreference>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         return getModelRoutingPreference(input);
     }
 
     async setModelRoutingPreference(
         input: ProviderSetModelRoutingPreferenceInput
     ): Promise<ProviderServiceResult<KiloModelRoutingPreference>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         return setModelRoutingPreference(input);
     }
 
     async listModelProviders(input: ProviderListModelProvidersInput): Promise<ProviderServiceResult<KiloModelProviderOption[]>> {
+        await this.ensureOpenAIBoundaryNormalized(input.profileId);
         return listModelProviders(input);
     }
 }

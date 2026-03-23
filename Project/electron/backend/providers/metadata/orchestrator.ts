@@ -63,7 +63,7 @@ function readMetadataCacheTtlMs(): number {
 }
 
 function isStaticProviderId(providerId: RuntimeProviderId): providerId is Exclude<RuntimeProviderId, 'kilo'> {
-    return providerId === 'openai' || providerId === 'zai' || providerId === 'moonshot';
+    return providerId === 'openai' || providerId === 'openai_codex' || providerId === 'zai' || providerId === 'moonshot';
 }
 
 export class ProviderMetadataOrchestrator {
@@ -158,7 +158,7 @@ export class ProviderMetadataOrchestrator {
 
     async listModelsByProfile(profileId: string): Promise<ProviderModelRecord[]> {
         await Promise.all(
-            (['openai', 'zai', 'moonshot'] as const).map(async (providerId) => {
+            (['openai', 'openai_codex', 'zai', 'moonshot'] as const).map(async (providerId) => {
                 const fetchStateResult = await resolveProviderCatalogFetchState(profileId, providerId);
                 if (fetchStateResult.isErr()) {
                     return;

@@ -4,6 +4,8 @@ import { moonshotCatalogBehavior } from '@/app/backend/providers/behaviors/moons
 import { moonshotRuntimeBehavior } from '@/app/backend/providers/behaviors/moonshot/runtime';
 import { openAICatalogBehavior } from '@/app/backend/providers/behaviors/openai/catalog';
 import { openAIRuntimeBehavior } from '@/app/backend/providers/behaviors/openai/runtime';
+import { openAICodexCatalogBehavior } from '@/app/backend/providers/behaviors/openaiCodex/catalog';
+import { openAICodexRuntimeBehavior } from '@/app/backend/providers/behaviors/openaiCodex/runtime';
 import type { ProviderCatalogBehavior, ProviderRuntimeBehavior } from '@/app/backend/providers/behaviors/types';
 import { zaiCatalogBehavior } from '@/app/backend/providers/behaviors/zai/catalog';
 import { zaiRuntimeBehavior } from '@/app/backend/providers/behaviors/zai/runtime';
@@ -13,6 +15,7 @@ import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 const runtimeBehaviorRegistry: Record<FirstPartyProviderId, ProviderRuntimeBehavior> = {
     kilo: kiloRuntimeBehavior,
     openai: openAIRuntimeBehavior,
+    openai_codex: openAICodexRuntimeBehavior,
     zai: zaiRuntimeBehavior,
     moonshot: moonshotRuntimeBehavior,
 };
@@ -20,6 +23,7 @@ const runtimeBehaviorRegistry: Record<FirstPartyProviderId, ProviderRuntimeBehav
 const catalogBehaviorRegistry: Record<FirstPartyProviderId, ProviderCatalogBehavior> = {
     kilo: kiloCatalogBehavior,
     openai: openAICatalogBehavior,
+    openai_codex: openAICodexCatalogBehavior,
     zai: zaiCatalogBehavior,
     moonshot: moonshotCatalogBehavior,
 };

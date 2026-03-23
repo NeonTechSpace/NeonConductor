@@ -50,7 +50,7 @@ export async function pollAuthFlow(input: {
         return handleKiloDevicePoll(flow);
     }
 
-    if (flow.providerId === 'openai' && flow.flowType === 'oauth_device') {
+    if (flow.providerId === 'openai_codex' && flow.flowType === 'oauth_device') {
         return handleOpenAIDevicePoll(flow);
     }
 
@@ -68,7 +68,7 @@ export async function completeAuthFlow(input: {
         return errAuthExecution(flowResult.error.code, flowResult.error.message);
     }
     const flow = flowResult.value;
-    if (flow.providerId !== 'openai' || flow.flowType !== 'oauth_pkce') {
+    if (flow.providerId !== 'openai_codex' || flow.flowType !== 'oauth_pkce') {
         return pollAuthFlow(input);
     }
 

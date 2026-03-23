@@ -230,7 +230,7 @@ describe('persistence stores: profile and provider domain', () => {
 
         const summary = await runUsageStore.summarizeOpenAISubscriptionUsage(profileId, now);
 
-        expect(summary.providerId).toBe('openai');
+        expect(summary.providerId).toBe('openai_codex');
         expect(summary.billedVia).toBe('openai_subscription');
         expect(summary.fiveHour.runCount).toBe(1);
         expect(summary.fiveHour.totalTokens).toBe(165);

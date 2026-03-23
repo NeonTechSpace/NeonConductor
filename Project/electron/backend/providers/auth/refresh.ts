@@ -10,8 +10,8 @@ export async function runRefreshOperation(input: {
     providerId: RuntimeProviderId;
     refreshLocks: Map<string, Promise<AuthExecutionResult<ProviderAuthStateRecord>>>;
 }): Promise<AuthExecutionResult<ProviderAuthStateRecord>> {
-    if (input.providerId !== 'openai') {
-        return errAuthExecution('refresh_not_supported', 'Refresh auth is currently supported only for openai.');
+    if (input.providerId !== 'openai_codex') {
+        return errAuthExecution('refresh_not_supported', 'Refresh auth is currently supported only for openai_codex.');
     }
 
     const lockKey = `${input.profileId}:${input.providerId}`;

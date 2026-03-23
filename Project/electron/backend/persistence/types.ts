@@ -723,7 +723,7 @@ export interface OpenAISubscriptionUsageWindowSummary {
 }
 
 export interface OpenAISubscriptionUsageSummary {
-    providerId: 'openai';
+    providerId: 'openai_codex';
     billedVia: 'openai_subscription';
     fiveHour: OpenAISubscriptionUsageWindowSummary;
     weekly: OpenAISubscriptionUsageWindowSummary;
@@ -743,7 +743,7 @@ export interface OpenAISubscriptionRateLimitEntry {
 }
 
 export interface OpenAISubscriptionRateLimitsSummary {
-    providerId: 'openai';
+    providerId: 'openai_codex';
     source: 'chatgpt_wham' | 'unavailable';
     fetchedAt: number;
     planType?: string;

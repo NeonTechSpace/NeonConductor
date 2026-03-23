@@ -282,7 +282,6 @@ export class RunUsageStore {
                 eb.fn.count<number>('run_usage.latency_ms').as('latency_samples'),
             ])
             .where('runs.profile_id', '=', input.profileId)
-            .where('run_usage.provider_id', '=', 'openai')
             .where('run_usage.billed_via', '=', 'openai_subscription')
             .where('run_usage.recorded_at', '>=', input.windowStart)
             .where('run_usage.recorded_at', '<=', input.windowEnd)
@@ -320,7 +319,7 @@ export class RunUsageStore {
         ]);
 
         return {
-            providerId: 'openai',
+            providerId: 'openai_codex',
             billedVia: 'openai_subscription',
             fiveHour,
             weekly,

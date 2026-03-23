@@ -18,6 +18,13 @@ const openAIStaticMetadataAdapter: ProviderMetadataAdapter = {
     },
 };
 
+const openAICodexStaticMetadataAdapter: ProviderMetadataAdapter = {
+    id: 'openai_codex',
+    fetchCatalog(input) {
+        return syncStaticCatalog('openai_codex', input);
+    },
+};
+
 const zaiStaticMetadataAdapter: ProviderMetadataAdapter = {
     id: 'zai',
     fetchCatalog(input) {
@@ -35,6 +42,7 @@ const moonshotStaticMetadataAdapter: ProviderMetadataAdapter = {
 const metadataAdapters: Record<FirstPartyProviderId, ProviderMetadataAdapter> = {
     kilo: kiloMetadataAdapter,
     openai: openAIStaticMetadataAdapter,
+    openai_codex: openAICodexStaticMetadataAdapter,
     zai: zaiStaticMetadataAdapter,
     moonshot: moonshotStaticMetadataAdapter,
 };

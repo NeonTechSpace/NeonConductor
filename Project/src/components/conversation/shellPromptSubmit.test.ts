@@ -67,7 +67,7 @@ describe('submitPrompt', () => {
                     {
                         label: 'OpenAI',
                         authState: 'logged_out',
-                        authMethod: 'oauth_pkce',
+                        authMethod: 'api_key',
                     },
                 ],
             ]),

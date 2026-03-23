@@ -65,11 +65,23 @@ const providerDefinitions: Record<FirstPartyProviderId, ProviderDefinition> = {
         label: 'OpenAI',
         supportsByok: true,
         catalogStrategy: 'static',
-        authMethods: ['api_key', 'oauth_pkce', 'oauth_device'],
+        authMethods: ['api_key'],
         endpointProfiles: [{ value: 'default', label: 'Default', isDefault: true }],
         supportsKiloRouting: false,
         supportsModelProviderListing: false,
         supportsCustomBaseUrl: true,
+        supportsOrganizationScope: false,
+    },
+    openai_codex: {
+        id: 'openai_codex',
+        label: 'OpenAI Codex',
+        supportsByok: false,
+        catalogStrategy: 'static',
+        authMethods: ['oauth_pkce', 'oauth_device'],
+        endpointProfiles: [{ value: 'default', label: 'Default', isDefault: true }],
+        supportsKiloRouting: false,
+        supportsModelProviderListing: false,
+        supportsCustomBaseUrl: false,
         supportsOrganizationScope: false,
     },
     zai: {
@@ -148,6 +160,13 @@ export function resolveProviderApiKeyCta(providerId: FirstPartyProviderId, endpo
         return {
             label: 'Get API Key',
             url: 'https://platform.openai.com/api-keys',
+        };
+    }
+
+    if (providerId === 'openai_codex') {
+        return {
+            label: 'OpenAI Codex uses OAuth',
+            url: 'https://chatgpt.com',
         };
     }
 

@@ -31,6 +31,19 @@ export async function resolveRunAuth(input: {
     }
 
     if (state.authMethod === 'api_key') {
+        if (input.providerId === 'openai_codex') {
+            return errRunExecution(
+                'provider_auth_unsupported',
+                'Provider "openai_codex" does not support API-key runtime auth.',
+                {
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.providerId,
+                    },
+                }
+            );
+        }
+
         if (state.authState !== 'configured' && state.authState !== 'authenticated') {
             return errRunExecution(
                 'provider_auth_invalid_state',
@@ -66,6 +79,19 @@ export async function resolveRunAuth(input: {
     }
 
     if (isOauthMethod(state.authMethod)) {
+        if (input.providerId === 'openai') {
+            return errRunExecution(
+                'provider_auth_unsupported',
+                'Provider "openai" does not support OAuth-backed runtime auth.',
+                {
+                    action: {
+                        code: 'provider_not_runnable',
+                        providerId: input.providerId,
+                    },
+                }
+            );
+        }
+
         if (state.authState !== 'authenticated') {
             return errRunExecution(
                 'provider_auth_invalid_state',

@@ -33,7 +33,7 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
                     id: 'openai',
                     label: 'OpenAI',
                     authState: 'logged_out',
-                    authMethod: 'oauth_device',
+                    authMethod: 'api_key',
                     connectionProfile: {
                         providerId: 'openai',
                         optionProfileId: 'default',
@@ -43,7 +43,7 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
                     },
                     apiKeyCta: { label: 'Create key', url: 'https://example.com' },
                     isDefault: false,
-                    availableAuthMethods: ['oauth_device', 'api_key'],
+                    availableAuthMethods: ['api_key'],
                     features: {
                         supportsKiloRouting: false,
                         catalogStrategy: 'static',
@@ -61,7 +61,7 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
                 id: 'openai',
                 label: 'OpenAI',
                 authState: 'logged_out',
-                authMethod: 'oauth_device',
+                authMethod: 'api_key',
                 connectionProfile: {
                     providerId: 'openai',
                     optionProfileId: 'default',

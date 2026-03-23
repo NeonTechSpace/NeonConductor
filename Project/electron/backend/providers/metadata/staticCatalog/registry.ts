@@ -1,6 +1,6 @@
 import { getProviderCatalogBehavior } from '@/app/backend/providers/behaviors';
 import type { StaticProviderModelDefinition } from '@/app/backend/providers/metadata/staticCatalog/modelDefinition';
-import { OPENAI_MODELS } from '@/app/backend/providers/metadata/staticCatalog/openai';
+import { OPENAI_CODEX_MODELS, OPENAI_MODELS } from '@/app/backend/providers/metadata/staticCatalog/openai';
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 import type { ProviderCatalogModel } from '@/app/backend/providers/types';
 
@@ -212,6 +212,7 @@ const MOONSHOT_MODELS: StaticProviderModelDefinition[] = [
 
 const staticRegistry: Record<Exclude<FirstPartyProviderId, 'kilo'>, StaticProviderModelDefinition[]> = {
     openai: OPENAI_MODELS,
+    openai_codex: OPENAI_CODEX_MODELS,
     zai: ZAI_MODELS,
     moonshot: MOONSHOT_MODELS,
 };

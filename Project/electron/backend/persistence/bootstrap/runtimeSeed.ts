@@ -20,6 +20,7 @@ const DEFAULT_MODEL_ID = kiloFrontierModelId;
 const PROVIDER_SEED = [
     { id: 'kilo', label: 'Kilo', supportsByok: 0 },
     { id: 'openai', label: 'OpenAI', supportsByok: 1 },
+    { id: 'openai_codex', label: 'OpenAI Codex', supportsByok: 0 },
     { id: 'zai', label: 'Z.AI', supportsByok: 1 },
     { id: 'moonshot', label: 'Moonshot (Kimi)', supportsByok: 1 },
 ] as const;
@@ -69,7 +70,7 @@ const KILO_MODEL_SEED: Array<{
 ] as const;
 
 function listDefaultStaticCatalogModels() {
-    return (['openai', 'zai', 'moonshot'] as const).flatMap((providerId) => {
+    return (['openai', 'openai_codex', 'zai', 'moonshot'] as const).flatMap((providerId) => {
         const endpointProfile = getDefaultEndpointProfile(providerId);
         return listStaticModelDefinitions(providerId, endpointProfile).map((definition) => ({
             providerId,

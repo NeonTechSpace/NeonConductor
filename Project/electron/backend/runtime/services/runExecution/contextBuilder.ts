@@ -1,4 +1,4 @@
-import type { ModeDefinition, TopLevelTab } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition, RuntimeProviderId, TopLevelTab } from '@/app/backend/runtime/contracts';
 import type { OperationalErrorCode } from '@/app/backend/runtime/services/common/operationalError';
 import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
@@ -39,7 +39,7 @@ export async function buildRunContext(input: {
     prompt: string;
     attachments?: StartRunInput['attachments'];
     topLevelTab: TopLevelTab;
-    providerId: 'kilo' | 'openai' | 'zai' | 'moonshot';
+    providerId: RuntimeProviderId;
     modelId: string;
     workspaceFingerprint?: string;
     resolvedMode: {

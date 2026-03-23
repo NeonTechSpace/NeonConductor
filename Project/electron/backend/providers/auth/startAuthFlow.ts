@@ -71,7 +71,7 @@ export async function startAuthFlow(input: {
         });
     }
 
-    if (input.providerId === 'openai' && input.method === 'oauth_pkce') {
+    if (input.providerId === 'openai_codex' && input.method === 'oauth_pkce') {
         const pkce = startOpenAIPkceAuth();
         const flow = await providerAuthFlowStore.create({
             profileId: input.profileId,
@@ -96,7 +96,7 @@ export async function startAuthFlow(input: {
         });
     }
 
-    if (input.providerId === 'openai' && input.method === 'oauth_device') {
+    if (input.providerId === 'openai_codex' && input.method === 'oauth_device') {
         const deviceResult = await startOpenAIDeviceAuth();
         if (deviceResult.isErr()) {
             return errAuthExecution(deviceResult.error.code, deviceResult.error.message);

@@ -11,21 +11,15 @@ const expectedOpenAiModelIds = [
     'openai/gpt-4o-mini',
     'openai/gpt-5',
     'openai/gpt-5-chat-latest',
-    'openai/gpt-5-codex',
     'openai/gpt-5-mini',
     'openai/gpt-5-nano',
     'openai/gpt-5-pro',
     'openai/gpt-5.1',
     'openai/gpt-5.1-chat-latest',
-    'openai/gpt-5.1-codex',
-    'openai/gpt-5.1-codex-max',
-    'openai/gpt-5.1-codex-mini',
     'openai/gpt-5.2',
     'openai/gpt-5.2-chat-latest',
-    'openai/gpt-5.2-codex',
     'openai/gpt-5.2-pro',
     'openai/gpt-5.3-chat-latest',
-    'openai/gpt-5.3-codex',
     'openai/gpt-5.4',
     'openai/gpt-5.4-pro',
     'openai/gpt-realtime',
@@ -35,6 +29,15 @@ const expectedOpenAiModelIds = [
     'openai/o3',
     'openai/o3-mini',
     'openai/o4-mini',
+];
+
+const expectedOpenAICodexModelIds = [
+    'openai_codex/gpt-5-codex',
+    'openai_codex/gpt-5.1-codex',
+    'openai_codex/gpt-5.1-codex-max',
+    'openai_codex/gpt-5.1-codex-mini',
+    'openai_codex/gpt-5.2-codex',
+    'openai_codex/gpt-5.3-codex',
 ];
 
 describe('static model catalog', () => {
@@ -71,10 +74,15 @@ describe('static model catalog', () => {
     it('exposes the curated chat-capable non-kilo model sets by endpoint profile', () => {
         const openAiModelIds = listStaticModelDefinitions('openai', 'default').map((definition) => definition.modelId);
         expect(openAiModelIds.slice().sort()).toEqual(expectedOpenAiModelIds.slice().sort());
+        const openAICodexModelIds = listStaticModelDefinitions('openai_codex', 'default').map(
+            (definition) => definition.modelId
+        );
+        expect(openAICodexModelIds.slice().sort()).toEqual(expectedOpenAICodexModelIds.slice().sort());
         expect(openAiModelIds).not.toContain('openai/gpt-3.5-turbo-0125');
         expect(openAiModelIds).not.toContain('openai/gpt-3.5-turbo-1106');
         expect(openAiModelIds).not.toContain('openai/gpt-3.5-turbo-16k');
         expect(openAiModelIds).not.toContain('openai/codex-mini');
+        expect(openAiModelIds).not.toContain('openai/gpt-5-codex');
         expect(
             listStaticModelDefinitions('zai', 'coding_international').map((definition) => definition.modelId)
         ).toEqual([

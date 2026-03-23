@@ -77,6 +77,8 @@ export function ProviderStatusSection({
     const activeOrganization = readActiveOrganization(accountContext);
     const effectiveAuthState = authState?.authState ?? provider.authState;
     const effectiveAuthMethod = authState?.authMethod ?? provider.authMethod;
+    const isOpenAICodex = provider.id === 'openai_codex';
+    const isDirectOpenAI = provider.id === 'openai';
 
     return (
         <section className='border-border/70 bg-card/40 space-y-4 rounded-[24px] border p-5'>
@@ -150,9 +152,13 @@ export function ProviderStatusSection({
                             <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                 <dt className='text-muted-foreground'>Auth guidance</dt>
                                 <dd className='text-muted-foreground min-w-0 break-words text-xs leading-5'>
-                                    {effectiveAuthState === 'authenticated'
-                                        ? 'OpenAI account context is ready.'
-                                        : 'Use OAuth for account limits or an API key for direct Responses access.'}
+                                    {isOpenAICodex
+                                        ? effectiveAuthState === 'authenticated'
+                                            ? 'OpenAI Codex account context is ready.'
+                                            : 'Use OAuth to connect the OpenAI Codex subscription surface.'
+                                        : isDirectOpenAI
+                                          ? 'Use an API key for direct OpenAI API access and realtime execution.'
+                                          : 'Connect this direct provider to make runtime and catalog data available.'}
                                 </dd>
                             </div>
                         </dl>
@@ -184,7 +190,7 @@ export function ProviderStatusSection({
                     )}
                 </StatusCard>
 
-                <StatusCard title={provider.id === 'kilo' ? 'Provider Extras' : 'OpenAI Windows'}>
+                <StatusCard title={provider.id === 'kilo' ? 'Provider Extras' : isOpenAICodex ? 'OpenAI Codex Windows' : 'Provider Extras'}>
                     {provider.id === 'kilo' ? (
                         isLoadingAccountContext ? (
                             <p className='text-muted-foreground text-xs'>Loading organization and balance state...</p>
@@ -215,12 +221,12 @@ export function ProviderStatusSection({
                                 </div>
                             </dl>
                         )
-                    ) : (
+                    ) : isOpenAICodex ? (
                         <div className='space-y-3 text-sm'>
                             <div>
                                 <p className='text-muted-foreground text-xs'>Account limits</p>
                                 {isLoadingOpenAIRateLimits ? (
-                                    <p className='text-muted-foreground mt-1 text-xs'>Loading OpenAI account limits...</p>
+                                    <p className='text-muted-foreground mt-1 text-xs'>Loading OpenAI Codex account limits...</p>
                                 ) : openAISubscriptionRateLimits?.source === 'chatgpt_wham' ? (
                                     <dl className='mt-2 grid gap-2 sm:grid-cols-2'>
                                         <div>
@@ -245,7 +251,7 @@ export function ProviderStatusSection({
                                 ) : (
                                     <p className='text-muted-foreground mt-1 text-xs'>
                                         {openAISubscriptionRateLimits?.detail ??
-                                            'OpenAI account limits are unavailable until OAuth is connected.'}
+                                            'OpenAI Codex account limits are unavailable until OAuth is connected.'}
                                     </p>
                                 )}
                             </div>
@@ -253,7 +259,7 @@ export function ProviderStatusSection({
                             <div>
                                 <p className='text-muted-foreground text-xs'>Local subscription windows</p>
                                 {isLoadingOpenAIUsage ? (
-                                    <p className='text-muted-foreground mt-1 text-xs'>Loading local OpenAI usage...</p>
+                                    <p className='text-muted-foreground mt-1 text-xs'>Loading local OpenAI Codex usage...</p>
                                 ) : openAISubscriptionUsage ? (
                                     <dl className='mt-2 grid gap-2 sm:grid-cols-2'>
                                         <div>
@@ -276,6 +282,10 @@ export function ProviderStatusSection({
                                 )}
                             </div>
                         </div>
+                    ) : (
+                        <p className='text-muted-foreground text-xs'>
+                            No provider-specific extras are available here yet.
+                        </p>
                     )}
                 </StatusCard>
             </div>

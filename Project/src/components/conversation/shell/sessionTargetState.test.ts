@@ -20,14 +20,14 @@ describe('sessionTargetState', () => {
         const updatedFirstModel = applySessionModelOverride(
             withSecondProvider,
             firstSession,
-            'openai',
-            'openai/gpt-5-codex'
+            'openai_codex',
+            'openai_codex/gpt-5-codex'
         );
 
         expect(updatedFirstModel).toEqual({
             sess_first: {
-                providerId: 'openai',
-                modelId: 'openai/gpt-5-codex',
+                providerId: 'openai_codex',
+                modelId: 'openai_codex/gpt-5-codex',
             },
             sess_second: {
                 providerId: 'kilo',

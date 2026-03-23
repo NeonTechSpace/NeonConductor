@@ -410,33 +410,64 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
     }>();
     expectTypeOf<Outputs['provider'][typeof OPENAI_USAGE_PROCEDURE]>().toExtend<{
         usage: {
-            providerId: 'openai';
+            providerId: 'openai_codex';
             billedVia: 'openai_subscription';
             fiveHour: {
                 windowLabel: 'last_5_hours' | 'last_7_days';
                 runCount: number;
                 totalTokens: number;
+                inputTokens: number;
+                outputTokens: number;
+                cachedTokens: number;
+                reasoningTokens: number;
+                totalCostMicrounits: number;
+                averageLatencyMs?: number;
             };
             weekly: {
                 windowLabel: 'last_5_hours' | 'last_7_days';
                 runCount: number;
                 totalTokens: number;
+                inputTokens: number;
+                outputTokens: number;
+                cachedTokens: number;
+                reasoningTokens: number;
+                totalCostMicrounits: number;
+                averageLatencyMs?: number;
             };
         };
     }>();
     expectTypeOf<Outputs['provider'][typeof OPENAI_RATE_LIMITS_PROCEDURE]>().toExtend<{
         rateLimits: {
-            providerId: 'openai';
+            providerId: 'openai_codex';
             source: 'chatgpt_wham' | 'unavailable';
+            fetchedAt: number;
+            planType?: string;
+            primary?: {
+                usedPercent: number;
+                windowMinutes?: number;
+                resetsAt?: number;
+            };
+            secondary?: {
+                usedPercent: number;
+                windowMinutes?: number;
+                resetsAt?: number;
+            };
             limits: Array<{
                 limitId: string;
+                limitName?: string;
                 primary?: {
                     usedPercent: number;
+                    windowMinutes?: number;
+                    resetsAt?: number;
                 };
                 secondary?: {
                     usedPercent: number;
+                    windowMinutes?: number;
+                    resetsAt?: number;
                 };
             }>;
+            reason?: 'oauth_required' | 'not_authenticated' | 'missing_access_token' | 'fetch_failed' | 'invalid_payload';
+            detail?: string;
         };
     }>();
     expectTypeOf<Outputs['provider']['getDefaults']>().toExtend<{

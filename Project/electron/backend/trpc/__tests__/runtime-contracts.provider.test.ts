@@ -759,6 +759,221 @@ describe('runtime contracts: provider and account flows', () => {
         });
     });
 
+    it('normalizes only legacy OpenAI OAuth and Codex state into openai_codex', async () => {
+        const caller = createCaller();
+        const { sqlite } = getPersistence();
+        const now = new Date().toISOString();
+
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_auth_states
+                        (
+                            profile_id,
+                            provider_id,
+                            auth_method,
+                            auth_state,
+                            account_id,
+                            organization_id,
+                            token_expires_at,
+                            last_error_code,
+                            last_error_message,
+                            updated_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                profileId,
+                'openai',
+                'oauth_device',
+                'authenticated',
+                'account_legacy_codex',
+                null,
+                '2026-03-23T15:00:00.000Z',
+                null,
+                null,
+                now
+            );
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_auth_flows
+                        (
+                            id,
+                            profile_id,
+                            provider_id,
+                            flow_type,
+                            auth_method,
+                            nonce,
+                            state,
+                            code_verifier,
+                            redirect_uri,
+                            device_code,
+                            user_code,
+                            verification_uri,
+                            poll_interval_seconds,
+                            expires_at,
+                            status,
+                            last_error_code,
+                            last_error_message,
+                            created_at,
+                            updated_at,
+                            consumed_at
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                'flow_legacy_openai_oauth',
+                profileId,
+                'openai',
+                'oauth_device',
+                'oauth_device',
+                null,
+                null,
+                null,
+                null,
+                'device_legacy',
+                'USER-LEGACY',
+                'https://chatgpt.com',
+                5,
+                '2026-03-23T16:00:00.000Z',
+                'pending',
+                null,
+                null,
+                now,
+                now,
+                null
+            );
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_secrets
+                        (id, profile_id, provider_id, secret_kind, secret_value, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run('secret_openai_api_key', profileId, 'openai', 'api_key', 'openai-api-key-keep', now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_secrets
+                        (id, profile_id, provider_id, secret_kind, secret_value, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run('secret_openai_access_token', profileId, 'openai', 'access_token', 'legacy-access-token', now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO provider_secrets
+                        (id, profile_id, provider_id, secret_kind, secret_value, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `
+            )
+            .run('secret_openai_refresh_token', profileId, 'openai', 'refresh_token', 'legacy-refresh-token', now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('setting_default_provider_id', profileId, 'default_provider_id', JSON.stringify('openai'), now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run('setting_default_model_id', profileId, 'default_model_id', JSON.stringify('openai/gpt-5-codex'), now);
+        sqlite
+            .prepare(
+                `
+                    INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `
+            )
+            .run(
+                'setting_specialist_defaults',
+                profileId,
+                'specialist_defaults',
+                JSON.stringify([
+                    {
+                        topLevelTab: 'agent',
+                        modeKey: 'code',
+                        providerId: 'openai',
+                        modelId: 'openai/gpt-5.1-codex',
+                    },
+                ]),
+                now
+            );
+
+        const defaults = await caller.provider.getDefaults({ profileId });
+        expect(defaults.defaults.providerId).toBe('openai_codex');
+        expect(defaults.defaults.modelId).toBe('openai_codex/gpt-5-codex');
+        expect(defaults.specialistDefaults).toContainEqual({
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            providerId: 'openai_codex',
+            modelId: 'openai_codex/gpt-5.1-codex',
+        });
+
+        const openAIState = await caller.provider.getAuthState({ profileId, providerId: 'openai' });
+        expect(openAIState.found).toBe(true);
+        expect(openAIState.state.authMethod).toBe('api_key');
+        expect(openAIState.state.authState).toBe('configured');
+
+        const codexState = await caller.provider.getAuthState({ profileId, providerId: 'openai_codex' });
+        expect(codexState.found).toBe(true);
+        expect(codexState.state.authMethod).toBe('oauth_device');
+        expect(codexState.state.authState).toBe('authenticated');
+        expect(codexState.state.accountId).toBe('account_legacy_codex');
+
+        const snapshot = await caller.runtime.getDiagnosticSnapshot({ profileId });
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) => providerSecret.providerId === 'openai' && providerSecret.secretKind === 'api_key'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) =>
+                    providerSecret.providerId === 'openai' && providerSecret.secretKind === 'access_token'
+            )
+        ).toBe(false);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) =>
+                    providerSecret.providerId === 'openai_codex' && providerSecret.secretKind === 'access_token'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) =>
+                    providerSecret.providerId === 'openai_codex' && providerSecret.secretKind === 'refresh_token'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerAuthFlows.some(
+                (providerAuthFlow) =>
+                    providerAuthFlow.providerId === 'openai_codex' &&
+                    providerAuthFlow.authMethod === 'oauth_device' &&
+                    providerAuthFlow.id === 'flow_legacy_openai_oauth'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerAuthFlows.some(
+                (providerAuthFlow) =>
+                    providerAuthFlow.providerId === 'openai' &&
+                    providerAuthFlow.authMethod === 'oauth_device' &&
+                    providerAuthFlow.id === 'flow_legacy_openai_oauth'
+            )
+        ).toBe(false);
+    });
+
     it('supports provider auth control plane and static catalog sync remains explicit', async () => {
         const caller = createCaller();
 
@@ -806,7 +1021,7 @@ describe('runtime contracts: provider and account flows', () => {
         ).toBe(false);
     });
 
-    it('auto-backfills static openai catalogs from the local registry', async () => {
+    it('auto-backfills static openai catalogs from the local registry without codex models', async () => {
         const caller = createCaller();
 
         const staleOnly = listStaticModelDefinitions('openai', 'default')
@@ -824,11 +1039,14 @@ describe('runtime contracts: provider and account flows', () => {
         expect(models.models.some((model) => model.id === 'openai/gpt-5.4')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-nano')).toBe(true);
-        expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(false);
         expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo-0125')).toBe(false);
+
+        const codexModels = await caller.provider.listModels({ profileId, providerId: 'openai_codex' });
+        expect(codexModels.models.some((model) => model.id === 'openai_codex/gpt-5-codex')).toBe(true);
     });
 
-    it('syncs openai api catalog and keeps codex model ids', async () => {
+    it('syncs openai api catalog separately from codex model ids', async () => {
         const caller = createCaller();
 
         const configured = await caller.provider.setApiKey({
@@ -850,10 +1068,13 @@ describe('runtime contracts: provider and account flows', () => {
         expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo-1106')).toBe(false);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-nano')).toBe(true);
-        expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
-        const codex = models.models.find((model) => model.id === 'openai/gpt-5-codex');
-        expect(codex?.promptFamily).toBe('codex');
+        expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(false);
         expect(models.models.some((model) => model.id === 'openai/gpt-5' && model.supportsVision)).toBe(true);
+
+        const codexModels = await caller.provider.listModels({ profileId, providerId: 'openai_codex' });
+        const codex = codexModels.models.find((model) => model.id === 'openai_codex/gpt-5-codex');
+        expect(codex).toBeDefined();
+        expect(codex?.promptFamily).toBe('codex');
     });
 
     it('syncs kilo catalog with dynamic capability metadata from gateway discovery', async () => {
@@ -1729,7 +1950,7 @@ describe('runtime contracts: provider and account flows', () => {
         expect(defaults.specialistDefaults).toEqual([]);
     });
 
-    it('supports openai oauth device auth start and pending polling', async () => {
+    it('supports openai codex oauth device auth start and pending polling', async () => {
         const caller = createCaller();
         vi.stubGlobal(
             'fetch',
@@ -1757,7 +1978,7 @@ describe('runtime contracts: provider and account flows', () => {
 
         const started = await caller.provider.startAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
             method: 'oauth_device',
         });
 
@@ -1766,7 +1987,7 @@ describe('runtime contracts: provider and account flows', () => {
 
         const polled = await caller.provider.pollAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
             flowId: started.flow.id,
         });
 
@@ -1774,7 +1995,7 @@ describe('runtime contracts: provider and account flows', () => {
         expect(polled.state.authState).toBe('pending');
     });
 
-    it('supports openai oauth pkce completion and refresh', async () => {
+    it('supports openai codex oauth pkce completion and refresh', async () => {
         const caller = createCaller();
         const fetchMock = vi.fn();
         fetchMock.mockResolvedValueOnce({
@@ -1799,13 +2020,13 @@ describe('runtime contracts: provider and account flows', () => {
 
         const started = await caller.provider.startAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
             method: 'oauth_pkce',
         });
 
         const completed = await caller.provider.completeAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
             flowId: started.flow.id,
             code: 'authorization-code',
         });
@@ -1814,20 +2035,20 @@ describe('runtime contracts: provider and account flows', () => {
 
         const refreshed = await caller.provider.refreshAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
         });
         expect(refreshed.state.authState).toBe('authenticated');
 
         const syncResult = await caller.provider.syncCatalog({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
         });
         expect(syncResult.ok).toBe(true);
-        const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
-        expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(true);
+        const models = await caller.provider.listModels({ profileId, providerId: 'openai_codex' });
+        expect(models.models.some((model) => model.id === 'openai_codex/gpt-5-codex')).toBe(true);
     });
 
-    it('reads openai subscription rate limits from wham usage for oauth sessions', async () => {
+    it('reads openai codex subscription rate limits from wham usage for oauth sessions', async () => {
         const caller = createCaller();
         const fetchMock = vi.fn();
         fetchMock.mockResolvedValueOnce({
@@ -1875,12 +2096,12 @@ describe('runtime contracts: provider and account flows', () => {
 
         const started = await caller.provider.startAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
             method: 'oauth_device',
         });
         const completed = await caller.provider.pollAuth({
             profileId,
-            providerId: 'openai',
+            providerId: 'openai_codex',
             flowId: started.flow.id,
         });
         expect(completed.flow.status).toBe('completed');
