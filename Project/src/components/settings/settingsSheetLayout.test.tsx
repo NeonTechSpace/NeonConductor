@@ -37,7 +37,7 @@ describe('settings sheet layout', () => {
             <SettingsSheet open profileId='profile_default' onClose={() => {}} onProfileActivated={() => {}} />
         );
 
-        expect(html).toContain('role="tabpanel"');
+        expect(html).toContain('Kilo');
         expect(html).toContain('bg-background/20 h-full min-h-0 min-w-0 flex-1 overflow-hidden');
     });
 });

@@ -3,22 +3,22 @@ import { startTransition, useState } from 'react';
 
 import { AppSettingsView } from '@/web/components/settings/appSettings/view';
 import { ContextSettingsView } from '@/web/components/settings/contextSettingsView';
+import { KiloSettingsView } from '@/web/components/settings/kiloSettingsView';
 import { ProfileSettingsView } from '@/web/components/settings/profileSettingsView';
-import { ProvidersWorkspaceView } from '@/web/components/settings/providersWorkspace/view';
+import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 import { RegistrySettingsView } from '@/web/components/settings/registrySettingsView';
+import {
+    getDefaultSettingsSelection,
+    SETTINGS_PRIMARY_SECTIONS,
+    type AppSettingsSubsectionId,
+    type ContextSettingsSubsectionId,
+    type KiloSettingsSubsectionId,
+    type ProfileSettingsSubsectionId,
+    type RegistrySettingsSubsectionId,
+    type SettingsPrimarySectionId,
+    type SettingsSelection,
+} from '@/web/components/settings/settingsNavigation';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
-
-type SettingsWorkspaceSection = 'providers' | 'profiles' | 'context' | 'skills' | 'app';
-
-const SETTINGS_SECTIONS: ReadonlyArray<SettingsWorkspaceSection> = ['providers', 'profiles', 'context', 'skills', 'app'];
-
-const SECTION_LABELS: Record<SettingsWorkspaceSection, string> = {
-    providers: 'Providers & Models',
-    profiles: 'Profiles',
-    context: 'Context & Limits',
-    skills: 'Skills & Registry',
-    app: 'App',
-};
 
 interface SettingsWorkspaceProps {
     profileId: string;
@@ -26,13 +26,51 @@ interface SettingsWorkspaceProps {
     onReturnToSessions: () => void;
 }
 
+function PrimaryRailButton({
+    section,
+    selected,
+    onSelect,
+}: {
+    section: (typeof SETTINGS_PRIMARY_SECTIONS)[number];
+    selected: boolean;
+    onSelect: (sectionId: SettingsPrimarySectionId) => void;
+}) {
+    return (
+        <button
+            type='button'
+            className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
+                selected
+                    ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                    : 'border-border/80 bg-card/70 hover:bg-accent'
+            }`}
+            onClick={() => {
+                onSelect(section.id);
+            }}>
+            <div className='space-y-1'>
+                <p className='min-w-0 break-words text-sm font-medium'>{section.label}</p>
+                <p className='text-muted-foreground text-[11px] leading-5'>{section.description}</p>
+            </div>
+        </button>
+    );
+}
+
 export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSessions }: SettingsWorkspaceProps) {
-    const [activeSection, setActiveSection] = useState<SettingsWorkspaceSection>('providers');
+    const [selection, setSelection] = useState<SettingsSelection>(() => getDefaultSettingsSelection('kilo'));
     const privacyMode = usePrivacyMode();
+    const kiloSections = SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'kilo');
+    const generalSections = SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'general');
+
+    function selectPrimarySection(section: SettingsPrimarySectionId) {
+        startTransition(() => {
+            setSelection((currentSelection) =>
+                currentSelection.section === section ? currentSelection : getDefaultSettingsSelection(section)
+            );
+        });
+    }
 
     return (
         <section className='flex h-full min-h-0 min-w-0 flex-1 overflow-hidden'>
-            <aside className='border-border/80 bg-background/70 flex w-[248px] shrink-0 flex-col gap-4 border-r p-4'>
+            <aside className='border-border/80 bg-background/70 flex min-h-0 w-[272px] shrink-0 flex-col gap-4 overflow-y-auto border-r p-4'>
                 <div className='space-y-3'>
                     <button
                         type='button'
@@ -45,7 +83,9 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
 
                     <div className='space-y-1'>
                         <h2 className='text-sm font-semibold tracking-[0.18em] uppercase'>Settings</h2>
-                        <p className='text-muted-foreground text-xs'>Choose an area to configure.</p>
+                        <p className='text-muted-foreground text-xs'>
+                            Kilo is the primary path. Providers, profiles, registry, and app utilities stay grouped below.
+                        </p>
                         {privacyMode.enabled ? (
                             <p className='text-primary text-[11px] font-semibold tracking-[0.12em] uppercase'>
                                 Privacy mode active
@@ -54,35 +94,88 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                     </div>
                 </div>
 
-                <nav aria-label='Settings sections' className='space-y-1.5'>
-                    {SETTINGS_SECTIONS.map((section) => (
-                        <button
-                            key={section}
-                            type='button'
-                            className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-colors ${
-                                activeSection === section
-                                    ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                                    : 'border-border/80 bg-card/70 hover:bg-accent'
-                            }`}
-                            onClick={() => {
-                                startTransition(() => {
-                                    setActiveSection(section);
-                                });
-                            }}>
-                            <p className='text-sm font-medium'>{SECTION_LABELS[section]}</p>
-                        </button>
-                    ))}
+                <nav aria-label='Settings sections' className='min-h-0 min-w-0 space-y-4'>
+                    <div className='space-y-1.5'>
+                        {kiloSections.map((section) => (
+                            <PrimaryRailButton
+                                key={section.id}
+                                section={section}
+                                selected={selection.section === section.id}
+                                onSelect={selectPrimarySection}
+                            />
+                        ))}
+                    </div>
+
+                    <div className='border-border/80 border-t pt-4'>
+                        <div className='space-y-1.5'>
+                            {generalSections.map((section) => (
+                                <PrimaryRailButton
+                                    key={section.id}
+                                    section={section}
+                                    selected={selection.section === section.id}
+                                    onSelect={selectPrimarySection}
+                                />
+                            ))}
+                        </div>
+                    </div>
                 </nav>
             </aside>
 
             <div className='bg-background/20 h-full min-h-0 min-w-0 flex-1 overflow-hidden'>
-                {activeSection === 'providers' ? <ProvidersWorkspaceView profileId={profileId} /> : null}
-                {activeSection === 'profiles' ? (
-                    <ProfileSettingsView activeProfileId={profileId} onProfileActivated={onProfileActivated} />
+                {selection.section === 'kilo' ? (
+                    <KiloSettingsView
+                        profileId={profileId}
+                        subsection={selection.subsection as KiloSettingsSubsectionId}
+                        onSubsectionChange={(subsection) => {
+                            setSelection({ section: 'kilo', subsection });
+                        }}
+                    />
                 ) : null}
-                {activeSection === 'context' ? <ContextSettingsView activeProfileId={profileId} /> : null}
-                {activeSection === 'skills' ? <RegistrySettingsView profileId={profileId} /> : null}
-                {activeSection === 'app' ? <AppSettingsView /> : null}
+                {selection.section === 'providers' ? (
+                    <ProviderSettingsView
+                        profileId={profileId}
+                        selectedProviderId={selection.subsection}
+                        onProviderChange={(providerId) => {
+                            setSelection({ section: 'providers', subsection: providerId });
+                        }}
+                    />
+                ) : null}
+                {selection.section === 'profiles' ? (
+                    <ProfileSettingsView
+                        activeProfileId={profileId}
+                        onProfileActivated={onProfileActivated}
+                        subsection={selection.subsection as ProfileSettingsSubsectionId}
+                        onSubsectionChange={(subsection) => {
+                            setSelection({ section: 'profiles', subsection });
+                        }}
+                    />
+                ) : null}
+                {selection.section === 'context' ? (
+                    <ContextSettingsView
+                        activeProfileId={profileId}
+                        subsection={selection.subsection as ContextSettingsSubsectionId}
+                        onSubsectionChange={(subsection) => {
+                            setSelection({ section: 'context', subsection });
+                        }}
+                    />
+                ) : null}
+                {selection.section === 'registry' ? (
+                    <RegistrySettingsView
+                        profileId={profileId}
+                        subsection={selection.subsection as RegistrySettingsSubsectionId}
+                        onSubsectionChange={(subsection) => {
+                            setSelection({ section: 'registry', subsection });
+                        }}
+                    />
+                ) : null}
+                {selection.section === 'app' ? (
+                    <AppSettingsView
+                        subsection={selection.subsection as AppSettingsSubsectionId}
+                        onSubsectionChange={(subsection) => {
+                            setSelection({ section: 'app', subsection });
+                        }}
+                    />
+                ) : null}
             </div>
         </section>
     );

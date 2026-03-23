@@ -7,6 +7,13 @@ export default defineConfig({
     test: {
         environment: 'node',
         passWithNoTests: true,
-        include: ['electron/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts'],
+        include: [
+            'electron/**/*.test.ts',
+            'electron/**/*.test.tsx',
+            'src/**/*.test.ts',
+            'src/**/*.test.tsx',
+            'scripts/**/*.test.ts',
+            'scripts/**/*.test.tsx',
+        ],
     },
 });

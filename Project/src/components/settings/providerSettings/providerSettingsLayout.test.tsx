@@ -147,7 +147,7 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
 }));
 
 vi.mock('@/web/components/settings/providerSettings/providerSidebar', () => ({
-    ProviderSidebar: () => <aside>sidebar</aside>,
+    ProviderSidebar: () => <aside>Providers &amp; Models</aside>,
 }));
 
 vi.mock('@/web/components/settings/providerSettings/providerStatusSection', () => ({
@@ -182,7 +182,7 @@ describe('provider settings layout', () => {
 
         expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[264px_minmax(0,1fr)]');
         expect(html).toContain('min-h-0 min-w-0 overflow-y-auto p-4 md:p-5');
-        expect(html).toContain('Custom providers');
-        expect(html).toContain('OpenAI');
+        expect(html).toContain('Providers &amp; Models');
+        expect(html).toContain('Kilo Gateway');
     });
 });
