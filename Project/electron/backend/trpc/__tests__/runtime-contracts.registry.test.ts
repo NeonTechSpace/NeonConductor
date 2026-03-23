@@ -99,6 +99,13 @@ tags:
 `,
             'utf8'
         );
+        writeFileSync(path.join(globalAssetsRoot, 'AGENTS.md'), '# Global agents root\n\nThis should not affect registry.', 'utf8');
+        mkdirSync(path.join(globalAssetsRoot, '.agents'), { recursive: true });
+        writeFileSync(
+            path.join(globalAssetsRoot, '.agents', 'ignored.md'),
+            '# Ignored modular agents\n\nThis should not be treated as a registry asset.',
+            'utf8'
+        );
 
         await createSessionInScope(caller, profileId, {
             scope: 'workspace',
@@ -213,6 +220,17 @@ tags:
 
 - Prefer workspace context when searching.
 `,
+            'utf8'
+        );
+        writeFileSync(
+            path.join(workspaceRoot.absolutePath, 'AGENTS.md'),
+            '# Workspace agents root\n\nThis should not affect registry counts.',
+            'utf8'
+        );
+        mkdirSync(path.join(workspaceRoot.absolutePath, '.agents'), { recursive: true });
+        writeFileSync(
+            path.join(workspaceRoot.absolutePath, '.agents', 'ignored.md'),
+            '# Ignored workspace modular agents\n\nThis should not be treated as a registry asset.',
             'utf8'
         );
 

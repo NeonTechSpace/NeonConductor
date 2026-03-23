@@ -1,9 +1,14 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import {
     builtInModePromptOverrideStore,
     conversationStore,
+    sandboxStore,
     sessionAttachedRuleStore,
     sessionAttachedSkillStore,
     sessionStore,
@@ -94,7 +99,8 @@ describe('buildSessionSystemPrelude', () => {
 
     it('assembles prompt layers in the documented order for chat sessions', async () => {
         const profileId = getDefaultProfileId();
-        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, 'M:\\Libraries\\Downloads\\prompt-order');
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'nc-prompt-order-'));
+        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, workspacePath);
         const bucket = await conversationStore.createOrGetBucket({
             profileId,
             scope: 'workspace',
@@ -134,6 +140,41 @@ describe('buildSessionSystemPrelude', () => {
                 },
             }),
         ]);
+
+        writeFileSync(
+            path.join(workspaceRoot.absolutePath, 'AGENTS.md'),
+            `---
+ignored: true
+---
+# Workspace Agents
+
+Primary project instructions.
+`,
+            'utf8'
+        );
+        writeFileSync(
+            path.join(workspaceRoot.absolutePath, '.agents-note.txt'),
+            'not markdown and should not load',
+            'utf8'
+        );
+        const modularAgentsDirectory = path.join(workspaceRoot.absolutePath, '.agents', 'nested');
+        mkdirSync(modularAgentsDirectory, { recursive: true });
+        writeFileSync(
+            path.join(workspaceRoot.absolutePath, '.agents', 'z-last.md'),
+            '# Z Last\n\nLoad after nested instructions.',
+            'utf8'
+        );
+        writeFileSync(
+            path.join(modularAgentsDirectory, 'a-first.md'),
+            `---
+ignored: true
+---
+# A First
+
+Nested project instructions.
+`,
+            'utf8'
+        );
 
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
@@ -239,7 +280,114 @@ describe('buildSessionSystemPrelude', () => {
             'Active mode role: Chat',
             'Active mode instructions: Chat',
             'Ruleset: Shared Rule',
+            'Project instructions: AGENTS.md',
+            'Project instructions: .agents/nested/a-first.md',
+            'Project instructions: .agents/z-last.md',
             'Attached skill: Attached Skill',
         ]);
+    });
+
+    it('reads project instructions from the effective sandbox root instead of the base workspace root', async () => {
+        const profileId = getDefaultProfileId();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'nc-agents-sandbox-root-'));
+        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, workspacePath);
+        const bucket = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'workspace',
+            workspaceFingerprint: workspaceRoot.fingerprint,
+            title: 'Sandbox Prompt Root',
+        });
+        if (bucket.isErr()) {
+            throw new Error(bucket.error.message);
+        }
+
+        const thread = await threadStore.create({
+            profileId,
+            conversationId: bucket.value.id,
+            title: 'Sandbox Agent Thread',
+            topLevelTab: 'agent',
+        });
+        if (thread.isErr()) {
+            throw new Error(thread.error.message);
+        }
+
+        const sandboxPath = path.join(workspaceRoot.absolutePath, '.sandboxes', 'agents-root');
+        mkdirSync(sandboxPath, { recursive: true });
+        writeFileSync(path.join(workspaceRoot.absolutePath, 'AGENTS.md'), '# Base Workspace\n\nBase instructions.', 'utf8');
+        writeFileSync(path.join(sandboxPath, 'AGENTS.md'), '# Sandbox Root\n\nSandbox instructions.', 'utf8');
+
+        const sandbox = await sandboxStore.create({
+            profileId,
+            workspaceFingerprint: workspaceRoot.fingerprint,
+            absolutePath: sandboxPath,
+            label: 'agents-root-sandbox',
+            status: 'ready',
+            creationStrategy: 'copy',
+        });
+        const boundThread = await threadStore.bindSandbox({
+            profileId,
+            threadId: thread.value.id,
+            sandboxId: sandbox.id,
+        });
+        if (!boundThread) {
+            throw new Error('Expected thread sandbox binding to succeed.');
+        }
+
+        const session = await sessionStore.create(profileId, thread.value.id, 'sandbox');
+        if (!session.created) {
+            throw new Error(`Expected sandbox session creation to succeed, received "${session.reason}".`);
+        }
+        await sessionStore.setSandboxBinding({
+            profileId,
+            sessionId: session.session.id,
+            sandboxId: sandbox.id,
+        });
+
+        const result = await buildSessionSystemPrelude({
+            profileId,
+            sessionId: session.session.id,
+            prompt: 'Use the sandbox instructions.',
+            topLevelTab: 'agent',
+            workspaceFingerprint: workspaceRoot.fingerprint,
+            resolvedMode: {
+                mode: {
+                    id: 'mode_profile_local_default_agent_code',
+                    profileId,
+                    topLevelTab: 'agent',
+                    modeKey: 'code',
+                    label: 'Agent Code',
+                    prompt: {},
+                    executionPolicy: {},
+                    source: 'system',
+                    enabled: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    assetKey: 'code',
+                    sourceKind: 'system_seed',
+                    scope: 'system',
+                    tags: [],
+                    precedence: 0,
+                },
+            },
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error(result.error.message);
+        }
+
+        const projectInstructionTexts = result.value.flatMap((message) =>
+            message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
+        );
+        expect(
+            projectInstructionTexts.some(
+                (text) => text.includes('Project instructions: AGENTS.md') && text.includes('Sandbox Root')
+            )
+        ).toBe(true);
+        expect(
+            projectInstructionTexts.some(
+                (text) => text.includes('Project instructions: AGENTS.md') && text.includes('Base Workspace')
+            )
+        ).toBe(false);
     });
 });

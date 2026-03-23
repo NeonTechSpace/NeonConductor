@@ -2,6 +2,10 @@ import { sessionAttachedRuleStore, sessionAttachedSkillStore } from '@/app/backe
 import type { RegistryPresetKey, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/app/backend/runtime/contracts';
 import { getRegistryPresetKeysForMode, type ModeDefinition } from '@/app/backend/runtime/contracts';
 import { getPromptLayerSettings } from '@/app/backend/runtime/services/promptLayers/service';
+import {
+    resolveProjectInstructionDocuments,
+    type ProjectInstructionDocument,
+} from '@/app/backend/runtime/services/projectInstructions/service';
 import { readRegistryMarkdownBody } from '@/app/backend/runtime/services/registry/filesystem';
 import { resolveContextualAssetDefinitions } from '@/app/backend/runtime/services/registry/resolution';
 import { listResolvedRegistry, resolveRulesetsByAssetKeys, resolveSkillfilesByAssetKeys } from '@/app/backend/runtime/services/registry/service';
@@ -52,6 +56,7 @@ function buildAgentPrelude(input: {
     topLevelInstructions?: string;
     mode: ModeDefinition;
     rulesets: RulesetDefinition[];
+    projectInstructions: ProjectInstructionDocument[];
     skillfiles: SkillfileDefinition[];
     workspacePrelude?: RunContextMessage;
 }): RunContextMessage[] {
@@ -87,6 +92,15 @@ function buildAgentPrelude(input: {
 
     for (const ruleset of input.rulesets) {
         prelude.push(createSystemMessage(`Ruleset: ${ruleset.name}`, ruleset.bodyMarkdown));
+    }
+
+    for (const projectInstruction of input.projectInstructions) {
+        prelude.push(
+            createSystemMessage(
+                `Project instructions: ${projectInstruction.displayPath}`,
+                projectInstruction.bodyMarkdown
+            )
+        );
     }
 
     for (const skillfile of input.skillfiles) {
@@ -177,6 +191,12 @@ export async function buildSessionSystemPrelude(input: {
               allowLazySandboxCreation: false,
           })
         : null;
+    const projectInstructions =
+        workspaceContext && workspaceContext.kind !== 'detached'
+            ? await resolveProjectInstructionDocuments({
+                  workspaceRootPath: workspaceContext.absolutePath,
+              })
+            : [];
     const contextualRulesets = resolveContextualAssetDefinitions({
         items: resolvedRegistry.resolved.rulesets,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
@@ -238,6 +258,7 @@ export async function buildSessionSystemPrelude(input: {
             topLevelInstructions: promptLayerSettings.topLevelInstructions[input.topLevelTab],
             mode: input.resolvedMode.mode,
             rulesets: Array.from(activeRulesetsByAssetKey.values()),
+            projectInstructions,
             skillfiles: activeSkillfiles,
             ...(workspaceContext && workspaceContext.kind !== 'detached'
                 ? { workspacePrelude: buildWorkspacePrelude({ workspaceContext }) }
