@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import { startTransition, useState } from 'react';
+import { startTransition } from 'react';
 
 import { AppSettingsView } from '@/web/components/settings/appSettings/view';
 import { ContextSettingsView } from '@/web/components/settings/contextSettingsView';
@@ -22,8 +22,11 @@ import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
 
 interface SettingsWorkspaceProps {
     profileId: string;
+    selection: SettingsSelection;
+    onSelectionChange: (selection: SettingsSelection) => void;
     onProfileActivated: (profileId: string) => void;
     onReturnToSessions: () => void;
+    onPreviewReturnToSessions?: () => void;
 }
 
 function PrimaryRailButton({
@@ -54,17 +57,21 @@ function PrimaryRailButton({
     );
 }
 
-export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSessions }: SettingsWorkspaceProps) {
-    const [selection, setSelection] = useState<SettingsSelection>(() => getDefaultSettingsSelection('kilo'));
+export function SettingsWorkspace({
+    profileId,
+    selection,
+    onSelectionChange,
+    onProfileActivated,
+    onReturnToSessions,
+    onPreviewReturnToSessions,
+}: SettingsWorkspaceProps) {
     const privacyMode = usePrivacyMode();
     const kiloSections = SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'kilo');
     const generalSections = SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'general');
 
     function selectPrimarySection(section: SettingsPrimarySectionId) {
         startTransition(() => {
-            setSelection((currentSelection) =>
-                currentSelection.section === section ? currentSelection : getDefaultSettingsSelection(section)
-            );
+            onSelectionChange(selection.section === section ? selection : getDefaultSettingsSelection(section));
         });
     }
 
@@ -77,6 +84,8 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                         className='border-border bg-card hover:bg-accent inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors'
                         aria-label='Back to sessions'
                         title='Back to sessions'
+                        onPointerEnter={onPreviewReturnToSessions}
+                        onFocus={onPreviewReturnToSessions}
                         onClick={onReturnToSessions}>
                         <ArrowLeft className='h-4 w-4' />
                     </button>
@@ -127,7 +136,7 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                         profileId={profileId}
                         subsection={selection.subsection as KiloSettingsSubsectionId}
                         onSubsectionChange={(subsection) => {
-                            setSelection({ section: 'kilo', subsection });
+                            onSelectionChange({ section: 'kilo', subsection });
                         }}
                     />
                 ) : null}
@@ -136,7 +145,7 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                         profileId={profileId}
                         selectedProviderId={selection.subsection}
                         onProviderChange={(providerId) => {
-                            setSelection({ section: 'providers', subsection: providerId });
+                            onSelectionChange({ section: 'providers', subsection: providerId });
                         }}
                     />
                 ) : null}
@@ -146,7 +155,7 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                         onProfileActivated={onProfileActivated}
                         subsection={selection.subsection as ProfileSettingsSubsectionId}
                         onSubsectionChange={(subsection) => {
-                            setSelection({ section: 'profiles', subsection });
+                            onSelectionChange({ section: 'profiles', subsection });
                         }}
                     />
                 ) : null}
@@ -155,7 +164,7 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                         activeProfileId={profileId}
                         subsection={selection.subsection as ContextSettingsSubsectionId}
                         onSubsectionChange={(subsection) => {
-                            setSelection({ section: 'context', subsection });
+                            onSelectionChange({ section: 'context', subsection });
                         }}
                     />
                 ) : null}
@@ -164,7 +173,7 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                         profileId={profileId}
                         subsection={selection.subsection as RegistrySettingsSubsectionId}
                         onSubsectionChange={(subsection) => {
-                            setSelection({ section: 'registry', subsection });
+                            onSelectionChange({ section: 'registry', subsection });
                         }}
                     />
                 ) : null}
@@ -172,7 +181,7 @@ export function SettingsWorkspace({ profileId, onProfileActivated, onReturnToSes
                     <AppSettingsView
                         subsection={selection.subsection as AppSettingsSubsectionId}
                         onSubsectionChange={(subsection) => {
-                            setSelection({ section: 'app', subsection });
+                            onSelectionChange({ section: 'app', subsection });
                         }}
                     />
                 ) : null}

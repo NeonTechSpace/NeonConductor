@@ -11,6 +11,7 @@ interface WorkspaceSurfaceHeaderProps {
     isSwitchingProfile: boolean;
     onProfileChange: (profileId: string) => void;
     onOpenSettings: () => void;
+    onPreviewSettings?: () => void;
     onOpenCommandPalette: () => void;
 }
 
@@ -21,6 +22,7 @@ export function WorkspaceSurfaceHeader({
     isSwitchingProfile,
     onProfileChange,
     onOpenSettings,
+    onPreviewSettings,
     onOpenCommandPalette,
 }: WorkspaceSurfaceHeaderProps) {
     const isSettingsOpen = appSection === 'settings';
@@ -69,6 +71,8 @@ export function WorkspaceSurfaceHeader({
                             : 'bg-card hover:bg-accent text-foreground'
                     }`}
                     disabled={isSettingsOpen}
+                    onPointerEnter={onPreviewSettings}
+                    onFocus={onPreviewSettings}
                     onClick={onOpenSettings}>
                     <Settings2 className='h-4 w-4' />
                 </button>

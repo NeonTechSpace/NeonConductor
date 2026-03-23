@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/web/components/window/privacyModeToggle', () => ({
+    default: () => <div>privacy toggle</div>,
+}));
+
 import { WorkspaceSurfaceHeader } from '@/web/components/runtime/workspaceSurfaceHeader';
 
 describe('workspace surface header', () => {

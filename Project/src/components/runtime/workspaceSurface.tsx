@@ -1,19 +1,23 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
-import { ConversationShell } from '@/web/components/conversation/shell';
 import {
     INITIAL_CONVERSATION_SHELL_BOOT_CHROME_READINESS,
     getWorkspaceBootDiagnostics,
     isWorkspaceBootReady,
 } from '@/web/components/runtime/bootReadiness';
 import { WorkspaceCommandPalette } from '@/web/components/runtime/workspaceCommandPalette';
+import { WorkspaceSurfaceControllerProvider } from '@/web/components/runtime/workspaceSurfaceControllerContext';
 import { useRendererBootReadySignal } from '@/web/components/runtime/useRendererBootReadySignal';
 import { useRendererBootStatusReporter } from '@/web/components/runtime/useRendererBootStatusReporter';
 import { useWorkspaceBootPrefetch } from '@/web/components/runtime/useWorkspaceBootPrefetch';
 import { WorkspaceBootDiagnosticsPanel } from '@/web/components/runtime/workspaceBootDiagnosticsPanel';
 import { useWorkspaceSurfaceController } from '@/web/components/runtime/workspaceSurfaceController';
 import { WorkspaceSurfaceHeader } from '@/web/components/runtime/workspaceSurfaceHeader';
-import { SettingsWorkspace } from '@/web/components/settings/settingsWorkspace';
+import {
+    getWorkspaceSectionPath,
+    resolveWorkspaceAppSectionFromPathname,
+} from '@/web/components/runtime/workspaceSurfaceModel';
 import { trpc } from '@/web/trpc/client';
 
 import { BOOT_FORCE_SHOW_MS } from '@/app/shared/splashContract';
@@ -21,6 +25,12 @@ import { BOOT_FORCE_SHOW_MS } from '@/app/shared/splashContract';
 export function WorkspaceSurface() {
     const controller = useWorkspaceSurfaceController();
     const utils = trpc.useUtils();
+    const router = useRouter();
+    const navigate = useNavigate();
+    const pathname = useRouterState({
+        select: (state) => state.location.pathname,
+    });
+    const appSection = resolveWorkspaceAppSectionFromPathname(pathname);
     useWorkspaceBootPrefetch({
         trpcUtils: utils,
     });
@@ -29,6 +39,12 @@ export function WorkspaceSurface() {
     );
     const [bootStartedAtMs] = useState(() => Date.now());
     const [bootElapsedMs, setBootElapsedMs] = useState(0);
+    const effectiveShellBootReadiness =
+        appSection === 'settings'
+            ? {
+                  shellBootstrapSettled: true,
+              }
+            : conversationShellBootReadiness;
     const bootPrerequisites = {
         hasResolvedProfile: Boolean(controller.resolvedProfileId),
         profilePending: controller.profilePending,
@@ -37,11 +53,11 @@ export function WorkspaceSurface() {
         hasResolvedInitialMode: controller.hasResolvedInitialMode,
         modePending: controller.modePending,
         ...(controller.modeErrorMessage ? { modeErrorMessage: controller.modeErrorMessage } : {}),
-        ...conversationShellBootReadiness,
+        ...effectiveShellBootReadiness,
         hasInteractiveShell:
             Boolean(controller.resolvedProfileId) &&
-            conversationShellBootReadiness.shellBootstrapSettled &&
-            !conversationShellBootReadiness.shellBootstrapErrorMessage,
+            effectiveShellBootReadiness.shellBootstrapSettled &&
+            !effectiveShellBootReadiness.shellBootstrapErrorMessage,
     };
     const isBootReady = isWorkspaceBootReady(bootPrerequisites);
     const readySignal = useRendererBootReadySignal(isBootReady);
@@ -53,9 +69,21 @@ export function WorkspaceSurface() {
     const showBootDiagnostics =
         bootDiagnostics.hasCriticalError ||
         (readySignal.readySignalState !== 'sent' && bootElapsedMs >= BOOT_FORCE_SHOW_MS);
-    const openCommandPalette = useEffectEvent(() => {
+    function openCommandPalette() {
         controller.setIsCommandPaletteOpen(true);
-    });
+    }
+
+    function navigateToSection(section: 'sessions' | 'settings') {
+        void navigate({
+            to: getWorkspaceSectionPath(section),
+        });
+    }
+
+    function preloadSection(section: 'sessions' | 'settings') {
+        void router.preloadRoute({
+            to: getWorkspaceSectionPath(section),
+        });
+    }
 
     useRendererBootStatusReporter(bootDiagnostics.status);
 
@@ -106,14 +134,19 @@ export function WorkspaceSurface() {
         <section className='flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
             {showBootDiagnostics ? <WorkspaceBootDiagnosticsPanel status={bootDiagnostics.status} /> : null}
             <WorkspaceSurfaceHeader
-                appSection={controller.appSection}
+                appSection={appSection}
                 profiles={controller.profiles}
                 resolvedProfileId={controller.resolvedProfileId}
                 isSwitchingProfile={controller.profileSetActiveMutation.isPending}
                 onProfileChange={(profileId) => {
                     void controller.selectProfile(profileId);
                 }}
-                onOpenSettings={controller.openSettings}
+                onOpenSettings={() => {
+                    navigateToSection('settings');
+                }}
+                onPreviewSettings={() => {
+                    preloadSection('settings');
+                }}
                 onOpenCommandPalette={() => {
                     openCommandPalette();
                 }}
@@ -122,41 +155,13 @@ export function WorkspaceSurface() {
             <div className='bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden'>
                 <div className='min-h-0 min-w-0 flex-1 overflow-hidden'>
                     {controller.resolvedProfileId ? (
-                        <>
-                            {controller.appSection === 'sessions' ? (
-                                <ConversationShell
-                                    key={controller.resolvedProfileId}
-                                    profileId={controller.resolvedProfileId}
-                                    profiles={controller.profiles}
-                                    selectedProfileId={controller.resolvedProfileId}
-                                    topLevelTab={controller.topLevelTab}
-                                    {...(controller.currentWorkspaceFingerprint
-                                        ? { selectedWorkspaceFingerprint: controller.currentWorkspaceFingerprint }
-                                        : {})}
-                                    modeKey={controller.activeModeKey}
-                                    modes={controller.modes}
-                                    onModeChange={(modeKey) => {
-                                        void controller.selectMode(modeKey);
-                                    }}
-                                    onTopLevelTabChange={controller.setTopLevelTab}
-                                    onSelectedWorkspaceFingerprintChange={controller.setCurrentWorkspaceFingerprint}
-                                    onProfileChange={(profileId) => {
-                                        void controller.selectProfile(profileId);
-                                    }}
-                                    onBootChromeReadyChange={setConversationShellBootReadiness}
-                                />
-                            ) : null}
-
-                            {controller.appSection === 'settings' ? (
-                                <SettingsWorkspace
-                                    profileId={controller.resolvedProfileId}
-                                    onProfileActivated={(profileId) => {
-                                        controller.setResolvedProfile(profileId);
-                                    }}
-                                    onReturnToSessions={controller.returnToPrimarySection}
-                                />
-                            ) : null}
-                        </>
+                        <WorkspaceSurfaceControllerProvider
+                            value={{
+                                controller,
+                                onConversationShellBootReadinessChange: setConversationShellBootReadiness,
+                            }}>
+                            <Outlet />
+                        </WorkspaceSurfaceControllerProvider>
                     ) : (
                         <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>
                             Loading profile state...
@@ -167,7 +172,7 @@ export function WorkspaceSurface() {
 
             <WorkspaceCommandPalette
                 open={controller.isCommandPaletteOpen}
-                appSection={controller.appSection}
+                appSection={appSection}
                 profiles={controller.profiles}
                 workspaceOptions={controller.workspaceRoots.map((workspaceRoot) => ({
                     fingerprint: workspaceRoot.fingerprint,
@@ -176,7 +181,12 @@ export function WorkspaceSurface() {
                 onClose={() => {
                     controller.setIsCommandPaletteOpen(false);
                 }}
-                onSectionChange={controller.setAppSection}
+                onSectionChange={(section) => {
+                    navigateToSection(section);
+                }}
+                onPreviewSectionChange={(section) => {
+                    preloadSection(section);
+                }}
                 onProfileChange={(profileId) => {
                     void controller.selectProfile(profileId);
                 }}

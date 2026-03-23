@@ -1,11 +1,13 @@
 /*
-Why: Root file-based route mapping to the Home page.
+Why: Redirect the root hash entry to the Sessions route so the app has a real coarse destination.
 */
 
-import { createFileRoute } from '@tanstack/react-router';
-
-import Home from '@/web/pages/index';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/')({
-    component: Home,
+    beforeLoad: () => {
+        throw redirect({
+            to: '/sessions',
+        });
+    },
 });

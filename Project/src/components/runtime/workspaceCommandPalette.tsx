@@ -11,13 +11,14 @@ interface WorkspaceCommandPaletteProps {
     workspaceOptions: Array<{ fingerprint: string; label: string }>;
     onClose: () => void;
     onSectionChange: (section: WorkspaceAppSection) => void;
+    onPreviewSectionChange?: (section: WorkspaceAppSection) => void;
     onProfileChange: (profileId: string) => void;
     onWorkspaceChange: (workspaceFingerprint: string | undefined) => void;
 }
 
 type CommandAction =
-    | { id: string; label: string; meta: string; onSelect: () => void }
-    | { id: string; label: string; meta: string; onSelect: () => Promise<void> };
+    | { id: string; label: string; meta: string; onSelect: () => void; onPreview?: () => void }
+    | { id: string; label: string; meta: string; onSelect: () => Promise<void>; onPreview?: () => void };
 
 const APP_ACTIONS: Array<{ id: WorkspaceAppSection; label: string }> = [
     { id: 'sessions', label: 'Go to Sessions' },
@@ -31,6 +32,7 @@ export function WorkspaceCommandPalette({
     workspaceOptions,
     onClose,
     onSectionChange,
+    onPreviewSectionChange,
     onProfileChange,
     onWorkspaceChange,
 }: WorkspaceCommandPaletteProps) {
@@ -46,6 +48,13 @@ export function WorkspaceCommandPalette({
                 id: `section:${action.id}`,
                 label: action.label,
                 meta: action.id === appSection ? 'Current section' : 'Application section',
+                ...(onPreviewSectionChange
+                    ? {
+                          onPreview: () => {
+                              onPreviewSectionChange(action.id);
+                          },
+                      }
+                    : {}),
                 onSelect: () => {
                     onSectionChange(action.id);
                     onClose();
@@ -70,7 +79,7 @@ export function WorkspaceCommandPalette({
                 },
             })),
         ];
-    }, [appSection, onClose, onProfileChange, onSectionChange, onWorkspaceChange, profiles, workspaceOptions]);
+    }, [appSection, onClose, onPreviewSectionChange, onProfileChange, onSectionChange, onWorkspaceChange, profiles, workspaceOptions]);
 
     const visibleActions = deferredQuery.length
         ? actions.filter((action) => `${action.label} ${action.meta}`.toLowerCase().includes(deferredQuery))
@@ -117,6 +126,8 @@ export function WorkspaceCommandPalette({
                                         key={action.id}
                                         type='button'
                                         className='hover:bg-accent focus-visible:ring-ring w-full rounded-2xl px-3 py-2 text-left focus-visible:ring-2'
+                                        onPointerEnter={'onPreview' in action ? action.onPreview : undefined}
+                                        onFocus={'onPreview' in action ? action.onPreview : undefined}
                                         onClick={() => {
                                             void action.onSelect();
                                         }}>

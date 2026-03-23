@@ -6,11 +6,9 @@ import { BOOT_CRITICAL_QUERY_OPTIONS } from '@/web/components/runtime/startupQue
 import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/shared/contracts';
-import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 
 export function useWorkspaceSurfaceController() {
     const [topLevelTab, setTopLevelTab] = useState<TopLevelTab>('chat');
-    const [appSection, setAppSection] = useState<WorkspaceAppSection>('sessions');
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [currentWorkspaceFingerprint, setCurrentWorkspaceFingerprint] = useState<string | undefined>(undefined);
 
@@ -44,14 +42,6 @@ export function useWorkspaceSurfaceController() {
         profilePending: profileState.profilePending,
         profileErrorMessage: profileState.profileErrorMessage,
         hasProfiles: profileState.hasProfiles,
-        appSection,
-        setAppSection,
-        openSettings: () => {
-            setAppSection('settings');
-        },
-        returnToPrimarySection: () => {
-            setAppSection('sessions');
-        },
         isCommandPaletteOpen,
         setIsCommandPaletteOpen,
         topLevelTab,

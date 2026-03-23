@@ -1,5 +1,25 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+let currentPathname = '/sessions';
+const navigateMock = vi.fn();
+const preloadRouteMock = vi.fn();
+let capturedHeaderProps: Record<string, unknown> | undefined;
+let capturedPaletteProps: Record<string, unknown> | undefined;
+
+vi.mock('@tanstack/react-router', () => ({
+    Outlet: () => <div>{currentPathname === '/settings' ? 'settings route' : 'sessions route'}</div>,
+    useNavigate: () => navigateMock,
+    useRouter: () => ({
+        preloadRoute: preloadRouteMock,
+    }),
+    useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) =>
+        select({
+            location: {
+                pathname: currentPathname,
+            },
+        }),
+}));
 
 vi.mock('@/web/components/runtime/workspaceSurfaceController', () => ({
     useWorkspaceSurfaceController: vi.fn(),
@@ -10,7 +30,6 @@ import { useWorkspaceSurfaceController } from '@/web/components/runtime/workspac
 
 function createControllerState(overrides: Record<string, unknown> = {}) {
     return {
-        appSection: 'sessions',
         profiles: [
             {
                 id: 'profile_default',
@@ -41,9 +60,6 @@ function createControllerState(overrides: Record<string, unknown> = {}) {
         selectedWorkspaceRoot: undefined,
         isCommandPaletteOpen: false,
         setIsCommandPaletteOpen: vi.fn(),
-        setAppSection: vi.fn(),
-        openSettings: vi.fn(),
-        returnToPrimarySection: vi.fn(),
         setTopLevelTab: vi.fn(),
         setCurrentWorkspaceFingerprint: vi.fn(),
         setResolvedProfile: vi.fn(),
@@ -52,8 +68,6 @@ function createControllerState(overrides: Record<string, unknown> = {}) {
         ...overrides,
     };
 }
-
-const controllerSessions = createControllerState();
 
 vi.mock('@/web/trpc/client', () => ({
     trpc: {
@@ -76,7 +90,6 @@ vi.mock('@/web/components/runtime/useRendererBootStatusReporter', () => ({
 vi.mock('@/web/components/runtime/bootReadiness', () => ({
     INITIAL_CONVERSATION_SHELL_BOOT_CHROME_READINESS: {
         shellBootstrapSettled: true,
-        shellBootstrapErrorMessage: undefined,
     },
     getWorkspaceBootDiagnostics: () => ({
         status: 'ready',
@@ -90,45 +103,116 @@ vi.mock('@/web/components/runtime/workspaceBootDiagnosticsPanel', () => ({
 }));
 
 vi.mock('@/web/components/runtime/workspaceCommandPalette', () => ({
-    WorkspaceCommandPalette: () => <div>command palette</div>,
+    WorkspaceCommandPalette: (props: Record<string, unknown>) => {
+        capturedPaletteProps = props;
+        return <div>command palette</div>;
+    },
 }));
 
 vi.mock('@/web/components/runtime/workspaceSurfaceHeader', () => ({
-    WorkspaceSurfaceHeader: () => <header>surface header</header>,
-}));
-
-vi.mock('@/web/components/conversation/shell', () => ({
-    ConversationShell: () => <div>conversation shell</div>,
-}));
-
-vi.mock('@/web/components/settings/settingsWorkspace', () => ({
-    SettingsWorkspace: () => <div>settings workspace</div>,
+    WorkspaceSurfaceHeader: (props: Record<string, unknown>) => {
+        capturedHeaderProps = props;
+        return <header>surface header</header>;
+    },
 }));
 
 describe('workspace surface', () => {
-    it('renders only the conversation shell while the sessions section is active', () => {
+    beforeEach(() => {
+        currentPathname = '/sessions';
+        navigateMock.mockReset();
+        preloadRouteMock.mockReset();
+        capturedHeaderProps = undefined;
+        capturedPaletteProps = undefined;
+    });
+
+    it('renders the routed sessions content while the sessions route is active', () => {
         vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
-            controllerSessions as unknown as ReturnType<typeof useWorkspaceSurfaceController>
+            createControllerState() as unknown as ReturnType<typeof useWorkspaceSurfaceController>
         );
 
         const html = renderToStaticMarkup(<WorkspaceSurface />);
 
         expect(html).toContain('surface header');
-        expect(html).toContain('conversation shell');
-        expect(html).not.toContain('settings workspace');
+        expect(html).toContain('sessions route');
+        expect(html).not.toContain('settings route');
     });
 
-    it('renders only the settings workspace while the settings section is active', () => {
+    it('renders the routed settings content while the settings route is active', () => {
+        currentPathname = '/settings';
+        vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
+            createControllerState() as unknown as ReturnType<typeof useWorkspaceSurfaceController>
+        );
+
+        const html = renderToStaticMarkup(<WorkspaceSurface />);
+
+        expect(html).toContain('surface header');
+        expect(html).toContain('settings route');
+        expect(html).not.toContain('sessions route');
+    });
+
+    it('navigates to the settings route from the header affordance', () => {
+        vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
+            createControllerState() as unknown as ReturnType<typeof useWorkspaceSurfaceController>
+        );
+
+        renderToStaticMarkup(<WorkspaceSurface />);
+        (capturedHeaderProps?.onOpenSettings as (() => void) | undefined)?.();
+
+        expect(navigateMock).toHaveBeenCalledWith({
+            to: '/settings',
+        });
+    });
+
+    it('preloads the settings route from the header affordance', () => {
+        vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
+            createControllerState() as unknown as ReturnType<typeof useWorkspaceSurfaceController>
+        );
+
+        renderToStaticMarkup(<WorkspaceSurface />);
+        (capturedHeaderProps?.onPreviewSettings as (() => void) | undefined)?.();
+
+        expect(preloadRouteMock).toHaveBeenCalledWith({
+            to: '/settings',
+        });
+    });
+
+    it('navigates coarse shell sections through the router from the command palette', () => {
+        vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
+            createControllerState() as unknown as ReturnType<typeof useWorkspaceSurfaceController>
+        );
+
+        renderToStaticMarkup(<WorkspaceSurface />);
+        (capturedPaletteProps?.onSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.('settings');
+
+        expect(navigateMock).toHaveBeenCalledWith({
+            to: '/settings',
+        });
+    });
+
+    it('preloads coarse shell sections through the router from the command palette', () => {
+        vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
+            createControllerState() as unknown as ReturnType<typeof useWorkspaceSurfaceController>
+        );
+
+        renderToStaticMarkup(<WorkspaceSurface />);
+        (capturedPaletteProps?.onPreviewSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.('settings');
+
+        expect(preloadRouteMock).toHaveBeenCalledWith({
+            to: '/settings',
+        });
+    });
+
+    it('shows the local loading state until a profile is resolved', () => {
         vi.mocked(useWorkspaceSurfaceController).mockReturnValue(
             createControllerState({
-                appSection: 'settings',
+                resolvedProfileId: undefined,
             }) as unknown as ReturnType<typeof useWorkspaceSurfaceController>
         );
 
         const html = renderToStaticMarkup(<WorkspaceSurface />);
 
-        expect(html).toContain('surface header');
-        expect(html).toContain('settings workspace');
-        expect(html).not.toContain('conversation shell');
+        expect(html).toContain('Loading profile state...');
+        expect(html).not.toContain('sessions route');
+        expect(html).not.toContain('settings route');
     });
 });

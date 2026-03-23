@@ -1,6 +1,7 @@
 import type { TopLevelTab } from '@/shared/contracts';
 
 export type WorkspaceAppSection = 'sessions' | 'settings';
+export type WorkspaceAppRoutePath = '/sessions' | '/settings';
 
 export const FALLBACK_MODE_BY_TAB: Record<TopLevelTab, string> = {
     chat: 'chat',
@@ -9,6 +10,16 @@ export const FALLBACK_MODE_BY_TAB: Record<TopLevelTab, string> = {
 };
 
 export const MISSING_PROFILE_ID = 'profile_missing';
+
+export function getWorkspaceSectionPath(section: WorkspaceAppSection): WorkspaceAppRoutePath {
+    return section === 'settings' ? '/settings' : '/sessions';
+}
+
+export function resolveWorkspaceAppSectionFromPathname(pathname: string): WorkspaceAppSection {
+    return pathname === '/settings' || pathname.startsWith('/settings?') || pathname.startsWith('/settings/')
+        ? 'settings'
+        : 'sessions';
+}
 
 export function resolveActiveWorkspaceProfileId(input: {
     activeProfileId: string | undefined;

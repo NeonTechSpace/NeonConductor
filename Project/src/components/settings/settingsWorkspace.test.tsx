@@ -30,12 +30,15 @@ vi.mock('@/web/lib/privacy/privacyContext', () => ({
 }));
 
 import { SettingsWorkspace } from '@/web/components/settings/settingsWorkspace';
+import { getDefaultSettingsSelection } from '@/web/components/settings/settingsNavigation';
 
 describe('settings workspace', () => {
     it('keeps the return affordance inside the settings surface', () => {
         const html = renderToStaticMarkup(
             <SettingsWorkspace
                 profileId='profile_default'
+                selection={getDefaultSettingsSelection('kilo')}
+                onSelectionChange={vi.fn()}
                 onProfileActivated={vi.fn()}
                 onReturnToSessions={vi.fn()}
             />
@@ -52,6 +55,8 @@ describe('settings workspace', () => {
         const html = renderToStaticMarkup(
             <SettingsWorkspace
                 profileId='profile_default'
+                selection={getDefaultSettingsSelection('kilo')}
+                onSelectionChange={vi.fn()}
                 onProfileActivated={vi.fn()}
                 onReturnToSessions={vi.fn()}
             />
@@ -66,6 +71,8 @@ describe('settings workspace', () => {
         const html = renderToStaticMarkup(
             <SettingsWorkspace
                 profileId='profile_default'
+                selection={getDefaultSettingsSelection('kilo')}
+                onSelectionChange={vi.fn()}
                 onProfileActivated={vi.fn()}
                 onReturnToSessions={vi.fn()}
             />

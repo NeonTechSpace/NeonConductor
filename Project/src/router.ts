@@ -11,6 +11,8 @@ export const router = createRouter({
     routeTree,
     history: createHashHistory(),
     context: routerContextValue,
+    defaultPreload: 'intent',
+    defaultPreloadStaleTime: 0,
 });
 export type AppRouter = typeof router;
 

@@ -1,4 +1,4 @@
-import type { RuntimeProviderId } from '@/shared/contracts';
+import { providerIds, type RuntimeProviderId } from '@/shared/contracts';
 
 export type SettingsPrimarySectionId = 'kilo' | 'providers' | 'profiles' | 'context' | 'registry' | 'app';
 
@@ -15,6 +15,11 @@ export type SettingsSelection =
     | { section: 'context'; subsection: ContextSettingsSubsectionId }
     | { section: 'registry'; subsection: RegistrySettingsSubsectionId }
     | { section: 'app'; subsection: AppSettingsSubsectionId };
+
+export interface SettingsRouteSearch {
+    section?: SettingsPrimarySectionId;
+    subsection?: string;
+}
 
 export interface SettingsPrimarySectionDefinition {
     id: SettingsPrimarySectionId;
@@ -186,6 +191,17 @@ export const APP_SETTINGS_SUBSECTIONS: ReadonlyArray<SettingsSubsectionDefinitio
     },
 ];
 
+function isOneOf<const TValue extends readonly string[]>(value: string | undefined, allowed: TValue): value is TValue[number] {
+    return typeof value === 'string' && allowed.includes(value);
+}
+
+const kiloSettingsSubsectionIds = KILO_SETTINGS_SUBSECTIONS.map((subsection) => subsection.id) as readonly KiloSettingsSubsectionId[];
+const profileSettingsSubsectionIds = PROFILE_SETTINGS_SUBSECTIONS.map((subsection) => subsection.id) as readonly ProfileSettingsSubsectionId[];
+const contextSettingsSubsectionIds = CONTEXT_SETTINGS_SUBSECTIONS.map((subsection) => subsection.id) as readonly ContextSettingsSubsectionId[];
+const registrySettingsSubsectionIds = REGISTRY_SETTINGS_SUBSECTIONS.map((subsection) => subsection.id) as readonly RegistrySettingsSubsectionId[];
+const appSettingsSubsectionIds = APP_SETTINGS_SUBSECTIONS.map((subsection) => subsection.id) as readonly AppSettingsSubsectionId[];
+const settingsPrimarySectionIds = SETTINGS_PRIMARY_SECTIONS.map((section) => section.id) as readonly SettingsPrimarySectionId[];
+
 export function getDefaultSettingsSelection(section: SettingsPrimarySectionId = 'kilo'): SettingsSelection {
     switch (section) {
         case 'kilo':
@@ -201,4 +217,49 @@ export function getDefaultSettingsSelection(section: SettingsPrimarySectionId = 
         case 'app':
             return { section, subsection: 'privacy' };
     }
+}
+
+export function resolveSettingsSelectionFromRouteSearch(search: SettingsRouteSearch): SettingsSelection {
+    const section = isOneOf(search.section, settingsPrimarySectionIds) ? search.section : 'kilo';
+    const subsection = typeof search.subsection === 'string' ? search.subsection : undefined;
+
+    switch (section) {
+        case 'kilo':
+            return isOneOf(subsection, kiloSettingsSubsectionIds)
+                ? { section, subsection }
+                : getDefaultSettingsSelection(section);
+        case 'providers':
+            return isOneOf(subsection, providerIds) ? { section, subsection } : getDefaultSettingsSelection(section);
+        case 'profiles':
+            return isOneOf(subsection, profileSettingsSubsectionIds)
+                ? { section, subsection }
+                : getDefaultSettingsSelection(section);
+        case 'context':
+            return isOneOf(subsection, contextSettingsSubsectionIds)
+                ? { section, subsection }
+                : getDefaultSettingsSelection(section);
+        case 'registry':
+            return isOneOf(subsection, registrySettingsSubsectionIds)
+                ? { section, subsection }
+                : getDefaultSettingsSelection(section);
+        case 'app':
+            return isOneOf(subsection, appSettingsSubsectionIds) ? { section, subsection } : getDefaultSettingsSelection(section);
+    }
+}
+
+export function getSettingsRouteSearch(selection: SettingsSelection): Required<SettingsRouteSearch> {
+    return {
+        section: selection.section,
+        subsection: selection.subsection,
+    };
+}
+
+export function parseSettingsRouteSearch(search: Record<string, unknown>): SettingsRouteSearch {
+    const section = typeof search.section === 'string' && isOneOf(search.section, settingsPrimarySectionIds) ? search.section : undefined;
+    const subsection = typeof search.subsection === 'string' ? search.subsection : undefined;
+
+    return {
+        ...(section ? { section } : {}),
+        ...(subsection ? { subsection } : {}),
+    };
 }
