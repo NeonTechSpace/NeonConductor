@@ -18,9 +18,21 @@ import {
 registerRuntimeContractHooks();
 
 function resetRegistryAssetDirectories(rootPath: string): void {
-    rmSync(path.join(rootPath, 'modes'), { recursive: true, force: true });
-    rmSync(path.join(rootPath, 'rules'), { recursive: true, force: true });
-    rmSync(path.join(rootPath, 'skills'), { recursive: true, force: true });
+    for (const relativeDirectory of [
+        'modes',
+        'rules',
+        'rules-ask',
+        'rules-code',
+        'rules-debug',
+        'rules-orchestrator',
+        'skills',
+        'skills-ask',
+        'skills-code',
+        'skills-debug',
+        'skills-orchestrator',
+    ]) {
+        rmSync(path.join(rootPath, relativeDirectory), { recursive: true, force: true });
+    }
 }
 
 describe('runtime contracts: registry and attached skills', () => {

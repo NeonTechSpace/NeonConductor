@@ -31,10 +31,15 @@
 - If code smells, refactor or delete the smell.
 - Do not justify weak patterns by history, precedent, or existing debt.
 - Keep touched areas sharper than you found them.
+- Structural smell is the decision rule, not file length.
+- If a file is multi-concern, brittle, hard to scan, or hard to change, it is non-conform even when the LOC count looks acceptable.
 
 ### 4) Keep Files, Modules, and Folders Focused
 - Do not create god files; split by responsibility as soon as a file carries multiple concerns.
+- LOC is only a rough heuristic, not the conformance rule.
 - Files may exceed 500 LOC when still coherent, but the preferred target is under 1000 LOC.
+- Do not treat "under 1000 LOC" as a reason to keep a smell-heavy file intact.
+- A 300 LOC multi-concern file still fails this standard; a longer file can still be acceptable if it is genuinely cohesive.
 - Treat oversized or multi-concern files as a DX bug.
 - Do not let folders become dumping grounds.
 - Group by responsibility, not convenience.

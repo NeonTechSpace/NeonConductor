@@ -1,12 +1,23 @@
-import { ImagePlus, LoaderCircle, RefreshCw, X } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import {
-    getImagePreviewStatusLabel,
-    getPendingImagePreviewState,
-} from '@/web/components/conversation/messages/imagePreviewState';
 import { useComposerSlashCommands } from '@/web/components/conversation/hooks/useComposerSlashCommands';
 import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
+import { ContextSummaryCard } from '@/web/components/conversation/panels/composerActionPanel/contextSummaryCard';
+import {
+    extractClipboardFiles,
+    extractDroppedFiles,
+    formatCompactionTimestamp,
+    formatImageBytes,
+    formatTokenCount,
+    formatUsagePercent,
+    reasoningEffortOptions,
+    shouldSubmitComposerOnEnter,
+} from '@/web/components/conversation/panels/composerActionPanel/helpers';
+import {
+    PendingImagesGrid,
+    type PendingImageCardView,
+} from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 import { ComposerSlashCommandPopup } from '@/web/components/conversation/panels/composerSlashCommandPopup';
 import { shouldInterceptSlashSubmit } from '@/web/components/conversation/panels/composerSlashCommands';
@@ -25,19 +36,9 @@ import type {
 } from '@/shared/contracts';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
-interface PendingImageView {
-    clientId: string;
-    fileName: string;
-    previewUrl: string;
-    status: 'queued' | 'compressing' | 'ready' | 'failed';
-    errorMessage?: string;
-    byteSize?: number;
-    attachment?: {
-        mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
-        width: number;
-        height: number;
-    };
-}
+export { shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
+
+type PendingImageView = PendingImageCardView;
 
 interface ComposerActionPanelProps {
     profileId: string;
@@ -99,70 +100,6 @@ interface ComposerActionPanelProps {
           }
     >;
 }
-
-function formatTokenCount(value: number): string {
-    return new Intl.NumberFormat('en-US').format(value);
-}
-
-function formatUsagePercent(usedTokens: number, budgetTokens: number): string {
-    if (!Number.isFinite(usedTokens) || !Number.isFinite(budgetTokens) || budgetTokens <= 0) {
-        return '-';
-    }
-
-    return `${Math.round((usedTokens / budgetTokens) * 100).toString()}%`;
-}
-
-function formatCompactionTimestamp(value: string): string {
-    const timestamp = new Date(value);
-    if (Number.isNaN(timestamp.getTime())) {
-        return value;
-    }
-    return timestamp.toLocaleString();
-}
-
-function formatImageBytes(value?: number): string | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    return `${(value / 1_000_000).toFixed(2)} MB`;
-}
-
-function extractDroppedFiles(dataTransfer: DataTransfer | null): File[] {
-    if (!dataTransfer) {
-        return [];
-    }
-
-    return Array.from(dataTransfer.files).filter((file) => file.type.startsWith('image/'));
-}
-
-function extractClipboardFiles(clipboardData: DataTransfer | null): File[] {
-    if (!clipboardData) {
-        return [];
-    }
-
-    return Array.from(clipboardData.items)
-        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
-        .map((item) => item.getAsFile())
-        .filter((file): file is File => file !== null);
-}
-
-export function shouldSubmitComposerOnEnter(input: {
-    key: string;
-    shiftKey: boolean;
-    nativeEvent: { isComposing?: boolean };
-}): boolean {
-    return input.key === 'Enter' && !input.shiftKey && input.nativeEvent.isComposing !== true;
-}
-
-const reasoningEffortOptions: Array<{ value: RuntimeReasoningEffort; label: string }> = [
-    { value: 'none', label: 'Off' },
-    { value: 'minimal', label: 'Minimal' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'xhigh', label: 'Max' },
-];
 
 export function ComposerActionPanel({
     profileId,
@@ -325,6 +262,28 @@ export function ComposerActionPanel({
         setContextFeedback(undefined);
     }, [selectedProviderId, selectedModelId, topLevelTab, activeModeKey]);
 
+    function handleCompactContext() {
+        if (!onCompactContext) {
+            return;
+        }
+
+        setContextFeedback(undefined);
+        void onCompactContext()
+            .then((result) => {
+                if (!result) {
+                    return;
+                }
+
+                setContextFeedback(result);
+            })
+            .catch((error: unknown) => {
+                setContextFeedback({
+                    tone: 'error',
+                    message: error instanceof Error ? error.message : 'Context compaction failed.',
+                });
+            });
+    }
+
     function openFilePicker() {
         fileInputRef.current?.click();
     }
@@ -400,108 +359,26 @@ export function ComposerActionPanel({
                     </p>
                 ) : null}
                 {contextState ? (
-                    <div className='border-border bg-card/40 space-y-1 rounded-md border px-3 py-2'>
-                        <div className='flex flex-wrap items-center justify-between gap-2'>
-                            <div className='space-y-0.5'>
-                                <p className='text-[11px] font-semibold tracking-[0.14em] uppercase'>Context</p>
-                                {hasUsageNumbers ? (
-                                    <>
-                                        <p className='text-xs font-medium'>
-                                            {formatTokenCount(totalTokens)} used of{' '}
-                                            {formatTokenCount(usableInputBudgetTokens)} usable input tokens
-                                        </p>
-                                        <div className='text-muted-foreground grid gap-1 text-[11px] sm:grid-cols-3'>
-                                            <p>Remaining {formatTokenCount(remainingInputTokens ?? 0)}</p>
-                                            <p>Usage {usagePercent}</p>
-                                            <p>{countingModeLabel} counting</p>
-                                        </div>
-                                    </>
-                                ) : contextState.policy.disabledReason === 'missing_model_limits' ? (
-                                    <p className='text-muted-foreground text-xs'>
-                                        Current thread usage is unavailable because this model has no known context
-                                        limit yet.
-                                    </p>
-                                ) : contextState.policy.disabledReason === 'feature_disabled' ? (
-                                    <p className='text-muted-foreground text-xs'>
-                                        Current thread usage is unavailable because context management is disabled for
-                                        this profile.
-                                    </p>
-                                ) : contextState.policy.disabledReason === 'multimodal_counting_unavailable' ? (
-                                    <p className='text-muted-foreground text-xs'>
-                                        Current thread usage is unavailable for image sessions because multimodal token
-                                        counting is not implemented yet.
-                                    </p>
-                                ) : (
-                                    <p className='text-muted-foreground text-xs'>
-                                        Current thread usage is active with {contextState.countingMode} counting for
-                                        this model.
-                                    </p>
-                                )}
-                            </div>
-                            {onCompactContext ? (
-                                <Button
-                                    type='button'
-                                    size='sm'
-                                    variant='outline'
-                                    disabled={!canCompactContext || isCompactingContext}
-                                    onClick={() => {
-                                        if (!onCompactContext) {
-                                            return;
-                                        }
-
-                                        setContextFeedback(undefined);
-                                        void onCompactContext()
-                                            .then((result) => {
-                                                if (!result) {
-                                                    return;
-                                                }
-
-                                                setContextFeedback(result);
-                                            })
-                                            .catch((error: unknown) => {
-                                                setContextFeedback({
-                                                    tone: 'error',
-                                                    message:
-                                                        error instanceof Error
-                                                            ? error.message
-                                                            : 'Context compaction failed.',
-                                                });
-                                            });
-                                    }}>
-                                    {isCompactingContext ? 'Compacting...' : 'Compact now'}
-                                </Button>
-                            ) : null}
-                        </div>
-                        {compactionRecord ? (
-                            <p className='text-muted-foreground text-[11px]'>
-                                Last compacted {compactionRecord.source} at{' '}
-                                {formatCompactionTimestamp(compactionRecord.updatedAt)}.
-                            </p>
-                        ) : null}
-                        {thresholdTokens !== undefined ? (
-                            <p className='text-muted-foreground text-[11px]'>
-                                Compaction threshold: {formatTokenCount(thresholdTokens)} tokens.
-                            </p>
-                        ) : null}
-                        <p className='text-muted-foreground text-[11px]'>
-                            Limit source: {contextState.policy.limits.source}
-                            {contextState.policy.limits.overrideReason
-                                ? ` · Override: ${contextState.policy.limits.overrideReason}`
-                                : ''}
-                        </p>
-                        {contextFeedback ? (
-                            <p
-                                className={`text-xs ${
-                                    contextFeedback.tone === 'error'
-                                        ? 'text-destructive'
-                                        : contextFeedback.tone === 'success'
-                                          ? 'text-primary'
-                                          : 'text-muted-foreground'
-                                }`}>
-                                {contextFeedback.message}
-                            </p>
-                        ) : null}
-                    </div>
+                    <ContextSummaryCard
+                        hasUsageNumbers={hasUsageNumbers}
+                        totalTokens={totalTokens}
+                        usableInputBudgetTokens={usableInputBudgetTokens}
+                        remainingInputTokens={remainingInputTokens}
+                        usagePercent={usagePercent}
+                        countingModeLabel={countingModeLabel}
+                        missingReason={contextState.policy.disabledReason}
+                        countingMode={contextState.countingMode}
+                        thresholdTokens={thresholdTokens}
+                        limitsSource={contextState.policy.limits.source}
+                        limitsOverrideReason={contextState.policy.limits.overrideReason}
+                        compactionRecord={compactionRecord}
+                        contextFeedback={contextFeedback}
+                        canCompactContext={canCompactContext}
+                        isCompactingContext={isCompactingContext}
+                        onCompactContext={onCompactContext ? handleCompactContext : undefined}
+                        formatTokenCount={formatTokenCount}
+                        formatCompactionTimestamp={formatCompactionTimestamp}
+                    />
                 ) : null}
                 <div
                     className={`border-border bg-card/30 relative overflow-hidden rounded-2xl border transition ${
@@ -527,113 +404,15 @@ export function ComposerActionPanel({
                             {imageAttachmentBlockedReason}
                         </p>
                     ) : null}
-                    {pendingImages.length > 0 ? (
-                        <div className='border-border grid gap-2 border-b px-4 py-4 sm:grid-cols-2 xl:grid-cols-4'>
-                            {pendingImages.map((image) => {
-                                const previewState = getPendingImagePreviewState(image.status);
-
-                                return (
-                                    <div
-                                        key={image.clientId}
-                                        className='border-border bg-background/80 rounded-2xl border p-2'>
-                                        <button
-                                            type='button'
-                                            className='group focus-visible:ring-ring focus-visible:ring-offset-background block w-full rounded-xl text-left focus-visible:ring-2 focus-visible:ring-offset-2'
-                                            onClick={() => {
-                                                setLightboxImage({
-                                                    imageUrl: image.previewUrl,
-                                                    title: image.fileName,
-                                                    ...(image.attachment
-                                                        ? {
-                                                              detail: `${String(image.attachment.width)} × ${String(image.attachment.height)}`,
-                                                          }
-                                                        : {}),
-                                                });
-                                            }}>
-                                            <div className='bg-muted relative overflow-hidden rounded-xl'>
-                                                <img
-                                                    src={image.previewUrl}
-                                                    alt={image.fileName}
-                                                    width={image.attachment?.width ?? 512}
-                                                    height={image.attachment?.height ?? 512}
-                                                    loading='lazy'
-                                                    decoding='async'
-                                                    className='h-32 w-full object-cover transition duration-200 group-hover:scale-[1.02]'
-                                                />
-                                                <div className='absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 px-2 py-1 text-[11px] text-white'>
-                                                    <span className='truncate'>
-                                                        {getImagePreviewStatusLabel(previewState)}
-                                                    </span>
-                                                    <span>{formatImageBytes(image.byteSize) ?? ''}</span>
-                                                </div>
-                                            </div>
-                                        </button>
-                                        <div className='mt-2 space-y-1'>
-                                            <p className='truncate text-xs font-medium'>{image.fileName}</p>
-                                            {image.attachment ? (
-                                                <p className='text-muted-foreground text-[11px]'>
-                                                    {image.attachment.width} × {image.attachment.height} ·{' '}
-                                                    {image.attachment.mimeType.replace('image/', '').toUpperCase()}
-                                                </p>
-                                            ) : null}
-                                            {image.errorMessage ? (
-                                                <p aria-live='polite' className='text-destructive text-[11px]'>
-                                                    {image.errorMessage}
-                                                </p>
-                                            ) : (
-                                                <p aria-live='polite' className='text-muted-foreground text-[11px]'>
-                                                    {image.status === 'queued'
-                                                        ? 'Image is queued and will start processing soon.'
-                                                        : previewState === 'loading'
-                                                          ? 'Image is being compressed before it can be sent.'
-                                                          : previewState === 'ready'
-                                                            ? 'Image is ready to be sent with this message.'
-                                                            : 'Image preview is waiting for action.'}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className='mt-2 flex items-center justify-end gap-1'>
-                                            {image.status === 'failed' ? (
-                                                <Button
-                                                    type='button'
-                                                    size='sm'
-                                                    variant='outline'
-                                                    className='h-7 px-2 text-[11px]'
-                                                    onClick={() => {
-                                                        onRetryPendingImage(image.clientId);
-                                                    }}>
-                                                    <RefreshCw className='h-3.5 w-3.5' />
-                                                    Retry
-                                                </Button>
-                                            ) : null}
-                                            {image.status === 'compressing' ? (
-                                                <span className='text-muted-foreground inline-flex items-center gap-1 px-2 text-[11px]'>
-                                                    <LoaderCircle className='h-3.5 w-3.5 animate-spin' />
-                                                    Preparing
-                                                </span>
-                                            ) : null}
-                                            {image.status === 'queued' ? (
-                                                <span className='text-muted-foreground inline-flex items-center gap-1 px-2 text-[11px]'>
-                                                    Queued
-                                                </span>
-                                            ) : null}
-                                            <Button
-                                                type='button'
-                                                size='sm'
-                                                variant='outline'
-                                                className='h-7 px-2 text-[11px]'
-                                                onClick={() => {
-                                                    onRemovePendingImage(image.clientId);
-                                                }}>
-                                                <X className='h-3.5 w-3.5' />
-                                                Remove
-                                            </Button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : null}
+                    <PendingImagesGrid
+                        pendingImages={pendingImages}
+                        onPreviewImage={(image) => {
+                            setLightboxImage(image);
+                        }}
+                        onRetryPendingImage={onRetryPendingImage}
+                        onRemovePendingImage={onRemovePendingImage}
+                        formatImageBytes={formatImageBytes}
+                    />
                     <textarea
                         ref={promptTextareaRef}
                         aria-label='Prompt'
