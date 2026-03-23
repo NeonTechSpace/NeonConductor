@@ -24,6 +24,15 @@ interface ResolveDesktopStorageOptions {
 const DEVELOPMENT_USER_DATA_SUFFIX = '-dev';
 const DEFAULT_PACKAGED_RUNTIME_NAMESPACE: PackagedRuntimeNamespace = 'stable';
 
+function resolveConfiguredUserDataPath(): string | null {
+    const configuredPath = process.env['NEONCONDUCTOR_USER_DATA_PATH']?.trim();
+    if (!configuredPath) {
+        return null;
+    }
+
+    return path.isAbsolute(configuredPath) ? configuredPath : null;
+}
+
 export function isPackagedRuntimeNamespace(value: unknown): value is PackagedRuntimeNamespace {
     return value === 'stable' || value === 'beta' || value === 'alpha';
 }
@@ -38,13 +47,14 @@ export function resolveDevelopmentUserDataPath(defaultUserDataPath: string): str
 
 export function resolveDesktopStorage(options: ResolveDesktopStorageOptions): ResolvedDesktopStorage {
     const runtimeNamespace: RuntimeStorageNamespace = options.isDev ? 'development' : options.packagedRuntimeNamespace;
+    const configuredUserDataPath = resolveConfiguredUserDataPath();
 
     return {
-        userDataPath: options.isDev
-            ? resolveDevelopmentUserDataPath(options.defaultUserDataPath)
-            : options.defaultUserDataPath,
+        userDataPath:
+            configuredUserDataPath ??
+            (options.isDev ? resolveDevelopmentUserDataPath(options.defaultUserDataPath) : options.defaultUserDataPath),
         runtimeNamespace,
-        isDevIsolatedStorage: options.isDev,
+        isDevIsolatedStorage: options.isDev && configuredUserDataPath === null,
     };
 }
 

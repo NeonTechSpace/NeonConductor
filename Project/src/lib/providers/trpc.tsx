@@ -3,19 +3,17 @@ import { log } from 'evlog';
 import { useEffect } from 'react';
 
 import { queryClient, trpcClient } from '@/web/lib/providers/trpcCore';
+import {
+    isRuntimeEventRecord,
+    isSubscriptionControlPayload,
+    isWindowStateEvent,
+    normalizeSubscriptionPayload,
+} from '@/web/lib/providers/subscriptionPayloads';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 import { invalidateQueriesForRuntimeEvent } from '@/web/lib/runtime/runtimeEventInvalidation';
 import { trpcClient as runtimeClient } from '@/web/lib/trpcClient';
 import { useWindowStateStreamStore } from '@/web/lib/window/stateStream';
 import { trpc } from '@/web/trpc/client';
-
-import {
-    runtimeEventDomains,
-    runtimeEventOperations,
-    runtimeEntityTypes,
-    type RuntimeEventRecordV1,
-} from '@/app/backend/persistence/types';
-import type { WindowStateEvent } from '@/app/backend/trpc/routers/system/windowControls';
 
 import type { ReactNode } from 'react';
 
@@ -23,50 +21,10 @@ interface TRPCProviderProps {
     children: ReactNode;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isOneOf<const T extends readonly string[]>(value: unknown, allowed: T): value is T[number] {
-    return typeof value === 'string' && (allowed as readonly string[]).includes(value);
-}
-
-function isRuntimeEventRecord(value: unknown): value is RuntimeEventRecordV1 {
-    if (!isRecord(value) || !isRecord(value['payload'])) {
-        return false;
-    }
-
-    return (
-        typeof value['sequence'] === 'number' &&
-        typeof value['eventId'] === 'string' &&
-        isOneOf(value['entityType'], runtimeEntityTypes) &&
-        isOneOf(value['domain'], runtimeEventDomains) &&
-        isOneOf(value['operation'], runtimeEventOperations) &&
-        typeof value['entityId'] === 'string' &&
-        typeof value['eventType'] === 'string' &&
-        typeof value['createdAt'] === 'string'
-    );
-}
-
-function isWindowStateEvent(value: unknown): value is WindowStateEvent {
-    if (!isRecord(value) || !isRecord(value['state'])) {
-        return false;
-    }
-
-    const state = value['state'];
-    return (
-        typeof value['sequence'] === 'number' &&
-        typeof state['isMaximized'] === 'boolean' &&
-        typeof state['isFullScreen'] === 'boolean' &&
-        typeof state['canMaximize'] === 'boolean' &&
-        typeof state['canMinimize'] === 'boolean' &&
-        typeof state['platform'] === 'string'
-    );
-}
-
 function RuntimeEventStreamBootstrap(): ReactNode {
     const utils = trpc.useUtils();
     const setConnecting = useRuntimeEventStreamStore((state) => state.setConnecting);
+    const setLive = useRuntimeEventStreamStore((state) => state.setLive);
     const setError = useRuntimeEventStreamStore((state) => state.setError);
     const pushEvent = useRuntimeEventStreamStore((state) => state.pushEvent);
 
@@ -78,9 +36,16 @@ function RuntimeEventStreamBootstrap(): ReactNode {
             lastSequence > 0 ? { afterSequence: lastSequence } : {},
             {
                 onData: (event) => {
-                    if (isRuntimeEventRecord(event)) {
-                        pushEvent(event);
-                        void invalidateQueriesForRuntimeEvent(utils, event);
+                    const normalizedEvent = normalizeSubscriptionPayload(event);
+
+                    if (isSubscriptionControlPayload(normalizedEvent)) {
+                        setLive();
+                        return;
+                    }
+
+                    if (isRuntimeEventRecord(normalizedEvent)) {
+                        pushEvent(normalizedEvent);
+                        void invalidateQueriesForRuntimeEvent(utils, normalizedEvent);
                         return;
                     }
 
@@ -105,13 +70,14 @@ function RuntimeEventStreamBootstrap(): ReactNode {
         return () => {
             subscription.unsubscribe();
         };
-    }, [setConnecting, setError, pushEvent, utils]);
+    }, [setConnecting, setError, setLive, pushEvent, utils]);
 
     return null;
 }
 
 function WindowStateStreamBootstrap(): ReactNode {
     const setConnecting = useWindowStateStreamStore((state) => state.setConnecting);
+    const setLive = useWindowStateStreamStore((state) => state.setLive);
     const setError = useWindowStateStreamStore((state) => state.setError);
     const pushEvent = useWindowStateStreamStore((state) => state.pushEvent);
 
@@ -123,8 +89,15 @@ function WindowStateStreamBootstrap(): ReactNode {
             lastSequence > 0 ? { afterSequence: lastSequence } : {},
             {
                 onData: (event) => {
-                    if (isWindowStateEvent(event)) {
-                        pushEvent(event);
+                    const normalizedEvent = normalizeSubscriptionPayload(event);
+
+                    if (isSubscriptionControlPayload(normalizedEvent)) {
+                        setLive();
+                        return;
+                    }
+
+                    if (isWindowStateEvent(normalizedEvent)) {
+                        pushEvent(normalizedEvent);
                         return;
                     }
 
@@ -140,7 +113,7 @@ function WindowStateStreamBootstrap(): ReactNode {
         return () => {
             subscription.unsubscribe();
         };
-    }, [setConnecting, setError, pushEvent]);
+    }, [setConnecting, setError, setLive, pushEvent]);
 
     return null;
 }

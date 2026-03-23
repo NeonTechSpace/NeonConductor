@@ -78,6 +78,7 @@ describe('sessions route', () => {
     });
 
     it('prewarms the existing workspace boot data through the route loader', async () => {
+        const trpcClient = { profile: 'client' };
         const trpcUtils = { runtime: 'utils' };
         const routeLoader = Route.options.loader;
 
@@ -87,11 +88,13 @@ describe('sessions route', () => {
 
         await routeLoader({
             context: {
+                trpcClient,
                 trpcUtils,
             },
         } as never);
 
         expect(startWorkspaceBootPrefetchMock).toHaveBeenCalledWith({
+            trpcClient,
             trpcUtils,
         });
     });

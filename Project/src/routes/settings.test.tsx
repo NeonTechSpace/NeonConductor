@@ -71,6 +71,7 @@ describe('settings route', () => {
     });
 
     it('prewarms the default settings data through the route loader', async () => {
+        const trpcClient = { profile: 'client' };
         const trpcUtils = { provider: 'utils' };
         const routeLoader = Route.options.loader;
 
@@ -80,11 +81,13 @@ describe('settings route', () => {
 
         await routeLoader({
             context: {
+                trpcClient,
                 trpcUtils,
             },
         } as never);
 
         expect(prefetchSettingsRouteDataMock).toHaveBeenCalledWith({
+            trpcClient,
             trpcUtils,
         });
     });

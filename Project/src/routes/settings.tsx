@@ -57,6 +57,7 @@ export const Route = createFileRoute('/settings')({
     validateSearch: parseSettingsRouteSearch,
     loader: async ({ context }) => {
         await prefetchSettingsRouteData({
+            trpcClient: context.trpcClient,
             trpcUtils: context.trpcUtils,
         });
     },

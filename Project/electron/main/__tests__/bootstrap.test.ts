@@ -325,4 +325,30 @@ describe('bootstrapMainProcess', () => {
             resourcesPath: process.resourcesPath,
         });
     });
+
+    it('honors an explicit absolute userData override for isolated shell validation runs', async () => {
+        process.env['NEONCONDUCTOR_USER_DATA_PATH'] = 'D:\\Temp\\neon-shell-validation';
+        const { bootstrapMainProcess } = await import('@/app/main/bootstrap');
+
+        bootstrapMainProcess(
+            {
+                createContext: vi.fn(() => Promise.resolve({} as never)),
+                appRouter: {} as never,
+                initAutoUpdater: vi.fn(),
+                resolvePersistenceChannel: () => 'stable',
+            },
+            'file:///M:/Neonsy/Projects/NeonConductor/Project/electron/main/index.ts'
+        );
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(appSetPathSpy).toHaveBeenCalledWith('userData', 'D:\\Temp\\neon-shell-validation');
+        expect(initializePersistenceSpy).toHaveBeenCalledWith({
+            dbPath: path.join('D:\\Temp\\neon-shell-validation', 'runtime', 'development', 'neonconductor.db'),
+        });
+        expect(process.env['NEONCONDUCTOR_USER_DATA_PATH']).toBe('D:\\Temp\\neon-shell-validation');
+        expect(process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE']).toBe('development');
+        expect(process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL']).toBe('development');
+    });
 });

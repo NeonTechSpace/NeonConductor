@@ -10,6 +10,7 @@ interface WindowStateStreamStore {
     lastSequence: number;
     windowState: WindowState;
     setConnecting: () => void;
+    setLive: () => void;
     setError: (message: string) => void;
     pushEvent: (event: WindowStateEvent) => void;
 }
@@ -30,6 +31,12 @@ export const useWindowStateStreamStore = create<WindowStateStreamStore>((set) =>
     setConnecting: () => {
         set({
             connectionState: 'connecting',
+            lastError: null,
+        });
+    },
+    setLive: () => {
+        set({
+            connectionState: 'live',
             lastError: null,
         });
     },

@@ -75,6 +75,19 @@ vi.mock('@/web/trpc/client', () => ({
     },
 }));
 
+vi.mock('@/web/lib/trpcClient', () => ({
+    trpcClient: {
+        profile: {
+            list: {
+                query: vi.fn(),
+            },
+            getActive: {
+                query: vi.fn(),
+            },
+        },
+    },
+}));
+
 vi.mock('@/web/components/runtime/useWorkspaceBootPrefetch', () => ({
     useWorkspaceBootPrefetch: vi.fn(),
 }));

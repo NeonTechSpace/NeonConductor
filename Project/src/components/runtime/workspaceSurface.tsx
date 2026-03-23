@@ -18,6 +18,7 @@ import {
     getWorkspaceSectionPath,
     resolveWorkspaceAppSectionFromPathname,
 } from '@/web/components/runtime/workspaceSurfaceModel';
+import { trpcClient } from '@/web/lib/trpcClient';
 import { trpc } from '@/web/trpc/client';
 
 import { BOOT_FORCE_SHOW_MS } from '@/app/shared/splashContract';
@@ -32,6 +33,7 @@ export function WorkspaceSurface() {
     });
     const appSection = resolveWorkspaceAppSectionFromPathname(pathname);
     useWorkspaceBootPrefetch({
+        trpcClient,
         trpcUtils: utils,
     });
     const [conversationShellBootReadiness, setConversationShellBootReadiness] = useState(

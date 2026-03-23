@@ -3,6 +3,7 @@
  * Handles window management and other system tasks.
  */
 
+import { observable } from '@trpc/server/observable';
 import { shell } from 'electron';
 
 import { windowStateSubscriptionInputSchema } from '@/app/backend/runtime/contracts';
@@ -54,35 +55,62 @@ export const systemRouter = router({
         .mutation(({ ctx, input }) => reportBootStatus(ctx.win, input)),
     // Custom title bar controls via existing tRPC IPC channel
     getWindowState: publicProcedure.query(({ ctx }) => getWindowState(ctx.win)),
-    subscribeWindowState: publicProcedure.input(windowStateSubscriptionInputSchema).subscription(async function* ({
-        input,
-        signal,
-    }) {
-        let cursor = input.afterSequence ?? 0;
-        const replayEvents = listWindowStateEvents(cursor);
-        for (const event of replayEvents) {
-            if (signal?.aborted) {
-                return;
-            }
+    subscribeWindowState: publicProcedure.input(windowStateSubscriptionInputSchema).subscription(({ input, signal }) =>
+        observable<WindowStateEvent>((emit) => {
+            let active = true;
+            let unsubscribeAbort: (() => void) | null = null;
 
-            cursor = Math.max(cursor, event.sequence);
-            yield event;
-        }
+            const run = async () => {
+                let cursor = input.afterSequence ?? 0;
+                try {
+                    const replayEvents = listWindowStateEvents(cursor);
+                    for (const event of replayEvents) {
+                        if (!active || signal?.aborted) {
+                            return;
+                        }
 
-        if (!signal) {
-            return;
-        }
+                        cursor = Math.max(cursor, event.sequence);
+                        emit.next(event);
+                    }
 
-        while (!signal.aborted) {
-            const nextEvent = await waitForNextWindowStateEvent(cursor, signal);
-            if (!nextEvent) {
-                return;
-            }
+                    if (!signal) {
+                        return;
+                    }
 
-            cursor = Math.max(cursor, nextEvent.sequence);
-            yield nextEvent;
-        }
-    }),
+                    const onAbort = () => {
+                        active = false;
+                        emit.complete();
+                    };
+                    signal.addEventListener('abort', onAbort, { once: true });
+                    unsubscribeAbort = () => {
+                        signal.removeEventListener('abort', onAbort);
+                    };
+
+                    while (active && !signal.aborted) {
+                        const nextEvent = await waitForNextWindowStateEvent(cursor, signal);
+                        if (!active || !nextEvent) {
+                            break;
+                        }
+
+                        cursor = Math.max(cursor, nextEvent.sequence);
+                        emit.next(nextEvent);
+                    }
+                } catch (error) {
+                    emit.error(error instanceof Error ? error : new Error('Window state subscription failed.'));
+                    return;
+                }
+
+                emit.complete();
+            };
+
+            void run();
+
+            return () => {
+                active = false;
+                unsubscribeAbort?.();
+            };
+        })
+    ),
     minimizeWindow: publicProcedure.mutation(({ ctx }) => minimizeWindow(ctx.win)),
     toggleMaximizeWindow: publicProcedure.mutation(({ ctx }) => toggleMaximizeWindow(ctx.win)),
     closeWindow: publicProcedure.mutation(({ ctx }) => closeWindow(ctx.win)),

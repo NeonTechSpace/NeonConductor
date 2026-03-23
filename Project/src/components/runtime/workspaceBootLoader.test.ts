@@ -11,13 +11,13 @@ describe('workspaceBootLoader', () => {
         resetWorkspaceBootPrefetchForTests();
 
         let resolveProfileList: ((value: { profiles: Array<{ id: string; isActive: boolean }> }) => void) | undefined;
-        const profileListEnsureData = vi.fn().mockImplementation(
+        const profileListFetch = vi.fn().mockImplementation(
             () =>
                 new Promise<{ profiles: Array<{ id: string; isActive: boolean }> }>((resolve) => {
                     resolveProfileList = resolve;
                 })
         );
-        const activeProfileEnsureData = vi.fn().mockResolvedValue({
+        const activeProfileFetch = vi.fn().mockResolvedValue({
             activeProfileId: 'profile_default',
         });
         const modeListPrefetch = vi.fn().mockResolvedValue(undefined);
@@ -25,15 +25,17 @@ describe('workspaceBootLoader', () => {
         const shellBootstrapPrefetch = vi.fn().mockResolvedValue(undefined);
 
         const firstPrefetchPromise = startWorkspaceBootPrefetch({
-            trpcUtils: {
+            trpcClient: {
                 profile: {
                     list: {
-                        ensureData: profileListEnsureData,
+                        query: profileListFetch,
                     },
                     getActive: {
-                        ensureData: activeProfileEnsureData,
+                        query: activeProfileFetch,
                     },
                 },
+            },
+            trpcUtils: {
                 mode: {
                     list: {
                         prefetch: modeListPrefetch,
@@ -50,15 +52,17 @@ describe('workspaceBootLoader', () => {
             },
         });
         const secondPrefetchPromise = startWorkspaceBootPrefetch({
-            trpcUtils: {
+            trpcClient: {
                 profile: {
                     list: {
-                        ensureData: profileListEnsureData,
+                        query: profileListFetch,
                     },
                     getActive: {
-                        ensureData: activeProfileEnsureData,
+                        query: activeProfileFetch,
                     },
                 },
+            },
+            trpcUtils: {
                 mode: {
                     list: {
                         prefetch: modeListPrefetch,
@@ -76,8 +80,8 @@ describe('workspaceBootLoader', () => {
         });
 
         expect(firstPrefetchPromise).toBe(secondPrefetchPromise);
-        expect(profileListEnsureData).toHaveBeenCalledTimes(1);
-        expect(activeProfileEnsureData).toHaveBeenCalledTimes(1);
+        expect(profileListFetch).toHaveBeenCalledTimes(1);
+        expect(activeProfileFetch).toHaveBeenCalledTimes(1);
 
         resolveProfileList?.({
             profiles: [
@@ -96,7 +100,7 @@ describe('workspaceBootLoader', () => {
     it('prefetches chat boot data for the resolved active profile', async () => {
         resetWorkspaceBootPrefetchForTests();
 
-        const profileListEnsureData = vi.fn().mockResolvedValue({
+        const profileListFetch = vi.fn().mockResolvedValue({
             profiles: [
                 {
                     id: 'profile_default',
@@ -104,7 +108,7 @@ describe('workspaceBootLoader', () => {
                 },
             ],
         });
-        const activeProfileEnsureData = vi.fn().mockResolvedValue({
+        const activeProfileFetch = vi.fn().mockResolvedValue({
             activeProfileId: 'profile_default',
         });
         const modeListPrefetch = vi.fn().mockResolvedValue(undefined);
@@ -112,15 +116,17 @@ describe('workspaceBootLoader', () => {
         const shellBootstrapPrefetch = vi.fn().mockResolvedValue(undefined);
 
         await prefetchWorkspaceBootData({
-            trpcUtils: {
+            trpcClient: {
                 profile: {
                     list: {
-                        ensureData: profileListEnsureData,
+                        query: profileListFetch,
                     },
                     getActive: {
-                        ensureData: activeProfileEnsureData,
+                        query: activeProfileFetch,
                     },
                 },
+            },
+            trpcUtils: {
                 mode: {
                     list: {
                         prefetch: modeListPrefetch,
@@ -137,8 +143,8 @@ describe('workspaceBootLoader', () => {
             },
         });
 
-        expect(profileListEnsureData).toHaveBeenCalledOnce();
-        expect(activeProfileEnsureData).toHaveBeenCalledOnce();
+        expect(profileListFetch).toHaveBeenCalledOnce();
+        expect(activeProfileFetch).toHaveBeenCalledOnce();
         expect(modeListPrefetch).toHaveBeenCalledWith(
             {
                 profileId: 'profile_default',
@@ -166,19 +172,21 @@ describe('workspaceBootLoader', () => {
         const shellBootstrapPrefetch = vi.fn().mockResolvedValue(undefined);
 
         await prefetchWorkspaceBootData({
-            trpcUtils: {
+            trpcClient: {
                 profile: {
                     list: {
-                        ensureData: vi.fn().mockResolvedValue({
+                        query: vi.fn().mockResolvedValue({
                             profiles: [],
                         }),
                     },
                     getActive: {
-                        ensureData: vi.fn().mockResolvedValue({
+                        query: vi.fn().mockResolvedValue({
                             activeProfileId: undefined,
                         }),
                     },
                 },
+            },
+            trpcUtils: {
                 mode: {
                     list: {
                         prefetch: modeListPrefetch,
@@ -209,17 +217,19 @@ describe('workspaceBootLoader', () => {
 
         await expect(
             prefetchWorkspaceBootData({
-                trpcUtils: {
+                trpcClient: {
                     profile: {
                         list: {
-                            ensureData: vi.fn().mockRejectedValue(new Error('profile list failed')),
+                            query: vi.fn().mockRejectedValue(new Error('profile list failed')),
                         },
                         getActive: {
-                            ensureData: vi.fn().mockResolvedValue({
+                            query: vi.fn().mockResolvedValue({
                                 activeProfileId: 'profile_default',
                             }),
                         },
                     },
+                },
+                trpcUtils: {
                     mode: {
                         list: {
                             prefetch: modeListPrefetch,
@@ -251,17 +261,19 @@ describe('workspaceBootLoader', () => {
 
         await expect(
             prefetchWorkspaceBootData({
-                trpcUtils: {
+                trpcClient: {
                     profile: {
                         list: {
-                            ensureData: vi.fn().mockResolvedValue(undefined),
+                            query: vi.fn().mockResolvedValue(undefined),
                         },
                         getActive: {
-                            ensureData: vi.fn().mockResolvedValue({
+                            query: vi.fn().mockResolvedValue({
                                 activeProfileId: 'profile_default',
                             }),
                         },
                     },
+                },
+                trpcUtils: {
                     mode: {
                         list: {
                             prefetch: modeListPrefetch,

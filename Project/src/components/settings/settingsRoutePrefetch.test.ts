@@ -4,10 +4,10 @@ import { prefetchSettingsRouteData } from '@/web/components/settings/settingsRou
 
 describe('settingsRoutePrefetch', () => {
     it('resolves the active profile first, then warms the default settings surfaces', async () => {
-        const ensureProfileList = vi.fn().mockResolvedValue({
+        const fetchProfileList = vi.fn().mockResolvedValue({
             profiles: [{ id: 'profile_default', isActive: true }],
         });
-        const ensureActiveProfile = vi.fn().mockResolvedValue({
+        const fetchActiveProfile = vi.fn().mockResolvedValue({
             activeProfileId: 'profile_default',
         });
         const listProvidersPrefetch = vi.fn().mockResolvedValue(undefined);
@@ -24,6 +24,12 @@ describe('settingsRoutePrefetch', () => {
         const registryPrefetch = vi.fn().mockResolvedValue(undefined);
 
         await prefetchSettingsRouteData({
+            trpcClient: {
+                profile: {
+                    list: { query: fetchProfileList },
+                    getActive: { query: fetchActiveProfile },
+                },
+            },
             trpcUtils: {
                 provider: {
                     listProviders: { prefetch: listProvidersPrefetch },
@@ -34,11 +40,7 @@ describe('settingsRoutePrefetch', () => {
                 },
                 profile: {
                     list: {
-                        ensureData: ensureProfileList,
                         prefetch: profileListPrefetch,
-                    },
-                    getActive: {
-                        ensureData: ensureActiveProfile,
                     },
                 },
                 prompt: {
@@ -60,8 +62,8 @@ describe('settingsRoutePrefetch', () => {
             },
         });
 
-        expect(ensureProfileList).toHaveBeenCalledOnce();
-        expect(ensureActiveProfile).toHaveBeenCalledOnce();
+        expect(fetchProfileList).toHaveBeenCalledOnce();
+        expect(fetchActiveProfile).toHaveBeenCalledOnce();
         expect(listProvidersPrefetch).toHaveBeenCalledOnce();
         expect(defaultsPrefetch).toHaveBeenCalledOnce();
         expect(listModelsPrefetch).toHaveBeenCalledWith({
@@ -100,6 +102,18 @@ describe('settingsRoutePrefetch', () => {
 
         await expect(
             prefetchSettingsRouteData({
+                trpcClient: {
+                    profile: {
+                        list: {
+                            query: vi.fn().mockRejectedValue(new Error('profile list failed')),
+                        },
+                        getActive: {
+                            query: vi.fn().mockResolvedValue({
+                                activeProfileId: 'profile_default',
+                            }),
+                        },
+                    },
+                },
                 trpcUtils: {
                     provider: {
                         listProviders: { prefetch: listProvidersPrefetch },
@@ -110,13 +124,7 @@ describe('settingsRoutePrefetch', () => {
                     },
                     profile: {
                         list: {
-                            ensureData: vi.fn().mockRejectedValue(new Error('profile list failed')),
                             prefetch: profileListPrefetch,
-                        },
-                        getActive: {
-                            ensureData: vi.fn().mockResolvedValue({
-                                activeProfileId: 'profile_default',
-                            }),
                         },
                     },
                     prompt: {
@@ -160,6 +168,18 @@ describe('settingsRoutePrefetch', () => {
 
         await expect(
             prefetchSettingsRouteData({
+                trpcClient: {
+                    profile: {
+                        list: {
+                            query: vi.fn().mockResolvedValue(undefined),
+                        },
+                        getActive: {
+                            query: vi.fn().mockResolvedValue({
+                                activeProfileId: 'profile_default',
+                            }),
+                        },
+                    },
+                },
                 trpcUtils: {
                     provider: {
                         listProviders: { prefetch: listProvidersPrefetch },
@@ -170,13 +190,7 @@ describe('settingsRoutePrefetch', () => {
                     },
                     profile: {
                         list: {
-                            ensureData: vi.fn().mockResolvedValue(undefined),
                             prefetch: profileListPrefetch,
-                        },
-                        getActive: {
-                            ensureData: vi.fn().mockResolvedValue({
-                                activeProfileId: 'profile_default',
-                            }),
                         },
                     },
                     prompt: {

@@ -33,7 +33,7 @@ export function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: string)
         packagedRuntimeNamespace: 'stable',
     });
 
-    if (initialStorage.isDevIsolatedStorage) {
+    if (initialStorage.userDataPath !== defaultUserDataPath) {
         app.setPath('userData', initialStorage.userDataPath);
     }
 

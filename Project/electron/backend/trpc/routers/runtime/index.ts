@@ -1,3 +1,5 @@
+import { observable } from '@trpc/server/observable';
+
 import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 import { workspaceRootStore } from '@/app/backend/persistence/stores';
 import {
@@ -78,35 +80,62 @@ export const runtimeRouter = router({
             workspacePreference,
         };
     }),
-    subscribeEvents: publicProcedure.input(runtimeEventsSubscriptionInputSchema).subscription(async function* ({
-        input,
-        signal,
-    }) {
-        let cursor = input.afterSequence ?? 0;
-        const replayEvents = await runtimeEventLogService.getEvents(cursor, 500);
-        for (const event of replayEvents) {
-            if (signal?.aborted) {
-                return;
-            }
+    subscribeEvents: publicProcedure.input(runtimeEventsSubscriptionInputSchema).subscription(({ input, signal }) =>
+        observable<RuntimeEventRecordV1>((emit) => {
+            let active = true;
+            let unsubscribeAbort: (() => void) | null = null;
 
-            cursor = Math.max(cursor, event.sequence);
-            yield event;
-        }
+            const run = async () => {
+                let cursor = input.afterSequence ?? 0;
+                try {
+                    const replayEvents = await runtimeEventLogService.getEvents(cursor, 500);
+                    for (const event of replayEvents) {
+                        if (!active || signal?.aborted) {
+                            return;
+                        }
 
-        if (!signal) {
-            return;
-        }
+                        cursor = Math.max(cursor, event.sequence);
+                        emit.next(event);
+                    }
 
-        while (!signal.aborted) {
-            const nextEvent = await waitForNextRuntimeEvent(cursor, signal);
-            if (!nextEvent) {
-                return;
-            }
+                    if (!signal) {
+                        return;
+                    }
 
-            cursor = Math.max(cursor, nextEvent.sequence);
-            yield nextEvent;
-        }
-    }),
+                    const onAbort = () => {
+                        active = false;
+                        emit.complete();
+                    };
+                    signal.addEventListener('abort', onAbort, { once: true });
+                    unsubscribeAbort = () => {
+                        signal.removeEventListener('abort', onAbort);
+                    };
+
+                    while (active && !signal.aborted) {
+                        const nextEvent = await waitForNextRuntimeEvent(cursor, signal);
+                        if (!active || !nextEvent) {
+                            break;
+                        }
+
+                        cursor = Math.max(cursor, nextEvent.sequence);
+                        emit.next(nextEvent);
+                    }
+                } catch (error) {
+                    emit.error(error instanceof Error ? error : new Error('Runtime event subscription failed.'));
+                    return;
+                }
+
+                emit.complete();
+            };
+
+            void run();
+
+            return () => {
+                active = false;
+                unsubscribeAbort?.();
+            };
+        })
+    ),
     factoryReset: publicProcedure.input(runtimeFactoryResetInputSchema).mutation(async ({ input }) => {
         const factoryResetResult = (await runtimeFactoryResetService.reset(input)).match(
             (value) => value,

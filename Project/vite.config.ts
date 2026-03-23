@@ -14,6 +14,7 @@ const electronMainExternalModules = [
     'electron',
     'electron-updater',
     'ws',
+    /^@modelcontextprotocol\/sdk(?:\/.*)?$/,
     ...builtinModules.filter((moduleName) => !moduleName.startsWith('_')).flatMap((moduleName) => [
         moduleName,
         `node:${moduleName}`,
