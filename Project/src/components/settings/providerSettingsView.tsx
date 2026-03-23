@@ -196,6 +196,10 @@ function DirectProviderContent({
                 isLoadingUsageSummary={controller.providerStatus.isLoadingUsageSummary}
                 isLoadingOpenAIUsage={controller.providerStatus.isLoadingOpenAIUsage}
                 isLoadingOpenAIRateLimits={controller.providerStatus.isLoadingOpenAIRateLimits}
+                isRefreshingOpenAICodexUsage={controller.providerStatus.isRefreshingOpenAICodexUsage}
+                onRefreshOpenAICodexUsage={() => {
+                    void controller.providerStatus.refreshOpenAICodexUsage();
+                }}
             />
 
             <ProviderAuthenticationSection

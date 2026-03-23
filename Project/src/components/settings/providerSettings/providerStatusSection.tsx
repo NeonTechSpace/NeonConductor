@@ -1,10 +1,14 @@
 import {
     formatDateTime,
+    formatElapsedTimeFromTimestamp,
     formatInteger,
     formatPercent,
+    formatResetCountdown,
+    isTimestampStale,
     methodLabel,
 } from '@/web/components/settings/providerSettings/helpers';
 import type { ProviderAuthStateView, ProviderListItem } from '@/web/components/settings/providerSettings/types';
+import { Button } from '@/web/components/ui/button';
 import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 
 import type {
@@ -28,6 +32,8 @@ interface ProviderStatusSectionProps {
     isLoadingUsageSummary: boolean;
     isLoadingOpenAIUsage: boolean;
     isLoadingOpenAIRateLimits: boolean;
+    isRefreshingOpenAICodexUsage: boolean;
+    onRefreshOpenAICodexUsage: () => void;
 }
 
 function formatBalance(balance: KiloAccountContext['balance']): string {
@@ -73,12 +79,19 @@ export function ProviderStatusSection({
     isLoadingUsageSummary,
     isLoadingOpenAIUsage,
     isLoadingOpenAIRateLimits,
+    isRefreshingOpenAICodexUsage,
+    onRefreshOpenAICodexUsage,
 }: ProviderStatusSectionProps) {
     const activeOrganization = readActiveOrganization(accountContext);
     const effectiveAuthState = authState?.authState ?? provider.authState;
     const effectiveAuthMethod = authState?.authMethod ?? provider.authMethod;
     const isOpenAICodex = provider.id === 'openai_codex';
     const isDirectOpenAI = provider.id === 'openai';
+    const rateLimitsFetchedAt =
+        openAISubscriptionRateLimits?.fetchedAt !== undefined
+            ? new Date(openAISubscriptionRateLimits.fetchedAt).toISOString()
+            : undefined;
+    const hasStaleOpenAICodexSnapshot = isTimestampStale(openAISubscriptionRateLimits?.fetchedAt);
 
     return (
         <section className='border-border/70 bg-card/40 space-y-4 rounded-[24px] border p-5'>
@@ -224,7 +237,28 @@ export function ProviderStatusSection({
                     ) : isOpenAICodex ? (
                         <div className='space-y-3 text-sm'>
                             <div>
-                                <p className='text-muted-foreground text-xs'>Account limits</p>
+                                <div className='flex flex-wrap items-center justify-between gap-2'>
+                                    <div>
+                                        <p className='text-muted-foreground text-xs'>Account limits</p>
+                                        <p className='text-muted-foreground mt-1 text-[11px]'>
+                                            Last refreshed {formatElapsedTimeFromTimestamp(openAISubscriptionRateLimits?.fetchedAt)}
+                                            {rateLimitsFetchedAt ? ` · ${formatDateTime(rateLimitsFetchedAt)}` : ''}
+                                        </p>
+                                        {hasStaleOpenAICodexSnapshot ? (
+                                            <p className='text-muted-foreground mt-1 text-[11px]'>
+                                                This Codex account snapshot is stale. Refresh to pull the latest limits.
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                    <Button
+                                        type='button'
+                                        size='sm'
+                                        variant='outline'
+                                        disabled={isRefreshingOpenAICodexUsage}
+                                        onClick={onRefreshOpenAICodexUsage}>
+                                        {isRefreshingOpenAICodexUsage ? 'Refreshing...' : 'Refresh'}
+                                    </Button>
+                                </div>
                                 {isLoadingOpenAIRateLimits ? (
                                     <p className='text-muted-foreground mt-1 text-xs'>Loading OpenAI Codex account limits...</p>
                                 ) : openAISubscriptionRateLimits?.source === 'chatgpt_wham' ? (
@@ -240,11 +274,17 @@ export function ProviderStatusSection({
                                             <dd className='mt-1 font-medium'>
                                                 {formatPercent(openAISubscriptionRateLimits.primary?.usedPercent)}
                                             </dd>
+                                            <dd className='text-muted-foreground mt-1 text-[11px]'>
+                                                Resets {formatResetCountdown(openAISubscriptionRateLimits.primary?.resetsAt)}
+                                            </dd>
                                         </div>
                                         <div className='sm:col-span-2'>
                                             <dt className='text-muted-foreground text-xs'>Secondary window</dt>
                                             <dd className='mt-1 font-medium'>
                                                 {formatPercent(openAISubscriptionRateLimits.secondary?.usedPercent)}
+                                            </dd>
+                                            <dd className='text-muted-foreground mt-1 text-[11px]'>
+                                                Resets {formatResetCountdown(openAISubscriptionRateLimits.secondary?.resetsAt)}
                                             </dd>
                                         </div>
                                     </dl>

@@ -86,6 +86,14 @@ function formatTokenCount(value: number): string {
     return new Intl.NumberFormat('en-US').format(value);
 }
 
+function formatUsagePercent(usedTokens: number, budgetTokens: number): string {
+    if (!Number.isFinite(usedTokens) || !Number.isFinite(budgetTokens) || budgetTokens <= 0) {
+        return '-';
+    }
+
+    return `${Math.round((usedTokens / budgetTokens) * 100).toString()}%`;
+}
+
 function formatCompactionTimestamp(value: string): string {
     const timestamp = new Date(value);
     if (Number.isNaN(timestamp.getTime())) {
@@ -201,7 +209,18 @@ export function ComposerActionPanel({
     const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
     const thresholdTokens = contextState?.policy.thresholdTokens;
     const totalTokens = contextState?.estimate?.totalTokens;
-    const hasUsageNumbers = totalTokens !== undefined && thresholdTokens !== undefined;
+    const usableInputBudgetTokens = contextState?.policy.usableInputBudgetTokens;
+    const hasUsageNumbers = totalTokens !== undefined && usableInputBudgetTokens !== undefined;
+    const remainingInputTokens =
+        hasUsageNumbers && usableInputBudgetTokens !== undefined && totalTokens !== undefined
+            ? Math.max(usableInputBudgetTokens - totalTokens, 0)
+            : undefined;
+    const usagePercent =
+        hasUsageNumbers && usableInputBudgetTokens !== undefined && totalTokens !== undefined
+            ? formatUsagePercent(totalTokens, usableInputBudgetTokens)
+            : undefined;
+    const countingModeLabel =
+        contextState?.estimate?.mode === 'exact' || contextState?.countingMode === 'exact' ? 'Exact' : 'Estimated';
     const compactionRecord = contextState?.compaction;
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
     const hasSubmittableContent = draftPrompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
@@ -332,28 +351,36 @@ export function ComposerActionPanel({
                             <div className='space-y-0.5'>
                                 <p className='text-[11px] font-semibold tracking-[0.14em] uppercase'>Context</p>
                                 {hasUsageNumbers ? (
-                                    <p className='text-muted-foreground text-xs'>
-                                        {formatTokenCount(totalTokens)} / {formatTokenCount(thresholdTokens)} token
-                                        threshold · {contextState.estimate?.mode === 'exact' ? 'Exact' : 'Estimated'}
-                                    </p>
+                                    <>
+                                        <p className='text-xs font-medium'>
+                                            {formatTokenCount(totalTokens)} used of{' '}
+                                            {formatTokenCount(usableInputBudgetTokens)} usable input tokens
+                                        </p>
+                                        <div className='text-muted-foreground grid gap-1 text-[11px] sm:grid-cols-3'>
+                                            <p>Remaining {formatTokenCount(remainingInputTokens ?? 0)}</p>
+                                            <p>Usage {usagePercent}</p>
+                                            <p>{countingModeLabel} counting</p>
+                                        </div>
+                                    </>
                                 ) : contextState.policy.disabledReason === 'missing_model_limits' ? (
                                     <p className='text-muted-foreground text-xs'>
-                                        Token-aware compaction is unavailable because this model has no known context
-                                        limit.
+                                        Current thread usage is unavailable because this model has no known context
+                                        limit yet.
                                     </p>
                                 ) : contextState.policy.disabledReason === 'feature_disabled' ? (
                                     <p className='text-muted-foreground text-xs'>
-                                        Global context management is disabled for this profile.
+                                        Current thread usage is unavailable because context management is disabled for
+                                        this profile.
                                     </p>
                                 ) : contextState.policy.disabledReason === 'multimodal_counting_unavailable' ? (
                                     <p className='text-muted-foreground text-xs'>
-                                        Token-aware compaction is paused for image sessions because multimodal token
+                                        Current thread usage is unavailable for image sessions because multimodal token
                                         counting is not implemented yet.
                                     </p>
                                 ) : (
                                     <p className='text-muted-foreground text-xs'>
-                                        Context policy is active with {contextState.countingMode} counting for this
-                                        model.
+                                        Current thread usage is active with {contextState.countingMode} counting for
+                                        this model.
                                     </p>
                                 )}
                             </div>
@@ -395,6 +422,11 @@ export function ComposerActionPanel({
                             <p className='text-muted-foreground text-[11px]'>
                                 Last compacted {compactionRecord.source} at{' '}
                                 {formatCompactionTimestamp(compactionRecord.updatedAt)}.
+                            </p>
+                        ) : null}
+                        {thresholdTokens !== undefined ? (
+                            <p className='text-muted-foreground text-[11px]'>
+                                Compaction threshold: {formatTokenCount(thresholdTokens)} tokens.
                             </p>
                         ) : null}
                         <p className='text-muted-foreground text-[11px]'>

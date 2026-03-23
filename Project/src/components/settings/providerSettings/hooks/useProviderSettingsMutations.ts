@@ -95,7 +95,8 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 profileId: input.profileId,
                 providerId: variables.providerId,
             });
-            if (variables.providerId === 'openai') {
+            if (variables.providerId === 'openai_codex') {
+                void utils.provider.getOpenAISubscriptionUsage.invalidate({ profileId: input.profileId });
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
             void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
@@ -227,7 +228,8 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             if (variables.providerId === 'kilo' && result.verificationUri) {
                 void openExternalUrlMutation.mutateAsync({ url: result.verificationUri }).catch(() => undefined);
             }
-            if (variables.providerId === 'openai') {
+            if (variables.providerId === 'openai_codex') {
+                void utils.provider.getOpenAISubscriptionUsage.invalidate({ profileId: input.profileId });
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
             void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
@@ -266,7 +268,8 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
                 profileId: input.profileId,
                 providerId: variables.providerId,
             });
-            if (variables.providerId === 'openai') {
+            if (variables.providerId === 'openai_codex') {
+                void utils.provider.getOpenAISubscriptionUsage.invalidate({ profileId: input.profileId });
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
             void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });
@@ -278,7 +281,8 @@ export function useProviderSettingsMutations(input: UseProviderSettingsMutations
             input.setStatusMessage('Auth flow cancelled.');
             input.setActiveAuthFlow(undefined);
             setAuthStateCache(variables.providerId, result.state);
-            if (variables.providerId === 'openai') {
+            if (variables.providerId === 'openai_codex') {
+                void utils.provider.getOpenAISubscriptionUsage.invalidate({ profileId: input.profileId });
                 void utils.provider.getOpenAISubscriptionRateLimits.invalidate({ profileId: input.profileId });
             }
             void utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId });

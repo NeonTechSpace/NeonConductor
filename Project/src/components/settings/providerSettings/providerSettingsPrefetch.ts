@@ -58,7 +58,7 @@ export function prefetchProviderSettingsData(input: ProviderSettingsPrefetchInpu
         );
     }
 
-    if (input.providerId === 'openai') {
+    if (input.providerId === 'openai_codex') {
         tasks.push(
             input.trpcUtils.provider.getOpenAISubscriptionUsage.prefetch({
                 profileId: input.profileId,

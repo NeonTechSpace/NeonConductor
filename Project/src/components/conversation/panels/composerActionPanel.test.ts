@@ -8,6 +8,8 @@ import {
     shouldSubmitComposerOnEnter,
 } from '@/web/components/conversation/panels/composerActionPanel';
 
+import type { ResolvedContextState } from '@/shared/contracts';
+
 function createModelOption(
     input: Partial<ModelPickerOption> & Pick<ModelPickerOption, 'id' | 'label'>
 ): ModelPickerOption {
@@ -22,6 +24,63 @@ function createModelOption(
         ...(input.providerId ? { providerId: input.providerId } : {}),
         ...(input.providerLabel ? { providerLabel: input.providerLabel } : {}),
         ...(input.reasoningEfforts ? { reasoningEfforts: input.reasoningEfforts } : {}),
+    };
+}
+
+function createContextState(
+    input?: Partial<ResolvedContextState['policy']> & {
+        totalTokens?: number;
+        estimateMode?: 'exact' | 'estimated';
+        includeBudget?: boolean;
+        includeThreshold?: boolean;
+        includeEstimate?: boolean;
+    }
+): ResolvedContextState {
+    const {
+        totalTokens,
+        estimateMode,
+        includeBudget = true,
+        includeThreshold = true,
+        includeEstimate = totalTokens !== undefined,
+        ...policyOverrides
+    } = input ?? {};
+
+    return {
+        policy: {
+            enabled: true,
+            profileId: 'profile_default',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            limits: {
+                profileId: 'profile_default',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+                contextLength: 128000,
+                maxOutputTokens: 8192,
+                contextLengthSource: 'static',
+                maxOutputTokensSource: 'static',
+                source: 'static',
+                modelLimitsKnown: true,
+            },
+            mode: 'percent',
+            ...(includeBudget ? { usableInputBudgetTokens: 100000 } : {}),
+            ...(includeThreshold ? { thresholdTokens: 80000 } : {}),
+            percent: 80,
+            ...policyOverrides,
+        },
+        countingMode: estimateMode ?? 'exact',
+        ...(!includeEstimate || totalTokens === undefined
+            ? {}
+            : {
+                  estimate: {
+                      providerId: 'openai',
+                      modelId: 'openai/gpt-5',
+                      mode: estimateMode ?? 'exact',
+                      totalTokens,
+                      parts: [],
+                  },
+              }),
+        compactable: true,
     };
 }
 
@@ -228,5 +287,104 @@ describe('composer enter handling', () => {
         );
 
         expect(html).toContain('This mode requires native tool calling.');
+    });
+
+    it.each(['chat', 'agent', 'orchestrator'] satisfies Array<'chat' | 'agent' | 'orchestrator'>)(
+        'shows live context usage details for %s',
+        (topLevelTab) => {
+            const html = renderToStaticMarkup(
+                createElement(ComposerActionPanel, {
+                    pendingImages: [],
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'openai',
+                    selectedModelId: 'openai/gpt-5',
+                    topLevelTab,
+                    activeModeKey: topLevelTab,
+                    modes: [],
+                    reasoningEffort: 'none',
+                    selectedModelSupportsReasoning: false,
+                    canAttachImages: false,
+                    maxImageAttachmentsPerMessage: 4,
+                    modelOptions: [
+                        createModelOption({
+                            id: 'openai/gpt-5',
+                            label: 'GPT-5',
+                            providerId: 'openai',
+                            providerLabel: 'OpenAI',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    contextState: createContextState({
+                        totalTokens: 40000,
+                        usableInputBudgetTokens: 100000,
+                        thresholdTokens: 80000,
+                        estimateMode: 'exact',
+                    }),
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddImageFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                })
+            );
+
+            expect(html).toContain('40,000 used of 100,000 usable input tokens');
+            expect(html).toContain('Remaining 60,000');
+            expect(html).toContain('Usage 40%');
+            expect(html).toContain('Exact counting');
+            expect(html).toContain('Compaction threshold: 80,000 tokens.');
+        }
+    );
+
+    it('keeps context disabled-state messaging focused on thread usage', () => {
+        const html = renderToStaticMarkup(
+            createElement(ComposerActionPanel, {
+                pendingImages: [],
+                disabled: false,
+                isSubmitting: false,
+                selectedProviderId: 'openai',
+                selectedModelId: 'openai/gpt-5',
+                topLevelTab: 'chat',
+                activeModeKey: 'chat',
+                modes: [],
+                reasoningEffort: 'none',
+                selectedModelSupportsReasoning: false,
+                canAttachImages: false,
+                maxImageAttachmentsPerMessage: 4,
+                modelOptions: [
+                    createModelOption({
+                        id: 'openai/gpt-5',
+                        label: 'GPT-5',
+                        providerId: 'openai',
+                        providerLabel: 'OpenAI',
+                    }),
+                ],
+                runErrorMessage: undefined,
+                contextState: createContextState({
+                    disabledReason: 'multimodal_counting_unavailable',
+                    includeBudget: false,
+                    includeThreshold: false,
+                    includeEstimate: false,
+                }),
+                onProviderChange: () => {},
+                onModelChange: () => {},
+                onReasoningEffortChange: () => {},
+                onModeChange: () => {},
+                onPromptEdited: () => {},
+                onAddImageFiles: () => {},
+                onRemovePendingImage: () => {},
+                onRetryPendingImage: () => {},
+                onSubmitPrompt: () => {},
+            })
+        );
+
+        expect(html).toContain(
+            'Current thread usage is unavailable for image sessions because multimodal token counting is not implemented yet.'
+        );
     });
 });

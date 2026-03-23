@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
 import { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
@@ -86,6 +86,7 @@ export function ConversationShell({
     onBootChromeReadyChange,
 }: ConversationShellProps) {
     const activeMode = modes.find((candidate) => candidate.modeKey === modeKey);
+    const lastContextRefreshSignatureRef = useRef<string | undefined>(undefined);
     const activeModeRequiresNativeTools = modeRequiresNativeTools(activeMode);
     const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -350,11 +351,12 @@ export function ConversationShell({
         runTargetState.selectedModelOptionForComposer?.compatibilityState === 'incompatible'
             ? runTargetState.selectedModelOptionForComposer.compatibilityReason
             : undefined;
+    const contextStateQueryEnabled =
+        hasSelectedSession &&
+        Boolean(runTargetState.selectedProviderIdForComposer) &&
+        Boolean(runTargetState.selectedModelIdForComposer);
     const contextStateQuery = trpc.context.getResolvedState.useQuery(contextStateQueryInput, {
-        enabled:
-            hasSelectedSession &&
-            Boolean(runTargetState.selectedProviderIdForComposer) &&
-            Boolean(runTargetState.selectedModelIdForComposer),
+        enabled: contextStateQueryEnabled,
         ...PROGRESSIVE_QUERY_OPTIONS,
     });
     const composerMediaSettingsQuery = trpc.composer.getSettings.useQuery(undefined, PROGRESSIVE_QUERY_OPTIONS);
@@ -634,6 +636,7 @@ export function ConversationShell({
             profileId,
             sessionId: selectedSessionId,
         });
+        void utils.context.getResolvedState.fetch(contextStateQueryInput);
 
         if (activeRunId) {
             void utils.diff.listByRun.fetch({
@@ -642,6 +645,50 @@ export function ConversationShell({
             });
         }
     });
+
+    const runContextRefreshSignature = [
+        selectedSessionId,
+        selectedRunId,
+        contextProviderId,
+        contextModelId,
+        topLevelTab,
+        modeKey,
+        queries.runsQuery.data?.runs.length ?? 0,
+        queries.runsQuery.data?.runs.reduce(
+            (latestTimestamp, run) => (run.updatedAt > latestTimestamp ? run.updatedAt : latestTimestamp),
+            ''
+        ),
+        queries.messagesQuery.data?.messages.length ?? 0,
+        queries.messagesQuery.data?.messages.reduce(
+            (latestTimestamp, message) => (message.updatedAt > latestTimestamp ? message.updatedAt : latestTimestamp),
+            ''
+        ),
+    ].join('|');
+
+    useEffect(() => {
+        if (!hasSelectedSession || !contextStateQueryEnabled) {
+            lastContextRefreshSignatureRef.current = undefined;
+            return;
+        }
+
+        if (lastContextRefreshSignatureRef.current === undefined) {
+            lastContextRefreshSignatureRef.current = runContextRefreshSignature;
+            return;
+        }
+
+        if (lastContextRefreshSignatureRef.current === runContextRefreshSignature) {
+            return;
+        }
+
+        lastContextRefreshSignatureRef.current = runContextRefreshSignature;
+        void utils.context.getResolvedState.fetch(contextStateQueryInput);
+    }, [
+        contextStateQueryEnabled,
+        contextStateQueryInput,
+        hasSelectedSession,
+        runContextRefreshSignature,
+        utils.context.getResolvedState,
+    ]);
 
     useEffect(() => {
         if (streamState !== 'error' || !hasSelectedSession) {

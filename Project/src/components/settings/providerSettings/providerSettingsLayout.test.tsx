@@ -90,6 +90,8 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
             isLoadingUsageSummary: false,
             isLoadingOpenAIUsage: false,
             isLoadingOpenAIRateLimits: false,
+            isRefreshingOpenAICodexUsage: false,
+            refreshOpenAICodexUsage: vi.fn(),
         },
         authentication: {
             methods: [],

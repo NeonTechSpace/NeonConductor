@@ -121,6 +121,7 @@ export function useProviderSettingsQueries(input: UseProviderSettingsQueriesInpu
         {
             enabled: resolvedSelectedProviderId === 'openai_codex',
             ...PROGRESSIVE_QUERY_OPTIONS,
+            refetchOnWindowFocus: resolvedSelectedProviderId === 'openai_codex',
         }
     );
 
@@ -131,6 +132,7 @@ export function useProviderSettingsQueries(input: UseProviderSettingsQueriesInpu
         {
             enabled: resolvedSelectedProviderId === 'openai_codex',
             ...PROGRESSIVE_QUERY_OPTIONS,
+            refetchOnWindowFocus: resolvedSelectedProviderId === 'openai_codex',
         }
     );
 

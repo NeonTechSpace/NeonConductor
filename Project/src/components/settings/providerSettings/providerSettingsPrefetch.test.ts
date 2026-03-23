@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { prefetchProviderSettingsData } from '@/web/components/settings/providerSettings/providerSettingsPrefetch';
 
 describe('providerSettingsPrefetch', () => {
-    it('warms provider-specific settings data for OpenAI without blocking render', async () => {
+    it('warms provider-specific settings data for OpenAI Codex without blocking render', async () => {
         const listModelsPrefetch = vi.fn().mockResolvedValue(undefined);
         const authStatePrefetch = vi.fn().mockResolvedValue(undefined);
         const connectionProfilePrefetch = vi.fn().mockResolvedValue(undefined);
@@ -14,7 +14,7 @@ describe('providerSettingsPrefetch', () => {
 
         prefetchProviderSettingsData({
             profileId: 'profile_default',
-            providerId: 'openai',
+            providerId: 'openai_codex',
             trpcUtils: {
                 provider: {
                     listModels: { prefetch: listModelsPrefetch },
@@ -32,15 +32,15 @@ describe('providerSettingsPrefetch', () => {
 
         expect(listModelsPrefetch).toHaveBeenCalledWith({
             profileId: 'profile_default',
-            providerId: 'openai',
+            providerId: 'openai_codex',
         });
         expect(authStatePrefetch).toHaveBeenCalledWith({
             profileId: 'profile_default',
-            providerId: 'openai',
+            providerId: 'openai_codex',
         });
         expect(connectionProfilePrefetch).toHaveBeenCalledWith({
             profileId: 'profile_default',
-            providerId: 'openai',
+            providerId: 'openai_codex',
         });
         expect(usageSummaryPrefetch).toHaveBeenCalledOnce();
         expect(openAiUsagePrefetch).toHaveBeenCalledOnce();

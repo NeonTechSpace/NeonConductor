@@ -84,6 +84,33 @@ export function formatResetCountdown(resetAtMs: number | undefined): string {
     return `in ${String(minutes)}m`;
 }
 
+export function formatElapsedTimeFromTimestamp(timestampMs: number | undefined): string {
+    if (timestampMs === undefined || !Number.isFinite(timestampMs)) {
+        return '-';
+    }
+
+    const diffSeconds = Math.max(0, Math.round((Date.now() - timestampMs) / 1000));
+    if (diffSeconds < 60) {
+        return 'just now';
+    }
+
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    if (hours > 0) {
+        return `${String(hours)}h ${String(minutes)}m ago`;
+    }
+
+    return `${String(minutes)}m ago`;
+}
+
+export function isTimestampStale(timestampMs: number | undefined, staleAfterMs = 10 * 60 * 1000): boolean {
+    if (timestampMs === undefined || !Number.isFinite(timestampMs)) {
+        return false;
+    }
+
+    return Date.now() - timestampMs >= staleAfterMs;
+}
+
 export function formatDateTime(value: string | undefined): string {
     if (!value) {
         return '-';

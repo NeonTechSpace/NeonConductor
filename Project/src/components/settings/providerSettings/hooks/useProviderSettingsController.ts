@@ -143,6 +143,17 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         },
     });
 
+    const refreshOpenAICodexUsage = async (): Promise<void> => {
+        if (selectedProviderId !== 'openai_codex') {
+            return;
+        }
+
+        await Promise.all([
+            queries.openAISubscriptionUsageQuery.refetch(),
+            queries.openAISubscriptionRateLimitsQuery.refetch(),
+        ]);
+    };
+
     const feedbackMessage =
         mutations.setDefaultMutation.error?.message ??
         mutations.setApiKeyMutation.error?.message ??
@@ -199,6 +210,10 @@ export function useProviderSettingsController(profileId: string, options?: Provi
             isLoadingUsageSummary: queries.usageSummaryQuery.isLoading,
             isLoadingOpenAIUsage: queries.openAISubscriptionUsageQuery.isLoading,
             isLoadingOpenAIRateLimits: queries.openAISubscriptionRateLimitsQuery.isLoading,
+            isRefreshingOpenAICodexUsage:
+                queries.openAISubscriptionUsageQuery.isRefetching ||
+                queries.openAISubscriptionRateLimitsQuery.isRefetching,
+            refreshOpenAICodexUsage,
         },
         authentication: {
             methods: queries.selectedProvider?.availableAuthMethods ?? [],
