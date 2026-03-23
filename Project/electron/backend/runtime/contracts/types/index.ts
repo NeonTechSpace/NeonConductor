@@ -19,3 +19,4 @@ export * from '@/app/backend/runtime/contracts/types/registry';
 export * from '@/app/backend/runtime/contracts/types/sandbox';
 export * from '@/app/backend/runtime/contracts/types/memory';
 export * from '@/app/backend/runtime/contracts/types/prompt';
+export * from '@/app/backend/runtime/contracts/types/workflow';

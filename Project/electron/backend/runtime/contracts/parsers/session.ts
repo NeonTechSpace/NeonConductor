@@ -15,6 +15,7 @@ import {
 import type {
     ComposerImageAttachmentInput,
     SessionBranchFromMessageInput,
+    SessionBranchFromMessageWithWorkflowInput,
     SessionByIdInput,
     SessionCreateInput,
     SessionEditInput,
@@ -224,6 +225,22 @@ export function parseSessionBranchFromMessageInput(input: unknown): SessionBranc
     };
 }
 
+export function parseSessionBranchFromMessageWithWorkflowInput(
+    input: unknown
+): SessionBranchFromMessageWithWorkflowInput {
+    const source = readObject(input, 'input');
+    const workflowId = readOptionalString(source.workflowId, 'workflowId');
+
+    return {
+        profileId: readProfileId(source),
+        sessionId: readEntityId(source.sessionId, 'sessionId', 'sess'),
+        topLevelTab: readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs),
+        messageId: readEntityId(source.messageId, 'messageId', 'msg'),
+        modeKey: readString(source.modeKey, 'modeKey'),
+        ...(workflowId ? { workflowId } : {}),
+    };
+}
+
 export const sessionCreateInputSchema = createParser(parseSessionCreateInput);
 export const sessionByIdInputSchema = createParser(parseSessionByIdInput);
 export const sessionRevertInputSchema = createParser(parseSessionRevertInput);
@@ -237,3 +254,4 @@ export const sessionGetAttachedRulesInputSchema = createParser(parseSessionGetAt
 export const sessionSetAttachedRulesInputSchema = createParser(parseSessionSetAttachedRulesInput);
 export const sessionEditInputSchema = createParser(parseSessionEditInput);
 export const sessionBranchFromMessageInputSchema = createParser(parseSessionBranchFromMessageInput);
+export const sessionBranchFromMessageWithWorkflowInputSchema = createParser(parseSessionBranchFromMessageWithWorkflowInput);

@@ -1,7 +1,7 @@
 import { sessionHistoryStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import type { SessionSummaryRecord } from '@/app/backend/persistence/types';
-import type { EntityId } from '@/app/backend/runtime/contracts';
+import type { EntityId, ExecutionEnvironmentMode, SessionKind } from '@/app/backend/runtime/contracts';
 
 export class SessionHistoryService {
     async truncateFromRun(
@@ -46,7 +46,12 @@ export class SessionHistoryService {
     async createBranchFromRun(
         profileId: string,
         sessionId: EntityId<'sess'>,
-        runId: EntityId<'run'>
+        runId: EntityId<'run'>,
+        options?: {
+            branchExecutionEnvironmentMode?: ExecutionEnvironmentMode;
+            branchSessionKind?: SessionKind;
+            branchSessionSandboxId?: EntityId<'sb'> | null;
+        }
     ): Promise<
         | { branched: false; reason: 'session_not_found' | 'run_not_found' }
         | {
@@ -80,6 +85,9 @@ export class SessionHistoryService {
             topLevelTab: sourceThread.topLevelTab,
             parentThreadId: sourceThread.id,
             rootThreadId: sourceThread.rootThreadId,
+            ...(options?.branchExecutionEnvironmentMode
+                ? { executionEnvironmentMode: options.branchExecutionEnvironmentMode }
+                : {}),
         });
         if (branchThread.isErr()) {
             return { branched: false, reason: 'session_not_found' };
@@ -90,6 +98,10 @@ export class SessionHistoryService {
             sourceSession,
             branchThreadId: branchThread.value.id,
             targetRunId: runId,
+            ...(options?.branchSessionKind ? { branchSessionKind: options.branchSessionKind } : {}),
+            ...(options && 'branchSessionSandboxId' in options
+                ? { branchSessionSandboxId: options.branchSessionSandboxId ?? null }
+                : {}),
         });
         if (!created.created) {
             return { branched: false, reason: created.reason };
@@ -123,7 +135,12 @@ export class SessionHistoryService {
     async createBranchThroughRun(
         profileId: string,
         sessionId: EntityId<'sess'>,
-        runId: EntityId<'run'>
+        runId: EntityId<'run'>,
+        options?: {
+            branchExecutionEnvironmentMode?: ExecutionEnvironmentMode;
+            branchSessionKind?: SessionKind;
+            branchSessionSandboxId?: EntityId<'sb'> | null;
+        }
     ): Promise<
         | { branched: false; reason: 'session_not_found' | 'run_not_found' }
         | {
@@ -157,6 +174,9 @@ export class SessionHistoryService {
             topLevelTab: sourceThread.topLevelTab,
             parentThreadId: sourceThread.id,
             rootThreadId: sourceThread.rootThreadId,
+            ...(options?.branchExecutionEnvironmentMode
+                ? { executionEnvironmentMode: options.branchExecutionEnvironmentMode }
+                : {}),
         });
         if (branchThread.isErr()) {
             return { branched: false, reason: 'session_not_found' };
@@ -168,6 +188,10 @@ export class SessionHistoryService {
             branchThreadId: branchThread.value.id,
             targetRunId: runId,
             includeTargetRun: true,
+            ...(options?.branchSessionKind ? { branchSessionKind: options.branchSessionKind } : {}),
+            ...(options && 'branchSessionSandboxId' in options
+                ? { branchSessionSandboxId: options.branchSessionSandboxId ?? null }
+                : {}),
         });
         if (!created.created) {
             return { branched: false, reason: created.reason };

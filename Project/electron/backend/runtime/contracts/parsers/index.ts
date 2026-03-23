@@ -20,5 +20,6 @@ export * from '@/app/backend/runtime/contracts/parsers/registry';
 export * from '@/app/backend/runtime/contracts/parsers/sandbox';
 export * from '@/app/backend/runtime/contracts/parsers/memory';
 export * from '@/app/backend/runtime/contracts/parsers/prompt';
+export * from '@/app/backend/runtime/contracts/parsers/workflow';
 
 export const unknownInputSchema = arktype('unknown');

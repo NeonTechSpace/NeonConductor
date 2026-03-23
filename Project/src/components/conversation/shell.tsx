@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
+import { useConversationShellBranchWorkflowFlow } from '@/web/components/conversation/hooks/useConversationShellBranchWorkflowFlow';
 import { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
 import { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
 import { useConversationShellRoutingBadge } from '@/web/components/conversation/hooks/useConversationShellRoutingBadge';
@@ -8,6 +9,7 @@ import { useConversationShellSessionActions } from '@/web/components/conversatio
 import { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import { useThreadSidebarState } from '@/web/components/conversation/hooks/useThreadSidebarState';
+import { BranchWorkflowDialog } from '@/web/components/conversation/panels/branchWorkflowDialog';
 import { MessageEditDialog } from '@/web/components/conversation/panels/messageEditDialog';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { buildConversationPlanOrchestrator } from '@/web/components/conversation/shell/composition/buildConversationPlanOrchestrator';
@@ -456,7 +458,6 @@ export function ConversationShell({
         resolvedRunTarget: runTargetState.resolvedRunTarget,
         runtimeOptions,
         editSession: mutations.editSessionMutation.mutateAsync,
-        branchFromMessage: mutations.branchFromMessageMutation.mutateAsync,
         setEditPreference,
         uiState,
         onTopLevelTabChange,
@@ -472,6 +473,31 @@ export function ConversationShell({
             applySessionWorkspaceUpdate({
                 session,
                 ...(run ? { run } : {}),
+                ...(thread ? { thread } : {}),
+            });
+        },
+    });
+    const branchWorkflowFlow = useConversationShellBranchWorkflowFlow({
+        profileId,
+        topLevelTab,
+        modeKey,
+        selectedSessionId,
+        selectedThread: shellViewModel.selectedThread,
+        uiState,
+        branchFromMessage: mutations.branchFromMessageMutation.mutateAsync,
+        branchFromMessageWithWorkflow: mutations.branchFromMessageWithWorkflowMutation.mutateAsync,
+        onTopLevelTabChange,
+        onClearError: composer.clearRunSubmitError,
+        onError: composer.setRunSubmitError,
+        onPromptReset: () => {
+            composer.resetComposer();
+        },
+        onComposerFocusRequest: () => {
+            setFocusComposerRequestKey((current) => current + 1);
+        },
+        onSessionEdited: ({ session, thread }) => {
+            applySessionWorkspaceUpdate({
+                session,
                 ...(thread ? { thread } : {}),
             });
         },
@@ -1067,7 +1093,7 @@ export function ConversationShell({
                 );
             },
             onEditMessage: editFlow.onEditMessage,
-            onBranchFromMessage: editFlow.onBranchFromMessage,
+            onBranchFromMessage: branchWorkflowFlow.onBranchFromMessage,
             executionEnvironmentPanel: workspacePanels.executionEnvironmentPanel,
             modeExecutionPanel: workspacePanels.modeExecutionPanel,
             contextAssetsPanel: workspacePanels.contextAssetsPanel,
@@ -1145,6 +1171,10 @@ export function ConversationShell({
             <MessageEditDialog
                 {...editFlow.dialogProps}
                 busy={mutations.editSessionMutation.isPending || mutations.setEditPreferenceMutation.isPending}
+            />
+            <BranchWorkflowDialog
+                {...branchWorkflowFlow.dialogProps}
+                busy={mutations.branchFromMessageWithWorkflowMutation.isPending}
             />
         </main>
     );

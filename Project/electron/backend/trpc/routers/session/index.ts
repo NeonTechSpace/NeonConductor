@@ -2,6 +2,7 @@ import { messageMediaStore, messageStore, runStore, sessionStore, threadStore } 
 import {
     profileInputSchema,
     sessionBranchFromMessageInputSchema,
+    sessionBranchFromMessageWithWorkflowInputSchema,
     sessionByIdInputSchema,
     sessionCreateInputSchema,
     sessionEditInputSchema,
@@ -328,4 +329,36 @@ export const sessionRouter = router({
 
         return result;
     }),
+    branchFromMessageWithWorkflow: publicProcedure
+        .input(sessionBranchFromMessageWithWorkflowInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const result = await sessionBranchService.branchFromMessageWithWorkflow(input);
+            if (result.branched) {
+                await runtimeEventLogService.append(
+                    runtimeUpsertEvent({
+                        entityType: 'session',
+                        domain: 'session',
+                        entityId: result.sessionId,
+                        eventType: 'session.branched_from_message',
+                        payload: {
+                            profileId: input.profileId,
+                            sourceSessionId: result.sourceSessionId,
+                            sessionId: result.sessionId,
+                            sourceThreadId: result.sourceThreadId,
+                            threadId: result.threadId,
+                            messageId: input.messageId,
+                            workflowId: input.workflowId ?? null,
+                            workflowExecution: result.workflowExecution,
+                        },
+                        ...eventMetadata({
+                            requestId: ctx.requestId,
+                            correlationId: ctx.correlationId,
+                            origin: 'trpc.session.branchFromMessageWithWorkflow',
+                        }),
+                    })
+                );
+            }
+
+            return result;
+        }),
 });

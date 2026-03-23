@@ -77,36 +77,17 @@ function resolvePresetPolicy(input: {
     return input.toolDefaultPolicy;
 }
 
-export async function resolveEffectivePermissionPolicy(input: {
+export async function resolveOverrideAndPresetPermissionPolicy(input: {
     profileId: string;
     resource: string;
     resourceCandidates?: string[];
-    topLevelTab: TopLevelTab;
-    modeKey: string;
     executionPreset: ExecutionPreset;
     capabilities: ToolCapability[];
     workspaceFingerprint?: string;
     toolDefaultPolicy: PermissionPolicy;
 }): Promise<ResolvedPermissionPolicy> {
-    const modePolicy = await resolveModePolicy({
-        profileId: input.profileId,
-        topLevelTab: input.topLevelTab,
-        modeKey: input.modeKey,
-        resource: input.resource,
-        capabilities: input.capabilities,
-        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-    });
-    if (modePolicy) {
-        return {
-            policy: modePolicy,
-            source: 'mode',
-            resource: input.resource,
-        };
-    }
-
-    const candidateResources = input.resourceCandidates && input.resourceCandidates.length > 0
-        ? input.resourceCandidates
-        : [input.resource];
+    const candidateResources =
+        input.resourceCandidates && input.resourceCandidates.length > 0 ? input.resourceCandidates : [input.resource];
 
     if (input.workspaceFingerprint) {
         const scopeKey = permissionPolicyOverrideStore.toWorkspaceScopeKey(input.workspaceFingerprint);
@@ -155,4 +136,41 @@ export async function resolveEffectivePermissionPolicy(input: {
         source: 'tool_default',
         resource: input.resource,
     };
+}
+
+export async function resolveEffectivePermissionPolicy(input: {
+    profileId: string;
+    resource: string;
+    resourceCandidates?: string[];
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    executionPreset: ExecutionPreset;
+    capabilities: ToolCapability[];
+    workspaceFingerprint?: string;
+    toolDefaultPolicy: PermissionPolicy;
+}): Promise<ResolvedPermissionPolicy> {
+    const modePolicy = await resolveModePolicy({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        modeKey: input.modeKey,
+        resource: input.resource,
+        capabilities: input.capabilities,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+    });
+    if (modePolicy) {
+        return {
+            policy: modePolicy,
+            source: 'mode',
+            resource: input.resource,
+        };
+    }
+    return resolveOverrideAndPresetPermissionPolicy({
+        profileId: input.profileId,
+        resource: input.resource,
+        ...(input.resourceCandidates ? { resourceCandidates: input.resourceCandidates } : {}),
+        executionPreset: input.executionPreset,
+        capabilities: input.capabilities,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+        toolDefaultPolicy: input.toolDefaultPolicy,
+    });
 }

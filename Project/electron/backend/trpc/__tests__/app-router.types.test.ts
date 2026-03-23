@@ -116,6 +116,25 @@ test('AppRouter exposes runtime procedure contracts to clients', () => {
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         messageId: string;
     }>();
+    expectTypeOf<Inputs['session']['branchFromMessageWithWorkflow']>().toExtend<{
+        profileId: string;
+        sessionId: string;
+        topLevelTab: 'chat' | 'agent' | 'orchestrator';
+        modeKey: string;
+        messageId: string;
+        workflowId?: string;
+    }>();
+    expectTypeOf<Inputs['workflow']['list']>().toExtend<{
+        profileId: string;
+        workspaceFingerprint: string;
+    }>();
+    expectTypeOf<Inputs['workflow']['create']>().toExtend<{
+        profileId: string;
+        workspaceFingerprint: string;
+        label: string;
+        command: string;
+        enabled: boolean;
+    }>();
     expectTypeOf<Inputs['session']['getAttachedSkills']>().toExtend<{
         profileId: string;
         sessionId: string;

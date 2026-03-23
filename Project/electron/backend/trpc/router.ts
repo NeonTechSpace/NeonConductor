@@ -25,6 +25,7 @@ import { systemRouter } from '@/app/backend/trpc/routers/system';
 import { toolRouter } from '@/app/backend/trpc/routers/tool';
 import { updatesRouter } from '@/app/backend/trpc/routers/updates';
 import { sandboxRouter } from '@/app/backend/trpc/routers/sandbox';
+import { workflowRouter } from '@/app/backend/trpc/routers/workflow';
 
 export const appRouter = router({
     runtime: runtimeRouter,
@@ -47,6 +48,7 @@ export const appRouter = router({
     profile: profileRouter,
     system: systemRouter,
     sandbox: sandboxRouter,
+    workflow: workflowRouter,
     updates: updatesRouter,
 });
 

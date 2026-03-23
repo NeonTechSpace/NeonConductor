@@ -2,12 +2,8 @@ import { useState } from 'react';
 
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
+import { buildEditSelectionTransition } from '@/web/components/conversation/shell/editFlowSelection';
 import {
-    buildBranchSelectionTransition,
-    buildEditSelectionTransition,
-} from '@/web/components/conversation/shell/editFlowSelection';
-import {
-    toBranchFailureMessage,
     toEditFailureMessage,
     type PendingMessageEdit,
 } from '@/web/components/conversation/shell/editFlow';
@@ -21,7 +17,6 @@ import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/ba
 import type {
     RuntimeProviderId,
     RuntimeRunOptions,
-    SessionBranchFromMessageInput,
     SessionEditInput,
     TopLevelTab,
 } from '@/shared/contracts';
@@ -53,19 +48,6 @@ interface UseConversationShellEditFlowInput {
               thread?: ThreadListRecord;
               threadId?: string;
               topLevelTab?: TopLevelTab;
-          }
-    >;
-    branchFromMessage: (input: SessionBranchFromMessageInput) => Promise<
-        | { branched: false; reason: string }
-        | {
-              branched: true;
-              sourceSessionId: string;
-              sessionId: string;
-              session: SessionSummaryRecord;
-              sourceThreadId: string;
-              threadId: string;
-              thread: ThreadListRecord;
-              topLevelTab: TopLevelTab;
           }
     >;
     setEditPreference: (input: { profileId: string; value: 'truncate' | 'branch' }) => Promise<void>;
@@ -110,56 +92,6 @@ export function useConversationShellEditFlow(input: UseConversationShellEditFlow
             if (pendingEdit) {
                 setPendingMessageEdit(pendingEdit);
             }
-        },
-        onBranchFromMessage: (entry: MessageFlowMessage) => {
-            if (!isEntityId(entry.id, 'msg')) {
-                input.onError('Select a message before creating a branch.');
-                return;
-            }
-            if (!isEntityId(input.selectedSessionId, 'sess')) {
-                input.onError('Select a session before creating a branch.');
-                return;
-            }
-
-            input.onClearError();
-            void input
-                .branchFromMessage({
-                    profileId: input.profileId,
-                    sessionId: input.selectedSessionId,
-                    topLevelTab: input.topLevelTab,
-                    messageId: entry.id,
-                })
-                .then((result) => {
-                    if (!result.branched) {
-                        input.onError(toBranchFailureMessage(result.reason));
-                        return;
-                    }
-
-                    const selectionTransition = buildBranchSelectionTransition({
-                        currentTopLevelTab: input.topLevelTab,
-                        result,
-                    });
-
-                    if (selectionTransition.selectedThreadId) {
-                        input.uiState.setSelectedThreadId(selectionTransition.selectedThreadId);
-                    }
-                    if (selectionTransition.nextTopLevelTab) {
-                        input.onTopLevelTabChange(selectionTransition.nextTopLevelTab);
-                    }
-                    input.uiState.setSelectedSessionId(selectionTransition.selectedSessionId);
-                    input.uiState.setSelectedRunId(selectionTransition.selectedRunId);
-                    input.onPromptReset();
-                    input.onComposerFocusRequest();
-                    input.onSessionEdited({
-                        sessionId: result.sessionId,
-                        session: result.session,
-                        thread: result.thread,
-                    });
-                })
-                .catch((error: unknown) => {
-                    const message = error instanceof Error ? error.message : String(error);
-                    input.onError(`Branch failed: ${message}`);
-                });
         },
         dialogProps: {
             open: Boolean(pendingMessageEdit),

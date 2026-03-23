@@ -141,6 +141,8 @@ export class SessionHistoryStore {
         branchThreadId: string;
         targetRunId: string;
         includeTargetRun?: boolean;
+        branchSessionKind?: SessionsTable['kind'];
+        branchSessionSandboxId?: SessionsTable['sandbox_id'];
     }): Promise<
         | { created: false; reason: 'run_not_found' }
         | {
@@ -173,8 +175,11 @@ export class SessionHistoryStore {
                     profile_id: input.profileId,
                     conversation_id: input.sourceSession.conversation_id,
                     thread_id: input.branchThreadId,
-                    kind: input.sourceSession.kind,
-                    sandbox_id: input.sourceSession.sandbox_id,
+                    kind: input.branchSessionKind ?? input.sourceSession.kind,
+                    sandbox_id:
+                        input.branchSessionSandboxId !== undefined
+                            ? input.branchSessionSandboxId
+                            : input.sourceSession.sandbox_id,
                     run_status: 'idle',
                     pending_completion_run_id: null,
                     created_at: createdAt,
