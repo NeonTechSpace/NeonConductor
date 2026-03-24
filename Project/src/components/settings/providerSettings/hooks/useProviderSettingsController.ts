@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { createProviderSettingsActions } from '@/web/components/settings/providerSettings/hooks/providerSettingsActions';
-import { resetProviderSettingsState } from '@/web/components/settings/providerSettings/hooks/providerSettingsState';
 import { useKiloRoutingDraft } from '@/web/components/settings/providerSettings/hooks/useKiloRoutingDraft';
 import { useProviderSettingsAuthPolling } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsAuthPolling';
 import { useProviderSettingsMutations } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsMutations';
@@ -31,15 +30,6 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         requestedModelId,
     });
     const selectedProviderId = queries.selectedProviderId;
-
-    useEffect(() => {
-        resetProviderSettingsState({
-            setActiveAuthFlow,
-            setStatusMessage,
-        });
-        setRequestedProviderId(options?.initialProviderId);
-        setRequestedModelId('');
-    }, [options?.initialProviderId, profileId]);
 
     const mutations = useProviderSettingsMutations({
         profileId,

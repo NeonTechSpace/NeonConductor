@@ -1,14 +1,4 @@
-import type { ActiveAuthFlow } from '@/web/components/settings/providerSettings/types';
-
 import type { RuntimeProviderId } from '@/shared/contracts';
-
-export function resetProviderSettingsState(input: {
-    setActiveAuthFlow: (value: ActiveAuthFlow | undefined) => void;
-    setStatusMessage: (value: string | undefined) => void;
-}): void {
-    input.setActiveAuthFlow(undefined);
-    input.setStatusMessage(undefined);
-}
 
 export function selectProviderWithReset(input: {
     providerId: RuntimeProviderId;

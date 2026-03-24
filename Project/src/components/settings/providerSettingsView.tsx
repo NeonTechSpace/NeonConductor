@@ -15,6 +15,10 @@ interface ProviderSettingsViewProps {
     onProviderChange?: (providerId: RuntimeProviderId) => void;
 }
 
+function buildProviderSettingsControllerKey(profileId: string, selectedProviderId: RuntimeProviderId): string {
+    return `${profileId}:${selectedProviderId}`;
+}
+
 function sortProviderItems(
     providers: ReturnType<typeof useProviderSettingsController>['selection']['providerItems']
 ) {
@@ -282,9 +286,9 @@ function DirectProviderContent({
     );
 }
 
-export function ProviderSettingsView({
+function ProviderSettingsViewBody({
     profileId,
-    selectedProviderId = 'kilo',
+    selectedProviderId,
     onProviderChange,
 }: ProviderSettingsViewProps) {
     const controller = useProviderSettingsController(profileId, { initialProviderId: selectedProviderId });
@@ -325,5 +329,20 @@ export function ProviderSettingsView({
                 )}
             </div>
         </section>
+    );
+}
+
+export function ProviderSettingsView({
+    profileId,
+    selectedProviderId = 'kilo',
+    onProviderChange,
+}: ProviderSettingsViewProps) {
+    return (
+        <ProviderSettingsViewBody
+            key={buildProviderSettingsControllerKey(profileId, selectedProviderId)}
+            profileId={profileId}
+            selectedProviderId={selectedProviderId}
+            onProviderChange={onProviderChange}
+        />
     );
 }

@@ -1,63 +1,34 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsController', () => ({
-    useProviderSettingsController: () => ({
-        selection: {
-            providerItems: [
-                {
-                    id: 'kilo',
-                    label: 'Kilo',
-                    authState: 'authenticated',
-                    authMethod: 'device_code',
-                    connectionProfile: {
-                        providerId: 'kilo',
-                        optionProfileId: 'gateway',
-                        label: 'Gateway',
-                        options: [{ value: 'gateway', label: 'Gateway' }],
-                        resolvedBaseUrl: null,
-                    },
-                    apiKeyCta: { label: 'Create key', url: 'https://example.com' },
-                    isDefault: true,
-                    availableAuthMethods: ['device_code', 'api_key'],
-                    features: {
-                        supportsKiloRouting: true,
-                        catalogStrategy: 'dynamic',
-                        supportsModelProviderListing: true,
-                        supportsConnectionOptions: false,
-                        supportsCustomBaseUrl: false,
-                        supportsOrganizationScope: true,
-                    },
+const useProviderSettingsControllerMock = vi.fn(() => ({
+    selection: {
+        providerItems: [
+            {
+                id: 'kilo',
+                label: 'Kilo',
+                authState: 'authenticated',
+                authMethod: 'device_code',
+                connectionProfile: {
+                    providerId: 'kilo',
+                    optionProfileId: 'gateway',
+                    label: 'Gateway',
+                    options: [{ value: 'gateway', label: 'Gateway' }],
+                    resolvedBaseUrl: null,
                 },
-                {
-                    id: 'openai',
-                    label: 'OpenAI',
-                    authState: 'logged_out',
-                    authMethod: 'api_key',
-                    connectionProfile: {
-                        providerId: 'openai',
-                        optionProfileId: 'default',
-                        label: 'Default',
-                        options: [{ value: 'default', label: 'Default' }],
-                        resolvedBaseUrl: 'https://api.openai.com/v1',
-                    },
-                    apiKeyCta: { label: 'Create key', url: 'https://example.com' },
-                    isDefault: false,
-                    availableAuthMethods: ['api_key'],
-                    features: {
-                        supportsKiloRouting: false,
-                        catalogStrategy: 'static',
-                        supportsModelProviderListing: false,
-                        supportsConnectionOptions: false,
-                        supportsCustomBaseUrl: true,
-                        supportsOrganizationScope: false,
-                    },
+                apiKeyCta: { label: 'Create key', url: 'https://example.com' },
+                isDefault: true,
+                availableAuthMethods: ['device_code', 'api_key'],
+                features: {
+                    supportsKiloRouting: true,
+                    catalogStrategy: 'dynamic',
+                    supportsModelProviderListing: true,
+                    supportsConnectionOptions: false,
+                    supportsCustomBaseUrl: false,
+                    supportsOrganizationScope: true,
                 },
-            ],
-            selectedProviderId: 'openai',
-            prefetchProvider: vi.fn(),
-            selectProvider: vi.fn(),
-            selectedProvider: {
+            },
+            {
                 id: 'openai',
                 label: 'OpenAI',
                 authState: 'logged_out',
@@ -70,6 +41,8 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
                     resolvedBaseUrl: 'https://api.openai.com/v1',
                 },
                 apiKeyCta: { label: 'Create key', url: 'https://example.com' },
+                isDefault: false,
+                availableAuthMethods: ['api_key'],
                 features: {
                     supportsKiloRouting: false,
                     catalogStrategy: 'static',
@@ -79,73 +52,102 @@ vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsCon
                     supportsOrganizationScope: false,
                 },
             },
+        ],
+        selectedProviderId: 'openai',
+        prefetchProvider: vi.fn(),
+        selectProvider: vi.fn(),
+        selectedProvider: {
+            id: 'openai',
+            label: 'OpenAI',
+            authState: 'logged_out',
+            authMethod: 'api_key',
+            connectionProfile: {
+                providerId: 'openai',
+                optionProfileId: 'default',
+                label: 'Default',
+                options: [{ value: 'default', label: 'Default' }],
+                resolvedBaseUrl: 'https://api.openai.com/v1',
+            },
+            apiKeyCta: { label: 'Create key', url: 'https://example.com' },
+            features: {
+                supportsKiloRouting: false,
+                catalogStrategy: 'static',
+                supportsModelProviderListing: false,
+                supportsConnectionOptions: false,
+                supportsCustomBaseUrl: true,
+                supportsOrganizationScope: false,
+            },
         },
-        providerStatus: {
-            authState: undefined,
-            accountContext: undefined,
-            usageSummary: undefined,
-            openAISubscriptionUsage: undefined,
-            openAISubscriptionRateLimits: undefined,
-            isLoadingAccountContext: false,
-            isLoadingUsageSummary: false,
-            isLoadingOpenAIUsage: false,
-            isLoadingOpenAIRateLimits: false,
-            isRefreshingOpenAICodexUsage: false,
-            refreshOpenAICodexUsage: vi.fn(),
-        },
-        authentication: {
-            methods: [],
-            credentialSummary: undefined,
-            executionPreference: undefined,
-            activeAuthFlow: undefined,
-            isSavingApiKey: false,
-            isSavingConnectionProfile: false,
-            isSavingExecutionPreference: false,
-            isStartingAuth: false,
-            isPollingAuth: false,
-            isCancellingAuth: false,
-            isOpeningVerificationPage: false,
-            changeConnectionProfile: vi.fn(),
-            changeExecutionPreference: vi.fn(),
-            saveBaseUrlOverride: vi.fn(),
-            saveApiKey: vi.fn(),
-            loadStoredCredential: vi.fn(),
-            startOAuthDevice: vi.fn(),
-            startDeviceCode: vi.fn(),
-            pollNow: vi.fn(),
-            cancelFlow: vi.fn(),
-            openVerificationPage: vi.fn(),
-        },
-        models: {
-            selectedModelId: '',
-            options: [],
-            catalogStateReason: null,
-            catalogStateDetail: undefined,
-            isDefaultModel: false,
-            isSavingDefault: false,
-            isSyncingCatalog: false,
-            setSelectedModelId: vi.fn(),
-            setDefaultModel: vi.fn(),
-            syncCatalog: vi.fn(),
-        },
-        kilo: {
-            routingDraft: undefined,
-            modelProviders: [],
-            accountContext: undefined,
-            isLoadingRoutingPreference: false,
-            isLoadingModelProviders: false,
-            isSavingRoutingPreference: false,
-            isSavingOrganization: false,
-            changeRoutingMode: vi.fn(),
-            changeRoutingSort: vi.fn(),
-            changePinnedProvider: vi.fn(),
-            changeOrganization: vi.fn(),
-        },
-        feedback: {
-            message: undefined,
-            tone: 'info',
-        },
-    }),
+    },
+    providerStatus: {
+        authState: undefined,
+        accountContext: undefined,
+        usageSummary: undefined,
+        openAISubscriptionUsage: undefined,
+        openAISubscriptionRateLimits: undefined,
+        isLoadingAccountContext: false,
+        isLoadingUsageSummary: false,
+        isLoadingOpenAIUsage: false,
+        isLoadingOpenAIRateLimits: false,
+        isRefreshingOpenAICodexUsage: false,
+        refreshOpenAICodexUsage: vi.fn(),
+    },
+    authentication: {
+        methods: [],
+        credentialSummary: undefined,
+        executionPreference: undefined,
+        activeAuthFlow: undefined,
+        isSavingApiKey: false,
+        isSavingConnectionProfile: false,
+        isSavingExecutionPreference: false,
+        isStartingAuth: false,
+        isPollingAuth: false,
+        isCancellingAuth: false,
+        isOpeningVerificationPage: false,
+        changeConnectionProfile: vi.fn(),
+        changeExecutionPreference: vi.fn(),
+        saveBaseUrlOverride: vi.fn(),
+        saveApiKey: vi.fn(),
+        loadStoredCredential: vi.fn(),
+        startOAuthDevice: vi.fn(),
+        startDeviceCode: vi.fn(),
+        pollNow: vi.fn(),
+        cancelFlow: vi.fn(),
+        openVerificationPage: vi.fn(),
+    },
+    models: {
+        selectedModelId: '',
+        options: [],
+        catalogStateReason: null,
+        catalogStateDetail: undefined,
+        isDefaultModel: false,
+        isSavingDefault: false,
+        isSyncingCatalog: false,
+        setSelectedModelId: vi.fn(),
+        setDefaultModel: vi.fn(),
+        syncCatalog: vi.fn(),
+    },
+    kilo: {
+        routingDraft: undefined,
+        modelProviders: [],
+        accountContext: undefined,
+        isLoadingRoutingPreference: false,
+        isLoadingModelProviders: false,
+        isSavingRoutingPreference: false,
+        isSavingOrganization: false,
+        changeRoutingMode: vi.fn(),
+        changeRoutingSort: vi.fn(),
+        changePinnedProvider: vi.fn(),
+        changeOrganization: vi.fn(),
+    },
+    feedback: {
+        message: undefined,
+        tone: 'info',
+    },
+}));
+
+vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsController', () => ({
+    useProviderSettingsController: useProviderSettingsControllerMock,
 }));
 
 vi.mock('@/web/components/settings/providerSettings/providerSidebar', () => ({
@@ -179,6 +181,14 @@ vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 
 describe('provider settings layout', () => {
+    it('passes the selected provider into a fresh controller boundary', () => {
+        renderToStaticMarkup(<ProviderSettingsView profileId='profile_default' selectedProviderId='openai' />);
+
+        expect(useProviderSettingsControllerMock).toHaveBeenCalledWith('profile_default', {
+            initialProviderId: 'openai',
+        });
+    });
+
     it('keeps the split pane height-constrained and the detail column scrollable', () => {
         const html = renderToStaticMarkup(<ProviderSettingsView profileId='profile_default' />);
 

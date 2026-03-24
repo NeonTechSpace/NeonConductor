@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useMemo, useState } from 'react';
+import { startTransition, useDeferredValue, useState } from 'react';
 
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
@@ -121,13 +121,12 @@ export function WorkspacesSurface({
         },
     });
 
-    const visibleWorkspaceRoots = useMemo(() => {
-        return deferredSearchValue.length > 0
+    const visibleWorkspaceRoots =
+        deferredSearchValue.length > 0
             ? workspaceRoots.filter((root) =>
                   `${root.label} ${root.absolutePath} ${root.fingerprint}`.toLowerCase().includes(deferredSearchValue)
               )
             : workspaceRoots;
-    }, [deferredSearchValue, workspaceRoots]);
 
     const selectedWorkspace = selectedWorkspaceFingerprint
         ? workspaceRoots.find((workspaceRoot) => workspaceRoot.fingerprint === selectedWorkspaceFingerprint)

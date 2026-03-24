@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import { trpc } from '@/web/trpc/client';
@@ -108,11 +108,21 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
         ? serversQuery.data?.servers.find((server) => server.id === editingServerId)
         : undefined;
 
-    useEffect(() => {
-        if (editorMode === 'edit' && selectedServer) {
-            setDraft(createDraftFromServer(selectedServer));
+    function startCreateServerDraft(options?: { preserveStatusMessage?: boolean }) {
+        setEditorMode('create');
+        setEditingServerId(undefined);
+        setDraft(createEmptyDraft());
+        if (!options?.preserveStatusMessage) {
+            setStatusMessage(undefined);
         }
-    }, [editorMode, selectedServer]);
+    }
+
+    function startEditServerDraft(server: NonNullable<typeof selectedServer>) {
+        setEditorMode('edit');
+        setEditingServerId(server.id);
+        setDraft(createDraftFromServer(server));
+        setStatusMessage(undefined);
+    }
 
     async function invalidateMcpQueries() {
         await Promise.all([utils.mcp.listServers.invalidate(), utils.mcp.getServer.invalidate()]);
@@ -168,8 +178,8 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
                 await setEnvSecretsMutation.mutateAsync({ serverId: created.server.id, values });
             }
             await invalidateMcpQueries();
+            startCreateServerDraft({ preserveStatusMessage: true });
             setStatusMessage(`Created "${created.server.label}".`);
-            setDraft(createEmptyDraft());
             return;
         }
 
@@ -253,10 +263,7 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
 
                                     <div className='flex flex-wrap gap-2'>
                                         <button type='button' className='rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium' onClick={() => {
-                                            setEditorMode('edit');
-                                            setEditingServerId(server.id);
-                                            setDraft(createDraftFromServer(server));
-                                            setStatusMessage(undefined);
+                                            startEditServerDraft(server);
                                         }}>Edit</button>
                                         <button type='button' className='rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium disabled:opacity-60' disabled={isBusy || !canConnect || !isDraftValid(createDraftFromServer(server))} onClick={() => {
                                             void connectMutation.mutateAsync({
@@ -291,10 +298,7 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
                             <p className='text-muted-foreground text-xs leading-5'>Env values are write-only after save.</p>
                         </div>
                         <button type='button' className='rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium' onClick={() => {
-                            setEditorMode('create');
-                            setEditingServerId(undefined);
-                            setDraft(createEmptyDraft());
-                            setStatusMessage(undefined);
+                            startCreateServerDraft();
                         }}>New</button>
                     </div>
 
@@ -367,9 +371,7 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
                     void deleteServerMutation.mutateAsync({ serverId: deleteTarget.id }).then(() => {
                         setDeleteTarget(undefined);
                         if (editingServerId === deleteTarget.id) {
-                            setEditorMode('create');
-                            setEditingServerId(undefined);
-                            setDraft(createEmptyDraft());
+                            startCreateServerDraft();
                         }
                     });
                 }}
