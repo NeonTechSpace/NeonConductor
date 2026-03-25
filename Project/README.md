@@ -11,4 +11,4 @@ react(),
 await babel({ presets: [reactCompilerPreset()] }),
 ```
 
-in [vite.config.ts](/m:/Neonsy/Projects/NeonConductor/Project/vite.config.ts).
+in [vite.config.ts](./vite.config.ts).

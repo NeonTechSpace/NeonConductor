@@ -57,6 +57,7 @@
 - Do not create new markdown docs outside the `Research` folder unless the user explicitly permits it.
 - Do not use markdown docs as a band-aid for unclear local code.
 - Do not add noisy comments that only restate obvious code.
+- Do not commit absolute machine-specific filesystem paths such as `C:\Users\...`, `M:\...`, or `/m:/...` in docs, tests, configs, or source. Use repository-relative links in markdown and derive paths at runtime in code/tests from local context instead.
 
 ### 5) Keep Boundaries Type-Safe
 - Do not use broad `as SomeType` casts to silence type errors.

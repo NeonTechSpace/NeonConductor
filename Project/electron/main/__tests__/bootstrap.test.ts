@@ -1,5 +1,10 @@
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const projectPath = path.win32.join('Project');
+const mainDirname = path.win32.join(projectPath, 'electron', 'main');
+const mainEntryUrl = pathToFileURL(path.resolve(projectPath, 'electron', 'main', 'index.ts')).toString();
 
 const {
     appOnSpy,
@@ -65,7 +70,7 @@ const {
     },
     defaultUserDataPath: 'C:\\Users\\Neon\\AppData\\Roaming\\neon-conductor',
     appState: {
-        appPath: 'M:\\Neonsy\\Projects\\NeonConductor\\Project',
+        appPath: projectPath,
         isPackaged: false,
         userDataPath: 'C:\\Users\\Neon\\AppData\\Roaming\\neon-conductor',
     },
@@ -157,7 +162,7 @@ vi.mock('@/app/main/runtime/env', () => ({
     get devServerUrl() {
         return runtimeEnvState.devServerUrl;
     },
-    getMainDirname: () => 'M:\\Neonsy\\Projects\\NeonConductor\\Project\\electron\\main',
+    getMainDirname: () => mainDirname,
 }));
 
 vi.mock('@/app/main/security/cspHeaders', () => ({
@@ -189,7 +194,7 @@ describe('bootstrapMainProcess', () => {
             configurable: true,
         });
         appState.userDataPath = defaultUserDataPath;
-        appState.appPath = 'M:\\Neonsy\\Projects\\NeonConductor\\Project';
+        appState.appPath = projectPath;
         appState.isPackaged = false;
         runtimeEnvState.isDev = true;
         runtimeEnvState.devServerUrl = 'http://localhost:5173';
@@ -223,7 +228,7 @@ describe('bootstrapMainProcess', () => {
                 initAutoUpdater,
                 resolvePersistenceChannel: () => 'stable',
             },
-            'file:///M:/Neonsy/Projects/NeonConductor/Project/electron/main/index.ts'
+            mainEntryUrl
         );
 
         await Promise.resolve();
@@ -244,10 +249,10 @@ describe('bootstrapMainProcess', () => {
         expect(appSetAppUserModelIdSpy).toHaveBeenCalledWith('com.neonsy.neonconductor');
         expect(createMainWindowSpy).toHaveBeenCalled();
         expect(createSplashWindowSpy).toHaveBeenCalledWith({
-            appPath: 'M:\\Neonsy\\Projects\\NeonConductor\\Project',
+            appPath: projectPath,
             devServerUrl: 'http://localhost:5173',
             isPackaged: false,
-            mainDirname: 'M:\\Neonsy\\Projects\\NeonConductor\\Project\\electron\\main',
+            mainDirname,
             resourcesPath: process.resourcesPath,
         });
         expect(createMainWindowSpy.mock.invocationCallOrder[0]).toBeLessThan(
@@ -304,7 +309,7 @@ describe('bootstrapMainProcess', () => {
                 initAutoUpdater: vi.fn(),
                 resolvePersistenceChannel: () => 'beta',
             },
-            'file:///M:/Neonsy/Projects/NeonConductor/Project/electron/main/index.ts'
+            mainEntryUrl
         );
 
         await Promise.resolve();
@@ -319,9 +324,9 @@ describe('bootstrapMainProcess', () => {
         expect(process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE']).toBe('beta');
         expect(process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL']).toBe('beta');
         expect(createSplashWindowSpy).toHaveBeenCalledWith({
-            appPath: 'M:\\Neonsy\\Projects\\NeonConductor\\Project',
+            appPath: projectPath,
             isPackaged: true,
-            mainDirname: 'M:\\Neonsy\\Projects\\NeonConductor\\Project\\electron\\main',
+            mainDirname,
             resourcesPath: process.resourcesPath,
         });
     });
@@ -337,7 +342,7 @@ describe('bootstrapMainProcess', () => {
                 initAutoUpdater: vi.fn(),
                 resolvePersistenceChannel: () => 'stable',
             },
-            'file:///M:/Neonsy/Projects/NeonConductor/Project/electron/main/index.ts'
+            mainEntryUrl
         );
 
         await Promise.resolve();
