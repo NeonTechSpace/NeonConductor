@@ -57,13 +57,19 @@ function createModel(input: {
         id: input.id,
         providerId: input.providerId,
         label: input.label,
-        supportsTools: input.supportsTools,
-        supportsReasoning: true,
-        supportsVision: false,
-        supportsAudioInput: false,
-        supportsAudioOutput: false,
-        inputModalities: ['text'],
-        outputModalities: ['text'],
+        features: {
+            supportsTools: input.supportsTools,
+            supportsReasoning: true,
+            supportsVision: false,
+            supportsAudioInput: false,
+            supportsAudioOutput: false,
+            inputModalities: ['text'],
+            outputModalities: ['text'],
+        },
+        runtime: {
+            toolProtocol: 'openai_chat_completions',
+            apiFamily: 'openai_compatible',
+        },
     };
 }
 

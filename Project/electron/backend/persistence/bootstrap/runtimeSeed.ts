@@ -367,23 +367,27 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
             model.catalogModel.label,
             model.catalogModel.upstreamProvider ?? model.providerId,
             model.catalogModel.isFree ? 1 : 0,
-            model.catalogModel.capabilities.supportsTools ? 1 : 0,
-            model.catalogModel.capabilities.supportsReasoning ? 1 : 0,
-            model.catalogModel.capabilities.supportsVision ? 1 : 0,
-            model.catalogModel.capabilities.supportsAudioInput ? 1 : 0,
-            model.catalogModel.capabilities.supportsAudioOutput ? 1 : 0,
-            model.catalogModel.capabilities.supportsPromptCache === undefined
+            model.catalogModel.features.supportsTools ? 1 : 0,
+            model.catalogModel.features.supportsReasoning ? 1 : 0,
+            model.catalogModel.features.supportsVision ? 1 : 0,
+            model.catalogModel.features.supportsAudioInput ? 1 : 0,
+            model.catalogModel.features.supportsAudioOutput ? 1 : 0,
+            model.catalogModel.features.supportsPromptCache === undefined
                 ? null
-                : model.catalogModel.capabilities.supportsPromptCache
+                : model.catalogModel.features.supportsPromptCache
                   ? 1
                   : 0,
-            model.catalogModel.capabilities.toolProtocol ?? null,
-            model.catalogModel.capabilities.apiFamily ?? null,
-            model.catalogModel.capabilities.routedApiFamily ?? null,
-            JSON.stringify(model.catalogModel.capabilities.inputModalities),
-            JSON.stringify(model.catalogModel.capabilities.outputModalities),
-            model.catalogModel.capabilities.promptFamily ?? null,
-            JSON.stringify(model.catalogModel.providerSettings ?? {}),
+            model.catalogModel.runtime.toolProtocol,
+            model.catalogModel.runtime.apiFamily ?? null,
+            model.catalogModel.runtime.toolProtocol === 'kilo_gateway' ? model.catalogModel.runtime.routedApiFamily : null,
+            JSON.stringify(model.catalogModel.features.inputModalities),
+            JSON.stringify(model.catalogModel.features.outputModalities),
+            model.catalogModel.promptFamily ?? null,
+            JSON.stringify(
+                model.catalogModel.runtime.toolProtocol === 'provider_native'
+                    ? { providerNativeId: model.catalogModel.runtime.providerNativeId }
+                    : {}
+            ),
             model.catalogModel.contextLength ?? null,
             JSON.stringify(model.catalogModel.pricing),
             JSON.stringify(model.catalogModel.raw),

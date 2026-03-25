@@ -33,7 +33,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
             .run('openai/gpt-5-no-tools', 'openai', 'GPT 5 No Tools', now, now);
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, api_family, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             .run(
                 profileId,
@@ -48,6 +48,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
                 0,
                 0,
                 'openai_responses',
+                'openai_compatible',
                 JSON.stringify(['text']),
                 JSON.stringify(['text']),
                 null,
@@ -108,7 +109,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
             .run('openai/gpt-5-no-tools', 'openai', 'GPT 5 No Tools', now, now);
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, api_family, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             .run(
                 profileId,
@@ -123,6 +124,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
                 0,
                 0,
                 'openai_responses',
+                'openai_compatible',
                 JSON.stringify(['text']),
                 JSON.stringify(['text']),
                 null,
@@ -210,7 +212,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
             .run('openai/gpt-5-no-vision', 'openai', 'GPT 5 No Vision', now, now);
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, api_family, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             .run(
                 profileId,
@@ -225,6 +227,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
                 0,
                 0,
                 'openai_responses',
+                'openai_compatible',
                 JSON.stringify(['text']),
                 JSON.stringify(['text']),
                 null,
@@ -301,7 +304,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
             .run('openai/a-text-only-default', 'openai', 'A Text Only Default', now, now);
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_model_catalog (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, supports_vision, supports_audio_input, supports_audio_output, tool_protocol, api_family, input_modalities_json, output_modalities_json, prompt_family, context_length, pricing_json, raw_json, source, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             .run(
                 profileId,
@@ -316,6 +319,7 @@ describe('runtime contracts: provider selection tool and vision requirements', (
                 0,
                 0,
                 'openai_responses',
+                'openai_compatible',
                 JSON.stringify(['text']),
                 JSON.stringify(['text']),
                 null,
@@ -370,7 +374,6 @@ describe('runtime contracts: provider selection tool and vision requirements', (
 
         const models = await caller.provider.listModels({ profileId, providerId: 'openai' });
         const selectedModel = models.models.find((model) => model.id === selectedModelId);
-        expect(selectedModel?.supportsVision).toBe(true);
+        expect(selectedModel?.features.supportsVision).toBe(true);
     });
 });
-

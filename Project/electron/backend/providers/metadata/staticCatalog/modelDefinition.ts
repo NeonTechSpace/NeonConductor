@@ -16,6 +16,7 @@ export interface StaticProviderModelDefinition {
     supportsRealtimeWebSocket?: boolean;
     toolProtocol?: ProviderToolProtocol;
     apiFamily?: ProviderApiFamily;
+    providerNativeId?: string;
     inputModalities?: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     outputModalities?: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
     promptFamily?: string;

@@ -1,5 +1,5 @@
 import { buildAutoCacheKey } from '@/app/backend/providers/behaviors/cacheKey';
-import type { ProviderModelCapabilities, ProviderToolProtocol } from '@/app/backend/providers/types';
+import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
 import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import {
@@ -16,7 +16,6 @@ interface ResolveRunCacheInput {
     providerId: RuntimeProviderId;
     modelId: string;
     modelCapabilities: ProviderModelCapabilities;
-    toolProtocol: ProviderToolProtocol;
     runtimeOptions: RuntimeRunOptions;
 }
 
@@ -39,7 +38,7 @@ export function resolveRunCache(input: ResolveRunCacheInput): RunExecutionResult
         return errRunExecution('cache_resolution_failed', 'Cache key resolution failed: cache key is empty.');
     }
 
-    if (!input.modelCapabilities.supportsPromptCache) {
+    if (!input.modelCapabilities.features.supportsPromptCache) {
         return okRunExecution({
             strategy: input.runtimeOptions.cache.strategy,
             key,
@@ -48,7 +47,7 @@ export function resolveRunCache(input: ResolveRunCacheInput): RunExecutionResult
         });
     }
 
-    if (input.toolProtocol === 'kilo_gateway') {
+    if (input.modelCapabilities.runtime.toolProtocol === 'kilo_gateway') {
         return okRunExecution({
             strategy: input.runtimeOptions.cache.strategy,
             key,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    createProtocolModelCapabilities,
     createProtocolRuntimeOptions,
     protocolTestProfileId,
     resolveProviderNativeRuntimeSpecializationMock,
@@ -15,16 +16,16 @@ describe('resolveRuntimeProtocol provider-native routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/minimax-native',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'provider_native',
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'provider_native',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -61,16 +62,16 @@ describe('resolveRuntimeProtocol provider-native routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/minimax-native',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'provider_native',
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'provider_native',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -79,7 +80,7 @@ describe('resolveRuntimeProtocol provider-native routing', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('provider_native');
+        expect(result.value.runtime.toolProtocol).toBe('provider_native');
         expect(result.value.transport.selected).toBe('provider_native');
     });
 
@@ -89,14 +90,16 @@ describe('resolveRuntimeProtocol provider-native routing', () => {
             providerId: 'openai',
             modelId: 'openai/gpt-5',
             modelCapabilities: {
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: true,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                inputModalities: ['text', 'image'],
-                outputModalities: ['text'],
-            },
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+            } as never,
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });

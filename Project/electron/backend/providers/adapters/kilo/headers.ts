@@ -92,7 +92,9 @@ export function buildKiloProviderPreferences(input: ProviderRuntimeInput): Recor
     if (
         input.tools &&
         input.tools.length > 0 &&
-        (input.routedApiFamily === 'anthropic_messages' || input.routedApiFamily === 'google_generativeai')
+        input.runtime.toolProtocol === 'kilo_gateway' &&
+        (input.runtime.routedApiFamily === 'anthropic_messages' ||
+            input.runtime.routedApiFamily === 'google_generativeai')
     ) {
         providerPreferences = {
             ...(providerPreferences ?? {}),

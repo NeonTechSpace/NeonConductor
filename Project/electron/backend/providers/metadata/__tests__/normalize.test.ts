@@ -13,16 +13,18 @@ function createCatalogModel(overrides?: Partial<ProviderCatalogModel>): Provider
         modelId: 'openai/gpt-5',
         label: 'GPT-5',
         isFree: false,
-        capabilities: {
+        features: {
             supportsTools: true,
             supportsReasoning: true,
             supportsVision: false,
             supportsAudioInput: false,
             supportsAudioOutput: false,
-            toolProtocol: 'openai_responses',
-            apiFamily: 'openai_compatible',
             inputModalities: ['text'],
             outputModalities: ['text'],
+        },
+        runtime: {
+            toolProtocol: 'openai_responses',
+            apiFamily: 'openai_compatible',
         },
         pricing: {},
         raw: {},
@@ -56,17 +58,19 @@ describe('provider metadata normalization', () => {
                 modelId: kiloFrontierModelId,
                 label: 'Kilo Auto Frontier',
                 upstreamProvider: 'openai',
-                capabilities: {
+                features: {
                     supportsTools: true,
                     supportsReasoning: true,
                     supportsVision: false,
                     supportsAudioInput: false,
                     supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
                     toolProtocol: 'kilo_gateway',
                     apiFamily: 'kilo_gateway',
                     routedApiFamily: 'openai_compatible',
-                    inputModalities: ['text'],
-                    outputModalities: ['text'],
                 },
                 pricing: {
                     input: 0.000001,
@@ -123,8 +127,9 @@ describe('provider metadata normalization', () => {
 
     it('drops runnable provider-api rows that are missing required protocol metadata', () => {
         const result = normalizeCatalogMetadata('openai', [
-            createCatalogModel({
-                capabilities: {
+            {
+                ...createCatalogModel({
+                features: {
                     supportsTools: false,
                     supportsReasoning: true,
                     supportsVision: false,
@@ -133,7 +138,9 @@ describe('provider metadata normalization', () => {
                     inputModalities: ['text'],
                     outputModalities: ['text'],
                 },
-            }),
+                }),
+                runtime: undefined,
+            } as never,
         ]);
 
         expect(result.models).toHaveLength(0);
@@ -148,18 +155,21 @@ describe('provider metadata normalization', () => {
                     modelId: 'openai/minimax-native',
                     label: 'MiniMax Native',
                     upstreamProvider: 'minimax',
-                    capabilities: {
-                        supportsTools: true,
-                        supportsReasoning: true,
-                        supportsVision: false,
-                        supportsAudioInput: false,
-                        supportsAudioOutput: false,
-                        toolProtocol: 'provider_native',
-                        apiFamily: 'provider_native',
-                        inputModalities: ['text'],
-                        outputModalities: ['text'],
-                    },
-                }),
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'provider_native',
+                    apiFamily: 'provider_native',
+                    providerNativeId: 'missing',
+                },
+            }),
             ],
             {
                 optionProfileId: 'default',
@@ -171,22 +181,25 @@ describe('provider metadata normalization', () => {
         expect(result.droppedCount).toBe(1);
     });
 
-    it('keeps Kilo gateway rows even when routed upstream family metadata is missing', () => {
+    it('keeps Kilo gateway rows when routed upstream family metadata is present', () => {
         const result = normalizeCatalogMetadata('kilo', [
             createCatalogModel({
                 modelId: kiloFrontierModelId,
                 label: 'Kilo Auto Frontier',
                 upstreamProvider: 'kilo',
-                capabilities: {
+                features: {
                     supportsTools: true,
                     supportsReasoning: true,
                     supportsVision: false,
                     supportsAudioInput: false,
                     supportsAudioOutput: false,
-                    toolProtocol: 'kilo_gateway',
-                    apiFamily: 'kilo_gateway',
                     inputModalities: ['text'],
                     outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
                 },
             }),
         ]);
@@ -196,35 +209,15 @@ describe('provider metadata normalization', () => {
         expect(result.models[0]).toMatchObject({
             providerId: 'kilo',
             modelId: kiloFrontierModelId,
-            toolProtocol: 'kilo_gateway',
-            apiFamily: 'kilo_gateway',
+            runtime: {
+                toolProtocol: 'kilo_gateway',
+                apiFamily: 'kilo_gateway',
+            },
         });
-        expect(result.models[0]?.routedApiFamily).toBeUndefined();
-    });
-
-    it('keeps Kilo gateway rows when routed upstream family metadata is present', () => {
-        const result = normalizeCatalogMetadata('kilo', [
-            createCatalogModel({
-                modelId: 'anthropic/claude-sonnet-4.5',
-                label: 'Claude Sonnet 4.5',
-                upstreamProvider: 'anthropic',
-                capabilities: {
-                    supportsTools: true,
-                    supportsReasoning: true,
-                    supportsVision: true,
-                    supportsAudioInput: false,
-                    supportsAudioOutput: false,
-                    toolProtocol: 'kilo_gateway',
-                    apiFamily: 'kilo_gateway',
-                    routedApiFamily: 'anthropic_messages',
-                    inputModalities: ['text', 'image'],
-                    outputModalities: ['text'],
-                },
-            }),
-        ]);
-
-        expect(result.models).toHaveLength(1);
-        expect(result.models[0]?.routedApiFamily).toBe('anthropic_messages');
+        if (result.models[0]?.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected kilo gateway runtime.');
+        }
+        expect(result.models[0].runtime.routedApiFamily).toBe('openai_compatible');
     });
 
     it('keeps trusted provider-native rows when the active connection context supports the specialization', () => {
@@ -235,21 +228,21 @@ describe('provider metadata normalization', () => {
                     modelId: 'openai/minimax-native',
                     label: 'MiniMax Native',
                     upstreamProvider: 'minimax',
-                    capabilities: {
-                        supportsTools: true,
-                        supportsReasoning: true,
-                        supportsVision: false,
-                        supportsAudioInput: false,
-                        supportsAudioOutput: false,
-                        toolProtocol: 'provider_native',
-                        apiFamily: 'provider_native',
-                        inputModalities: ['text'],
-                        outputModalities: ['text'],
-                    },
-                    providerSettings: {
-                        providerNativeId: 'minimax_openai_compat',
-                    },
-                }),
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'provider_native',
+                    apiFamily: 'provider_native',
+                    providerNativeId: 'minimax_openai_compat',
+                },
+            }),
             ],
             {
                 optionProfileId: 'default',
@@ -258,7 +251,7 @@ describe('provider metadata normalization', () => {
         );
 
         expect(result.models).toHaveLength(1);
-        expect(result.models[0]?.toolProtocol).toBe('provider_native');
+        expect(result.models[0]?.runtime.toolProtocol).toBe('provider_native');
     });
 
     it('drops direct Anthropic rows when the active connection profile is not Anthropic-compatible', () => {
@@ -269,18 +262,20 @@ describe('provider metadata normalization', () => {
                     modelId: 'openai/claude-custom',
                     label: 'Claude Custom',
                     upstreamProvider: 'anthropic',
-                    capabilities: {
-                        supportsTools: true,
-                        supportsReasoning: true,
-                        supportsVision: true,
-                        supportsAudioInput: false,
-                        supportsAudioOutput: false,
-                        toolProtocol: 'anthropic_messages',
-                        apiFamily: 'anthropic_messages',
-                        inputModalities: ['text', 'image'],
-                        outputModalities: ['text'],
-                    },
-                }),
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'anthropic_messages',
+                    apiFamily: 'anthropic_messages',
+                },
+            }),
             ],
             {
                 optionProfileId: 'default',
@@ -300,18 +295,20 @@ describe('provider metadata normalization', () => {
                     modelId: 'openai/claude-custom',
                     label: 'Claude Custom',
                     upstreamProvider: 'anthropic',
-                    capabilities: {
-                        supportsTools: true,
-                        supportsReasoning: true,
-                        supportsVision: true,
-                        supportsAudioInput: false,
-                        supportsAudioOutput: false,
-                        toolProtocol: 'anthropic_messages',
-                        apiFamily: 'anthropic_messages',
-                        inputModalities: ['text', 'image'],
-                        outputModalities: ['text'],
-                    },
-                }),
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'anthropic_messages',
+                    apiFamily: 'anthropic_messages',
+                },
+            }),
             ],
             {
                 optionProfileId: 'default',
@@ -320,8 +317,8 @@ describe('provider metadata normalization', () => {
         );
 
         expect(result.models).toHaveLength(1);
-        expect(result.models[0]?.toolProtocol).toBe('anthropic_messages');
-        expect(result.models[0]?.apiFamily).toBe('anthropic_messages');
+        expect(result.models[0]?.runtime.toolProtocol).toBe('anthropic_messages');
+        expect(result.models[0]?.runtime.apiFamily).toBe('anthropic_messages');
     });
 
     it('drops direct Gemini rows when the active connection profile is not Gemini-compatible', () => {
@@ -332,18 +329,20 @@ describe('provider metadata normalization', () => {
                     modelId: 'openai/gemini-custom',
                     label: 'Gemini Custom',
                     upstreamProvider: 'google',
-                    capabilities: {
-                        supportsTools: true,
-                        supportsReasoning: true,
-                        supportsVision: true,
-                        supportsAudioInput: false,
-                        supportsAudioOutput: false,
-                        toolProtocol: 'google_generativeai',
-                        apiFamily: 'google_generativeai',
-                        inputModalities: ['text', 'image'],
-                        outputModalities: ['text'],
-                    },
-                }),
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'google_generativeai',
+                    apiFamily: 'google_generativeai',
+                },
+            }),
             ],
             {
                 optionProfileId: 'default',
@@ -363,18 +362,20 @@ describe('provider metadata normalization', () => {
                     modelId: 'openai/gemini-custom',
                     label: 'Gemini Custom',
                     upstreamProvider: 'google',
-                    capabilities: {
-                        supportsTools: true,
-                        supportsReasoning: true,
-                        supportsVision: true,
-                        supportsAudioInput: false,
-                        supportsAudioOutput: false,
-                        toolProtocol: 'google_generativeai',
-                        apiFamily: 'google_generativeai',
-                        inputModalities: ['text', 'image'],
-                        outputModalities: ['text'],
-                    },
-                }),
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'google_generativeai',
+                    apiFamily: 'google_generativeai',
+                },
+            }),
             ],
             {
                 optionProfileId: 'default',
@@ -383,8 +384,8 @@ describe('provider metadata normalization', () => {
         );
 
         expect(result.models).toHaveLength(1);
-        expect(result.models[0]?.toolProtocol).toBe('google_generativeai');
-        expect(result.models[0]?.apiFamily).toBe('google_generativeai');
+        expect(result.models[0]?.runtime.toolProtocol).toBe('google_generativeai');
+        expect(result.models[0]?.runtime.apiFamily).toBe('google_generativeai');
     });
 
     it('applies scoped overrides with higher precedence than provider values', () => {
@@ -394,6 +395,19 @@ describe('provider metadata normalization', () => {
             label: 'GPT-5',
             source: 'provider_api',
             updatedAt: '2026-03-05T00:00:00.000Z',
+            features: {
+                supportsTools: true,
+                supportsReasoning: true,
+                supportsVision: false,
+                supportsAudioInput: false,
+                supportsAudioOutput: false,
+                inputModalities: ['text'],
+                outputModalities: ['text'],
+            },
+            runtime: {
+                toolProtocol: 'openai_responses',
+                apiFamily: 'openai_compatible',
+            },
             inputPrice: 1,
         };
         const overrides: ProviderMetadataOverrideEntry[] = [

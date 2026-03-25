@@ -1,9 +1,7 @@
 import { resolveRuntimeFamilyProtocol } from '@/app/backend/providers/runtimeFamilies';
 import type {
-    ProviderApiFamily,
     ProviderModelCapabilities,
-    ProviderRoutedApiFamily,
-    ProviderToolProtocol,
+    ProviderRuntimeDescriptor,
 } from '@/app/backend/providers/types';
 import type { RuntimeProviderId, RuntimeRunOptions } from '@/app/backend/runtime/contracts';
 import type { ProviderAuthMethod } from '@/app/backend/runtime/contracts';
@@ -12,9 +10,7 @@ import type { RunExecutionResult } from '@/app/backend/runtime/services/runExecu
 import type { RunTransportResolution } from '@/app/backend/runtime/services/runExecution/types';
 
 export interface ResolvedRuntimeProtocol {
-    toolProtocol: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
+    runtime: ProviderRuntimeDescriptor;
     transport: RunTransportResolution;
 }
 

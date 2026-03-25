@@ -6,7 +6,7 @@ import type { DirectFamilyRuntimeConfig, DirectFamilyRuntimeHandler } from '@/ap
 import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
 
 const directFamilyRuntimeHandlers: Record<
-    Extract<ProviderRuntimeInput['toolProtocol'], 'anthropic_messages' | 'google_generativeai'>,
+    Extract<ProviderRuntimeInput['runtime']['toolProtocol'], 'anthropic_messages' | 'google_generativeai'>,
     DirectFamilyRuntimeHandler
 > = {
     anthropic_messages: directAnthropicRuntimeHandler,
@@ -14,7 +14,7 @@ const directFamilyRuntimeHandlers: Record<
 };
 
 export function resolveDirectFamilyRuntimeHandler(
-    toolProtocol: ProviderRuntimeInput['toolProtocol']
+    toolProtocol: ProviderRuntimeInput['runtime']['toolProtocol']
 ): DirectFamilyRuntimeHandler | undefined {
     if (toolProtocol === 'anthropic_messages' || toolProtocol === 'google_generativeai') {
         return directFamilyRuntimeHandlers[toolProtocol];
@@ -28,11 +28,11 @@ export async function streamDirectFamilyRuntime(
     handlers: ProviderRuntimeHandlers,
     config: DirectFamilyRuntimeConfig
 ): Promise<ProviderAdapterResult<void>> {
-    const familyHandler = resolveDirectFamilyRuntimeHandler(input.toolProtocol);
+    const familyHandler = resolveDirectFamilyRuntimeHandler(input.runtime.toolProtocol);
     if (!familyHandler) {
         return errProviderAdapter(
             'invalid_payload',
-            `Model "${input.modelId}" declares unsupported direct-family protocol "${input.toolProtocol}".`
+            `Model "${input.modelId}" declares unsupported direct-family protocol "${input.runtime.toolProtocol}".`
         );
     }
 

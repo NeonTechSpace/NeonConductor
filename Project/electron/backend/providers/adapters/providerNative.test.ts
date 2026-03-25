@@ -31,7 +31,11 @@ function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): Provider
         runId: 'run_test',
         providerId: 'openai',
         modelId: 'openai/minimax-native',
-        toolProtocol: 'provider_native',
+        runtime: {
+            toolProtocol: 'provider_native',
+            apiFamily: 'provider_native',
+            providerNativeId: 'minimax_openai_compat',
+        },
         promptText: 'Read the README',
         runtimeOptions: {
             reasoning: {
@@ -73,8 +77,9 @@ describe('provider-native runtime hardening', () => {
         getModelMock.mockResolvedValue({
             modelId: 'openai/minimax-native',
             sourceProvider: 'minimax',
-            apiFamily: 'provider_native',
-            providerSettings: {
+            runtime: {
+                toolProtocol: 'provider_native',
+                apiFamily: 'provider_native',
                 providerNativeId: 'minimax_openai_compat',
             },
         });
@@ -157,9 +162,7 @@ describe('provider-native runtime hardening', () => {
                 resolvedBaseUrl: 'https://api.minimax.io/v1',
                 sourceProvider: 'minimax',
                 apiFamily: 'provider_native',
-                providerSettings: {
-                    providerNativeId: 'minimax_openai_compat',
-                },
+                providerNativeId: 'minimax_openai_compat',
             })
         ).toBe('trusted');
 
@@ -171,6 +174,7 @@ describe('provider-native runtime hardening', () => {
                 resolvedBaseUrl: 'https://api.minimax.io/v1',
                 apiFamily: 'provider_native',
                 sourceProvider: 'minimax',
+                providerNativeId: 'missing',
             })
         ).toBeNull();
     });
@@ -179,7 +183,11 @@ describe('provider-native runtime hardening', () => {
         getModelMock.mockResolvedValueOnce({
             modelId: 'openai/minimax-legacy',
             sourceProvider: 'minimax',
-            apiFamily: 'provider_native',
+            runtime: {
+                toolProtocol: 'provider_native',
+                apiFamily: 'provider_native',
+                providerNativeId: 'missing',
+            },
         });
         vi.stubGlobal('fetch', vi.fn());
 

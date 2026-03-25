@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    createProtocolModelCapabilities,
     createProtocolRuntimeOptions,
     protocolTestProfileId,
     resolveProviderRuntimePathContextMock,
@@ -13,17 +14,16 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/claude-via-custom-endpoint',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'anthropic_messages',
-                apiFamily: 'anthropic_messages',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'anthropic_messages',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -32,8 +32,8 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('anthropic_messages');
-        expect(result.value.apiFamily).toBe('anthropic_messages');
+        expect(result.value.runtime.toolProtocol).toBe('anthropic_messages');
+        expect(result.value.runtime.apiFamily).toBe('anthropic_messages');
         expect(result.value.transport.selected).toBe('anthropic_messages');
     });
 
@@ -42,17 +42,16 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/claude-via-custom-endpoint',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'anthropic_messages',
-                apiFamily: 'anthropic_messages',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'anthropic_messages',
+            }),
             authMethod: 'oauth_pkce',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -80,17 +79,16 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gemini-via-custom-endpoint',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'google_generativeai',
-                apiFamily: 'google_generativeai',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'google_generativeai',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -99,8 +97,8 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('google_generativeai');
-        expect(result.value.apiFamily).toBe('google_generativeai');
+        expect(result.value.runtime.toolProtocol).toBe('google_generativeai');
+        expect(result.value.runtime.apiFamily).toBe('google_generativeai');
         expect(result.value.transport.selected).toBe('google_generativeai');
     });
 
@@ -120,17 +118,16 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gemini-via-custom-endpoint',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'google_generativeai',
-                apiFamily: 'google_generativeai',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'google_generativeai',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });

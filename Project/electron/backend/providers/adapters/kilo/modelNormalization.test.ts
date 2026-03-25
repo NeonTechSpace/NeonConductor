@@ -23,8 +23,11 @@ describe('kilo model normalization', () => {
             emptyNormalizationInput
         );
 
-        expect(normalized.capabilities.apiFamily).toBe('kilo_gateway');
-        expect(normalized.capabilities.routedApiFamily).toBe('google_generativeai');
+        expect(normalized.runtime.apiFamily).toBe('kilo_gateway');
+        if (normalized.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected kilo gateway runtime.');
+        }
+        expect(normalized.runtime.routedApiFamily).toBe('google_generativeai');
     });
 
     it.each([
@@ -48,7 +51,10 @@ describe('kilo model normalization', () => {
                 emptyNormalizationInput
             );
 
-            expect(normalized.capabilities.routedApiFamily).toBe(routedApiFamily);
+            if (normalized.runtime.toolProtocol !== 'kilo_gateway') {
+                throw new Error('Expected kilo gateway runtime.');
+            }
+            expect(normalized.runtime.routedApiFamily).toBe(routedApiFamily);
         }
     );
 
@@ -71,7 +77,10 @@ describe('kilo model normalization', () => {
             emptyNormalizationInput
         );
 
-        expect(normalized.capabilities.routedApiFamily).toBe('anthropic_messages');
+        if (normalized.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected kilo gateway runtime.');
+        }
+        expect(normalized.runtime.routedApiFamily).toBe('anthropic_messages');
     });
 
     it('derives small as openai-compatible via codex prompt-family metadata when owned_by is missing', () => {
@@ -93,7 +102,10 @@ describe('kilo model normalization', () => {
             emptyNormalizationInput
         );
 
-        expect(normalized.capabilities.routedApiFamily).toBe('openai_compatible');
+        if (normalized.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected kilo gateway runtime.');
+        }
+        expect(normalized.runtime.routedApiFamily).toBe('openai_compatible');
     });
 
     it.each(['kilo-auto/balanced', 'kilo-auto/free'])(
@@ -112,24 +124,27 @@ describe('kilo model normalization', () => {
                 emptyNormalizationInput
             );
 
-            expect(normalized.capabilities.routedApiFamily).toBe('openai_compatible');
+            if (normalized.runtime.toolProtocol !== 'kilo_gateway') {
+                throw new Error('Expected kilo gateway runtime.');
+            }
+            expect(normalized.runtime.routedApiFamily).toBe('openai_compatible');
         }
     );
 
     it('fails closed for unknown namespaces without explicit hints', () => {
-        const normalized = normalizeKiloModel(
-            {
-                id: 'mystery/model',
-                name: 'Mystery Model',
-                supportedParameters: ['tools'],
-                inputModalities: ['text'],
-                outputModalities: ['text'],
-                pricing: {},
-                raw: {},
-            },
-            emptyNormalizationInput
-        );
-
-        expect(normalized.capabilities.routedApiFamily).toBeUndefined();
+        expect(() =>
+            normalizeKiloModel(
+                {
+                    id: 'mystery/model',
+                    name: 'Mystery Model',
+                    supportedParameters: ['tools'],
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                    pricing: {},
+                    raw: {},
+                },
+                emptyNormalizationInput
+            )
+        ).toThrow('missing a supported routed API family');
     });
 });

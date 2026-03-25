@@ -16,7 +16,6 @@ export const kiloCatalogBehavior: ProviderCatalogBehavior = {
             supportsAudioOutput: outputModalities.includes('audio'),
             inputModalities,
             outputModalities,
-            ...(input.promptFamily ? { promptFamily: input.promptFamily } : {}),
         };
     },
 };

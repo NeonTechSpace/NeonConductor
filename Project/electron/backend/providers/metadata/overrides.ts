@@ -7,13 +7,6 @@ type MetadataOverridePatch = Partial<
         | 'label'
         | 'sourceProvider'
         | 'isFree'
-        | 'supportsTools'
-        | 'supportsReasoning'
-        | 'supportsVision'
-        | 'supportsAudioInput'
-        | 'supportsAudioOutput'
-        | 'inputModalities'
-        | 'outputModalities'
         | 'promptFamily'
         | 'contextLength'
         | 'maxOutputTokens'
@@ -27,7 +20,9 @@ type MetadataOverridePatch = Partial<
         | 'pricing'
         | 'raw'
     >
->;
+> & {
+    features?: Partial<NormalizedModelMetadata['features']>;
+};
 
 export interface ProviderMetadataOverrideEntry {
     providerId: FirstPartyProviderId;
@@ -77,12 +72,15 @@ export function applyProviderMetadataOverrideFromEntries(
         };
     }
 
+    const { features: featurePatch, ...metadataPatch } = override.patch;
+
     return {
         applied: true,
         reason: override.reason,
         model: {
             ...model,
-            ...override.patch,
+            ...metadataPatch,
+            ...(featurePatch ? { features: { ...model.features, ...featurePatch } } : {}),
             source: sourceAfterOverride(model.source),
             updatedAt: override.updatedAt || model.updatedAt,
         },
@@ -98,12 +96,15 @@ export function applyProviderMetadataOverride(model: NormalizedModelMetadata): P
         };
     }
 
+    const { features: featurePatch, ...metadataPatch } = override.patch;
+
     return {
         applied: true,
         reason: override.reason,
         model: {
             ...model,
-            ...override.patch,
+            ...metadataPatch,
+            ...(featurePatch ? { features: { ...model.features, ...featurePatch } } : {}),
             source: sourceAfterOverride(model.source),
             updatedAt: override.updatedAt || model.updatedAt,
         },

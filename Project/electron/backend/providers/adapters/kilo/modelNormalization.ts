@@ -44,7 +44,9 @@ function hasProviderNativeHint(raw: Record<string, unknown>): boolean {
     return typeof providerSettings?.['providerNativeId'] === 'string';
 }
 
-function mapPromptFamilyToRoutedApiFamily(promptFamily: string): ProviderRoutedApiFamily | undefined {
+function mapPromptFamilyToRoutedApiFamily(
+    promptFamily: string
+): Exclude<ProviderRoutedApiFamily, 'provider_native'> | undefined {
     if (promptFamily === 'anthropic') {
         return 'anthropic_messages';
     }
@@ -60,7 +62,9 @@ function mapPromptFamilyToRoutedApiFamily(promptFamily: string): ProviderRoutedA
     return undefined;
 }
 
-function mapUpstreamProviderToRoutedApiFamily(providerId: string): ProviderRoutedApiFamily {
+function mapUpstreamProviderToRoutedApiFamily(
+    providerId: string
+): Exclude<ProviderRoutedApiFamily, 'provider_native'> {
     if (providerId === 'anthropic') {
         return 'anthropic_messages';
     }
@@ -106,18 +110,14 @@ function getModelNamespace(modelId: string): string | undefined {
 function deriveKiloRoutedApiFamily(
     model: KiloGatewayModel,
     _input: NormalizeKiloModelInput
-): ProviderRoutedApiFamily | undefined {
+): Exclude<ProviderRoutedApiFamily, 'provider_native'> | undefined {
     const explicitFamily =
         parseExplicitRoutedApiFamily(model.raw['routed_api_family']) ??
         parseExplicitRoutedApiFamily(model.raw['routedApiFamily']) ??
         parseExplicitRoutedApiFamily(model.raw['upstream_api_family']) ??
         parseExplicitRoutedApiFamily(model.raw['upstreamApiFamily']);
-    if (explicitFamily) {
+    if (explicitFamily && explicitFamily !== 'provider_native') {
         return explicitFamily;
-    }
-
-    if (hasProviderNativeHint(model.raw)) {
-        return 'provider_native';
     }
 
     const upstreamProvider = model.upstreamProvider?.trim().toLowerCase();
@@ -143,29 +143,34 @@ function deriveKiloRoutedApiFamily(
 
 export function normalizeKiloModel(model: KiloGatewayModel, input: NormalizeKiloModelInput): ProviderCatalogModel {
     const behavior = getProviderCatalogBehavior('kilo');
-    const capabilities = behavior.createCapabilities({
+    const features = behavior.createCapabilities({
         modelId: model.id,
         supportedParameters: model.supportedParameters,
         inputModalities: model.inputModalities,
         outputModalities: model.outputModalities,
-        ...(model.promptFamily !== undefined ? { promptFamily: model.promptFamily } : {}),
     });
     const routedApiFamily = deriveKiloRoutedApiFamily(model, input);
+    if (!routedApiFamily || hasProviderNativeHint(model.raw)) {
+        throw new Error(`Kilo model "${model.id}" is missing a supported routed API family.`);
+    }
 
     return {
         modelId: model.id,
         label: model.name,
         ...(model.upstreamProvider ? { upstreamProvider: model.upstreamProvider } : {}),
         isFree: model.id.endsWith(':free'),
-        capabilities: {
-            ...capabilities,
-            toolProtocol: 'kilo_gateway',
-            apiFamily: 'kilo_gateway',
-            ...(routedApiFamily ? { routedApiFamily } : {}),
+        features: {
+            ...features,
             ...(typeof model.pricing['cache_read'] === 'number' || typeof model.pricing['cache_write'] === 'number'
                 ? { supportsPromptCache: true }
                 : {}),
         },
+        runtime: {
+            toolProtocol: 'kilo_gateway',
+            apiFamily: 'kilo_gateway',
+            routedApiFamily,
+        },
+        ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
         ...(model.contextLength !== undefined ? { contextLength: model.contextLength } : {}),
         pricing: model.pricing,
         raw: model.raw,

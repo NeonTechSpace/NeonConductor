@@ -2,7 +2,7 @@ import { getProviderCatalogBehavior } from '@/app/backend/providers/behaviors';
 import type { StaticProviderModelDefinition } from '@/app/backend/providers/metadata/staticCatalog/modelDefinition';
 import { OPENAI_CODEX_MODELS, OPENAI_MODELS } from '@/app/backend/providers/metadata/staticCatalog/openai';
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
-import type { ProviderCatalogModel } from '@/app/backend/providers/types';
+import type { ProviderCatalogModel, ProviderRuntimeDescriptor } from '@/app/backend/providers/types';
 
 const STATIC_SOURCE_NOTE = 'official_docs_curated_static_registry';
 const STATIC_UPDATED_AT = '2026-03-10';
@@ -261,6 +261,49 @@ function toPricing(definition: StaticProviderModelDefinition): Record<string, un
     };
 }
 
+function toRuntimeDescriptor(definition: StaticProviderModelDefinition): ProviderRuntimeDescriptor {
+    if (definition.toolProtocol === 'openai_responses') {
+        return {
+            toolProtocol: 'openai_responses',
+            apiFamily: 'openai_compatible',
+            ...(definition.supportsRealtimeWebSocket !== undefined
+                ? { supportsRealtimeWebSocket: definition.supportsRealtimeWebSocket }
+                : {}),
+        };
+    }
+
+    if (definition.toolProtocol === 'openai_chat_completions') {
+        return {
+            toolProtocol: 'openai_chat_completions',
+            apiFamily: 'openai_compatible',
+        };
+    }
+
+    if (definition.toolProtocol === 'anthropic_messages') {
+        return {
+            toolProtocol: 'anthropic_messages',
+            apiFamily: 'anthropic_messages',
+        };
+    }
+
+    if (definition.toolProtocol === 'google_generativeai') {
+        return {
+            toolProtocol: 'google_generativeai',
+            apiFamily: 'google_generativeai',
+        };
+    }
+
+    if (definition.toolProtocol === 'provider_native' && definition.providerNativeId) {
+        return {
+            toolProtocol: 'provider_native',
+            ...(definition.apiFamily ? { apiFamily: definition.apiFamily } : {}),
+            providerNativeId: definition.providerNativeId,
+        };
+    }
+
+    throw new Error(`Static model "${definition.providerId}:${definition.modelId}" is missing a supported runtime descriptor.`);
+}
+
 export function toStaticProviderCatalogModel(
     definition: StaticProviderModelDefinition,
     endpointProfile: string
@@ -284,7 +327,7 @@ export function toStaticProviderCatalogModel(
             : definition.label,
         upstreamProvider: definition.providerId,
         isFree: false,
-        capabilities: {
+        features: {
             ...capabilities,
             ...(definition.supportsVision !== undefined ? { supportsVision: definition.supportsVision } : {}),
             ...(definition.supportsAudioInput !== undefined
@@ -296,12 +339,9 @@ export function toStaticProviderCatalogModel(
             ...(definition.supportsPromptCache !== undefined
                 ? { supportsPromptCache: definition.supportsPromptCache }
                 : {}),
-            ...(definition.supportsRealtimeWebSocket !== undefined
-                ? { supportsRealtimeWebSocket: definition.supportsRealtimeWebSocket }
-                : {}),
-            ...(definition.toolProtocol ? { toolProtocol: definition.toolProtocol } : {}),
-            ...(definition.apiFamily ? { apiFamily: definition.apiFamily } : {}),
         },
+        runtime: toRuntimeDescriptor(definition),
+        ...(definition.promptFamily ? { promptFamily: definition.promptFamily } : {}),
         ...(definition.contextLength !== undefined ? { contextLength: definition.contextLength } : {}),
         pricing: toPricing(definition),
         raw: {

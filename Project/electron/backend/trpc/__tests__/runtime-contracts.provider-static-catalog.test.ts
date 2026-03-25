@@ -57,7 +57,7 @@ describe('runtime contracts: provider static catalog flows', () => {
         expect(models.models.some((model) => model.id === 'openai/gpt-3.5-turbo-1106')).toBe(false);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-nano')).toBe(true);
         expect(models.models.some((model) => model.id === 'openai/gpt-5-codex')).toBe(false);
-        expect(models.models.some((model) => model.id === 'openai/gpt-5' && model.supportsVision)).toBe(true);
+        expect(models.models.some((model) => model.id === 'openai/gpt-5' && model.features.supportsVision)).toBe(true);
 
         const codexModels = await caller.provider.listModels({ profileId, providerId: 'openai_codex' });
         const codex = codexModels.models.find((model) => model.id === 'openai_codex/gpt-5-codex');

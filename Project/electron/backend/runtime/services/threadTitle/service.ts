@@ -176,9 +176,7 @@ async function generateAiTitle(input: {
             runId: 'run_title_generation',
             providerId,
             modelId: input.aiModel,
-            toolProtocol: runtimeProtocol.value.toolProtocol,
-            ...(runtimeProtocol.value.apiFamily ? { apiFamily: runtimeProtocol.value.apiFamily } : {}),
-            ...(runtimeProtocol.value.routedApiFamily ? { routedApiFamily: runtimeProtocol.value.routedApiFamily } : {}),
+            runtime: runtimeProtocol.value.runtime,
             promptText:
                 'Return a concise thread title (max 70 chars) based on the user request. Return title text only.',
             contextMessages: [

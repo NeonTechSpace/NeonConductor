@@ -203,8 +203,7 @@ async function summarizeReplayMessages(input: {
             runId: createEntityId('run'),
             providerId: input.providerId,
             modelId: input.modelId,
-            toolProtocol: runtimeProtocol.value.toolProtocol,
-            ...(runtimeProtocol.value.apiFamily ? { apiFamily: runtimeProtocol.value.apiFamily } : {}),
+            runtime: runtimeProtocol.value.runtime,
             promptText: '',
             contextMessages: summaryMessages.map((message) => ({
                 role: message.role,

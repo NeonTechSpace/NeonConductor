@@ -68,38 +68,35 @@ export function getToolProtocolLabel(toolProtocol: ProviderToolProtocol | undefi
 }
 
 export function getModelCapabilityBadges(
-    model: Pick<
-        ProviderModelRecord,
-        'supportsTools' | 'supportsVision' | 'supportsReasoning' | 'supportsPromptCache' | 'toolProtocol'
-    >
+    model: Pick<ProviderModelRecord, 'features' | 'runtime'>
 ): ModelCapabilityBadge[] {
     const badges: ModelCapabilityBadge[] = [];
-    if (model.supportsTools) {
+    if (model.features.supportsTools) {
         badges.push({
             key: 'native_tools',
             label: 'Native Tools',
         });
     }
-    if (model.supportsVision) {
+    if (model.features.supportsVision) {
         badges.push({
             key: 'vision',
             label: 'Vision',
         });
     }
-    if (model.supportsReasoning) {
+    if (model.features.supportsReasoning) {
         badges.push({
             key: 'reasoning',
             label: 'Reasoning',
         });
     }
-    if (model.supportsPromptCache) {
+    if (model.features.supportsPromptCache) {
         badges.push({
             key: 'prompt_cache',
             label: 'Prompt Cache',
         });
     }
 
-    const protocolLabel = getToolProtocolLabel(model.toolProtocol);
+    const protocolLabel = getToolProtocolLabel(model.runtime.toolProtocol);
     if (protocolLabel) {
         badges.push({
             key: 'protocol',
@@ -111,7 +108,7 @@ export function getModelCapabilityBadges(
 }
 
 export function resolveModelCompatibility(
-    model: Pick<ProviderModelRecord, 'supportsTools' | 'supportsVision' | 'toolProtocol'>,
+    model: Pick<ProviderModelRecord, 'features' | 'runtime'>,
     context: ModelCompatibilityContext
 ): {
     state: ModelCompatibilityState;
@@ -141,7 +138,7 @@ export function resolveModelCompatibility(
             };
         }
 
-        if (!model.supportsVision) {
+        if (!model.features.supportsVision) {
             return {
                 state: 'incompatible',
                 scope: 'model',
@@ -152,7 +149,7 @@ export function resolveModelCompatibility(
         }
     }
 
-    if (context.requiresTools && !model.supportsTools) {
+    if (context.requiresTools && !model.features.supportsTools) {
         return {
             state: 'incompatible',
             scope: 'model',
@@ -193,13 +190,13 @@ export function buildModelPickerOption(input: {
         ...(input.model.price !== undefined ? { price: input.model.price } : {}),
         ...(input.model.latency !== undefined ? { latency: input.model.latency } : {}),
         ...(input.model.tps !== undefined ? { tps: input.model.tps } : {}),
-        supportsTools: input.model.supportsTools,
-        supportsVision: input.model.supportsVision,
-        supportsReasoning: input.model.supportsReasoning,
-        ...(input.model.supportsPromptCache !== undefined
-            ? { supportsPromptCache: input.model.supportsPromptCache }
+        supportsTools: input.model.features.supportsTools,
+        supportsVision: input.model.features.supportsVision,
+        supportsReasoning: input.model.features.supportsReasoning,
+        ...(input.model.features.supportsPromptCache !== undefined
+            ? { supportsPromptCache: input.model.features.supportsPromptCache }
             : {}),
-        ...(input.model.toolProtocol ? { toolProtocol: input.model.toolProtocol } : {}),
+        ...(input.model.runtime.toolProtocol ? { toolProtocol: input.model.runtime.toolProtocol } : {}),
         capabilityBadges: getModelCapabilityBadges(input.model),
         compatibilityState: compatibility.state,
         ...(compatibility.scope ? { compatibilityScope: compatibility.scope } : {}),

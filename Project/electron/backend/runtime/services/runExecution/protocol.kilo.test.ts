@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 import {
+    createProtocolModelCapabilities,
     createProtocolRuntimeOptions,
     protocolTestProfileId,
     resolveRuntimeProtocolForTest,
@@ -14,18 +15,17 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'kilo',
             modelId: kiloFrontierModelId,
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
                 routedApiFamily: 'openai_compatible',
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'kilo_gateway',
+            }),
             authMethod: 'api_key',
             runtimeOptions: {
                 ...createProtocolRuntimeOptions(),
@@ -47,18 +47,17 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'kilo',
             modelId: 'anthropic/claude-sonnet-4.5',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
                 routedApiFamily: 'anthropic_messages',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'kilo_gateway',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -67,8 +66,11 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('kilo_gateway');
-        expect(result.value.routedApiFamily).toBe('anthropic_messages');
+        expect(result.value.runtime.toolProtocol).toBe('kilo_gateway');
+        if (result.value.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo gateway runtime descriptor.');
+        }
+        expect(result.value.runtime.routedApiFamily).toBe('anthropic_messages');
         expect(result.value.transport.selected).toBe('kilo_gateway');
     });
 
@@ -78,16 +80,20 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
             providerId: 'kilo',
             modelId: kiloFrontierModelId,
             modelCapabilities: {
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: false,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
-                inputModalities: ['text'],
-                outputModalities: ['text'],
-            },
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                },
+            } as never,
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -104,18 +110,17 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
             profileId: protocolTestProfileId,
             providerId: 'kilo',
             modelId: 'google/gemini-2.5-pro',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
                 routedApiFamily: 'google_generativeai',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'kilo_gateway',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -124,8 +129,11 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('kilo_gateway');
-        expect(result.value.routedApiFamily).toBe('google_generativeai');
+        expect(result.value.runtime.toolProtocol).toBe('kilo_gateway');
+        if (result.value.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo gateway runtime descriptor.');
+        }
+        expect(result.value.runtime.routedApiFamily).toBe('google_generativeai');
         expect(result.value.transport.selected).toBe('kilo_gateway');
     });
 });

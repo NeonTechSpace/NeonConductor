@@ -59,6 +59,20 @@ describe('modelLimitResolverService', () => {
             {
                 modelId: 'kilo/test-model',
                 label: 'Test Model',
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
+                },
                 source: 'test_discovery',
                 contextLength: 200_000,
                 pricing: {},

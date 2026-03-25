@@ -460,15 +460,6 @@ function isMiniMaxBaseUrl(baseUrl: string | null): boolean {
     }
 }
 
-function isMiniMaxProviderSettings(value: Record<string, unknown> | undefined): boolean {
-    if (!value) {
-        return false;
-    }
-
-    const providerNativeId = value['providerNativeId'];
-    return providerNativeId === 'minimax_openai_compat';
-}
-
 export const miniMaxOpenAICompatibilitySpecialization: ProviderNativeRuntimeSpecialization = {
     id: 'openai:minimax_chat_completions',
     providerId: 'openai',
@@ -479,7 +470,7 @@ export const miniMaxOpenAICompatibilitySpecialization: ProviderNativeRuntimeSpec
             context.providerId !== 'openai' ||
             context.apiFamily !== 'provider_native' ||
             !isMiniMaxBaseUrl(context.resolvedBaseUrl) ||
-            !isMiniMaxProviderSettings(context.providerSettings)
+            context.providerNativeId !== 'minimax_openai_compat'
         ) {
             return null;
         }

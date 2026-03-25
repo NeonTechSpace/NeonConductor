@@ -98,7 +98,7 @@ export async function assessRunTargetCompatibility(
         };
     }
 
-    if (input.attachments && input.attachments.length > 0 && !modelCapabilities.supportsVision) {
+    if (input.attachments && input.attachments.length > 0 && !modelCapabilities.features.supportsVision) {
         return {
             compatible: false,
             issue: {

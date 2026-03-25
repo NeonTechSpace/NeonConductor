@@ -39,13 +39,20 @@ describe('resolveWorkspaceLifecycleDraft', () => {
                 id: 'kilo/gpt-5',
                 providerId: 'kilo',
                 label: 'GPT-5',
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: true,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                inputModalities: ['text'],
-                outputModalities: ['text'],
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
+                },
             },
         ];
 

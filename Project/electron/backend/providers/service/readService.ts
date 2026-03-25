@@ -292,7 +292,7 @@ export async function setSpecialistDefault(input: {
         };
     }
 
-    if (!modelCapabilities.supportsTools) {
+    if (!modelCapabilities.features.supportsTools) {
         return {
             success: false,
             reason: 'model_tools_required',

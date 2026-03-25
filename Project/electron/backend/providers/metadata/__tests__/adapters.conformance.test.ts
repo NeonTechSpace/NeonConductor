@@ -12,10 +12,10 @@ function expectConforms(result: ProviderCatalogSyncSuccess) {
         expect(model.modelId.length).toBeGreaterThan(0);
         expect(model.label.length).toBeGreaterThan(0);
         expect(typeof model.isFree).toBe('boolean');
-        expect(typeof model.capabilities.supportsTools).toBe('boolean');
-        expect(typeof model.capabilities.supportsReasoning).toBe('boolean');
-        expect(Array.isArray(model.capabilities.inputModalities)).toBe(true);
-        expect(Array.isArray(model.capabilities.outputModalities)).toBe(true);
+        expect(typeof model.features.supportsTools).toBe('boolean');
+        expect(typeof model.features.supportsReasoning).toBe('boolean');
+        expect(Array.isArray(model.features.inputModalities)).toBe(true);
+        expect(Array.isArray(model.features.outputModalities)).toBe(true);
         expect(typeof model.pricing).toBe('object');
         expect(typeof model.raw).toBe('object');
     }

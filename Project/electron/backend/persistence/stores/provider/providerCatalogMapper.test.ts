@@ -15,7 +15,7 @@ describe('providerCatalogMapper reasoning efforts', () => {
             supports_audio_input: 0,
             supports_audio_output: 0,
             supports_prompt_cache: null,
-            tool_protocol: null,
+            tool_protocol: 'kilo_gateway',
             api_family: 'kilo_gateway',
             routed_api_family: 'openai_compatible',
             pricing_json: '{}',
@@ -37,7 +37,11 @@ describe('providerCatalogMapper reasoning efforts', () => {
         });
 
         expect(model.reasoningEfforts).toEqual(['minimal', 'high']);
-        expect(model.routedApiFamily).toBe('openai_compatible');
+        expect(model.runtime.toolProtocol).toBe('kilo_gateway');
+        if (model.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo runtime descriptor.');
+        }
+        expect(model.runtime.routedApiFamily).toBe('openai_compatible');
     });
 
     it('keeps Kilo reasoning effort metadata undefined when trusted variants are absent', () => {
@@ -52,7 +56,7 @@ describe('providerCatalogMapper reasoning efforts', () => {
             supports_audio_input: 0,
             supports_audio_output: 0,
             supports_prompt_cache: null,
-            tool_protocol: null,
+            tool_protocol: 'kilo_gateway',
             api_family: 'kilo_gateway',
             routed_api_family: 'anthropic_messages',
             pricing_json: '{}',
@@ -67,6 +71,10 @@ describe('providerCatalogMapper reasoning efforts', () => {
         });
 
         expect(model.reasoningEfforts).toBeUndefined();
-        expect(model.routedApiFamily).toBe('anthropic_messages');
+        expect(model.runtime.toolProtocol).toBe('kilo_gateway');
+        if (model.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo runtime descriptor.');
+        }
+        expect(model.runtime.routedApiFamily).toBe('anthropic_messages');
     });
 });

@@ -126,28 +126,51 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         models: Array<{
             id: string;
             providerId: string;
-            supportsTools: boolean;
-            supportsReasoning: boolean;
-            supportsVision: boolean;
-            supportsPromptCache?: boolean;
-            supportsRealtimeWebSocket?: boolean;
-            apiFamily?:
-                | 'openai_compatible'
-                | 'kilo_gateway'
-                | 'provider_native'
-                | 'anthropic_messages'
-                | 'google_generativeai';
-            routedApiFamily?: 'openai_compatible' | 'provider_native' | 'anthropic_messages' | 'google_generativeai';
-            toolProtocol?:
-                | 'openai_responses'
-                | 'openai_chat_completions'
-                | 'kilo_gateway'
-                | 'provider_native'
-                | 'anthropic_messages'
-                | 'google_generativeai';
-            providerSettings?: Record<string, unknown>;
-            inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
-            outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+            label: string;
+            source?: string;
+            sourceProvider?: string;
+            updatedAt?: string;
+            features: {
+                supportsTools: boolean;
+                supportsReasoning: boolean;
+                supportsVision: boolean;
+                supportsPromptCache?: boolean;
+                inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+                outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+            };
+            runtime:
+                | {
+                      toolProtocol: 'openai_responses';
+                      apiFamily: 'openai_compatible';
+                      supportsRealtimeWebSocket?: boolean;
+                  }
+                | {
+                      toolProtocol: 'openai_chat_completions';
+                      apiFamily: 'openai_compatible';
+                  }
+                | {
+                      toolProtocol: 'kilo_gateway';
+                      apiFamily: 'kilo_gateway';
+                      routedApiFamily: 'openai_compatible' | 'anthropic_messages' | 'google_generativeai';
+                  }
+                | {
+                      toolProtocol: 'provider_native';
+                      apiFamily?:
+                          | 'openai_compatible'
+                          | 'kilo_gateway'
+                          | 'provider_native'
+                          | 'anthropic_messages'
+                          | 'google_generativeai';
+                      providerNativeId: string;
+                  }
+                | {
+                      toolProtocol: 'anthropic_messages';
+                      apiFamily: 'anthropic_messages';
+                  }
+                | {
+                      toolProtocol: 'google_generativeai';
+                      apiFamily: 'google_generativeai';
+                  };
             promptFamily?: string;
             contextLength?: number;
             maxOutputTokens?: number;

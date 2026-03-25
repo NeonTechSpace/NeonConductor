@@ -33,19 +33,6 @@ function isAudioModelId(modelId: string): boolean {
     return normalized.includes('audio') || normalized.includes('realtime');
 }
 
-function inferPromptFamily(modelId: string, promptFamily: string | undefined): string | undefined {
-    if (promptFamily) {
-        return promptFamily;
-    }
-
-    const normalized = modelId.toLowerCase();
-    if (normalized.includes('codex') || normalized.includes('coding')) {
-        return 'codex';
-    }
-
-    return undefined;
-}
-
 export function createOpenAICompatibleCatalogBehavior(providerId: FirstPartyProviderId): ProviderCatalogBehavior {
     return {
         providerId,
@@ -56,7 +43,6 @@ export function createOpenAICompatibleCatalogBehavior(providerId: FirstPartyProv
             const supportsTools = input.supportedParameters ? input.supportedParameters.includes('tools') : true;
             const inferredVision = isVisionModelId(input.modelId);
             const inferredAudio = isAudioModelId(input.modelId);
-            const promptFamily = inferPromptFamily(input.modelId, input.promptFamily);
             const inputModalities = normalizeModalities(
                 input.inputModalities ?? (inferredVision ? ['text', 'image'] : [])
             );
@@ -73,7 +59,6 @@ export function createOpenAICompatibleCatalogBehavior(providerId: FirstPartyProv
                 supportsAudioOutput: outputModalities.includes('audio') || inferredAudio,
                 inputModalities,
                 outputModalities,
-                ...(promptFamily ? { promptFamily } : {}),
             };
         },
     };

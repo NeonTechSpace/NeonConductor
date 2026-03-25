@@ -16,8 +16,10 @@ function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): Provider
         runId: 'run_direct_gemini',
         providerId: 'openai',
         modelId: 'openai/gemini-custom',
-        toolProtocol: 'google_generativeai',
-        apiFamily: 'google_generativeai',
+        runtime: {
+            toolProtocol: 'google_generativeai',
+            apiFamily: 'google_generativeai',
+        },
         promptText: 'Inspect the workspace',
         contextMessages: [
             {

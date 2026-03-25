@@ -1,14 +1,14 @@
 import { err, ok, type Result } from 'neverthrow';
 
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
-import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
+import type { ProviderModelFeatureSet } from '@/app/backend/providers/types';
 import type { ProviderAuthMethod, RuntimeRunOptions } from '@/app/backend/runtime/contracts';
 
 export type ProviderBilledVia = 'kilo_gateway' | 'openai_api' | 'openai_subscription' | 'zai_api' | 'moonshot_api';
 
 export interface ProviderRuntimeValidationInput {
     modelId: string;
-    modelCapabilities: ProviderModelCapabilities;
+    modelCapabilities: ProviderModelFeatureSet;
     runtimeOptions: RuntimeRunOptions;
 }
 
@@ -48,5 +48,5 @@ export interface ProviderCatalogCapabilityInput {
 
 export interface ProviderCatalogBehavior {
     readonly providerId: FirstPartyProviderId;
-    createCapabilities(input: ProviderCatalogCapabilityInput): ProviderModelCapabilities;
+    createCapabilities(input: ProviderCatalogCapabilityInput): ProviderModelFeatureSet;
 }

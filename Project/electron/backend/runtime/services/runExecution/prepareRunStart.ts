@@ -148,7 +148,7 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
             ...(capabilityValidation.error.action ? { action: capabilityValidation.error.action } : {}),
         });
     }
-    if (input.attachments && input.attachments.length > 0 && !modelCapabilities.supportsVision) {
+    if (input.attachments && input.attachments.length > 0 && !modelCapabilities.features.supportsVision) {
         return errRunExecution(
             'runtime_option_invalid',
             `Model "${activeTarget.modelId}" does not support image input. Select a vision-capable model before attaching images.`,
@@ -219,7 +219,6 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
         providerId: activeTarget.providerId,
         modelId: activeTarget.modelId,
         modelCapabilities,
-        toolProtocol: runtimeProtocolResult.value.toolProtocol,
         runtimeOptions: input.runtimeOptions,
     });
     if (resolvedCacheResult.isErr()) {
@@ -258,11 +257,7 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
     return okRunExecution({
         resolvedMode: resolvedModeResult.value,
         activeTarget,
-        runtimeProtocol: runtimeProtocolResult.value.toolProtocol,
-        ...(runtimeProtocolResult.value.apiFamily ? { apiFamily: runtimeProtocolResult.value.apiFamily } : {}),
-        ...(runtimeProtocolResult.value.routedApiFamily
-            ? { routedApiFamily: runtimeProtocolResult.value.routedApiFamily }
-            : {}),
+        runtimeDescriptor: runtimeProtocolResult.value.runtime,
         resolvedAuth,
         resolvedCache: resolvedCacheResult.value,
         initialTransport: runtimeProtocolResult.value.transport,

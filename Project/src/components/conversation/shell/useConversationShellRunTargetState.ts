@@ -71,7 +71,9 @@ export function buildConversationReasoningState(input: {
         RuntimeProviderId,
         Array<{
             id: string;
-            supportsReasoning?: boolean | null;
+            features: {
+                supportsReasoning?: boolean | null;
+            };
             reasoningEfforts?: RuntimeReasoningEffort[] | undefined;
         }>
     >;
@@ -86,7 +88,7 @@ export function buildConversationReasoningState(input: {
               )
             : undefined;
 
-    const selectedModelSupportsReasoning = Boolean(selectedComposerModelRecord?.supportsReasoning);
+    const selectedModelSupportsReasoning = Boolean(selectedComposerModelRecord?.features.supportsReasoning);
     const supportedReasoningEfforts =
         input.selectedComposerProviderId === 'kilo'
             ? selectedComposerModelRecord?.reasoningEfforts?.filter(

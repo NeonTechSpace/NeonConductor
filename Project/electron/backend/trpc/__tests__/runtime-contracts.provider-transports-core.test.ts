@@ -31,16 +31,20 @@ describe('runtime contracts: provider and account flows', () => {
                 label: 'Stale Startup Model',
                 upstreamProvider: 'openai',
                 isFree: false,
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: false,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
-                routedApiFamily: 'openai_compatible',
-                inputModalities: ['text'],
-                outputModalities: ['text'],
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
+                },
                 pricing: {},
                 raw: {},
                 source: 'test',
@@ -59,9 +63,9 @@ describe('runtime contracts: provider and account flows', () => {
                         json: () => ({
                             data: [
                                 {
-                                    id: 'minimax/minimax-m2.1:free',
-                                    name: 'MiniMax M2.1',
-                                    owned_by: 'minimax',
+                                    id: 'moonshotai/kimi-k2.5',
+                                    name: 'Kimi K2.5',
+                                    owned_by: 'moonshotai',
                                     context_length: 200000,
                                     supported_parameters: ['tools'],
                                     architecture: {
@@ -96,7 +100,7 @@ describe('runtime contracts: provider and account flows', () => {
         );
 
         const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
-        expect(shellBootstrap.providerModels.some((model) => model.id === 'minimax/minimax-m2.1:free')).toBe(true);
+        expect(shellBootstrap.providerModels.some((model) => model.id === 'moonshotai/kimi-k2.5')).toBe(true);
         expect(shellBootstrap.providerModels.some((model) => model.id === 'stale/startup-model')).toBe(false);
     });
 

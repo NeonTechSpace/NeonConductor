@@ -21,7 +21,7 @@ export function validateRunCapabilities(input: ValidateRunCapabilitiesInput): Ru
     const behavior = getProviderRuntimeBehavior(input.providerId);
     const validation = behavior.validateRunOptions({
         modelId: input.modelId,
-        modelCapabilities: input.modelCapabilities,
+        modelCapabilities: input.modelCapabilities.features,
         runtimeOptions: input.runtimeOptions,
     });
     if (validation.isErr()) {
@@ -40,7 +40,7 @@ export function validateRunCapabilities(input: ValidateRunCapabilitiesInput): Ru
         runModeRequiresNativeTools({
             mode: input.mode,
         }) &&
-        !input.modelCapabilities.supportsTools
+        !input.modelCapabilities.features.supportsTools
     ) {
         return errRunExecution(
             'runtime_option_invalid',

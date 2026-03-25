@@ -119,7 +119,10 @@ describe('streamOpenAIRealtimeWebSocketRuntime', () => {
                 runId: 'run_test',
                 providerId: 'openai',
                 modelId: 'openai/gpt-realtime',
-                toolProtocol: 'openai_responses',
+                runtime: {
+                    toolProtocol: 'openai_responses',
+                    apiFamily: 'openai_compatible',
+                },
                 promptText: 'Use the filesystem tool',
                 contextMessages: [
                     {
@@ -283,7 +286,10 @@ describe('streamOpenAIRealtimeWebSocketRuntime', () => {
                 runId: 'run_test',
                 providerId: 'openai',
                 modelId: 'openai/gpt-realtime-mini',
-                toolProtocol: 'openai_responses',
+                runtime: {
+                    toolProtocol: 'openai_responses',
+                    apiFamily: 'openai_compatible',
+                },
                 promptText: 'Abort this run',
                 cache: {
                     strategy: 'auto',

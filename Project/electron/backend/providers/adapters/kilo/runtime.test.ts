@@ -10,8 +10,11 @@ function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): Provider
         runId: 'run_test',
         providerId: 'kilo',
         modelId: 'openai/gpt-5',
-        toolProtocol: 'kilo_gateway',
-        routedApiFamily: 'openai_compatible',
+        runtime: {
+            toolProtocol: 'kilo_gateway',
+            apiFamily: 'kilo_gateway',
+            routedApiFamily: 'openai_compatible',
+        },
         promptText: 'Hello',
         runtimeOptions: {
             reasoning: {
@@ -83,7 +86,11 @@ describe('streamKiloRuntime', () => {
 
         const input = createRuntimeInput({
             modelId: 'anthropic/claude-sonnet-4.5',
-            routedApiFamily: 'anthropic_messages',
+            runtime: {
+                toolProtocol: 'kilo_gateway',
+                apiFamily: 'kilo_gateway',
+                routedApiFamily: 'anthropic_messages',
+            },
             tools: [
                 {
                     id: 'read_file',
@@ -116,7 +123,11 @@ describe('streamKiloRuntime', () => {
         const result = await streamKiloRuntime(
             createRuntimeInput({
                 modelId: 'kilo/provider-native',
-                routedApiFamily: 'provider_native',
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'provider_native' as never,
+                },
             }),
             createHandlers()
         );
@@ -168,7 +179,11 @@ describe('streamKiloRuntime', () => {
 
         const input = createRuntimeInput({
             modelId: 'google/gemini-2.5-pro',
-            routedApiFamily: 'google_generativeai',
+            runtime: {
+                toolProtocol: 'kilo_gateway',
+                apiFamily: 'kilo_gateway',
+                routedApiFamily: 'google_generativeai',
+            },
             tools: [
                 {
                     id: 'read_file',
@@ -334,7 +349,11 @@ describe('streamKiloRuntime', () => {
         const result = await streamKiloRuntime(
             createRuntimeInput({
                 modelId: 'anthropic/claude-sonnet-4.5',
-                routedApiFamily: 'anthropic_messages',
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'anthropic_messages',
+                },
             }),
             {
                 onPart,

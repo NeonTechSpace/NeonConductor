@@ -7,16 +7,10 @@ import {
     type ProviderCatalogModelUpsert,
     serializeComparableModels,
 } from '@/app/backend/persistence/stores/provider/providerCatalogMapper';
-import { parseModalities } from '@/app/backend/persistence/stores/provider/providerCatalogParsers';
 import { sortProviderModels } from '@/app/backend/persistence/stores/provider/providerCatalogRanking';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { ProviderDiscoverySnapshotRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
-import type {
-    ProviderApiFamily,
-    ProviderModelCapabilities,
-    ProviderRoutedApiFamily,
-    ProviderToolProtocol,
-} from '@/app/backend/providers/types';
+import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 export type { ProviderCatalogModelUpsert };
@@ -24,45 +18,6 @@ export type { ProviderCatalogModelUpsert };
 export interface ReplaceCatalogModelsResult {
     modelCount: number;
     changed: boolean;
-}
-
-function parseToolProtocol(value: string | null): ProviderToolProtocol | undefined {
-    switch (value) {
-        case 'openai_responses':
-        case 'openai_chat_completions':
-        case 'kilo_gateway':
-        case 'provider_native':
-        case 'anthropic_messages':
-        case 'google_generativeai':
-            return value;
-        default:
-            return undefined;
-    }
-}
-
-function parseApiFamily(value: string | null): ProviderApiFamily | undefined {
-    switch (value) {
-        case 'openai_compatible':
-        case 'kilo_gateway':
-        case 'provider_native':
-        case 'anthropic_messages':
-        case 'google_generativeai':
-            return value;
-        default:
-            return undefined;
-    }
-}
-
-function parseRoutedApiFamily(value: string | null): ProviderRoutedApiFamily | undefined {
-    switch (value) {
-        case 'openai_compatible':
-        case 'provider_native':
-        case 'anthropic_messages':
-        case 'google_generativeai':
-            return value;
-        default:
-            return undefined;
-    }
 }
 
 export class ProviderCatalogStore {
@@ -210,63 +165,15 @@ export class ProviderCatalogStore {
         providerId: RuntimeProviderId,
         modelId: string
     ): Promise<ProviderModelCapabilities | null> {
-        const { db } = getPersistence();
-        const row = await db
-            .selectFrom('provider_model_catalog')
-            .select([
-                'supports_tools',
-                'supports_reasoning',
-                'supports_vision',
-                'supports_audio_input',
-                'supports_audio_output',
-                'supports_prompt_cache',
-                'tool_protocol',
-                'api_family',
-                'routed_api_family',
-                'input_modalities_json',
-                'output_modalities_json',
-                'prompt_family',
-                'raw_json',
-            ])
-            .where('profile_id', '=', profileId)
-            .where('provider_id', '=', providerId)
-            .where('model_id', '=', modelId)
-            .executeTakeFirst();
-
-        if (!row) {
+        const model = await this.getModel(profileId, providerId, modelId);
+        if (!model) {
             return null;
         }
 
-        const inputModalities = parseModalities(row.input_modalities_json);
-        const outputModalities = parseModalities(row.output_modalities_json);
-        const toolProtocol = parseToolProtocol(row.tool_protocol);
-        const apiFamily = parseApiFamily(row.api_family);
-        const routedApiFamily = parseRoutedApiFamily(row.routed_api_family);
-        const raw = JSON.parse(row.raw_json) as Record<string, unknown>;
-        const supportsRealtimeWebSocket =
-            typeof raw['supports_realtime_websocket'] === 'boolean'
-                ? raw['supports_realtime_websocket']
-                : undefined;
-
         return {
-            supportsTools: row.supports_tools === 1,
-            supportsReasoning: row.supports_reasoning === 1,
-            supportsVision:
-                row.supports_vision === null ? inputModalities.includes('image') : row.supports_vision === 1,
-            supportsAudioInput:
-                row.supports_audio_input === null ? inputModalities.includes('audio') : row.supports_audio_input === 1,
-            supportsAudioOutput:
-                row.supports_audio_output === null
-                    ? outputModalities.includes('audio')
-                    : row.supports_audio_output === 1,
-            ...(row.supports_prompt_cache !== null ? { supportsPromptCache: row.supports_prompt_cache === 1 } : {}),
-            ...(supportsRealtimeWebSocket !== undefined ? { supportsRealtimeWebSocket } : {}),
-            ...(toolProtocol ? { toolProtocol } : {}),
-            ...(apiFamily ? { apiFamily } : {}),
-            ...(routedApiFamily ? { routedApiFamily } : {}),
-            inputModalities,
-            outputModalities,
-            ...(row.prompt_family ? { promptFamily: row.prompt_family } : {}),
+            features: model.features,
+            runtime: model.runtime,
+            ...(model.promptFamily ? { promptFamily: model.promptFamily } : {}),
         };
     }
 
@@ -345,23 +252,30 @@ export class ProviderCatalogStore {
                     label: model.label,
                     upstream_provider: model.upstreamProvider,
                     is_free: model.isFree ? 1 : 0,
-                    supports_tools: model.supportsTools ? 1 : 0,
-                    supports_reasoning: model.supportsReasoning ? 1 : 0,
-                    supports_vision: model.supportsVision ? 1 : 0,
-                    supports_audio_input: model.supportsAudioInput ? 1 : 0,
-                    supports_audio_output: model.supportsAudioOutput ? 1 : 0,
+                    supports_tools: model.features.supportsTools ? 1 : 0,
+                    supports_reasoning: model.features.supportsReasoning ? 1 : 0,
+                    supports_vision: model.features.supportsVision ? 1 : 0,
+                    supports_audio_input: model.features.supportsAudioInput ? 1 : 0,
+                    supports_audio_output: model.features.supportsAudioOutput ? 1 : 0,
                     supports_prompt_cache:
-                        model.supportsPromptCache === null ? null : model.supportsPromptCache ? 1 : 0,
-                    tool_protocol: model.toolProtocol,
-                    api_family: model.apiFamily,
-                    routed_api_family: model.routedApiFamily,
-                    input_modalities_json: JSON.stringify(model.inputModalities),
-                    output_modalities_json: JSON.stringify(model.outputModalities),
+                        model.features.supportsPromptCache === undefined ? null : model.features.supportsPromptCache ? 1 : 0,
+                    tool_protocol: model.runtime.toolProtocol,
+                    api_family: model.runtime.apiFamily ?? null,
+                    routed_api_family:
+                        model.runtime.toolProtocol === 'kilo_gateway' ? model.runtime.routedApiFamily : null,
+                    input_modalities_json: JSON.stringify(model.features.inputModalities),
+                    output_modalities_json: JSON.stringify(model.features.outputModalities),
                     prompt_family: model.promptFamily,
                     context_length: model.contextLength,
                     pricing_json: JSON.stringify(model.pricing),
                     raw_json: JSON.stringify(model.raw),
-                    provider_settings_json: JSON.stringify(model.providerSettings),
+                    provider_settings_json: JSON.stringify(
+                        model.runtime.toolProtocol === 'provider_native'
+                            ? {
+                                  providerNativeId: model.runtime.providerNativeId,
+                              }
+                            : {}
+                    ),
                     source: model.source,
                     updated_at: updatedAt,
                 }))

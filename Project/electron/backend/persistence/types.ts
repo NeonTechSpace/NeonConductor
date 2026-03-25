@@ -45,10 +45,9 @@ import type {
     WorkspaceRootRecord as RuntimeWorkspaceRootRecord,
 } from '@/app/backend/runtime/contracts';
 import type {
-    ProviderApiFamily,
-    ProviderRoutedApiFamily,
+    ProviderModelFeatureSet,
+    ProviderRuntimeDescriptor,
     ProviderRuntimeTransportFamily,
-    ProviderToolProtocol,
 } from '@/app/backend/providers/types';
 
 export interface SessionSummaryRecord {
@@ -166,21 +165,10 @@ export interface ProviderModelRecord {
     sourceProvider?: string;
     source?: string;
     updatedAt?: string;
-    supportsTools: boolean;
-    supportsReasoning: boolean;
-    supportsVision: boolean;
-    supportsAudioInput: boolean;
-    supportsAudioOutput: boolean;
-    supportsPromptCache?: boolean;
-    supportsRealtimeWebSocket?: boolean;
-    toolProtocol?: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
-    inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
-    outputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+    features: ProviderModelFeatureSet;
+    runtime: ProviderRuntimeDescriptor;
     reasoningEfforts?: RuntimeReasoningEffort[];
     promptFamily?: string;
-    providerSettings?: Record<string, unknown>;
     contextLength?: number;
     maxOutputTokens?: number;
     inputPrice?: number;

@@ -16,8 +16,10 @@ function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): Provider
         runId: 'run_direct_anthropic',
         providerId: 'openai',
         modelId: 'openai/claude-custom',
-        toolProtocol: 'anthropic_messages',
-        apiFamily: 'anthropic_messages',
+        runtime: {
+            toolProtocol: 'anthropic_messages',
+            apiFamily: 'anthropic_messages',
+        },
         promptText: 'Inspect the workspace',
         contextMessages: [
             {

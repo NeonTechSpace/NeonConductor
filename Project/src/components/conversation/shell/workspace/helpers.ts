@@ -79,7 +79,7 @@ export function modelExists(
     }
 ): boolean {
     return (modelsByProvider.get(providerId) ?? []).some(
-        (model) => model.id === modelId && (!options?.requiresTools || model.supportsTools)
+        (model) => model.id === modelId && (!options?.requiresTools || model.features.supportsTools)
     );
 }
 

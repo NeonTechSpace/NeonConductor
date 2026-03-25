@@ -7,8 +7,19 @@ describe('model compatibility helpers', () => {
     it('rejects non-tool models when the current mode requires native tools', () => {
         const result = resolveModelCompatibility(
             {
-                supportsTools: false,
-                supportsVision: false,
+                features: {
+                    supportsTools: false,
+                    supportsVision: false,
+                    supportsReasoning: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'openai_chat_completions',
+                    apiFamily: 'openai_compatible',
+                },
             },
             {
                 surface: 'conversation',
@@ -19,6 +30,7 @@ describe('model compatibility helpers', () => {
 
         expect(result).toEqual({
             state: 'incompatible',
+            scope: 'model',
             issue: {
                 code: 'model_tools_required',
                 modeKey: 'code',
@@ -29,8 +41,19 @@ describe('model compatibility helpers', () => {
     it('rejects non-vision models when image attachments are pending', () => {
         const result = resolveModelCompatibility(
             {
-                supportsTools: true,
-                supportsVision: false,
+                features: {
+                    supportsTools: true,
+                    supportsVision: false,
+                    supportsReasoning: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'openai_chat_completions',
+                    apiFamily: 'openai_compatible',
+                },
             },
             {
                 surface: 'conversation',
@@ -41,6 +64,7 @@ describe('model compatibility helpers', () => {
 
         expect(result).toEqual({
             state: 'incompatible',
+            scope: 'model',
             issue: {
                 code: 'model_vision_required',
             },
@@ -50,8 +74,19 @@ describe('model compatibility helpers', () => {
     it('downgrades disconnected providers to warnings in settings', () => {
         const result = resolveModelCompatibility(
             {
-                supportsTools: true,
-                supportsVision: true,
+                features: {
+                    supportsTools: true,
+                    supportsVision: true,
+                    supportsReasoning: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'openai_chat_completions',
+                    apiFamily: 'openai_compatible',
+                },
             },
             {
                 surface: 'settings',
@@ -66,6 +101,7 @@ describe('model compatibility helpers', () => {
 
         expect(result).toEqual({
             state: 'warning',
+            scope: 'provider',
             issue: {
                 code: 'provider_not_runnable',
                 providerId: 'openai',
@@ -76,8 +112,19 @@ describe('model compatibility helpers', () => {
     it('uses the same typed issue code as backend run rejection for tool-required incompatibility', () => {
         const compatibility = resolveModelCompatibility(
             {
-                supportsTools: false,
-                supportsVision: false,
+                features: {
+                    supportsTools: false,
+                    supportsVision: false,
+                    supportsReasoning: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'openai_chat_completions',
+                    apiFamily: 'openai_compatible',
+                },
             },
             {
                 surface: 'conversation',

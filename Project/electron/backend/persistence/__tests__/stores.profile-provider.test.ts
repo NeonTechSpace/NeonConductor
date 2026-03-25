@@ -30,10 +30,10 @@ describe('persistence stores: profile and provider domain', () => {
         if (!firstModel) {
             throw new Error('Expected at least one model in provider catalog.');
         }
-        expect(firstModel.supportsTools).toBeTypeOf('boolean');
-        expect(firstModel.supportsReasoning).toBeTypeOf('boolean');
-        expect(firstModel.inputModalities.includes('text')).toBe(true);
-        expect(firstModel.outputModalities.includes('text')).toBe(true);
+        expect(firstModel.features.supportsTools).toBeTypeOf('boolean');
+        expect(firstModel.features.supportsReasoning).toBeTypeOf('boolean');
+        expect(firstModel.features.inputModalities.includes('text')).toBe(true);
+        expect(firstModel.features.outputModalities.includes('text')).toBe(true);
 
         await providerStore.setDefaults(profileId, 'openai', 'openai/gpt-5');
         const defaults = await providerStore.getDefaults(profileId);
@@ -340,6 +340,20 @@ describe('persistence stores: profile and provider domain', () => {
             {
                 modelId: 'kilo/model_fast',
                 label: 'Kilo Fast',
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
+                },
                 source: 'test',
                 pricing: { price: 0.3 },
                 raw: {
@@ -350,6 +364,20 @@ describe('persistence stores: profile and provider domain', () => {
             {
                 modelId: 'kilo/model_balanced',
                 label: 'Kilo Balanced',
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
+                },
                 source: 'test',
                 pricing: { price: 0.1 },
                 raw: {

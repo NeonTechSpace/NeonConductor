@@ -150,7 +150,9 @@ describe('conversation reasoning state builder', () => {
                     [
                         {
                             id: 'kilo/model',
-                            supportsReasoning: true,
+                            features: {
+                                supportsReasoning: true,
+                            },
                             reasoningEfforts: ['low', 'medium', 'high'],
                         },
                     ],
@@ -175,7 +177,9 @@ describe('conversation reasoning state builder', () => {
                     [
                         {
                             id: 'kilo/model',
-                            supportsReasoning: true,
+                            features: {
+                                supportsReasoning: true,
+                            },
                             reasoningEfforts: ['low'],
                         },
                     ],

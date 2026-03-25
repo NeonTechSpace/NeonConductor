@@ -431,7 +431,7 @@ export async function streamOpenAICompatibleRuntime(
     handlers: ProviderRuntimeHandlers,
     config: OpenAICompatibleRuntimeConfig
 ): Promise<ProviderAdapterResult<void>> {
-    const executionPath = resolveRuntimeFamilyExecutionPath(input.toolProtocol);
+    const executionPath = resolveRuntimeFamilyExecutionPath(input.runtime.toolProtocol);
 
     if (executionPath === 'provider_native') {
         return streamProviderNativeRuntime(input, handlers);
@@ -494,7 +494,7 @@ export async function streamOpenAICompatibleRuntime(
         return okProviderAdapter(undefined);
     }
 
-    if (input.toolProtocol === 'openai_chat_completions') {
+    if (input.runtime.toolProtocol === 'openai_chat_completions') {
         await emitRuntimeLifecycleSelection({
             handlers,
             transportSelection: {
@@ -515,7 +515,7 @@ export async function streamOpenAICompatibleRuntime(
         });
     }
 
-    if (input.toolProtocol === 'openai_responses') {
+    if (input.runtime.toolProtocol === 'openai_responses') {
         await emitRuntimeLifecycleSelection({
             handlers,
             transportSelection: {
@@ -541,6 +541,6 @@ export async function streamOpenAICompatibleRuntime(
         config,
         'protocol dispatch',
         'invalid_payload',
-        `Model "${input.modelId}" declares unsupported protocol "${input.toolProtocol}" for the OpenAI-compatible adapter.`
+        `Model "${input.modelId}" declares unsupported protocol "${input.runtime.toolProtocol}" for the OpenAI-compatible adapter.`
     );
 }

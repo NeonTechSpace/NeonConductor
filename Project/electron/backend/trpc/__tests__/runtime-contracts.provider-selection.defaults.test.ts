@@ -23,10 +23,10 @@ describe('runtime contracts: provider selection defaults', () => {
         if (!firstModel) {
             throw new Error('Expected openai model listing to include at least one model.');
         }
-        expect(firstModel.supportsTools).toBeTypeOf('boolean');
-        expect(firstModel.supportsReasoning).toBeTypeOf('boolean');
-        expect(firstModel.inputModalities.includes('text')).toBe(true);
-        expect(firstModel.outputModalities.includes('text')).toBe(true);
+        expect(firstModel.features.supportsTools).toBeTypeOf('boolean');
+        expect(firstModel.features.supportsReasoning).toBeTypeOf('boolean');
+        expect(firstModel.features.inputModalities.includes('text')).toBe(true);
+        expect(firstModel.features.outputModalities.includes('text')).toBe(true);
 
         const changed = await caller.provider.setDefault({
             profileId,
@@ -140,4 +140,3 @@ describe('runtime contracts: provider selection defaults', () => {
         expect(snapshot.providerAuthFlows.some((providerAuthFlow) => providerAuthFlow.providerId === 'openai' && providerAuthFlow.authMethod === 'oauth_device' && providerAuthFlow.id === 'flow_legacy_openai_oauth')).toBe(false);
     });
 });
-

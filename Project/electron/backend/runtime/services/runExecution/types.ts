@@ -23,10 +23,8 @@ import type {
 import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runExecution/errors';
 import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
 import type {
-    ProviderApiFamily,
-    ProviderRoutedApiFamily,
+    ProviderRuntimeDescriptor,
     ProviderRuntimeTransportFamily,
-    ProviderToolProtocol,
 } from '@/app/backend/providers/types';
 
 export interface StartRunInput {
@@ -145,9 +143,7 @@ export interface PreparedRunStart {
         mode: ModeDefinition;
     };
     activeTarget: ResolvedRunTarget;
-    runtimeProtocol: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
+    runtimeDescriptor: ProviderRuntimeDescriptor;
     resolvedAuth: ResolvedRunAuth;
     resolvedCache: RunCacheResolution;
     initialTransport: RunTransportResolution;

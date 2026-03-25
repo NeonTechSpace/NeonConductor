@@ -62,23 +62,29 @@ export async function syncKiloCatalog(input: SyncKiloCatalogInput): Promise<Prov
 
         const providerIds = buildProviderIdSet(providers);
         const modelsByProviderIndex = buildModelsByProviderIndex(modelsByProvider);
-        const normalizedModels = models.map((model) => {
-            const entry = normalizeKiloModel(model, {
-                providerIds,
-                modelsByProviderIndex,
-            });
-            if (entry.upstreamProvider && modelsByProviderIndex.has(entry.upstreamProvider)) {
-                const hasMembership = modelsByProviderIndex.get(entry.upstreamProvider)?.has(entry.modelId) ?? false;
-                return {
-                    ...entry,
-                    raw: {
-                        ...entry.raw,
-                        modelsByProviderMembership: hasMembership,
-                    },
-                };
-            }
+        const normalizedModels = models.flatMap((model) => {
+            try {
+                const entry = normalizeKiloModel(model, {
+                    providerIds,
+                    modelsByProviderIndex,
+                });
+                if (entry.upstreamProvider && modelsByProviderIndex.has(entry.upstreamProvider)) {
+                    const hasMembership = modelsByProviderIndex.get(entry.upstreamProvider)?.has(entry.modelId) ?? false;
+                    return [
+                        {
+                            ...entry,
+                            raw: {
+                                ...entry.raw,
+                                modelsByProviderMembership: hasMembership,
+                            },
+                        },
+                    ];
+                }
 
-            return entry;
+                return [entry];
+            } catch {
+                return [];
+            }
         });
 
         return {

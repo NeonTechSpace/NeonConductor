@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    createProtocolModelCapabilities,
     createProtocolRuntimeOptions,
     protocolTestProfileId,
     resolveProviderRuntimePathContextMock,
@@ -13,17 +14,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-5',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsPromptCache: true,
                 toolProtocol: 'openai_responses',
+                supportsPromptCache: true,
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -32,7 +33,7 @@ describe('resolveRuntimeProtocol openai transports', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('openai_responses');
+        expect(result.value.runtime.toolProtocol).toBe('openai_responses');
         expect(result.value.transport.selected).toBe('openai_responses');
     });
 
@@ -41,16 +42,16 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-5',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'openai_responses',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'openai_responses',
+            }),
             authMethod: 'api_key',
             runtimeOptions: {
                 ...createProtocolRuntimeOptions(),
@@ -72,16 +73,16 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'moonshot',
             modelId: 'moonshot/kimi-latest',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                toolProtocol: 'openai_chat_completions',
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+                toolProtocol: 'openai_chat_completions',
+            }),
             authMethod: 'api_key',
             runtimeOptions: createProtocolRuntimeOptions(),
         });
@@ -90,7 +91,7 @@ describe('resolveRuntimeProtocol openai transports', () => {
         if (result.isErr()) {
             throw new Error(result.error.message);
         }
-        expect(result.value.toolProtocol).toBe('openai_chat_completions');
+        expect(result.value.runtime.toolProtocol).toBe('openai_chat_completions');
         expect(result.value.transport.selected).toBe('openai_chat_completions');
     });
 
@@ -110,18 +111,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-5.4',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsRealtimeWebSocket: true,
                 toolProtocol: 'openai_responses',
-                apiFamily: 'openai_compatible',
+                supportsRealtimeWebSocket: true,
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'api_key',
             topLevelTab: 'agent',
             openAIExecutionMode: 'realtime_websocket',
@@ -140,18 +140,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-realtime',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsRealtimeWebSocket: true,
                 toolProtocol: 'openai_responses',
-                apiFamily: 'openai_compatible',
+                supportsRealtimeWebSocket: true,
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'api_key',
             topLevelTab: 'chat',
             openAIExecutionMode: 'realtime_websocket',
@@ -174,18 +173,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-realtime',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsRealtimeWebSocket: true,
                 toolProtocol: 'openai_responses',
-                apiFamily: 'openai_compatible',
+                supportsRealtimeWebSocket: true,
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'oauth_pkce',
             topLevelTab: 'agent',
             openAIExecutionMode: 'realtime_websocket',
@@ -208,18 +206,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'moonshot',
             modelId: 'moonshot/kimi-k2-turbo-preview',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsRealtimeWebSocket: true,
                 toolProtocol: 'openai_responses',
-                apiFamily: 'openai_compatible',
+                supportsRealtimeWebSocket: true,
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'api_key',
             topLevelTab: 'agent',
             openAIExecutionMode: 'realtime_websocket',
@@ -253,18 +250,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-realtime',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: false,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsRealtimeWebSocket: true,
                 toolProtocol: 'openai_responses',
-                apiFamily: 'openai_compatible',
+                supportsRealtimeWebSocket: true,
                 inputModalities: ['text'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'api_key',
             topLevelTab: 'agent',
             openAIExecutionMode: 'realtime_websocket',
@@ -298,18 +294,17 @@ describe('resolveRuntimeProtocol openai transports', () => {
             profileId: protocolTestProfileId,
             providerId: 'openai',
             modelId: 'openai/gpt-5',
-            modelCapabilities: {
+            modelCapabilities: createProtocolModelCapabilities({
                 supportsTools: true,
                 supportsReasoning: true,
                 supportsVision: true,
                 supportsAudioInput: false,
                 supportsAudioOutput: false,
-                supportsRealtimeWebSocket: false,
                 toolProtocol: 'openai_responses',
-                apiFamily: 'openai_compatible',
+                supportsRealtimeWebSocket: false,
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
-            },
+            }),
             authMethod: 'api_key',
             topLevelTab: 'agent',
             openAIExecutionMode: 'realtime_websocket',

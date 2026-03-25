@@ -6,8 +6,7 @@ import { getProviderRuntimeBehavior } from '@/app/backend/providers/behaviors';
 import type {
     ProviderRuntimeInput,
     ProviderRuntimePart,
-    ProviderApiFamily,
-    ProviderRoutedApiFamily,
+    ProviderRuntimeDescriptor,
     ProviderRuntimeToolDefinition,
     ProviderRuntimeTransportSelection,
     ProviderRuntimeUsage,
@@ -165,9 +164,7 @@ export interface ExecuteRunInput {
     modeKey: StartRunInput['modeKey'];
     providerId: RuntimeProviderId;
     modelId: string;
-    toolProtocol: ProviderRuntimeInput['toolProtocol'];
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
+    runtime: ProviderRuntimeDescriptor;
     openAIExecutionMode?: OpenAIExecutionMode;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: StartRunInput['runtimeOptions'];
@@ -528,9 +525,7 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
             runId: input.runId,
             providerId: input.providerId,
             modelId: input.modelId,
-            toolProtocol: input.toolProtocol,
-            ...(input.apiFamily ? { apiFamily: input.apiFamily } : {}),
-            ...(input.routedApiFamily ? { routedApiFamily: input.routedApiFamily } : {}),
+            runtime: input.runtime,
             promptText: input.prompt,
             ...(conversationMessages.length > 0 ? { contextMessages: conversationMessages } : {}),
             ...(input.toolDefinitions.length > 0 ? { tools: input.toolDefinitions, toolChoice: 'auto' as const } : {}),

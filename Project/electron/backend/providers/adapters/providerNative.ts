@@ -38,7 +38,7 @@ export interface ProviderNativeCompatibilityContext {
     resolvedBaseUrl: string | null;
     sourceProvider?: string;
     apiFamily?: ProviderApiFamily;
-    providerSettings?: Record<string, unknown>;
+    providerNativeId: string;
 }
 
 export interface ProviderNativeHttpRequest {
@@ -156,6 +156,9 @@ export async function resolveProviderNativeRuntimeSpecialization(
     if (runtimePathContextResult.isErr() || !modelRecord) {
         return null;
     }
+    if (modelRecord.runtime.toolProtocol !== 'provider_native') {
+        return null;
+    }
 
     const compatibilityContext: ProviderNativeCompatibilityContext = {
         providerId,
@@ -163,8 +166,8 @@ export async function resolveProviderNativeRuntimeSpecialization(
         optionProfileId: runtimePathContextResult.value.optionProfileId,
         resolvedBaseUrl: runtimePathContextResult.value.resolvedBaseUrl,
         ...(modelRecord.sourceProvider ? { sourceProvider: modelRecord.sourceProvider } : {}),
-        ...(modelRecord.apiFamily ? { apiFamily: modelRecord.apiFamily } : {}),
-        ...(modelRecord.providerSettings ? { providerSettings: modelRecord.providerSettings } : {}),
+        ...(modelRecord.runtime.apiFamily ? { apiFamily: modelRecord.runtime.apiFamily } : {}),
+        providerNativeId: modelRecord.runtime.providerNativeId,
     };
 
     return resolveProviderNativeRuntimeSpecializationForContext(compatibilityContext);

@@ -208,10 +208,13 @@ describe('runtime contracts: provider and account flows', () => {
             throw new Error('Expected openai/gpt-5.4 in the OpenAI catalog.');
         }
 
-        expect(gpt54.supportsPromptCache).toBe(true);
-        expect(gpt54.supportsRealtimeWebSocket).toBe(true);
-        expect(gpt54.apiFamily).toBe('openai_compatible');
-        expect(gpt54.toolProtocol).toBe('openai_responses');
+        expect(gpt54.features.supportsPromptCache).toBe(true);
+        expect(gpt54.runtime.toolProtocol).toBe('openai_responses');
+        if (gpt54.runtime.toolProtocol !== 'openai_responses') {
+            throw new Error('Expected OpenAI responses runtime.');
+        }
+        expect(gpt54.runtime.supportsRealtimeWebSocket).toBe(true);
+        expect(gpt54.runtime.apiFamily).toBe('openai_compatible');
 
         const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
         const shellGpt54 = shellBootstrap.providerModels.find((model) => model.id === 'openai/gpt-5.4');
@@ -220,10 +223,13 @@ describe('runtime contracts: provider and account flows', () => {
             throw new Error('Expected openai/gpt-5.4 in runtime shell bootstrap.');
         }
 
-        expect(shellGpt54.supportsPromptCache).toBe(true);
-        expect(shellGpt54.supportsRealtimeWebSocket).toBe(true);
-        expect(shellGpt54.apiFamily).toBe('openai_compatible');
-        expect(shellGpt54.toolProtocol).toBe('openai_responses');
+        expect(shellGpt54.features.supportsPromptCache).toBe(true);
+        expect(shellGpt54.runtime.toolProtocol).toBe('openai_responses');
+        if (shellGpt54.runtime.toolProtocol !== 'openai_responses') {
+            throw new Error('Expected OpenAI responses runtime.');
+        }
+        expect(shellGpt54.runtime.supportsRealtimeWebSocket).toBe(true);
+        expect(shellGpt54.runtime.apiFamily).toBe('openai_compatible');
     });
 
     it('round-trips Kilo routed upstream family metadata through provider.listModels and runtime.getShellBootstrap', async () => {
@@ -234,16 +240,20 @@ describe('runtime contracts: provider and account flows', () => {
                 modelId: 'anthropic/claude-sonnet-4.5',
                 label: 'Claude Sonnet 4.5',
                 upstreamProvider: 'anthropic',
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: true,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
-                routedApiFamily: 'anthropic_messages',
-                inputModalities: ['text', 'image'],
-                outputModalities: ['text'],
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'anthropic_messages',
+                },
                 pricing: {},
                 raw: {},
                 source: 'test',
@@ -258,9 +268,12 @@ describe('runtime contracts: provider and account flows', () => {
             throw new Error('Expected anthropic/claude-sonnet-4.5 in the Kilo catalog.');
         }
 
-        expect(claude.apiFamily).toBe('kilo_gateway');
-        expect(claude.routedApiFamily).toBe('anthropic_messages');
-        expect(claude.toolProtocol).toBe('kilo_gateway');
+        expect(claude.runtime.apiFamily).toBe('kilo_gateway');
+        expect(claude.runtime.toolProtocol).toBe('kilo_gateway');
+        if (claude.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo gateway runtime.');
+        }
+        expect(claude.runtime.routedApiFamily).toBe('anthropic_messages');
 
         const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
         const shellClaude = shellBootstrap.providerModels.find((model) => model.id === 'anthropic/claude-sonnet-4.5');
@@ -269,9 +282,12 @@ describe('runtime contracts: provider and account flows', () => {
             throw new Error('Expected anthropic/claude-sonnet-4.5 in runtime shell bootstrap.');
         }
 
-        expect(shellClaude.apiFamily).toBe('kilo_gateway');
-        expect(shellClaude.routedApiFamily).toBe('anthropic_messages');
-        expect(shellClaude.toolProtocol).toBe('kilo_gateway');
+        expect(shellClaude.runtime.apiFamily).toBe('kilo_gateway');
+        expect(shellClaude.runtime.toolProtocol).toBe('kilo_gateway');
+        if (shellClaude.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo gateway runtime.');
+        }
+        expect(shellClaude.runtime.routedApiFamily).toBe('anthropic_messages');
     });
 
     it('executes Kilo-routed Gemini models on the Kilo transport and preserves routed reasoning parts', async () => {
@@ -318,16 +334,20 @@ describe('runtime contracts: provider and account flows', () => {
                 modelId: 'google/gemini-2.5-pro',
                 label: 'Gemini 2.5 Pro',
                 upstreamProvider: 'google',
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: true,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
-                routedApiFamily: 'google_generativeai',
-                inputModalities: ['text', 'image'],
-                outputModalities: ['text'],
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: true,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text', 'image'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'google_generativeai',
+                },
                 pricing: {},
                 raw: {},
                 source: 'test',

@@ -65,7 +65,14 @@ function failKiloRuntime(
 }
 
 function resolveKiloRoutedRuntimeFamily(input: ProviderRuntimeInput): ProviderAdapterResult<KiloRoutedRuntimeFamily> {
-    if (!input.routedApiFamily) {
+    if (input.runtime.toolProtocol !== 'kilo_gateway') {
+        return errProviderAdapter(
+            'invalid_payload',
+            `Model "${input.modelId}" declares unsupported Kilo protocol "${input.runtime.toolProtocol}".`
+        );
+    }
+
+    if (!input.runtime.routedApiFamily) {
         return errProviderAdapter(
             'invalid_payload',
             `Model "${input.modelId}" is missing required Kilo routed upstream family metadata.`
@@ -73,16 +80,16 @@ function resolveKiloRoutedRuntimeFamily(input: ProviderRuntimeInput): ProviderAd
     }
 
     if (
-        input.routedApiFamily === 'openai_compatible' ||
-        input.routedApiFamily === 'anthropic_messages' ||
-        input.routedApiFamily === 'google_generativeai'
+        input.runtime.routedApiFamily === 'openai_compatible' ||
+        input.runtime.routedApiFamily === 'anthropic_messages' ||
+        input.runtime.routedApiFamily === 'google_generativeai'
     ) {
-        return okProviderAdapter(input.routedApiFamily);
+        return okProviderAdapter(input.runtime.routedApiFamily);
     }
 
     return errProviderAdapter(
         'invalid_payload',
-        `Model "${input.modelId}" routes through unsupported Kilo upstream family "${input.routedApiFamily}".`
+        `Model "${input.modelId}" routes through unsupported Kilo upstream family "${input.runtime.routedApiFamily}".`
     );
 }
 
@@ -144,7 +151,7 @@ export async function streamKiloRuntime(
     input: ProviderRuntimeInput,
     handlers: ProviderRuntimeHandlers
 ): Promise<ProviderAdapterResult<void>> {
-    const executionPath = resolveRuntimeFamilyExecutionPath(input.toolProtocol);
+    const executionPath = resolveRuntimeFamilyExecutionPath(input.runtime.toolProtocol);
 
     if (executionPath === 'provider_native') {
         return unsupportedProviderNativeRuntime(input);
@@ -155,7 +162,7 @@ export async function streamKiloRuntime(
             input,
             'protocol dispatch',
             'invalid_payload',
-            `Model "${input.modelId}" declares unsupported protocol "${input.toolProtocol}" for the Kilo adapter.`
+            `Model "${input.modelId}" declares unsupported protocol "${input.runtime.toolProtocol}" for the Kilo adapter.`
         );
     }
 
@@ -193,7 +200,7 @@ export async function streamKiloRuntime(
         token,
         ...(input.organizationId ? { organizationId: input.organizationId } : {}),
         modelId: input.modelId,
-        ...(input.routedApiFamily ? { routedApiFamily: input.routedApiFamily } : {}),
+        ...(input.runtime.toolProtocol === 'kilo_gateway' ? { routedApiFamily: input.runtime.routedApiFamily } : {}),
         ...(input.cache.applied && input.cache.key
             ? {
                   cacheKey: input.cache.key,

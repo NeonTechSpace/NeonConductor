@@ -17,8 +17,11 @@ function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): Provider
         runId: 'run_test',
         providerId: 'kilo',
         modelId: 'google/gemini-2.5-pro',
-        toolProtocol: 'kilo_gateway',
-        routedApiFamily: 'google_generativeai',
+        runtime: {
+            toolProtocol: 'kilo_gateway',
+            apiFamily: 'kilo_gateway',
+            routedApiFamily: 'google_generativeai',
+        },
         promptText: 'Hello',
         runtimeOptions: {
             reasoning: {

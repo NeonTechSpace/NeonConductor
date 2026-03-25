@@ -40,7 +40,7 @@ export interface DirectFamilyRuntimePayloadInput {
 }
 
 export interface DirectFamilyRuntimeHandler {
-    toolProtocol: Extract<ProviderRuntimeInput['toolProtocol'], 'anthropic_messages' | 'google_generativeai'>;
+    toolProtocol: Extract<ProviderRuntimeInput['runtime']['toolProtocol'], 'anthropic_messages' | 'google_generativeai'>;
     familyLabel: string;
     supportsContext: (input: DirectFamilyRuntimePathContext) => boolean;
     incompatibleContextMessage: (input: {

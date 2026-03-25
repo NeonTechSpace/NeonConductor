@@ -10,8 +10,10 @@ function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): Provider
         runId: 'run_direct_family',
         providerId: 'openai',
         modelId: 'openai/custom-model',
-        toolProtocol: 'anthropic_messages',
-        apiFamily: 'anthropic_messages',
+        runtime: {
+            toolProtocol: 'anthropic_messages',
+            apiFamily: 'anthropic_messages',
+        },
         promptText: 'Hello',
         runtimeOptions: {
             reasoning: {
@@ -47,7 +49,10 @@ describe('directFamily runtime', () => {
     it('fails closed when a model declares an unknown direct-family protocol', async () => {
         const result = await streamDirectFamilyRuntime(
             createRuntimeInput({
-                toolProtocol: 'openai_responses' as ProviderRuntimeInput['toolProtocol'],
+                runtime: {
+                    toolProtocol: 'openai_responses',
+                    apiFamily: 'openai_compatible',
+                },
             }),
             {
                 onPart: () => undefined,

@@ -1,9 +1,7 @@
 import type {
-    ProviderApiFamily,
+    ProviderRuntimeDescriptor,
     ProviderRuntimeToolDefinition,
-    ProviderRoutedApiFamily,
     ProviderRuntimeTransportSelection,
-    ProviderToolProtocol,
 } from '@/app/backend/providers/types';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import type { OpenAIExecutionMode } from '@/app/backend/runtime/contracts';
@@ -25,9 +23,7 @@ export async function runToTerminalState(input: {
     prompt: string;
     providerId: RuntimeProviderId;
     modelId: string;
-    toolProtocol: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
+    runtime: ProviderRuntimeDescriptor;
     openAIExecutionMode?: OpenAIExecutionMode;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: StartRunInput['runtimeOptions'];

@@ -8,8 +8,19 @@ import {
     runtimeContractProfileId,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 import { kiloBalancedModelId, kiloFrontierModelId } from '@/shared/kiloModels';
+import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 
 registerRuntimeContractHooks();
+
+function getKiloRoutedApiFamily(
+    model: ProviderModelRecord | undefined
+): 'openai_compatible' | 'anthropic_messages' | 'google_generativeai' | undefined {
+    if (!model || model.runtime.toolProtocol !== 'kilo_gateway') {
+        return undefined;
+    }
+
+    return model.runtime.routedApiFamily;
+}
 
 describe('runtime contracts: provider kilo catalog flows', () => {
     const profileId = runtimeContractProfileId;
@@ -140,19 +151,24 @@ describe('runtime contracts: provider kilo catalog flows', () => {
         if (!frontier) {
             throw new Error('Expected Kilo frontier model in synced catalog.');
         }
-        expect(frontier.supportsTools).toBe(true);
-        expect(frontier.supportsReasoning).toBe(true);
-        expect(frontier.supportsVision).toBe(true);
-        expect(frontier.inputModalities.includes('image')).toBe(true);
+        expect(frontier.features.supportsTools).toBe(true);
+        expect(frontier.features.supportsReasoning).toBe(true);
+        expect(frontier.features.supportsVision).toBe(true);
+        expect(frontier.features.inputModalities.includes('image')).toBe(true);
         expect(frontier.promptFamily).toBe('anthropic');
         expect(frontier.contextLength).toBe(200000);
-        expect(frontier.apiFamily).toBe('kilo_gateway');
-        expect(frontier.routedApiFamily).toBe('anthropic_messages');
-        expect(models.models.find((model) => model.id === 'moonshotai/kimi-k2.5')?.routedApiFamily).toBe(
+        expect(frontier.runtime.apiFamily).toBe('kilo_gateway');
+        if (frontier.runtime.toolProtocol !== 'kilo_gateway') {
+            throw new Error('Expected Kilo gateway runtime.');
+        }
+        expect(frontier.runtime.routedApiFamily).toBe('anthropic_messages');
+        expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === 'moonshotai/kimi-k2.5'))).toBe(
             'openai_compatible'
         );
-        expect(models.models.find((model) => model.id === 'z-ai/glm-5')?.routedApiFamily).toBe('openai_compatible');
-        expect(models.models.find((model) => model.id === 'google/gemini-3.1-pro-preview')?.routedApiFamily).toBe(
+        expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === 'z-ai/glm-5'))).toBe(
+            'openai_compatible'
+        );
+        expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === 'google/gemini-3.1-pro-preview'))).toBe(
             'google_generativeai'
         );
     });
@@ -254,10 +270,10 @@ describe('runtime contracts: provider kilo catalog flows', () => {
         expect(models.models.some((model) => model.id === kiloBalancedModelId)).toBe(true);
         expect(models.models.some((model) => model.id === kiloFrontierModelId)).toBe(true);
         expect(models.models.filter((model) => model.label === 'Kilo Auto Balanced')).toHaveLength(2);
-        expect(models.models.find((model) => model.id === kiloBalancedModelId)?.routedApiFamily).toBe(
+        expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === kiloBalancedModelId))).toBe(
             'openai_compatible'
         );
-        expect(models.models.find((model) => model.id === kiloFrontierModelId)?.routedApiFamily).toBe(
+        expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === kiloFrontierModelId))).toBe(
             'anthropic_messages'
         );
     });
@@ -326,10 +342,12 @@ describe('runtime contracts: provider kilo catalog flows', () => {
         const models = await caller.provider.listModels({ profileId, providerId: 'kilo' });
         const kimi = models.models.find((model) => model.id === 'moonshot/kimi-k2');
         expect(kimi).toBeDefined();
-        expect(kimi?.routedApiFamily).toBe('openai_compatible');
+        expect(kimi?.runtime.toolProtocol === 'kilo_gateway' ? kimi.runtime.routedApiFamily : undefined).toBe(
+            'openai_compatible'
+        );
     });
 
-    it('keeps synced Kilo catalog rows discoverable even when their routed family is unknown', async () => {
+    it('drops synced Kilo catalog rows when their routed family is unknown', async () => {
         const caller = createCaller();
         vi.stubGlobal(
             'fetch',
@@ -388,29 +406,15 @@ describe('runtime contracts: provider kilo catalog flows', () => {
             providerId: 'kilo',
         });
         expect(syncResult.ok).toBe(true);
-        expect(syncResult.modelCount).toBe(1);
+        expect(syncResult.modelCount).toBe(0);
 
         const models = await caller.provider.listModels({ profileId, providerId: 'kilo' });
         const minimax = models.models.find((model) => model.id === 'minimax/minimax-m2.1:free');
-        expect(minimax).toBeDefined();
-        if (!minimax) {
-            throw new Error('Expected minimax/minimax-m2.1:free in the Kilo catalog.');
-        }
-
-        expect(minimax.apiFamily).toBe('kilo_gateway');
-        expect(minimax.toolProtocol).toBe('kilo_gateway');
-        expect(minimax.routedApiFamily).toBeUndefined();
+        expect(minimax).toBeUndefined();
 
         const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
         const shellMiniMax = shellBootstrap.providerModels.find((model) => model.id === 'minimax/minimax-m2.1:free');
-        expect(shellMiniMax).toBeDefined();
-        if (!shellMiniMax) {
-            throw new Error('Expected minimax/minimax-m2.1:free in runtime shell bootstrap.');
-        }
-
-        expect(shellMiniMax.apiFamily).toBe('kilo_gateway');
-        expect(shellMiniMax.toolProtocol).toBe('kilo_gateway');
-        expect(shellMiniMax.routedApiFamily).toBeUndefined();
+        expect(shellMiniMax).toBeUndefined();
     });
 
     it('surfaces catalog sync failure details when the first kilo model sync produces no persisted catalog', async () => {
@@ -460,15 +464,20 @@ describe('runtime contracts: provider kilo catalog flows', () => {
                 label: 'MiniMax M2.1',
                 upstreamProvider: 'minimax',
                 isFree: true,
-                supportsTools: true,
-                supportsReasoning: true,
-                supportsVision: false,
-                supportsAudioInput: false,
-                supportsAudioOutput: false,
-                toolProtocol: 'kilo_gateway',
-                apiFamily: 'kilo_gateway',
-                inputModalities: ['text'],
-                outputModalities: ['text'],
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'openai_compatible',
+                },
                 pricing: {},
                 raw: {},
                 source: 'test',

@@ -30,19 +30,61 @@ export type ProviderApiFamily =
     | 'google_generativeai';
 export type ProviderRoutedApiFamily = Exclude<ProviderApiFamily, 'kilo_gateway'>;
 
-export interface ProviderModelCapabilities {
+export interface ProviderModelFeatureSet {
     supportsTools: boolean;
     supportsReasoning: boolean;
     supportsVision: boolean;
     supportsAudioInput: boolean;
     supportsAudioOutput: boolean;
     supportsPromptCache?: boolean;
-    supportsRealtimeWebSocket?: boolean;
-    toolProtocol?: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
     inputModalities: ProviderModelModality[];
     outputModalities: ProviderModelModality[];
+}
+
+export interface OpenAIResponsesRuntimeDescriptor {
+    toolProtocol: 'openai_responses';
+    apiFamily: 'openai_compatible';
+    supportsRealtimeWebSocket?: boolean;
+}
+
+export interface OpenAIChatCompletionsRuntimeDescriptor {
+    toolProtocol: 'openai_chat_completions';
+    apiFamily: 'openai_compatible';
+}
+
+export interface AnthropicMessagesRuntimeDescriptor {
+    toolProtocol: 'anthropic_messages';
+    apiFamily: 'anthropic_messages';
+}
+
+export interface GoogleGenerativeAiRuntimeDescriptor {
+    toolProtocol: 'google_generativeai';
+    apiFamily: 'google_generativeai';
+}
+
+export interface KiloGatewayRuntimeDescriptor {
+    toolProtocol: 'kilo_gateway';
+    apiFamily: 'kilo_gateway';
+    routedApiFamily: Exclude<ProviderRoutedApiFamily, 'provider_native'>;
+}
+
+export interface ProviderNativeRuntimeDescriptor {
+    toolProtocol: 'provider_native';
+    apiFamily?: ProviderApiFamily;
+    providerNativeId: string;
+}
+
+export type ProviderRuntimeDescriptor =
+    | OpenAIResponsesRuntimeDescriptor
+    | OpenAIChatCompletionsRuntimeDescriptor
+    | AnthropicMessagesRuntimeDescriptor
+    | GoogleGenerativeAiRuntimeDescriptor
+    | KiloGatewayRuntimeDescriptor
+    | ProviderNativeRuntimeDescriptor;
+
+export interface ProviderModelCapabilities {
+    features: ProviderModelFeatureSet;
+    runtime: ProviderRuntimeDescriptor;
     promptFamily?: string;
 }
 
@@ -51,8 +93,9 @@ export interface ProviderCatalogModel {
     label: string;
     upstreamProvider?: string;
     isFree: boolean;
-    capabilities: ProviderModelCapabilities;
-    providerSettings?: Record<string, unknown>;
+    features: ProviderModelFeatureSet;
+    runtime: ProviderRuntimeDescriptor;
+    promptFamily?: string;
     contextLength?: number;
     pricing: Record<string, unknown>;
     raw: Record<string, unknown>;
@@ -68,19 +111,9 @@ export interface NormalizedModelMetadata {
     updatedAt: string;
     sourceProvider?: string;
     isFree?: boolean;
-    supportsTools?: boolean;
-    supportsReasoning?: boolean;
-    supportsVision?: boolean;
-    supportsAudioInput?: boolean;
-    supportsAudioOutput?: boolean;
-    supportsPromptCache?: boolean;
-    toolProtocol?: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
-    inputModalities?: ProviderModelModality[];
-    outputModalities?: ProviderModelModality[];
+    features: ProviderModelFeatureSet;
+    runtime: ProviderRuntimeDescriptor;
     promptFamily?: string;
-    providerSettings?: Record<string, unknown>;
     contextLength?: number;
     maxOutputTokens?: number;
     inputPrice?: number;
@@ -214,9 +247,7 @@ export interface ProviderRuntimeInput {
     runId: string;
     providerId: FirstPartyProviderId;
     modelId: string;
-    toolProtocol: ProviderToolProtocol;
-    apiFamily?: ProviderApiFamily;
-    routedApiFamily?: ProviderRoutedApiFamily;
+    runtime: ProviderRuntimeDescriptor;
     promptText: string;
     contextMessages?: Array<{
         role: 'system' | 'user' | 'assistant' | 'tool';
