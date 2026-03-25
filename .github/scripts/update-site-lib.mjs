@@ -571,7 +571,7 @@ function renderDocument(title, description, body, options = {}) {
     </section>
     <footer class="shell-footer">
       <span>${escapeHtml(description)}</span>
-      <a href="https://github.com/Neonsy/NeonConductor/releases">View GitHub Releases</a>
+      <a href="https://github.com/NeonTechSpace/NeonConductor/releases">View GitHub Releases</a>
     </footer>
   </main>
 </body>

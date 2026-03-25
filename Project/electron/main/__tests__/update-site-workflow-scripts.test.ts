@@ -60,7 +60,7 @@ describe('update site workflow helpers', () => {
                 const rewritten = lib.rewriteManifestSource(
                   source,
                   (value) => lib.makeReleaseAssetUrl(
-                    'Neonsy',
+                    'NeonTechSpace',
                     'NeonConductor',
                     'v1.2.3',
                     value.replace('./artifacts/', ''),
@@ -74,13 +74,13 @@ describe('update site workflow helpers', () => {
                   hasLatestManifestLink: lib.createChannelIndexHtml({
                     channel: 'stable',
                     files: [{ name: 'latest.yml', version: '1.2.3' }],
-                    owner: 'Neonsy',
+                    owner: 'NeonTechSpace',
                     repo: 'NeonConductor',
                   }).includes('latest.yml'),
                   hasReleaseTagLink: lib.createChannelIndexHtml({
                     channel: 'stable',
                     files: [{ name: 'latest.yml', version: '1.2.3' }],
-                    owner: 'Neonsy',
+                    owner: 'NeonTechSpace',
                     repo: 'NeonConductor',
                   }).includes('/releases/tag/v1.2.3'),
                 }));
@@ -92,7 +92,7 @@ describe('update site workflow helpers', () => {
         ) as HelperOutput;
 
         expect(result.rewritten).toContain(
-            'https://github.com/Neonsy/NeonConductor/releases/download/v1.2.3/NeonConductor.exe',
+            'https://github.com/NeonTechSpace/NeonConductor/releases/download/v1.2.3/NeonConductor.exe',
         );
         expect(result.assets).toEqual(['NeonConductor.exe']);
         expect(result.version).toBe('1.2.3');
@@ -105,7 +105,7 @@ describe('publish-update-site.mjs', () => {
     it('renders rewritten manifests and site pages from stdin payload', () => {
         const payload = {
             channel: 'stable',
-            owner: 'Neonsy',
+            owner: 'NeonTechSpace',
             repo: 'NeonConductor',
             tagName: 'v1.2.3',
             inputManifests: [{ name: 'latest.yml', content: sampleManifest }],
@@ -125,7 +125,7 @@ describe('publish-update-site.mjs', () => {
         expect(parsed.channel).toBe('stable');
         expect(parsed.manifests).toHaveLength(1);
         expect(parsed.manifests[0]?.content).toContain(
-            'https://github.com/Neonsy/NeonConductor/releases/download/v1.2.3/NeonConductor.exe',
+            'https://github.com/NeonTechSpace/NeonConductor/releases/download/v1.2.3/NeonConductor.exe',
         );
         expect(parsed.pages.map((page) => page.path)).toEqual(
             expect.arrayContaining(['.nojekyll', '404.html', 'updates/stable/index.html', 'updates/beta/index.html']),
@@ -143,7 +143,7 @@ describe('validate-update-metadata.mjs', () => {
             MOCK_RELEASE_ASSETS_JSON: JSON.stringify(['NeonConductor.exe']),
             RELEASE_ID: '123',
             TAG_NAME: 'v1.2.3',
-            REPO_OWNER: 'Neonsy',
+            REPO_OWNER: 'NeonTechSpace',
             REPO_NAME: 'NeonConductor',
         });
 
@@ -156,7 +156,7 @@ describe('validate-update-metadata.mjs', () => {
             MOCK_RELEASE_ASSETS_JSON: JSON.stringify([]),
             RELEASE_ID: '123',
             TAG_NAME: 'v1.2.3',
-            REPO_OWNER: 'Neonsy',
+            REPO_OWNER: 'NeonTechSpace',
             REPO_NAME: 'NeonConductor',
         });
 
