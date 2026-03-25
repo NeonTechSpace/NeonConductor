@@ -4,16 +4,21 @@ import type { ProviderRuntimePart, ProviderRuntimeTransportSelection } from '@/a
 import { isReasoningPart } from '@/app/backend/runtime/services/runExecution/parts';
 import type { RunCacheResolution } from '@/app/backend/runtime/services/runExecution/types';
 import {
+    publishToolResultChunkObservabilityEvent,
+    publishTransportSelectedObservabilityEvent,
+} from '@/app/backend/runtime/services/observability/publishers';
+import {
     runtimeAppendEvent,
     runtimeStatusEvent,
     runtimeUpsertEvent,
 } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import type { EntityId } from '@/shared/contracts';
 
 export async function emitCacheResolutionEvent(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     cache: RunCacheResolution;
     run: RunRecord;
 }): Promise<void> {
@@ -35,9 +40,9 @@ export async function emitCacheResolutionEvent(input: {
 }
 
 export async function emitTransportSelectionEvent(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     selection: ProviderRuntimeTransportSelection;
     run: RunRecord;
 }): Promise<void> {
@@ -56,6 +61,18 @@ export async function emitTransportSelectionEvent(input: {
         },
         })
     );
+    if (!input.run.providerId || !input.run.modelId) {
+        return;
+    }
+
+    publishTransportSelectedObservabilityEvent({
+        profileId: input.profileId,
+        sessionId: input.sessionId,
+        runId: input.runId,
+        providerId: input.run.providerId,
+        modelId: input.run.modelId,
+        selection: input.selection,
+    });
 }
 
 const extendablePartTypes = new Set<ProviderRuntimePart['partType']>(['text', 'reasoning', 'reasoning_summary']);
@@ -70,9 +87,9 @@ function readStreamingText(part: ProviderRuntimePart): string | null {
 }
 
 export async function emitMessagePartAppendedEvent(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     messageId: string;
     part: MessagePartRecord;
 }): Promise<void> {
@@ -94,9 +111,9 @@ export async function emitMessagePartAppendedEvent(input: {
 }
 
 export async function emitMessagePartUpdatedEvent(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     messageId: string;
     part: MessagePartRecord;
 }): Promise<void> {
@@ -118,9 +135,9 @@ export async function emitMessagePartUpdatedEvent(input: {
 }
 
 export async function emitMessageCreatedEvent(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     message: MessageRecord;
 }): Promise<void> {
     await runtimeEventLogService.append(
@@ -140,9 +157,9 @@ export async function emitMessageCreatedEvent(input: {
 }
 
 export function createMessagePartRecorder(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     messageId: string;
 }) {
     const activeSegmentsByType = new Map<ProviderRuntimePart['partType'], MessagePartRecord>();
@@ -195,10 +212,38 @@ export function createMessagePartRecorder(input: {
 }
 
 export function createAssistantMessagePartRecorder(input: {
-    runId: string;
+    runId: EntityId<'run'>;
     profileId: string;
-    sessionId: string;
+    sessionId: EntityId<'sess'>;
     messageId: string;
 }) {
     return createMessagePartRecorder(input);
+}
+
+export function emitToolResultObservabilityEvent(input: {
+    runId: EntityId<'run'>;
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    providerId: RunRecord['providerId'];
+    modelId: RunRecord['modelId'];
+    toolCallId: string;
+    toolName: string;
+    outputText: string;
+    isError: boolean;
+}): void {
+    if (!input.providerId || !input.modelId) {
+        return;
+    }
+
+    publishToolResultChunkObservabilityEvent({
+        profileId: input.profileId,
+        sessionId: input.sessionId,
+        runId: input.runId,
+        providerId: input.providerId,
+        modelId: input.modelId,
+        toolCallId: input.toolCallId,
+        toolName: input.toolName,
+        outputText: input.outputText,
+        isError: input.isError,
+    });
 }

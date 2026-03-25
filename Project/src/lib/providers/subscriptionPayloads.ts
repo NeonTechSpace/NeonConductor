@@ -4,6 +4,7 @@ import {
     runtimeEntityTypes,
     type RuntimeEventRecordV1,
 } from '@/app/backend/persistence/types';
+import { neonObservabilityEventKinds, type NeonObservabilityEvent } from '@/app/backend/runtime/contracts';
 import type { WindowStateEvent } from '@/app/backend/trpc/routers/system/windowControls';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -67,5 +68,22 @@ export function isWindowStateEvent(value: unknown): value is WindowStateEvent {
         typeof state['canMaximize'] === 'boolean' &&
         typeof state['canMinimize'] === 'boolean' &&
         typeof state['platform'] === 'string'
+    );
+}
+
+export function isNeonObservabilityEvent(value: unknown): value is NeonObservabilityEvent {
+    if (!isRecord(value) || !isOneOf(value['kind'], neonObservabilityEventKinds)) {
+        return false;
+    }
+
+    return (
+        typeof value['sequence'] === 'number' &&
+        typeof value['at'] === 'string' &&
+        typeof value['profileId'] === 'string' &&
+        typeof value['sessionId'] === 'string' &&
+        typeof value['runId'] === 'string' &&
+        typeof value['providerId'] === 'string' &&
+        typeof value['modelId'] === 'string' &&
+        typeof value['source'] === 'string'
     );
 }

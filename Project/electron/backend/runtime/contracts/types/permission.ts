@@ -62,3 +62,13 @@ export interface ToolInvokeInput extends ProfileInput {
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
 }
+
+export interface ToolInvocationObservabilityContext {
+    sessionId: EntityId<'sess'>;
+    runId: EntityId<'run'>;
+    providerId: string;
+    modelId: string;
+    toolCallId: string;
+    toolName: string;
+    argumentsText: string;
+}

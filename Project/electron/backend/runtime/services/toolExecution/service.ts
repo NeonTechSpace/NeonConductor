@@ -1,6 +1,7 @@
 import { err, ok } from 'neverthrow';
-import type { ToolInvokeInput } from '@/app/backend/runtime/contracts';
+import type { ToolInvocationObservabilityContext, ToolInvokeInput } from '@/app/backend/runtime/contracts';
 import { mcpService } from '@/app/backend/runtime/services/mcp/service';
+import { publishToolStateChangedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
 import { getExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
 import { buildBlockedToolResult } from '@/app/backend/runtime/services/toolExecution/blocked';
 import {
@@ -33,7 +34,10 @@ function toolLogContext(input: ToolInvokeInput, toolId: string, source?: string)
 }
 
 export class ToolExecutionService {
-    async invoke(input: ToolInvokeInput): Promise<ToolExecutionResult> {
+    async invoke(
+        input: ToolInvokeInput,
+        observability?: ToolInvocationObservabilityContext
+    ): Promise<ToolExecutionResult> {
         const at = new Date().toISOString();
         const args = input.args ?? {};
         const definition = await findToolById(input.toolId);
@@ -277,7 +281,54 @@ export class ToolExecutionService {
                 ...toolLogContext(input, definition.tool.id, decision.policy.source),
                 ...('requestId' in blockedResult && blockedResult.requestId ? { requestId: blockedResult.requestId } : {}),
             });
+            if (observability) {
+                publishToolStateChangedObservabilityEvent({
+                    profileId: input.profileId,
+                    sessionId: observability.sessionId,
+                    runId: observability.runId,
+                    providerId: observability.providerId,
+                    modelId: observability.modelId,
+                    toolCallId: observability.toolCallId,
+                    toolName: observability.toolName,
+                    state:
+                        !blockedResult.ok && blockedResult.error === 'permission_required'
+                            ? 'approval_required'
+                            : 'denied',
+                    argumentsText: observability.argumentsText,
+                    ...('requestId' in blockedResult && blockedResult.requestId
+                        ? { requestId: blockedResult.requestId }
+                        : {}),
+                    policySource: decision.policy.source,
+                });
+            }
             return blockedResult;
+        }
+
+        if (observability) {
+            publishToolStateChangedObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: observability.sessionId,
+                runId: observability.runId,
+                providerId: observability.providerId,
+                modelId: observability.modelId,
+                toolCallId: observability.toolCallId,
+                toolName: observability.toolName,
+                state: 'approved',
+                argumentsText: observability.argumentsText,
+                policySource: decision.policy.source,
+            });
+            publishToolStateChangedObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: observability.sessionId,
+                runId: observability.runId,
+                providerId: observability.providerId,
+                modelId: observability.modelId,
+                toolCallId: observability.toolCallId,
+                toolName: observability.toolName,
+                state: 'executing',
+                argumentsText: observability.argumentsText,
+                policySource: decision.policy.source,
+            });
         }
 
         const execution =
@@ -298,49 +349,78 @@ export class ToolExecutionService {
                 : await invokeToolHandler(definition.tool, executionArgs, {
                       ...(workspaceRootPath ? { cwd: workspaceRootPath } : {}),
                   });
-        if (execution.isOk()) {
-            await emitToolCompletedEvent({
+        if (execution.isErr()) {
+            await emitToolFailedEvent({
                 toolId: definition.tool.id,
                 profileId: input.profileId,
                 resource: decision.resource,
                 policy: 'allow',
                 source: decision.policy.source,
+                error: execution.error.message,
             });
 
-            appLog.debug({
+            appLog.warn({
                 tag: 'tool-execution',
-                message: 'Completed tool invocation.',
+                message: 'Tool invocation failed.',
                 ...toolLogContext(input, definition.tool.id, decision.policy.source),
+                errorCode: execution.error.code,
+                errorMessage: execution.error.message,
             });
-            return okToolResult({
+            if (observability) {
+                publishToolStateChangedObservabilityEvent({
+                    profileId: input.profileId,
+                    sessionId: observability.sessionId,
+                    runId: observability.runId,
+                    providerId: observability.providerId,
+                    modelId: observability.modelId,
+                    toolCallId: observability.toolCallId,
+                    toolName: observability.toolName,
+                    state: 'failed',
+                    argumentsText: observability.argumentsText,
+                    error: execution.error.message,
+                    policySource: decision.policy.source,
+                });
+            }
+            return errorToolResult({
                 toolId: definition.tool.id,
-                output: execution.value,
+                error: execution.error.code,
+                message: execution.error.message,
+                args,
                 at,
                 policy: decision.policy,
             });
         }
 
-        await emitToolFailedEvent({
+        await emitToolCompletedEvent({
             toolId: definition.tool.id,
             profileId: input.profileId,
             resource: decision.resource,
             policy: 'allow',
             source: decision.policy.source,
-            error: execution.error.message,
         });
 
-        appLog.warn({
+        appLog.debug({
             tag: 'tool-execution',
-            message: 'Tool invocation failed.',
+            message: 'Completed tool invocation.',
             ...toolLogContext(input, definition.tool.id, decision.policy.source),
-            errorCode: execution.error.code,
-            errorMessage: execution.error.message,
         });
-        return errorToolResult({
+        if (observability) {
+            publishToolStateChangedObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: observability.sessionId,
+                runId: observability.runId,
+                providerId: observability.providerId,
+                modelId: observability.modelId,
+                toolCallId: observability.toolCallId,
+                toolName: observability.toolName,
+                state: 'completed',
+                argumentsText: observability.argumentsText,
+                policySource: decision.policy.source,
+            });
+        }
+        return okToolResult({
             toolId: definition.tool.id,
-            error: execution.error.code,
-            message: execution.error.message,
-            args,
+            output: execution.value,
             at,
             policy: decision.policy,
         });

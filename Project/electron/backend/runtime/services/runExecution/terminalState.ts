@@ -1,14 +1,18 @@
 import { runStore, sessionStore } from '@/app/backend/persistence/stores';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
+import {
+    publishRunAbortedObservabilityEvent,
+    publishRunFailedObservabilityEvent,
+} from '@/app/backend/runtime/services/observability/publishers';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
 
 export async function moveRunToAbortedState(input: {
     profileId: string;
-    sessionId: string;
-    runId: string;
+    sessionId: `sess_${string}`;
+    runId: `run_${string}`;
     logMessage: string;
 }): Promise<void> {
     const run = await runStore.finalize(input.runId, {
@@ -32,6 +36,15 @@ export async function moveRunToAbortedState(input: {
         },
         })
     );
+    if (run.providerId && run.modelId) {
+        publishRunAbortedObservabilityEvent({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            runId: input.runId,
+            providerId: run.providerId,
+            modelId: run.modelId,
+        });
+    }
     appLog.info({
         tag: 'run-execution',
         message: input.logMessage,
@@ -43,8 +56,8 @@ export async function moveRunToAbortedState(input: {
 
 export async function moveRunToFailedState(input: {
     profileId: string;
-    sessionId: string;
-    runId: string;
+    sessionId: `sess_${string}`;
+    runId: `run_${string}`;
     errorCode: string;
     errorMessage: string;
     logMessage: string;
@@ -74,6 +87,17 @@ export async function moveRunToFailedState(input: {
         },
         })
     );
+    if (run.providerId && run.modelId) {
+        publishRunFailedObservabilityEvent({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            runId: input.runId,
+            providerId: run.providerId,
+            modelId: run.modelId,
+            errorCode: input.errorCode,
+            errorMessage: input.errorMessage,
+        });
+    }
     appLog.warn({
         tag: 'run-execution',
         message: input.logMessage,

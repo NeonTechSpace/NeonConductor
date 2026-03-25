@@ -13,6 +13,7 @@ export * from '@/app/backend/runtime/contracts/types/mcp';
 export * from '@/app/backend/runtime/contracts/types/plan';
 export * from '@/app/backend/runtime/contracts/types/orchestrator';
 export * from '@/app/backend/runtime/contracts/types/runtime';
+export * from '@/app/backend/runtime/contracts/types/observability';
 export * from '@/app/backend/runtime/contracts/types/context';
 export * from '@/app/backend/runtime/contracts/types/composer';
 export * from '@/app/backend/runtime/contracts/types/registry';

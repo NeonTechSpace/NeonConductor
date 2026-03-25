@@ -2,6 +2,7 @@ import { messageMediaStore, messageStore, runStore, sessionStore } from '@/app/b
 import { createAssistantStatusPartPayload } from '@/app/backend/runtime/contracts/types/messagePart';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
+import { publishRunStartedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
 import { decodeAttachmentBytes } from '@/app/backend/runtime/services/runExecution/contextParts';
 import {
     emitCacheResolutionEvent,
@@ -175,6 +176,18 @@ export async function persistRunStart(input: {
             }),
         })
     );
+
+    if (run.providerId && run.modelId) {
+        publishRunStartedObservabilityEvent({
+            profileId: input.input.profileId,
+            sessionId: input.input.sessionId,
+            runId: run.id,
+            providerId: run.providerId,
+            modelId: run.modelId,
+            topLevelTab: input.input.topLevelTab,
+            modeKey: input.input.modeKey,
+        });
+    }
 
     await emitCacheResolutionEvent({
         runId: run.id,

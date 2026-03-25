@@ -2,6 +2,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { log } from 'evlog';
 import { useEffect } from 'react';
 
+import { useNeonObservabilityStreamStore } from '@/web/lib/observability/eventStream';
+import { applyNeonObservabilitySubscriptionPayload } from '@/web/lib/observability/subscription';
+import { createTrpcNeonObservabilityTransport } from '@/web/lib/observability/transport';
 import { queryClient, trpcClient } from '@/web/lib/providers/trpcCore';
 import {
     isRuntimeEventRecord,
@@ -20,6 +23,8 @@ import type { ReactNode } from 'react';
 interface TRPCProviderProps {
     children: ReactNode;
 }
+
+const isDev = import.meta.env.DEV;
 
 function RuntimeEventStreamBootstrap(): ReactNode {
     const utils = trpc.useUtils();
@@ -118,11 +123,50 @@ function WindowStateStreamBootstrap(): ReactNode {
     return null;
 }
 
+function NeonObservabilityStreamBootstrap(): ReactNode {
+    const setConnecting = useNeonObservabilityStreamStore((state) => state.setConnecting);
+    const setLive = useNeonObservabilityStreamStore((state) => state.setLive);
+    const setError = useNeonObservabilityStreamStore((state) => state.setError);
+    const pushEvent = useNeonObservabilityStreamStore((state) => state.pushEvent);
+
+    useEffect(() => {
+        const transport = createTrpcNeonObservabilityTransport();
+        setConnecting();
+        const { lastSequence } = useNeonObservabilityStreamStore.getState();
+        const subscription = transport.subscribe(lastSequence > 0 ? { afterSequence: lastSequence } : {}, {
+            onData: (event) => {
+                applyNeonObservabilitySubscriptionPayload({
+                    payload: event,
+                    setLive,
+                    setError,
+                    pushEvent,
+                });
+            },
+            onError: (error) => {
+                const message = error instanceof Error ? error.message : String(error);
+                log.warn({
+                    tag: 'observability.stream',
+                    message: 'Neon observability subscription failed.',
+                    error: message,
+                });
+                setError(message);
+            },
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [setConnecting, setError, setLive, pushEvent]);
+
+    return null;
+}
+
 export function TRPCProvider({ children }: TRPCProviderProps): ReactNode {
     return (
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
             <QueryClientProvider client={queryClient}>
                 <RuntimeEventStreamBootstrap />
+                {isDev ? <NeonObservabilityStreamBootstrap /> : null}
                 <WindowStateStreamBootstrap />
                 {children}
             </QueryClientProvider>

@@ -3,6 +3,7 @@ import {
     createParser,
     readEnumValue,
     readBoolean,
+    readEntityId,
     readObject,
     readOptionalBoolean,
     readOptionalNumber,
@@ -10,6 +11,7 @@ import {
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
     ContextBudgetInput,
+    NeonObservabilitySubscriptionInput,
     RuntimeFactoryResetInput,
     RuntimeEventsSubscriptionInput,
     RuntimeRegisterWorkspaceRootInput,
@@ -81,6 +83,29 @@ export function parseRuntimeResetInput(input: unknown): RuntimeResetInput {
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
         ...(dryRun ? { dryRun } : {}),
         ...(confirm !== undefined ? { confirm } : {}),
+    };
+}
+
+export function parseNeonObservabilitySubscriptionInput(input: unknown): NeonObservabilitySubscriptionInput {
+    if (input === undefined) {
+        return {};
+    }
+
+    const source = readObject(input, 'input');
+    const afterSequence = readOptionalNumber(source.afterSequence, 'afterSequence');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    const sessionId = source.sessionId !== undefined ? readEntityId(source.sessionId, 'sessionId', 'sess') : undefined;
+    const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
+
+    if (afterSequence !== undefined && (!Number.isInteger(afterSequence) || afterSequence < 0)) {
+        throw new Error('Invalid "afterSequence": expected non-negative integer.');
+    }
+
+    return {
+        ...(afterSequence !== undefined ? { afterSequence } : {}),
+        ...(profileId ? { profileId } : {}),
+        ...(sessionId ? { sessionId } : {}),
+        ...(runId ? { runId } : {}),
     };
 }
 
@@ -167,6 +192,7 @@ export function parseRuntimeSetWorkspacePreferenceInput(input: unknown): Runtime
 }
 
 export const runtimeEventsSubscriptionInputSchema = createParser(parseRuntimeEventsSubscriptionInput);
+export const neonObservabilitySubscriptionInputSchema = createParser(parseNeonObservabilitySubscriptionInput);
 export const windowStateSubscriptionInputSchema = createParser(parseWindowStateSubscriptionInput);
 export const runtimeResetInputSchema = createParser(parseRuntimeResetInput);
 export const runtimeFactoryResetInputSchema = createParser(parseRuntimeFactoryResetInput);

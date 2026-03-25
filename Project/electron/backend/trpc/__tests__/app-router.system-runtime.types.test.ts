@@ -72,6 +72,12 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         }>;
     }>();
     expectTypeOf<AppRouterInputs['runtime']['subscribeEvents']>().toExtend<{ afterSequence?: number }>();
+    expectTypeOf<AppRouterInputs['runtime']['subscribeObservability']>().toExtend<{
+        afterSequence?: number;
+        profileId?: string;
+        sessionId?: string;
+        runId?: string;
+    }>();
     expectTypeOf<AppRouterInputs['runtime']['reset']>().toExtend<{
         target: 'workspace' | 'workspace_all' | 'profile_settings' | 'full';
         profileId?: string;

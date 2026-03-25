@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    isNeonObservabilityEvent,
     isRuntimeEventRecord,
     isSubscriptionControlPayload,
     isWindowStateEvent,
@@ -70,5 +71,26 @@ describe('subscriptionPayloads', () => {
             })
         ).toBe(true);
         expect(isWindowStateEvent(undefined)).toBe(false);
+    });
+
+    it('recognizes Neon observability events with shared metadata fields', () => {
+        expect(
+            isNeonObservabilityEvent({
+                sequence: 1,
+                at: '2026-03-25T16:00:00.000Z',
+                kind: 'stream_chunk',
+                profileId: 'profile_default',
+                sessionId: 'sess_alpha',
+                runId: 'run_alpha',
+                providerId: 'openai',
+                modelId: 'gpt-test',
+                source: 'provider.stream',
+                chunk: {
+                    kind: 'text_delta',
+                    text: 'hello',
+                },
+            })
+        ).toBe(true);
+        expect(isNeonObservabilityEvent(undefined)).toBe(false);
     });
 });

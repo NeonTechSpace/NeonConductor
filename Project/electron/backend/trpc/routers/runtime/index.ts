@@ -3,6 +3,9 @@ import { observable } from '@trpc/server/observable';
 import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 import { workspaceRootStore } from '@/app/backend/persistence/stores';
 import {
+    neonObservabilitySubscriptionInputSchema,
+    type NeonObservabilitySubscriptionInput,
+    type NeonObservabilityEvent,
     profileInputSchema,
     runtimeFactoryResetInputSchema,
     runtimeEventsSubscriptionInputSchema,
@@ -13,6 +16,7 @@ import {
 import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
 import { runtimeResetEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
 import { runtimeFactoryResetService } from '@/app/backend/runtime/services/runtimeFactoryReset';
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
@@ -31,6 +35,35 @@ function waitForNextRuntimeEvent(cursor: number, signal: AbortSignal): Promise<R
             cleanup();
             resolve(event);
         });
+
+        const onAbort = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        const cleanup = () => {
+            unsubscribe();
+            signal.removeEventListener('abort', onAbort);
+        };
+
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+}
+
+function waitForNextNeonObservabilityEvent(
+    cursor: number,
+    filter: Pick<NeonObservabilitySubscriptionInput, 'profileId' | 'sessionId' | 'runId'>,
+    signal: AbortSignal
+): Promise<NeonObservabilityEvent | null> {
+    return new Promise((resolve) => {
+        const unsubscribe = neonObservabilityService.subscribe((event) => {
+            if (event.sequence <= cursor) {
+                return;
+            }
+
+            cleanup();
+            resolve(event);
+        }, filter);
 
         const onAbort = () => {
             cleanup();
@@ -139,6 +172,84 @@ export const runtimeRouter = router({
             };
         })
     ),
+    subscribeObservability: publicProcedure
+        .input(neonObservabilitySubscriptionInputSchema)
+        .subscription(({ input, signal }) =>
+            observable<NeonObservabilityEvent>((emit) => {
+                if (!neonObservabilityService.isEnabled()) {
+                    emit.complete();
+                    return () => undefined;
+                }
+
+                let active = true;
+                let unsubscribeAbort: (() => void) | null = null;
+
+                const run = async () => {
+                    let cursor = input.afterSequence ?? 0;
+                    try {
+                        const replayEvents = neonObservabilityService.list(input, 500);
+                        for (const event of replayEvents) {
+                            if (!active || signal?.aborted) {
+                                return;
+                            }
+
+                            cursor = Math.max(cursor, event.sequence);
+                            emit.next(event);
+                        }
+
+                        if (!signal) {
+                            return;
+                        }
+
+                        const onAbort = () => {
+                            active = false;
+                            emit.complete();
+                        };
+                        signal.addEventListener('abort', onAbort, { once: true });
+                        unsubscribeAbort = () => {
+                            signal.removeEventListener('abort', onAbort);
+                        };
+
+                        while (active && !signal.aborted) {
+                            const filter: Pick<NeonObservabilitySubscriptionInput, 'profileId' | 'sessionId' | 'runId'> = {};
+                            if (input.profileId) {
+                                filter.profileId = input.profileId;
+                            }
+                            if (input.sessionId) {
+                                filter.sessionId = input.sessionId;
+                            }
+                            if (input.runId) {
+                                filter.runId = input.runId;
+                            }
+
+                            const nextEvent = await waitForNextNeonObservabilityEvent(
+                                cursor,
+                                filter,
+                                signal
+                            );
+                            if (!active || !nextEvent) {
+                                break;
+                            }
+
+                            cursor = Math.max(cursor, nextEvent.sequence);
+                            emit.next(nextEvent);
+                        }
+                    } catch (error) {
+                        emit.error(error instanceof Error ? error : new Error('Neon observability subscription failed.'));
+                        return;
+                    }
+
+                    emit.complete();
+                };
+
+                void run();
+
+                return () => {
+                    active = false;
+                    unsubscribeAbort?.();
+                };
+            })
+        ),
     factoryReset: publicProcedure.input(runtimeFactoryResetInputSchema).mutation(async ({ input }) => {
         const factoryResetResult = (await runtimeFactoryResetService.reset(input)).match(
             (value) => value,

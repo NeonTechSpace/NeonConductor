@@ -25,8 +25,15 @@ import {
 import {
     createMessagePartRecorder,
     emitMessageCreatedEvent,
+    emitToolResultObservabilityEvent,
     emitTransportSelectionEvent,
 } from '@/app/backend/runtime/services/runExecution/eventing';
+import {
+    publishProviderPartObservabilityEvent,
+    publishRunCompletedObservabilityEvent,
+    publishToolStateChangedObservabilityEvent,
+    publishUsageObservabilityEvent,
+} from '@/app/backend/runtime/services/observability/publishers';
 import { createReasoningPartFromProviderPart } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type {
     RunContextMessage,
@@ -65,6 +72,8 @@ interface ExecutableToolCall {
 
 interface ToolResultContext {
     message: ProviderContextMessage;
+    outputText: string;
+    isError: boolean;
 }
 
 const MAX_AGENT_TOOL_ROUNDS = 12;
@@ -115,7 +124,28 @@ async function appendAssistantLifecycleStatusPart(input: {
     code: 'received' | 'stalled' | 'failed_before_output';
     label: string;
     elapsedMs?: number;
+    observabilityContext?: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        runId: EntityId<'run'>;
+        providerId: RuntimeProviderId;
+        modelId: string;
+    };
 }): Promise<void> {
+    if (input.observabilityContext) {
+        publishProviderPartObservabilityEvent({
+            ...input.observabilityContext,
+            part: {
+                partType: 'status',
+                payload: createAssistantStatusPartPayload({
+                    code: input.code,
+                    label: input.label,
+                    ...(input.elapsedMs !== undefined ? { elapsedMs: input.elapsedMs } : {}),
+                }),
+            },
+        });
+    }
+
     await input.partRecorder.recordPart({
         partType: 'status',
         payload: createAssistantStatusPartPayload({
@@ -346,8 +376,8 @@ function createAssistantTurnCollector() {
 
 async function createRuntimeMessage(input: {
     profileId: string;
-    sessionId: string;
-    runId: string;
+    sessionId: EntityId<'sess'>;
+    runId: EntityId<'run'>;
     role: 'assistant' | 'tool';
 }): Promise<Awaited<ReturnType<typeof messageStore.createMessage>>> {
     const message = await messageStore.createMessage({
@@ -367,8 +397,8 @@ async function createRuntimeMessage(input: {
 
 async function persistToolResultMessage(input: {
     profileId: string;
-    sessionId: string;
-    runId: string;
+    sessionId: EntityId<'sess'>;
+    runId: EntityId<'run'>;
     toolCall: ExecutableToolCall;
     toolResult: ToolExecutionResult;
 }): Promise<ToolResultContext> {
@@ -397,19 +427,21 @@ async function persistToolResultMessage(input: {
     });
 
     return {
-            message: {
-                role: 'tool',
-                parts: [
-                    {
-                        type: 'tool_result',
-                        callId: input.toolCall.callId,
-                        toolName: input.toolCall.toolName,
-                        outputText: serializedResult.outputText,
-                        isError: serializedResult.isError,
-                    },
-                ],
-            },
-        };
+        message: {
+            role: 'tool',
+            parts: [
+                {
+                    type: 'tool_result',
+                    callId: input.toolCall.callId,
+                    toolName: input.toolCall.toolName,
+                    outputText: serializedResult.outputText,
+                    isError: serializedResult.isError,
+                },
+            ],
+        },
+        outputText: serializedResult.outputText,
+        isError: serializedResult.isError,
+    };
 }
 
 export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionResult<void>> {
@@ -461,6 +493,13 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                           code: 'stalled',
                           label: 'Still waiting for the first response chunk...',
                           elapsedMs: FIRST_OUTPUT_STALLED_MS,
+                          observabilityContext: {
+                              profileId: input.profileId,
+                              sessionId: input.sessionId,
+                              runId: input.runId,
+                              providerId: input.providerId,
+                              modelId: input.modelId,
+                          },
                       }).catch(() => undefined);
                   }, FIRST_OUTPUT_STALLED_MS);
         const timeoutTimer: ReturnType<typeof setTimeout> | null =
@@ -518,11 +557,27 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                         firstRenderableOutputReceived = true;
                         disposeFirstOutputWatchdog();
                     }
+                    publishProviderPartObservabilityEvent({
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        runId: input.runId,
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        part,
+                    });
                     await partRecorder.recordPart(part);
                     assistantCollector.recordPart(part);
                 },
                 onUsage: (nextUsage: ProviderRuntimeUsage) => {
                     usage = accumulateUsage(usage, nextUsage);
+                    publishUsageObservabilityEvent({
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        runId: input.runId,
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        usage: nextUsage,
+                    });
                 },
                 onTransportSelected: async (selection) => {
                     if (
@@ -565,6 +620,13 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                     code: 'failed_before_output',
                     label: 'Agent timed out before sending the first response chunk.',
                     elapsedMs: FIRST_OUTPUT_TIMEOUT_MS,
+                    observabilityContext: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        runId: input.runId,
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                    },
                 });
 
                 return errRunExecution(
@@ -632,6 +694,13 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                     },
                 })
             );
+            publishRunCompletedObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                runId: input.runId,
+                providerId: input.providerId,
+                modelId: input.modelId,
+            });
 
             const usageRecordInput: RunUsageWriteInput = {
                 runId: input.runId,
@@ -680,6 +749,28 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
 
         for (const toolCall of toolCalls) {
             assertNotAborted(input.signal);
+            publishToolStateChangedObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                runId: input.runId,
+                providerId: input.providerId,
+                modelId: input.modelId,
+                toolCallId: toolCall.callId,
+                toolName: toolCall.toolName,
+                state: 'proposed',
+                argumentsText: toolCall.argumentsText,
+            });
+            publishToolStateChangedObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                runId: input.runId,
+                providerId: input.providerId,
+                modelId: input.modelId,
+                toolCallId: toolCall.callId,
+                toolName: toolCall.toolName,
+                state: 'input_complete',
+                argumentsText: toolCall.argumentsText,
+            });
 
             if (!allowedToolIds.has(toolCall.toolName)) {
                 return errRunExecution(
@@ -688,15 +779,26 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                 );
             }
 
-            const toolResult = await toolExecutionService.invoke({
-                profileId: input.profileId,
-                toolId: toolCall.toolName,
-                topLevelTab: input.topLevelTab,
-                modeKey: input.modeKey,
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
-                args: toolCall.args,
-            });
+            const toolResult = await toolExecutionService.invoke(
+                {
+                    profileId: input.profileId,
+                    toolId: toolCall.toolName,
+                    topLevelTab: input.topLevelTab,
+                    modeKey: input.modeKey,
+                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                    ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
+                    args: toolCall.args,
+                },
+                {
+                    sessionId: input.sessionId,
+                    runId: input.runId,
+                    providerId: input.providerId,
+                    modelId: input.modelId,
+                    toolCallId: toolCall.callId,
+                    toolName: toolCall.toolName,
+                    argumentsText: toolCall.argumentsText,
+                }
+            );
 
             const persistedToolResult = await persistToolResultMessage({
                 profileId: input.profileId,
@@ -706,6 +808,17 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                 toolResult,
             });
             conversationMessages.push(persistedToolResult.message);
+            emitToolResultObservabilityEvent({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                runId: input.runId,
+                providerId: input.providerId,
+                modelId: input.modelId,
+                toolCallId: toolCall.callId,
+                toolName: toolCall.toolName,
+                outputText: persistedToolResult.outputText,
+                isError: persistedToolResult.isError,
+            });
         }
 
         if (roundIndex === MAX_AGENT_TOOL_ROUNDS - 1) {
@@ -730,6 +843,13 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
             }),
             code: 'received',
             label: 'Agent received message',
+            observabilityContext: {
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                runId: input.runId,
+                providerId: input.providerId,
+                modelId: input.modelId,
+            },
         });
         assistantMessageId = nextAssistantMessage.id;
     }
