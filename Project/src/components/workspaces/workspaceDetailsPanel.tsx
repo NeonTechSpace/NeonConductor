@@ -1,4 +1,5 @@
 import { WorkspaceDefaultsSection, formatTimestamp } from '@/web/components/workspaces/workspacesSurfaceSections';
+import { WorkspaceEnvironmentSection } from '@/web/components/workspaces/workspaceEnvironmentSection';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
@@ -181,6 +182,13 @@ export function WorkspaceDetailsPanel(input: {
                         providers={input.providers}
                         providerModels={input.providerModels}
                         defaults={input.defaults}
+                        {...(input.selectedWorkspacePreference ? { workspacePreference: input.selectedWorkspacePreference } : {})}
+                    />
+
+                    <WorkspaceEnvironmentSection
+                        key={`environment-${input.selectedWorkspace.fingerprint}`}
+                        profileId={input.profileId}
+                        workspaceFingerprint={input.selectedWorkspace.fingerprint}
                         {...(input.selectedWorkspacePreference ? { workspacePreference: input.selectedWorkspacePreference } : {})}
                     />
 

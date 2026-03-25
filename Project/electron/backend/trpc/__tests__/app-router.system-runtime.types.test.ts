@@ -87,6 +87,9 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
     }>();
     expectTypeOf<AppRouterInputs['runtime']['getDiagnosticSnapshot']>().toExtend<{ profileId: string }>();
     expectTypeOf<AppRouterInputs['runtime']['getShellBootstrap']>().toExtend<{ profileId: string }>();
+    expectTypeOf<AppRouterInputs['runtime']['inspectWorkspaceEnvironment']>().toExtend<
+        { profileId: string; workspaceFingerprint: string } | { profileId: string; absolutePath: string }
+    >();
     expectTypeOf<AppRouterInputs['system']['reportBootStatus']>().toExtend<BootStatusSnapshot>();
     expectTypeOf<AppRouterOutputs['system']['reportBootStatus']>().toExtend<{ accepted: boolean }>();
     expectTypeOf<AppRouterInputs['system']['openPath']>().toExtend<{ path: string }>();
@@ -142,6 +145,32 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
             providerId: string;
             modelId: string;
         }>;
+        workspacePreferences: Array<{
+            preferredVcs?: 'auto' | 'jj' | 'git';
+            preferredPackageManager?: 'auto' | 'pnpm' | 'npm' | 'yarn' | 'bun';
+        }>;
+    }>();
+    expectTypeOf<AppRouterOutputs['runtime']['inspectWorkspaceEnvironment']>().toExtend<{
+        snapshot: {
+            platform: 'win32' | 'darwin' | 'linux';
+            shellFamily: 'powershell' | 'posix_sh';
+            effectivePreferences: {
+                vcs: {
+                    family: 'jj' | 'git' | 'unknown';
+                    source: 'detected' | 'override';
+                    requestedOverride: 'auto' | 'jj' | 'git';
+                    available: boolean;
+                    mismatch: boolean;
+                };
+                packageManager: {
+                    family: 'pnpm' | 'npm' | 'yarn' | 'bun' | 'unknown';
+                    source: 'detected' | 'override';
+                    requestedOverride: 'auto' | 'pnpm' | 'npm' | 'yarn' | 'bun';
+                    available: boolean;
+                    mismatch: boolean;
+                };
+            };
+        };
     }>();
     expectTypeOf<AppRouterOutputs['registry']['listResolved']>().toExtend<{
         paths: { globalAssetsRoot: string; workspaceAssetsRoot?: string };

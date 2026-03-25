@@ -11,6 +11,7 @@ import {
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
     ContextBudgetInput,
+    RuntimeInspectWorkspaceEnvironmentInput,
     NeonObservabilitySubscriptionInput,
     RuntimeFactoryResetInput,
     RuntimeEventsSubscriptionInput,
@@ -21,6 +22,10 @@ import type {
 } from '@/app/backend/runtime/contracts/types';
 import { FACTORY_RESET_CONFIRMATION_TEXT } from '@/app/backend/runtime/contracts/types';
 import { providerIds, topLevelTabs } from '@/shared/contracts';
+import {
+    workspacePreferredPackageManagerValues,
+    workspacePreferredVcsValues,
+} from '@/app/backend/runtime/contracts/types/runtime';
 
 export function parseRuntimeEventsSubscriptionInput(input: unknown): RuntimeEventsSubscriptionInput {
     if (input === undefined) {
@@ -169,6 +174,16 @@ export function parseRuntimeSetWorkspacePreferenceInput(input: unknown): Runtime
         ? undefined
         : readEnumValue(source.defaultProviderId, 'defaultProviderId', providerIds);
     const defaultModelId = readOptionalString(source.defaultModelId, 'defaultModelId');
+    const preferredVcs = source.preferredVcs === undefined
+        ? undefined
+        : readEnumValue(source.preferredVcs, 'preferredVcs', workspacePreferredVcsValues);
+    const preferredPackageManager = source.preferredPackageManager === undefined
+        ? undefined
+        : readEnumValue(
+              source.preferredPackageManager,
+              'preferredPackageManager',
+              workspacePreferredPackageManagerValues
+          );
 
     if (!profileId || profileId.trim().length === 0) {
         throw new Error('Invalid "profileId": expected non-empty string.');
@@ -188,6 +203,38 @@ export function parseRuntimeSetWorkspacePreferenceInput(input: unknown): Runtime
         ...(defaultTopLevelTab ? { defaultTopLevelTab } : {}),
         ...(defaultProviderId ? { defaultProviderId } : {}),
         ...(defaultModelId?.trim().length ? { defaultModelId: defaultModelId.trim() } : {}),
+        ...(preferredVcs ? { preferredVcs } : {}),
+        ...(preferredPackageManager ? { preferredPackageManager } : {}),
+    };
+}
+
+export function parseRuntimeInspectWorkspaceEnvironmentInput(input: unknown): RuntimeInspectWorkspaceEnvironmentInput {
+    const source = readObject(input, 'input');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    const absolutePath = readOptionalString(source.absolutePath, 'absolutePath');
+
+    if (!profileId || profileId.trim().length === 0) {
+        throw new Error('Invalid "profileId": expected non-empty string.');
+    }
+
+    const hasWorkspaceFingerprint = Boolean(workspaceFingerprint && workspaceFingerprint.trim().length > 0);
+    const hasAbsolutePath = Boolean(absolutePath && absolutePath.trim().length > 0);
+
+    if (hasWorkspaceFingerprint === hasAbsolutePath) {
+        throw new Error('Invalid workspace environment target: provide exactly one of "workspaceFingerprint" or "absolutePath".');
+    }
+
+    if (hasWorkspaceFingerprint) {
+        return {
+            profileId: profileId.trim(),
+            workspaceFingerprint: workspaceFingerprint!.trim(),
+        };
+    }
+
+    return {
+        profileId: profileId.trim(),
+        absolutePath: absolutePath!.trim(),
     };
 }
 
@@ -199,3 +246,4 @@ export const runtimeFactoryResetInputSchema = createParser(parseRuntimeFactoryRe
 export const contextBudgetInputSchema = createParser(parseContextBudgetInput);
 export const runtimeRegisterWorkspaceRootInputSchema = createParser(parseRuntimeRegisterWorkspaceRootInput);
 export const runtimeSetWorkspacePreferenceInputSchema = createParser(parseRuntimeSetWorkspacePreferenceInput);
+export const runtimeInspectWorkspaceEnvironmentInputSchema = createParser(parseRuntimeInspectWorkspaceEnvironmentInput);

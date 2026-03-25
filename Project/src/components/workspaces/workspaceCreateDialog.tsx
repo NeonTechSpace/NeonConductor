@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
+import { WorkspaceEnvironmentPreviewCard } from '@/web/components/workspaces/workspaceEnvironmentSection';
 import {
     buildWorkspaceModelOptions,
     resolveWorkspaceDefaultDraft,
     topLevelTabLabel,
 } from '@/web/components/workspaces/workspacesSurfaceSections';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
+import { trpc } from '@/web/trpc/client';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
@@ -65,6 +68,7 @@ export async function submitWorkspaceCreateRequest(input: {
 }
 
 function WorkspaceCreateDialogBody({
+    profileId,
     providers,
     providerModels,
     defaults,
@@ -88,8 +92,19 @@ function WorkspaceCreateDialogBody({
     );
     const [workspaceDefaultModelIdDraft, setWorkspaceDefaultModelIdDraft] = useState(initialDraft.modelId);
     const [submitError, setSubmitError] = useState<string | undefined>(undefined);
+    const deferredWorkspacePathDraft = useDeferredValue(workspacePathDraft.trim());
     const desktopBridge = typeof window !== 'undefined' ? window.neonDesktop : undefined;
     const hasDesktopDirectoryPicker = Boolean(desktopBridge);
+    const environmentQuery = trpc.runtime.inspectWorkspaceEnvironment.useQuery(
+        {
+            profileId,
+            absolutePath: deferredWorkspacePathDraft.length > 0 ? deferredWorkspacePathDraft : '.',
+        },
+        {
+            enabled: deferredWorkspacePathDraft.length > 0,
+            ...PROGRESSIVE_QUERY_OPTIONS,
+        }
+    );
     const createDefaultProvider = workspaceDefaultProviderIdDraft
         ? providers.find((provider) => provider.id === workspaceDefaultProviderIdDraft)
         : undefined;
@@ -201,13 +216,12 @@ function WorkspaceCreateDialogBody({
                     </p>
                 </div>
 
-                <div className='rounded-2xl border border-border/70 bg-card/35 px-4 py-3 text-sm'>
-                    <p className='font-medium'>Detection preview</p>
-                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
-                        NeonConductor will treat the selected folder as the workspace root and use it for sessions,
-                        tool execution, and registry discovery.
-                    </p>
-                </div>
+                <WorkspaceEnvironmentPreviewCard
+                    isLoading={environmentQuery.isLoading}
+                    errorMessage={environmentQuery.error?.message}
+                    snapshot={environmentQuery.data?.snapshot}
+                    emptyMessage='NeonConductor will treat the selected folder as the workspace root and use it for sessions, tool execution, and registry discovery.'
+                />
 
                 <div className='space-y-4 rounded-2xl border border-border/70 bg-card/35 px-4 py-4'>
                     <div className='space-y-1'>

@@ -12,6 +12,11 @@ import { listResolvedRegistry, resolveRulesetsByAssetKeys, resolveSkillfilesByAs
 import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import {
+    buildWorkspaceEnvironmentGuidance,
+    workspaceEnvironmentService,
+} from '@/app/backend/runtime/services/environment/service';
+import { getWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
+import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
@@ -50,6 +55,44 @@ function buildWorkspacePrelude(input: {
     );
 }
 
+async function buildWorkspacePreludeMessages(input: {
+    profileId: string;
+    workspaceFingerprint: string;
+    workspaceContext: Exclude<Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>, null | { kind: 'detached' }>;
+}): Promise<RunContextMessage[]> {
+    const messages = [buildWorkspacePrelude({ workspaceContext: input.workspaceContext })];
+    const workspacePreference = await getWorkspacePreference(input.profileId, input.workspaceFingerprint);
+    const environmentSnapshotResult = await workspaceEnvironmentService.inspectWorkspaceEnvironment({
+        workspaceRootPath: input.workspaceContext.absolutePath,
+        ...(input.workspaceContext.kind === 'sandbox'
+            ? { baseWorkspaceRootPath: input.workspaceContext.baseWorkspace.absolutePath }
+            : {}),
+        ...(workspacePreference
+            ? {
+                  overrides: {
+                      ...(workspacePreference.preferredVcs
+                          ? { preferredVcs: workspacePreference.preferredVcs }
+                          : {}),
+                      ...(workspacePreference.preferredPackageManager
+                          ? { preferredPackageManager: workspacePreference.preferredPackageManager }
+                          : {}),
+                  },
+              }
+            : {}),
+    });
+
+    if (environmentSnapshotResult.isOk()) {
+        messages.push(
+            createSystemMessage(
+                'Environment guidance',
+                buildWorkspaceEnvironmentGuidance(environmentSnapshotResult.value)
+            )
+        );
+    }
+
+    return messages;
+}
+
 function buildAgentPrelude(input: {
     appGlobalInstructions?: string;
     profileGlobalInstructions?: string;
@@ -58,11 +101,11 @@ function buildAgentPrelude(input: {
     rulesets: RulesetDefinition[];
     projectInstructions: ProjectInstructionDocument[];
     skillfiles: SkillfileDefinition[];
-    workspacePrelude?: RunContextMessage;
+    workspacePrelude?: RunContextMessage[];
 }): RunContextMessage[] {
     const prelude: RunContextMessage[] = [];
     if (input.workspacePrelude) {
-        prelude.push(input.workspacePrelude);
+        prelude.push(...input.workspacePrelude);
     }
 
     const appGlobalInstructions = readPromptText(input.appGlobalInstructions);
@@ -250,6 +293,14 @@ export async function buildSessionSystemPrelude(input: {
         }
     }
     const activeSkillfiles = await loadActiveSkillBodies(resolvedSkills.skillfiles);
+    const workspacePrelude =
+        workspaceContext && workspaceContext.kind !== 'detached' && input.workspaceFingerprint
+            ? await buildWorkspacePreludeMessages({
+                  profileId: input.profileId,
+                  workspaceFingerprint: input.workspaceFingerprint,
+                  workspaceContext,
+              })
+            : undefined;
 
     return okRunExecution(
         buildAgentPrelude({
@@ -260,9 +311,7 @@ export async function buildSessionSystemPrelude(input: {
             rulesets: Array.from(activeRulesetsByAssetKey.values()),
             projectInstructions,
             skillfiles: activeSkillfiles,
-            ...(workspaceContext && workspaceContext.kind !== 'detached'
-                ? { workspacePrelude: buildWorkspacePrelude({ workspaceContext }) }
-                : {}),
+            ...(workspacePrelude ? { workspacePrelude } : {}),
         })
     );
 }

@@ -161,12 +161,99 @@ export interface ContextBudgetInput {
     contextBudget: ContextBudget;
 }
 
+export const workspacePreferredVcsValues = ['auto', 'jj', 'git'] as const;
+export type WorkspacePreferredVcs = (typeof workspacePreferredVcsValues)[number];
+
+export const workspacePreferredPackageManagerValues = ['auto', 'pnpm', 'npm', 'yarn', 'bun'] as const;
+export type WorkspacePreferredPackageManager = (typeof workspacePreferredPackageManagerValues)[number];
+
+export type WorkspaceDetectedVcs = 'jj' | 'git' | 'unknown';
+export type WorkspaceDetectedPackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun' | 'unknown';
+export type WorkspaceDetectedRuntimeFamily = 'node' | 'python' | 'unknown';
+export type WorkspaceDetectedScriptRunner = 'tsx' | 'node' | 'python' | 'unknown';
+
+export interface WorkspaceEnvironmentMarkers {
+    hasJjDirectory: boolean;
+    hasGitDirectory: boolean;
+    hasPackageJson: boolean;
+    hasPnpmLock: boolean;
+    hasPackageLock: boolean;
+    hasYarnLock: boolean;
+    hasBunLock: boolean;
+    hasTsconfigJson: boolean;
+    hasPyprojectToml: boolean;
+    hasRequirementsTxt: boolean;
+}
+
+export interface WorkspaceEnvironmentCommandAvailabilityEntry {
+    available: boolean;
+    executablePath?: string;
+}
+
+export interface WorkspaceEnvironmentCommandAvailability {
+    jj: WorkspaceEnvironmentCommandAvailabilityEntry;
+    git: WorkspaceEnvironmentCommandAvailabilityEntry;
+    node: WorkspaceEnvironmentCommandAvailabilityEntry;
+    python: WorkspaceEnvironmentCommandAvailabilityEntry;
+    python3: WorkspaceEnvironmentCommandAvailabilityEntry;
+    pnpm: WorkspaceEnvironmentCommandAvailabilityEntry;
+    npm: WorkspaceEnvironmentCommandAvailabilityEntry;
+    yarn: WorkspaceEnvironmentCommandAvailabilityEntry;
+    bun: WorkspaceEnvironmentCommandAvailabilityEntry;
+    tsx: WorkspaceEnvironmentCommandAvailabilityEntry;
+}
+
+export interface WorkspaceEnvironmentDetectedPreferences {
+    vcs: WorkspaceDetectedVcs;
+    packageManager: WorkspaceDetectedPackageManager;
+    runtime: WorkspaceDetectedRuntimeFamily;
+    scriptRunner: WorkspaceDetectedScriptRunner;
+}
+
+export interface WorkspaceEnvironmentResolvedPreference<TFamily extends string, TOverride extends string> {
+    family: TFamily | 'unknown';
+    source: 'detected' | 'override';
+    requestedOverride: TOverride;
+    available: boolean;
+    mismatch: boolean;
+}
+
+export interface WorkspaceEnvironmentEffectivePreferences {
+    vcs: WorkspaceEnvironmentResolvedPreference<Exclude<WorkspacePreferredVcs, 'auto'>, WorkspacePreferredVcs>;
+    packageManager: WorkspaceEnvironmentResolvedPreference<
+        Exclude<WorkspacePreferredPackageManager, 'auto'>,
+        WorkspacePreferredPackageManager
+    >;
+    runtime: WorkspaceDetectedRuntimeFamily;
+    scriptRunner: WorkspaceDetectedScriptRunner;
+}
+
+export interface WorkspaceEnvironmentOverrides {
+    preferredVcs: WorkspacePreferredVcs;
+    preferredPackageManager: WorkspacePreferredPackageManager;
+}
+
+export interface WorkspaceEnvironmentSnapshot {
+    platform: 'win32' | 'darwin' | 'linux';
+    shellFamily: 'powershell' | 'posix_sh';
+    workspaceRootPath: string;
+    baseWorkspaceRootPath?: string;
+    markers: WorkspaceEnvironmentMarkers;
+    availableCommands: WorkspaceEnvironmentCommandAvailability;
+    detectedPreferences: WorkspaceEnvironmentDetectedPreferences;
+    effectivePreferences: WorkspaceEnvironmentEffectivePreferences;
+    overrides: WorkspaceEnvironmentOverrides;
+    notes: string[];
+}
+
 export interface WorkspacePreferenceRecord {
     profileId: string;
     workspaceFingerprint: string;
     defaultTopLevelTab?: TopLevelTab;
     defaultProviderId?: RuntimeProviderId;
     defaultModelId?: string;
+    preferredVcs?: WorkspacePreferredVcs;
+    preferredPackageManager?: WorkspacePreferredPackageManager;
     updatedAt: string;
 }
 
@@ -175,8 +262,24 @@ export interface RuntimeSetWorkspacePreferenceInput extends ProfileInput {
     defaultTopLevelTab?: TopLevelTab;
     defaultProviderId?: RuntimeProviderId;
     defaultModelId?: string;
+    preferredVcs?: WorkspacePreferredVcs;
+    preferredPackageManager?: WorkspacePreferredPackageManager;
 }
 
 export interface RuntimeSetWorkspacePreferenceResult {
     workspacePreference: WorkspacePreferenceRecord;
+}
+
+export type RuntimeInspectWorkspaceEnvironmentInput =
+    | (ProfileInput & {
+          workspaceFingerprint: string;
+          absolutePath?: undefined;
+      })
+    | (ProfileInput & {
+          absolutePath: string;
+          workspaceFingerprint?: undefined;
+      });
+
+export interface RuntimeInspectWorkspaceEnvironmentResult {
+    snapshot: WorkspaceEnvironmentSnapshot;
 }

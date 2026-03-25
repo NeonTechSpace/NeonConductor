@@ -4,6 +4,12 @@ import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 import { providerIds, topLevelTabs, type RuntimeProviderId, type TopLevelTab } from '@/shared/contracts';
+import {
+    workspacePreferredPackageManagerValues,
+    workspacePreferredVcsValues,
+    type WorkspacePreferredPackageManager,
+    type WorkspacePreferredVcs,
+} from '@/app/backend/runtime/contracts/types/runtime';
 
 const WORKSPACE_PREFERENCES_SETTING_KEY = 'workspace_preferences';
 
@@ -12,6 +18,8 @@ interface PersistedWorkspacePreferenceRecord {
     defaultTopLevelTab?: TopLevelTab;
     defaultProviderId?: RuntimeProviderId;
     defaultModelId?: string;
+    preferredVcs?: WorkspacePreferredVcs;
+    preferredPackageManager?: WorkspacePreferredPackageManager;
     updatedAt: string;
 }
 
@@ -21,6 +29,17 @@ function isRuntimeProviderId(value: unknown): value is RuntimeProviderId {
 
 function isTopLevelTab(value: unknown): value is TopLevelTab {
     return typeof value === 'string' && topLevelTabs.includes(value as TopLevelTab);
+}
+
+function isWorkspacePreferredVcs(value: unknown): value is WorkspacePreferredVcs {
+    return typeof value === 'string' && workspacePreferredVcsValues.includes(value as WorkspacePreferredVcs);
+}
+
+function isWorkspacePreferredPackageManager(value: unknown): value is WorkspacePreferredPackageManager {
+    return (
+        typeof value === 'string' &&
+        workspacePreferredPackageManagerValues.includes(value as WorkspacePreferredPackageManager)
+    );
 }
 
 function isPersistedWorkspacePreferenceRecord(value: unknown): value is PersistedWorkspacePreferenceRecord {
@@ -41,6 +60,17 @@ function isPersistedWorkspacePreferenceRecord(value: unknown): value is Persiste
     }
 
     if (value.defaultModelId !== undefined && !isJsonString(value.defaultModelId)) {
+        return false;
+    }
+
+    if (value.preferredVcs !== undefined && !isWorkspacePreferredVcs(value.preferredVcs)) {
+        return false;
+    }
+
+    if (
+        value.preferredPackageManager !== undefined &&
+        !isWorkspacePreferredPackageManager(value.preferredPackageManager)
+    ) {
         return false;
     }
 
@@ -65,6 +95,8 @@ function mapWorkspacePreferenceRecord(
                   defaultModelId: canonicalizeProviderModelId(value.defaultProviderId, value.defaultModelId),
               }
             : {}),
+        ...(value.preferredVcs ? { preferredVcs: value.preferredVcs } : {}),
+        ...(value.preferredPackageManager ? { preferredPackageManager: value.preferredPackageManager } : {}),
         updatedAt: value.updatedAt,
     };
 }
@@ -90,12 +122,22 @@ export async function listWorkspacePreferences(profileId: string): Promise<Works
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
+export async function getWorkspacePreference(
+    profileId: string,
+    workspaceFingerprint: string
+): Promise<WorkspacePreferenceRecord | undefined> {
+    const preferences = await listWorkspacePreferences(profileId);
+    return preferences.find((preference) => preference.workspaceFingerprint === workspaceFingerprint);
+}
+
 export async function setWorkspacePreference(input: {
     profileId: string;
     workspaceFingerprint: string;
     defaultTopLevelTab?: TopLevelTab;
     defaultProviderId?: RuntimeProviderId;
     defaultModelId?: string;
+    preferredVcs?: WorkspacePreferredVcs;
+    preferredPackageManager?: WorkspacePreferredPackageManager;
 }): Promise<OperationalResult<WorkspacePreferenceRecord>> {
     const workspaceRoot = await workspaceRootStore.getByFingerprint(input.profileId, input.workspaceFingerprint);
     if (!workspaceRoot) {
@@ -103,18 +145,37 @@ export async function setWorkspacePreference(input: {
     }
 
     const persisted = await readWorkspacePreferenceRecords(input.profileId);
+    const existingRecord = persisted.find((record) => record.workspaceFingerprint === input.workspaceFingerprint);
     const now = nowIso();
+    const nextDefaultTopLevelTab = input.defaultTopLevelTab ?? existingRecord?.defaultTopLevelTab;
+    const nextDefaultProviderId = input.defaultProviderId ?? existingRecord?.defaultProviderId;
+    const nextDefaultModelId = input.defaultModelId ?? existingRecord?.defaultModelId;
+    const nextPreferredVcs = input.preferredVcs ?? existingRecord?.preferredVcs;
+    const nextPreferredPackageManager = input.preferredPackageManager ?? existingRecord?.preferredPackageManager;
     const nextRecord: PersistedWorkspacePreferenceRecord = {
         workspaceFingerprint: input.workspaceFingerprint,
-        ...(input.defaultTopLevelTab ? { defaultTopLevelTab: input.defaultTopLevelTab } : {}),
-        ...(input.defaultProviderId ? { defaultProviderId: input.defaultProviderId } : {}),
-        ...(input.defaultProviderId && input.defaultModelId
-            ? {
-                  defaultModelId: canonicalizeProviderModelId(input.defaultProviderId, input.defaultModelId),
-              }
-            : {}),
         updatedAt: now,
     };
+
+    if (nextDefaultTopLevelTab) {
+        nextRecord.defaultTopLevelTab = nextDefaultTopLevelTab;
+    }
+
+    if (nextDefaultProviderId) {
+        nextRecord.defaultProviderId = nextDefaultProviderId;
+    }
+
+    if (nextDefaultProviderId && nextDefaultModelId) {
+        nextRecord.defaultModelId = canonicalizeProviderModelId(nextDefaultProviderId, nextDefaultModelId);
+    }
+
+    if (nextPreferredVcs) {
+        nextRecord.preferredVcs = nextPreferredVcs;
+    }
+
+    if (nextPreferredPackageManager) {
+        nextRecord.preferredPackageManager = nextPreferredPackageManager;
+    }
 
     const nextRecords = [
         nextRecord,

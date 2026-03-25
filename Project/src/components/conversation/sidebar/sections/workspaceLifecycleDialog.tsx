@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 
 import { resolveThreadDraftDefaults } from '@/web/components/conversation/sidebar/threadDraftDefaults';
 import { buildModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
+import { WorkspaceEnvironmentPreviewCard } from '@/web/components/workspaces/workspaceEnvironmentSection';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { trpc } from '@/web/trpc/client';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
@@ -12,6 +15,7 @@ import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 interface WorkspaceLifecycleDialogProps {
     open: boolean;
+    profileId: string;
     providers: ProviderListItem[];
     providerModels: ProviderModelRecord[];
     workspacePreferences: WorkspacePreferenceRecord[];
@@ -82,6 +86,7 @@ export function resolveWorkspaceLifecycleDraft(input: {
 }
 
 function WorkspaceLifecycleDialogBody({
+    profileId,
     providers,
     providerModels,
     busy,
@@ -92,6 +97,7 @@ function WorkspaceLifecycleDialogBody({
     onSubmit,
     initialDraft,
 }: {
+    profileId: string;
     providers: ProviderListItem[];
     providerModels: ProviderModelRecord[];
     busy: boolean;
@@ -115,6 +121,17 @@ function WorkspaceLifecycleDialogBody({
         () => initialDraft.defaultProviderId
     );
     const [defaultModelId, setDefaultModelId] = useState(() => initialDraft.defaultModelId);
+    const deferredAbsolutePath = useDeferredValue(absolutePath.trim());
+    const environmentQuery = trpc.runtime.inspectWorkspaceEnvironment.useQuery(
+        {
+            profileId,
+            absolutePath: deferredAbsolutePath.length > 0 ? deferredAbsolutePath : '.',
+        },
+        {
+            enabled: deferredAbsolutePath.length > 0,
+            ...PROGRESSIVE_QUERY_OPTIONS,
+        }
+    );
 
     const selectedProvider = defaultProviderId
         ? providers.find((provider) => provider.id === defaultProviderId)
@@ -207,12 +224,12 @@ function WorkspaceLifecycleDialogBody({
                     </p>
                 </div>
 
-                <div className='rounded-2xl border border-border/70 bg-card/35 px-4 py-3 text-sm'>
-                    <p className='font-medium'>Detection preview</p>
-                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
-                        The selected folder becomes the workspace root for sessions, execution, and registry discovery.
-                    </p>
-                </div>
+                <WorkspaceEnvironmentPreviewCard
+                    isLoading={environmentQuery.isLoading}
+                    errorMessage={environmentQuery.error?.message}
+                    snapshot={environmentQuery.data?.snapshot}
+                    emptyMessage='The selected folder becomes the workspace root for sessions, execution, and registry discovery.'
+                />
 
                 <div className='space-y-4 rounded-2xl border border-border/70 bg-card/35 px-4 py-4'>
                     <div className='space-y-1'>
@@ -323,6 +340,7 @@ function WorkspaceLifecycleDialogBody({
 
 export function WorkspaceLifecycleDialog({
     open,
+    profileId,
     providers,
     providerModels,
     workspacePreferences,
@@ -349,6 +367,7 @@ export function WorkspaceLifecycleDialog({
             onClose={onClose}>
             {open ? (
                 <WorkspaceLifecycleDialogBody
+                    profileId={profileId}
                     providers={providers}
                     providerModels={providerModels}
                     busy={busy}

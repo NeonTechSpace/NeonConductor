@@ -4,10 +4,12 @@ import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 import { workspaceRootStore } from '@/app/backend/persistence/stores';
 import {
     neonObservabilitySubscriptionInputSchema,
+    runtimeInspectWorkspaceEnvironmentInputSchema,
     type NeonObservabilitySubscriptionInput,
     type NeonObservabilityEvent,
     profileInputSchema,
     runtimeFactoryResetInputSchema,
+    type RuntimeInspectWorkspaceEnvironmentInput,
     runtimeEventsSubscriptionInputSchema,
     runtimeRegisterWorkspaceRootInputSchema,
     runtimeResetInputSchema,
@@ -16,12 +18,19 @@ import {
 import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
 import { runtimeResetEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+import {
+    findRegisteredWorkspaceFingerprintByPath,
+    workspaceEnvironmentService,
+} from '@/app/backend/runtime/services/environment/service';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
 import { runtimeFactoryResetService } from '@/app/backend/runtime/services/runtimeFactoryReset';
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
-import { setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
+import {
+    getWorkspacePreference,
+    setWorkspacePreference,
+} from '@/app/backend/runtime/services/workspace/preferences';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
@@ -79,6 +88,73 @@ function waitForNextNeonObservabilityEvent(
     });
 }
 
+async function inspectWorkspaceEnvironment(
+    input: RuntimeInspectWorkspaceEnvironmentInput
+) {
+    const workspaceRoots = await workspaceRootStore.listByProfile(input.profileId);
+    const resolvedFingerprint =
+        'workspaceFingerprint' in input
+            ? input.workspaceFingerprint
+            : findRegisteredWorkspaceFingerprintByPath({
+                  absolutePath: input.absolutePath,
+                  workspaceRoots,
+              });
+    const resolvedWorkspaceRoot =
+        resolvedFingerprint
+            ? workspaceRoots.find((workspaceRoot) => workspaceRoot.fingerprint === resolvedFingerprint)
+            : undefined;
+
+    if ('workspaceFingerprint' in input && !resolvedWorkspaceRoot) {
+        throw raiseMappedTrpcError(
+            {
+                code: 'not_found',
+                message: `Workspace "${input.workspaceFingerprint}" was not found.`,
+            },
+            toTrpcError
+        );
+    }
+
+    const workspacePreference = resolvedFingerprint
+        ? await getWorkspacePreference(input.profileId, resolvedFingerprint)
+        : undefined;
+    const workspaceRootPath =
+        resolvedWorkspaceRoot?.absolutePath ??
+        ('absolutePath' in input ? input.absolutePath : undefined);
+
+    if (!workspaceRootPath) {
+        throw raiseMappedTrpcError(
+            {
+                code: 'not_found',
+                message: 'Workspace path could not be resolved for environment inspection.',
+            },
+            toTrpcError
+        );
+    }
+
+    const inspectionResult = await workspaceEnvironmentService.inspectWorkspaceEnvironment({
+        workspaceRootPath,
+        ...(workspacePreference
+            ? {
+                  overrides: {
+                      ...(workspacePreference.preferredVcs
+                          ? { preferredVcs: workspacePreference.preferredVcs }
+                          : {}),
+                      ...(workspacePreference.preferredPackageManager
+                          ? { preferredPackageManager: workspacePreference.preferredPackageManager }
+                          : {}),
+                  },
+              }
+            : {}),
+    });
+
+    return inspectionResult.match(
+        (snapshot) => ({
+            snapshot,
+        }),
+        (error) => raiseMappedTrpcError(error, toTrpcError)
+    );
+}
+
 export const runtimeRouter = router({
     // Diagnostic-only whole-runtime inspection. Normal app rendering should use scoped reads.
     getDiagnosticSnapshot: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
@@ -90,6 +166,11 @@ export const runtimeRouter = router({
     getShellBootstrap: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
         return runtimeShellBootstrapService.getShellBootstrap(input.profileId);
     }),
+    inspectWorkspaceEnvironment: publicProcedure
+        .input(runtimeInspectWorkspaceEnvironmentInputSchema)
+        .query(async ({ input }) => {
+            return await inspectWorkspaceEnvironment(input);
+        }),
     listWorkspaceRoots: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
         const shellBootstrap = await runtimeShellBootstrapService.getShellBootstrap(input.profileId);
         return {

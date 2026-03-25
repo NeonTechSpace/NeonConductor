@@ -27,7 +27,9 @@ describe('buildSessionSystemPrelude', () => {
 
     it('includes the concrete workspace path for agent sessions', async () => {
         const profileId = getDefaultProfileId();
-        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, 'M:\\Libraries\\Downloads\\test');
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'nc-workspace-prelude-'));
+        mkdirSync(path.join(workspacePath, '.jj'));
+        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, workspacePath);
         const bucket = await conversationStore.createOrGetBucket({
             profileId,
             scope: 'workspace',
@@ -93,8 +95,17 @@ describe('buildSessionSystemPrelude', () => {
             throw new Error('Expected workspace prelude text part.');
         }
 
-        expect(firstTextPart.text).toContain('M:\\Libraries\\Downloads\\test');
+        expect(firstTextPart.text).toContain(workspaceRoot.absolutePath);
         expect(firstTextPart.text).toContain('"/workspace"');
+        const environmentGuidancePart = result.value[1]?.parts[0];
+        expect(environmentGuidancePart?.type).toBe('text');
+        if (!environmentGuidancePart || environmentGuidancePart.type !== 'text') {
+            throw new Error('Expected environment guidance text part.');
+        }
+        expect(environmentGuidancePart.text).toContain('Preferred VCS: jj');
+        expect(environmentGuidancePart.text).toContain(
+            process.platform === 'win32' ? 'PowerShell' : '/bin/sh-style shell'
+        );
     });
 
     it('assembles prompt layers in the documented order for chat sessions', async () => {
@@ -274,6 +285,7 @@ Nested project instructions.
         );
         expect(messageTexts.map((message) => message.split('\n\n')[0])).toEqual([
             'Execution environment',
+            'Environment guidance',
             'App instructions',
             'Profile instructions',
             'Built-in chat instructions',

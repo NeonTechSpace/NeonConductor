@@ -269,6 +269,7 @@ export function ConversationSidebar({
 
             <WorkspaceLifecycleDialog
                 open={workspaceCreateController.open}
+                profileId={profileId}
                 providers={providers}
                 providerModels={providerModels}
                 workspacePreferences={workspacePreferences}
