@@ -48,7 +48,7 @@
     publish: [
         {
             provider: 'github',
-            owner: 'Neonsy',
+            owner: 'NeonTechSpace',
             repo: 'NeonConductor',
         },
     ],

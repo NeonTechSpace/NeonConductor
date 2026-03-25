@@ -3,7 +3,7 @@
     "private": true,
     "version": "0.0.1",
     "description": "AI agent manager with Kilo integration and BYOK support.",
-    "homepage": "https://github.com/Neonsy/NeonConductor",
+    "homepage": "https://github.com/NeonTechSpace/NeonConductor",
     "packageManager": "pnpm@10.30.0",
     "author": {
         "name": "Neonsy",

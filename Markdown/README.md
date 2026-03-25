@@ -4,23 +4,23 @@
 
 <div align="center">
 
-[![Alpha](https://img.shields.io/github/actions/workflow/status/Neonsy/NeonConductor/build-alpha.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=5A1730&label=Alpha)](https://github.com/Neonsy/NeonConductor/actions/workflows/build-alpha.yml)
+[![Alpha](https://img.shields.io/github/actions/workflow/status/NeonTechSpace/NeonConductor/build-alpha.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=5A1730&label=Alpha)](https://github.com/NeonTechSpace/NeonConductor/actions/workflows/build-alpha.yml)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Beta](https://img.shields.io/github/actions/workflow/status/Neonsy/NeonConductor/build-beta.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=B0307B&label=Beta)](https://github.com/Neonsy/NeonConductor/actions/workflows/build-beta.yml)
+[![Beta](https://img.shields.io/github/actions/workflow/status/NeonTechSpace/NeonConductor/build-beta.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=B0307B&label=Beta)](https://github.com/NeonTechSpace/NeonConductor/actions/workflows/build-beta.yml)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Stable](https://img.shields.io/github/actions/workflow/status/Neonsy/NeonConductor/build-stable.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=237DBE&label=Stable)](https://github.com/Neonsy/NeonConductor/actions/workflows/build-stable.yml)
+[![Stable](https://img.shields.io/github/actions/workflow/status/NeonTechSpace/NeonConductor/build-stable.yml?style=for-the-badge&logo=githubactions&logoColor=fff&labelColor=0B1221&color=237DBE&label=Stable)](https://github.com/NeonTechSpace/NeonConductor/actions/workflows/build-stable.yml)
 
-[![Issues](https://img.shields.io/github/issues/Neonsy/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=471838)](https://github.com/Neonsy/NeonConductor/issues)
+[![Issues](https://img.shields.io/github/issues/NeonTechSpace/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=471838)](https://github.com/NeonTechSpace/NeonConductor/issues)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Pull Requests](https://img.shields.io/github/issues-pr/Neonsy/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=1E40AF&label=PRs)](https://github.com/Neonsy/NeonConductor/pulls)
+[![Pull Requests](https://img.shields.io/github/issues-pr/NeonTechSpace/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=1E40AF&label=PRs)](https://github.com/NeonTechSpace/NeonConductor/pulls)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Forks](https://img.shields.io/github/forks/Neonsy/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=3D66B8)](https://github.com/Neonsy/NeonConductor/network/members)
+[![Forks](https://img.shields.io/github/forks/NeonTechSpace/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=3D66B8)](https://github.com/NeonTechSpace/NeonConductor/network/members)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Stars](https://img.shields.io/github/stars/Neonsy/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=CA8A04)](https://github.com/Neonsy/NeonConductor/stargazers)
+[![Stars](https://img.shields.io/github/stars/NeonTechSpace/NeonConductor?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221&color=CA8A04)](https://github.com/NeonTechSpace/NeonConductor/stargazers)
 
-[![OSS Insight](https://img.shields.io/badge/Insights-Analyze-0E7490?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221)](https://ossinsight.io/analyze/Neonsy/NeonConductor)
+[![OSS Insight](https://img.shields.io/badge/Insights-Analyze-0E7490?style=for-the-badge&logo=github&logoColor=fff&labelColor=0B1221)](https://ossinsight.io/analyze/NeonTechSpace/NeonConductor)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Codacy Badge](https://img.shields.io/codacy/grade/d421f94ddacf424db42b1566e01312b1?style=for-the-badge&logo=codacy&logoColor=fff&label=Codacy&labelColor=0B1221)](https://app.codacy.com/gh/Neonsy/NeonConductor/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Codacy Badge](https://img.shields.io/codacy/grade/cd4ac44b5d5d4a23bc020eea5f3c6343?style=for-the-badge&logo=codacy&logoColor=fff&label=Codacy&labelColor=0B1221)](https://app.codacy.com/gh/NeonTechSpace/NeonConductor/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 
 [![Discord](https://img.shields.io/badge/Discord-NeonSpace-0A4D8C?style=for-the-badge&logo=discord&logoColor=fff&labelColor=0B1221)](https://discord.gg/AT7pDjNMeK)
 
@@ -78,9 +78,9 @@ with `vX.Y.Z-alpha.N` / `vX.Y.Z-beta.N`.
 
 ## Analytics
 
-![Repo stats](https://repobeats.axiom.co/api/embed/74c48cf1869d79b201e17371ff418f6582686737.svg 'Repobeats analytics image')
+![Alt](https://repobeats.axiom.co/api/embed/cc72487e56f3a9cfaba863a04cb1e445ef0ab654.svg "Repobeats analytics image")
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Neonsy/NeonConductor&type=Date&theme=dark)](https://star-history.com/#Neonsy/NeonConductor)
+[![Star History Chart](https://api.star-history.com/svg?repos=NeonTechSpace/NeonConductor&type=Date&theme=dark)](https://star-history.com/#NeonTechSpace/NeonConductor)
 
 ---
 

@@ -4,5 +4,5 @@ contact_links:
     url: https://discord.gg/AT7pDjNMeK
     about: Use Discord for usage questions, setup help, and discussion.
   - name: Contribution Guide
-    url: https://github.com/Neonsy/NeonConductor/blob/main/Markdown/CONTRIBUTING.md
+    url: https://github.com/NeonTechSpace/NeonConductor/blob/main/Markdown/CONTRIBUTING.md
     about: Check branch flow, release process, and contribution rules before filing.
