@@ -34,15 +34,17 @@ describe('electron-builder packaging config', () => {
 
     it('keeps the splash page and named preload bundles in the desktop build config', () => {
         const viteConfigPath = path.join(process.cwd(), 'vite.config.ts');
+        const preloadBuildConfigPath = path.join(process.cwd(), 'electron', 'main', 'preload', 'buildConfig.ts');
         const splashHtmlPath = path.join(process.cwd(), 'splash.html');
         const contents = readFileSync(viteConfigPath, 'utf8');
+        const preloadBuildConfigContents = readFileSync(preloadBuildConfigPath, 'utf8');
 
         expect(readFileSync(splashHtmlPath, 'utf8')).toContain('/src/splash/main.ts');
         expect(contents).toContain("buildPreloadOptions('electron/main/preload/index.ts', 'mainWindow')");
         expect(contents).toContain("buildPreloadOptions('electron/main/preload/splash.ts', 'splashWindow')");
         expect(contents).toContain('createPreloadBuildConfig');
         expect(contents).toContain("splash: 'splash.html'");
-        expect(contents).not.toContain('.mjs');
+        expect(preloadBuildConfigContents).toContain('.cjs');
     });
 
     it('keeps route auto code splitting enabled while excluding tsr split virtual modules from the Babel compiler pass', () => {

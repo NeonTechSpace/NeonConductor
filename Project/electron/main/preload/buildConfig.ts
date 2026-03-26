@@ -42,7 +42,7 @@ export function createPreloadBuildConfig(
         resolve: {
             tsconfigPaths: true,
         },
-        plugins: [createSandboxedPreloadAssertionPlugin(`${outputFileName}.js`, outDir)],
+        plugins: [createSandboxedPreloadAssertionPlugin(`${outputFileName}.cjs`, outDir)],
         build: {
             outDir,
             target: 'node20',
@@ -51,7 +51,7 @@ export function createPreloadBuildConfig(
             lib: {
                 entry,
                 formats: sandboxedPreloadFormats,
-                fileName: () => `${outputFileName}.js`,
+                fileName: () => `${outputFileName}.cjs`,
             },
             rolldownOptions: {
                 input: entry,

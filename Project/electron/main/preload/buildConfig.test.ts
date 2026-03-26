@@ -39,7 +39,7 @@ describe('preload build config', () => {
             ...createPreloadBuildConfig(entry, outputFileName, { outDir }),
         });
 
-        const bundleSource = readFileSync(path.join(outDir, `${outputFileName}.js`), 'utf8');
+        const bundleSource = readFileSync(path.join(outDir, `${outputFileName}.cjs`), 'utf8');
 
         expect(preloadBundleUsesUnsupportedModuleSyntax(bundleSource)).toBe(false);
         expect(bundleSource).toContain('require("electron")');

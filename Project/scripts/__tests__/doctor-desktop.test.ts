@@ -87,17 +87,17 @@ describe('doctor-desktop', () => {
         const distElectronRoot = mkdtempSync(path.join(os.tmpdir(), 'doctor-desktop-'));
         temporaryDirectories.push(distElectronRoot);
 
-        writeFileSync(path.join(distElectronRoot, 'mainWindow.js'), '"use strict";const electron=require("electron");');
-        writeFileSync(path.join(distElectronRoot, 'splashWindow.js'), '"use strict";const electron=require("electron");');
+        writeFileSync(path.join(distElectronRoot, 'mainWindow.cjs'), '"use strict";const electron=require("electron");');
+        writeFileSync(path.join(distElectronRoot, 'splashWindow.cjs'), '"use strict";const electron=require("electron");');
 
         expect(assertSandboxedPreloadBundles(distElectronRoot)).toMatchObject([
             {
-                bundleName: 'mainWindow.js',
+                bundleName: 'mainWindow.cjs',
                 exists: true,
                 usesUnsupportedModuleSyntax: false,
             },
             {
-                bundleName: 'splashWindow.js',
+                bundleName: 'splashWindow.cjs',
                 exists: true,
                 usesUnsupportedModuleSyntax: false,
             },
@@ -108,8 +108,8 @@ describe('doctor-desktop', () => {
         const distElectronRoot = mkdtempSync(path.join(os.tmpdir(), 'doctor-desktop-'));
         temporaryDirectories.push(distElectronRoot);
 
-        writeFileSync(path.join(distElectronRoot, 'mainWindow.js'), 'import { contextBridge } from "electron";');
-        writeFileSync(path.join(distElectronRoot, 'splashWindow.js'), '"use strict";const electron=require("electron");');
+        writeFileSync(path.join(distElectronRoot, 'mainWindow.cjs'), 'import { contextBridge } from "electron";');
+        writeFileSync(path.join(distElectronRoot, 'splashWindow.cjs'), '"use strict";const electron=require("electron");');
 
         expect(() => assertSandboxedPreloadBundles(distElectronRoot)).toThrow(
             /contains top-level ESM syntax/i
