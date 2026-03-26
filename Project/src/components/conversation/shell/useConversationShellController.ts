@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
 import { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
-import { useThreadSidebarState } from '@/web/components/conversation/hooks/useThreadSidebarState';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
+import { deriveConversationWorkspaceExecutionScope } from '@/web/components/conversation/shell/deriveConversationWorkspaceExecutionScope';
 import {
     resolveOrchestratorExecutionStrategyDraft,
     resolveOrchestratorStrategyRootThreadId,
@@ -12,21 +12,22 @@ import {
 } from '@/web/components/conversation/shell/orchestratorExecutionStrategyDrafts';
 import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { useConversationShellCacheHandlers } from '@/web/components/conversation/shell/useConversationShellCacheHandlers';
+import { useConversationComposerTargetState } from '@/web/components/conversation/shell/useConversationComposerTargetState';
 import { useConversationShellComposerSetup } from '@/web/components/conversation/shell/useConversationShellComposerSetup';
+import { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
 import {
     buildConversationReasoningState,
     DEFAULT_REASONING_EFFORT,
     resolveConversationSelectionIds,
     useConversationShellContextState,
-    useConversationShellRunTargetState,
-} from '@/web/components/conversation/shell/useConversationShellRunTargetState';
+} from '@/web/components/conversation/shell/conversationShellRuntimeState';
 import { useConversationShellViewControllers } from '@/web/components/conversation/shell/useConversationShellViewControllers';
 import type {
     ConversationShellMainViewDraftTarget,
     UseConversationShellViewControllersInput,
 } from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
 import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
-import { modeRequiresNativeTools } from '@/web/components/conversation/shell/workspace/helpers';
+import { isEntityId, modeRequiresNativeTools } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 import { trpc } from '@/web/trpc/client';
@@ -37,7 +38,7 @@ import type {
     TopLevelTab,
 } from '@/shared/contracts';
 
-export { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/useConversationShellRunTargetState';
+export { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/conversationShellRuntimeState';
 
 export interface ConversationShellProps {
     profileId: string;
@@ -152,48 +153,33 @@ function buildConversationShellController(input: UseConversationShellControllerI
         },
     });
 
-    const sidebarState = useThreadSidebarState({
+    const selectionState = useConversationShellSelectionState({
         threads: queries.listThreadsQuery.data?.threads ?? [],
         threadTags: queries.shellBootstrapQuery.data?.threadTags ?? [],
         selectedTagIds: uiState.selectedTagIds,
         selectedThreadId: uiState.selectedThreadId,
-        onSelectedThreadInvalid: () => {
-            uiState.setSelectedThreadId(undefined);
-        },
-        onSelectFallbackThread: (threadId) => {
-            uiState.setSelectedThreadId(threadId);
-        },
+        allSessions: queries.sessionsQuery.data?.sessions ?? [],
+        allRuns: queries.runsQuery.data?.runs ?? [],
+        allMessages: queries.messagesQuery.data?.messages ?? [],
+        allMessageParts: queries.messagesQuery.data?.messageParts ?? [],
+        selectedSessionId: isEntityId(uiState.selectedSessionId, 'sess') ? uiState.selectedSessionId : undefined,
+        selectedRunId: isEntityId(uiState.selectedRunId, 'run') ? uiState.selectedRunId : undefined,
     });
 
-    const initialRunTargetState = useConversationShellRunTargetState({
-        shellBootstrapData: queries.shellBootstrapQuery.data,
-        selectedWorkspaceFingerprint,
-        mainViewDraftTarget,
-        sessionOverride: sessionActions.sessionOverride,
-        runs: [],
-        topLevelTab,
-        modeKey,
-        requiresNativeTools: activeModeRequiresNativeTools,
-        imageAttachmentsAllowed,
-    });
-
-    const shellViewModel = useConversationShellViewModel({
-        profileId,
-        topLevelTab,
-        modeKey,
-        queries,
-        uiState,
-        sidebarState,
-        runTargetState: initialRunTargetState,
+    const workspaceScope = deriveConversationWorkspaceExecutionScope({
+        selectedThread: selectionState.selectedThread,
+        selectedSession: selectionState.selectedSession,
+        workspaceRoots: queries.shellBootstrapQuery.data?.workspaceRoots ?? [],
+        sandboxes: queries.shellBootstrapQuery.data?.sandboxes ?? [],
     });
 
     const orchestratorStrategyRootThreadId = resolveOrchestratorStrategyRootThreadId({
         topLevelTab,
-        selectedThread: shellViewModel.selectedThread,
+        selectedThread: selectionState.selectedThread,
     });
     const executionStrategy = resolveOrchestratorExecutionStrategyDraft({
         topLevelTab,
-        selectedThread: shellViewModel.selectedThread,
+        selectedThread: selectionState.selectedThread,
         draftsByRootThreadId: executionStrategyDraftsByRootThreadId,
     });
     const handleExecutionStrategyChange = (nextExecutionStrategy: OrchestratorExecutionStrategy): void => {
@@ -206,24 +192,34 @@ function buildConversationShellController(input: UseConversationShellControllerI
         );
     };
 
-    const runTargetState = useConversationShellRunTargetState({
+    const runTargetState = useConversationComposerTargetState({
         shellBootstrapData: queries.shellBootstrapQuery.data,
         selectedWorkspaceFingerprint,
-        ...(shellViewModel.selectedThread?.workspaceFingerprint
-            ? { selectedThreadWorkspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
+        ...(selectionState.selectedThread?.workspaceFingerprint
+            ? { selectedThreadWorkspaceFingerprint: selectionState.selectedThread.workspaceFingerprint }
             : {}),
         mainViewDraftTarget,
         sessionOverride: sessionActions.sessionOverride,
-        runs: shellViewModel.sessionRunSelection.runs,
+        runs: selectionState.sessionRunSelection.runs,
         topLevelTab,
         modeKey,
         requiresNativeTools: activeModeRequiresNativeTools,
         imageAttachmentsAllowed,
     });
 
+    const shellViewModel = useConversationShellViewModel({
+        profileId,
+        topLevelTab,
+        modeKey,
+        queries,
+        selectionState,
+        runTargetState,
+        workspaceScope,
+    });
+
     const { selectedSessionId, selectedRunId, hasSelectedSession } = resolveConversationSelectionIds({
-        resolvedSessionId: shellViewModel.sessionRunSelection.selection.resolvedSessionId,
-        resolvedRunId: shellViewModel.sessionRunSelection.selection.resolvedRunId,
+        resolvedSessionId: selectionState.sessionRunSelection.selection.resolvedSessionId,
+        resolvedRunId: selectionState.sessionRunSelection.selection.resolvedRunId,
     });
 
     const reasoningState = buildConversationReasoningState({
@@ -250,7 +246,7 @@ function buildConversationShellController(input: UseConversationShellControllerI
         modelId: runTargetState.selectedModelIdForComposer,
         topLevelTab,
         modeKey,
-        workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
+        workspaceFingerprint: selectionState.selectedThread?.workspaceFingerprint,
     });
 
     const composerSetup = useConversationShellComposerSetup({
@@ -258,8 +254,8 @@ function buildConversationShellController(input: UseConversationShellControllerI
         selectedSessionId,
         topLevelTab,
         modeKey,
-        workspaceFingerprint: shellViewModel.selectedThread?.workspaceFingerprint,
-        sandboxId: shellViewModel.effectiveSelectedSandboxId,
+        workspaceFingerprint: selectionState.selectedThread?.workspaceFingerprint,
+        sandboxId: workspaceScope.kind === 'sandbox' ? workspaceScope.sandboxId : undefined,
         isPlanningComposerMode,
         imageAttachmentsAllowed,
         activeModeRequiresNativeTools,
@@ -302,7 +298,7 @@ function buildConversationShellController(input: UseConversationShellControllerI
         uiState,
         utils,
         shellViewModel,
-        sidebarState,
+        selectionState,
         runTargetState,
         selectedSessionId,
         selectedRunId,

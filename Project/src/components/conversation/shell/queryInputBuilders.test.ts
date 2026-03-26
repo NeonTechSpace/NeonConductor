@@ -10,7 +10,7 @@ import {
 } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { buildConversationComposerPresentationState } from '@/web/components/conversation/shell/useConversationShellComposerSetup';
 import { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/useConversationShellController';
-import { buildConversationReasoningState } from '@/web/components/conversation/shell/useConversationShellRunTargetState';
+import { buildConversationReasoningState } from '@/web/components/conversation/shell/conversationShellRuntimeState';
 import { buildDiffPatchPreviewQueryInput } from '@/web/components/conversation/panels/diffCheckpointPanel/useDiffCheckpointPanelController';
 
 describe('conversation query input builders', () => {

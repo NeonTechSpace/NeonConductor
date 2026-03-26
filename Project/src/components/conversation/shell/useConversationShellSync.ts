@@ -2,8 +2,8 @@ import { skipToken } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useRef } from 'react';
 
 import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
-import type { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
+import type { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { trpc } from '@/web/trpc/client';
@@ -11,7 +11,6 @@ import type { ConversationShellBootChromeReadiness } from '@/web/components/runt
 
 import type { TopLevelTab } from '@/shared/contracts';
 
-import { buildConversationSelectionSyncPatch } from '@/web/components/conversation/shell/selectionSync';
 import { buildConversationUiSyncPatch } from '@/web/components/conversation/shell/queries/useConversationSync';
 
 interface UseConversationShellSyncInput {
@@ -28,7 +27,7 @@ interface UseConversationShellSyncInput {
         | typeof skipToken;
     uiState: ConversationUiState;
     queries: ReturnType<typeof useConversationQueries>;
-    shellViewModel: ReturnType<typeof useConversationShellViewModel>;
+    selectionState: ReturnType<typeof useConversationShellSelectionState>;
     runTargetState: ReturnType<typeof useConversationRunTarget>;
     utils: ReturnType<typeof trpc.useUtils>;
     onSelectedWorkspaceFingerprintChange: ((workspaceFingerprint: string | undefined) => void) | undefined;
@@ -40,13 +39,14 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
     const selectedSessionId = isEntityId(input.selectedSessionId, 'sess') ? input.selectedSessionId : undefined;
 
     const reconcileConversationSelection = useEffectEvent(() => {
-        const patch = buildConversationSelectionSyncPatch({
-            selection: input.shellViewModel.sessionRunSelection.selection,
-        });
+        const patch = input.selectionState.selectionSyncPatch;
         if (!patch) {
             return;
         }
 
+        if ('selectedThreadId' in patch) {
+            input.uiState.setSelectedThreadId(patch.selectedThreadId);
+        }
         if ('selectedSessionId' in patch) {
             input.uiState.setSelectedSessionId(patch.selectedSessionId);
         }
@@ -85,7 +85,7 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
 
     useEffect(() => {
         reconcileConversationSelection();
-    }, [reconcileConversationSelection, input.shellViewModel.sessionRunSelection.selection]);
+    }, [reconcileConversationSelection, input.selectionState.selectionSyncPatch]);
 
     useEffect(() => {
         reconcileConversationUiState();
@@ -102,16 +102,16 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
     ]);
 
     useEffect(() => {
-        input.onSelectedWorkspaceFingerprintChange?.(input.shellViewModel.selectedThread?.workspaceFingerprint);
-    }, [input.onSelectedWorkspaceFingerprintChange, input.shellViewModel.selectedThread?.workspaceFingerprint]);
+        input.onSelectedWorkspaceFingerprintChange?.(input.selectionState.selectedThread?.workspaceFingerprint);
+    }, [input.onSelectedWorkspaceFingerprintChange, input.selectionState.selectedThread?.workspaceFingerprint]);
 
     useEffect(() => {
-        if (!isEntityId(input.uiState.selectedThreadId, 'thr')) {
+        if (!input.selectionState.selectedThread?.id) {
             return;
         }
 
         const nextSession = (input.queries.sessionsQuery.data?.sessions ?? [])
-            .filter((session) => session.threadId === input.uiState.selectedThreadId)
+            .filter((session) => session.threadId === input.selectionState.selectedThread?.id)
             .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
             .at(0);
         if (!nextSession) {
@@ -122,7 +122,7 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
             profileId: input.profileId,
             sessionId: nextSession.id,
         });
-    }, [input.profileId, input.queries.sessionsQuery.data?.sessions, input.uiState.selectedThreadId, input.utils.session.listRuns]);
+    }, [input.profileId, input.queries.sessionsQuery.data?.sessions, input.selectionState.selectedThread?.id, input.utils.session.listRuns]);
 
     useEffect(() => {
         if (!selectedSessionId) {
@@ -141,7 +141,7 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
 
         const preferredRunId = isEntityId(input.selectedRunId, 'run')
             ? input.selectedRunId
-            : input.shellViewModel.sessionRunSelection.runs.at(0)?.id;
+            : input.selectionState.sessionRunSelection.runs.at(0)?.id;
         if (preferredRunId) {
             void input.utils.diff.listByRun.prefetch({
                 profileId: input.profileId,
@@ -158,7 +158,7 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
     }, [
         input.profileId,
         selectedSessionId,
-        input.shellViewModel.sessionRunSelection.runs,
+        input.selectionState.sessionRunSelection.runs,
         input.topLevelTab,
         input.selectedRunId,
         input.utils.checkpoint.list,
@@ -168,15 +168,15 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
     ]);
 
     useEffect(() => {
-        if (input.topLevelTab === 'chat' || !input.shellViewModel.selectedThread?.workspaceFingerprint) {
+        if (input.topLevelTab === 'chat' || !input.selectionState.selectedThread?.workspaceFingerprint) {
             return;
         }
 
         void input.utils.sandbox.list.prefetch({
             profileId: input.profileId,
-            workspaceFingerprint: input.shellViewModel.selectedThread.workspaceFingerprint,
+            workspaceFingerprint: input.selectionState.selectedThread.workspaceFingerprint,
         });
-    }, [input.profileId, input.shellViewModel.selectedThread?.workspaceFingerprint, input.topLevelTab, input.utils.sandbox.list]);
+    }, [input.profileId, input.selectionState.selectedThread?.workspaceFingerprint, input.topLevelTab, input.utils.sandbox.list]);
 
     const refetchSelectedConversationState = useEffectEvent(() => {
         if (!selectedSessionId) {
@@ -185,7 +185,7 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
 
         const activeRunId = isEntityId(input.selectedRunId, 'run')
             ? input.selectedRunId
-            : input.shellViewModel.sessionRunSelection.runs.at(0)?.id;
+            : input.selectionState.sessionRunSelection.runs.at(0)?.id;
 
         void input.utils.session.status.fetch({
             profileId: input.profileId,

@@ -1,14 +1,9 @@
-import { useEffect } from 'react';
-
 import type { ThreadListRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
 
 interface UseThreadSidebarStateInput {
     threads: ThreadListRecord[];
     threadTags: ThreadTagRecord[];
     selectedTagIds: string[];
-    selectedThreadId: string | undefined;
-    onSelectedThreadInvalid: () => void;
-    onSelectFallbackThread: (threadId: string) => void;
 }
 
 export interface ThreadSidebarState {
@@ -77,27 +72,6 @@ export function useThreadSidebarState(input: UseThreadSidebarStateInput): Thread
         threadTagIdsByThread,
         selectedTagIds: input.selectedTagIds,
     });
-    const selection = resolveVisibleThreadSelection({
-        visibleThreads,
-        selectedThreadId: input.selectedThreadId,
-    });
-
-    useEffect(() => {
-        if (selection.shouldClearSelection) {
-            input.onSelectedThreadInvalid();
-            return;
-        }
-
-        if (selection.shouldSelectFallbackThread && selection.resolvedThreadId) {
-            input.onSelectFallbackThread(selection.resolvedThreadId);
-        }
-    }, [
-        input.onSelectFallbackThread,
-        input.onSelectedThreadInvalid,
-        selection.resolvedThreadId,
-        selection.shouldClearSelection,
-        selection.shouldSelectFallbackThread,
-    ]);
 
     return {
         threadTagIdsByThread,

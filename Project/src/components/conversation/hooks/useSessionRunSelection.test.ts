@@ -205,4 +205,43 @@ describe('useSessionRunSelection', () => {
         expect(result.messages.map((message) => message.id)).toEqual(['msg_primary']);
         expect(result.partsByMessageId.get('msg_primary')?.map((part) => part.id)).toEqual(['part_primary']);
     });
+
+    it('keeps session-scoped messages when the selected session has no runs', () => {
+        const result = useSessionRunSelection({
+            selectedThreadId: 'thr_primary',
+            selectedSessionId: 'sess_primary',
+            selectedRunId: undefined,
+            allSessions: [
+                createSession({
+                    id: 'sess_primary',
+                    threadId: 'thr_primary',
+                }),
+            ],
+            allRuns: [],
+            allMessages: [
+                createMessage({
+                    id: 'msg_without_run',
+                    sessionId: 'sess_primary',
+                    runId: 'run_orphaned',
+                }),
+            ],
+            allMessageParts: [
+                createMessagePart({
+                    id: 'part_without_run',
+                    messageId: 'msg_without_run',
+                }),
+            ],
+        });
+
+        expect(result.selection).toEqual({
+            resolvedSessionId: 'sess_primary',
+            resolvedRunId: undefined,
+            shouldUpdateSessionSelection: false,
+            shouldUpdateRunSelection: false,
+        });
+        expect(result.messages.map((message) => message.id)).toEqual(['msg_without_run']);
+        expect(result.partsByMessageId.get('msg_without_run')?.map((part) => part.id)).toEqual([
+            'part_without_run',
+        ]);
+    });
 });

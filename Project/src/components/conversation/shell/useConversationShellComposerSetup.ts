@@ -23,8 +23,8 @@ import type {
     ConversationSessionWorkspaceUpdate,
     ConversationUiState,
 } from './useConversationShellViewControllers.types';
-import type { ConversationReasoningState } from './useConversationShellRunTargetState';
-import { buildResolvedContextStateQueryInput } from './useConversationShellRunTargetState';
+import type { ConversationReasoningState } from './conversationShellRuntimeState';
+import { buildResolvedContextStateQueryInput } from './conversationShellRuntimeState';
 
 interface UseConversationShellComposerSetupInput {
     profileId: string;
