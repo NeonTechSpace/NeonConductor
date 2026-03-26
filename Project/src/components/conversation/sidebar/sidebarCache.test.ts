@@ -10,7 +10,13 @@ import {
     upsertThreadListRecord,
 } from '@/web/components/conversation/sidebar/sidebarCache';
 
-import type { ConversationRecord, TagRecord, ThreadListRecord, ThreadRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
+import type {
+    ConversationRecord,
+    TagRecord,
+    ThreadListRecord,
+    ThreadRecord,
+    ThreadTagRecord,
+} from '@/app/backend/persistence/types';
 
 function createBucket(overrides: Partial<ConversationRecord> = {}): ConversationRecord {
     return {
@@ -120,9 +126,7 @@ describe('sidebarCache', () => {
         );
 
         expect(tags.map((tag) => tag.label)).toEqual(['backend', 'zed']);
-        expect(threadTags).toEqual([
-            createThreadTag({ threadId: 'thr_one', tagId: 'tag_backend' }),
-        ]);
+        expect(threadTags).toEqual([createThreadTag({ threadId: 'thr_one', tagId: 'tag_backend' })]);
     });
 
     it('removes deleted threads, buckets, tags, and thread-tag relations together', () => {

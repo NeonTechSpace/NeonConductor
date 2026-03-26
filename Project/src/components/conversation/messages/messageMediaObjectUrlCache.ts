@@ -44,4 +44,3 @@ export function releaseMessageMediaObjectUrl(mediaId: string, payload: SessionMe
     URL.revokeObjectURL(cached.objectUrl);
     mediaObjectUrlCache.delete(cacheKey);
 }
-

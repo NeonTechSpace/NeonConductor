@@ -1,9 +1,14 @@
-import { resolveSelectedModelId, resolveSelectedProviderId } from '@/web/components/settings/providerSettings/selection';
+import {
+    resolveSelectedModelId,
+    resolveSelectedProviderId,
+} from '@/web/components/settings/providerSettings/selection';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
+
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
+
 
 export interface ThreadDraftDefaults {
     topLevelTab: TopLevelTab;

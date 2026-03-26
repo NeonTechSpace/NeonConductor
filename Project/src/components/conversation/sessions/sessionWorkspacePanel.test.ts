@@ -1,6 +1,9 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+
+import { SessionWorkspacePanel } from '@/web/components/conversation/sessions/sessionWorkspacePanel';
+
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 vi.mock('@/web/components/conversation/panels/messageFlowPanel', () => ({
@@ -27,7 +30,6 @@ vi.mock('@/web/components/conversation/sessions/workspaceInspector', () => ({
     WorkspaceInspector: () => createElement('aside', undefined, 'inspector'),
 }));
 
-import { SessionWorkspacePanel } from '@/web/components/conversation/sessions/sessionWorkspacePanel';
 
 describe('session workspace panel layout', () => {
     it('uses compact selectors and keeps the inspector closed by default', () => {

@@ -108,6 +108,8 @@ vi.mock('@/web/trpc/client', () => ({
     },
 }));
 
+import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
+import { CheckpointHistorySection } from '@/web/components/conversation/panels/diffCheckpointPanel/checkpointHistorySection';
 import {
     buildRollbackWarningLines,
     describeCompactionRun,
@@ -116,8 +118,6 @@ import {
     formatCheckpointByteSize,
     resolveSelectedDiffPath,
 } from '@/web/components/conversation/panels/diffCheckpointPanelState';
-import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
-import { CheckpointHistorySection } from '@/web/components/conversation/panels/diffCheckpointPanel/checkpointHistorySection';
 
 describe('resolveSelectedDiffPath', () => {
     it('keeps the preferred path while it still exists and falls back when it disappears', () => {

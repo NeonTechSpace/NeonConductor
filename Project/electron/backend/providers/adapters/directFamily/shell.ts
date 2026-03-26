@@ -1,7 +1,8 @@
-import {
-    okProviderAdapter,
-    type ProviderAdapterResult,
-} from '@/app/backend/providers/adapters/errors';
+import type {
+    DirectFamilyRuntimeConfig,
+    DirectFamilyRuntimeHandler,
+} from '@/app/backend/providers/adapters/directFamily/types';
+import { okProviderAdapter, type ProviderAdapterResult } from '@/app/backend/providers/adapters/errors';
 import { executeHttpFallback } from '@/app/backend/providers/adapters/httpFallback';
 import {
     emitRuntimeLifecycleSelection,
@@ -11,7 +12,6 @@ import {
 import { resolveProviderRuntimePathContext } from '@/app/backend/providers/runtimePathContext';
 import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
 
-import type { DirectFamilyRuntimeConfig, DirectFamilyRuntimeHandler } from '@/app/backend/providers/adapters/directFamily/types';
 
 function failDirectFamilyRuntime(
     input: ProviderRuntimeInput,

@@ -1,8 +1,8 @@
+import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import {
     type ConversationTanstackMessage,
     projectOptimisticConversationUserMessage,
 } from '@/web/components/conversation/messages/tanstackMessageBridge';
-import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import {
     applyRuntimeEventToTanstackTranscriptState,
     projectTanstackTranscriptState,

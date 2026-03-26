@@ -1,13 +1,10 @@
 import { providerStore } from '@/app/backend/persistence/stores';
 import type { InvalidProviderModelDiagnostic } from '@/app/backend/persistence/stores/provider/providerCatalogStore';
-import { listModels } from '@/app/backend/providers/service/readService';
-import { resolveProviderCatalogState } from '@/app/backend/providers/service/catalogState';
-import {
-    okProviderService,
-    type ProviderServiceResult,
-} from '@/app/backend/providers/service/errors';
-import type { ProviderCatalogState } from '@/app/backend/providers/service/types';
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
+import { resolveProviderCatalogState } from '@/app/backend/providers/service/catalogState';
+import { okProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
+import { listModels } from '@/app/backend/providers/service/readService';
+import type { ProviderCatalogState } from '@/app/backend/providers/service/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 export interface ProviderCatalogReadResult {
@@ -31,7 +28,8 @@ export async function readProviderCatalog(
             providerId,
             validModelCount: 0,
             invalidDiagnostics,
-            serviceFailureReason: modelsResult.error.code === 'provider_not_supported' ? 'provider_not_found' : 'catalog_sync_failed',
+            serviceFailureReason:
+                modelsResult.error.code === 'provider_not_supported' ? 'provider_not_found' : 'catalog_sync_failed',
             serviceFailureDetail: modelsResult.error.message,
         });
         return okProviderService({

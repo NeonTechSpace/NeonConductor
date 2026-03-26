@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isJsonRecord, isJsonString, isJsonUnknownArray, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+import {
+    isJsonRecord,
+    isJsonString,
+    isJsonUnknownArray,
+    parseJsonValue,
+} from '@/app/backend/persistence/stores/shared/utils';
 
 describe('persistence json utils', () => {
     it('returns parsed values only when the guard passes', () => {

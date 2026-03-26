@@ -86,7 +86,9 @@ function ScopeBadge({ label }: { label: string }) {
 function DerivedSummaryBadges({
     derivedSummary,
 }: {
-    derivedSummary?: ProjectedMemoryRecord['derivedSummary'] | RetrievedMemorySummary['records'][number]['derivedSummary'];
+    derivedSummary?:
+        | ProjectedMemoryRecord['derivedSummary']
+         ;
 }) {
     if (!derivedSummary) {
         return null;
@@ -166,7 +168,9 @@ export function MemoryPanel({
 
     const projectionStatus = projectionStatusQuery.data;
     const scannedEdits = scanProjectionEditsQuery.data;
-    const retrievedMemoryById = new Map(retrievedMemory?.records.map((record) => [record.memoryId, record] as const) ?? []);
+    const retrievedMemoryById = new Map(
+        retrievedMemory?.records.map((record) => [record.memoryId, record] as const) ?? []
+    );
     const handleRescanEdits = async () => {
         await runProjectionRescan({
             refetch: () => scanProjectionEditsQuery.refetch(),
@@ -226,14 +230,14 @@ export function MemoryPanel({
 
             <div className='mt-3 grid gap-2 md:grid-cols-2'>
                 <div className='border-border bg-background/60 rounded-xl border px-3 py-3'>
-                    <p className='text-xs font-semibold uppercase tracking-[0.12em]'>Global root</p>
-                    <p className='text-muted-foreground mt-1 break-all text-xs'>
+                    <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Global root</p>
+                    <p className='text-muted-foreground mt-1 text-xs break-all'>
                         {projectionStatus?.paths.globalMemoryRoot ?? 'Loading…'}
                     </p>
                 </div>
                 <div className='border-border bg-background/60 rounded-xl border px-3 py-3'>
-                    <p className='text-xs font-semibold uppercase tracking-[0.12em]'>Workspace root</p>
-                    <p className='text-muted-foreground mt-1 break-all text-xs'>
+                    <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Workspace root</p>
+                    <p className='text-muted-foreground mt-1 text-xs break-all'>
                         {projectionStatus?.paths.workspaceMemoryRoot ?? 'No workspace memory root for this context.'}
                     </p>
                 </div>
@@ -255,12 +259,16 @@ export function MemoryPanel({
             <div className='mt-4 space-y-2'>
                 <div className='flex items-center justify-between gap-2'>
                     <p className='text-sm font-semibold'>Retrieved For Current Context</p>
-                    <span className='text-muted-foreground text-xs'>{retrievedMemory?.records.length ?? 0} records</span>
+                    <span className='text-muted-foreground text-xs'>
+                        {retrievedMemory?.records.length ?? 0} records
+                    </span>
                 </div>
                 {(retrievedMemory?.records.length ?? 0) > 0 ? (
                     <div className='space-y-2'>
                         {retrievedMemory?.records.map((record) => (
-                            <div key={record.memoryId} className='border-border bg-background/70 rounded-xl border px-3 py-3'>
+                            <div
+                                key={record.memoryId}
+                                className='border-border bg-background/70 rounded-xl border px-3 py-3'>
                                 <div className='flex flex-wrap items-center gap-2'>
                                     <p className='text-sm font-medium'>{record.title}</p>
                                     <ScopeBadge label={record.memoryType} />
@@ -270,7 +278,9 @@ export function MemoryPanel({
                                 </div>
                                 <p className='text-muted-foreground mt-1 text-xs'>{record.memoryId}</p>
                                 {record.annotations && record.annotations.length > 0 ? (
-                                    <p className='text-muted-foreground mt-1 text-[11px]'>{record.annotations.join(' ')}</p>
+                                    <p className='text-muted-foreground mt-1 text-[11px]'>
+                                        {record.annotations.join(' ')}
+                                    </p>
                                 ) : null}
                             </div>
                         ))}
@@ -285,9 +295,11 @@ export function MemoryPanel({
             <div className='mt-4 space-y-2'>
                 <div className='flex items-center justify-between gap-2'>
                     <p className='text-sm font-semibold'>Projected Memory</p>
-                    <span className='text-muted-foreground text-xs'>
-                        {projectionStatusQuery.isFetching ? 'Refreshing…' : `${projectionStatus?.projectedMemories.length ?? 0} records`}
-                    </span>
+                        <span className='text-muted-foreground text-xs'>
+                            {projectionStatusQuery.isFetching
+                                ? 'Refreshing…'
+                                : `${String(projectionStatus?.projectedMemories.length ?? 0)} records`}
+                        </span>
                 </div>
                 {(projectionStatus?.projectedMemories.length ?? 0) > 0 ? (
                     projectionStatus?.projectedMemories.map((projectedMemory) => (
@@ -300,18 +312,28 @@ export function MemoryPanel({
                                 <ScopeBadge label={projectedMemory.memory.memoryType} />
                                 <ScopeBadge label={projectedMemory.memory.scopeKind} />
                                 <ScopeBadge label={projectedMemory.projectionTarget} />
-                                {projectedMemory.memory.createdByKind === 'system' ? <ScopeBadge label='system' /> : null}
-                                {retrievedMemoryById.has(projectedMemory.memory.id) ? <ScopeBadge label='retrieved' /> : null}
+                                {projectedMemory.memory.createdByKind === 'system' ? (
+                                    <ScopeBadge label='system' />
+                                ) : null}
+                                {retrievedMemoryById.has(projectedMemory.memory.id) ? (
+                                    <ScopeBadge label='retrieved' />
+                                ) : null}
                                 <DerivedSummaryBadges derivedSummary={projectedMemory.derivedSummary} />
                                 {(() => {
-                                    const runtimeMetadata = readRuntimeRunOutcomeMetadata(projectedMemory.memory.metadata);
+                                    const runtimeMetadata = readRuntimeRunOutcomeMetadata(
+                                        projectedMemory.memory.metadata
+                                    );
                                     if (!runtimeMetadata) {
                                         return null;
                                     }
 
                                     return (
                                         <ScopeBadge
-                                            label={runtimeMetadata.runStatus === 'completed' ? 'completed run' : 'failed run'}
+                                            label={
+                                                runtimeMetadata.runStatus === 'completed'
+                                                    ? 'completed run'
+                                                    : 'failed run'
+                                            }
                                         />
                                     );
                                 })()}
@@ -327,12 +349,13 @@ export function MemoryPanel({
 
                                 return (
                                     <p className='text-muted-foreground mt-1 text-[11px]'>
-                                        Automatic memory from {runtimeMetadata.runStatus === 'completed' ? 'completed' : 'failed'} run{' '}
+                                        Automatic memory from{' '}
+                                        {runtimeMetadata.runStatus === 'completed' ? 'completed' : 'failed'} run{' '}
                                         {runtimeMetadata.runId}
                                     </p>
                                 );
                             })()}
-                            <p className='text-muted-foreground mt-2 break-all text-[11px]'>
+                            <p className='text-muted-foreground mt-2 text-[11px] break-all'>
                                 {projectedMemory.absolutePath}
                             </p>
                             {projectedMemory.parseError ? (
@@ -340,9 +363,13 @@ export function MemoryPanel({
                             ) : null}
                             {projectedMemory.derivedSummary?.hasTemporalHistory ? (
                                 <p className='text-muted-foreground mt-2 text-[11px]'>
-                                    Temporal history: {projectedMemory.derivedSummary.predecessorMemoryIds.length} prior fact
+                                    Temporal history: {projectedMemory.derivedSummary.predecessorMemoryIds.length} prior
+                                    fact
                                     {projectedMemory.derivedSummary.predecessorMemoryIds.length === 1 ? '' : 's'}
-                                    {projectedMemory.derivedSummary.successorMemoryId ? ', plus a newer replacement' : ''}.
+                                    {projectedMemory.derivedSummary.successorMemoryId
+                                        ? ', plus a newer replacement'
+                                        : ''}
+                                    .
                                 </p>
                             ) : null}
                         </div>
@@ -357,9 +384,11 @@ export function MemoryPanel({
             <div className='mt-4 space-y-2'>
                 <div className='flex items-center justify-between gap-2'>
                     <p className='text-sm font-semibold'>Pending File Edits</p>
-                    <span className='text-muted-foreground text-xs'>
-                        {scanProjectionEditsQuery.isFetching ? 'Refreshing…' : `${scannedEdits?.proposals.length ?? 0} proposals`}
-                    </span>
+                        <span className='text-muted-foreground text-xs'>
+                            {scanProjectionEditsQuery.isFetching
+                                ? 'Refreshing…'
+                                : `${String(scannedEdits?.proposals.length ?? 0)} proposals`}
+                        </span>
                 </div>
                 {(scannedEdits?.proposals.length ?? 0) > 0 ? (
                     scannedEdits?.proposals.map((proposal) => (
@@ -373,7 +402,7 @@ export function MemoryPanel({
                             <p className='text-muted-foreground mt-1 text-xs'>
                                 {proposal.proposedSummaryText ?? proposal.memory.id}
                             </p>
-                            <p className='text-muted-foreground mt-2 break-all text-[11px]'>{proposal.absolutePath}</p>
+                            <p className='text-muted-foreground mt-2 text-[11px] break-all'>{proposal.absolutePath}</p>
                             <div className='mt-3 flex flex-wrap gap-2'>
                                 <Button
                                     type='button'
@@ -418,13 +447,17 @@ export function MemoryPanel({
                     <div className='space-y-2 pt-1'>
                         <p className='text-sm font-semibold'>Parse Errors</p>
                         {scannedEdits?.parseErrors.map((parseError) => (
-                            <div key={parseError.memory.id} className='border-destructive/20 rounded-xl border px-3 py-3'>
+                            <div
+                                key={parseError.memory.id}
+                                className='border-destructive/20 rounded-xl border px-3 py-3'>
                                 <div className='flex flex-wrap items-center gap-2'>
                                     <p className='text-sm font-medium'>{parseError.memory.title}</p>
                                     <SyncStateBadge syncState='parse_error' />
                                 </div>
                                 <p className='text-destructive mt-2 text-xs'>{parseError.parseError}</p>
-                                <p className='text-muted-foreground mt-2 break-all text-[11px]'>{parseError.absolutePath}</p>
+                                <p className='text-muted-foreground mt-2 text-[11px] break-all'>
+                                    {parseError.absolutePath}
+                                </p>
                             </div>
                         ))}
                     </div>

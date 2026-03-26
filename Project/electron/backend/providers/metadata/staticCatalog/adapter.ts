@@ -9,7 +9,9 @@ import type { ProviderCatalogSyncResult } from '@/app/backend/providers/types';
 type StaticProviderId = Exclude<FirstPartyProviderId, 'kilo'>;
 
 function isStaticProvider(providerId: FirstPartyProviderId): providerId is StaticProviderId {
-    return providerId === 'openai' || providerId === 'openai_codex' || providerId === 'zai' || providerId === 'moonshot';
+    return (
+        providerId === 'openai' || providerId === 'openai_codex' || providerId === 'zai' || providerId === 'moonshot'
+    );
 }
 
 export async function syncStaticCatalog(

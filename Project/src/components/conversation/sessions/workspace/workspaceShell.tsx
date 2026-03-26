@@ -15,7 +15,8 @@ export function WorkspaceShell({ inspectorSections, renderHeader, children }: Wo
     const [isInspectorOpen, setIsInspectorOpen] = useState(false);
 
     return (
-        <div className={`grid min-h-0 min-w-0 flex-1 ${isInspectorOpen ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : 'grid-cols-1'}`}>
+        <div
+            className={`grid min-h-0 min-w-0 flex-1 ${isInspectorOpen ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : 'grid-cols-1'}`}>
             <div className='flex min-h-0 min-w-0 flex-col overflow-hidden'>
                 {renderHeader({
                     isInspectorOpen,

@@ -1,9 +1,9 @@
+import { createParser, readObject, readOptionalNumber } from '@/app/backend/runtime/contracts/parsers/helpers';
 import {
     MAX_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
     MAX_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
     type SetComposerMediaSettingsInput,
 } from '@/app/backend/runtime/contracts/types/composer';
-import { createParser, readObject, readOptionalNumber } from '@/app/backend/runtime/contracts/parsers/helpers';
 
 function readBoundedPositiveInteger(input: unknown, field: string, maximum: number): number {
     const value = readOptionalNumber(input, field);

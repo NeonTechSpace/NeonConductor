@@ -87,7 +87,7 @@ export function PendingPermissionsPanel({
                             <div className='flex w-full max-w-[360px] flex-col gap-2'>
                                 {request.approvalCandidates && request.approvalCandidates.length > 0 ? (
                                     <label className='block'>
-                                        <span className='text-muted-foreground mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em]'>
+                                        <span className='text-muted-foreground mb-1 block text-[11px] font-semibold tracking-[0.12em] uppercase'>
                                             Save Approval As
                                         </span>
                                         <select

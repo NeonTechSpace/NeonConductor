@@ -8,12 +8,10 @@ import type {
     ProviderConnectionProfileResult,
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
-import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
 
-import type {
-    KiloModelRoutingPreference,
-    RuntimeProviderId,
-} from '@/shared/contracts';
+import type { KiloModelRoutingPreference, RuntimeProviderId } from '@/shared/contracts';
+import type { ProviderSpecialistDefaultRecord } from '@/shared/contracts/types/provider';
+
 
 type TrpcUtils = ReturnType<typeof trpc.useUtils>;
 type ProviderListData = Awaited<ReturnType<TrpcUtils['provider']['listProviders']['fetch']>>;
@@ -80,19 +78,17 @@ function patchProviderControlEntry(
         return currentEntry;
     }
 
-    const provider =
-        input.provider ??
-        {
-            ...currentEntry.provider,
-            ...(input.connectionProfile ? { connectionProfile: input.connectionProfile } : {}),
-            ...(input.executionPreference ? { executionPreference: input.executionPreference } : {}),
-            ...(input.authState
-                ? {
-                      authState: input.authState.authState,
-                      authMethod: input.authState.authMethod,
-                  }
-                : {}),
-        };
+    const provider = input.provider ?? {
+        ...currentEntry.provider,
+        ...(input.connectionProfile ? { connectionProfile: input.connectionProfile } : {}),
+        ...(input.executionPreference ? { executionPreference: input.executionPreference } : {}),
+        ...(input.authState
+            ? {
+                  authState: input.authState.authState,
+                  authMethod: input.authState.authMethod,
+              }
+            : {}),
+    };
     const models = input.models ?? currentEntry.models;
     const invalidModelCount = currentEntry.catalogState.invalidModelCount;
     const catalogState =
@@ -216,9 +212,11 @@ export function patchProviderCache(input: {
         input.connectionProfile ||
         input.executionPreference
     ) {
-        const getControlPlaneCache = (input.utils.provider as {
-            getControlPlane?: { setData: TrpcUtils['provider']['getControlPlane']['setData'] };
-        }).getControlPlane;
+        const getControlPlaneCache = (
+            input.utils.provider as {
+                getControlPlane?: { setData: TrpcUtils['provider']['getControlPlane']['setData'] };
+            }
+        ).getControlPlane;
         getControlPlaneCache?.setData({ profileId: input.profileId }, (current: ProviderControlData | undefined) => {
             if (!current) {
                 return current;
@@ -375,4 +373,3 @@ export function patchProviderCache(input: {
         );
     }
 }
-

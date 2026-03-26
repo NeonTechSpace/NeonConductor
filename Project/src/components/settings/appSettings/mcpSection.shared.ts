@@ -1,9 +1,6 @@
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
-import type {
-    McpServerRecord,
-    McpServerWorkingDirectoryMode,
-} from '@/app/backend/runtime/contracts/types/mcp';
+import type { McpServerRecord, McpServerWorkingDirectoryMode } from '@/shared/contracts/types/mcp';
 
 const workingDirectoryModes = ['inherit_process', 'workspace_root', 'fixed_path'] as const;
 
@@ -27,7 +24,7 @@ export interface McpServerDraft {
 }
 
 export function createId(): string {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `${String(Date.now())}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function createEmptyDraft(): McpServerDraft {

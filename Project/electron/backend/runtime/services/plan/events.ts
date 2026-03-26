@@ -66,10 +66,7 @@ export async function appendPlanQuestionAnsweredEvent(input: {
     );
 }
 
-export async function appendPlanApprovedEvent(input: {
-    profileId: string;
-    planId: EntityId<'plan'>;
-}): Promise<void> {
+export async function appendPlanApprovedEvent(input: { profileId: string; planId: EntityId<'plan'> }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
             entityType: 'plan',

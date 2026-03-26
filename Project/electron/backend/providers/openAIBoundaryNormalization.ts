@@ -1,13 +1,11 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-import {
-    providerAuthStore,
-    providerSecretStore,
-} from '@/app/backend/persistence/stores';
+import { providerAuthStore, providerSecretStore } from '@/app/backend/persistence/stores';
 import { settingsStore } from '@/app/backend/persistence/stores/profile/settingsStore';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import { isSupportedProviderSpecialistDefaultTarget } from '@/app/backend/runtime/contracts/specialistDefaults';
 import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
 import { appLog } from '@/app/main/logging';
+
 import { providerIds } from '@/shared/contracts';
 
 const SPECIALIST_DEFAULTS_KEY = 'specialist_defaults';
@@ -56,7 +54,8 @@ export function normalizeSpecialistDefaults(value: unknown): ProviderSpecialistD
         }
 
         const nextProviderId = providerId === 'openai' && isCodexModelId(modelId) ? 'openai_codex' : providerId;
-        const nextModelId = providerId === 'openai_codex' || nextProviderId === 'openai_codex' ? toCodexModelId(modelId) : modelId;
+        const nextModelId =
+            providerId === 'openai_codex' || nextProviderId === 'openai_codex' ? toCodexModelId(modelId) : modelId;
         if (nextProviderId !== providerId || nextModelId !== modelId) {
             changed = true;
         }
@@ -74,22 +73,30 @@ export function normalizeSpecialistDefaults(value: unknown): ProviderSpecialistD
 
 export async function normalizeOpenAIBoundaryForProfile(profileId: string): Promise<void> {
     const { db } = getPersistence();
-    const [openAIAuthState, codexAuthState, openAIApiKey, openAIAccessToken, openAIRefreshToken, defaults, specialistDefaults] =
-        await Promise.all([
-            providerAuthStore.getByProfileAndProvider(profileId, 'openai'),
-            providerAuthStore.getByProfileAndProvider(profileId, 'openai_codex'),
-            providerSecretStore.getValue(profileId, 'openai', 'api_key'),
-            providerSecretStore.getValue(profileId, 'openai', 'access_token'),
-            providerSecretStore.getValue(profileId, 'openai', 'refresh_token'),
-            Promise.all([
-                settingsStore.getStringOptional(profileId, 'default_provider_id'),
-                settingsStore.getStringOptional(profileId, 'default_model_id'),
-            ]),
-            settingsStore.getJsonOptional(profileId, SPECIALIST_DEFAULTS_KEY, Array.isArray),
-        ]);
+    const [
+        openAIAuthState,
+        codexAuthState,
+        openAIApiKey,
+        openAIAccessToken,
+        openAIRefreshToken,
+        defaults,
+        specialistDefaults,
+    ] = await Promise.all([
+        providerAuthStore.getByProfileAndProvider(profileId, 'openai'),
+        providerAuthStore.getByProfileAndProvider(profileId, 'openai_codex'),
+        providerSecretStore.getValue(profileId, 'openai', 'api_key'),
+        providerSecretStore.getValue(profileId, 'openai', 'access_token'),
+        providerSecretStore.getValue(profileId, 'openai', 'refresh_token'),
+        Promise.all([
+            settingsStore.getStringOptional(profileId, 'default_provider_id'),
+            settingsStore.getStringOptional(profileId, 'default_model_id'),
+        ]),
+        settingsStore.getJsonOptional(profileId, SPECIALIST_DEFAULTS_KEY, Array.isArray),
+    ]);
 
     const shouldMigrateOAuthState =
-        openAIAuthState !== null && (openAIAuthState.authMethod === 'oauth_pkce' || openAIAuthState.authMethod === 'oauth_device');
+        openAIAuthState !== null &&
+        (openAIAuthState.authMethod === 'oauth_pkce' || openAIAuthState.authMethod === 'oauth_device');
 
     if (openAIAccessToken) {
         await providerSecretStore.upsertValue({

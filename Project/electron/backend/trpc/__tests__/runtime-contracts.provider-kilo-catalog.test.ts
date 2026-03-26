@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
 import {
     createCaller,
@@ -7,8 +8,8 @@ import {
     registerRuntimeContractHooks,
     runtimeContractProfileId,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+
 import { kiloBalancedModelId, kiloFrontierModelId } from '@/shared/kiloModels';
-import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 
 registerRuntimeContractHooks();
 
@@ -168,9 +169,9 @@ describe('runtime contracts: provider kilo catalog flows', () => {
         expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === 'z-ai/glm-5'))).toBe(
             'openai_compatible'
         );
-        expect(getKiloRoutedApiFamily(models.models.find((model) => model.id === 'google/gemini-3.1-pro-preview'))).toBe(
-            'google_generativeai'
-        );
+        expect(
+            getKiloRoutedApiFamily(models.models.find((model) => model.id === 'google/gemini-3.1-pro-preview'))
+        ).toBe('google_generativeai');
     });
 
     it('keeps distinct kilo model ids when discovery returns the same visible label twice', async () => {

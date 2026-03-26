@@ -1,9 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const {
-    getModelMock,
-    resolveProviderRuntimePathContextMock,
-} = vi.hoisted(() => ({
+const { getModelMock, resolveProviderRuntimePathContextMock } = vi.hoisted(() => ({
     getModelMock: vi.fn(),
     resolveProviderRuntimePathContextMock: vi.fn(),
 }));
@@ -18,11 +15,9 @@ vi.mock('@/app/backend/providers/runtimePathContext', () => ({
     resolveProviderRuntimePathContext: resolveProviderRuntimePathContextMock,
 }));
 
-import {
-    streamProviderNativeRuntime,
-} from '@/app/backend/providers/adapters/providerNative';
+import { streamProviderNativeRuntime } from '@/app/backend/providers/adapters/providerNative';
 import { miniMaxOpenAICompatibilitySpecialization } from '@/app/backend/providers/adapters/providerNative/minimax';
-import type { ProviderRuntimeInput, ProviderRuntimePart } from '@/app/backend/providers/types';
+import type { ProviderRuntimeInput } from '@/app/backend/providers/types';
 
 function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): ProviderRuntimeInput {
     return {
@@ -311,7 +306,7 @@ describe('provider-native runtime hardening', () => {
             throw new Error(parsed.error.message);
         }
 
-        const parts = parsed.value.parts as ProviderRuntimePart[];
+        const parts = parsed.value.parts;
         expect(parts).toEqual([
             {
                 partType: 'reasoning',

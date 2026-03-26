@@ -1,12 +1,14 @@
+import type { WorkspaceLifecycleDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import { WorkspaceEnvironmentPreviewCard } from '@/web/components/workspaces/workspaceEnvironmentSection';
 
-import type { WorkspaceEnvironmentSnapshot } from '@/app/backend/runtime/contracts/types/runtime';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspaceLifecycleDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
+
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { WorkspaceEnvironmentSnapshot } from '@/shared/contracts/types/runtime';
+
 
 interface WorkspaceLifecycleDialogProps {
     open: boolean;

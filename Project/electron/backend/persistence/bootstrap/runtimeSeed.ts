@@ -1,18 +1,13 @@
-
 import {
     listStaticModelDefinitions,
     toStaticProviderCatalogModel,
 } from '@/app/backend/providers/metadata/staticCatalog/registry';
 import { getDefaultEndpointProfile } from '@/app/backend/providers/registry';
-import {
-    kiloBalancedModelId,
-    kiloFreeModelId,
-    kiloFrontierModelId,
-    kiloSmallModelId,
-} from '@/shared/kiloModels';
+import type { ProviderRoutedApiFamily } from '@/app/backend/providers/types';
+
+import { kiloBalancedModelId, kiloFreeModelId, kiloFrontierModelId, kiloSmallModelId } from '@/shared/kiloModels';
 
 import type { DatabaseSync } from 'node:sqlite';
-import type { ProviderRoutedApiFamily } from '@/app/backend/providers/types';
 
 const DEFAULT_PROVIDER_ID = 'kilo';
 const DEFAULT_MODEL_ID = kiloFrontierModelId;
@@ -379,7 +374,9 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
                   : 0,
             model.catalogModel.runtime.toolProtocol,
             model.catalogModel.runtime.apiFamily ?? null,
-            model.catalogModel.runtime.toolProtocol === 'kilo_gateway' ? model.catalogModel.runtime.routedApiFamily : null,
+            model.catalogModel.runtime.toolProtocol === 'kilo_gateway'
+                ? model.catalogModel.runtime.routedApiFamily
+                : null,
             JSON.stringify(model.catalogModel.features.inputModalities),
             JSON.stringify(model.catalogModel.features.outputModalities),
             model.catalogModel.promptFamily ?? null,

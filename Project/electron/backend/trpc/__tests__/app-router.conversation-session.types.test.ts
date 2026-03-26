@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, test } from 'vitest';
 
-import type { AppRouterInputs, AppRouterOutputs } from './app-router.types.shared';
+import type { AppRouterInputs, AppRouterOutputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
 
 test('AppRouter exposes conversation and session procedure contracts to clients', () => {
     expectTypeOf<AppRouterInputs['session']['create']>().toExtend<{
@@ -216,9 +216,7 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
     }>();
     expectTypeOf<AppRouterOutputs['diff']['listByRun']>().toExtend<{
         diffs: Array<{
-            artifact:
-                | { kind: 'git'; files: Array<{ path: string }> }
-                | { kind: 'unsupported'; detail: string };
+            artifact: { kind: 'git'; files: Array<{ path: string }> } | { kind: 'unsupported'; detail: string };
         }>;
         overview?:
             | {
@@ -262,3 +260,4 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
 
     expect(true).toBe(true);
 });
+

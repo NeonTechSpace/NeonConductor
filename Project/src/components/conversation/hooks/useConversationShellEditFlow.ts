@@ -2,11 +2,8 @@ import { useState } from 'react';
 
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
+import { toEditFailureMessage, type PendingMessageEdit } from '@/web/components/conversation/shell/editFlow';
 import { buildEditSelectionTransition } from '@/web/components/conversation/shell/editFlowSelection';
-import {
-    toEditFailureMessage,
-    type PendingMessageEdit,
-} from '@/web/components/conversation/shell/editFlow';
 import { createPendingMessageEdit } from '@/web/components/conversation/shell/pendingMessageEdit';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -14,12 +11,7 @@ import { trpc } from '@/web/trpc/client';
 
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
-import type {
-    RuntimeProviderId,
-    RuntimeRunOptions,
-    SessionEditInput,
-    TopLevelTab,
-} from '@/shared/contracts';
+import type { RuntimeProviderId, RuntimeRunOptions, SessionEditInput, TopLevelTab } from '@/shared/contracts';
 
 interface UseConversationShellEditFlowInput {
     profileId: string;

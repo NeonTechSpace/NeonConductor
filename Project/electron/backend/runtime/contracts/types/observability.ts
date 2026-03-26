@@ -1,4 +1,4 @@
-import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { TopLevelTab } from '@/shared/contracts';
 import type { EntityId } from '@/shared/contracts';
 
 export const neonObservabilityEventKinds = [
@@ -112,7 +112,7 @@ export interface NeonObservabilityEventBase {
     profileId: string;
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
-    providerId: RuntimeProviderId | string;
+    providerId: string;
     modelId: string;
     source: NeonObservabilityEventSource;
 }

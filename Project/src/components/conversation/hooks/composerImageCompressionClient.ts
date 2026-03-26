@@ -45,11 +45,7 @@ type ImageCompressionOutcome =
 interface ImageCompressionWorkerHandle {
     onmessage: ((event: MessageEvent<ImageCompressionWorkerMessage>) => void) | null;
     onerror: ((event: ErrorEvent) => void) | null;
-    postMessage: (message: {
-        requestId: string;
-        clientId: string;
-        file: File;
-    }) => void;
+    postMessage: (message: { requestId: string; clientId: string; file: File }) => void;
     terminate: () => void;
 }
 
@@ -221,4 +217,3 @@ export function resetSharedComposerImageCompressionClientForTests(): void {
     sharedComposerImageCompressionClient?.dispose();
     sharedComposerImageCompressionClient = undefined;
 }
-

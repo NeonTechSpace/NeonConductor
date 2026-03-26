@@ -1,18 +1,19 @@
 import { messageStore } from '@/app/backend/persistence/stores';
 import type { MessagePartRecord, MessageRecord, RunRecord } from '@/app/backend/persistence/types';
 import type { ProviderRuntimePart, ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
-import { isReasoningPart } from '@/app/backend/runtime/services/runExecution/parts';
-import type { RunCacheResolution } from '@/app/backend/runtime/services/runExecution/types';
 import {
     publishToolResultChunkObservabilityEvent,
     publishTransportSelectedObservabilityEvent,
 } from '@/app/backend/runtime/services/observability/publishers';
+import { isReasoningPart } from '@/app/backend/runtime/services/runExecution/parts';
+import type { RunCacheResolution } from '@/app/backend/runtime/services/runExecution/types';
 import {
     runtimeAppendEvent,
     runtimeStatusEvent,
     runtimeUpsertEvent,
 } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
+
 import type { EntityId } from '@/shared/contracts';
 
 export async function emitCacheResolutionEvent(input: {
@@ -24,17 +25,17 @@ export async function emitCacheResolutionEvent(input: {
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
-        entityType: 'run',
-        domain: 'run',
-        entityId: input.runId,
-        eventType: input.cache.applied ? 'run.cache.applied' : 'run.cache.skipped',
-        payload: {
-            runId: input.runId,
-            profileId: input.profileId,
-            sessionId: input.sessionId,
-            cache: input.cache,
-            run: input.run,
-        },
+            entityType: 'run',
+            domain: 'run',
+            entityId: input.runId,
+            eventType: input.cache.applied ? 'run.cache.applied' : 'run.cache.skipped',
+            payload: {
+                runId: input.runId,
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                cache: input.cache,
+                run: input.run,
+            },
         })
     );
 }
@@ -48,17 +49,17 @@ export async function emitTransportSelectionEvent(input: {
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
-        entityType: 'run',
-        domain: 'run',
-        entityId: input.runId,
-        eventType: 'run.transport.selected',
-        payload: {
-            runId: input.runId,
-            profileId: input.profileId,
-            sessionId: input.sessionId,
-            transport: input.selection,
-            run: input.run,
-        },
+            entityType: 'run',
+            domain: 'run',
+            entityId: input.runId,
+            eventType: 'run.transport.selected',
+            payload: {
+                runId: input.runId,
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                transport: input.selection,
+                run: input.run,
+            },
         })
     );
     if (!input.run.providerId || !input.run.modelId) {

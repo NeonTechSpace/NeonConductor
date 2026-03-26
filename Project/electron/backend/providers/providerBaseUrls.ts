@@ -1,6 +1,6 @@
-import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 import { resolveOpenAIBaseUrl } from '@/app/backend/providers/adapters/openai/endpoints';
 import { KILO_GATEWAY_BASE_URL } from '@/app/backend/providers/kiloGatewayClient/constants';
+import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 
 const ZAI_CODING_BASE_URL = process.env['ZAI_CODING_BASE_URL']?.trim() || 'https://api.z.ai/api/coding/paas/v4';
 const ZAI_GENERAL_BASE_URL = process.env['ZAI_GENERAL_BASE_URL']?.trim() || 'https://api.z.ai/api/paas/v4';

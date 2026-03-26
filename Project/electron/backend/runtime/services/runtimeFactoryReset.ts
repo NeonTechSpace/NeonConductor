@@ -1,7 +1,12 @@
 import { access, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 
-import { getDefaultProfileId, getPersistence, getPersistenceStoragePaths, reseedRuntimeData } from '@/app/backend/persistence/db';
+import {
+    getDefaultProfileId,
+    getPersistence,
+    getPersistenceStoragePaths,
+    reseedRuntimeData,
+} from '@/app/backend/persistence/db';
 import type {
     RuntimeFactoryResetCleanupCounts,
     RuntimeFactoryResetInput,
@@ -50,10 +55,7 @@ async function countRecursiveEntries(rootPath: string): Promise<number> {
 
 function isMissingPathError(error: unknown): boolean {
     return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === 'ENOENT'
+        typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === 'ENOENT'
     );
 }
 
@@ -72,9 +74,7 @@ async function collectManagedSandboxTargets(): Promise<FactoryResetSandboxTarget
                 .onRef('workspaceRoot.profile_id', '=', 'sandbox.profile_id')
                 .onRef('workspaceRoot.fingerprint', '=', 'sandbox.workspace_fingerprint')
         )
-        .select([
-            'sandbox.absolute_path as sandboxPath',
-        ])
+        .select(['sandbox.absolute_path as sandboxPath'])
         .execute();
 
     return rows.map((row) => ({

@@ -1,3 +1,7 @@
+import type {
+    ConversationSessionActions,
+    ConversationShellMainViewDraftTarget,
+} from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
 import { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import {
     getProviderControlDefaults,
@@ -7,12 +11,8 @@ import {
 } from '@/web/lib/providerControl/selectors';
 
 import type { RunRecord } from '@/app/backend/persistence/types';
-import type { RuntimeShellBootstrap } from '@/app/backend/runtime/contracts';
 
-import type {
-    ConversationSessionActions,
-    ConversationShellMainViewDraftTarget,
-} from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
+import type { RuntimeShellBootstrap } from '@/shared/contracts';
 import type { TopLevelTab } from '@/shared/contracts';
 
 interface UseConversationComposerTargetStateInput {

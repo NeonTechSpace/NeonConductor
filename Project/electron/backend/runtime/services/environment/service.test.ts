@@ -1,9 +1,8 @@
+import { EventEmitter } from 'node:events';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
-
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { spawnMock } = vi.hoisted(() => ({

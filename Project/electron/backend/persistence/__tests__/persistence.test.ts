@@ -137,5 +137,4 @@ describe('persistence bootstrap and durability', () => {
 
         expect(listed.sessions.some((item) => item.id === created.session.id)).toBe(true);
     });
-
 });

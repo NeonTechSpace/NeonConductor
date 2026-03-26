@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveSelectedModelId, resolveSelectedProviderId } from '@/web/components/settings/providerSettings/selection';
+import {
+    resolveSelectedModelId,
+    resolveSelectedProviderId,
+} from '@/web/components/settings/providerSettings/selection';
 
 describe('provider settings selection helpers', () => {
     it('falls back to the default provider when the current selection is missing', () => {

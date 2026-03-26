@@ -76,7 +76,9 @@ describe('desktop storage resolver', () => {
             isDevIsolatedStorage: false,
         });
         expect(storagePaths.runtimeRoot).toBe(path.join(configuredUserDataPath, 'runtime', 'development'));
-        expect(storagePaths.dbPath).toBe(path.join(configuredUserDataPath, 'runtime', 'development', 'neonconductor.db'));
+        expect(storagePaths.dbPath).toBe(
+            path.join(configuredUserDataPath, 'runtime', 'development', 'neonconductor.db')
+        );
         expect(storagePaths.logsPath).toBe(path.join(configuredUserDataPath, 'logs'));
     });
 });

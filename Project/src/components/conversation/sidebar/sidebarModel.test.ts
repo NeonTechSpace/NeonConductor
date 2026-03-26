@@ -128,7 +128,9 @@ describe('buildConversationSidebarModel', () => {
             threads: [
                 ...threads,
                 {
-                    ...threads[0]!,
+                    ...(threads[0] ?? (() => {
+                        throw new Error('Expected base workspace thread.');
+                    })()),
                     id: 'thr_workspace_c',
                     conversationId: 'conv_3',
                     workspaceFingerprint: 'ws_c',
@@ -150,14 +152,18 @@ describe('buildConversationSidebarModel', () => {
             buckets,
             threads: [
                 {
-                    ...threads[0]!,
+                    ...(threads[0] ?? (() => {
+                        throw new Error('Expected root orchestrator thread.');
+                    })()),
                     id: 'thr_orchestrator_root',
                     title: 'Root orchestrator thread',
                     topLevelTab: 'orchestrator',
                     rootThreadId: 'thr_orchestrator_root',
                 },
                 {
-                    ...threads[1]!,
+                    ...(threads[1] ?? (() => {
+                        throw new Error('Expected delegated worker child thread.');
+                    })()),
                     id: 'thr_worker_child',
                     title: 'Delegated worker child',
                     topLevelTab: 'agent',

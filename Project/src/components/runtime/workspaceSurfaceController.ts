@@ -1,9 +1,9 @@
 import { skipToken } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { BOOT_CRITICAL_QUERY_OPTIONS } from '@/web/components/runtime/startupQueryOptions';
 import { useWorkspaceModeState } from '@/web/components/runtime/useWorkspaceModeState';
 import { useWorkspaceProfileState } from '@/web/components/runtime/useWorkspaceProfileState';
-import { BOOT_CRITICAL_QUERY_OPTIONS } from '@/web/components/runtime/startupQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/shared/contracts';
@@ -35,7 +35,8 @@ export function useWorkspaceSurfaceController() {
     );
     const workspaceRoots = workspaceRootsQuery.data?.workspaceRoots ?? [];
     const resolvedWorkspaceFingerprint =
-        currentWorkspaceFingerprint && workspaceRoots.some((workspaceRoot) => workspaceRoot.fingerprint === currentWorkspaceFingerprint)
+        currentWorkspaceFingerprint &&
+        workspaceRoots.some((workspaceRoot) => workspaceRoot.fingerprint === currentWorkspaceFingerprint)
             ? currentWorkspaceFingerprint
             : undefined;
     const selectedWorkspaceRoot = resolvedWorkspaceFingerprint
@@ -68,4 +69,3 @@ export function useWorkspaceSurfaceController() {
         selectMode: modeState.selectMode,
     };
 }
-

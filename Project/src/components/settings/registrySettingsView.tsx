@@ -1,7 +1,4 @@
-import {
-    RegistrySettingsScreen,
-} from '@/web/components/settings/registrySettings/view';
-
+import { RegistrySettingsScreen } from '@/web/components/settings/registrySettings/view';
 import type { RegistrySettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
 
 interface RegistrySettingsViewProps {

@@ -59,7 +59,10 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                       }
                     : {})}
                 onConfigureThread={(executionInput) => {
-                    if (!input.shellViewModel.selectedThread || !isEntityId(input.shellViewModel.selectedThread.id, 'thr')) {
+                    if (
+                        !input.shellViewModel.selectedThread ||
+                        !isEntityId(input.shellViewModel.selectedThread.id, 'thr')
+                    ) {
                         return;
                     }
                     if (executionInput.mode === 'sandbox') {
@@ -182,4 +185,3 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
             ) : undefined,
     };
 }
-

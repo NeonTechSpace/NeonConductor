@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
-import type { EntityId } from '@/app/backend/runtime/contracts';
 import { kiloModelsByProviderLivePayload } from '@/app/backend/trpc/__tests__/fixtures/kiloModelsByProviderLivePayload';
 import type { Context } from '@/app/backend/trpc/context';
 import { appRouter } from '@/app/backend/trpc/router';
+
+import type { EntityId } from '@/shared/contracts';
 
 function createCaller() {
     const context: Context = {
@@ -384,3 +385,4 @@ describe('kilo routing', () => {
         });
     });
 });
+

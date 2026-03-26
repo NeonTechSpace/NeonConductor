@@ -7,10 +7,9 @@ import { preloadBundleUsesUnsupportedModuleSyntax } from '../window/preloadBundl
 import type { LibraryFormats, Plugin, UserConfig } from 'vite';
 
 const sandboxedPreloadFormats: LibraryFormats[] = ['cjs'];
-const builtinExternalModules = builtinModules.filter((moduleName) => !moduleName.startsWith('_')).flatMap((moduleName) => [
-    moduleName,
-    `node:${moduleName}`,
-]);
+const builtinExternalModules = builtinModules
+    .filter((moduleName) => !moduleName.startsWith('_'))
+    .flatMap((moduleName) => [moduleName, `node:${moduleName}`]);
 
 function createSandboxedPreloadAssertionPlugin(bundleFileName: string, outDir: string): Plugin {
     return {

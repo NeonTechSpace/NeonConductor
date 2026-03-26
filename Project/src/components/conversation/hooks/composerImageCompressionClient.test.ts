@@ -117,4 +117,3 @@ describe('ComposerImageCompressionClient', () => {
         expect(result.isErr()).toBe(true);
     });
 });
-

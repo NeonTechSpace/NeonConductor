@@ -3,7 +3,6 @@ import { InvariantError } from '@/app/backend/runtime/services/common/fatalError
 import type { SqliteDatabase, SqliteStatement } from 'kysely';
 import type { DatabaseSync, SQLInputValue, StatementSync } from 'node:sqlite';
 
-
 type NodeSqliteInputValue = SQLInputValue;
 
 function isInvalidStateError(error: unknown): error is { code: 'ERR_INVALID_STATE' } {
@@ -11,12 +10,7 @@ function isInvalidStateError(error: unknown): error is { code: 'ERR_INVALID_STAT
 }
 
 function toNodeSqliteParameter(value: unknown): NodeSqliteInputValue {
-    if (
-        value === null ||
-        typeof value === 'number' ||
-        typeof value === 'bigint' ||
-        typeof value === 'string'
-    ) {
+    if (value === null || typeof value === 'number' || typeof value === 'bigint' || typeof value === 'string') {
         return value;
     }
 

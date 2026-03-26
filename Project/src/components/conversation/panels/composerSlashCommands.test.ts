@@ -55,9 +55,9 @@ describe('composerSlashCommands', () => {
             selectedSessionId: 'sess_test',
         });
 
-        expect(chatEntries.every((entry) => entry.available === false)).toBe(true);
+        expect(chatEntries.every((entry) => !entry.available)).toBe(true);
         expect(chatEntries[0]?.unavailableReason).toBe('Available only for agent and orchestrator sessions.');
-        expect(missingSessionEntries.every((entry) => entry.available === false)).toBe(true);
+        expect(missingSessionEntries.every((entry) => !entry.available)).toBe(true);
         expect(missingSessionEntries[0]?.unavailableReason).toBe('Select a session before using slash commands.');
         expect(availableEntries.every((entry) => entry.available)).toBe(true);
     });

@@ -64,7 +64,10 @@ export class SandboxService {
             targetPath,
         });
         if (!created.ok) {
-            return errOp(created.error.reason === 'workspace_missing' ? 'request_unavailable' : 'request_failed', created.error.detail);
+            return errOp(
+                created.error.reason === 'workspace_missing' ? 'request_unavailable' : 'request_failed',
+                created.error.detail
+            );
         }
 
         const record = await sandboxStore.create({
@@ -185,7 +188,10 @@ export class SandboxService {
             return errOp('not_found', 'Sandbox execution is only available for workspace-bound threads.');
         }
         if (thread.topLevelTab === 'chat') {
-            return errOp('unsupported_tab', 'Chat threads use read-only conversation branches and cannot bind sandboxes.');
+            return errOp(
+                'unsupported_tab',
+                'Chat threads use read-only conversation branches and cannot bind sandboxes.'
+            );
         }
 
         if (input.mode === 'sandbox') {

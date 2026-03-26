@@ -1,12 +1,13 @@
 import { providerAuthStore } from '@/app/backend/persistence/stores';
 import { readProviderSecretValue } from '@/app/backend/providers/auth/providerSecrets';
-import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
 import type { ResolvedRunAuth } from '@/app/backend/runtime/services/runExecution/types';
+
+import type { RuntimeProviderId } from '@/shared/contracts';
 
 function isOauthMethod(method: string): method is 'device_code' | 'oauth_pkce' | 'oauth_device' {
     return method === 'device_code' || method === 'oauth_pkce' || method === 'oauth_device';
@@ -137,3 +138,4 @@ export async function resolveRunAuth(input: {
         }
     );
 }
+

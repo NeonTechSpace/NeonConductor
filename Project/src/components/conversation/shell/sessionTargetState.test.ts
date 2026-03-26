@@ -11,12 +11,7 @@ describe('sessionTargetState', () => {
         const secondSession = 'sess_second';
 
         const withFirstProvider = applySessionProviderOverride({}, firstSession, 'openai', 'openai/gpt-5');
-        const withSecondProvider = applySessionProviderOverride(
-            withFirstProvider,
-            secondSession,
-            'kilo',
-            'kilo/gpt-5'
-        );
+        const withSecondProvider = applySessionProviderOverride(withFirstProvider, secondSession, 'kilo', 'kilo/gpt-5');
         const updatedFirstModel = applySessionModelOverride(
             withSecondProvider,
             firstSession,

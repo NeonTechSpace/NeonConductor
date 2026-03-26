@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
 
-import type { RunStartRejectionAction } from '@/app/backend/runtime/contracts';
+import type { RunStartRejectionAction } from '@/shared/contracts';
 
 export type RunExecutionErrorCode =
     | 'invalid_mode'
@@ -46,3 +46,4 @@ export function errRunExecution(
         ...(options?.action ? { action: options.action } : {}),
     });
 }
+

@@ -63,8 +63,8 @@ function createControllerState(overrides: Record<string, unknown> = {}) {
         setTopLevelTab: vi.fn(),
         setCurrentWorkspaceFingerprint: vi.fn(),
         setResolvedProfile: vi.fn(),
-        selectProfile: vi.fn(async () => undefined),
-        selectMode: vi.fn(async () => undefined),
+        selectProfile: vi.fn(() => Promise.resolve(undefined)),
+        selectMode: vi.fn(() => Promise.resolve(undefined)),
         ...overrides,
     };
 }
@@ -195,7 +195,9 @@ describe('workspace surface', () => {
         );
 
         renderToStaticMarkup(<WorkspaceSurface />);
-        (capturedPaletteProps?.onSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.('settings');
+        (capturedPaletteProps?.onSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.(
+            'settings'
+        );
 
         expect(navigateMock).toHaveBeenCalledWith({
             to: '/settings',
@@ -208,7 +210,9 @@ describe('workspace surface', () => {
         );
 
         renderToStaticMarkup(<WorkspaceSurface />);
-        (capturedPaletteProps?.onPreviewSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.('settings');
+        (capturedPaletteProps?.onPreviewSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.(
+            'settings'
+        );
 
         expect(preloadRouteMock).toHaveBeenCalledWith({
             to: '/settings',

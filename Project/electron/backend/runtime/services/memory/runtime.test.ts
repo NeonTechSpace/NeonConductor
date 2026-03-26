@@ -98,7 +98,9 @@ describe('memoryRuntimeService', () => {
             sessionId: created.session.id,
             threadId,
         });
-        expect(firstCapture.value.memory?.bodyMarkdown).toContain('Finished the implementation and verified the tests.');
+        expect(firstCapture.value.memory?.bodyMarkdown).toContain(
+            'Finished the implementation and verified the tests.'
+        );
 
         const secondCapture = await memoryRuntimeService.captureFinishedRunMemory({
             profileId,
@@ -151,7 +153,9 @@ describe('memoryRuntimeService', () => {
         });
         expect(initialCapture.isOk()).toBe(true);
         if (initialCapture.isErr() || !initialCapture.value.memory) {
-            throw new Error(initialCapture.isErr() ? initialCapture.error.message : 'Expected created automatic memory.');
+            throw new Error(
+                initialCapture.isErr() ? initialCapture.error.message : 'Expected created automatic memory.'
+            );
         }
 
         await runUsageStore.upsert({

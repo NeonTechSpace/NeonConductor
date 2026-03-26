@@ -4,12 +4,6 @@ import {
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
 import {
-    buildGeminiCompatibilityMessages,
-    isRecord,
-    readOptionalNumber,
-    readOptionalString,
-} from '@/app/backend/providers/adapters/geminiShared';
-import {
     normalizeGeminiChatUsage,
     parseGeminiContentTextParts,
     parseGeminiReasoningDetails,
@@ -17,19 +11,22 @@ import {
     type GeminiReasoningState,
 } from '@/app/backend/providers/adapters/geminiFamilyCore';
 import {
+    buildGeminiCompatibilityMessages,
+    isRecord,
+    readOptionalNumber,
+    readOptionalString,
+} from '@/app/backend/providers/adapters/geminiShared';
+import { buildKiloProviderPreferences, mapReasoningEffort } from '@/app/backend/providers/adapters/kilo/headers';
+import {
     parseStructuredToolCall,
     type RuntimeParsedCompletion,
     type RuntimeParsedPart,
 } from '@/app/backend/providers/adapters/runtimePayload';
+import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
 import {
     consumeStrictServerSentEvents,
     type StrictServerSentEventFrame,
 } from '@/app/backend/providers/adapters/strictServerSentEvents';
-import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
-import {
-    buildKiloProviderPreferences,
-    mapReasoningEffort,
-} from '@/app/backend/providers/adapters/kilo/headers';
 import type {
     ProviderRuntimeHandlers,
     ProviderRuntimeInput,
@@ -148,12 +145,12 @@ function accumulateToolCalls(
     return okProviderAdapter({ shouldFlush });
 }
 
-function flushGeminiToolCalls(
-    state: KiloGeminiRoutedStreamState
-): ProviderAdapterResult<RuntimeParsedPart[]> {
+function flushGeminiToolCalls(state: KiloGeminiRoutedStreamState): ProviderAdapterResult<RuntimeParsedPart[]> {
     const toolCallParts: RuntimeParsedPart[] = [];
 
-    for (const accumulator of [...state.toolCallAccumulators.values()].sort((left, right) => left.index - right.index)) {
+    for (const accumulator of [...state.toolCallAccumulators.values()].sort(
+        (left, right) => left.index - right.index
+    )) {
         const parsedPart = parseStructuredToolCall({
             callId: accumulator.callId,
             toolName: accumulator.toolName,

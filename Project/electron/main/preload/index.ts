@@ -14,7 +14,7 @@ import {
 
 contextBridge.exposeInMainWorld('neonDesktop', {
     async pickDirectory(): Promise<PickDirectoryResult> {
-        const result = await ipcRenderer.invoke(PICK_DIRECTORY_CHANNEL);
+        const result: unknown = await ipcRenderer.invoke(PICK_DIRECTORY_CHANNEL);
         return isPickDirectoryResult(result) ? result : { canceled: true };
     },
 });

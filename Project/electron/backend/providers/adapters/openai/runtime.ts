@@ -1,5 +1,8 @@
+import {
+    resolveOpenAIEndpoints,
+    resolveOpenAIEndpointsFromBaseUrl,
+} from '@/app/backend/providers/adapters/openai/endpoints';
 import { streamOpenAICompatibleRuntime } from '@/app/backend/providers/adapters/openaiCompatible/runtime';
-import { resolveOpenAIEndpoints, resolveOpenAIEndpointsFromBaseUrl } from '@/app/backend/providers/adapters/openai/endpoints';
 import { resolveProviderRuntimePathContext } from '@/app/backend/providers/runtimePathContext';
 import type {
     ProviderAdapterResult,

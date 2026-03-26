@@ -7,12 +7,7 @@ interface ProfileCreateSectionProps {
     onCreate: () => void;
 }
 
-export function ProfileCreateSection({
-    value,
-    isPending,
-    onValueChange,
-    onCreate,
-}: ProfileCreateSectionProps) {
+export function ProfileCreateSection({ value, isPending, onValueChange, onCreate }: ProfileCreateSectionProps) {
     return (
         <section className='space-y-2'>
             <p className='text-sm font-semibold'>Create Profile</p>

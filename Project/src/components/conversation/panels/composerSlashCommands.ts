@@ -90,8 +90,7 @@ export function parseComposerSlashDraft(draftPrompt: string): ParsedComposerSlas
     const withoutSlash = draftPrompt.slice(1);
     const firstWhitespaceIndex = withoutSlash.search(/\s/);
     const token = firstWhitespaceIndex === -1 ? withoutSlash : withoutSlash.slice(0, firstWhitespaceIndex);
-    const query =
-        firstWhitespaceIndex === -1 ? '' : withoutSlash.slice(firstWhitespaceIndex + 1).replace(/^\s+/, '');
+    const query = firstWhitespaceIndex === -1 ? '' : withoutSlash.slice(firstWhitespaceIndex + 1).replace(/^\s+/, '');
     const normalizedToken = token.trim().toLowerCase();
     const exactCommand = composerSlashCommandDefinitions.find((command) => command.id === normalizedToken);
 
@@ -138,7 +137,7 @@ export function filterComposerSlashCommandEntries(
     });
 }
 
-export function getFirstSelectableSlashIndex<T extends { available?: boolean }>(items: T[]): number {
+export function getFirstSelectableSlashIndex(items: Array<{ available?: boolean }>): number {
     return items.findIndex((item) => item.available !== false);
 }
 
@@ -162,9 +161,7 @@ export function moveComposerSlashHighlight(input: {
     return (input.currentIndex - 1 + input.itemCount) % input.itemCount;
 }
 
-export function shouldInterceptSlashSubmit(input: {
-    popupState: ComposerSlashPopupState;
-}): boolean {
+export function shouldInterceptSlashSubmit(input: { popupState: ComposerSlashPopupState }): boolean {
     if (input.popupState.kind === 'hidden') {
         return false;
     }

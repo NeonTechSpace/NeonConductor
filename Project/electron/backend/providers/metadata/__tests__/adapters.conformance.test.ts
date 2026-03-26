@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { getProviderMetadataAdapter } from '@/app/backend/providers/metadata/adapters';
 import type { ProviderCatalogSyncSuccess } from '@/app/backend/providers/types';
+
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 function expectConforms(result: ProviderCatalogSyncSuccess) {

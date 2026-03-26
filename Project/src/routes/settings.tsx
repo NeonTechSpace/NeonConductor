@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 
-import { getWorkspaceSectionPath } from '@/web/components/runtime/workspaceSurfaceModel';
 import { useWorkspaceSurfaceControllerContext } from '@/web/components/runtime/workspaceSurfaceControllerContext';
+import { getWorkspaceSectionPath } from '@/web/components/runtime/workspaceSurfaceModel';
 import {
     getSettingsRouteSearch,
     parseSettingsRouteSearch,

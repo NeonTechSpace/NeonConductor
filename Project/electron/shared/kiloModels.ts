@@ -4,12 +4,7 @@ export const kiloFreeModelId = 'kilo-auto/free';
 export const kiloSmallModelId = 'kilo-auto/small';
 export type KiloModeHeader = 'ask' | 'code' | 'debug' | 'orchestrator' | 'general';
 
-const kiloAutoModelIds = new Set<string>([
-    kiloFrontierModelId,
-    kiloBalancedModelId,
-    kiloFreeModelId,
-    kiloSmallModelId,
-]);
+const kiloAutoModelIds = new Set<string>([kiloFrontierModelId, kiloBalancedModelId, kiloFreeModelId, kiloSmallModelId]);
 
 const kiloLegacyModelIdMap = new Map<string, string>([
     ['kilo/auto', kiloFrontierModelId],

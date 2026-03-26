@@ -1,7 +1,8 @@
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
 import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
-import type { RuntimeShellBootstrap } from '@/app/backend/runtime/contracts';
+
+import type { RuntimeShellBootstrap } from '@/shared/contracts';
 
 type WorkspaceRootRecord = RuntimeShellBootstrap['workspaceRoots'][number];
 type ManagedSandboxRecord = RuntimeShellBootstrap['sandboxes'][number];

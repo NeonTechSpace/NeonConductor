@@ -1,20 +1,21 @@
-import { Button } from '@/web/components/ui/button';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import { trpc } from '@/web/trpc/client';
-
 import {
     buildRollbackWarningLines,
     describeCompactionRun,
     describeRetentionDisposition,
     formatCheckpointByteSize,
 } from '@/web/components/conversation/panels/diffCheckpointPanelState';
+import { Button } from '@/web/components/ui/button';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { trpc } from '@/web/trpc/client';
+
 
 import type { CheckpointRecord } from '@/app/backend/persistence/types';
+
 import type {
     CheckpointCleanupPreview,
     CheckpointRollbackPreview,
     CheckpointStorageSummary,
-} from '@/app/backend/runtime/contracts';
+} from '@/shared/contracts';
 
 export type CleanupPreviewData = CheckpointCleanupPreview;
 export type RollbackPreview = CheckpointRollbackPreview;
@@ -184,20 +185,25 @@ function CleanupPreviewSection(input: {
                 <p className='text-muted-foreground mt-3 text-sm'>Loading cleanup preview…</p>
             ) : cleanupPreviewData ? (
                 <div className='mt-3 space-y-3'>
-                    <div className='grid gap-2 text-xs text-muted-foreground sm:grid-cols-3'>
+                    <div className='text-muted-foreground grid gap-2 text-xs sm:grid-cols-3'>
                         <p>Milestones kept: {String(cleanupPreviewData.milestoneCount)}</p>
                         <p>Recent checkpoints kept: {String(cleanupPreviewData.protectedRecentCount)}</p>
                         <p>Cleanup candidates: {String(cleanupPreviewData.eligibleCount)}</p>
                     </div>
                     {cleanupPreviewData.candidates.length === 0 ? (
-                        <p className='text-muted-foreground text-sm'>No cleanup-eligible checkpoints in this session.</p>
+                        <p className='text-muted-foreground text-sm'>
+                            No cleanup-eligible checkpoints in this session.
+                        </p>
                     ) : (
                         <div className='max-h-48 space-y-2 overflow-y-auto'>
                             {cleanupPreviewData.candidates.map((candidate) => (
-                                <div key={candidate.checkpointId} className='border-border rounded-md border px-3 py-2 text-xs'>
+                                <div
+                                    key={candidate.checkpointId}
+                                    className='border-border rounded-md border px-3 py-2 text-xs'>
                                     <p className='font-medium'>{candidate.summary}</p>
                                     <p className='text-muted-foreground mt-1'>
-                                        {candidate.snapshotFileCount} snapshot files · {candidate.changesetChangeCount} changeset entries
+                                        {candidate.snapshotFileCount} snapshot files · {candidate.changesetChangeCount}{' '}
+                                        changeset entries
                                     </p>
                                 </div>
                             ))}
@@ -255,7 +261,7 @@ export function CheckpointHistorySection({
                     <p className='text-muted-foreground mt-1 text-xs'>
                         Compaction affects checkpoint storage only. It does not modify live workspace or sandbox files.
                     </p>
-                    <div className='mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2'>
+                    <div className='text-muted-foreground mt-3 grid gap-2 text-xs sm:grid-cols-2'>
                         <p>
                             Loose blobs: {String(checkpointStorage.looseReferencedBlobCount)} ·{' '}
                             {formatCheckpointByteSize(checkpointStorage.looseReferencedByteSize)}
@@ -271,7 +277,12 @@ export function CheckpointHistorySection({
                         <p>{describeCompactionRun(lastCompactionRun)}</p>
                     </div>
                     <div className='mt-3 flex flex-wrap items-center gap-2'>
-                        <Button type='button' size='sm' className='h-11' disabled={forceCompactPending || !selectedSessionId} onClick={onForceCompact}>
+                        <Button
+                            type='button'
+                            size='sm'
+                            className='h-11'
+                            disabled={forceCompactPending || !selectedSessionId}
+                            onClick={onForceCompact}>
                             {forceCompactPending ? 'Compacting…' : 'Force Compact'}
                         </Button>
                         {lastCompactionRun ? (
@@ -284,7 +295,9 @@ export function CheckpointHistorySection({
             ) : null}
             <div className='max-h-72 overflow-y-auto p-2'>
                 {visibleCheckpoints.length === 0 ? (
-                    <p className='text-muted-foreground rounded-xl border border-dashed p-3 text-sm'>No checkpoints for this session yet.</p>
+                    <p className='text-muted-foreground rounded-xl border border-dashed p-3 text-sm'>
+                        No checkpoints for this session yet.
+                    </p>
                 ) : (
                     <div className='space-y-2'>
                         {visibleCheckpoints.map((checkpoint) => (
@@ -294,12 +307,12 @@ export function CheckpointHistorySection({
                                         <div className='flex flex-wrap items-center gap-2'>
                                             <p className='text-sm font-medium'>{checkpoint.summary}</p>
                                             {checkpoint.checkpointKind === 'named' ? (
-                                                <span className='rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary'>
+                                                <span className='bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px] font-medium'>
                                                     Milestone
                                                 </span>
                                             ) : null}
                                             {describeRetentionDisposition(checkpoint.retentionDisposition) ? (
-                                                <span className='rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground'>
+                                                <span className='bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-medium'>
                                                     {describeRetentionDisposition(checkpoint.retentionDisposition)}
                                                 </span>
                                             ) : null}
@@ -340,7 +353,7 @@ export function CheckpointHistorySection({
                                     />
                                 ) : null}
                                 <div className='border-border bg-background/60 mt-3 rounded-md border p-3'>
-                                    <p className='text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground'>
+                                    <p className='text-muted-foreground text-xs font-medium tracking-[0.12em] uppercase'>
                                         {checkpoint.checkpointKind === 'named' ? 'Milestone' : 'Promote to Milestone'}
                                     </p>
                                     <div className='mt-2 flex flex-wrap gap-2'>
@@ -359,9 +372,23 @@ export function CheckpointHistorySection({
                                                     type='button'
                                                     size='sm'
                                                     className='h-11'
-                                                    disabled={renameMilestonePending || (milestoneDrafts[checkpoint.id] ?? checkpoint.milestoneTitle ?? '').trim().length === 0}
+                                                    disabled={
+                                                        renameMilestonePending ||
+                                                        (
+                                                            milestoneDrafts[checkpoint.id] ??
+                                                            checkpoint.milestoneTitle ??
+                                                            ''
+                                                        ).trim().length === 0
+                                                    }
                                                     onClick={() => {
-                                                        onRenameMilestone(checkpoint.id, (milestoneDrafts[checkpoint.id] ?? checkpoint.milestoneTitle ?? '').trim());
+                                                        onRenameMilestone(
+                                                            checkpoint.id,
+                                                            (
+                                                                milestoneDrafts[checkpoint.id] ??
+                                                                checkpoint.milestoneTitle ??
+                                                                ''
+                                                            ).trim()
+                                                        );
                                                     }}>
                                                     {renameMilestonePending ? 'Renaming…' : 'Rename Milestone'}
                                                 </Button>
@@ -382,9 +409,15 @@ export function CheckpointHistorySection({
                                                 type='button'
                                                 size='sm'
                                                 className='h-11'
-                                                disabled={promoteMilestonePending || (milestoneDrafts[checkpoint.id] ?? '').trim().length === 0}
+                                                disabled={
+                                                    promoteMilestonePending ||
+                                                    (milestoneDrafts[checkpoint.id] ?? '').trim().length === 0
+                                                }
                                                 onClick={() => {
-                                                    onPromoteMilestone(checkpoint.id, (milestoneDrafts[checkpoint.id] ?? '').trim());
+                                                    onPromoteMilestone(
+                                                        checkpoint.id,
+                                                        (milestoneDrafts[checkpoint.id] ?? '').trim()
+                                                    );
                                                 }}>
                                                 {promoteMilestonePending ? 'Promoting…' : 'Promote to Milestone'}
                                             </Button>
@@ -407,3 +440,4 @@ export function CheckpointHistorySection({
         </section>
     );
 }
+

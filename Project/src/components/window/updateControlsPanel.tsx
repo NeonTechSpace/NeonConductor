@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
-
 import { Button } from '@/web/components/ui/button';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import {
@@ -91,7 +90,9 @@ export function UpdateControlsPanel({ open, onClose, anchorRef }: UpdateControls
     async function handleCheckForUpdates() {
         try {
             await checkMutation.mutateAsync();
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleConfirmChannelSwitch() {
@@ -102,6 +103,7 @@ export function UpdateControlsPanel({ open, onClose, anchorRef }: UpdateControls
         try {
             await setChannelMutation.mutateAsync(pendingChannel);
         } catch {
+            return;
         } finally {
             setPendingChannel(null);
         }

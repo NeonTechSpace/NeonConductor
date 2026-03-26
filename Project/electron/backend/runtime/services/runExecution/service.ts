@@ -1,7 +1,6 @@
 import { messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeTransportSelection } from '@/app/backend/providers/types';
-import type { EntityId } from '@/app/backend/runtime/contracts';
-import { isEntityId } from '@/app/backend/runtime/contracts';
+import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { withCorrelationContext } from '@/app/backend/runtime/services/common/logContext';
 import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
@@ -14,7 +13,9 @@ import { moveRunToAbortedState } from '@/app/backend/runtime/services/runExecuti
 import type { StartRunInput, StartRunResult } from '@/app/backend/runtime/services/runExecution/types';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import { appLog } from '@/app/main/logging';
-import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
+
+import { isEntityId } from '@/shared/contracts';
+import type { EntityId } from '@/shared/contracts';
 
 interface ActiveRun {
     profileId: string;
@@ -205,9 +206,7 @@ export class RunExecutionService {
             toolDefinitions: prepared.toolDefinitions,
             ...(prepared.resolvedAuth.apiKey ? { apiKey: prepared.resolvedAuth.apiKey } : {}),
             ...(prepared.resolvedAuth.accessToken ? { accessToken: prepared.resolvedAuth.accessToken } : {}),
-            ...(prepared.resolvedAuth.organizationId
-                ? { organizationId: prepared.resolvedAuth.organizationId }
-                : {}),
+            ...(prepared.resolvedAuth.organizationId ? { organizationId: prepared.resolvedAuth.organizationId } : {}),
             ...(prepared.kiloModeHeader ? { kiloModeHeader: prepared.kiloModeHeader } : {}),
             ...(prepared.kiloRouting ? { kiloRouting: prepared.kiloRouting } : {}),
             ...(prepared.runContext ? { contextMessages: prepared.runContext.messages } : {}),
@@ -266,24 +265,25 @@ export class RunExecutionService {
             ),
         });
 
-        const [run, sessionStatus, thread, resolvedContextStateResult, initialMessages, initialMessageParts] = await Promise.all([
-            runStore.getById(persisted.run.id),
-            sessionStore.status(input.profileId, input.sessionId),
-            threadStore.getListRecordById(input.profileId, sessionThread.thread.id),
-            sessionContextService.getResolvedStateForExecutionTarget({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                providerId: prepared.activeTarget.providerId,
-                modelId: prepared.activeTarget.modelId,
-                topLevelTab: input.topLevelTab,
-                modeKey: input.modeKey,
-                prompt: input.prompt,
-                runId: persisted.run.id,
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-            }),
-            messageStore.listMessagesBySession(input.profileId, input.sessionId, persisted.run.id),
-            messageStore.listPartsBySession(input.profileId, input.sessionId, persisted.run.id),
-        ]);
+        const [run, sessionStatus, thread, resolvedContextStateResult, initialMessages, initialMessageParts] =
+            await Promise.all([
+                runStore.getById(persisted.run.id),
+                sessionStore.status(input.profileId, input.sessionId),
+                threadStore.getListRecordById(input.profileId, sessionThread.thread.id),
+                sessionContextService.getResolvedStateForExecutionTarget({
+                    profileId: input.profileId,
+                    sessionId: input.sessionId,
+                    providerId: prepared.activeTarget.providerId,
+                    modelId: prepared.activeTarget.modelId,
+                    topLevelTab: input.topLevelTab,
+                    modeKey: input.modeKey,
+                    prompt: input.prompt,
+                    runId: persisted.run.id,
+                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                }),
+                messageStore.listMessagesBySession(input.profileId, input.sessionId, persisted.run.id),
+                messageStore.listPartsBySession(input.profileId, input.sessionId, persisted.run.id),
+            ]);
 
         if (!run || !sessionStatus.found) {
             throw new InvariantError(
@@ -361,3 +361,4 @@ export class RunExecutionService {
 }
 
 export const runExecutionService = new RunExecutionService();
+

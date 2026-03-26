@@ -180,7 +180,8 @@ function matchesStructuredContext(input: {
     const metadataStrings = collectMetadataStrings(input.memory.metadata);
 
     return contextualNeedles.some(
-        (needle) => title.includes(needle) || summary.includes(needle) || metadataStrings.some((value) => value === needle)
+        (needle) =>
+            title.includes(needle) || summary.includes(needle) || metadataStrings.some((value) => value === needle)
     );
 }
 
@@ -224,7 +225,10 @@ function formatMemoryBody(memory: MemoryRecord, remainingBudget: number): string
     return `${candidate.slice(0, boundedLength - 3)}...`;
 }
 
-function buildRetrievedMemoryMessage(records: RetrievedMemoryRecord[], memoriesById: Map<string, MemoryRecord>): {
+function buildRetrievedMemoryMessage(
+    records: RetrievedMemoryRecord[],
+    memoriesById: Map<string, MemoryRecord>
+): {
     message: RunContextMessage;
     injectedTextLength: number;
 } | null {
@@ -244,7 +248,7 @@ function buildRetrievedMemoryMessage(records: RetrievedMemoryRecord[], memoriesB
 
         const excerpt = formatMemoryBody(memory, remainingBudget);
         lines.push(
-            `${record.order}. ${memory.title}`,
+            `${String(record.order)}. ${memory.title}`,
             `Type: ${memory.memoryType}`,
             `Scope: ${memory.scopeKind}`,
             `Match reason: ${record.matchReason}`,
@@ -270,9 +274,7 @@ function buildRetrievedMemoryMessage(records: RetrievedMemoryRecord[], memoriesB
 export class MemoryRetrievalService {
     async retrieveRelevantMemory(input: RetrieveRelevantMemoryInput): Promise<RetrieveRelevantMemoryResult> {
         const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
-        const threadId = sessionThread
-            ? parseEntityId(sessionThread.thread.id, 'threads.id', 'thr')
-            : undefined;
+        const threadId = sessionThread ? parseEntityId(sessionThread.thread.id, 'threads.id', 'thr') : undefined;
         const inheritedRootThreadId =
             sessionThread &&
             sessionThread.thread.delegatedFromOrchestratorRunId &&
@@ -328,30 +330,33 @@ export class MemoryRetrievalService {
             }
         }
 
-        const baseCandidates = candidates
-            .sort((left, right) => {
-                if (left.priority !== right.priority) {
-                    return left.priority - right.priority;
-                }
-                if (left.memory.updatedAt !== right.memory.updatedAt) {
-                    return right.memory.updatedAt.localeCompare(left.memory.updatedAt);
-                }
+        const baseCandidates = candidates.sort((left, right) => {
+            if (left.priority !== right.priority) {
+                return left.priority - right.priority;
+            }
+            if (left.memory.updatedAt !== right.memory.updatedAt) {
+                return right.memory.updatedAt.localeCompare(left.memory.updatedAt);
+            }
 
-                return left.memory.id.localeCompare(right.memory.id);
-            });
+            return left.memory.id.localeCompare(right.memory.id);
+        });
         const baseMemoryIds = Array.from(new Set(baseCandidates.map((candidate) => candidate.memory.id)));
         const derivedExpansion = await advancedMemoryDerivationService.expandMatchedMemories({
             profileId: input.profileId,
             prompt: input.prompt,
             matchedMemories: baseCandidates.map((candidate) => candidate.memory),
         });
-        const derivedSummaryById = derivedExpansion.isOk() ? derivedExpansion.value.summaries : new Map();
+        const derivedSummaryById = derivedExpansion.isOk() ? derivedExpansion.value.summaries : undefined;
         const candidateMemoryIds = new Set(baseMemoryIds);
         const combinedCandidates: RetrievedMemoryCandidate[] = [
             ...baseCandidates.map((candidate) => ({
                 ...candidate,
-                ...(derivedSummaryById.get(candidate.memory.id)
-                    ? { annotations: derivedSummaryById.get(candidate.memory.id)?.hasTemporalHistory ? ['Current fact has temporal history.'] : [] }
+                ...(derivedSummaryById?.has(candidate.memory.id)
+                    ? {
+                          annotations: derivedSummaryById.get(candidate.memory.id)?.hasTemporalHistory
+                              ? ['Current fact has temporal history.']
+                              : [],
+                      }
                     : {}),
             })),
         ];
@@ -413,22 +418,27 @@ export class MemoryRetrievalService {
             input.profileId,
             orderedCandidates.map((candidate) => candidate.memory.id)
         );
-        const finalDerivedSummaryById = finalDerivedSummaries.isOk() ? finalDerivedSummaries.value : new Map();
+        const finalDerivedSummaryById = finalDerivedSummaries.isOk() ? finalDerivedSummaries.value : undefined;
 
-        const retrievedRecords: RetrievedMemoryRecord[] = orderedCandidates.map((candidate, index) => ({
-            memoryId: candidate.memory.id,
-            title: candidate.memory.title,
-            memoryType: candidate.memory.memoryType,
-            scopeKind: candidate.memory.scopeKind,
-            matchReason: candidate.matchReason,
-            order: index + 1,
-            ...(candidate.sourceMemoryId ? { sourceMemoryId: candidate.sourceMemoryId } : {}),
-            ...(candidate.annotations && candidate.annotations.length > 0 ? { annotations: candidate.annotations } : {}),
-            ...(finalDerivedSummaryById.get(candidate.memory.id)
-                ? { derivedSummary: finalDerivedSummaryById.get(candidate.memory.id) }
-                : {}),
-        }));
-        const memoriesById = new Map(orderedCandidates.map((candidate) => [candidate.memory.id, candidate.memory] as const));
+        const retrievedRecords: RetrievedMemoryRecord[] = orderedCandidates.map((candidate, index) => {
+            const derivedSummary = finalDerivedSummaryById?.get(candidate.memory.id);
+            return {
+                memoryId: candidate.memory.id,
+                title: candidate.memory.title,
+                memoryType: candidate.memory.memoryType,
+                scopeKind: candidate.memory.scopeKind,
+                matchReason: candidate.matchReason,
+                order: index + 1,
+                ...(candidate.sourceMemoryId ? { sourceMemoryId: candidate.sourceMemoryId } : {}),
+                ...(candidate.annotations && candidate.annotations.length > 0
+                    ? { annotations: candidate.annotations }
+                    : {}),
+                ...(derivedSummary ? { derivedSummary } : {}),
+            };
+        });
+        const memoriesById = new Map(
+            orderedCandidates.map((candidate) => [candidate.memory.id, candidate.memory] as const)
+        );
         const injectedMessage = buildRetrievedMemoryMessage(retrievedRecords, memoriesById);
         if (!injectedMessage) {
             return {

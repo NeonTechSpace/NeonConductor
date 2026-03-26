@@ -1,10 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import type {
-    CheckpointChangesetEntryRecord,
-    CheckpointChangesetRecord,
-} from '@/app/backend/persistence/types';
 import type { CheckpointSnapshotEntryRecord } from '@/app/backend/persistence/stores/runtime/checkpointSnapshotStore';
+import type { CheckpointChangesetEntryRecord, CheckpointChangesetRecord } from '@/app/backend/persistence/types';
 
 interface SnapshotFileRecord {
     relativePath: string;
@@ -20,12 +17,7 @@ export interface DerivedChangeset {
 
 export interface RevertApplicabilityResult {
     canRevertSafely: boolean;
-    reason?:
-        | 'changeset_missing'
-        | 'changeset_empty'
-        | 'workspace_unresolved'
-        | 'snapshot_invalid'
-        | 'target_drifted';
+    reason?: 'changeset_missing' | 'changeset_empty' | 'workspace_unresolved' | 'snapshot_invalid' | 'target_drifted';
     restoredFiles?: Array<{ relativePath: string; bytes: Uint8Array }>;
 }
 
@@ -190,7 +182,12 @@ export function evaluateRevertApplicability(
             continue;
         }
 
-        if (!currentFile || !entry.afterBytes || !entry.beforeBytes || !compareBytes(currentFile.bytes, entry.afterBytes)) {
+        if (
+            !currentFile ||
+            !entry.afterBytes ||
+            !entry.beforeBytes ||
+            !compareBytes(currentFile.bytes, entry.afterBytes)
+        ) {
             return {
                 canRevertSafely: false,
                 reason: 'target_drifted',

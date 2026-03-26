@@ -76,7 +76,7 @@ export function ComposerSlashCommandPopup(props: { state: ComposerSlashPopupStat
                                 <ScopeBadge scope={item.scope} />
                                 <PresetBadge presetKey={item.presetKey} />
                                 {item.attached ? (
-                                    <span className='text-primary rounded-full border border-primary/25 px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] uppercase'>
+                                    <span className='text-primary border-primary/25 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] uppercase'>
                                         Attached
                                     </span>
                                 ) : null}
@@ -91,7 +91,7 @@ export function ComposerSlashCommandPopup(props: { state: ComposerSlashPopupStat
                 )}
             </div>
             {popupState.kind === 'results' && popupState.warningMessage ? (
-                <div className='border-border bg-amber-500/10 border-t px-4 py-3 text-xs'>
+                <div className='border-border border-t bg-amber-500/10 px-4 py-3 text-xs'>
                     {popupState.warningMessage}
                 </div>
             ) : null}

@@ -13,12 +13,7 @@ export type ToolDecision =
           kind: 'deny';
           policy: { effective: 'deny'; source: string };
           resource: string;
-          reason:
-              | 'policy_denied'
-              | 'detached_scope'
-              | 'workspace_unresolved'
-              | 'outside_workspace'
-              | 'ignored_path';
+          reason: 'policy_denied' | 'detached_scope' | 'workspace_unresolved' | 'outside_workspace' | 'ignored_path';
           message: string;
       }
     | {

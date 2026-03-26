@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { getImagePreviewStatusLabel, getRemoteImagePreviewState } from '@/web/components/conversation/messages/imagePreviewState';
+import {
+    getImagePreviewStatusLabel,
+    getRemoteImagePreviewState,
+} from '@/web/components/conversation/messages/imagePreviewState';
 import { useMessageMediaUrl } from '@/web/components/conversation/messages/useMessageMediaUrl';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 

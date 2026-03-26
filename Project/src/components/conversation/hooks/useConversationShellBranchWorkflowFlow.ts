@@ -2,17 +2,17 @@ import { useState } from 'react';
 
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
-import { buildBranchSelectionTransition } from '@/web/components/conversation/shell/editFlowSelection';
 import { toBranchFailureMessage } from '@/web/components/conversation/shell/editFlow';
+import { buildBranchSelectionTransition } from '@/web/components/conversation/shell/editFlowSelection';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { trpc } from '@/web/trpc/client';
+
+import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
 import type {
     SessionBranchFromMessageInput,
     SessionBranchFromMessageWithWorkflowInput,
-} from '@/app/backend/runtime/contracts';
-import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
-
+} from '@/shared/contracts';
 import type { EntityId, TopLevelTab } from '@/shared/contracts';
 
 interface PendingBranchWorkflowSelection {
@@ -63,11 +63,7 @@ interface UseConversationShellBranchWorkflowFlowInput {
     onError: (message: string) => void;
     onPromptReset: () => void;
     onComposerFocusRequest: () => void;
-    onSessionEdited: (input: {
-        sessionId: string;
-        session: SessionSummaryRecord;
-        thread?: ThreadListRecord;
-    }) => void;
+    onSessionEdited: (input: { sessionId: string; session: SessionSummaryRecord; thread?: ThreadListRecord }) => void;
 }
 
 export function shouldUseWorkflowBranchChooser(input: {
@@ -209,7 +205,7 @@ export function useConversationShellBranchWorkflowFlow(input: UseConversationShe
                   profileId: input.profileId,
                   workspaceFingerprint: '',
                   onClose: () => undefined,
-                  onBranch: async () => undefined,
+                  onBranch: () => Promise.resolve(),
               };
 
     return {
@@ -249,3 +245,4 @@ export function useConversationShellBranchWorkflowFlow(input: UseConversationShe
         dialogProps: workflowDialogProps,
     };
 }
+

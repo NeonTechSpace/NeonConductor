@@ -130,7 +130,8 @@ describe('Kilo Gemini routed runtime', () => {
             ],
         });
         expect(assistantMessage).toHaveProperty('reasoning_details');
-        const reasoningDetails = (assistantMessage as { reasoning_details?: Array<Record<string, unknown>> }).reasoning_details;
+        const reasoningDetails = (assistantMessage as { reasoning_details?: Array<Record<string, unknown>> })
+            .reasoning_details;
         expect(reasoningDetails).toEqual([
             {
                 type: 'reasoning.encrypted',

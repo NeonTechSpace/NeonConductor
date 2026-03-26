@@ -47,7 +47,7 @@ export interface McpServerUpsertFields {
     enabled: boolean;
 }
 
-export interface McpCreateServerInput extends McpServerUpsertFields {}
+export type McpCreateServerInput = McpServerUpsertFields;
 
 export interface McpUpdateServerInput extends McpServerUpsertFields {
     serverId: string;

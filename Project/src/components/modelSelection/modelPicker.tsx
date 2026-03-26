@@ -5,17 +5,13 @@ import { createPortal } from 'react-dom';
 import type { ModelCapabilityBadge, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { Button } from '@/web/components/ui/button';
 import { cn } from '@/web/lib/utils';
-import {
-    kiloBalancedModelId,
-    kiloFreeModelId,
-    kiloFrontierModelId,
-    kiloSmallModelId,
-} from '@/shared/kiloModels';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
+import { kiloBalancedModelId, kiloFreeModelId, kiloFrontierModelId, kiloSmallModelId } from '@/shared/kiloModels';
+
 
 interface ModelPickerProps {
-    providerId: RuntimeProviderId | string | undefined;
+    providerId: RuntimeProviderId | undefined;
     selectedModelId: string;
     models: ModelPickerOption[];
     disabled?: boolean;
@@ -346,11 +342,11 @@ function PopoverModelPicker(props: ModelPickerProps) {
                       <div
                           ref={panelRef}
                           className='border-border bg-popover text-popover-foreground fixed z-[80] overflow-hidden rounded-2xl border shadow-xl'
-                          style={{
-                              top: `${popoverLayout.top}px`,
-                              left: `${popoverLayout.left}px`,
-                              width: `${popoverLayout.width}px`,
-                          }}>
+                           style={{
+                               top: `${String(popoverLayout.top)}px`,
+                               left: `${String(popoverLayout.left)}px`,
+                               width: `${String(popoverLayout.width)}px`,
+                           }}>
                           <div className='border-border bg-background/90 border-b px-3 py-3'>
                               <label className='sr-only' htmlFor={`${listboxId}-search`}>
                                   Search models
@@ -375,7 +371,7 @@ function PopoverModelPicker(props: ModelPickerProps) {
                               id={listboxId}
                               role='listbox'
                               className='overflow-y-auto p-2'
-                              style={{ maxHeight: `${popoverLayout.maxHeight}px` }}>
+                              style={{ maxHeight: `${String(popoverLayout.maxHeight)}px` }}>
                               {groups.length === 0 ? (
                                   <div className='text-muted-foreground px-3 py-6 text-sm'>
                                       No models matched that search.
@@ -388,17 +384,14 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                           </div>
                                           <div className='space-y-1'>
                                               {group.options.map((option) => {
-                                                  const metricBadges = [
-                                                      formatMetric(option.price)
-                                                          ? `Price ${formatMetric(option.price)}`
-                                                          : undefined,
-                                                      formatMetric(option.latency)
-                                                          ? `Latency ${formatMetric(option.latency)}`
-                                                          : undefined,
-                                                      formatMetric(option.tps)
-                                                          ? `TPS ${formatMetric(option.tps)}`
-                                                          : undefined,
-                                                  ].filter((badge): badge is string => Boolean(badge));
+                                                   const priceMetric = formatMetric(option.price);
+                                                   const latencyMetric = formatMetric(option.latency);
+                                                   const throughputMetric = formatMetric(option.tps);
+                                                   const metricBadges = [
+                                                       priceMetric ? `Price ${priceMetric}` : undefined,
+                                                       latencyMetric ? `Latency ${latencyMetric}` : undefined,
+                                                       throughputMetric ? `TPS ${throughputMetric}` : undefined,
+                                                   ].filter((badge): badge is string => Boolean(badge));
                                                   const selected = option.id === props.selectedModelId;
 
                                                   return (
@@ -425,7 +418,10 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                                           <div className='flex items-start justify-between gap-3'>
                                                               <div className='min-w-0'>
                                                                   <p className='truncate text-sm font-medium'>
-                                                                      {getOptionDisplayText(option, labelCollisionIndex)}
+                                                                      {getOptionDisplayText(
+                                                                          option,
+                                                                          labelCollisionIndex
+                                                                      )}
                                                                   </p>
                                                                   <p className='text-muted-foreground mt-1 text-xs leading-5'>
                                                                       {getModelDescription(option)}
@@ -435,9 +431,11 @@ function PopoverModelPicker(props: ModelPickerProps) {
                                                                       <p
                                                                           className={cn(
                                                                               'mt-1 text-xs leading-5',
-                                                                              option.compatibilityState === 'incompatible'
+                                                                              option.compatibilityState ===
+                                                                                  'incompatible'
                                                                                   ? 'text-destructive'
-                                                                                  : option.compatibilityState === 'warning'
+                                                                                  : option.compatibilityState ===
+                                                                                      'warning'
                                                                                     ? 'text-amber-700 dark:text-amber-300'
                                                                                     : 'text-muted-foreground'
                                                                           )}>
@@ -504,7 +502,9 @@ function shouldUsePopoverPicker(props: ModelPickerProps): boolean {
     const providerIds = new Set(
         props.models
             .map((option) => option.providerId)
-            .filter((providerId): providerId is string => typeof providerId === 'string')
+            .filter(
+                (providerId): providerId is NonNullable<ModelPickerOption['providerId']> => typeof providerId === 'string'
+            )
     );
     return providerIds.size > 1;
 }

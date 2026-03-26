@@ -81,4 +81,3 @@ export function hasSelectedWorkspaceImpact(context: RuntimeEventContext): boolea
 
     return Boolean(!context.runId && context.sessionId && context.selection.selectedSessionId === context.sessionId);
 }
-

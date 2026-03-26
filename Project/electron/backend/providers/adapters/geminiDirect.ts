@@ -1,8 +1,14 @@
+import { streamDirectFamilyRuntimeWithHandler } from '@/app/backend/providers/adapters/directFamily/shell';
+import type {
+    DirectFamilyRuntimeConfig,
+    DirectFamilyRuntimeHandler,
+} from '@/app/backend/providers/adapters/directFamily/types';
 import {
     errProviderAdapter,
     okProviderAdapter,
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
+import { normalizeGeminiUsageMetadata, parseGeminiDirectPart } from '@/app/backend/providers/adapters/geminiFamilyCore';
 import {
     buildGeminiCompatibilityMessages,
     extractBase64Data,
@@ -11,28 +17,17 @@ import {
     type GeminiCompatibilityMessage,
     type GeminiReasoningDetail,
 } from '@/app/backend/providers/adapters/geminiShared';
-import {
-    normalizeGeminiUsageMetadata,
-    parseGeminiDirectPart,
-} from '@/app/backend/providers/adapters/geminiFamilyCore';
-import {
-    type RuntimeParsedCompletion,
-    type RuntimeParsedPart,
-} from '@/app/backend/providers/adapters/runtimePayload';
-import { consumeStrictServerSentEvents, type StrictServerSentEventFrame } from '@/app/backend/providers/adapters/strictServerSentEvents';
+import { type RuntimeParsedCompletion, type RuntimeParsedPart } from '@/app/backend/providers/adapters/runtimePayload';
 import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
-import { streamDirectFamilyRuntimeWithHandler } from '@/app/backend/providers/adapters/directFamily/shell';
-import type {
-    DirectFamilyRuntimeConfig,
-    DirectFamilyRuntimeHandler,
-} from '@/app/backend/providers/adapters/directFamily/types';
+import {
+    consumeStrictServerSentEvents,
+    type StrictServerSentEventFrame,
+} from '@/app/backend/providers/adapters/strictServerSentEvents';
 import type {
     ProviderRuntimeHandlers,
     ProviderRuntimeInput,
     ProviderRuntimeUsage,
 } from '@/app/backend/providers/types';
-
-const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
 interface DirectGeminiStreamState {
     emittedToolCallIds: Set<string>;
@@ -124,9 +119,7 @@ function buildGeminiSystemInstruction(
 
     const text = contextMessages
         .flatMap((message) =>
-            message.role !== 'system'
-                ? []
-                : message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
+            message.role !== 'system' ? [] : message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
         )
         .join('\n\n')
         .trim();
@@ -224,7 +217,9 @@ function toGeminiContentParts(
     return parts;
 }
 
-function buildDirectGeminiAssistantParts(message: Exclude<GeminiCompatibilityMessage, { role: 'tool' | 'system' | 'user' }>): Array<Record<string, unknown>> {
+function buildDirectGeminiAssistantParts(
+    message: Exclude<GeminiCompatibilityMessage, { role: 'tool' | 'system' | 'user' }>
+): Array<Record<string, unknown>> {
     const parts = toGeminiContentParts(message.content);
     const reasoningDetails = message.reasoning_details ?? [];
     const unmatchedDetails = reasoningDetails.filter((detail) => !detail.id);
@@ -306,10 +301,7 @@ function buildDirectGeminiContents(input: ProviderRuntimeInput): Array<Record<st
     return contents;
 }
 
-export function buildDirectGeminiBody(
-    input: ProviderRuntimeInput,
-    modelPrefix: string
-): Record<string, unknown> {
+export function buildDirectGeminiBody(input: ProviderRuntimeInput, modelPrefix: string): Record<string, unknown> {
     const body: Record<string, unknown> = {
         model: toUpstreamModelId(input.modelId, modelPrefix),
         contents: buildDirectGeminiContents(input),
@@ -474,7 +466,7 @@ function parseDirectGeminiStreamFrame(input: {
 
     return okProviderAdapter({
         parts: parsed.value.parts,
-        ...(parsed.value.usage && Object.keys(parsed.value.usage).length > 0 ? { usage: parsed.value.usage } : {}),
+        ...(Object.keys(parsed.value.usage).length > 0 ? { usage: parsed.value.usage } : {}),
     });
 }
 
@@ -483,10 +475,7 @@ function validateDirectGeminiAuth(input: {
     config: DirectFamilyRuntimeConfig;
 }): ProviderAdapterResult<void> {
     if (!input.runtimeInput.apiKey) {
-        return errProviderAdapter(
-            'auth_missing',
-            `${input.config.label} Gemini runtime requires an API key.`
-        );
+        return errProviderAdapter('auth_missing', `${input.config.label} Gemini runtime requires an API key.`);
     }
 
     return okProviderAdapter(undefined);
@@ -502,14 +491,18 @@ function buildDirectGeminiRequest(input: {
     headers: Record<string, string>;
     body: Record<string, unknown>;
 } {
+    const apiKey = input.runtimeInput.apiKey;
+    if (!apiKey) {
+        throw new Error('Gemini direct runtime requires an API key.');
+    }
     const upstreamModelId = toUpstreamModelId(input.runtimeInput.modelId, input.config.modelPrefix);
     const requestBody = buildDirectGeminiBody(input.runtimeInput, input.config.modelPrefix);
-    const resolvedBaseUrl = input.resolvedBaseUrl ?? DEFAULT_GEMINI_BASE_URL;
+    const resolvedBaseUrl = input.resolvedBaseUrl;
 
     return {
         url: resolveGeminiRequestUrl(resolvedBaseUrl, upstreamModelId, input.stream),
         headers: {
-            'x-goog-api-key': input.runtimeInput.apiKey!,
+            'x-goog-api-key': apiKey,
             Accept: 'text/event-stream, application/json',
             'Content-Type': 'application/json',
         },

@@ -21,11 +21,12 @@ import type {
     WindowStateSubscriptionInput,
 } from '@/app/backend/runtime/contracts/types';
 import { FACTORY_RESET_CONFIRMATION_TEXT } from '@/app/backend/runtime/contracts/types';
-import { providerIds, topLevelTabs } from '@/shared/contracts';
 import {
     workspacePreferredPackageManagerValues,
     workspacePreferredVcsValues,
 } from '@/app/backend/runtime/contracts/types/runtime';
+
+import { providerIds, topLevelTabs } from '@/shared/contracts';
 
 export function parseRuntimeEventsSubscriptionInput(input: unknown): RuntimeEventsSubscriptionInput {
     if (input === undefined) {
@@ -124,9 +125,7 @@ export function parseRuntimeFactoryResetInput(input: unknown): RuntimeFactoryRes
     }
 
     if (confirmationText !== FACTORY_RESET_CONFIRMATION_TEXT) {
-        throw new Error(
-            `Invalid "confirmationText": expected exact phrase "${FACTORY_RESET_CONFIRMATION_TEXT}".`
-        );
+        throw new Error(`Invalid "confirmationText": expected exact phrase "${FACTORY_RESET_CONFIRMATION_TEXT}".`);
     }
 
     return {
@@ -167,23 +166,27 @@ export function parseRuntimeSetWorkspacePreferenceInput(input: unknown): Runtime
     const source = readObject(input, 'input');
     const profileId = readOptionalString(source.profileId, 'profileId');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const defaultTopLevelTab = source.defaultTopLevelTab === undefined
-        ? undefined
-        : readEnumValue(source.defaultTopLevelTab, 'defaultTopLevelTab', topLevelTabs);
-    const defaultProviderId = source.defaultProviderId === undefined
-        ? undefined
-        : readEnumValue(source.defaultProviderId, 'defaultProviderId', providerIds);
+    const defaultTopLevelTab =
+        source.defaultTopLevelTab === undefined
+            ? undefined
+            : readEnumValue(source.defaultTopLevelTab, 'defaultTopLevelTab', topLevelTabs);
+    const defaultProviderId =
+        source.defaultProviderId === undefined
+            ? undefined
+            : readEnumValue(source.defaultProviderId, 'defaultProviderId', providerIds);
     const defaultModelId = readOptionalString(source.defaultModelId, 'defaultModelId');
-    const preferredVcs = source.preferredVcs === undefined
-        ? undefined
-        : readEnumValue(source.preferredVcs, 'preferredVcs', workspacePreferredVcsValues);
-    const preferredPackageManager = source.preferredPackageManager === undefined
-        ? undefined
-        : readEnumValue(
-              source.preferredPackageManager,
-              'preferredPackageManager',
-              workspacePreferredPackageManagerValues
-          );
+    const preferredVcs =
+        source.preferredVcs === undefined
+            ? undefined
+            : readEnumValue(source.preferredVcs, 'preferredVcs', workspacePreferredVcsValues);
+    const preferredPackageManager =
+        source.preferredPackageManager === undefined
+            ? undefined
+            : readEnumValue(
+                  source.preferredPackageManager,
+                  'preferredPackageManager',
+                  workspacePreferredPackageManagerValues
+              );
 
     if (!profileId || profileId.trim().length === 0) {
         throw new Error('Invalid "profileId": expected non-empty string.');
@@ -222,19 +225,31 @@ export function parseRuntimeInspectWorkspaceEnvironmentInput(input: unknown): Ru
     const hasAbsolutePath = Boolean(absolutePath && absolutePath.trim().length > 0);
 
     if (hasWorkspaceFingerprint === hasAbsolutePath) {
-        throw new Error('Invalid workspace environment target: provide exactly one of "workspaceFingerprint" or "absolutePath".');
+        throw new Error(
+            'Invalid workspace environment target: provide exactly one of "workspaceFingerprint" or "absolutePath".'
+        );
     }
 
     if (hasWorkspaceFingerprint) {
+        const trimmedWorkspaceFingerprint = workspaceFingerprint?.trim();
+        if (!trimmedWorkspaceFingerprint) {
+            throw new Error('Invalid "workspaceFingerprint": expected non-empty string.');
+        }
+
         return {
             profileId: profileId.trim(),
-            workspaceFingerprint: workspaceFingerprint!.trim(),
+            workspaceFingerprint: trimmedWorkspaceFingerprint,
         };
+    }
+
+    const trimmedAbsolutePath = absolutePath?.trim();
+    if (!trimmedAbsolutePath) {
+        throw new Error('Invalid "absolutePath": expected non-empty string.');
     }
 
     return {
         profileId: profileId.trim(),
-        absolutePath: absolutePath!.trim(),
+        absolutePath: trimmedAbsolutePath,
     };
 }
 

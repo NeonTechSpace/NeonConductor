@@ -3,9 +3,6 @@ import { parseEntityId, parseEnumValue, parseJsonRecord } from '@/app/backend/pe
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { MemoryCausalLinkRecord, MemoryTemporalFactRecord } from '@/app/backend/persistence/types';
 import {
-    createEntityId,
-} from '@/app/backend/runtime/identity/entityIds';
-import {
     memoryCausalRelationTypes,
     memoryDerivedEntityKinds,
     memoryTemporalFactStatuses,
@@ -16,6 +13,7 @@ import {
     type MemoryType,
     memoryTypes,
 } from '@/app/backend/runtime/contracts';
+import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 
 function mapTemporalFact(row: {
     id: string;
@@ -137,7 +135,10 @@ export class MemoryDerivedStore {
         return rows.map(mapTemporalFact);
     }
 
-    async listTemporalFactsBySubjectKeys(profileId: string, subjectKeys: string[]): Promise<MemoryTemporalFactRecord[]> {
+    async listTemporalFactsBySubjectKeys(
+        profileId: string,
+        subjectKeys: string[]
+    ): Promise<MemoryTemporalFactRecord[]> {
         if (subjectKeys.length === 0) {
             return [];
         }

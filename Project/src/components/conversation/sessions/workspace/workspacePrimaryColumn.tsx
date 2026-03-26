@@ -1,8 +1,8 @@
 import { ComposerActionPanel } from '@/web/components/conversation/panels/composerActionPanel';
 import { MessageFlowPanel } from '@/web/components/conversation/panels/messageFlowPanel';
+import type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
-import type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 
 interface WorkspacePrimaryColumnProps {
     profileId: SessionWorkspacePanelProps['profileId'];
@@ -160,7 +160,9 @@ export function WorkspacePrimaryColumn({
                         runErrorMessage={runErrorMessage}
                         {...(contextState ? { contextState } : {})}
                         {...(validatedSelectedSessionId ? { selectedSessionId: validatedSelectedSessionId } : {})}
-                        {...(selectedWorkspaceFingerprint ? { workspaceFingerprint: selectedWorkspaceFingerprint } : {})}
+                        {...(selectedWorkspaceFingerprint
+                            ? { workspaceFingerprint: selectedWorkspaceFingerprint }
+                            : {})}
                         {...(selectedSandboxId ? { sandboxId: selectedSandboxId } : {})}
                         attachedRules={attachedRules}
                         missingAttachedRuleKeys={missingAttachedRuleKeys}

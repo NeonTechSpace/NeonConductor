@@ -1,25 +1,34 @@
 import { providerStore } from '@/app/backend/persistence/stores';
-import { normalizeOpenAIBoundaryForProfile } from '@/app/backend/providers/openAIBoundaryNormalization';
 import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { AuthExecutionResult } from '@/app/backend/providers/auth/errors';
 import type { ProviderAccountContextResult, PollAuthResult, StartAuthResult } from '@/app/backend/providers/auth/types';
 import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
+import { normalizeOpenAIBoundaryForProfile } from '@/app/backend/providers/openAIBoundaryNormalization';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
 import { getProviderDefinition } from '@/app/backend/providers/registry';
+import { syncCatalog } from '@/app/backend/providers/service/catalogSync';
+import { getConnectionProfileState, setConnectionProfileState } from '@/app/backend/providers/service/endpointProfiles';
+import {
+    errProviderService,
+    okProviderService,
+    type ProviderServiceResult,
+} from '@/app/backend/providers/service/errors';
 import {
     getExecutionPreferenceState,
     setExecutionPreferenceState,
 } from '@/app/backend/providers/service/executionPreferences';
-import { syncCatalog } from '@/app/backend/providers/service/catalogSync';
-import { getConnectionProfileState, setConnectionProfileState } from '@/app/backend/providers/service/endpointProfiles';
-import { errProviderService, okProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
-import { getProviderControlSnapshot } from '@/app/backend/providers/service/projectionService';
-import { getDefaults, getSpecialistDefaults, setDefault, setSpecialistDefault } from '@/app/backend/providers/service/preferenceService';
 import {
     getModelRoutingPreference,
     listModelProviders,
     setModelRoutingPreference,
 } from '@/app/backend/providers/service/kiloRoutingService';
+import {
+    getDefaults,
+    getSpecialistDefaults,
+    setDefault,
+    setSpecialistDefault,
+} from '@/app/backend/providers/service/preferenceService';
+import { getProviderControlSnapshot } from '@/app/backend/providers/service/projectionService';
 import {
     getCredentialSummary,
     getCredentialValue,
@@ -286,10 +295,7 @@ class ProviderManagementService {
         });
     }
 
-    async getExecutionPreference(
-        profileId: string,
-        providerId: RuntimeProviderId
-    ) {
+    async getExecutionPreference(profileId: string, providerId: RuntimeProviderId) {
         await this.ensureNormalizedProviderProfileState(profileId);
         if (providerId !== 'openai') {
             return errProviderService(
@@ -421,7 +427,9 @@ class ProviderManagementService {
         return setModelRoutingPreference(input);
     }
 
-    async listModelProviders(input: ProviderListModelProvidersInput): Promise<ProviderServiceResult<KiloModelProviderOption[]>> {
+    async listModelProviders(
+        input: ProviderListModelProvidersInput
+    ): Promise<ProviderServiceResult<KiloModelProviderOption[]>> {
         await this.ensureNormalizedProviderProfileState(input.profileId);
         return listModelProviders(input);
     }

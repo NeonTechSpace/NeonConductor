@@ -52,7 +52,11 @@ export function MarkdownCodeBlock({ code, language, className }: MarkdownCodeBlo
     }, [code, language, resolvedTheme]);
 
     return (
-        <section className={cn('markdown-code-surface border-border overflow-hidden rounded-xl border shadow-sm', className)}>
+        <section
+            className={cn(
+                'markdown-code-surface border-border overflow-hidden rounded-xl border shadow-sm',
+                className
+            )}>
             <header className='border-border bg-background/80 flex min-h-10 items-center justify-between gap-3 border-b px-3'>
                 <span className='text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.12em] uppercase'>
                     {language ?? 'code'}

@@ -1,4 +1,9 @@
 import type {
+    ProviderModelFeatureSet,
+    ProviderRuntimeDescriptor,
+    ProviderRuntimeTransportFamily,
+} from '@/app/backend/providers/types';
+import type {
     ComposerMediaSettings,
     ContextCompactionSource,
     MemoryCausalLinkRecord as RuntimeMemoryCausalLinkRecord,
@@ -44,11 +49,6 @@ import type {
     SandboxRecord as RuntimeSandboxRecord,
     WorkspaceRootRecord as RuntimeWorkspaceRootRecord,
 } from '@/app/backend/runtime/contracts';
-import type {
-    ProviderModelFeatureSet,
-    ProviderRuntimeDescriptor,
-    ProviderRuntimeTransportFamily,
-} from '@/app/backend/providers/types';
 
 export interface SessionSummaryRecord {
     id: EntityId<'sess'>;

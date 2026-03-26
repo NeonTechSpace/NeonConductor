@@ -79,8 +79,7 @@ export function parseConversationCreateThreadInput(input: unknown): Conversation
         source.executionEnvironmentMode !== undefined
             ? readEnumValue(source.executionEnvironmentMode, 'executionEnvironmentMode', executionEnvironmentModes)
             : undefined;
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
     if (scope === 'workspace' && !workspacePath) {
         throw new Error('Invalid "workspacePath": required when scope is "workspace".');
@@ -135,8 +134,7 @@ export function parseConversationSetThreadExecutionEnvironmentInput(
 ): ConversationSetThreadExecutionEnvironmentInput {
     const source = readObject(input, 'input');
     const mode = readEnumValue(source.mode, 'mode', executionEnvironmentModes);
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
     if (mode === 'sandbox' && !sandboxId) {
         throw new Error('Invalid "sandboxId": required when mode is "sandbox".');
@@ -191,9 +189,7 @@ export function parseConversationWorkspaceThreadDeletePreviewInput(
     };
 }
 
-export function parseConversationDeleteWorkspaceThreadsInput(
-    input: unknown
-): ConversationDeleteWorkspaceThreadsInput {
+export function parseConversationDeleteWorkspaceThreadsInput(input: unknown): ConversationDeleteWorkspaceThreadsInput {
     const source = readObject(input, 'input');
 
     return {

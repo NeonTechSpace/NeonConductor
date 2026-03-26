@@ -81,7 +81,14 @@ function invalidRuntimeOption(input: {
     providerId: RuntimeProviderId;
     modelId: string;
     message: string;
-    detail?: 'attachments_not_allowed' | 'generic' | 'chat_mode_not_supported' | 'model_not_realtime_capable' | 'api_key_required' | 'base_url_not_supported' | 'provider_not_supported';
+    detail?:
+        | 'attachments_not_allowed'
+        | 'generic'
+        | 'chat_mode_not_supported'
+        | 'model_not_realtime_capable'
+        | 'api_key_required'
+        | 'base_url_not_supported'
+        | 'provider_not_supported';
 }): RunExecutionResult<never> {
     return errRunExecution('runtime_option_invalid', input.message, {
         action: {
@@ -113,9 +120,7 @@ function requireAutoRequestedTransportFamily(
     return null;
 }
 
-function invalidRuntimeOptionFromError(
-    error: RunExecutionError
-): RunExecutionResult<never> {
+function invalidRuntimeOptionFromError(error: RunExecutionError): RunExecutionResult<never> {
     return errRunExecution(error.code, error.message, {
         ...(error.action ? { action: error.action } : {}),
     });
@@ -133,7 +138,9 @@ function invalidTransportOverride(
     return invalidRuntimeOptionFromError(transportError);
 }
 
-function isSupportedKiloRoutedFamily(value: ProviderRoutedApiFamily | undefined): value is Exclude<ProviderRoutedApiFamily, 'provider_native'> {
+function isSupportedKiloRoutedFamily(
+    value: ProviderRoutedApiFamily | undefined
+): value is Exclude<ProviderRoutedApiFamily, 'provider_native'> {
     return value === 'openai_compatible' || value === 'anthropic_messages' || value === 'google_generativeai';
 }
 
@@ -158,7 +165,8 @@ const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefini
         toolProtocol: 'openai_responses',
         executionPath: 'openai_compatible',
         transportFamily: 'openai_responses',
-        supportsCatalogModel: ({ providerId, model }) => providerId !== 'kilo' && model.runtime.toolProtocol === 'openai_responses',
+        supportsCatalogModel: ({ providerId, model }) =>
+            providerId !== 'kilo' && model.runtime.toolProtocol === 'openai_responses',
         async resolveProtocol(input) {
             const runtime = input.modelCapabilities.runtime;
             if (!isOpenAIResponsesRuntimeDescriptor(runtime)) {
@@ -271,31 +279,39 @@ const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefini
         transportFamily: 'openai_chat_completions',
         supportsCatalogModel: ({ providerId, model }) =>
             providerId !== 'kilo' && model.runtime.toolProtocol === 'openai_chat_completions',
-        async resolveProtocol(input) {
+        resolveProtocol(input) {
             const runtime = input.modelCapabilities.runtime;
             if (input.providerId === 'kilo') {
-                return invalidRuntimeOption({
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    message: `Model "${input.modelId}" declares protocol "openai_chat_completions" but provider "${input.providerId}" cannot execute it.`,
-                });
+                return Promise.resolve(
+                    invalidRuntimeOption({
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        message: `Model "${input.modelId}" declares protocol "openai_chat_completions" but provider "${input.providerId}" cannot execute it.`,
+                    })
+                );
             }
 
             if (input.runtimeOptions.transport.family === 'openai_responses') {
-                return invalidRuntimeOption({
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    message: `Model "${input.modelId}" requires the OpenAI chat completions protocol and cannot run with responses transport.`,
-                });
+                return Promise.resolve(
+                    invalidRuntimeOption({
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        message: `Model "${input.modelId}" requires the OpenAI chat completions protocol and cannot run with responses transport.`,
+                    })
+                );
             }
 
-            return okRunExecution({
-                runtime,
-                transport: buildTransport({
-                    runtimeOptions: input.runtimeOptions,
-                    selected: 'openai_chat_completions',
-                }),
-            });
+            return Promise.resolve(
+                okRunExecution({
+                    providerId: input.providerId,
+                    modelId: input.modelId,
+                    runtime,
+                    transport: buildTransport({
+                        runtimeOptions: input.runtimeOptions,
+                        selected: 'openai_chat_completions',
+                    }),
+                })
+            );
         },
     },
     anthropic_messages: {
@@ -305,11 +321,11 @@ const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefini
         supportsCatalogModel: ({ providerId, model, context }) =>
             providerId !== 'kilo' &&
             model.runtime.toolProtocol === 'anthropic_messages' &&
-            (!!context &&
-                supportsDirectAnthropicRuntimeContext({
-                    providerId,
-                    resolvedBaseUrl: context.resolvedBaseUrl,
-                })),
+            !!context &&
+            supportsDirectAnthropicRuntimeContext({
+                providerId,
+                resolvedBaseUrl: context.resolvedBaseUrl,
+            }),
         async resolveProtocol(input) {
             const runtime = input.modelCapabilities.runtime;
 
@@ -372,11 +388,11 @@ const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefini
         supportsCatalogModel: ({ providerId, model, context }) =>
             providerId !== 'kilo' &&
             model.runtime.toolProtocol === 'google_generativeai' &&
-            (!!context &&
-                supportsDirectGeminiRuntimeContext({
-                    providerId,
-                    resolvedBaseUrl: context.resolvedBaseUrl,
-                })),
+            !!context &&
+            supportsDirectGeminiRuntimeContext({
+                providerId,
+                resolvedBaseUrl: context.resolvedBaseUrl,
+            }),
         async resolveProtocol(input) {
             const runtime = input.modelCapabilities.runtime;
 
@@ -440,52 +456,54 @@ const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefini
             providerId === 'kilo' &&
             model.runtime.toolProtocol === 'kilo_gateway' &&
             isSupportedKiloRoutedFamily(model.runtime.routedApiFamily),
-        async resolveProtocol(input) {
+        resolveProtocol(input) {
             const runtime = input.modelCapabilities.runtime;
             if (!isKiloGatewayRuntimeDescriptor(runtime)) {
-                return invalidRuntimeOption({
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    message: `Model "${input.modelId}" is missing the Kilo gateway runtime descriptor.`,
-                });
+                return Promise.resolve(
+                    invalidRuntimeOption({
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        message: `Model "${input.modelId}" is missing the Kilo gateway runtime descriptor.`,
+                    })
+                );
             }
             if (input.providerId !== 'kilo') {
-                return invalidRuntimeOption({
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    message: `Model "${input.modelId}" declares protocol "kilo_gateway" but provider "${input.providerId}" cannot execute it.`,
-                });
+                return Promise.resolve(
+                    invalidRuntimeOption({
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        message: `Model "${input.modelId}" declares protocol "kilo_gateway" but provider "${input.providerId}" cannot execute it.`,
+                    })
+                );
             }
 
             const transportError = invalidTransportOverride(input, 'protocol "kilo_gateway"');
             if (transportError) {
-                return transportError;
+                return Promise.resolve(transportError);
             }
 
             const routedApiFamily = runtime.routedApiFamily;
-            if (!routedApiFamily) {
-                return invalidRuntimeOption({
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    message: `Model "${input.modelId}" is missing required Kilo routed upstream family metadata.`,
-                });
-            }
-
             if (!isSupportedKiloRoutedFamily(routedApiFamily)) {
-                return invalidRuntimeOption({
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    message: `Model "${input.modelId}" routes through unsupported Kilo upstream family "${routedApiFamily}".`,
-                });
+                return Promise.resolve(
+                    invalidRuntimeOption({
+                        providerId: input.providerId,
+                        modelId: input.modelId,
+                        message: `Model "${input.modelId}" routes through an unsupported Kilo upstream family.`,
+                    })
+                );
             }
 
-            return okRunExecution({
-                runtime,
-                transport: buildTransport({
-                    runtimeOptions: input.runtimeOptions,
-                    selected: 'kilo_gateway',
-                }),
-            });
+            return Promise.resolve(
+                okRunExecution({
+                    providerId: input.providerId,
+                    modelId: input.modelId,
+                    runtime,
+                    transport: buildTransport({
+                        runtimeOptions: input.runtimeOptions,
+                        selected: 'kilo_gateway',
+                    }),
+                })
+            );
         },
     },
     provider_native: {
@@ -548,25 +566,16 @@ const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefini
     },
 };
 
-export function getRuntimeFamilyDefinition(
-    toolProtocol: ProviderToolProtocol
-): RuntimeFamilyDefinition {
+export function getRuntimeFamilyDefinition(toolProtocol: ProviderToolProtocol): RuntimeFamilyDefinition {
     return runtimeFamilyDefinitions[toolProtocol];
 }
 
-export function resolveRuntimeFamilyExecutionPath(
-    toolProtocol: ProviderToolProtocol
-): RuntimeFamilyExecutionPath {
+export function resolveRuntimeFamilyExecutionPath(toolProtocol: ProviderToolProtocol): RuntimeFamilyExecutionPath {
     return getRuntimeFamilyDefinition(toolProtocol).executionPath;
 }
 
 export function supportsCatalogRuntimeFamily(input: RuntimeFamilyCatalogInput): boolean {
-    const runtime = input.model.runtime;
-    if (!runtime) {
-        return false;
-    }
-
-    const toolProtocol = runtime.toolProtocol;
+    const toolProtocol = input.model.runtime.toolProtocol;
     const definition = runtimeFamilyDefinitions[toolProtocol];
     return definition.supportsCatalogModel(input);
 }
@@ -574,16 +583,7 @@ export function supportsCatalogRuntimeFamily(input: RuntimeFamilyCatalogInput): 
 export async function resolveRuntimeFamilyProtocol(
     input: ResolveRuntimeFamilyInput
 ): Promise<RunExecutionResult<ResolvedRuntimeFamilyProtocol>> {
-    const runtime = input.modelCapabilities.runtime;
-    if (!runtime) {
-        return invalidRuntimeOption({
-            providerId: input.providerId,
-            modelId: input.modelId,
-            message: `Model "${input.modelId}" is missing runtime descriptor metadata.`,
-        });
-    }
-
-    const toolProtocol = runtime.toolProtocol;
+    const toolProtocol = input.modelCapabilities.runtime.toolProtocol;
     const definition = runtimeFamilyDefinitions[toolProtocol];
     return definition.resolveProtocol(input);
 }

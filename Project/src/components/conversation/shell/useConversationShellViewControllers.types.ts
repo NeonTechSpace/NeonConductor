@@ -1,5 +1,5 @@
 import { skipToken } from '@tanstack/react-query';
-import type React from 'react';
+
 
 import { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
 import { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
@@ -8,13 +8,12 @@ import { useConversationUiState } from '@/web/components/conversation/hooks/useC
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import type { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
-import type { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
+import type { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
 import type { RuntimeStreamConnectionState } from '@/web/lib/runtime/eventStream';
 import { trpc } from '@/web/trpc/client';
 
-import type { ResolvedContextState, ResolvedContextStateInput } from '@/app/backend/runtime/contracts/types/context';
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
 import type {
@@ -24,6 +23,10 @@ import type {
     RuntimeReasoningEffort,
     TopLevelTab,
 } from '@/shared/contracts';
+import type { ResolvedContextState, ResolvedContextStateInput } from '@/shared/contracts/types/context';
+
+
+import type React from 'react';
 
 export type ConversationQueries = ReturnType<typeof useConversationQueries>;
 export type ConversationMutations = ReturnType<typeof useConversationMutations>;
@@ -85,7 +88,9 @@ export interface UseConversationShellViewControllersInput {
     selectedSessionId: SessionSummaryRecord['id'] | undefined;
     selectedRunId: RunRecord['id'] | undefined;
     hasSelectedSession: boolean;
-    runtimeOptions: ReturnType<typeof import('@/web/components/conversation/shell/workspace/helpers').buildRuntimeRunOptions>;
+    runtimeOptions: ReturnType<
+        typeof import('@/web/components/conversation/shell/workspace/helpers').buildRuntimeRunOptions
+    >;
     contextStateQueryInput: ResolvedContextStateInput | typeof skipToken;
     contextStateQuery: ReturnType<typeof trpc.context.getResolvedState.useQuery> & {
         data: ResolvedContextState | undefined;
@@ -93,15 +98,12 @@ export interface UseConversationShellViewControllersInput {
     contextStateQueryEnabled: boolean;
     composerMediaSettings:
         | {
-        maxImageAttachmentsPerMessage?: number;
+              maxImageAttachmentsPerMessage?: number;
           }
         | undefined;
     composer: ConversationComposer;
     sessionActions: ConversationSessionActions;
-    setEditPreference: (editPreferenceInput: {
-        profileId: string;
-        value: 'truncate' | 'branch';
-    }) => Promise<void>;
+    setEditPreference: (editPreferenceInput: { profileId: string; value: 'truncate' | 'branch' }) => Promise<void>;
     executionStrategy: OrchestratorExecutionStrategy;
     handleExecutionStrategyChange: (nextExecutionStrategy: OrchestratorExecutionStrategy) => void;
     selectedComposerProviderId: RuntimeProviderId | undefined;

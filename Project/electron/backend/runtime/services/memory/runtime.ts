@@ -65,7 +65,10 @@ function buildMessagePartsByMessageId(parts: MessagePartRecord[]): Map<string, M
     return partsByMessageId;
 }
 
-function collectAssistantText(messages: MessageRecord[], partsByMessageId: Map<string, MessagePartRecord[]>): string | undefined {
+function collectAssistantText(
+    messages: MessageRecord[],
+    partsByMessageId: Map<string, MessagePartRecord[]>
+): string | undefined {
     const assistantMessages = messages.filter((message) => message.role === 'assistant');
     for (let index = assistantMessages.length - 1; index >= 0; index -= 1) {
         const assistantMessage = assistantMessages[index];
@@ -144,10 +147,7 @@ function formatUsageSummary(usage: RunUsageRecord | null): string | undefined {
     return segments.length > 0 ? segments.join(', ') : undefined;
 }
 
-function buildMemoryTitle(input: {
-    prompt: string;
-    runStatus: FinishedRunStatus;
-}): string {
+function buildMemoryTitle(input: { prompt: string; runStatus: FinishedRunStatus }): string {
     const statusLabel = input.runStatus === 'completed' ? 'Completed' : 'Failed';
     const promptSnippet = formatPromptSnippet(input.prompt);
     return promptSnippet.length > 0 ? `${statusLabel} run: ${promptSnippet}` : `${statusLabel} run`;
@@ -254,10 +254,7 @@ function areMetadataEqual(left: Record<string, unknown>, right: Record<string, u
 }
 
 export class MemoryRuntimeService {
-    async captureFinishedRunMemory(input: {
-        profileId: string;
-        runId: string;
-    }): Promise<
+    async captureFinishedRunMemory(input: { profileId: string; runId: string }): Promise<
         OperationalResult<{
             action: AutomaticRunMemoryAction;
             memory?: MemoryRecord;

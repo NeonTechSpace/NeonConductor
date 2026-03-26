@@ -24,10 +24,9 @@ const TOOL_SAFETY_METADATA: Record<
     },
 };
 
-export function getToolSafetyMetadata(toolId: string): Pick<
-    ToolRecord,
-    'capabilities' | 'requiresWorkspace' | 'allowsExternalPaths' | 'allowsIgnoredPaths'
-> {
+export function getToolSafetyMetadata(
+    toolId: string
+): Pick<ToolRecord, 'capabilities' | 'requiresWorkspace' | 'allowsExternalPaths' | 'allowsIgnoredPaths'> {
     return (
         TOOL_SAFETY_METADATA[toolId] ?? {
             capabilities: [],

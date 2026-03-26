@@ -9,7 +9,10 @@ describe('tokenCountingService', () => {
             profileId: 'profile_test',
             providerId: 'openai',
             modelId: 'openai/gpt-5',
-            messages: [createTextMessage('system', 'You are helpful.'), createTextMessage('user', 'Explain context compaction.')],
+            messages: [
+                createTextMessage('system', 'You are helpful.'),
+                createTextMessage('user', 'Explain context compaction.'),
+            ],
         });
 
         expect(estimate.mode).toBe('estimated');

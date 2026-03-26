@@ -60,7 +60,7 @@ function createJsonResponse(payload: unknown): Response {
                 return name.toLowerCase() === 'content-type' ? 'application/json' : null;
             },
         },
-        json: async () => payload,
+        json: () => Promise.resolve(payload),
     } as Response;
 }
 
@@ -408,11 +408,13 @@ describe('streamKiloRuntime', () => {
         const lifecycleEvents: string[] = [];
         const result = await streamKiloRuntime(createRuntimeInput(), {
             onPart: vi.fn(),
-            onTransportSelected: async () => {
+            onTransportSelected: () => {
                 lifecycleEvents.push('transport');
+                return Promise.resolve();
             },
-            onCacheResolved: async () => {
+            onCacheResolved: () => {
                 lifecycleEvents.push('cache');
+                return Promise.resolve();
             },
         });
 

@@ -31,10 +31,7 @@ export function buildConversationUiSyncPatch(input: ConversationSyncInput): Conv
         patch.sort = input.threads.sort;
     }
 
-    if (
-        input.threads?.showAllModes !== undefined &&
-        input.uiState.showAllModes !== input.threads.showAllModes
-    ) {
+    if (input.threads?.showAllModes !== undefined && input.uiState.showAllModes !== input.threads.showAllModes) {
         patch.showAllModes = input.threads.showAllModes;
     }
 

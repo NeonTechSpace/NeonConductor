@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { NeonObservabilityEvent } from '@/app/backend/runtime/contracts';
+import type { NeonObservabilityEvent } from '@/shared/contracts';
 
 export type NeonObservabilityConnectionState = 'idle' | 'connecting' | 'live' | 'error';
 

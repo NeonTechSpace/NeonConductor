@@ -13,7 +13,11 @@ import {
     verifyResolvedRunTargetAvailability,
 } from '@/app/backend/runtime/services/runExecution/resolveRunTarget';
 import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
-import type { PreparedRunStart, PreparedRunnableCandidate, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+import type {
+    PreparedRunStart,
+    PreparedRunnableCandidate,
+    StartRunInput,
+} from '@/app/backend/runtime/services/runExecution/types';
 
 async function resolvePreparedCandidate(input: {
     startInput: StartRunInput;
@@ -90,15 +94,11 @@ async function resolvePreparedCandidate(input: {
         });
     }
     if (!fallbackResult.value) {
-        return errRunExecution(
-            'provider_model_missing',
-            'No compatible runnable provider/model found for this run.',
-            {
-                action: {
-                    code: 'model_unavailable',
-                },
-            }
-        );
+        return errRunExecution('provider_model_missing', 'No compatible runnable provider/model found for this run.', {
+            action: {
+                code: 'model_unavailable',
+            },
+        });
     }
 
     return okRunExecution(fallbackResult.value);
@@ -191,7 +191,9 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
                     sort: 'default',
                 };
     const kiloModeHeader =
-        preparedCandidate.target.providerId === 'kilo' ? resolveKiloModeHeader(resolvedModeResult.value.mode) : undefined;
+        preparedCandidate.target.providerId === 'kilo'
+            ? resolveKiloModeHeader(resolvedModeResult.value.mode)
+            : undefined;
 
     return okRunExecution({
         resolvedMode: resolvedModeResult.value,
@@ -200,7 +202,9 @@ export async function prepareRunStart(input: StartRunInput): Promise<RunExecutio
         resolvedAuth: preparedCandidate.resolvedAuth,
         resolvedCache: resolvedCacheResult.value,
         initialTransport: preparedCandidate.initialTransport,
-        ...(preparedCandidate.openAIExecutionMode ? { openAIExecutionMode: preparedCandidate.openAIExecutionMode } : {}),
+        ...(preparedCandidate.openAIExecutionMode
+            ? { openAIExecutionMode: preparedCandidate.openAIExecutionMode }
+            : {}),
         toolDefinitions,
         ...(runContext ? { runContext } : {}),
         ...(kiloModeHeader ? { kiloModeHeader } : {}),

@@ -1,11 +1,11 @@
 import { PendingPermissionsPanel } from '@/web/components/conversation/panels/pendingPermissionsPanel';
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
 import { WorkspaceStatusPanel } from '@/web/components/conversation/panels/workspaceStatusPanel';
-import type { WorkspaceInspectorSection } from '@/web/components/conversation/sessions/workspaceShellModel';
-import { WorkspacePrimaryColumn } from '@/web/components/conversation/sessions/workspace/workspacePrimaryColumn';
 import type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
+import { WorkspacePrimaryColumn } from '@/web/components/conversation/sessions/workspace/workspacePrimaryColumn';
 import { WorkspaceSelectionHeader } from '@/web/components/conversation/sessions/workspace/workspaceSelectionHeader';
 import { WorkspaceShell } from '@/web/components/conversation/sessions/workspace/workspaceShell';
+import type { WorkspaceInspectorSection } from '@/web/components/conversation/sessions/workspaceShellModel';
 
 export type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 

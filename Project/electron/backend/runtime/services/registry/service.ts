@@ -1,13 +1,24 @@
-import { builtInModePromptOverrideStore, modeStore, rulesetStore, settingsStore, skillfileStore } from '@/app/backend/persistence/stores';
+import {
+    builtInModePromptOverrideStore,
+    modeStore,
+    rulesetStore,
+    settingsStore,
+    skillfileStore,
+} from '@/app/backend/persistence/stores';
 import type {
     ModeDefinitionRecord,
     RulesetDefinitionRecord,
     SkillfileDefinitionRecord,
 } from '@/app/backend/persistence/types';
+import { getRegistryPresetKeysForMode } from '@/app/backend/runtime/contracts';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { pickActiveMode, toActiveModeKey } from '@/app/backend/runtime/services/mode/selection';
-import { getRegistryPresetKeysForMode } from '@/app/backend/runtime/contracts';
-import { buildDiscoveredAssets, replaceDiscoveredModes, replaceDiscoveredRulesets, replaceDiscoveredSkillfiles } from '@/app/backend/runtime/services/registry/discovery';
+import {
+    buildDiscoveredAssets,
+    replaceDiscoveredModes,
+    replaceDiscoveredRulesets,
+    replaceDiscoveredSkillfiles,
+} from '@/app/backend/runtime/services/registry/discovery';
 import { resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
 import {
     resolveAssetDefinitions,
@@ -383,7 +394,7 @@ export async function refreshRegistry(input: {
                 rulesets: globalAssets.rulesets.length,
                 skillfiles: globalAssets.skillfiles.length,
             },
-                ...(workspaceCounts ? { workspace: workspaceCounts } : {}),
+            ...(workspaceCounts ? { workspace: workspaceCounts } : {}),
         },
         resolvedRegistry,
         agentModes,

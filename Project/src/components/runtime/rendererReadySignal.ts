@@ -1,7 +1,6 @@
 import type { RendererReadySignalState } from '@/web/components/runtime/bootReadiness';
 import { trpcClient } from '@/web/lib/trpcClient';
 
-
 export interface RendererReadySignalSnapshot {
     readySignalState: RendererReadySignalState;
     readySignalErrorMessage?: string;

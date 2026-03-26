@@ -40,9 +40,7 @@ export function parseProfilePayload(payload: Record<string, unknown>): KiloProfi
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
     const accountId =
-        readOptionalString(data['accountId']) ??
-        readOptionalString(data['id']) ??
-        readOptionalString(user?.['id']);
+        readOptionalString(data['accountId']) ?? readOptionalString(data['id']) ?? readOptionalString(user?.['id']);
     const displayName =
         readOptionalString(data['displayName']) ??
         readOptionalString(data['name']) ??

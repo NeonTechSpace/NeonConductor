@@ -1,6 +1,6 @@
+import type { ConversationTanstackMessage } from '@/web/components/conversation/messages/tanstackMessageBridge';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
-import type { ConversationTanstackMessage } from '@/web/components/conversation/messages/tanstackMessageBridge';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -187,7 +187,8 @@ function buildBodyEntries(message: ConversationTanstackMessage): MessageTimeline
     }
 
     if (projected.length === 0 && assistantStatusEntries.length > 0) {
-        return [assistantStatusEntries[assistantStatusEntries.length - 1]!];
+        const lastStatusEntry = assistantStatusEntries.at(-1);
+        return lastStatusEntry ? [lastStatusEntry] : [];
     }
 
     return projected;

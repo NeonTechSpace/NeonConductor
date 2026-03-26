@@ -1,9 +1,9 @@
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import { isRecord, readLiteral, readNumber, readString } from '@/web/lib/runtime/eventPatches/readers/shared';
 
 import type { CheckpointRecord, DiffRecord } from '@/app/backend/persistence/types';
-import { topLevelTabs } from '@/shared/contracts';
 
-import { isRecord, readLiteral, readNumber, readString } from './shared';
+import { topLevelTabs } from '@/shared/contracts';
 
 export function readCheckpointRecord(value: unknown): CheckpointRecord | undefined {
     if (!isRecord(value)) {
@@ -131,7 +131,13 @@ export function readDiffArtifact(value: unknown): DiffRecord['artifact'] | undef
         const fullPatch = readString(value['fullPatch']);
         const filesValue = value['files'];
         const patchesByPathValue = value['patchesByPath'];
-        if (!baseRef || fileCount === undefined || !fullPatch || !Array.isArray(filesValue) || !isRecord(patchesByPathValue)) {
+        if (
+            !baseRef ||
+            fileCount === undefined ||
+            !fullPatch ||
+            !Array.isArray(filesValue) ||
+            !isRecord(patchesByPathValue)
+        ) {
             return undefined;
         }
 
@@ -142,10 +148,15 @@ export function readDiffArtifact(value: unknown): DiffRecord['artifact'] | undef
                 }
 
                 const path = readString(entry['path']);
-                const status = readLiteral(
-                    entry['status'],
-                    ['added', 'modified', 'deleted', 'renamed', 'copied', 'type_changed', 'untracked'] as const
-                );
+                const status = readLiteral(entry['status'], [
+                    'added',
+                    'modified',
+                    'deleted',
+                    'renamed',
+                    'copied',
+                    'type_changed',
+                    'untracked',
+                ] as const);
                 const previousPath = readString(entry['previousPath']);
                 const addedLines = readNumber(entry['addedLines']);
                 const deletedLines = readNumber(entry['deletedLines']);
@@ -195,10 +206,12 @@ export function readDiffArtifact(value: unknown): DiffRecord['artifact'] | undef
         };
     }
 
-    const reason = readLiteral(
-        value['reason'],
-        ['workspace_not_git', 'git_unavailable', 'workspace_unresolved', 'capture_failed'] as const
-    );
+    const reason = readLiteral(value['reason'], [
+        'workspace_not_git',
+        'git_unavailable',
+        'workspace_unresolved',
+        'capture_failed',
+    ] as const);
     const detail = readString(value['detail']);
     if (!reason || !detail) {
         return undefined;
@@ -212,3 +225,4 @@ export function readDiffArtifact(value: unknown): DiffRecord['artifact'] | undef
         detail,
     };
 }
+

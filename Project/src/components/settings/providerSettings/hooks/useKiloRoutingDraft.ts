@@ -97,7 +97,12 @@ export function useKiloRoutingDraft(input: UseKiloRoutingDraftInput) {
         draftKey && optimisticDraftState?.key === draftKey ? optimisticDraftState.draft : baseDraft;
 
     const saveKiloRoutingPreference = async (nextDraft: KiloRoutingDraft): Promise<void> => {
-        if (!draftKey || !kiloRoutingDraft || input.selectedProviderId !== 'kilo' || input.selectedModelId.trim().length === 0) {
+        if (
+            !draftKey ||
+            !kiloRoutingDraft ||
+            input.selectedProviderId !== 'kilo' ||
+            input.selectedModelId.trim().length === 0
+        ) {
             return;
         }
 
@@ -162,4 +167,3 @@ export function useKiloRoutingDraft(input: UseKiloRoutingDraftInput) {
         },
     };
 }
-

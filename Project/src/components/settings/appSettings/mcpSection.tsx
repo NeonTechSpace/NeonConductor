@@ -1,7 +1,7 @@
-import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import { McpServerEditorSection } from '@/web/components/settings/appSettings/mcpServerEditorSection';
 import { McpServerListSection } from '@/web/components/settings/appSettings/mcpServerListSection';
 import { useMcpSettingsController } from '@/web/components/settings/appSettings/useMcpSettingsController';
+import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 
 export function McpSettingsSection(props: { profileId: string; currentWorkspaceFingerprint?: string }) {
     const controller = useMcpSettingsController(props);
@@ -16,8 +16,8 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
                         : {})}
                     isBusy={controller.isBusy}
                     onEditServer={controller.startEditServerDraft}
-                    onConnectServer={controller.connectServer}
-                    onDisconnectServer={controller.disconnectServer}
+                    onConnectServer={(server) => controller.connectServer(server)}
+                    onDisconnectServer={(server) => controller.disconnectServer(server)}
                     onRequestDelete={(server) => {
                         controller.setDeleteTarget({ id: server.id, label: server.label });
                     }}
@@ -34,7 +34,7 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
                     onDraftChange={(updater) => {
                         controller.setDraft((current) => updater(current));
                     }}
-                    onSubmit={controller.submitDraft}
+                    onSubmit={() => controller.submitDraft()}
                 />
             </div>
 
@@ -52,7 +52,9 @@ export function McpSettingsSection(props: { profileId: string; currentWorkspaceF
                 onCancel={() => {
                     controller.setDeleteTarget(undefined);
                 }}
-                onConfirm={controller.confirmDeleteServer}
+                onConfirm={() => {
+                    void controller.confirmDeleteServer();
+                }}
             />
         </section>
     );

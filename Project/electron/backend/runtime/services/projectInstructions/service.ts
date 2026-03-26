@@ -16,16 +16,12 @@ async function listMarkdownFiles(rootPath: string, relativePrefix = ''): Promise
     }>;
     try {
         dirents = (await readdir(rootPath, { withFileTypes: true, encoding: 'utf8' })).map((dirent) => ({
-            name: String(dirent.name),
+            name: dirent.name,
             isDirectory: () => dirent.isDirectory(),
             isFile: () => dirent.isFile(),
         }));
     } catch (error) {
-        if (
-            error instanceof Error &&
-            'code' in error &&
-            (error.code === 'ENOENT' || error.code === 'ENOTDIR')
-        ) {
+        if (error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) {
             return [];
         }
         throw error;
@@ -63,11 +59,7 @@ async function readOptionalInstructionDocument(input: {
             bodyMarkdown,
         };
     } catch (error) {
-        if (
-            error instanceof Error &&
-            'code' in error &&
-            (error.code === 'ENOENT' || error.code === 'ENOTDIR')
-        ) {
+        if (error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) {
             return undefined;
         }
 

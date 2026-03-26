@@ -151,7 +151,10 @@ function countPatchLineStats(patch: string): { addedLines: number; deletedLines:
     return { addedLines, deletedLines };
 }
 
-function applyLineStats(files: DiffFileArtifact[], patchesByPath: Record<string, string>): {
+function applyLineStats(
+    files: DiffFileArtifact[],
+    patchesByPath: Record<string, string>
+): {
     files: DiffFileArtifact[];
     totalAddedLines: number;
     totalDeletedLines: number;

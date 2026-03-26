@@ -1,10 +1,10 @@
 import { ChevronDown } from 'lucide-react';
 
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
+import type { MessageFlowBodyEntry, MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { MessageMediaPreview } from '@/web/components/conversation/messages/messageMediaPreview';
 import { describeAssistantPlaceholder } from '@/web/components/conversation/messages/messagePlaceholderState';
 
-import type { MessageFlowBodyEntry, MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { RunRecord } from '@/app/backend/persistence/types';
 
 interface MessageFlowBodyProps {
@@ -18,9 +18,7 @@ export function MessageFlowBody({ profileId, message, run }: MessageFlowBodyProp
         (item): item is { id: string; type: 'assistant_reasoning'; text: string; providerLimitedReasoning: boolean } =>
             'text' in item && item.type === 'assistant_reasoning'
     );
-    const contentEntries = message.body.filter(
-        (item) => !('text' in item && item.type === 'assistant_reasoning')
-    );
+    const contentEntries = message.body.filter((item) => !('text' in item && item.type === 'assistant_reasoning'));
 
     if (contentEntries.length === 0 && reasoningEntries.length === 0 && message.role === 'assistant') {
         return (
@@ -94,7 +92,8 @@ function AssistantStatusRow({ item }: { item: Extract<MessageFlowBodyEntry, { ty
             : 'border-border/70 bg-background/60 text-muted-foreground';
 
     return (
-        <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${className}`}>
+        <div
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${className}`}>
             <span
                 className={`h-1.5 w-1.5 rounded-full ${item.code === 'failed_before_output' ? 'bg-current' : 'animate-pulse bg-current'}`}
             />

@@ -107,9 +107,10 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
                     sandboxId,
                 });
                 if (!result.refreshed || !result.sandbox) {
-                    const message = result.reason === 'not_found'
-                        ? 'Managed sandbox no longer exists.'
-                        : 'Managed sandbox refresh failed.';
+                    const message =
+                        result.reason === 'not_found'
+                            ? 'Managed sandbox no longer exists.'
+                            : 'Managed sandbox refresh failed.';
                     setFeedbackTone('error');
                     setFeedbackMessage(message);
                     return workspaceActionMutationFailure(message);
@@ -185,4 +186,3 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
         },
     };
 }
-

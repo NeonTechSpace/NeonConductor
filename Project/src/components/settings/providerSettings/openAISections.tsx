@@ -25,8 +25,8 @@ export function OpenAIAccountLimitsSection({ isLoading, rateLimits }: OpenAIAcco
         <section className='space-y-2'>
             <p className='text-sm font-semibold'>OpenAI Subscription Limits (Account)</p>
             <p className='text-muted-foreground text-xs'>
-                Pulled from OpenAI Codex ChatGPT usage windows when OAuth is active. This reflects account-level
-                limits, not only this app.
+                Pulled from OpenAI Codex ChatGPT usage windows when OAuth is active. This reflects account-level limits,
+                not only this app.
             </p>
             {isLoading ? <p className='text-muted-foreground text-xs'>Loading subscription limits...</p> : null}
             {rateLimits?.source === 'chatgpt_wham' ? (

@@ -15,8 +15,8 @@ import {
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { contextPolicyService } from '@/app/backend/runtime/services/context/policyService';
-import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import { tokenCountingService } from '@/app/backend/runtime/services/context/tokenCountingService';
+import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import {
     appendPromptMessage,
     createTextMessage,
@@ -150,7 +150,11 @@ async function summarizeReplayMessages(input: {
         return errOp(authResult.error.code, authResult.error.message);
     }
 
-    const modelCapabilities = await providerStore.getModelCapabilities(input.profileId, input.providerId, input.modelId);
+    const modelCapabilities = await providerStore.getModelCapabilities(
+        input.profileId,
+        input.providerId,
+        input.modelId
+    );
     if (!modelCapabilities) {
         return errOp('provider_model_missing', `Model "${input.modelId}" is missing runtime capabilities.`);
     }
@@ -184,7 +188,9 @@ async function summarizeReplayMessages(input: {
     const adapter = getProviderAdapter(input.providerId);
     const summaryMessages: RunContextMessage[] = [
         createTextMessage('system', COMPACTION_SYSTEM_PROMPT),
-        ...(input.existingSummary ? [createTextMessage('system', `Existing compacted summary\n\n${input.existingSummary}`)] : []),
+        ...(input.existingSummary
+            ? [createTextMessage('system', `Existing compacted summary\n\n${input.existingSummary}`)]
+            : []),
         ...input.replayMessages.map((message) => ({
             role: message.role,
             parts: message.parts,
@@ -298,7 +304,10 @@ class SessionContextService {
         });
         const messages = [...input.systemMessages, ...replayContextMessages];
 
-        if (!input.policy.limits.modelLimitsKnown || input.policy.disabledReason === 'multimodal_counting_unavailable') {
+        if (
+            !input.policy.limits.modelLimitsKnown ||
+            input.policy.disabledReason === 'multimodal_counting_unavailable'
+        ) {
             return { messages };
         }
 
@@ -416,7 +425,9 @@ class SessionContextService {
         if (preparedContext.isErr()) {
             return errOp(preparedContext.error.code, preparedContext.error.message, {
                 ...(preparedContext.error.details ? { details: preparedContext.error.details } : {}),
-                ...(preparedContext.error.retryable !== undefined ? { retryable: preparedContext.error.retryable } : {}),
+                ...(preparedContext.error.retryable !== undefined
+                    ? { retryable: preparedContext.error.retryable }
+                    : {}),
             });
         }
 

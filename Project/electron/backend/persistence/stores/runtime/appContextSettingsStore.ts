@@ -52,11 +52,7 @@ export class AppContextSettingsStore {
         };
     }
 
-    async set(input: {
-        enabled: boolean;
-        mode: 'percent';
-        percent: number;
-    }): Promise<AppContextSettingsRecord> {
+    async set(input: { enabled: boolean; mode: 'percent'; percent: number }): Promise<AppContextSettingsRecord> {
         const { db } = getPersistence();
         const updatedAt = nowIso();
         await db

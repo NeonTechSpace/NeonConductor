@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveRunCache } from '@/app/backend/runtime/services/runExecution/cacheKey';
-import { kiloFrontierModelId } from '@/shared/kiloModels';
 import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
+import { resolveRunCache } from '@/app/backend/runtime/services/runExecution/cacheKey';
+
+import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 const runtimeOptions = {
     reasoning: {
@@ -13,15 +14,17 @@ const runtimeOptions = {
     cache: {
         strategy: 'auto' as const,
     },
-        transport: {
-            family: 'auto' as const,
-        },
+    transport: {
+        family: 'auto' as const,
+    },
 };
 
 describe('resolveRunCache', () => {
-    function createModelCapabilities(input: ProviderModelCapabilities['features'] & {
-        toolProtocol: ProviderModelCapabilities['runtime']['toolProtocol'];
-    }): ProviderModelCapabilities {
+    function createModelCapabilities(
+        input: ProviderModelCapabilities['features'] & {
+            toolProtocol: ProviderModelCapabilities['runtime']['toolProtocol'];
+        }
+    ): ProviderModelCapabilities {
         return {
             features: {
                 supportsTools: input.supportsTools,

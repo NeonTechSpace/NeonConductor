@@ -1,8 +1,8 @@
 import { useDeferredValue, useState } from 'react';
 
+import { SidebarThreadList } from '@/web/components/conversation/sidebar/sections/sidebarThreadList';
 import { buildConversationSidebarModel } from '@/web/components/conversation/sidebar/sidebarModel';
 import type { SidebarMutationResult } from '@/web/components/conversation/sidebar/sidebarMutationResult';
-import { SidebarThreadList } from '@/web/components/conversation/sidebar/sections/sidebarThreadList';
 import { Button } from '@/web/components/ui/button';
 
 import type {
@@ -13,6 +13,7 @@ import type {
     ThreadListRecord,
 } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
+
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 interface SidebarThreadBrowserProps {

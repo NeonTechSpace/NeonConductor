@@ -1,6 +1,6 @@
 {
-  "target": "react",
-  "generatedRouteTree": "./src/routeTree.gen.ts",
-  "routeFileIgnorePattern": "(?:^|\\.)test\\.(?:ts|tsx)$",
-  "autoCodeSplitting": true
+    "target": "react",
+    "generatedRouteTree": "./src/routeTree.gen.ts",
+    "routeFileIgnorePattern": "(?:^|\\.)test\\.(?:ts|tsx)$",
+    "autoCodeSplitting": true
 }

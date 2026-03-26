@@ -4,8 +4,9 @@ import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsy
 
 describe('createFailClosedAsyncAction', () => {
     it('awaits the wrapped action', async () => {
-        const action = vi.fn(async (value: string) => {
+        const action = vi.fn((value: string) => {
             expect(value).toBe('ok');
+            return Promise.resolve();
         });
         const wrappedAction = createFailClosedAsyncAction(action);
 
@@ -14,9 +15,7 @@ describe('createFailClosedAsyncAction', () => {
     });
 
     it('swallows rejections and reports them through the optional error callback', async () => {
-        const action = vi.fn(async () => {
-            throw new Error('boom');
-        });
+        const action = vi.fn(() => Promise.reject(new Error('boom')));
         const onError = vi.fn();
         const wrappedAction = createFailClosedAsyncAction(action, onError);
 

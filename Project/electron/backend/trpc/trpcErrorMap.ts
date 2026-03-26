@@ -1,6 +1,5 @@
 import { TRPCError } from '@trpc/server';
 
-
 import type { OperationalErrorCode } from '@/app/backend/runtime/services/common/operationalError';
 import { isOperationalError } from '@/app/backend/runtime/services/common/operationalError';
 

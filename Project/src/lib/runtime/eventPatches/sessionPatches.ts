@@ -1,8 +1,6 @@
-import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
 
-import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 
-import { updateMatchingQueryData } from './queryCache';
+import { updateMatchingQueryData } from '@/web/lib/runtime/eventPatches/queryCache';
 import {
     readMessagePartRecord,
     readMessageRecord,
@@ -10,13 +8,13 @@ import {
     resolveSessionActiveRunId,
     upsertMessagePartRecord,
     upsertRunRecord,
-} from './readers';
-import type { SessionMessagesQueryData } from './types';
+} from '@/web/lib/runtime/eventPatches/readers';
+import type { SessionMessagesQueryData } from '@/web/lib/runtime/eventPatches/types';
+import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
 
-export function applyMessagePartRuntimeEventPatch(
-    event: RuntimeEventRecordV1,
-    context: RuntimeEventContext
-): boolean {
+import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
+
+export function applyMessagePartRuntimeEventPatch(event: RuntimeEventRecordV1, context: RuntimeEventContext): boolean {
     const messagePart = readMessagePartRecord(event.payload['part']);
     if (!messagePart || !context.profileId || !context.sessionId) {
         return false;
@@ -53,8 +51,8 @@ export function applyMessageRuntimeEventPatch(event: RuntimeEventRecordV1, conte
 
             return {
                 ...current,
-                messages: [...current.messages.filter((candidate) => candidate.id !== message.id), message].sort((left, right) =>
-                    left.createdAt.localeCompare(right.createdAt)
+                messages: [...current.messages.filter((candidate) => candidate.id !== message.id), message].sort(
+                    (left, right) => left.createdAt.localeCompare(right.createdAt)
                 ),
             };
         }
@@ -120,3 +118,4 @@ export function applyRunRuntimeEventPatch(utils: TrpcUtils, event: RuntimeEventR
 
     return true;
 }
+

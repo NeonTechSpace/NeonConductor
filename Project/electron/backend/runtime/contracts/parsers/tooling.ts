@@ -14,8 +14,7 @@ export function parseToolInvokeInput(input: unknown): ToolInvokeInput {
     const source = readObject(input, 'input');
     const args = source.args;
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
     return {
         profileId: readProfileId(source),

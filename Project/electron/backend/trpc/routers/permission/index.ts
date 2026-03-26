@@ -17,13 +17,13 @@ export const permissionRouter = router({
         const record = await permissionStore.create(input);
         await runtimeEventLogService.append(
             runtimeStatusEvent({
-            entityType: 'permission',
-            domain: 'permission',
-            entityId: record.id,
-            eventType: 'permission.requested',
-            payload: {
-                request: record,
-            },
+                entityType: 'permission',
+                domain: 'permission',
+                entityId: record.id,
+                eventType: 'permission.requested',
+                payload: {
+                    request: record,
+                },
             })
         );
 
@@ -34,7 +34,9 @@ export const permissionRouter = router({
     }),
     getEffectivePolicy: publicProcedure.input(permissionGetEffectivePolicyInputSchema).query(async ({ input }) => {
         const tools = await toolStore.list();
-        const toolId = input.resource.startsWith('tool:') ? input.resource.slice('tool:'.length).split(':', 1)[0] : null;
+        const toolId = input.resource.startsWith('tool:')
+            ? input.resource.slice('tool:'.length).split(':', 1)[0]
+            : null;
         const tool = toolId ? tools.find((item) => item.id === toolId) : null;
         const isMcpResource = !tool && input.resource.startsWith('mcp:');
         const defaultPolicy = tool?.permissionPolicy ?? (isMcpResource ? 'ask' : 'deny');
@@ -67,15 +69,15 @@ export const permissionRouter = router({
         );
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
-            entityType: 'permission',
-            domain: 'permission',
-            entityId: input.resource,
-            eventType: 'permission.override.profile.set',
-            payload: {
-                profileId: input.profileId,
-                resource: input.resource,
-                policy: input.policy,
-            },
+                entityType: 'permission',
+                domain: 'permission',
+                entityId: input.resource,
+                eventType: 'permission.override.profile.set',
+                payload: {
+                    profileId: input.profileId,
+                    resource: input.resource,
+                    policy: input.policy,
+                },
             })
         );
 
@@ -94,23 +96,23 @@ export const permissionRouter = router({
             );
             await runtimeEventLogService.append(
                 runtimeUpsertEvent({
-                entityType: 'permission',
-                domain: 'permission',
-                entityId: input.resource,
-                eventType: 'permission.override.workspace.set',
-                payload: {
-                    profileId: input.profileId,
-                    workspaceFingerprint: input.workspaceFingerprint,
-                    resource: input.resource,
-                    policy: input.policy,
-                },
+                    entityType: 'permission',
+                    domain: 'permission',
+                    entityId: input.resource,
+                    eventType: 'permission.override.workspace.set',
+                    payload: {
+                        profileId: input.profileId,
+                        workspaceFingerprint: input.workspaceFingerprint,
+                        resource: input.resource,
+                        policy: input.policy,
+                    },
                 })
             );
 
             return {
-            override,
-        };
-    }),
+                override,
+            };
+        }),
     resolve: publicProcedure.input(permissionResolveInputSchema).mutation(async ({ input }) => {
         const record = await permissionStore.getById(input.requestId);
         if (!record) {
@@ -176,14 +178,14 @@ export const permissionRouter = router({
 
         await runtimeEventLogService.append(
             runtimeStatusEvent({
-            entityType: 'permission',
-            domain: 'permission',
-            entityId: updatedRecord.id,
-            eventType: 'permission.resolved',
-            payload: {
-                request: updatedRecord,
-                resolution: input.resolution,
-            },
+                entityType: 'permission',
+                domain: 'permission',
+                entityId: updatedRecord.id,
+                eventType: 'permission.resolved',
+                payload: {
+                    request: updatedRecord,
+                    resolution: input.resolution,
+                },
             })
         );
 

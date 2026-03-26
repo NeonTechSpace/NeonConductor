@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { toRejectedStartResult } from '@/app/backend/runtime/services/runExecution/rejection';
 import { resolveModelCompatibility } from '@/web/components/modelSelection/modelCapabilities';
+
+import { toRejectedStartResult } from '@/app/backend/runtime/services/runExecution/rejection';
 
 describe('model compatibility helpers', () => {
     it('rejects non-tool models when the current mode requires native tools', () => {

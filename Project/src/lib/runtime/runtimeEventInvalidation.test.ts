@@ -341,7 +341,9 @@ describe('invalidateQueriesForRuntimeEvent', () => {
         expect(utils.session.list.setData).toHaveBeenCalledTimes(1);
 
         const listRunsUpdater = utils.session.listRuns.setData.mock.calls[0]?.[1] as
-            | ((current: { runs: Array<{ id: string; status: string }> }) => { runs: Array<{ id: string; status: string }> })
+            | ((current: { runs: Array<{ id: string; status: string }> }) => {
+                  runs: Array<{ id: string; status: string }>;
+              })
             | undefined;
         expect(listRunsUpdater?.({ runs: [] }).runs[0]?.id).toBe('run_started');
 

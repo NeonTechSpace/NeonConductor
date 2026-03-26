@@ -36,10 +36,7 @@ export class ProviderSecretStore {
         return rows.map(mapProviderSecret);
     }
 
-    async listByProfileAndProvider(
-        profileId: string,
-        providerId: RuntimeProviderId
-    ): Promise<ProviderSecretRecord[]> {
+    async listByProfileAndProvider(profileId: string, providerId: RuntimeProviderId): Promise<ProviderSecretRecord[]> {
         const { db } = getPersistence();
         const rows = await db
             .selectFrom('provider_secrets')

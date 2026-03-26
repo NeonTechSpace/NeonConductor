@@ -4,8 +4,9 @@ import {
     runtimeEntityTypes,
     type RuntimeEventRecordV1,
 } from '@/app/backend/persistence/types';
-import { neonObservabilityEventKinds, type NeonObservabilityEvent } from '@/app/backend/runtime/contracts';
 import type { WindowStateEvent } from '@/app/backend/trpc/routers/system/windowControls';
+
+import { neonObservabilityEventKinds, type NeonObservabilityEvent } from '@/shared/contracts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -22,7 +23,8 @@ function isSubscriptionDataEnvelope(value: unknown): value is { data: unknown; i
         isRecord(value) &&
         'data' in value &&
         Object.keys(value).every(
-            (key) => key === 'data' || (key === 'id' && (typeof value['id'] === 'number' || typeof value['id'] === 'string'))
+            (key) =>
+                key === 'data' || (key === 'id' && (typeof value['id'] === 'number' || typeof value['id'] === 'string'))
         )
     );
 }
@@ -30,7 +32,7 @@ function isSubscriptionDataEnvelope(value: unknown): value is { data: unknown; i
 export function normalizeSubscriptionPayload(value: unknown): unknown {
     let nextValue = value;
 
-    while (true) {
+    for (;;) {
         if (isRecord(nextValue) && isRecord(nextValue['result'])) {
             const result = nextValue['result'];
             if (isOneOf(result['type'], subscriptionControlTypes)) {
@@ -106,3 +108,4 @@ export function isNeonObservabilityEvent(value: unknown): value is NeonObservabi
         typeof value['source'] === 'string'
     );
 }
+

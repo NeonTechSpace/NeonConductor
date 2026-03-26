@@ -1,9 +1,6 @@
-import {
-    getDefaultEndpointProfile,
-    type FirstPartyProviderId,
-} from '@/app/backend/providers/registry';
-import { resolveConnectionProfile } from '@/app/backend/providers/service/endpointProfiles';
 import { resolveProviderBaseUrl } from '@/app/backend/providers/providerBaseUrls';
+import { getDefaultEndpointProfile, type FirstPartyProviderId } from '@/app/backend/providers/registry';
+import { resolveConnectionProfile } from '@/app/backend/providers/service/endpointProfiles';
 import {
     errProviderService,
     okProviderService,
@@ -31,6 +28,7 @@ export async function resolveProviderRuntimePathContext(
         profileId,
         providerId,
         optionProfileId,
-        resolvedBaseUrl: connectionProfileResult.value.resolvedBaseUrl ?? resolveProviderBaseUrl(providerId, optionProfileId),
+        resolvedBaseUrl:
+            connectionProfileResult.value.resolvedBaseUrl ?? resolveProviderBaseUrl(providerId, optionProfileId),
     });
 }

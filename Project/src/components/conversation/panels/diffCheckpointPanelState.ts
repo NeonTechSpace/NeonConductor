@@ -1,5 +1,6 @@
 import type { CheckpointRecord, DiffRecord } from '@/app/backend/persistence/types';
-import type { CheckpointRollbackPreview, CheckpointStorageSummary } from '@/app/backend/runtime/contracts';
+
+import type { CheckpointRollbackPreview, CheckpointStorageSummary } from '@/shared/contracts';
 
 export function resolveSelectedDiffPath(input: {
     selectedDiff: DiffRecord | undefined;
@@ -9,10 +10,7 @@ export function resolveSelectedDiffPath(input: {
         return undefined;
     }
 
-    if (
-        input.preferredPath &&
-        input.selectedDiff.artifact.files.some((file) => file.path === input.preferredPath)
-    ) {
+    if (input.preferredPath && input.selectedDiff.artifact.files.some((file) => file.path === input.preferredPath)) {
         return input.preferredPath;
     }
 
@@ -45,7 +43,9 @@ export function buildRollbackWarningLines(
         if (preview.revertBlockedReason === 'changeset_empty') {
             lines.push('This checkpoint recorded no file changes, so there is nothing to revert.');
         } else if (preview.revertBlockedReason === 'target_drifted') {
-            lines.push('The live files have drifted since this checkpoint. Revert changeset is blocked to avoid partial undo.');
+            lines.push(
+                'The live files have drifted since this checkpoint. Revert changeset is blocked to avoid partial undo.'
+            );
         } else if (preview.revertBlockedReason === 'workspace_unresolved') {
             lines.push('The current execution target could not be resolved, so revert changeset is unavailable.');
         } else {
@@ -63,10 +63,7 @@ export function buildRollbackWarningLines(
     };
 }
 
-export function filterVisibleCheckpoints(
-    checkpoints: CheckpointRecord[],
-    milestonesOnly: boolean
-): CheckpointRecord[] {
+export function filterVisibleCheckpoints(checkpoints: CheckpointRecord[], milestonesOnly: boolean): CheckpointRecord[] {
     if (!milestonesOnly) {
         return checkpoints;
     }
@@ -104,9 +101,7 @@ export function formatCheckpointByteSize(byteSize: number): string {
     return `${(byteSize / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
-export function describeCompactionRun(
-    run: CheckpointStorageSummary['lastCompactionRun']
-): string {
+export function describeCompactionRun(run: CheckpointStorageSummary['lastCompactionRun']): string {
     if (!run) {
         return 'No compaction run has been recorded yet.';
     }
@@ -120,3 +115,4 @@ export function describeCompactionRun(
 
     return run.message ? `${summary}. ${run.message}` : summary;
 }
+

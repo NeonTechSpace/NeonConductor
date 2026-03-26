@@ -29,4 +29,3 @@ export function patchRegistryRefreshCaches(input: {
         modes: input.refreshResult.agentModes,
     });
 }
-

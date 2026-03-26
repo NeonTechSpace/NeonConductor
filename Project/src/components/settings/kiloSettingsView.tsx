@@ -1,17 +1,18 @@
+import { useEffect, useRef } from 'react';
+
 import { ProviderAuthenticationSection } from '@/web/components/settings/providerSettings/authenticationSection';
 import { ProviderDefaultModelSection } from '@/web/components/settings/providerSettings/defaultModelSection';
 import { formatDateTime, formatInteger } from '@/web/components/settings/providerSettings/helpers';
+import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
 import { KiloAccountSection } from '@/web/components/settings/providerSettings/kiloAccountSection';
 import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
-import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
 import { ProviderSpecialistDefaultsSection } from '@/web/components/settings/providerSettings/specialistDefaultsSection';
+import { KILO_SETTINGS_SUBSECTIONS, type KiloSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
-import { KILO_SETTINGS_SUBSECTIONS, type KiloSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
 import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
 
 import type { ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
 
 interface KiloSettingsViewProps {
     profileId: string;
@@ -91,14 +92,15 @@ function KiloAccountAccessScreen({
     profileId,
     controller,
     effectiveAuthState,
+    selectedProvider,
 }: {
     profileId: string;
     controller: ReturnType<typeof useProviderSettingsController>;
     effectiveAuthState: string;
+    selectedProvider: NonNullable<ReturnType<typeof useProviderSettingsController>['selection']['selectedProvider']>;
 }) {
     const accountContext = controller.kilo.accountContext;
     const activeOrganization = accountContext?.organizations.find((organization) => organization.isActive);
-    const selectedProvider = controller.selection.selectedProvider!;
 
     return (
         <div className='space-y-5'>
@@ -173,20 +175,28 @@ function KiloAccountAccessScreen({
                 isPollingAuth={controller.authentication.isPollingAuth}
                 isCancellingAuth={controller.authentication.isCancellingAuth}
                 isOpeningVerificationPage={controller.authentication.isOpeningVerificationPage}
-                onConnectionProfileChange={controller.authentication.changeConnectionProfile}
+                onConnectionProfileChange={(value) => {
+                    void controller.authentication.changeConnectionProfile(value);
+                }}
                 onExecutionPreferenceChange={() => {}}
-                onSaveApiKey={(value) => {
-                    return controller.authentication.saveApiKey(value);
+                onSaveApiKey={(value) => controller.authentication.saveApiKey(value)}
+                onSaveBaseUrlOverride={(value) => controller.authentication.saveBaseUrlOverride(value)}
+                onLoadStoredCredential={() => controller.authentication.loadStoredCredential()}
+                onStartOAuthDevice={() => {
+                    void controller.authentication.startOAuthDevice();
                 }}
-                onSaveBaseUrlOverride={(value) => {
-                    return controller.authentication.saveBaseUrlOverride(value);
+                onStartDeviceCode={() => {
+                    void controller.authentication.startDeviceCode();
                 }}
-                onLoadStoredCredential={controller.authentication.loadStoredCredential}
-                onStartOAuthDevice={controller.authentication.startOAuthDevice}
-                onStartDeviceCode={controller.authentication.startDeviceCode}
-                onPollNow={controller.authentication.pollNow}
-                onCancelFlow={controller.authentication.cancelFlow}
-                onOpenVerificationPage={controller.authentication.openVerificationPage}
+                onPollNow={() => {
+                    void controller.authentication.pollNow();
+                }}
+                onCancelFlow={() => {
+                    void controller.authentication.cancelFlow();
+                }}
+                onOpenVerificationPage={() => {
+                    void controller.authentication.openVerificationPage();
+                }}
                 {...(controller.authentication.credentialSummary
                     ? { credentialSummary: controller.authentication.credentialSummary }
                     : {})}
@@ -198,7 +208,9 @@ function KiloAccountAccessScreen({
                         accountContext={controller.kilo.accountContext}
                         isLoading={controller.providerStatus.isLoadingAccountContext}
                         isSavingOrganization={controller.kilo.isSavingOrganization}
-                        onOrganizationChange={controller.kilo.changeOrganization}
+                        onOrganizationChange={(value) => {
+                            void controller.kilo.changeOrganization(value);
+                        }}
                     />
                 </div>
 
@@ -247,7 +259,9 @@ function KiloGatewayModelsScreen({
                 selectedModelId={controller.models.selectedModelId}
                 models={controller.models.options}
                 catalogStateReason={controller.models.catalogStateReason}
-                {...(controller.models.catalogStateDetail ? { catalogStateDetail: controller.models.catalogStateDetail } : {})}
+                {...(controller.models.catalogStateDetail
+                    ? { catalogStateDetail: controller.models.catalogStateDetail }
+                    : {})}
                 isDefaultModel={controller.models.isDefaultModel}
                 isSavingDefault={controller.models.isSavingDefault}
                 isSyncingCatalog={controller.models.isSyncingCatalog}
@@ -257,19 +271,17 @@ function KiloGatewayModelsScreen({
                         return;
                     }
 
-                    controller.models.setDefaultModel(modelId);
+                    void controller.models.setDefaultModel(modelId);
                 }}
-                onSyncCatalog={controller.models.syncCatalog}
+                onSyncCatalog={() => {
+                    void controller.models.syncCatalog();
+                }}
             />
         </div>
     );
 }
 
-function KiloRoutingScreen({
-    controller,
-}: {
-    controller: ReturnType<typeof useProviderSettingsController>;
-}) {
+function KiloRoutingScreen({ controller }: { controller: ReturnType<typeof useProviderSettingsController> }) {
     const shouldShowRoutingSection =
         controller.selection.selectedProvider?.features.supportsKiloRouting === true &&
         controller.models.selectedModelId.trim().length > 0 &&
@@ -291,7 +303,9 @@ function KiloRoutingScreen({
                 selectedModelId={controller.models.selectedModelId}
                 models={controller.models.options}
                 catalogStateReason={controller.models.catalogStateReason}
-                {...(controller.models.catalogStateDetail ? { catalogStateDetail: controller.models.catalogStateDetail } : {})}
+                {...(controller.models.catalogStateDetail
+                    ? { catalogStateDetail: controller.models.catalogStateDetail }
+                    : {})}
                 isDefaultModel={controller.models.isDefaultModel}
                 isSavingDefault={controller.models.isSavingDefault}
                 isSyncingCatalog={controller.models.isSyncingCatalog}
@@ -301,9 +315,11 @@ function KiloRoutingScreen({
                         return;
                     }
 
-                    controller.models.setDefaultModel(modelId);
+                    void controller.models.setDefaultModel(modelId);
                 }}
-                onSyncCatalog={controller.models.syncCatalog}
+                onSyncCatalog={() => {
+                    void controller.models.syncCatalog();
+                }}
             />
 
             {shouldShowRoutingSection && controller.kilo.routingDraft ? (
@@ -314,9 +330,15 @@ function KiloRoutingScreen({
                     isLoadingPreference={controller.kilo.isLoadingRoutingPreference}
                     isLoadingProviders={controller.kilo.isLoadingModelProviders}
                     isSaving={controller.kilo.isSavingRoutingPreference}
-                    onModeChange={controller.kilo.changeRoutingMode}
-                    onSortChange={controller.kilo.changeRoutingSort}
-                    onPinnedProviderChange={controller.kilo.changePinnedProvider}
+                    onModeChange={(value) => {
+                        void controller.kilo.changeRoutingMode(value);
+                    }}
+                    onSortChange={(value) => {
+                        void controller.kilo.changeRoutingSort(value);
+                    }}
+                    onPinnedProviderChange={(value) => {
+                        void controller.kilo.changePinnedProvider(value);
+                    }}
                 />
             ) : (
                 <div className='border-border/70 bg-card/40 rounded-[24px] border p-5'>
@@ -335,7 +357,8 @@ export function KiloSettingsView({ profileId, subsection = 'account', onSubsecti
     const controller = useProviderSettingsController(profileId, { initialProviderId: 'kilo' });
     const attemptedInitialCatalogBootstrapRef = useRef(false);
     const selectedProvider = controller.selection.selectedProvider;
-    const effectiveAuthState = controller.providerStatus.authState?.authState ?? selectedProvider?.authState ?? 'logged_out';
+    const effectiveAuthState =
+        controller.providerStatus.authState?.authState ?? selectedProvider?.authState ?? 'logged_out';
 
     useEffect(() => {
         if (
@@ -348,7 +371,7 @@ export function KiloSettingsView({ profileId, subsection = 'account', onSubsecti
             })
         ) {
             attemptedInitialCatalogBootstrapRef.current = true;
-            controller.models.syncCatalog();
+            void controller.models.syncCatalog();
             return;
         }
 
@@ -395,9 +418,12 @@ export function KiloSettingsView({ profileId, subsection = 'account', onSubsecti
                         profileId={profileId}
                         controller={controller}
                         effectiveAuthState={effectiveAuthState}
+                        selectedProvider={selectedProvider}
                     />
                 ) : null}
-                {subsection === 'models' ? <KiloGatewayModelsScreen profileId={profileId} controller={controller} /> : null}
+                {subsection === 'models' ? (
+                    <KiloGatewayModelsScreen profileId={profileId} controller={controller} />
+                ) : null}
                 {subsection === 'routing' ? <KiloRoutingScreen controller={controller} /> : null}
                 {subsection === 'marketplace' ? (
                     <div className='border-border/70 bg-card/50 rounded-[24px] border p-5'>

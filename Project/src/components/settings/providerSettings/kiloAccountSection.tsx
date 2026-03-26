@@ -87,7 +87,9 @@ export function KiloAccountSection({
                             </div>
                         ))}
                         {(accountContext?.organizations.length ?? 0) === 0 ? (
-                            <p className='text-muted-foreground text-xs'>No organizations returned for this account yet.</p>
+                            <p className='text-muted-foreground text-xs'>
+                                No organizations returned for this account yet.
+                            </p>
                         ) : null}
                     </div>
 
@@ -106,4 +108,3 @@ export function KiloAccountSection({
         </section>
     );
 }
-

@@ -8,7 +8,7 @@ import {
     parseDesktopDoctorScope,
     preloadBundleUsesUnsupportedModuleSyntax,
     resolveDesktopDoctorPaths,
-} from '../doctor-desktop';
+} from '@/scripts/doctor-desktop';
 
 describe('doctor-desktop', () => {
     const previousUserDataPath = process.env['NEONCONDUCTOR_USER_DATA_PATH'];
@@ -87,8 +87,14 @@ describe('doctor-desktop', () => {
         const distElectronRoot = mkdtempSync(path.join(os.tmpdir(), 'doctor-desktop-'));
         temporaryDirectories.push(distElectronRoot);
 
-        writeFileSync(path.join(distElectronRoot, 'mainWindow.cjs'), '"use strict";const electron=require("electron");');
-        writeFileSync(path.join(distElectronRoot, 'splashWindow.cjs'), '"use strict";const electron=require("electron");');
+        writeFileSync(
+            path.join(distElectronRoot, 'mainWindow.cjs'),
+            '"use strict";const electron=require("electron");'
+        );
+        writeFileSync(
+            path.join(distElectronRoot, 'splashWindow.cjs'),
+            '"use strict";const electron=require("electron");'
+        );
 
         expect(assertSandboxedPreloadBundles(distElectronRoot)).toMatchObject([
             {
@@ -109,16 +115,20 @@ describe('doctor-desktop', () => {
         temporaryDirectories.push(distElectronRoot);
 
         writeFileSync(path.join(distElectronRoot, 'mainWindow.cjs'), 'import { contextBridge } from "electron";');
-        writeFileSync(path.join(distElectronRoot, 'splashWindow.cjs'), '"use strict";const electron=require("electron");');
-
-        expect(() => assertSandboxedPreloadBundles(distElectronRoot)).toThrow(
-            /contains top-level ESM syntax/i
+        writeFileSync(
+            path.join(distElectronRoot, 'splashWindow.cjs'),
+            '"use strict";const electron=require("electron");'
         );
+
+        expect(() => assertSandboxedPreloadBundles(distElectronRoot)).toThrow(/contains top-level ESM syntax/i);
     });
 
     it('detects unsupported module syntax using the shared preload classifier', () => {
         expect(preloadBundleUsesUnsupportedModuleSyntax('import { contextBridge } from "electron";')).toBe(true);
         expect(preloadBundleUsesUnsupportedModuleSyntax('export const bridge = true;')).toBe(true);
-        expect(preloadBundleUsesUnsupportedModuleSyntax('"use strict";const electron=require("electron");')).toBe(false);
+        expect(preloadBundleUsesUnsupportedModuleSyntax('"use strict";const electron=require("electron");')).toBe(
+            false
+        );
     });
 });
+

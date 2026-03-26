@@ -34,9 +34,7 @@ const LANGUAGE_ALIASES: Record<string, (typeof SUPPORTED_LANGUAGES)[number]> = {
     yml: 'yaml',
 };
 
-let highlighterPromise:
-    | Promise<Awaited<ReturnType<typeof createHighlighter>>>
-    | undefined;
+let highlighterPromise: Promise<Awaited<ReturnType<typeof createHighlighter>>> | undefined;
 
 function getHighlighter() {
     highlighterPromise ??= createHighlighter({
@@ -65,9 +63,10 @@ export async function highlightMarkdownCode(input: {
     theme: MarkdownCodeTheme;
 }): Promise<string | null> {
     const normalizedLanguage = normalizeLanguage(input.language);
-    const language = normalizedLanguage && SUPPORTED_LANGUAGES.includes(normalizedLanguage as (typeof SUPPORTED_LANGUAGES)[number])
-        ? normalizedLanguage
-        : undefined;
+    const language =
+        normalizedLanguage && SUPPORTED_LANGUAGES.includes(normalizedLanguage as (typeof SUPPORTED_LANGUAGES)[number])
+            ? normalizedLanguage
+            : undefined;
     if (!language) {
         return null;
     }

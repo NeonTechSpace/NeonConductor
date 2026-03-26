@@ -1,7 +1,6 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { resolveProjectInstructionDocuments } from '@/app/backend/runtime/services/projectInstructions/service';

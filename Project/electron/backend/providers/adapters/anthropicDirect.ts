@@ -1,9 +1,4 @@
 import {
-    errProviderAdapter,
-    okProviderAdapter,
-    type ProviderAdapterResult,
-} from '@/app/backend/providers/adapters/errors';
-import {
     parseAnthropicDirectBlockParts,
     parseAnthropicDirectContentBlocks,
     normalizeAnthropicMessagesUsage,
@@ -11,20 +6,22 @@ import {
     readOptionalNumber,
     readOptionalString,
 } from '@/app/backend/providers/adapters/anthropicFamilyCore';
-import {
-    type RuntimeParsedCompletion,
-    type RuntimeParsedPart,
-} from '@/app/backend/providers/adapters/runtimePayload';
-import {
-    consumeStrictServerSentEvents,
-    type StrictServerSentEventFrame,
-} from '@/app/backend/providers/adapters/strictServerSentEvents';
-import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
 import { streamDirectFamilyRuntimeWithHandler } from '@/app/backend/providers/adapters/directFamily/shell';
 import type {
     DirectFamilyRuntimeConfig,
     DirectFamilyRuntimeHandler,
 } from '@/app/backend/providers/adapters/directFamily/types';
+import {
+    errProviderAdapter,
+    okProviderAdapter,
+    type ProviderAdapterResult,
+} from '@/app/backend/providers/adapters/errors';
+import { type RuntimeParsedCompletion, type RuntimeParsedPart } from '@/app/backend/providers/adapters/runtimePayload';
+import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
+import {
+    consumeStrictServerSentEvents,
+    type StrictServerSentEventFrame,
+} from '@/app/backend/providers/adapters/strictServerSentEvents';
 import type {
     ProviderRuntimeHandlers,
     ProviderRuntimeInput,
@@ -121,13 +118,9 @@ function extractBase64Data(dataUrl: string): string | null {
     return match?.[2] ?? null;
 }
 
-function buildAnthropicSystemPrompt(
-    input: NonNullable<ProviderRuntimeInput['contextMessages']>
-): string | undefined {
+function buildAnthropicSystemPrompt(input: NonNullable<ProviderRuntimeInput['contextMessages']>): string | undefined {
     const chunks = input.flatMap((message) =>
-        message.role !== 'system'
-            ? []
-            : message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
+        message.role !== 'system' ? [] : message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
     );
     const content = chunks.join('\n\n').trim();
     return content.length > 0 ? content : undefined;
@@ -234,9 +227,7 @@ function buildAnthropicMessageContent(
     return contentBlocks;
 }
 
-function buildAnthropicMessages(
-    input: ProviderRuntimeInput
-): Array<{
+function buildAnthropicMessages(input: ProviderRuntimeInput): Array<{
     role: 'user' | 'assistant';
     content: string | Array<Record<string, unknown>>;
 }> {
@@ -269,8 +260,8 @@ function buildAnthropicMessages(
         messages.push({
             role: message.role === 'assistant' ? 'assistant' : 'user',
             content:
-                content.length === 1 && content[0]?.['type'] === 'text' && typeof content[0]?.['text'] === 'string'
-                    ? (content[0]?.['text'] as string)
+                content.length === 1 && content[0]?.['type'] === 'text' && typeof content[0]['text'] === 'string'
+                    ? content[0]['text']
                     : content,
         });
     }
@@ -278,10 +269,7 @@ function buildAnthropicMessages(
     return messages;
 }
 
-export function buildDirectAnthropicBody(
-    input: ProviderRuntimeInput,
-    modelPrefix: string
-): Record<string, unknown> {
+export function buildDirectAnthropicBody(input: ProviderRuntimeInput, modelPrefix: string): Record<string, unknown> {
     const body: Record<string, unknown> = {
         model: toUpstreamModelId(input.modelId, modelPrefix),
         max_tokens: DEFAULT_ANTHROPIC_MAX_TOKENS,
@@ -341,7 +329,10 @@ function finalizeAnthropicBlock(
 ): ProviderAdapterResult<RuntimeParsedPart[]> {
     const block = state.blocks.get(blockIndex);
     if (!block) {
-        return errProviderAdapter('invalid_payload', `Anthropic Messages stream stopped unknown block ${String(blockIndex)}.`);
+        return errProviderAdapter(
+            'invalid_payload',
+            `Anthropic Messages stream stopped unknown block ${String(blockIndex)}.`
+        );
     }
 
     state.blocks.delete(blockIndex);
@@ -390,7 +381,10 @@ function parseAnthropicStreamFrame(input: {
 }): ProviderAdapterResult<AnthropicStreamEventResult> {
     if (input.frame.data === '[DONE]') {
         if (input.state.terminalFrameSeen) {
-            return errProviderAdapter('invalid_payload', 'Anthropic Messages stream emitted duplicate terminal frames.');
+            return errProviderAdapter(
+                'invalid_payload',
+                'Anthropic Messages stream emitted duplicate terminal frames.'
+            );
         }
         input.state.terminalFrameSeen = true;
         return okProviderAdapter({
@@ -424,7 +418,9 @@ function parseAnthropicStreamFrame(input: {
     if (eventType === 'message_start') {
         const usage = mergeUsage(
             input.state,
-            normalizeAnthropicMessagesUsage(isRecord(payload['message']) ? payload['message']['usage'] : payload['usage'])
+            normalizeAnthropicMessagesUsage(
+                isRecord(payload['message']) ? payload['message']['usage'] : payload['usage']
+            )
         );
         return okProviderAdapter({
             parts: [],
@@ -442,7 +438,10 @@ function parseAnthropicStreamFrame(input: {
 
     if (eventType === 'message_stop') {
         if (input.state.terminalFrameSeen) {
-            return errProviderAdapter('invalid_payload', 'Anthropic Messages stream emitted duplicate terminal frames.');
+            return errProviderAdapter(
+                'invalid_payload',
+                'Anthropic Messages stream emitted duplicate terminal frames.'
+            );
         }
         input.state.terminalFrameSeen = true;
         return okProviderAdapter({
@@ -460,10 +459,16 @@ function parseAnthropicStreamFrame(input: {
         const block = isRecord(payload['content_block']) ? payload['content_block'] : null;
         const blockType = readOptionalString(block?.['type']);
         if (!block || !blockType) {
-            return errProviderAdapter('invalid_payload', 'Anthropic Messages stream started a content block without a valid type.');
+            return errProviderAdapter(
+                'invalid_payload',
+                'Anthropic Messages stream started a content block without a valid type.'
+            );
         }
         if (input.state.blocks.has(index)) {
-            return errProviderAdapter('invalid_payload', `Anthropic Messages stream duplicated content block index ${String(index)}.`);
+            return errProviderAdapter(
+                'invalid_payload',
+                `Anthropic Messages stream duplicated content block index ${String(index)}.`
+            );
         }
 
         if (blockType === 'text') {
@@ -523,13 +528,19 @@ function parseAnthropicStreamFrame(input: {
     if (eventType === 'content_block_delta') {
         const block = input.state.blocks.get(index);
         if (!block) {
-            return errProviderAdapter('invalid_payload', `Anthropic Messages stream emitted a delta for unknown block ${String(index)}.`);
+            return errProviderAdapter(
+                'invalid_payload',
+                `Anthropic Messages stream emitted a delta for unknown block ${String(index)}.`
+            );
         }
 
         const delta = isRecord(payload['delta']) ? payload['delta'] : null;
         const deltaType = readOptionalString(delta?.['type']);
         if (!delta || !deltaType) {
-            return errProviderAdapter('invalid_payload', 'Anthropic Messages stream emitted a malformed content block delta.');
+            return errProviderAdapter(
+                'invalid_payload',
+                'Anthropic Messages stream emitted a malformed content block delta.'
+            );
         }
 
         if (deltaType === 'text_delta') {
@@ -691,10 +702,7 @@ function validateDirectAnthropicAuth(input: {
     config: DirectFamilyRuntimeConfig;
 }): ProviderAdapterResult<void> {
     if (!input.runtimeInput.apiKey) {
-        return errProviderAdapter(
-            'auth_missing',
-            `${input.config.label} Anthropic runtime requires an API key.`
-        );
+        return errProviderAdapter('auth_missing', `${input.config.label} Anthropic runtime requires an API key.`);
     }
 
     return okProviderAdapter(undefined);
@@ -710,8 +718,12 @@ function buildDirectAnthropicRequest(input: {
     headers: Record<string, string>;
     body: Record<string, unknown>;
 } {
+    const apiKey = input.runtimeInput.apiKey;
+    if (!apiKey) {
+        throw new Error('Anthropic direct runtime requires an API key.');
+    }
     const headers: Record<string, string> = {
-        'x-api-key': input.runtimeInput.apiKey!,
+        'x-api-key': apiKey,
         'anthropic-version': ANTHROPIC_API_VERSION,
         Accept: 'text/event-stream, application/json',
         'Content-Type': 'application/json',

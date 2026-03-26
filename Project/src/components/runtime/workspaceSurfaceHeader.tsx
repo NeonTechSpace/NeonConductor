@@ -1,8 +1,8 @@
 import { Settings2 } from 'lucide-react';
 
+import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
 
-import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 
 interface WorkspaceSurfaceHeaderProps {
     appSection: WorkspaceAppSection;

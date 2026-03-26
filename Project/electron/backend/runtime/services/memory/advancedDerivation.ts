@@ -30,7 +30,9 @@ function normalizeSearchText(value: string): string {
 }
 
 function normalizeSubjectSegment(value: string): string {
-    const normalized = normalizeSearchText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const normalized = normalizeSearchText(value)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
     return normalized.length > 0 ? normalized : 'memory';
 }
 
@@ -46,18 +48,9 @@ function extractSourceRunId(memory: RuntimeMemoryRecord): EntityId<'run'> | unde
 }
 
 function buildSubjectKey(memory: RuntimeMemoryRecord): string {
-    const provenanceKey =
-        memory.runId ??
-        memory.threadId ??
-        memory.workspaceFingerprint ??
-        'global';
+    const provenanceKey = memory.runId ?? memory.threadId ?? memory.workspaceFingerprint ?? 'global';
 
-    return [
-        memory.memoryType,
-        memory.scopeKind,
-        provenanceKey,
-        normalizeSubjectSegment(memory.title),
-    ].join('::');
+    return [memory.memoryType, memory.scopeKind, provenanceKey, normalizeSubjectSegment(memory.title)].join('::');
 }
 
 function toTemporalStatus(memory: RuntimeMemoryRecord): MemoryTemporalFactRecord['status'] {
@@ -152,10 +145,9 @@ export class AdvancedMemoryDerivationService {
             sourceRunId?: EntityId<'run'>;
         }>;
     }> {
-        const successorMemory =
-            memory.supersededByMemoryId
-                ? await memoryStore.getById(memory.profileId, memory.supersededByMemoryId)
-                : null;
+        const successorMemory = memory.supersededByMemoryId
+            ? await memoryStore.getById(memory.profileId, memory.supersededByMemoryId)
+            : null;
         const sourceRunId = extractSourceRunId(memory);
         const causalLinks: Array<{
             profileId: string;
@@ -235,9 +227,7 @@ export class AdvancedMemoryDerivationService {
                 ...(memory.state === 'active'
                     ? {}
                     : {
-                          validTo:
-                              successorMemory?.createdAt ??
-                              memory.updatedAt,
+                          validTo: successorMemory?.createdAt ?? memory.updatedAt,
                       }),
                 sourceMemoryId: memory.id,
                 ...(sourceRunId ? { sourceRunId } : {}),
@@ -419,8 +409,7 @@ export class AdvancedMemoryDerivationService {
                     memory: predecessorMemory,
                     matchReason: 'derived_temporal',
                     sourceMemoryId:
-                        (successorLink?.targetEntityId as EntityId<'mem'> | undefined) ??
-                        predecessorMemory.id,
+                        (successorLink?.targetEntityId as EntityId<'mem'> | undefined) ?? predecessorMemory.id,
                     annotations: ['Prior truth from temporal memory history.'],
                 });
                 candidateIds.add(predecessorId);
@@ -439,12 +428,13 @@ export class AdvancedMemoryDerivationService {
                     state: 'active',
                 });
                 for (const runMemory of activeRunMemories) {
-                    if (!runMemory.runId || !linkedRunIds.includes(runMemory.runId) || candidateIds.has(runMemory.id)) {
+                    const runId = runMemory.runId;
+                    if (!runId || !linkedRunIds.includes(runId) || candidateIds.has(runMemory.id)) {
                         continue;
                     }
 
-                    const sourceMemory = input.matchedMemories.find((memory) =>
-                        summariesResult.value.get(memory.id)?.linkedRunIds.includes(runMemory.runId!)
+                    const sourceMemory = input.matchedMemories.find(
+                        (memory) => summariesResult.value.get(memory.id)?.linkedRunIds.includes(runId)
                     );
                     candidates.push({
                         memory: runMemory,

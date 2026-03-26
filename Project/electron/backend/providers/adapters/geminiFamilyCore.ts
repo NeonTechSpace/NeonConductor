@@ -4,10 +4,7 @@ import {
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
 import { isRecord, readOptionalNumber, readOptionalString } from '@/app/backend/providers/adapters/geminiShared';
-import {
-    parseStructuredToolCall,
-    type RuntimeParsedPart,
-} from '@/app/backend/providers/adapters/runtimePayload';
+import { parseStructuredToolCall, type RuntimeParsedPart } from '@/app/backend/providers/adapters/runtimePayload';
 import type { ProviderRuntimeUsage } from '@/app/backend/providers/types';
 
 export interface GeminiReasoningState {
@@ -155,10 +152,7 @@ export function parseGeminiReasoningDetails(input: {
             }
 
             const opaque =
-                detail['data'] ??
-                detail['encrypted_content'] ??
-                detail['encrypted'] ??
-                detail['encryptedContent'];
+                detail['data'] ?? detail['encrypted_content'] ?? detail['encrypted'] ?? detail['encryptedContent'];
             if (opaque === undefined || opaque === null) {
                 continue;
             }
@@ -249,8 +243,7 @@ export function parseGeminiTopLevelReasoningParts(input: {
     }
 
     const reasoningText =
-        readOptionalString(input.container['reasoning']) ??
-        readOptionalString(input.container['reasoning_content']);
+        readOptionalString(input.container['reasoning']) ?? readOptionalString(input.container['reasoning_content']);
     const reasoningSummary = readOptionalString(input.container['reasoning_summary']);
     const parts: RuntimeParsedPart[] = [];
 
@@ -299,7 +292,10 @@ export function parseGeminiDirectPart(input: {
             readOptionalString(input.part['id']) ??
             createSyntheticGeminiToolCallId(input.state);
         if (input.state.emittedToolCallIds.has(callId)) {
-            return errProviderAdapter('invalid_payload', `${input.sourceLabel} emitted duplicate tool call id "${callId}".`);
+            return errProviderAdapter(
+                'invalid_payload',
+                `${input.sourceLabel} emitted duplicate tool call id "${callId}".`
+            );
         }
         input.state.emittedToolCallIds.add(callId);
 

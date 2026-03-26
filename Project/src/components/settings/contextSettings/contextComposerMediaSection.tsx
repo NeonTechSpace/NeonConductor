@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import { ComposerMediaSettingsSection } from '@/web/components/settings/composerMediaSettingsSection';
 import type { ComposerMediaSettingsDraft } from '@/web/components/settings/composerMediaSettingsDrafts';
+import { ComposerMediaSettingsSection } from '@/web/components/settings/composerMediaSettingsSection';
 
 import {
     MAX_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
@@ -31,7 +31,7 @@ export function ContextComposerMediaSection({
                 setDraft((current) => updater(current));
                 onClearFeedback();
             }}
-            onSave={async () => {
+            onSave={() => {
                 const maxImageAttachmentsPerMessage = Number(draft.maxImageAttachmentsPerMessage);
                 if (
                     !Number.isInteger(maxImageAttachmentsPerMessage) ||
@@ -50,7 +50,7 @@ export function ContextComposerMediaSection({
                     return;
                 }
 
-                await onSave(draft);
+                void onSave(draft);
             }}
         />
     );

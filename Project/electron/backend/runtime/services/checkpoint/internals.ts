@@ -49,7 +49,9 @@ type CheckpointSummary = NonNullable<CheckpointRollbackResult['checkpoint']>;
 type SafetyCheckpointSummary = NonNullable<CheckpointRollbackResult['safetyCheckpoint']>;
 type RevertSafetyCheckpointSummary = NonNullable<CheckpointRevertChangesetResult['safetyCheckpoint']>;
 
-export function mapCompactionRunSummary(run: import('@/app/backend/persistence/types').CheckpointCompactionRunRecord): CheckpointCompactionRunSummary {
+export function mapCompactionRunSummary(
+    run: import('@/app/backend/persistence/types').CheckpointCompactionRunRecord
+): CheckpointCompactionRunSummary {
     return {
         id: run.id,
         triggerKind: run.triggerKind,
@@ -82,7 +84,9 @@ export async function buildCheckpointListResult(input: {
             packedReferencedByteSize: storage.packedReferencedByteSize,
             totalReferencedBlobCount: storage.totalReferencedBlobCount,
             totalReferencedByteSize: storage.totalReferencedByteSize,
-            ...(storage.lastCompactionRun ? { lastCompactionRun: mapCompactionRunSummary(storage.lastCompactionRun) } : {}),
+            ...(storage.lastCompactionRun
+                ? { lastCompactionRun: mapCompactionRunSummary(storage.lastCompactionRun) }
+                : {}),
         },
     };
 }
@@ -401,10 +405,7 @@ export async function captureRunChangeset(input: {
     return changeset;
 }
 
-async function assessRevertAction(input: {
-    profileId: string;
-    checkpoint: CheckpointRecord;
-}): Promise<{
+async function assessRevertAction(input: { profileId: string; checkpoint: CheckpointRecord }): Promise<{
     changeset: CheckpointChangesetRecord | null;
     canRevertSafely: boolean;
     revertBlockedReason?: CheckpointRollbackPreview['revertBlockedReason'];
@@ -496,9 +497,7 @@ export async function buildRollbackPreview(input: {
         ...(revertAssessment.changeset ? { changeset: mapChangesetRecord(revertAssessment.changeset) } : {}),
         recommendedAction,
         canRevertSafely: revertAssessment.canRevertSafely,
-        ...(revertAssessment.revertBlockedReason
-            ? { revertBlockedReason: revertAssessment.revertBlockedReason }
-            : {}),
+        ...(revertAssessment.revertBlockedReason ? { revertBlockedReason: revertAssessment.revertBlockedReason } : {}),
     };
 }
 

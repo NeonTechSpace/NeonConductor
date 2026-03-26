@@ -3,10 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEnumValue, parseJsonRecord } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
-import type {
-    McpDiscoveredToolRecord,
-    McpServerRecord,
-} from '@/app/backend/persistence/types';
+import type { McpDiscoveredToolRecord, McpServerRecord } from '@/app/backend/persistence/types';
 import {
     mcpServerConnectionStates,
     mcpServerToolDiscoveryStates,
@@ -162,12 +159,8 @@ export class McpStore {
             serverIds.length > 0 ? this.listToolRows() : Promise.resolve([]),
             serverIds.length > 0 ? this.listEnvKeys() : Promise.resolve([]),
         ]);
-        const toolsByServer = this.buildToolsByServer(
-            toolRows.filter((row) => serverIds.includes(row.server_id))
-        );
-        const envKeysByServer = this.buildEnvKeysByServer(
-            envRows.filter((row) => serverIds.includes(row.server_id))
-        );
+        const toolsByServer = this.buildToolsByServer(toolRows.filter((row) => serverIds.includes(row.server_id)));
+        const envKeysByServer = this.buildEnvKeysByServer(envRows.filter((row) => serverIds.includes(row.server_id)));
 
         return rows.map((row) =>
             mapMcpServerRecord({
@@ -336,7 +329,11 @@ export class McpStore {
         return Object.fromEntries(rows.map((row) => [row.env_key, row.secret_value]));
     }
 
-    async setEnvSecrets(input: { serverId: string; values: Array<{ key: string; value: string }>; clearKeys?: string[] }): Promise<McpServerRecord | null> {
+    async setEnvSecrets(input: {
+        serverId: string;
+        values: Array<{ key: string; value: string }>;
+        clearKeys?: string[];
+    }): Promise<McpServerRecord | null> {
         const { db } = getPersistence();
         const timestamp = nowIso();
 

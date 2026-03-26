@@ -1,4 +1,10 @@
-import { createParser, readEntityId, readObject, readProfileId, readString } from '@/app/backend/runtime/contracts/parsers/helpers';
+import {
+    createParser,
+    readEntityId,
+    readObject,
+    readProfileId,
+    readString,
+} from '@/app/backend/runtime/contracts/parsers/helpers';
 import type { DiffGetFilePatchInput, DiffListByRunInput } from '@/app/backend/runtime/contracts/types';
 
 export function parseDiffListByRunInput(input: unknown): DiffListByRunInput {

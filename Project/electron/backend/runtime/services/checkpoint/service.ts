@@ -1,4 +1,3 @@
-
 import {
     checkpointChangesetStore,
     checkpointSnapshotStore,
@@ -6,11 +5,7 @@ import {
     runStore,
     threadStore,
 } from '@/app/backend/persistence/stores';
-import type {
-    CheckpointChangesetRecord,
-    CheckpointRecord,
-    DiffRecord,
-} from '@/app/backend/persistence/types';
+import type { CheckpointChangesetRecord, CheckpointRecord, DiffRecord } from '@/app/backend/persistence/types';
 import type {
     CheckpointCleanupApplyInput,
     CheckpointCleanupApplyResult,
@@ -32,6 +27,16 @@ import type {
     ResolvedWorkspaceContext,
 } from '@/app/backend/runtime/contracts';
 import { isEntityId } from '@/app/backend/runtime/contracts';
+import {
+    buildSnapshotIndexFromCapture,
+    buildSnapshotIndexFromEntries,
+    deriveChangesetFromSnapshots,
+    evaluateRevertApplicability,
+} from '@/app/backend/runtime/services/checkpoint/changeset';
+import {
+    compactCheckpointStorage,
+    getCheckpointStorageSummary,
+} from '@/app/backend/runtime/services/checkpoint/compaction';
 import { resolveCheckpointExecutionTarget } from '@/app/backend/runtime/services/checkpoint/executionTarget';
 import {
     buildCheckpointListResult,
@@ -49,13 +54,6 @@ import {
     revertSafetyCheckpointSummary,
     rollbackSafetyCheckpointSummary,
 } from '@/app/backend/runtime/services/checkpoint/internals';
-import { compactCheckpointStorage, getCheckpointStorageSummary } from '@/app/backend/runtime/services/checkpoint/compaction';
-import {
-    buildSnapshotIndexFromCapture,
-    buildSnapshotIndexFromEntries,
-    deriveChangesetFromSnapshots,
-    evaluateRevertApplicability,
-} from '@/app/backend/runtime/services/checkpoint/changeset';
 import {
     captureExecutionTargetSnapshot,
     restoreExecutionTargetSnapshot,
@@ -297,7 +295,7 @@ export async function deleteCheckpointMilestone(input: CheckpointDeleteMilestone
     }
 
     const deleted = await checkpointStore.deleteById(input.profileId, input.checkpointId);
-    const prunedBlobCount = deleted ? await checkpointSnapshotStore.pruneUnreferencedBlobs() : 0;
+    const prunedBlobCount = deleted ? checkpointSnapshotStore.pruneUnreferencedBlobs() : 0;
 
     return {
         deleted,
@@ -330,7 +328,7 @@ export async function applyCheckpointCleanup(
         input.profileId,
         retentionState.preview.candidates.map((candidate) => candidate.checkpointId)
     );
-    const prunedBlobCount = await checkpointSnapshotStore.pruneUnreferencedBlobs();
+    const prunedBlobCount = checkpointSnapshotStore.pruneUnreferencedBlobs();
     await compactCheckpointStorage({
         profileId: input.profileId,
         triggerKind: 'automatic',
@@ -362,7 +360,9 @@ export async function forceCompactCheckpointStorage(
                 packedReferencedByteSize: storage.packedReferencedByteSize,
                 totalReferencedBlobCount: storage.totalReferencedBlobCount,
                 totalReferencedByteSize: storage.totalReferencedByteSize,
-                ...(storage.lastCompactionRun ? { lastCompactionRun: mapCompactionRunSummary(storage.lastCompactionRun) } : {}),
+                ...(storage.lastCompactionRun
+                    ? { lastCompactionRun: mapCompactionRunSummary(storage.lastCompactionRun) }
+                    : {}),
             },
         };
     }

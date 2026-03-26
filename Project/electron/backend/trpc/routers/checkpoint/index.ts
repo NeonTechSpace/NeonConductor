@@ -78,30 +78,28 @@ export const checkpointRouter = router({
 
             return result;
         }),
-    renameMilestone: publicProcedure
-        .input(checkpointRenameMilestoneInputSchema)
-        .mutation(async ({ input, ctx }) => {
-            const result = await renameCheckpointMilestone(input);
-            if (result.checkpoint) {
-                await runtimeEventLogService.append(
-                    runtimeStatusEvent({
-                        entityType: 'checkpoint',
-                        domain: 'checkpoint',
-                        entityId: result.checkpoint.id,
-                        eventType: 'checkpoint.milestone_renamed',
-                        payload: {
-                            profileId: input.profileId,
-                            sessionId: result.checkpoint.sessionId,
-                            checkpointId: result.checkpoint.id,
-                            requestId: ctx.requestId,
-                            correlationId: ctx.correlationId,
-                        },
-                    })
-                );
-            }
+    renameMilestone: publicProcedure.input(checkpointRenameMilestoneInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await renameCheckpointMilestone(input);
+        if (result.checkpoint) {
+            await runtimeEventLogService.append(
+                runtimeStatusEvent({
+                    entityType: 'checkpoint',
+                    domain: 'checkpoint',
+                    entityId: result.checkpoint.id,
+                    eventType: 'checkpoint.milestone_renamed',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: result.checkpoint.sessionId,
+                        checkpointId: result.checkpoint.id,
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                    },
+                })
+            );
+        }
 
-            return result;
-        }),
+        return result;
+    }),
     deleteMilestone: publicProcedure.input(checkpointDeleteMilestoneInputSchema).mutation(async ({ input, ctx }) => {
         const result = await deleteCheckpointMilestone(input);
         if (result.deleted && result.checkpoint) {

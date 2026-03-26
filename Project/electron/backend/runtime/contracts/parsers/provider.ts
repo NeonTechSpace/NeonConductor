@@ -1,5 +1,4 @@
 import { kiloDynamicSorts, kiloRoutingModes, openAIExecutionModes } from '@/app/backend/runtime/contracts/enums';
-import { isSupportedProviderSpecialistDefaultTarget } from '@/app/backend/runtime/contracts/specialistDefaults';
 import {
     createParser,
     readEnumValue,
@@ -12,6 +11,7 @@ import {
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import { parseProfileInput } from '@/app/backend/runtime/contracts/parsers/profile';
+import { isSupportedProviderSpecialistDefaultTarget } from '@/app/backend/runtime/contracts/specialistDefaults';
 import type {
     ProviderByIdInput,
     ProviderCancelAuthInput,

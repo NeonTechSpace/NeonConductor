@@ -11,8 +11,10 @@ import { trpc } from '@/web/trpc/client';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
+
 import { providerIds, type RuntimeProviderId, type TopLevelTab } from '@/shared/contracts';
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
+
 
 export function formatTimestamp(value: string | undefined): string {
     if (!value) {
@@ -149,15 +151,15 @@ export function WorkspaceDefaultsSection({
             return;
         }
 
-        try {
-            await setWorkspacePreferenceMutation.mutateAsync({
+        await setWorkspacePreferenceMutation
+            .mutateAsync({
                 profileId,
                 workspaceFingerprint,
                 defaultTopLevelTab: topLevelTab,
                 defaultProviderId: providerId,
                 defaultModelId: selectedModelId,
-            });
-        } catch {}
+            })
+            .catch(() => undefined);
     }
 
     return (

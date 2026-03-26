@@ -4,6 +4,12 @@ import { useConversationShellSessionActions } from '@/web/components/conversatio
 import { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
+import {
+    buildConversationReasoningState,
+    DEFAULT_REASONING_EFFORT,
+    resolveConversationSelectionIds,
+    useConversationShellContextState,
+} from '@/web/components/conversation/shell/conversationShellRuntimeState';
 import { deriveConversationWorkspaceExecutionScope } from '@/web/components/conversation/shell/deriveConversationWorkspaceExecutionScope';
 import {
     resolveOrchestratorExecutionStrategyDraft,
@@ -11,16 +17,10 @@ import {
     updateOrchestratorExecutionStrategyDraft,
 } from '@/web/components/conversation/shell/orchestratorExecutionStrategyDrafts';
 import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
-import { useConversationShellCacheHandlers } from '@/web/components/conversation/shell/useConversationShellCacheHandlers';
 import { useConversationComposerTargetState } from '@/web/components/conversation/shell/useConversationComposerTargetState';
+import { useConversationShellCacheHandlers } from '@/web/components/conversation/shell/useConversationShellCacheHandlers';
 import { useConversationShellComposerSetup } from '@/web/components/conversation/shell/useConversationShellComposerSetup';
 import { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
-import {
-    buildConversationReasoningState,
-    DEFAULT_REASONING_EFFORT,
-    resolveConversationSelectionIds,
-    useConversationShellContextState,
-} from '@/web/components/conversation/shell/conversationShellRuntimeState';
 import { useConversationShellViewControllers } from '@/web/components/conversation/shell/useConversationShellViewControllers';
 import type {
     ConversationShellMainViewDraftTarget,
@@ -32,11 +32,7 @@ import type { ConversationShellBootChromeReadiness } from '@/web/components/runt
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 import { trpc } from '@/web/trpc/client';
 
-import type {
-    OrchestratorExecutionStrategy,
-    RuntimeReasoningEffort,
-    TopLevelTab,
-} from '@/shared/contracts';
+import type { OrchestratorExecutionStrategy, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
 
 export { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/conversationShellRuntimeState';
 
@@ -120,8 +116,8 @@ function buildConversationShellController(input: UseConversationShellControllerI
 
     let clearComposerRunSubmitError: () => void = () => undefined;
     let setComposerRunSubmitError: (message: string) => void = () => undefined;
-    let applySessionWorkspaceUpdate: UseConversationShellViewControllersInput['applySessionWorkspaceUpdate'] =
-        () => undefined;
+    let applySessionWorkspaceUpdate: UseConversationShellViewControllersInput['applySessionWorkspaceUpdate'] = () =>
+        undefined;
 
     const sessionActions = useConversationShellSessionActions({
         profileId,

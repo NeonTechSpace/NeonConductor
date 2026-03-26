@@ -10,11 +10,8 @@ import {
     resolvePackagedRuntimeNamespaceFromEnv,
     type RuntimeStorageNamespace,
 } from '@/app/main/runtime/storage';
-import {
-    MAIN_WINDOW_PRELOAD_BUNDLE_NAME,
-    SPLASH_WINDOW_PRELOAD_BUNDLE_NAME,
-} from '@/app/main/window/preloadPaths';
 import { preloadBundleUsesUnsupportedModuleSyntax } from '@/app/main/window/preloadBundleSyntax';
+import { MAIN_WINDOW_PRELOAD_BUNDLE_NAME, SPLASH_WINDOW_PRELOAD_BUNDLE_NAME } from '@/app/main/window/preloadPaths';
 
 export { preloadBundleUsesUnsupportedModuleSyntax } from '@/app/main/window/preloadBundleSyntax';
 
@@ -113,12 +110,16 @@ function readPackageJson(): PackageJsonSnapshot {
     return {
         dependencies: dependencies
             ? Object.fromEntries(
-                  Object.entries(dependencies).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+                  Object.entries(dependencies).filter(
+                      (entry): entry is [string, string] => typeof entry[1] === 'string'
+                  )
               )
             : undefined,
         devDependencies: devDependencies
             ? Object.fromEntries(
-                  Object.entries(devDependencies).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+                  Object.entries(devDependencies).filter(
+                      (entry): entry is [string, string] => typeof entry[1] === 'string'
+                  )
               )
             : undefined,
     };

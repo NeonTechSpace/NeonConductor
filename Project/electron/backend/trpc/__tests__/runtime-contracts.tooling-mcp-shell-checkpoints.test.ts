@@ -2,7 +2,22 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import type { EntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
-import { runtimeContractProfileId, registerRuntimeContractHooks, createCaller, createGitWorkspace, defaultRuntimeOptions, getPersistence, mkdtempSync, os, path, readFileSync, requireEntityId, rmSync, waitForRunStatus, writeFileSync } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    runtimeContractProfileId,
+    registerRuntimeContractHooks,
+    createCaller,
+    createGitWorkspace,
+    defaultRuntimeOptions,
+    getPersistence,
+    mkdtempSync,
+    os,
+    path,
+    readFileSync,
+    requireEntityId,
+    rmSync,
+    waitForRunStatus,
+    writeFileSync,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 
@@ -142,7 +157,9 @@ describe('runtime contracts: permissions and tooling', () => {
         });
 
         await caller.mcp.disconnect({ serverId: createdServer.server.id });
-        expect((await resolveRuntimeToolsForMode({ mode: codeMode })).some((tool) => tool.id.startsWith('mcp__'))).toBe(false);
+        expect((await resolveRuntimeToolsForMode({ mode: codeMode })).some((tool) => tool.id.startsWith('mcp__'))).toBe(
+            false
+        );
     });
 
     it('fails closed for workspace_root MCP servers when no workspace fingerprint is supplied', async () => {
@@ -741,15 +758,15 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(rollback.rolledBack).toBe(true);
         expect(rollback.safetyCheckpoint?.id).toBeDefined();
-        expect(readFileSync(path.join(workspacePath, 'README.md'), 'utf8').replace(/\r\n/g, '\n')).toBe(
-            'base\n'
-        );
+        expect(readFileSync(path.join(workspacePath, 'README.md'), 'utf8').replace(/\r\n/g, '\n')).toBe('base\n');
         const checkpointsAfterRollback = await caller.checkpoint.list({
             profileId,
             sessionId: created.session.id,
         });
         expect(checkpointsAfterRollback.checkpoints).toHaveLength(2);
-        expect(checkpointsAfterRollback.checkpoints.some((candidate) => candidate.checkpointKind === 'safety')).toBe(true);
+        expect(checkpointsAfterRollback.checkpoints.some((candidate) => candidate.checkpointKind === 'safety')).toBe(
+            true
+        );
 
         rmSync(workspacePath, { recursive: true, force: true });
     }, 15_000);

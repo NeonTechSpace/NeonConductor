@@ -4,7 +4,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
-import { runtimeContractProfileId, registerRuntimeContractHooks, createCaller, createSessionInScope, defaultRuntimeOptions, requireEntityId, waitForRunStatus } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    runtimeContractProfileId,
+    registerRuntimeContractHooks,
+    createCaller,
+    createSessionInScope,
+    defaultRuntimeOptions,
+    requireEntityId,
+    waitForRunStatus,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 

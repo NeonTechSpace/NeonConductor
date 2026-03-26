@@ -23,7 +23,10 @@ const markdownComponents: Components = {
     a: ({ className, ...props }) => (
         <a
             {...props}
-            className={cn('text-primary underline decoration-primary/35 underline-offset-3 hover:decoration-primary', className)}
+            className={cn(
+                'text-primary decoration-primary/35 hover:decoration-primary underline underline-offset-3',
+                className
+            )}
             rel='noreferrer'
             target='_blank'
         />
@@ -59,9 +62,9 @@ const markdownComponents: Components = {
     ),
     hr: ({ className, ...props }) => <hr {...props} className={cn('border-border my-4', className)} />,
     li: ({ className, ...props }) => <li {...props} className={cn('break-words', className)} />,
-    ol: ({ className, ...props }) => <ol {...props} className={cn('space-y-2 pl-5 list-decimal', className)} />,
+    ol: ({ className, ...props }) => <ol {...props} className={cn('list-decimal space-y-2 pl-5', className)} />,
     p: ({ className, ...props }) => (
-        <p {...props} className={cn('text-sm leading-7 whitespace-pre-wrap break-words', className)} />
+        <p {...props} className={cn('text-sm leading-7 break-words whitespace-pre-wrap', className)} />
     ),
     pre: ({ children }) => children,
     table: ({ className, ...props }) => (
@@ -70,13 +73,18 @@ const markdownComponents: Components = {
         </div>
     ),
     tbody: ({ className, ...props }) => <tbody {...props} className={cn('divide-border divide-y', className)} />,
-    td: ({ className, ...props }) => <td {...props} className={cn('border-border border px-3 py-2 align-top', className)} />,
+    td: ({ className, ...props }) => (
+        <td {...props} className={cn('border-border border px-3 py-2 align-top', className)} />
+    ),
     th: ({ className, ...props }) => (
-        <th {...props} className={cn('border-border bg-background/70 border px-3 py-2 text-left font-semibold', className)} />
+        <th
+            {...props}
+            className={cn('border-border bg-background/70 border px-3 py-2 text-left font-semibold', className)}
+        />
     ),
     thead: ({ className, ...props }) => <thead {...props} className={cn('border-border border-b', className)} />,
     tr: ({ className, ...props }) => <tr {...props} className={cn('align-top', className)} />,
-    ul: ({ className, ...props }) => <ul {...props} className={cn('space-y-2 pl-5 list-disc', className)} />,
+    ul: ({ className, ...props }) => <ul {...props} className={cn('list-disc space-y-2 pl-5', className)} />,
 };
 
 export function MarkdownContent({ markdown, className }: MarkdownContentProps) {

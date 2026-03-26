@@ -1,11 +1,20 @@
+
+
+import { applyCheckpointRuntimeEventPatch } from '@/web/lib/runtime/eventPatches/checkpointPatches';
+import { applyProviderRuntimeEventPatch } from '@/web/lib/runtime/eventPatches/providerPatches';
+import {
+    applyMessagePartRuntimeEventPatch,
+    applyMessageRuntimeEventPatch,
+    applyRunRuntimeEventPatch,
+} from '@/web/lib/runtime/eventPatches/sessionPatches';
+import {
+    applySessionRuntimeEventPatch,
+    applyTagRuntimeEventPatch,
+    applyThreadRuntimeEventPatch,
+} from '@/web/lib/runtime/eventPatches/threadPatches';
 import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
 
 import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
-
-import { applyCheckpointRuntimeEventPatch } from './eventPatches/checkpointPatches';
-import { applyProviderRuntimeEventPatch } from './eventPatches/providerPatches';
-import { applyMessagePartRuntimeEventPatch, applyMessageRuntimeEventPatch, applyRunRuntimeEventPatch } from './eventPatches/sessionPatches';
-import { applySessionRuntimeEventPatch, applyTagRuntimeEventPatch, applyThreadRuntimeEventPatch } from './eventPatches/threadPatches';
 
 export function applyRuntimeEventPatches(
     utils: TrpcUtils,
@@ -51,3 +60,4 @@ export function applyRuntimeEventPatches(
 
     return false;
 }
+

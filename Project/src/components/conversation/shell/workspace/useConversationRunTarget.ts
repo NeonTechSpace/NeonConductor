@@ -8,15 +8,16 @@ import {
 
 import type { ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
+
 import {
     findProviderSpecialistDefault,
     isSupportedProviderSpecialistDefaultTarget,
-} from '@/app/backend/runtime/contracts';
-import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
+} from '@/shared/contracts';
+import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { ProviderSpecialistDefaultRecord } from '@/shared/contracts/types/provider';
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
 import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
-import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 interface UseConversationRunTargetInput {
     providers: ProviderListItem[];
@@ -161,9 +162,7 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         !resolvedRunTarget &&
         input.workspacePreference?.defaultProviderId &&
         input.workspacePreference.defaultModelId &&
-        canAutoResolve(
-            getOption(input.workspacePreference.defaultProviderId, input.workspacePreference.defaultModelId)
-        )
+        canAutoResolve(getOption(input.workspacePreference.defaultProviderId, input.workspacePreference.defaultModelId))
     ) {
         resolvedRunTarget = {
             providerId: input.workspacePreference.defaultProviderId,
@@ -236,3 +235,4 @@ export function useConversationRunTarget(input: UseConversationRunTargetInput) {
         modelOptions,
     };
 }
+

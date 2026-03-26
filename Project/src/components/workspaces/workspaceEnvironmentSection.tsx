@@ -4,11 +4,13 @@ import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptio
 import { trpc } from '@/web/trpc/client';
 
 import type {
+    WorkspaceEnvironmentCommandAvailability,
+    WorkspaceEnvironmentCommandAvailabilityEntry,
     WorkspaceEnvironmentSnapshot,
     WorkspacePreferenceRecord,
     WorkspacePreferredPackageManager,
     WorkspacePreferredVcs,
-} from '@/app/backend/runtime/contracts/types/runtime';
+} from '@/shared/contracts/types/runtime';
 
 function formatFamilyLabel(value: string): string {
     if (value === 'unknown') {
@@ -51,7 +53,9 @@ function formatOverrideLabel(value: WorkspacePreferredVcs | WorkspacePreferredPa
 }
 
 function listAvailableCommands(snapshot: WorkspaceEnvironmentSnapshot): string {
-    const labels = Object.entries(snapshot.availableCommands)
+    const labels = (Object.entries(snapshot.availableCommands) as Array<
+        [keyof WorkspaceEnvironmentCommandAvailability, WorkspaceEnvironmentCommandAvailabilityEntry]
+    >)
         .filter(([, details]) => details.available)
         .map(([command]) => command);
 
@@ -304,3 +308,4 @@ export function WorkspaceEnvironmentSection(input: {
         </article>
     );
 }
+

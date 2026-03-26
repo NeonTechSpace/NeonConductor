@@ -6,11 +6,7 @@ interface SettingsFeedbackBannerProps {
     className?: string;
 }
 
-export function SettingsFeedbackBanner({
-    message,
-    tone = 'info',
-    className,
-}: SettingsFeedbackBannerProps) {
+export function SettingsFeedbackBanner({ message, tone = 'info', className }: SettingsFeedbackBannerProps) {
     if (!message) {
         return null;
     }

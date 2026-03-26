@@ -2,6 +2,7 @@ import { useDeferredValue, useState } from 'react';
 
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
+import { submitWorkspaceCreateRequest } from '@/web/components/workspaces/workspaceCreateDialogSubmit';
 import { WorkspaceEnvironmentPreviewCard } from '@/web/components/workspaces/workspaceEnvironmentSection';
 import {
     buildWorkspaceModelOptions,
@@ -41,30 +42,6 @@ interface WorkspaceCreateDialogProps {
 
 function isRuntimeProviderId(value: string | undefined): value is RuntimeProviderId {
     return isOneOf(value, providerIds);
-}
-
-function readWorkspaceCreateErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'Workspace could not be created.';
-}
-
-export async function submitWorkspaceCreateRequest(input: {
-    onCreateWorkspace: WorkspaceCreateDialogProps['onCreateWorkspace'];
-    onClose: () => void;
-    createWorkspaceInput: {
-        absolutePath: string;
-        label: string;
-        defaultTopLevelTab: TopLevelTab;
-        defaultProviderId: RuntimeProviderId;
-        defaultModelId: string;
-    };
-}): Promise<string | undefined> {
-    try {
-        await input.onCreateWorkspace(input.createWorkspaceInput);
-        input.onClose();
-        return undefined;
-    } catch (error) {
-        return readWorkspaceCreateErrorMessage(error);
-    }
 }
 
 function WorkspaceCreateDialogBody({
@@ -207,7 +184,9 @@ function WorkspaceCreateDialogBody({
                             type='button'
                             className='border-border bg-card hover:bg-accent rounded-2xl border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60'
                             disabled={isPickingWorkspaceDirectory || !hasDesktopDirectoryPicker}
-                            onClick={browseForWorkspaceDirectory}>
+                            onClick={() => {
+                                void browseForWorkspaceDirectory();
+                            }}>
                             {isPickingWorkspaceDirectory ? 'Opening…' : 'Browse…'}
                         </button>
                     </div>
@@ -328,7 +307,7 @@ function WorkspaceCreateDialogBody({
                         createSelectedModelId.length === 0
                     }
                     onClick={() => {
-                        handleCreateWorkspace();
+                        void handleCreateWorkspace();
                     }}>
                     {isSaving ? 'Saving…' : 'Add workspace'}
                 </button>

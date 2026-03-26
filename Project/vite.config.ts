@@ -15,10 +15,9 @@ const electronMainExternalModules = [
     'electron-updater',
     'ws',
     /^@modelcontextprotocol\/sdk(?:\/.*)?$/,
-    ...builtinModules.filter((moduleName) => !moduleName.startsWith('_')).flatMap((moduleName) => [
-        moduleName,
-        `node:${moduleName}`,
-    ]),
+    ...builtinModules
+        .filter((moduleName) => !moduleName.startsWith('_'))
+        .flatMap((moduleName) => [moduleName, `node:${moduleName}`]),
 ];
 
 function buildPreloadOptions(input: string, outputFileName: string) {

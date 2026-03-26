@@ -6,13 +6,13 @@ import {
     getWorkspaceBootDiagnostics,
     isWorkspaceBootReady,
 } from '@/web/components/runtime/bootReadiness';
-import { WorkspaceCommandPalette } from '@/web/components/runtime/workspaceCommandPalette';
-import { WorkspaceSurfaceControllerProvider } from '@/web/components/runtime/workspaceSurfaceControllerContext';
 import { useRendererBootReadySignal } from '@/web/components/runtime/useRendererBootReadySignal';
 import { useRendererBootStatusReporter } from '@/web/components/runtime/useRendererBootStatusReporter';
 import { useWorkspaceBootPrefetch } from '@/web/components/runtime/useWorkspaceBootPrefetch';
 import { WorkspaceBootDiagnosticsPanel } from '@/web/components/runtime/workspaceBootDiagnosticsPanel';
+import { WorkspaceCommandPalette } from '@/web/components/runtime/workspaceCommandPalette';
 import { useWorkspaceSurfaceController } from '@/web/components/runtime/workspaceSurfaceController';
+import { WorkspaceSurfaceControllerProvider } from '@/web/components/runtime/workspaceSurfaceControllerContext';
 import { WorkspaceSurfaceHeader } from '@/web/components/runtime/workspaceSurfaceHeader';
 import {
     getWorkspaceSectionPath,

@@ -19,7 +19,10 @@ function createEvent(input: Partial<RuntimeEventRecordV1>): RuntimeEventRecordV1
     };
 }
 
-function stubSelection(profileId: string, state: { selectedThreadId?: string; selectedSessionId?: string; selectedRunId?: string }) {
+function stubSelection(
+    profileId: string,
+    state: { selectedThreadId?: string; selectedSessionId?: string; selectedRunId?: string }
+) {
     const storage = new Map<string, string>();
     storage.set(`neonconductor.conversation.ui.${profileId}`, JSON.stringify(state));
     vi.stubGlobal('window', {

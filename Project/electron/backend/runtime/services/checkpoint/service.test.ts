@@ -1,4 +1,3 @@
-import { okOp } from '@/app/backend/runtime/services/common/operationalError';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -24,6 +23,7 @@ vi.mock('@/app/backend/runtime/services/checkpoint/internals', async () => {
 });
 
 import { ensureCheckpointForRun } from '@/app/backend/runtime/services/checkpoint/service';
+import { okOp } from '@/app/backend/runtime/services/common/operationalError';
 
 describe('ensureCheckpointForRun', () => {
     beforeEach(() => {
@@ -66,11 +66,13 @@ describe('ensureCheckpointForRun', () => {
     });
 
     it('forwards checkpoint creation results for mutating runs', async () => {
+        const createdCheckpointResult = okOp({ id: 'chk_1' });
+        createdCheckpointResult._unsafeUnwrap();
         mocks.isMutatingCheckpointMode.mockReturnValue(true);
         mocks.resolveCheckpointExecutionTarget.mockReturnValue({
             executionTargetKey: 'workspace:ws_1',
         });
-        mocks.createNativeCheckpointForResolvedTarget.mockResolvedValue(okOp({ id: 'chk_1' }));
+        mocks.createNativeCheckpointForResolvedTarget.mockResolvedValue(createdCheckpointResult);
 
         const result = await ensureCheckpointForRun({
             profileId: 'profile_local_default',
@@ -79,9 +81,16 @@ describe('ensureCheckpointForRun', () => {
             threadId: 'thr_1',
             topLevelTab: 'agent',
             modeKey: 'code',
-            workspaceContext: { kind: 'workspace', workspaceFingerprint: 'ws_1', absolutePath: 'C:/repo', label: 'Workspace Root', executionEnvironmentMode: 'local' },
+            workspaceContext: {
+                kind: 'workspace',
+                workspaceFingerprint: 'ws_1',
+                absolutePath: 'C:/repo',
+                label: 'Workspace Root',
+                executionEnvironmentMode: 'local',
+            },
         });
 
-        expect(result).toEqual(okOp({ id: 'chk_1' }));
+        expect(result.isOk()).toBe(true);
+        expect(result._unsafeUnwrap()).toEqual({ id: 'chk_1' });
     });
 });

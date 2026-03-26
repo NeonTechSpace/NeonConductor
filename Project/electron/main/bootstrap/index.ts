@@ -3,7 +3,6 @@ import { createIPCHandler, type CreateContextOptions } from 'electron-trpc-exper
 
 import { closePersistence, initializePersistence } from '@/app/backend/persistence/db';
 import { getSecretStoreInfo, initializeSecretStore } from '@/app/backend/secrets/store';
-import { PICK_DIRECTORY_CHANNEL } from '@/app/shared/desktopBridgeContract';
 import type { Context } from '@/app/backend/trpc/context';
 import type { AppRouter } from '@/app/backend/trpc/router';
 import { registerWindowStateBridge } from '@/app/backend/trpc/routers/system/windowControls';
@@ -13,9 +12,10 @@ import { devServerUrl, getMainDirname, isDev } from '@/app/main/runtime/env';
 import { resolveDesktopStorage, resolveDesktopStoragePaths } from '@/app/main/runtime/storage';
 import { attachCspHeaders } from '@/app/main/security/cspHeaders';
 import { registerBootWindows, reportMainBootStatus } from '@/app/main/window/bootCoordinator';
-import { BOOT_STUCK_WARNING_DEV_MS } from '@/app/shared/splashContract';
 import { createMainWindow } from '@/app/main/window/factory';
 import { createSplashWindow } from '@/app/main/window/splash';
+import { PICK_DIRECTORY_CHANNEL } from '@/app/shared/desktopBridgeContract';
+import { BOOT_STUCK_WARNING_DEV_MS } from '@/app/shared/splashContract';
 
 interface BootstrapDeps {
     createContext: (opts: CreateContextOptions) => Promise<Context>;

@@ -1,6 +1,8 @@
 import { skipToken } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 
+import { buildDiffPatchPreviewQueryInput } from '@/web/components/conversation/panels/diffCheckpointPanel/useDiffCheckpointPanelController';
+import { buildConversationReasoningState } from '@/web/components/conversation/shell/conversationShellRuntimeState';
 import {
     buildConversationActivePlanQueryInput,
     buildConversationAttachedRegistryQueryInput,
@@ -10,8 +12,6 @@ import {
 } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { buildConversationComposerPresentationState } from '@/web/components/conversation/shell/useConversationShellComposerSetup';
 import { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/useConversationShellController';
-import { buildConversationReasoningState } from '@/web/components/conversation/shell/conversationShellRuntimeState';
-import { buildDiffPatchPreviewQueryInput } from '@/web/components/conversation/panels/diffCheckpointPanel/useDiffCheckpointPanelController';
 
 describe('conversation query input builders', () => {
     it('returns skipToken for session-scoped queries until a real session id exists', () => {
@@ -217,9 +217,7 @@ describe('conversation composer presentation state builder', () => {
         expect(presentationState.canAttachImages).toBe(false);
         expect(presentationState.imageAttachmentBlockedReason).toBe('This model cannot accept image attachments.');
         expect(presentationState.selectedModelCompatibilityState).toBe('incompatible');
-        expect(presentationState.selectedModelCompatibilityReason).toBe(
-            'This mode requires native tool calling.'
-        );
+        expect(presentationState.selectedModelCompatibilityReason).toBe('This mode requires native tool calling.');
     });
 });
 

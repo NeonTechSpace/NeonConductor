@@ -7,7 +7,10 @@ import type { StartAuthResult } from '@/app/backend/providers/auth/types';
 import { kiloGatewayClient } from '@/app/backend/providers/kiloGatewayClient';
 import type { ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
-function toGatewayAuthError(input: { message: string; code: 'provider_request_failed' | 'provider_request_unavailable' }) {
+function toGatewayAuthError(input: {
+    message: string;
+    code: 'provider_request_failed' | 'provider_request_unavailable';
+}) {
     return errAuthExecution(input.code, input.message);
 }
 

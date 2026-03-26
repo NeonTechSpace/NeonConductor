@@ -23,10 +23,7 @@ function sanitizePathSegment(value: string): string {
         .toLowerCase();
 }
 
-function buildSandboxFolderName(input: {
-    sandboxKey?: string;
-    sandboxId?: string;
-}): string {
+function buildSandboxFolderName(input: { sandboxKey?: string; sandboxId?: string }): string {
     const preferredKey = input.sandboxKey?.trim();
     if (preferredKey) {
         return sanitizePathSegment(preferredKey) || 'sandbox';
@@ -69,10 +66,7 @@ async function copyWorkspaceDirectory(input: {
 export async function createManagedSandbox(input: {
     workspaceRootPath: string;
     targetPath: string;
-}): Promise<
-    | { ok: true; value: SandboxMaterializationResult }
-    | { ok: false; error: SandboxFilesystemFailure }
-> {
+}): Promise<{ ok: true; value: SandboxMaterializationResult } | { ok: false; error: SandboxFilesystemFailure }> {
     try {
         const workspaceStats = await stat(input.workspaceRootPath);
         if (!workspaceStats.isDirectory()) {

@@ -1,7 +1,21 @@
-import { invalidateNoopDomain, invalidateOrchestratorQueries, invalidatePlanQueries, invalidateProfileDomainQueries, invalidateRuntimeQueries } from '@/web/lib/runtime/invalidation/miscDomain';
+import {
+    invalidateNoopDomain,
+    invalidateOrchestratorQueries,
+    invalidatePlanQueries,
+    invalidateProfileDomainQueries,
+    invalidateRuntimeQueries,
+} from '@/web/lib/runtime/invalidation/miscDomain';
 import { invalidateProviderQueries } from '@/web/lib/runtime/invalidation/providerDomain';
-import { invalidateMessageQueries, invalidateRunQueries, invalidateSessionQueries } from '@/web/lib/runtime/invalidation/sessionDomain';
-import { getRuntimeEventContext, type RuntimeEventContext, type TrpcUtils } from '@/web/lib/runtime/invalidation/shared';
+import {
+    invalidateMessageQueries,
+    invalidateRunQueries,
+    invalidateSessionQueries,
+} from '@/web/lib/runtime/invalidation/sessionDomain';
+import {
+    getRuntimeEventContext,
+    type RuntimeEventContext,
+    type TrpcUtils,
+} from '@/web/lib/runtime/invalidation/shared';
 import {
     invalidateConversationQueries,
     invalidateTagQueries,
@@ -15,9 +29,7 @@ import type { RuntimeEventDomain, RuntimeEventRecordV1 } from '@/app/backend/per
 async function invalidateMcpQueries(utils: TrpcUtils, event: RuntimeEventRecordV1): Promise<void> {
     await Promise.all([
         utils.mcp.listServers.invalidate(),
-        utils.mcp.getServer.invalidate(
-            event.entityId ? { serverId: event.entityId } : undefined
-        ),
+        utils.mcp.getServer.invalidate(event.entityId ? { serverId: event.entityId } : undefined),
     ]);
 }
 
@@ -64,10 +76,7 @@ const runtimeEventInvalidators: Record<
     },
 };
 
-export async function invalidateQueriesForRuntimeEvent(
-    utils: TrpcUtils,
-    event: RuntimeEventRecordV1
-): Promise<void> {
+export async function invalidateQueriesForRuntimeEvent(utils: TrpcUtils, event: RuntimeEventRecordV1): Promise<void> {
     const context = getRuntimeEventContext(event);
     const patched = applyRuntimeEventPatches(utils, event, context);
     if (patched) {

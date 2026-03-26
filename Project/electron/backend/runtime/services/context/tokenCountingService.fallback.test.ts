@@ -9,14 +9,16 @@ describe('tokenCountingService fallback', () => {
 
     it('uses heuristic estimated counting when the tokenizer runtime is unavailable', async () => {
         vi.doMock('@/app/backend/runtime/services/context/tokenizerRuntime', () => ({
-            countEncodedTextWithTokenizer: vi.fn(() => Promise.resolve({
-                isErr: () => true,
-                isOk: () => false,
-                error: {
-                    code: 'tokenizer_init_failed',
-                    message: 'simulated tokenizer failure',
-                },
-            })),
+            countEncodedTextWithTokenizer: vi.fn(() =>
+                Promise.resolve({
+                    isErr: () => true,
+                    isOk: () => false,
+                    error: {
+                        code: 'tokenizer_init_failed',
+                        message: 'simulated tokenizer failure',
+                    },
+                })
+            ),
         }));
 
         const { tokenCountingService } = await import('@/app/backend/runtime/services/context/tokenCountingService');

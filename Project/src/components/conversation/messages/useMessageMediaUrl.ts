@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { acquireMessageMediaObjectUrl, releaseMessageMediaObjectUrl } from '@/web/components/conversation/messages/messageMediaObjectUrlCache';
+import {
+    acquireMessageMediaObjectUrl,
+    releaseMessageMediaObjectUrl,
+} from '@/web/components/conversation/messages/messageMediaObjectUrlCache';
 import { SECONDARY_QUERY_OPTIONS } from '@/web/lib/query/secondaryQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
@@ -68,11 +71,7 @@ function toMediaPayload(
     };
 }
 
-export function useMessageMediaUrl(input: {
-    profileId: string;
-    mediaId: EntityId<'media'>;
-    enabled: boolean;
-}) {
+export function useMessageMediaUrl(input: { profileId: string; mediaId: EntityId<'media'>; enabled: boolean }) {
     const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
     const mediaQuery = trpc.session.getMessageMedia.useQuery(
         {
@@ -107,4 +106,3 @@ export function useMessageMediaUrl(input: {
         mediaQuery,
     };
 }
-

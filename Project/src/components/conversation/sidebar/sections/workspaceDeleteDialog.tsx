@@ -42,12 +42,12 @@ export function WorkspaceDeleteDialog({
             onConfirm={onConfirm}>
             <div className='space-y-3 text-sm'>
                 <div className='rounded-lg border border-amber-500/20 bg-amber-500/5 p-3'>
-                    <p className='font-medium text-foreground'>
+                    <p className='text-foreground font-medium'>
                         {deletableThreadCount} thread{deletableThreadCount === 1 ? '' : 's'} will be deleted.
                     </p>
                     <p className='text-muted-foreground mt-1 text-xs'>
-                        {favoriteThreadCount} favorite{favoriteThreadCount === 1 ? '' : 's'} detected out of {totalThreadCount}{' '}
-                        total workspace threads. This removes threads only, not the workspace itself.
+                        {favoriteThreadCount} favorite{favoriteThreadCount === 1 ? '' : 's'} detected out of{' '}
+                        {totalThreadCount} total workspace threads. This removes threads only, not the workspace itself.
                     </p>
                 </div>
                 {favoriteThreadCount > 0 ? (

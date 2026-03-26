@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { syncKiloCatalog } from '@/app/backend/providers/adapters/kilo/catalog';
 
-function stubDiscoveryFetch(modelsPayload: unknown, providersPayload: unknown = { data: [] }, modelsByProviderPayload: unknown = { data: [] }) {
+function stubDiscoveryFetch(
+    modelsPayload: unknown,
+    providersPayload: unknown = { data: [] },
+    modelsByProviderPayload: unknown = { data: [] }
+) {
     vi.stubGlobal(
         'fetch',
         vi.fn((url: string) => {

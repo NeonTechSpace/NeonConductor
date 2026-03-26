@@ -23,7 +23,7 @@ export function SettingsPlannedSection({ eyebrow, title, description, warning }:
                     moving again later.
                 </p>
                 {warning ? (
-                    <div className='border-amber-500/30 bg-amber-500/8 mt-4 rounded-2xl border px-4 py-3'>
+                    <div className='mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/8 px-4 py-3'>
                         <p className='text-sm font-medium text-amber-700 dark:text-amber-300'>Warning</p>
                         <p className='mt-1 text-sm leading-6 text-amber-800/90 dark:text-amber-200/90'>{warning}</p>
                     </div>

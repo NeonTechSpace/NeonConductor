@@ -150,10 +150,7 @@ export function parseAnthropicReasoningDetails(input: {
             }
 
             const opaque =
-                detail['encrypted_content'] ??
-                detail['encrypted'] ??
-                detail['encryptedContent'] ??
-                detail['data'];
+                detail['encrypted_content'] ?? detail['encrypted'] ?? detail['encryptedContent'] ?? detail['data'];
             if (opaque === undefined || opaque === null) {
                 continue;
             }
@@ -229,8 +226,7 @@ export function parseAnthropicTopLevelReasoningParts(input: {
     }
 
     const reasoningText =
-        readOptionalString(input.container['reasoning']) ??
-        readOptionalString(input.container['reasoning_content']);
+        readOptionalString(input.container['reasoning']) ?? readOptionalString(input.container['reasoning_content']);
     if (!reasoningText) {
         return [];
     }
@@ -253,9 +249,7 @@ export function parseAnthropicToolCallPart(input: {
         callId: input.callId,
         toolName: input.toolName,
         argumentsText:
-            typeof input.argumentsText === 'string' && input.argumentsText.length > 0
-                ? input.argumentsText
-                : '{}',
+            typeof input.argumentsText === 'string' && input.argumentsText.length > 0 ? input.argumentsText : '{}',
         sourceLabel: input.sourceLabel,
     });
 }
@@ -320,7 +314,10 @@ export function parseAnthropicDirectBlockParts(input: {
     }
 
     if (input.emittedToolCallIds?.has(callId)) {
-        return errProviderAdapter('invalid_payload', `${input.sourceLabel} emitted duplicate tool call id "${callId}".`);
+        return errProviderAdapter(
+            'invalid_payload',
+            `${input.sourceLabel} emitted duplicate tool call id "${callId}".`
+        );
     }
 
     input.emittedToolCallIds?.add(callId);

@@ -82,7 +82,7 @@ describe('message flow rendering', () => {
                                     label: 'Agent received message',
                                 },
                             ],
-                            },
+                        },
                     ],
                 },
                 run: {

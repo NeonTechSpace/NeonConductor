@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { submitWorkspaceCreateRequest } from '@/web/components/workspaces/workspaceCreateDialog';
+import { submitWorkspaceCreateRequest } from '@/web/components/workspaces/workspaceCreateDialogSubmit';
 
 describe('submitWorkspaceCreateRequest', () => {
     it('closes the dialog after a successful create', async () => {

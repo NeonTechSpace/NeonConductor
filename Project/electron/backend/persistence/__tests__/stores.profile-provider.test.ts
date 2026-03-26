@@ -40,7 +40,6 @@ describe('persistence stores: profile and provider domain', () => {
         expect(defaults.providerId).toBe('openai');
     });
 
-
     it('persists and rehydrates kilo balance snapshots across updates', async () => {
         const profileId = getDefaultProfileId();
 
@@ -86,7 +85,6 @@ describe('persistence stores: profile and provider domain', () => {
             updatedAt: '2026-03-07T15:45:00.000Z',
         });
     });
-
 
     it('summarizes OpenAI subscription usage in 5h and 7d rolling windows', async () => {
         const profileId = getDefaultProfileId();
@@ -249,7 +247,6 @@ describe('persistence stores: profile and provider domain', () => {
         expect(summary.weekly.averageLatencyMs).toBe(1000);
     });
 
-
     it('supports profile lifecycle with last-profile delete guard and secure duplication baseline', async () => {
         const profileId = getDefaultProfileId();
 
@@ -312,7 +309,6 @@ describe('persistence stores: profile and provider domain', () => {
         expect(lastProfileDelete.reason).toBe('last_profile');
     });
 
-
     it('returns typed profile-store errors when no profiles remain', async () => {
         const { db } = getPersistence();
 
@@ -332,7 +328,6 @@ describe('persistence stores: profile and provider domain', () => {
         }
         expect(createResult.error.code).toBe('not_found');
     });
-
 
     it('applies Kilo-only ranking policy when ranking metadata exists', async () => {
         const profileId = getDefaultProfileId();
@@ -394,5 +389,4 @@ describe('persistence stores: profile and provider domain', () => {
         expect(rankedKiloModels[0]?.latency).toBe(120);
         expect(rankedKiloModels[0]?.tps).toBe(40);
     });
-
 });

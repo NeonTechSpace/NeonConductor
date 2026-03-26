@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunRecord } from '@/app/backend/persistence/types';
-import { emitToolResultObservabilityEvent, emitTransportSelectionEvent } from '@/app/backend/runtime/services/runExecution/eventing';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
+import {
+    emitToolResultObservabilityEvent,
+    emitTransportSelectionEvent,
+} from '@/app/backend/runtime/services/runExecution/eventing';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 
 describe('runExecution observability eventing', () => {

@@ -28,12 +28,11 @@ function readMcpServerUpsertFields(source: Record<string, unknown>, field: strin
         `${field}.workingDirectoryMode`,
         mcpServerWorkingDirectoryModes
     );
-    const fixedWorkingDirectory = readOptionalString(
-        source.fixedWorkingDirectory,
-        `${field}.fixedWorkingDirectory`
-    );
+    const fixedWorkingDirectory = readOptionalString(source.fixedWorkingDirectory, `${field}.fixedWorkingDirectory`);
     if (workingDirectoryMode === 'fixed_path' && !fixedWorkingDirectory) {
-        throw new Error(`Invalid "${field}.fixedWorkingDirectory": required when workingDirectoryMode is "fixed_path".`);
+        throw new Error(
+            `Invalid "${field}.fixedWorkingDirectory": required when workingDirectoryMode is "fixed_path".`
+        );
     }
     if (workingDirectoryMode !== 'fixed_path' && fixedWorkingDirectory) {
         throw new Error(

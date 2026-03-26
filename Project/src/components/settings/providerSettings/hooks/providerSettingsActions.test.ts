@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createProviderSettingsActions } from '@/web/components/settings/providerSettings/hooks/providerSettingsActions';
+
 import { kiloFrontierModelId, kiloSmallModelId } from '@/shared/kiloModels';
 
 describe('provider settings actions', () => {

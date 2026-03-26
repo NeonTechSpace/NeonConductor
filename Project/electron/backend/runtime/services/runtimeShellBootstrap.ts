@@ -18,8 +18,7 @@ class RuntimeShellBootstrapServiceImpl implements RuntimeShellBootstrapService {
             workspaceRoots,
             workspacePreferences,
             sandboxes,
-        ] =
-            await Promise.all([
+        ] = await Promise.all([
             runtimeEventStore.getLastSequence(),
             providerManagementService.getControlPlane(profileId),
             tagStore.listThreadTagsByProfile(profileId),

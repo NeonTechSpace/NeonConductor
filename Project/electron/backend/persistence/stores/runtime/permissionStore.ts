@@ -228,7 +228,11 @@ export class PermissionStore {
         return row ? mapPermissionRecord(row) : null;
     }
 
-    async resolve(id: string, resolution: PermissionResolution, selectedApprovalResource?: string): Promise<PermissionRecord | null> {
+    async resolve(
+        id: string,
+        resolution: PermissionResolution,
+        selectedApprovalResource?: string
+    ): Promise<PermissionRecord | null> {
         const { db } = getPersistence();
         const now = nowIso();
         const decision = resolution === 'deny' ? 'denied' : 'granted';
@@ -382,4 +386,3 @@ export class PermissionStore {
 }
 
 export const permissionStore = new PermissionStore();
-

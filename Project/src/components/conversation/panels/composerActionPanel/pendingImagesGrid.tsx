@@ -80,7 +80,8 @@ export function PendingImagesGrid({
                             <p className='truncate text-xs font-medium'>{image.fileName}</p>
                             {image.attachment ? (
                                 <p className='text-muted-foreground text-[11px]'>
-                                    {image.attachment.width} × {image.attachment.height} · {image.attachment.mimeType.replace('image/', '').toUpperCase()}
+                                    {image.attachment.width} × {image.attachment.height} ·{' '}
+                                    {image.attachment.mimeType.replace('image/', '').toUpperCase()}
                                 </p>
                             ) : null}
                             {image.errorMessage ? (
@@ -120,7 +121,9 @@ export function PendingImagesGrid({
                                 </span>
                             ) : null}
                             {image.status === 'queued' ? (
-                                <span className='text-muted-foreground inline-flex items-center gap-1 px-2 text-[11px]'>Queued</span>
+                                <span className='text-muted-foreground inline-flex items-center gap-1 px-2 text-[11px]'>
+                                    Queued
+                                </span>
                             ) : null}
                             <Button
                                 type='button'

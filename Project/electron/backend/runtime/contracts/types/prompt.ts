@@ -1,7 +1,8 @@
 import type { TopLevelTab } from '@/app/backend/runtime/contracts/enums';
-import type { ModePromptDefinition } from '@/app/backend/runtime/contracts/types/mode';
-import type { ToolCapability } from '@/shared/contracts';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { ModePromptDefinition } from '@/app/backend/runtime/contracts/types/mode';
+
+import type { ToolCapability } from '@/shared/contracts';
 
 export interface FileBackedCustomModeSettingsItem {
     topLevelTab: TopLevelTab;

@@ -6,7 +6,7 @@ import {
     protocolTestProfileId,
     resolveProviderRuntimePathContextMock,
     resolveRuntimeProtocolForTest,
-} from './protocol.shared.test';
+} from '@/app/backend/runtime/services/runExecution/protocol.shared.test';
 
 describe('resolveRuntimeProtocol openai transports', () => {
     it('selects the responses path for responses-protocol models', async () => {
@@ -322,3 +322,4 @@ describe('resolveRuntimeProtocol openai transports', () => {
         });
     });
 });
+

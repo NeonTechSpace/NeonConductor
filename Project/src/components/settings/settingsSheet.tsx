@@ -56,7 +56,11 @@ export function SettingsSheet({ open, profileId, onClose, onProfileActivated }: 
     const [selection, setSelection] = useState<SettingsSelection>(() => getDefaultSettingsSelection('kilo'));
     const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const privacyMode = usePrivacyMode();
-    const selectedSection = SETTINGS_PRIMARY_SECTIONS.find((section) => section.id === selection.section)!;
+    const selectedSection =
+        SETTINGS_PRIMARY_SECTIONS.find((section) => section.id === selection.section) ?? SETTINGS_PRIMARY_SECTIONS[0];
+    if (!selectedSection) {
+        return null;
+    }
     const kiloSections = SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'kilo');
     const generalSections = SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'general');
 

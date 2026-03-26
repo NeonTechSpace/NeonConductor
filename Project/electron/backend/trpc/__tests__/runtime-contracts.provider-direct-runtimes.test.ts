@@ -18,7 +18,7 @@ describe('runtime contracts: provider and account flows', () => {
         const caller = createCaller();
         vi.stubGlobal(
             'fetch',
-            vi.fn((_url: string) =>
+            vi.fn(() =>
                 Promise.resolve({
                     ok: true,
                     status: 200,

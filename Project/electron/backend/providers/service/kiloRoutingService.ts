@@ -1,6 +1,10 @@
 import { kiloRoutingPreferenceStore, providerCatalogStore, providerStore } from '@/app/backend/persistence/stores';
 import type { ProviderDiscoverySnapshotRecord } from '@/app/backend/persistence/types';
-import { errProviderService, okProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
+import {
+    errProviderService,
+    okProviderService,
+    type ProviderServiceResult,
+} from '@/app/backend/providers/service/errors';
 import type { KiloModelProviderOption } from '@/app/backend/providers/service/types';
 import type {
     KiloModelRoutingPreference,
@@ -189,12 +193,13 @@ function toContractPreference(input: {
     };
 }
 
-function validateRoutingPreferenceInput(
-    input: ProviderSetModelRoutingPreferenceInput
-): ProviderServiceResult<void> {
+function validateRoutingPreferenceInput(input: ProviderSetModelRoutingPreferenceInput): ProviderServiceResult<void> {
     if (input.routingMode === 'dynamic') {
         if (!input.sort) {
-            return errProviderService('invalid_payload', 'Invalid routing preference: "sort" is required when routingMode is "dynamic".');
+            return errProviderService(
+                'invalid_payload',
+                'Invalid routing preference: "sort" is required when routingMode is "dynamic".'
+            );
         }
         if (input.pinnedProviderId !== undefined) {
             return errProviderService(

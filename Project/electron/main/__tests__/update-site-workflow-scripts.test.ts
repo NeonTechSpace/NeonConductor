@@ -3,24 +3,24 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 type PublishOutput = {
-    channel: string
-    manifests: Array<{ name: string; content: string }>
-    pages: Array<{ path: string; content: string }>
-}
+    channel: string;
+    manifests: Array<{ name: string; content: string }>;
+    pages: Array<{ path: string; content: string }>;
+};
 
 type HelperOutput = {
-    rewritten: string
-    assets: string[]
-    version: string | null
-    hasLatestManifestLink: boolean
-    hasReleaseTagLink: boolean
-}
+    rewritten: string;
+    assets: string[];
+    version: string | null;
+    hasLatestManifestLink: boolean;
+    hasReleaseTagLink: boolean;
+};
 
 const publishScriptPath = fileURLToPath(
-    new URL('../../../../.github/scripts/publish-update-site.mjs', import.meta.url),
+    new URL('../../../../.github/scripts/publish-update-site.mjs', import.meta.url)
 );
 const validateScriptPath = fileURLToPath(
-    new URL('../../../../.github/scripts/validate-update-metadata.mjs', import.meta.url),
+    new URL('../../../../.github/scripts/validate-update-metadata.mjs', import.meta.url)
 );
 const updateSiteLibUrl = new URL('../../../../.github/scripts/update-site-lib.mjs', import.meta.url).href;
 const mockHttpsRequestModuleUrl = new URL('./fixtures/mock-github-https-request.mjs', import.meta.url).href;
@@ -88,11 +88,11 @@ describe('update site workflow helpers', () => {
             {
                 UPDATE_SITE_LIB_URL: updateSiteLibUrl,
                 SAMPLE_MANIFEST: sampleManifest,
-            },
+            }
         ) as HelperOutput;
 
         expect(result.rewritten).toContain(
-            'https://github.com/NeonTechSpace/NeonConductor/releases/download/v1.2.3/NeonConductor.exe',
+            'https://github.com/NeonTechSpace/NeonConductor/releases/download/v1.2.3/NeonConductor.exe'
         );
         expect(result.assets).toEqual(['NeonConductor.exe']);
         expect(result.version).toBe('1.2.3');
@@ -125,40 +125,47 @@ describe('publish-update-site.mjs', () => {
         expect(parsed.channel).toBe('stable');
         expect(parsed.manifests).toHaveLength(1);
         expect(parsed.manifests[0]?.content).toContain(
-            'https://github.com/NeonTechSpace/NeonConductor/releases/download/v1.2.3/NeonConductor.exe',
+            'https://github.com/NeonTechSpace/NeonConductor/releases/download/v1.2.3/NeonConductor.exe'
         );
         expect(parsed.pages.map((page) => page.path)).toEqual(
-            expect.arrayContaining(['.nojekyll', '404.html', 'updates/stable/index.html', 'updates/beta/index.html']),
+            expect.arrayContaining(['.nojekyll', '404.html', 'updates/stable/index.html', 'updates/beta/index.html'])
         );
-        const betaPageContainsManifest = parsed.pages
-            .find((page) => page.path === 'updates/beta/index.html')
-            ?.content.includes('beta.yml') ?? false;
+        const betaPageContainsManifest =
+            parsed.pages.find((page) => page.path === 'updates/beta/index.html')?.content.includes('beta.yml') ?? false;
         expect(betaPageContainsManifest).toBe(true);
     });
 });
 
 describe('validate-update-metadata.mjs', () => {
     it('accepts manifests when release assets match', () => {
-        const result = runNodeScript(['--import', mockHttpsRequestModuleUrl, validateScriptPath], JSON.stringify([{ name: 'latest.yml', content: sampleManifest }]), {
-            MOCK_RELEASE_ASSETS_JSON: JSON.stringify(['NeonConductor.exe']),
-            RELEASE_ID: '123',
-            TAG_NAME: 'v1.2.3',
-            REPO_OWNER: 'NeonTechSpace',
-            REPO_NAME: 'NeonConductor',
-        });
+        const result = runNodeScript(
+            ['--import', mockHttpsRequestModuleUrl, validateScriptPath],
+            JSON.stringify([{ name: 'latest.yml', content: sampleManifest }]),
+            {
+                MOCK_RELEASE_ASSETS_JSON: JSON.stringify(['NeonConductor.exe']),
+                RELEASE_ID: '123',
+                TAG_NAME: 'v1.2.3',
+                REPO_OWNER: 'NeonTechSpace',
+                REPO_NAME: 'NeonConductor',
+            }
+        );
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain('Validated updater metadata against uploaded release assets for v1.2.3.');
     });
 
     it('fails when manifest references are missing from the release', () => {
-        const result = runNodeScript(['--import', mockHttpsRequestModuleUrl, validateScriptPath], JSON.stringify([{ name: 'latest.yml', content: sampleManifest }]), {
-            MOCK_RELEASE_ASSETS_JSON: JSON.stringify([]),
-            RELEASE_ID: '123',
-            TAG_NAME: 'v1.2.3',
-            REPO_OWNER: 'NeonTechSpace',
-            REPO_NAME: 'NeonConductor',
-        });
+        const result = runNodeScript(
+            ['--import', mockHttpsRequestModuleUrl, validateScriptPath],
+            JSON.stringify([{ name: 'latest.yml', content: sampleManifest }]),
+            {
+                MOCK_RELEASE_ASSETS_JSON: JSON.stringify([]),
+                RELEASE_ID: '123',
+                TAG_NAME: 'v1.2.3',
+                REPO_OWNER: 'NeonTechSpace',
+                REPO_NAME: 'NeonConductor',
+            }
+        );
 
         expect(result.status).toBe(1);
         expect(result.stderr).toContain('Updater metadata references missing release assets for v1.2.3:');

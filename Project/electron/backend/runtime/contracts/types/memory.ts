@@ -209,7 +209,7 @@ export interface MemoryScanProjectionEditsResult {
     parseErrors: ProjectedMemoryRecord[];
 }
 
-export interface MemorySyncProjectionResult extends MemoryProjectionStatusResult {}
+export type MemorySyncProjectionResult = MemoryProjectionStatusResult;
 
 export interface ApplyMemoryEditProposalInput extends MemoryProjectionContextInput {
     memoryId: EntityId<'mem'>;

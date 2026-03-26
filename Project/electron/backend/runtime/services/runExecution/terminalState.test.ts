@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runStore, sessionStore } from '@/app/backend/persistence/stores';
 import type { RunRecord, RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
-import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { moveRunToAbortedState, moveRunToFailedState } from '@/app/backend/runtime/services/runExecution/terminalState';
+import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
+
+const captureFinishedRunMemorySafelyMethodName = 'captureFinishedRunMemorySafely';
 
 function createRunRecord(overrides?: Partial<RunRecord>): RunRecord {
     return {
@@ -57,11 +59,13 @@ describe('run terminal state events', () => {
             })
         );
         const markRunTerminalSpy = vi.spyOn(sessionStore, 'markRunTerminal').mockResolvedValue();
-        const appendSpy = vi.spyOn(runtimeEventLogService, 'append').mockImplementation(async (event) =>
-            createRuntimeEventRecord(event)
-        );
+        const appendSpy = vi
+            .spyOn(runtimeEventLogService, 'append')
+            .mockImplementation((event) => Promise.resolve(createRuntimeEventRecord(event)));
         const infoSpy = vi.spyOn(appLog, 'info').mockImplementation(() => {});
-        const memorySpy = vi.spyOn(memoryRuntimeService, 'captureFinishedRunMemorySafely').mockResolvedValue();
+        const memorySpy = vi
+            .spyOn(memoryRuntimeService, captureFinishedRunMemorySafelyMethodName)
+            .mockResolvedValue(undefined);
 
         await moveRunToAbortedState({
             profileId: 'profile_test',
@@ -90,11 +94,13 @@ describe('run terminal state events', () => {
             })
         );
         const markRunTerminalSpy = vi.spyOn(sessionStore, 'markRunTerminal').mockResolvedValue();
-        const appendSpy = vi.spyOn(runtimeEventLogService, 'append').mockImplementation(async (event) =>
-            createRuntimeEventRecord(event)
-        );
+        const appendSpy = vi
+            .spyOn(runtimeEventLogService, 'append')
+            .mockImplementation((event) => Promise.resolve(createRuntimeEventRecord(event)));
         const warnSpy = vi.spyOn(appLog, 'warn').mockImplementation(() => {});
-        const memorySpy = vi.spyOn(memoryRuntimeService, 'captureFinishedRunMemorySafely').mockResolvedValue();
+        const memorySpy = vi
+            .spyOn(memoryRuntimeService, captureFinishedRunMemorySafelyMethodName)
+            .mockResolvedValue(undefined);
 
         await moveRunToFailedState({
             profileId: 'profile_test',

@@ -52,16 +52,14 @@ export class ProfileContextSettingsStore {
                 profile_id: input.profileId,
                 override_mode: input.overrideMode,
                 percent: input.overrideMode === 'percent' ? (input.percent ?? null) : null,
-                fixed_input_tokens:
-                    input.overrideMode === 'fixed_tokens' ? (input.fixedInputTokens ?? null) : null,
+                fixed_input_tokens: input.overrideMode === 'fixed_tokens' ? (input.fixedInputTokens ?? null) : null,
                 updated_at: updatedAt,
             })
             .onConflict((oc) =>
                 oc.column('profile_id').doUpdateSet({
                     override_mode: input.overrideMode,
                     percent: input.overrideMode === 'percent' ? (input.percent ?? null) : null,
-                    fixed_input_tokens:
-                        input.overrideMode === 'fixed_tokens' ? (input.fixedInputTokens ?? null) : null,
+                    fixed_input_tokens: input.overrideMode === 'fixed_tokens' ? (input.fixedInputTokens ?? null) : null,
                     updated_at: updatedAt,
                 })
             )
@@ -78,11 +76,7 @@ export class ProfileContextSettingsStore {
         };
     }
 
-    async copyByProfile(input: {
-        sourceProfileId: string;
-        targetProfileId: string;
-        timestamp: string;
-    }): Promise<void> {
+    async copyByProfile(input: { sourceProfileId: string; targetProfileId: string; timestamp: string }): Promise<void> {
         const { db } = getPersistence();
         const row = await db
             .selectFrom('profile_context_settings')

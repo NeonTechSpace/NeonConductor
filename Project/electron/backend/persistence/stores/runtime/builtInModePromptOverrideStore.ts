@@ -1,4 +1,5 @@
 import { getPersistence } from '@/app/backend/persistence/db';
+import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso, isJsonRecord, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
 import type { BuiltInModePromptOverrideRecord } from '@/app/backend/persistence/types';
 import {
@@ -7,7 +8,6 @@ import {
     type ModePromptDefinition,
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
-import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
 
 function mapBuiltInModePromptOverride(row: {
     profile_id: string;

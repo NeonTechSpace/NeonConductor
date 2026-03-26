@@ -7,11 +7,7 @@ import type {
     RuntimeEventOperation,
     RuntimeEventRecordV1,
 } from '@/app/backend/persistence/types';
-import {
-    runtimeEntityTypes,
-    runtimeEventDomains,
-    runtimeEventOperations,
-} from '@/app/backend/persistence/types';
+import { runtimeEntityTypes, runtimeEventDomains, runtimeEventOperations } from '@/app/backend/persistence/types';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 
 export class RuntimeEventStore {
@@ -122,4 +118,3 @@ export class RuntimeEventStore {
 }
 
 export const runtimeEventStore = new RuntimeEventStore();
-

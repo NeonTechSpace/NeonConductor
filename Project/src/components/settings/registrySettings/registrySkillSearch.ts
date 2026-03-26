@@ -1,12 +1,9 @@
 import type { SkillfileDefinitionRecord } from '@/app/backend/persistence/types';
 
 function matchesRegistrySearch(skillfile: SkillfileDefinitionRecord, query: string): boolean {
-    const haystacks = [
-        skillfile.name,
-        skillfile.assetKey,
-        skillfile.description ?? '',
-        ...(skillfile.tags ?? []),
-    ].map((value) => value.toLowerCase());
+    const haystacks = [skillfile.name, skillfile.assetKey, skillfile.description ?? '', ...(skillfile.tags ?? [])].map(
+        (value) => value.toLowerCase()
+    );
 
     return haystacks.some((value) => value.includes(query));
 }

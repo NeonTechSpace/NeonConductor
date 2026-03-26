@@ -23,9 +23,10 @@ import type {
     ThreadTagRecord,
 } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
 
 import type { EntityId, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
+
 
 interface ConversationSidebarProps {
     profileId: string;
@@ -210,7 +211,7 @@ export function ConversationSidebar({
     const workspaceDeleteController = useSidebarWorkspaceDeleteController({
         profileId,
         isDeletingWorkspaceThreads,
-        onDeleteWorkspaceThreads: mutationController.deleteWorkspaceThreadsForSidebar,
+        onDeleteWorkspaceThreads: (input) => mutationController.deleteWorkspaceThreadsForSidebar(input),
         onFeedbackMessageChange: setFeedbackMessage,
     });
 
@@ -303,7 +304,9 @@ export function ConversationSidebar({
                                 className='h-10 w-10 rounded-2xl'
                                 aria-label='Add workspace'
                                 title='Add workspace'
-                                onClick={workspaceLifecycleDraft.openDraft}>
+                                onClick={() => {
+                                    workspaceLifecycleDraft.openDraft();
+                                }}>
                                 <FolderPlus className='h-4 w-4' />
                             </Button>
                         ) : (
@@ -312,7 +315,9 @@ export function ConversationSidebar({
                                 size='sm'
                                 variant='secondary'
                                 className='h-9 w-full rounded-xl whitespace-nowrap'
-                                onClick={workspaceLifecycleDraft.openDraft}>
+                                onClick={() => {
+                                    workspaceLifecycleDraft.openDraft();
+                                }}>
                                 Add workspace
                             </Button>
                         )
@@ -384,15 +389,23 @@ export function ConversationSidebar({
                             onSelectWorkspaceFingerprint(requestedWorkspaceFingerprint);
                             threadDraftController.startInlineThreadDraft(requestedWorkspaceFingerprint);
                         }}
-                        onInlineThreadTitleChange={threadDraftController.setInlineThreadTitle}
-                        onInlineThreadTopLevelTabChange={threadDraftController.setInlineThreadTopLevelTab}
+                        onInlineThreadTitleChange={(title) => {
+                            threadDraftController.setInlineThreadTitle(title);
+                        }}
+                        onInlineThreadTopLevelTabChange={(topLevelTab) => {
+                            threadDraftController.setInlineThreadTopLevelTab(topLevelTab);
+                        }}
                         onInlineThreadProviderChange={(providerId) => {
                             const nextModelId =
                                 providerModels.find((model) => model.providerId === providerId)?.id ?? '';
                             threadDraftController.setInlineThreadProvider(providerId, nextModelId);
                         }}
-                        onInlineThreadModelChange={threadDraftController.setInlineThreadModel}
-                        onCancelInlineThread={threadDraftController.cancelInlineThread}
+                        onInlineThreadModelChange={(modelId) => {
+                            threadDraftController.setInlineThreadModel(modelId);
+                        }}
+                        onCancelInlineThread={() => {
+                            threadDraftController.cancelInlineThread();
+                        }}
                         onSubmitInlineThread={() => {
                             void handleInlineThreadSubmit();
                         }}
@@ -430,13 +443,25 @@ export function ConversationSidebar({
                     errorMessage: workspaceLifecycleDraft.environmentQuery.error?.message,
                     snapshot: workspaceLifecycleDraft.environmentQuery.data?.snapshot,
                 }}
-                onClose={workspaceLifecycleDraft.closeDraft}
-                onBrowseDirectory={workspaceLifecycleDraft.browseDirectory}
-                onLabelChange={workspaceLifecycleDraft.setLabel}
-                onAbsolutePathChange={workspaceLifecycleDraft.setAbsolutePath}
-                onDefaultTopLevelTabChange={workspaceLifecycleDraft.setDefaultTopLevelTab}
-                onDefaultProviderIdChange={workspaceLifecycleDraft.setDefaultProviderId}
-                onDefaultModelIdChange={workspaceLifecycleDraft.setDefaultModelId}
+                onClose={() => {
+                    workspaceLifecycleDraft.closeDraft();
+                }}
+                onBrowseDirectory={() => workspaceLifecycleDraft.browseDirectory()}
+                onLabelChange={(label) => {
+                    workspaceLifecycleDraft.setLabel(label);
+                }}
+                onAbsolutePathChange={(absolutePath) => {
+                    workspaceLifecycleDraft.setAbsolutePath(absolutePath);
+                }}
+                onDefaultTopLevelTabChange={(topLevelTab) => {
+                    workspaceLifecycleDraft.setDefaultTopLevelTab(topLevelTab);
+                }}
+                onDefaultProviderIdChange={(providerId) => {
+                    workspaceLifecycleDraft.setDefaultProviderId(providerId);
+                }}
+                onDefaultModelIdChange={(modelId) => {
+                    workspaceLifecycleDraft.setDefaultModelId(modelId);
+                }}
                 onSubmit={handleWorkspaceCreateSubmit}
             />
 
@@ -451,7 +476,9 @@ export function ConversationSidebar({
                 busy={workspaceDeleteController.busy}
                 includeFavoriteThreads={workspaceDeleteController.includeFavoriteThreads}
                 onIncludeFavoriteThreadsChange={workspaceDeleteController.setIncludeFavoriteThreads}
-                onCancel={workspaceDeleteController.cancelWorkspaceDelete}
+                onCancel={() => {
+                    workspaceDeleteController.cancelWorkspaceDelete();
+                }}
                 onConfirm={() => {
                     void workspaceDeleteController.confirmWorkspaceDelete();
                 }}

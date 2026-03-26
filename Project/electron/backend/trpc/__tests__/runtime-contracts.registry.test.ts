@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-
 import {
     runtimeContractProfileId,
     registerRuntimeContractHooks,
@@ -111,7 +110,11 @@ tags:
 `,
             'utf8'
         );
-        writeFileSync(path.join(globalAssetsRoot, 'AGENTS.md'), '# Global agents root\n\nThis should not affect registry.', 'utf8');
+        writeFileSync(
+            path.join(globalAssetsRoot, 'AGENTS.md'),
+            '# Global agents root\n\nThis should not affect registry.',
+            'utf8'
+        );
         mkdirSync(path.join(globalAssetsRoot, '.agents'), { recursive: true });
         writeFileSync(
             path.join(globalAssetsRoot, '.agents', 'ignored.md'),
@@ -313,9 +316,9 @@ tags:
             topLevelTab: 'agent',
             workspaceFingerprint,
         });
-        expect(workspaceModes.modes.some((mode) => mode.modeKey === 'review' && mode.label === 'Workspace Review')).toBe(
-            true
-        );
+        expect(
+            workspaceModes.modes.some((mode) => mode.modeKey === 'review' && mode.label === 'Workspace Review')
+        ).toBe(true);
         const chatModes = await caller.mode.list({
             profileId,
             topLevelTab: 'chat',
@@ -399,9 +402,9 @@ tags:
             profileId,
             workspaceFingerprint,
         });
-        expect(
-            prunedResolved.resolved.skillfiles.find((skillfile) => skillfile.assetKey === 'repo_search')?.name
-        ).toBe('Repo Search');
+        expect(prunedResolved.resolved.skillfiles.find((skillfile) => skillfile.assetKey === 'repo_search')?.name).toBe(
+            'Repo Search'
+        );
     });
 
     it('refreshing discovered non-agent modes does not delete built-ins, prompt overrides, or unrelated active settings', async () => {
@@ -530,7 +533,6 @@ precedence: 5
         });
         expect(agentAfterPrune.activeMode.modeKey).toBe('code');
     });
-
 
     it('assembles agent run context from resolved modes, rules, and attached skills', async () => {
         const caller = createCaller();
@@ -757,7 +759,9 @@ name: Docs Lookup
             modeKey: 'review',
             assetKeys: ['repo_search'],
         });
-        expect(attached.skillfiles.map((skillfile: { assetKey: string }) => skillfile.assetKey)).toEqual(['repo_search']);
+        expect(attached.skillfiles.map((skillfile: { assetKey: string }) => skillfile.assetKey)).toEqual([
+            'repo_search',
+        ]);
 
         const attachedSkills = await caller.session.getAttachedSkills({
             profileId,
@@ -765,7 +769,9 @@ name: Docs Lookup
             topLevelTab: 'agent',
             modeKey: 'review',
         });
-        expect(attachedSkills.skillfiles.map((skillfile: { name: string }) => skillfile.name)).toEqual(['Workspace Search']);
+        expect(attachedSkills.skillfiles.map((skillfile: { name: string }) => skillfile.name)).toEqual([
+            'Workspace Search',
+        ]);
         expect(attachedSkills.missingAssetKeys).toBeUndefined();
 
         const started = await caller.session.startRun({
@@ -866,5 +872,4 @@ name: Docs Lookup
             })
         ).rejects.toThrow('repo_search');
     });
-
 });

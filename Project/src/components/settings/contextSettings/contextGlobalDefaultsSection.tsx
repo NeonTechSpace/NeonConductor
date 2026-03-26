@@ -60,8 +60,8 @@ export function ContextGlobalDefaultsSection({
                 type='button'
                 className='border-border bg-background hover:bg-accent rounded-md border px-3 py-2 text-sm'
                 disabled={isSaving}
-                onClick={async () => {
-                    await onSave(draft);
+                onClick={() => {
+                    void onSave(draft);
                 }}>
                 Save global defaults
             </button>

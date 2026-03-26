@@ -1,13 +1,18 @@
-import type { ProviderRuntimePart, ProviderRuntimeTransportSelection, ProviderRuntimeUsage } from '@/app/backend/providers/types';
-import type { RuntimeProviderId, TopLevelTab } from '@/app/backend/runtime/contracts';
+import type {
+    ProviderRuntimePart,
+    ProviderRuntimeTransportSelection,
+    ProviderRuntimeUsage,
+} from '@/app/backend/providers/types';
+import type { TopLevelTab } from '@/app/backend/runtime/contracts';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
+
 import type { EntityId } from '@/shared/contracts';
 
 interface ObservabilityRunContext {
     profileId: string;
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
-    providerId: RuntimeProviderId | string;
+    providerId: string;
     modelId: string;
 }
 
@@ -71,10 +76,12 @@ function publishStreamChunk(
     });
 }
 
-export function publishRunStartedObservabilityEvent(input: ObservabilityRunContext & {
-    topLevelTab: TopLevelTab;
-    modeKey: string;
-}): void {
+export function publishRunStartedObservabilityEvent(
+    input: ObservabilityRunContext & {
+        topLevelTab: TopLevelTab;
+        modeKey: string;
+    }
+): void {
     neonObservabilityService.publish({
         ...input,
         kind: 'run_started',
@@ -93,10 +100,12 @@ export function publishRunCompletedObservabilityEvent(input: ObservabilityRunCon
     });
 }
 
-export function publishRunFailedObservabilityEvent(input: ObservabilityRunContext & {
-    errorCode: string;
-    errorMessage: string;
-}): void {
+export function publishRunFailedObservabilityEvent(
+    input: ObservabilityRunContext & {
+        errorCode: string;
+        errorMessage: string;
+    }
+): void {
     neonObservabilityService.publish({
         ...input,
         kind: 'run_failed',
@@ -235,9 +244,11 @@ export function publishProviderPartObservabilityEvent(
     }
 }
 
-export function publishUsageObservabilityEvent(input: ObservabilityRunContext & {
-    usage: ProviderRuntimeUsage;
-}): void {
+export function publishUsageObservabilityEvent(
+    input: ObservabilityRunContext & {
+        usage: ProviderRuntimeUsage;
+    }
+): void {
     neonObservabilityService.publish({
         ...input,
         kind: 'usage_updated',
@@ -250,24 +261,26 @@ export function publishUsageObservabilityEvent(input: ObservabilityRunContext & 
     });
 }
 
-export function publishToolStateChangedObservabilityEvent(input: ObservabilityRunContext & {
-    toolCallId: string;
-    toolName: string;
-    state:
-        | 'proposed'
-        | 'input_complete'
-        | 'approval_required'
-        | 'approved'
-        | 'denied'
-        | 'executing'
-        | 'completed'
-        | 'failed'
-        | 'cancelled';
-    argumentsText?: string;
-    requestId?: string;
-    error?: string;
-    policySource?: string;
-}): void {
+export function publishToolStateChangedObservabilityEvent(
+    input: ObservabilityRunContext & {
+        toolCallId: string;
+        toolName: string;
+        state:
+            | 'proposed'
+            | 'input_complete'
+            | 'approval_required'
+            | 'approved'
+            | 'denied'
+            | 'executing'
+            | 'completed'
+            | 'failed'
+            | 'cancelled';
+        argumentsText?: string;
+        requestId?: string;
+        error?: string;
+        policySource?: string;
+    }
+): void {
     neonObservabilityService.publish({
         ...input,
         kind: 'tool_state_changed',
@@ -282,12 +295,14 @@ export function publishToolStateChangedObservabilityEvent(input: ObservabilityRu
     });
 }
 
-export function publishToolResultChunkObservabilityEvent(input: ObservabilityRunContext & {
-    toolCallId: string;
-    toolName: string;
-    outputText: string;
-    isError: boolean;
-}): void {
+export function publishToolResultChunkObservabilityEvent(
+    input: ObservabilityRunContext & {
+        toolCallId: string;
+        toolName: string;
+        outputText: string;
+        isError: boolean;
+    }
+): void {
     publishStreamChunk(input, 'runtime.run_execution', {
         kind: 'tool_result',
         toolCallId: input.toolCallId,

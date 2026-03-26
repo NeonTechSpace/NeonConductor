@@ -1,10 +1,5 @@
 import { useState } from 'react';
 
-import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
-import { trpc } from '@/web/trpc/client';
-
-import type { ToolCapability, TopLevelTab } from '@/shared/contracts';
-
 import type {
     CustomModeEditorDraft,
     CustomModeScope,
@@ -17,6 +12,11 @@ import {
     parseListText,
     toggleToolCapability,
 } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
+import { trpc } from '@/web/trpc/client';
+
+import type { ToolCapability, TopLevelTab } from '@/shared/contracts';
+
 
 export function useModesInstructionsCustomModesController(input: {
     profileId: string;
@@ -102,10 +102,6 @@ export function useModesInstructionsCustomModesController(input: {
 
     async function copyExportJson(): Promise<void> {
         if (exportJsonText.trim().length === 0) {
-            return;
-        }
-        if (!navigator.clipboard?.writeText) {
-            input.setErrorFeedback('Clipboard access is not available in this environment.');
             return;
         }
 
@@ -361,17 +357,19 @@ export function useModesInstructionsCustomModesController(input: {
                     overwrite: allowOverwrite,
                 });
             }),
-            exportMode: wrapFailClosedAction(async (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => {
-                await exportCustomModeMutation.mutateAsync({
-                    profileId: input.profileId,
-                    topLevelTab,
-                    modeKey,
-                    scope,
-                    ...(scope === 'workspace' && input.workspaceFingerprint
-                        ? { workspaceFingerprint: input.workspaceFingerprint }
-                        : {}),
-                });
-            }),
+            exportMode: wrapFailClosedAction(
+                async (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => {
+                    await exportCustomModeMutation.mutateAsync({
+                        profileId: input.profileId,
+                        topLevelTab,
+                        modeKey,
+                        scope,
+                        ...(scope === 'workspace' && input.workspaceFingerprint
+                            ? { workspaceFingerprint: input.workspaceFingerprint }
+                            : {}),
+                    });
+                }
+            ),
             copyExportJson: wrapFailClosedAction(copyExportJson),
         },
     };

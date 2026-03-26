@@ -149,9 +149,7 @@ describe('MemoryPanel', () => {
         const reportError = vi.fn();
 
         await runProjectionRescan({
-            refetch: vi.fn(async () => {
-                throw new Error('Rescan failed.');
-            }),
+            refetch: vi.fn(() => Promise.reject(new Error('Rescan failed.'))),
             clearFeedback,
             reportError,
         });

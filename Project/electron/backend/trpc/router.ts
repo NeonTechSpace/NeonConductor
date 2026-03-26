@@ -15,16 +15,16 @@ import { modeRouter } from '@/app/backend/trpc/routers/mode';
 import { orchestratorRouter } from '@/app/backend/trpc/routers/orchestrator';
 import { permissionRouter } from '@/app/backend/trpc/routers/permission';
 import { planRouter } from '@/app/backend/trpc/routers/plan';
-import { promptRouter } from '@/app/backend/trpc/routers/prompt';
 import { profileRouter } from '@/app/backend/trpc/routers/profile';
+import { promptRouter } from '@/app/backend/trpc/routers/prompt';
 import { providerRouter } from '@/app/backend/trpc/routers/provider';
 import { registryRouter } from '@/app/backend/trpc/routers/registry';
 import { runtimeRouter } from '@/app/backend/trpc/routers/runtime';
+import { sandboxRouter } from '@/app/backend/trpc/routers/sandbox';
 import { sessionRouter } from '@/app/backend/trpc/routers/session';
 import { systemRouter } from '@/app/backend/trpc/routers/system';
 import { toolRouter } from '@/app/backend/trpc/routers/tool';
 import { updatesRouter } from '@/app/backend/trpc/routers/updates';
-import { sandboxRouter } from '@/app/backend/trpc/routers/sandbox';
 import { workflowRouter } from '@/app/backend/trpc/routers/workflow';
 
 export const appRouter = router({

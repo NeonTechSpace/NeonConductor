@@ -1,4 +1,3 @@
-import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import {
     BuiltInModePromptCard,
     CustomModeEditorSection,
@@ -9,6 +8,7 @@ import {
     formatTopLevelLabel,
 } from '@/web/components/settings/modesSettings/modesInstructionsSections';
 import { useModesInstructionsSettingsController } from '@/web/components/settings/modesSettings/useModesInstructionsSettingsController';
+import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { Button } from '@/web/components/ui/button';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
@@ -29,7 +29,7 @@ export function ModesInstructionsScreen(input: {
 }) {
     const controller = useModesInstructionsSettingsController(input);
 
-    if (controller.query.isLoading && !controller.query.data) {
+    if (controller.query.isLoading) {
         return <p className='text-muted-foreground text-sm'>Loading mode settings…</p>;
     }
 
@@ -46,8 +46,12 @@ export function ModesInstructionsScreen(input: {
                     value={controller.appGlobal.value}
                     isSaving={controller.appGlobal.isSaving}
                     onChange={controller.appGlobal.setValue}
-                    onSave={controller.appGlobal.save}
-                    onReset={controller.appGlobal.reset}
+                    onSave={() => {
+                        void controller.appGlobal.save();
+                    }}
+                    onReset={() => {
+                        void controller.appGlobal.reset();
+                    }}
                 />
 
                 <PromptLayerCard
@@ -56,8 +60,12 @@ export function ModesInstructionsScreen(input: {
                     value={controller.profileGlobal.value}
                     isSaving={controller.profileGlobal.isSaving}
                     onChange={controller.profileGlobal.setValue}
-                    onSave={controller.profileGlobal.save}
-                    onReset={controller.profileGlobal.reset}
+                    onSave={() => {
+                        void controller.profileGlobal.save();
+                    }}
+                    onReset={() => {
+                        void controller.profileGlobal.reset();
+                    }}
                 />
             </div>
 
@@ -81,8 +89,12 @@ export function ModesInstructionsScreen(input: {
                             onChange={(value) => {
                                 controller.topLevel.setValue(topLevelTab, value);
                             }}
-                            onSave={() => controller.topLevel.save(topLevelTab)}
-                            onReset={() => controller.topLevel.reset(topLevelTab)}
+                            onSave={() => {
+                                void controller.topLevel.save(topLevelTab);
+                            }}
+                            onReset={() => {
+                                void controller.topLevel.reset(topLevelTab);
+                            }}
                         />
                     ))}
                 </div>
@@ -118,8 +130,8 @@ export function ModesInstructionsScreen(input: {
                                         key={`${mode.topLevelTab}:${mode.modeKey}`}
                                         title={mode.label}
                                         description={formatBuiltInModeDescription(topLevelTab, mode.label)}
-                                        roleDefinition={mode.prompt.roleDefinition ?? ''}
-                                        customInstructions={mode.prompt.customInstructions ?? ''}
+                                        roleDefinition={mode.prompt.roleDefinition}
+                                        customInstructions={mode.prompt.customInstructions}
                                         hasOverride={mode.hasOverride}
                                         isSaving={controller.builtInModes.isSaving}
                                         warning={`Editing the built-in ${mode.label.toLowerCase()} prompt can make the app behave unexpectedly. Reset restores the shipped behavior.`}
@@ -139,8 +151,12 @@ export function ModesInstructionsScreen(input: {
                                                 value
                                             );
                                         }}
-                                        onSave={() => controller.builtInModes.save(topLevelTab, mode.modeKey)}
-                                        onReset={() => controller.builtInModes.reset(topLevelTab, mode.modeKey)}
+                                        onSave={() => {
+                                            void controller.builtInModes.save(topLevelTab, mode.modeKey);
+                                        }}
+                                        onReset={() => {
+                                            void controller.builtInModes.reset(topLevelTab, mode.modeKey);
+                                        }}
                                     />
                                 ))}
                             </div>
@@ -191,8 +207,8 @@ export function ModesInstructionsScreen(input: {
                             <p className='text-muted-foreground text-sm leading-6'>
                                 Supported fields: <code>slug</code>, <code>name</code>, <code>description</code>,{' '}
                                 <code>roleDefinition</code>, <code>customInstructions</code>, <code>whenToUse</code>,
-                                and <code>groups</code>. Portable <code>groups</code> map into Neon tool
-                                capabilities during import.
+                                and <code>groups</code>. Portable <code>groups</code> map into Neon tool capabilities
+                                during import.
                             </p>
                         </div>
 
@@ -245,13 +261,19 @@ export function ModesInstructionsScreen(input: {
                             {controller.customModes.importDraft.hasWorkspaceScope ? (
                                 controller.customModes.importDraft.scope === 'workspace' ? (
                                     <span>
-                                        Workspace target: {controller.customModes.importDraft.selectedWorkspaceLabel ?? 'Selected workspace'}
+                                        Workspace target:{' '}
+                                        {controller.customModes.importDraft.selectedWorkspaceLabel ??
+                                            'Selected workspace'}
                                     </span>
                                 ) : (
-                                    <span>Import will write into the global <code>modes/</code> registry root.</span>
+                                    <span>
+                                        Import will write into the global <code>modes/</code> registry root.
+                                    </span>
                                 )
                             ) : (
-                                <span>Workspace import is unavailable until a workspace is selected in the app shell.</span>
+                                <span>
+                                    Workspace import is unavailable until a workspace is selected in the app shell.
+                                </span>
                             )}
                         </div>
 
@@ -294,7 +316,9 @@ export function ModesInstructionsScreen(input: {
                                     (controller.customModes.importDraft.scope === 'workspace' &&
                                         !controller.customModes.importDraft.hasWorkspaceScope)
                                 }
-                                onClick={controller.customModes.importMode}>
+                                onClick={() => {
+                                    void controller.customModes.importMode();
+                                }}>
                                 {controller.customModes.isImporting ? 'Importing…' : 'Import Mode'}
                             </Button>
                         </div>
@@ -333,7 +357,9 @@ export function ModesInstructionsScreen(input: {
                                 size='sm'
                                 variant='outline'
                                 disabled={controller.customModes.exportState.jsonText.trim().length === 0}
-                                onClick={controller.customModes.copyExportJson}>
+                                onClick={() => {
+                                    void controller.customModes.copyExportJson();
+                                }}>
                                 Copy JSON
                             </Button>
                         </div>
@@ -344,9 +370,15 @@ export function ModesInstructionsScreen(input: {
                     scope='global'
                     itemsByTab={controller.customModes.global}
                     isExporting={controller.customModes.isExporting}
-                    onExport={controller.customModes.exportMode}
-                    onEdit={controller.customModes.editor.openEdit}
-                    onDelete={controller.customModes.editor.openDelete}
+                    onExport={(scope, topLevelTab, modeKey) => {
+                        void controller.customModes.exportMode(scope, topLevelTab, modeKey);
+                    }}
+                    onEdit={(scope, topLevelTab, modeKey) => {
+                        void controller.customModes.editor.openEdit(scope, topLevelTab, modeKey);
+                    }}
+                    onDelete={(scope, topLevelTab, modeKey) => {
+                        void controller.customModes.editor.openDelete(scope, topLevelTab, modeKey);
+                    }}
                 />
 
                 {controller.workspace.fingerprint ? (
@@ -354,9 +386,15 @@ export function ModesInstructionsScreen(input: {
                         scope='workspace'
                         itemsByTab={controller.customModes.workspace}
                         isExporting={controller.customModes.isExporting}
-                        onExport={controller.customModes.exportMode}
-                        onEdit={controller.customModes.editor.openEdit}
-                        onDelete={controller.customModes.editor.openDelete}
+                        onExport={(scope, topLevelTab, modeKey) => {
+                            void controller.customModes.exportMode(scope, topLevelTab, modeKey);
+                        }}
+                        onEdit={(scope, topLevelTab, modeKey) => {
+                            void controller.customModes.editor.openEdit(scope, topLevelTab, modeKey);
+                        }}
+                        onDelete={(scope, topLevelTab, modeKey) => {
+                            void controller.customModes.editor.openDelete(scope, topLevelTab, modeKey);
+                        }}
                     />
                 ) : null}
             </div>

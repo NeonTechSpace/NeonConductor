@@ -61,13 +61,15 @@ export function SettingsSelectionRail({
                                 <div className='flex items-start justify-between gap-2'>
                                     <p className='min-w-0 truncate text-sm font-medium'>{item.title}</p>
                                     {item.meta ? (
-                                        <span className='text-primary shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] uppercase'>
+                                        <span className='text-primary bg-primary/10 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] uppercase'>
                                             {item.meta}
                                         </span>
                                     ) : null}
                                 </div>
                                 {item.subtitle ? (
-                                    <p className='text-muted-foreground mt-1 break-words text-[11px]'>{item.subtitle}</p>
+                                    <p className='text-muted-foreground mt-1 text-[11px] break-words'>
+                                        {item.subtitle}
+                                    </p>
                                 ) : null}
                             </button>
                         );

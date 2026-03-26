@@ -1,8 +1,4 @@
 import { patchProviderCache } from '@/web/components/settings/providerSettings/providerSettingsCache';
-import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
-
-import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
-
 import {
     readConnectionProfile,
     readExecutionPreference,
@@ -13,7 +9,11 @@ import {
     readProviderModels,
     readRoutingPreference,
     readString,
-} from './readers';
+} from '@/web/lib/runtime/eventPatches/readers';
+import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
+
+import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
+
 
 export function applyProviderRuntimeEventPatch(
     utils: TrpcUtils,
@@ -40,7 +40,16 @@ export function applyProviderRuntimeEventPatch(
     const providers = readModelProviderOptions(event.payload['providers']);
     const modelId = readString(event.payload['modelId']);
 
-    if (!provider && !defaults && !models && !state && !connectionProfile && !executionPreference && !preference && !providers) {
+    if (
+        !provider &&
+        !defaults &&
+        !models &&
+        !state &&
+        !connectionProfile &&
+        !executionPreference &&
+        !preference &&
+        !providers
+    ) {
         return false;
     }
 
@@ -61,3 +70,4 @@ export function applyProviderRuntimeEventPatch(
 
     return true;
 }
+

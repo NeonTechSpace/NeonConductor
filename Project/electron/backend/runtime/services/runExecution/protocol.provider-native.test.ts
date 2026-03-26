@@ -6,7 +6,7 @@ import {
     protocolTestProfileId,
     resolveProviderNativeRuntimeSpecializationMock,
     resolveRuntimeProtocolForTest,
-} from './protocol.shared.test';
+} from '@/app/backend/runtime/services/runExecution/protocol.shared.test';
 
 describe('resolveRuntimeProtocol provider-native routing', () => {
     it('fails closed for provider-native models on an incompatible provider path', async () => {
@@ -111,3 +111,4 @@ describe('resolveRuntimeProtocol provider-native routing', () => {
         expect(result.error.code).toBe('runtime_option_invalid');
     });
 });
+

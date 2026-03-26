@@ -1,7 +1,11 @@
 import { settingsStore } from '@/app/backend/persistence/stores';
 import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
 import type { TopLevelTab } from '@/app/backend/runtime/contracts';
-import { errModeResolution, okModeResolution, type ModeResolutionResult } from '@/app/backend/runtime/services/mode/errors';
+import {
+    errModeResolution,
+    okModeResolution,
+    type ModeResolutionResult,
+} from '@/app/backend/runtime/services/mode/errors';
 import { pickActiveMode, toActiveModeKey } from '@/app/backend/runtime/services/mode/selection';
 import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 

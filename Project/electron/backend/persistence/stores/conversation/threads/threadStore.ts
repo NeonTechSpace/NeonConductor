@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
-import { mapThreadListRecord, mapThreadRecord } from '@/app/backend/persistence/stores/conversation/threads/threadStore.mapper';
+import {
+    mapThreadListRecord,
+    mapThreadRecord,
+} from '@/app/backend/persistence/stores/conversation/threads/threadStore.mapper';
 import {
     compareAnchor,
     compareIsoDesc,
@@ -78,12 +81,7 @@ async function resolveWorkspaceThreadDeletion(
     const workspaceThreads = await db
         .selectFrom('threads')
         .innerJoin('conversations', 'conversations.id', 'threads.conversation_id')
-        .select([
-            'threads.id',
-            'threads.root_thread_id',
-            'threads.is_favorite',
-            'threads.conversation_id',
-        ])
+        .select(['threads.id', 'threads.root_thread_id', 'threads.is_favorite', 'threads.conversation_id'])
         .where('threads.profile_id', '=', profileId)
         .where('conversations.scope', '=', 'workspace')
         .where('conversations.workspace_fingerprint', '=', workspaceFingerprint)
@@ -158,11 +156,7 @@ async function resolveWorkspaceThreadDeletion(
     const messageIds = messageRows.map((row) => parseEntityId(row.id, 'messages.id', 'msg'));
 
     const messagePartRows = messageIds.length
-        ? await db
-              .selectFrom('message_parts')
-              .select('id')
-              .where('message_id', 'in', messageIds)
-              .execute()
+        ? await db.selectFrom('message_parts').select('id').where('message_id', 'in', messageIds).execute()
         : [];
     const messagePartIds = messagePartRows.map((row) => row.id);
 
@@ -190,7 +184,9 @@ async function resolveWorkspaceThreadDeletion(
                   .select('tag_id')
                   .distinct()
                   .where('tag_id', 'in', candidateTagIds)
-                  .where((expressionBuilder) => expressionBuilder.not(expressionBuilder('thread_id', 'in', deletableThreadIds)))
+                  .where((expressionBuilder) =>
+                      expressionBuilder.not(expressionBuilder('thread_id', 'in', deletableThreadIds))
+                  )
                   .execute()
           ).reduce((value, row) => {
               value.add(parseEntityId(row.tag_id, 'thread_tags.tag_id', 'tag'));
@@ -399,7 +395,11 @@ export class ThreadStore {
             resolvedRootThreadId = root.id;
         }
 
-        if (inheritedExecutionEnvironmentMode === undefined && conversation.scope === 'workspace' && input.topLevelTab !== 'chat') {
+        if (
+            inheritedExecutionEnvironmentMode === undefined &&
+            conversation.scope === 'workspace' &&
+            input.topLevelTab !== 'chat'
+        ) {
             inheritedExecutionEnvironmentMode = 'new_sandbox';
         }
 

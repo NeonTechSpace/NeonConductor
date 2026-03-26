@@ -1,6 +1,9 @@
 import { ModesInstructionsScreen } from '@/web/components/settings/modesSettings/modesInstructionsScreen';
+import {
+    MODES_SETTINGS_SUBSECTIONS,
+    type ModesSettingsSubsectionId,
+} from '@/web/components/settings/settingsNavigation';
 import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
-import { MODES_SETTINGS_SUBSECTIONS, type ModesSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
 
 interface ModesSettingsViewProps {
     profileId: string;
@@ -39,13 +42,11 @@ export function ModesSettingsView({
             />
 
             <div className='min-h-0 min-w-0 overflow-y-auto p-5 md:p-6'>
-                {subsection === 'instructions' ? (
-                    <ModesInstructionsScreen
-                        profileId={profileId}
-                        {...(workspaceFingerprint ? { workspaceFingerprint } : {})}
-                        {...(selectedWorkspaceLabel ? { selectedWorkspaceLabel } : {})}
-                    />
-                ) : null}
+                <ModesInstructionsScreen
+                    profileId={profileId}
+                    {...(workspaceFingerprint ? { workspaceFingerprint } : {})}
+                    {...(selectedWorkspaceLabel ? { selectedWorkspaceLabel } : {})}
+                />
             </div>
         </section>
     );

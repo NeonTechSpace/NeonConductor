@@ -28,10 +28,7 @@ export async function invalidateOrchestratorQueries(utils: TrpcUtils, context: R
     await invalidateOrchestratorLatest(utils, context);
 }
 
-export async function invalidateProfileDomainQueries(
-    utils: TrpcUtils,
-    context: RuntimeEventContext
-): Promise<void> {
+export async function invalidateProfileDomainQueries(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
     await invalidateProfileQueries(utils, context.profileId);
 }
 

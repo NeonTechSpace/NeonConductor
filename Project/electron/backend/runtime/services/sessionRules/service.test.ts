@@ -1,8 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getDefaultProfileId, getPersistenceStoragePaths, resetPersistenceForTests } from '@/app/backend/persistence/db';
+import {
+    getDefaultProfileId,
+    getPersistenceStoragePaths,
+    resetPersistenceForTests,
+} from '@/app/backend/persistence/db';
 import { conversationStore, sessionStore, threadStore, workspaceRootStore } from '@/app/backend/persistence/stores';
 import { refreshRegistry } from '@/app/backend/runtime/services/registry/service';
 import { setAttachedRules } from '@/app/backend/runtime/services/sessionRules/service';
@@ -13,7 +17,10 @@ describe('sessionRules service', () => {
     });
 
     async function createWorkspaceSession(profileId: string) {
-        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, 'M:\\Libraries\\Downloads\\session-rules');
+        const workspaceRoot = await workspaceRootStore.resolveOrCreate(
+            profileId,
+            'M:\\Libraries\\Downloads\\session-rules'
+        );
         const bucket = await conversationStore.createOrGetBucket({
             profileId,
             scope: 'workspace',

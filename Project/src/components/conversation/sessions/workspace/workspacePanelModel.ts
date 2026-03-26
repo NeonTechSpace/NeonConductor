@@ -156,11 +156,11 @@ export interface SessionWorkspacePanelProps {
     onRetryPendingImage: (clientId: string) => void;
     onSubmitPrompt: (prompt: string) => void;
     onCompactContext?: () => Promise<
-        | void
         | {
               message: string;
               tone: 'success' | 'error' | 'info';
           }
+        | undefined
     >;
     onResolvePermission: (
         requestId: PermissionRecord['id'],

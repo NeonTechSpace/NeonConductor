@@ -1,13 +1,11 @@
 import { resolveRuntimeFamilyProtocol } from '@/app/backend/providers/runtimeFamilies';
-import type {
-    ProviderModelCapabilities,
-    ProviderRuntimeDescriptor,
-} from '@/app/backend/providers/types';
-import type { RuntimeProviderId, RuntimeRunOptions } from '@/app/backend/runtime/contracts';
-import type { ProviderAuthMethod } from '@/app/backend/runtime/contracts';
-import type { OpenAIExecutionMode, TopLevelTab } from '@/app/backend/runtime/contracts';
+import type { ProviderModelCapabilities, ProviderRuntimeDescriptor } from '@/app/backend/providers/types';
 import type { RunExecutionResult } from '@/app/backend/runtime/services/runExecution/errors';
 import type { RunTransportResolution } from '@/app/backend/runtime/services/runExecution/types';
+
+import type { RuntimeProviderId, RuntimeRunOptions } from '@/shared/contracts';
+import type { ProviderAuthMethod } from '@/shared/contracts';
+import type { OpenAIExecutionMode, TopLevelTab } from '@/shared/contracts';
 
 export interface ResolvedRuntimeProtocol {
     runtime: ProviderRuntimeDescriptor;
@@ -30,3 +28,4 @@ export async function resolveRuntimeProtocol(
 ): Promise<RunExecutionResult<ResolvedRuntimeProtocol>> {
     return resolveRuntimeFamilyProtocol(input);
 }
+

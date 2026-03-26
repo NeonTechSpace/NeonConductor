@@ -12,10 +12,7 @@ import type {
     ToolCapability,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
-import {
-    ruleActivationModes,
-    toolCapabilities as knownToolCapabilities,
-} from '@/app/backend/runtime/contracts';
+import { ruleActivationModes, toolCapabilities as knownToolCapabilities } from '@/app/backend/runtime/contracts';
 import {
     loadRegistryAssetFiles,
     slugifyAssetKey,
@@ -50,9 +47,7 @@ function readTags(value: unknown): string[] | undefined {
         return undefined;
     }
 
-    const tags = value
-        .map((item) => (typeof item === 'string' ? item.trim() : ''))
-        .filter((item) => item.length > 0);
+    const tags = value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter((item) => item.length > 0);
     return tags.length > 0 ? tags : undefined;
 }
 
@@ -64,9 +59,7 @@ function readOptionalStringList(value: unknown): string[] | null | undefined {
         return null;
     }
 
-    const items = value
-        .map((item) => (typeof item === 'string' ? item.trim() : ''))
-        .filter((item) => item.length > 0);
+    const items = value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter((item) => item.length > 0);
     return items.length > 0 ? Array.from(new Set(items)) : undefined;
 }
 
@@ -82,10 +75,7 @@ function readToolCapabilities(value: unknown): ToolCapability[] | undefined {
     return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
 }
 
-function mapModePrompt(input: {
-    bodyMarkdown: string;
-    attributes: Record<string, unknown>;
-}): ModePromptDefinition {
+function mapModePrompt(input: { bodyMarkdown: string; attributes: Record<string, unknown> }): ModePromptDefinition {
     const bodyInstructions = input.bodyMarkdown.trim();
     const customInstructions = readString(input.attributes['customInstructions']) ?? bodyInstructions;
     const roleDefinition = readString(input.attributes['roleDefinition']);
@@ -115,7 +105,10 @@ interface DiscoveredModeInput {
     precedence: number;
 }
 
-interface DiscoveredModeDraft extends Omit<DiscoveredModeInput, 'workspaceFingerprint' | 'description' | 'whenToUse' | 'tags'> {
+interface DiscoveredModeDraft extends Omit<
+    DiscoveredModeInput,
+    'workspaceFingerprint' | 'description' | 'whenToUse' | 'tags'
+> {
     workspaceFingerprint?: string | undefined;
     description?: string | undefined;
     whenToUse?: string | undefined;
@@ -148,8 +141,10 @@ interface DiscoveredRulesetInput extends DiscoveredAssetInput {
     activationMode: RuleActivationMode;
 }
 
-interface DiscoveredRulesetDraft
-    extends Omit<DiscoveredRulesetInput, 'workspaceFingerprint' | 'description' | 'tags' | 'presetKey'> {
+interface DiscoveredRulesetDraft extends Omit<
+    DiscoveredRulesetInput,
+    'workspaceFingerprint' | 'description' | 'tags' | 'presetKey'
+> {
     workspaceFingerprint?: string | undefined;
     description?: string | undefined;
     tags?: string[] | undefined;

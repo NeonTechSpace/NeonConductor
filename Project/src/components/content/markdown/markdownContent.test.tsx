@@ -41,16 +41,18 @@ describe('markdown content', () => {
     });
 
     it('converts markdown to readable plain text for copy payloads', () => {
-        const plainText = markdownToPlainText([
-            '# Plan',
-            '',
-            '- [x] Ship markdown renderer',
-            '- [ ] Polish file summary',
-            '',
-            '```ts',
-            'const total = 7',
-            '```',
-        ].join('\n'));
+        const plainText = markdownToPlainText(
+            [
+                '# Plan',
+                '',
+                '- [x] Ship markdown renderer',
+                '- [ ] Polish file summary',
+                '',
+                '```ts',
+                'const total = 7',
+                '```',
+            ].join('\n')
+        );
 
         expect(plainText).toContain('Plan');
         expect(plainText).toContain('Ship markdown renderer');

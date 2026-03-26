@@ -1,4 +1,10 @@
-import type { ConversationRecord, TagRecord, ThreadListRecord, ThreadRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
+import type {
+    ConversationRecord,
+    TagRecord,
+    ThreadListRecord,
+    ThreadRecord,
+    ThreadTagRecord,
+} from '@/app/backend/persistence/types';
 
 function compareAlphabetical(left: ThreadListRecord, right: ThreadListRecord): number {
     const titleCompare = left.title.localeCompare(right.title, undefined, {
@@ -12,10 +18,7 @@ function compareAlphabetical(left: ThreadListRecord, right: ThreadListRecord): n
     return right.updatedAt.localeCompare(left.updatedAt);
 }
 
-export function toThreadListRecord(input: {
-    bucket: ConversationRecord;
-    thread: ThreadRecord;
-}): ThreadListRecord {
+export function toThreadListRecord(input: { bucket: ConversationRecord; thread: ThreadRecord }): ThreadListRecord {
     return {
         ...input.thread,
         scope: input.bucket.scope,
@@ -28,10 +31,7 @@ export function toThreadListRecord(input: {
     };
 }
 
-export function upsertBucketRecord(
-    buckets: ConversationRecord[],
-    bucket: ConversationRecord
-): ConversationRecord[] {
+export function upsertBucketRecord(buckets: ConversationRecord[], bucket: ConversationRecord): ConversationRecord[] {
     const withoutExisting = buckets.filter((currentBucket) => currentBucket.id !== bucket.id);
     return [bucket, ...withoutExisting];
 }
@@ -49,10 +49,7 @@ export function upsertThreadListRecord(
     return [thread, ...withoutExisting];
 }
 
-export function patchThreadListRecord(
-    threads: ThreadListRecord[],
-    updatedThread: ThreadRecord
-): ThreadListRecord[] {
+export function patchThreadListRecord(threads: ThreadListRecord[], updatedThread: ThreadRecord): ThreadListRecord[] {
     return threads.map((thread) =>
         thread.id === updatedThread.id
             ? {

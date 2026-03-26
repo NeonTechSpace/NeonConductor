@@ -1,12 +1,31 @@
 import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
-import { isJsonRecord, isJsonString, isJsonUnknownArray, nowIso, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+import {
+    isJsonRecord,
+    isJsonString,
+    isJsonUnknownArray,
+    nowIso,
+    parseJsonValue,
+} from '@/app/backend/persistence/stores/shared/utils';
 import type { DiffArtifact, DiffFileArtifact, DiffRecord } from '@/app/backend/persistence/types';
 import type { EntityId } from '@/app/backend/runtime/contracts';
 
-const diffArtifactStatuses = ['added', 'modified', 'deleted', 'renamed', 'copied', 'type_changed', 'untracked'] as const;
-const unsupportedDiffArtifactReasons = ['workspace_not_git', 'git_unavailable', 'workspace_unresolved', 'capture_failed'] as const;
+const diffArtifactStatuses = [
+    'added',
+    'modified',
+    'deleted',
+    'renamed',
+    'copied',
+    'type_changed',
+    'untracked',
+] as const;
+const unsupportedDiffArtifactReasons = [
+    'workspace_not_git',
+    'git_unavailable',
+    'workspace_unresolved',
+    'capture_failed',
+] as const;
 
 function createDiffId(): string {
     return `diff_${randomUUID()}`;
@@ -30,11 +49,7 @@ function mapDiffFileArtifact(value: unknown): DiffFileArtifact | null {
     const previousPath = value['previousPath'];
     const addedLines = value['addedLines'];
     const deletedLines = value['deletedLines'];
-    if (
-        !isJsonString(path) ||
-        !isJsonString(status) ||
-        !isDiffFileStatus(status)
-    ) {
+    if (!isJsonString(path) || !isJsonString(status) || !isDiffFileStatus(status)) {
         return null;
     }
 
@@ -82,7 +97,9 @@ function mapDiffArtifact(value: string): DiffArtifact {
             baseRef: 'HEAD',
             fileCount: typeof fileCount === 'number' && Number.isFinite(fileCount) ? fileCount : files.length,
             ...(typeof totalAddedLines === 'number' && Number.isFinite(totalAddedLines) ? { totalAddedLines } : {}),
-            ...(typeof totalDeletedLines === 'number' && Number.isFinite(totalDeletedLines) ? { totalDeletedLines } : {}),
+            ...(typeof totalDeletedLines === 'number' && Number.isFinite(totalDeletedLines)
+                ? { totalDeletedLines }
+                : {}),
             files,
             fullPatch,
             patchesByPath,

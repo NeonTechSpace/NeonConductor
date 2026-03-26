@@ -35,7 +35,9 @@ function mapSkillfileDefinition(row: {
         assetKey: row.asset_key,
         scope: parseEnumValue(row.scope, 'skillfiles.scope', registryScopes),
         ...(row.workspace_fingerprint ? { workspaceFingerprint: row.workspace_fingerprint } : {}),
-        ...(row.preset_key ? { presetKey: parseEnumValue(row.preset_key, 'skillfiles.preset_key', registryPresetKeys) } : {}),
+        ...(row.preset_key
+            ? { presetKey: parseEnumValue(row.preset_key, 'skillfiles.preset_key', registryPresetKeys) }
+            : {}),
         name: row.name,
         bodyMarkdown: row.body_markdown,
         source: row.source,

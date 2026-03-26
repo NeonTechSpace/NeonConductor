@@ -1,19 +1,8 @@
 import { skipToken } from '@tanstack/react-query';
 
-import type { ResolvedContextState, ResolvedContextStateInput } from '@/app/backend/runtime/contracts/types/context';
-import type { EntityId } from '@/shared/contracts';
-import { listProviderControlProviders } from '@/web/lib/providerControl/selectors';
-import { trpc } from '@/web/trpc/client';
 import { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
-import { buildModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import {
-    DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
-    DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
-} from '@/shared/contracts';
-
-import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
-
+import { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/conversationShellRuntimeState';
+import type { ConversationReasoningState } from '@/web/components/conversation/shell/conversationShellRuntimeState';
 import type {
     AcceptedRunStartResult,
     ConversationMutations,
@@ -22,9 +11,22 @@ import type {
     ConversationRunTargetState,
     ConversationSessionWorkspaceUpdate,
     ConversationUiState,
-} from './useConversationShellViewControllers.types';
-import type { ConversationReasoningState } from './conversationShellRuntimeState';
-import { buildResolvedContextStateQueryInput } from './conversationShellRuntimeState';
+} from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
+import { buildModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
+import { listProviderControlProviders } from '@/web/lib/providerControl/selectors';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { trpc } from '@/web/trpc/client';
+
+
+import {
+    DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
+    DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
+} from '@/shared/contracts';
+import type { EntityId } from '@/shared/contracts';
+import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { ResolvedContextState, ResolvedContextStateInput } from '@/shared/contracts/types/context';
+
+
 
 interface UseConversationShellComposerSetupInput {
     profileId: string;
@@ -48,7 +50,9 @@ interface UseConversationShellComposerSetupInput {
 
 export function buildConversationComposerModelOptions(input: {
     providers:
-        | NonNullable<ConversationQueries['shellBootstrapQuery']['data']>['providerControl']['entries'][number]['provider'][]
+        | NonNullable<
+              ConversationQueries['shellBootstrapQuery']['data']
+          >['providerControl']['entries'][number]['provider'][]
         | undefined;
     modelsByProvider: ConversationRunTargetState['modelsByProvider'];
     activeModeRequiresNativeTools: boolean;
@@ -103,11 +107,9 @@ export function buildConversationComposerPresentationState(input: {
               )
             : undefined;
     const selectedModelCompatibilityReason =
-        selectedComposerModelOption?.compatibilityReason ??
-        input.selectedModelOptionForComposer?.compatibilityReason;
+        selectedComposerModelOption?.compatibilityReason ?? input.selectedModelOptionForComposer?.compatibilityReason;
     const selectedModelCompatibilityState =
-        selectedComposerModelOption?.compatibilityState ??
-        input.selectedModelOptionForComposer?.compatibilityState;
+        selectedComposerModelOption?.compatibilityState ?? input.selectedModelOptionForComposer?.compatibilityState;
     const canAttachImages = input.imageAttachmentsAllowed && Boolean(selectedComposerModelOption?.supportsVision);
     const imageAttachmentBlockedReason = !input.imageAttachmentsAllowed
         ? 'Image attachments are only available for executable runs.'
@@ -224,3 +226,4 @@ export function useConversationShellComposerSetup(input: UseConversationShellCom
         ...composerPresentationState,
     };
 }
+

@@ -123,4 +123,3 @@ export function formatDateTime(value: string | undefined): string {
 
     return date.toLocaleString();
 }
-

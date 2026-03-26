@@ -14,12 +14,12 @@ import type {
 import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
 import { getProviderDefinition } from '@/app/backend/providers/registry';
 import { getConnectionProfileState, resolveApiKeyCta } from '@/app/backend/providers/service/endpointProfiles';
-import { getExecutionPreferenceState } from '@/app/backend/providers/service/executionPreferences';
 import {
     errProviderService,
     okProviderService,
     type ProviderServiceResult,
 } from '@/app/backend/providers/service/errors';
+import { getExecutionPreferenceState } from '@/app/backend/providers/service/executionPreferences';
 import { defaultAuthState, ensureSupportedProvider, resolveSecret } from '@/app/backend/providers/service/helpers';
 import { getOpenAISubscriptionRateLimits as getOpenAISubscriptionRateLimitsFromWham } from '@/app/backend/providers/service/openaiSubscriptionRateLimits';
 import type {
@@ -27,9 +27,7 @@ import type {
     ProviderCredentialValueResult,
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
-import type {
-    RuntimeProviderId,
-} from '@/app/backend/runtime/contracts';
+import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import { appLog } from '@/app/main/logging';
 
 export async function listProviders(profileId: string): Promise<ProviderListItem[]> {
@@ -62,9 +60,7 @@ export async function listProviders(profileId: string): Promise<ProviderListItem
                 ? { label: 'Get API Key', url: 'https://kilocode.ai' }
                 : apiKeyCtaResult.value;
             const executionPreferenceResult =
-                provider.id === 'openai'
-                    ? await getExecutionPreferenceState(profileId, provider.id)
-                    : null;
+                provider.id === 'openai' ? await getExecutionPreferenceState(profileId, provider.id) : null;
             return {
                 ...provider,
                 isDefault: defaults.providerId === provider.id,

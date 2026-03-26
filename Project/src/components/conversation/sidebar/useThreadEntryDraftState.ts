@@ -1,12 +1,14 @@
 import { useState } from 'react';
 
+import type { ThreadEntryDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
 import { resolveThreadDraftDefaults } from '@/web/components/conversation/sidebar/threadDraftDefaults';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
-import type { ThreadEntryDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
+
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
+
 
 interface UseThreadEntryDraftStateInput {
     preferredWorkspaceFingerprint: string | undefined;

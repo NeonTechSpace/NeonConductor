@@ -200,7 +200,7 @@ export function buildConversationPlanOrchestrator(input: BuildConversationPlanOr
                             ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
                             ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
                             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                            ...(executionStrategy ? { executionStrategy } : {}),
+                            executionStrategy,
                         }),
                 },
                 applyResult: (result) => {

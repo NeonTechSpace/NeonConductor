@@ -8,14 +8,14 @@ describe('rowParsers', () => {
         const parsed = parseEnumValue('alpha', 'mode', allowed);
         expect(parsed).toBe('alpha');
 
-        expect(() => parseEnumValue('gamma', 'mode', allowed)).toThrowError('Invalid "mode"');
+        expect(() => parseEnumValue('gamma', 'mode', allowed)).toThrow('Invalid "mode"');
     });
 
     it('parses entity ids and rejects invalid prefixes', () => {
         const id = parseEntityId('msg_abc123', 'messageId', 'msg');
         expect(id).toBe('msg_abc123');
 
-        expect(() => parseEntityId('run_abc123', 'messageId', 'msg')).toThrowError('expected "msg_..." ID');
+        expect(() => parseEntityId('run_abc123', 'messageId', 'msg')).toThrow('expected "msg_..." ID');
     });
 
     it('parses json records and falls back to empty object for invalid input', () => {

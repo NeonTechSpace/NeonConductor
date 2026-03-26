@@ -144,7 +144,8 @@ export function buildConversationSidebarModel(input: {
         const workspaceRoot = input.workspaceRoots.find((candidate) => candidate.fingerprint === workspaceFingerprint);
         const absolutePath = workspaceRoot?.absolutePath ?? workspacePathByFingerprint.get(workspaceFingerprint);
         grouped.set(`ws:${workspaceFingerprint}`, {
-            label: workspaceRoot?.label ?? workspaceLabelByFingerprint.get(workspaceFingerprint) ?? workspaceFingerprint,
+            label:
+                workspaceRoot?.label ?? workspaceLabelByFingerprint.get(workspaceFingerprint) ?? workspaceFingerprint,
             workspaceFingerprint,
             ...(absolutePath ? { absolutePath } : {}),
             favoriteCount: 0,
@@ -159,10 +160,7 @@ export function buildConversationSidebarModel(input: {
         const anchorThreads = input.threads.filter(
             (thread) => thread.anchorKind === 'workspace' && `ws:${thread.anchorId ?? ''}` === anchorKey
         );
-        group.rows =
-            input.groupView === 'branch'
-                ? buildBranchRows(anchorThreads)
-                : buildWorkspaceRows(anchorThreads);
+        group.rows = input.groupView === 'branch' ? buildBranchRows(anchorThreads) : buildWorkspaceRows(anchorThreads);
         group.favoriteCount = anchorThreads.filter((thread) => thread.isFavorite).length;
         group.threadCount = anchorThreads.length;
     }
@@ -173,8 +171,6 @@ export function buildConversationSidebarModel(input: {
         selectedThread,
         workspaceGroups: Array.from(grouped.values()),
         playgroundRows:
-            input.groupView === 'branch'
-                ? buildBranchRows(playgroundThreads)
-                : buildWorkspaceRows(playgroundThreads),
+            input.groupView === 'branch' ? buildBranchRows(playgroundThreads) : buildWorkspaceRows(playgroundThreads),
     };
 }

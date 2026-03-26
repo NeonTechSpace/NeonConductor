@@ -35,9 +35,7 @@ if (rootElement) {
             <StrictMode>
                 <RendererBootStatusBootstrap />
                 <Providers>
-                    <RouterProvider
-                        router={router}
-                    />
+                    <RouterProvider router={router} />
                 </Providers>
             </StrictMode>
             {/* Keep DevTools outside StrictMode to avoid dev-only WS close noise from double-mount. */}

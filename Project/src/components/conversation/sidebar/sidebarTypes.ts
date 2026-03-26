@@ -1,6 +1,6 @@
 import type { ThreadListRecord } from '@/app/backend/persistence/types';
-import type { WorkspacePreferenceRecord, WorkspaceRootRecord } from '@/app/backend/runtime/contracts';
 
+import type { WorkspacePreferenceRecord, WorkspaceRootRecord } from '@/shared/contracts';
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 export interface SidebarBrowserWorkspaceGroup {

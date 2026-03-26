@@ -15,9 +15,9 @@ let currentBootStatus: BootStatusSnapshot = INITIAL_BOOT_STATUS_SNAPSHOT;
 const splashMascotSourceArgumentPrefix = '--neon-splash-mascot-source=';
 
 function readSplashMascotSource(): string | null {
-    const encodedSource = process.argv.find((argument) => argument.startsWith(splashMascotSourceArgumentPrefix))?.slice(
-        splashMascotSourceArgumentPrefix.length
-    );
+    const encodedSource = process.argv
+        .find((argument) => argument.startsWith(splashMascotSourceArgumentPrefix))
+        ?.slice(splashMascotSourceArgumentPrefix.length);
     if (!encodedSource) {
         return null;
     }

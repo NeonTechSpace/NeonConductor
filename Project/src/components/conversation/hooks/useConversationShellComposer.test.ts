@@ -1,8 +1,8 @@
 import { err, ok } from 'neverthrow';
 import { describe, expect, it, vi } from 'vitest';
 
-import { preparePendingComposerImage } from '@/web/components/conversation/hooks/useConversationShellComposer';
 import { composerImageCompressionError } from '@/web/components/conversation/hooks/composerImageCompressionErrors';
+import { preparePendingComposerImage } from '@/web/components/conversation/hooks/useConversationShellComposer';
 
 describe('preparePendingComposerImage', () => {
     it('marks the image failed and progresses the queue when preparation throws', async () => {
@@ -71,9 +71,7 @@ describe('preparePendingComposerImage', () => {
             clientId: 'client_1',
             sourceFile: new File(['image'], 'too-large.png', { type: 'image/png' }),
             prepareImageAttachment: vi.fn(() =>
-                Promise.resolve(
-                    err(composerImageCompressionError('size_limit_exceeded', 'Image is too large.'))
-                )
+                Promise.resolve(err(composerImageCompressionError('size_limit_exceeded', 'Image is too large.')))
             ),
             onPreparedImage,
             onFailedImage,

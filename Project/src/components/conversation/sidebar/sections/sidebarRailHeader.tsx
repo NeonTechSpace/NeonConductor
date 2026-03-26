@@ -21,9 +21,7 @@ export function SidebarRailHeader({
 }: SidebarRailHeaderProps) {
     if (compact) {
         return (
-            <div className='border-border/70 flex items-center justify-center border-b px-3 py-3'>
-                {primaryAction}
-            </div>
+            <div className='border-border/70 flex items-center justify-center border-b px-3 py-3'>{primaryAction}</div>
         );
     }
 
@@ -49,7 +47,7 @@ export function SidebarRailHeader({
             {feedbackMessage ? (
                 <div
                     aria-live='polite'
-                    className='rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive'>
+                    className='border-destructive/20 bg-destructive/10 text-destructive rounded-2xl border px-3 py-2 text-xs'>
                     {feedbackMessage}
                 </div>
             ) : null}
@@ -58,8 +56,8 @@ export function SidebarRailHeader({
                     aria-live='polite'
                     className={`rounded-2xl px-3 py-2 text-xs ${
                         statusTone === 'error'
-                            ? 'border border-destructive/20 bg-destructive/10 text-destructive'
-                            : 'border border-border/70 bg-background/80 text-muted-foreground'
+                            ? 'border-destructive/20 bg-destructive/10 text-destructive border'
+                            : 'border-border/70 bg-background/80 text-muted-foreground border'
                     }`}>
                     {statusMessage}
                 </div>

@@ -5,10 +5,7 @@ import type {
 } from '@/app/backend/runtime/services/runtimeReset/types';
 import { EMPTY_COUNTS } from '@/app/backend/runtime/services/runtimeReset/types';
 
-async function resolveProfileSettingsCounts(
-    db: RuntimeResetDatabase,
-    profileId: string
-): Promise<RuntimeResetCounts> {
+async function resolveProfileSettingsCounts(db: RuntimeResetDatabase, profileId: string): Promise<RuntimeResetCounts> {
     const [
         settings,
         profileContextSettings,

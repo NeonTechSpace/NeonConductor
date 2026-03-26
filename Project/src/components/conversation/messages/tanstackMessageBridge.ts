@@ -1,14 +1,15 @@
-import type { MessagePart, ToolCallPart, ToolResultPart, UIMessage } from '@tanstack/ai';
 
 import { buildMessageCopyPayloads } from '@/web/components/conversation/messages/messageCopy';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
 import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
-import { parseAssistantStatusPartPayload } from '@/shared/contracts/types/messagePart';
 import { readImageMimeType } from '@/app/shared/imageMimeType';
 
 import type { EntityId } from '@/shared/contracts';
+import { parseAssistantStatusPartPayload } from '@/shared/contracts/types/messagePart';
+
+import type { MessagePart, ToolCallPart, ToolResultPart, UIMessage } from '@tanstack/ai';
 
 export interface ConversationTanstackMessage {
     id: string;
@@ -148,7 +149,8 @@ function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[])
 
         if (part.partType === 'tool_call' && message.role === 'assistant') {
             const toolName = typeof part.payload['toolName'] === 'string' ? part.payload['toolName'] : 'tool';
-            const argumentsText = typeof part.payload['argumentsText'] === 'string' ? part.payload['argumentsText'] : '';
+            const argumentsText =
+                typeof part.payload['argumentsText'] === 'string' ? part.payload['argumentsText'] : '';
             const callId = typeof part.payload['callId'] === 'string' ? part.payload['callId'] : part.id;
 
             projected.push({
@@ -205,7 +207,7 @@ function buildMessageParts(projectedParts: ConversationTanstackRenderPart[]): Me
                 type: 'image',
                 source: {
                     type: 'url',
-                    value: `neonconductor://media/${String(part.mediaId)}`,
+                    value: `neonconductor://media/${part.mediaId}`,
                     mimeType: part.mimeType,
                 },
                 metadata,
@@ -268,8 +270,7 @@ function buildEditableText(message: MessageRecord, uiMessage: UIMessage): string
     return editableText.trim().length > 0 ? editableText : undefined;
 }
 
-type CopyPayloadBodyEntry =
-    Parameters<typeof buildMessageCopyPayloads>[0]['body'][number];
+type CopyPayloadBodyEntry = Parameters<typeof buildMessageCopyPayloads>[0]['body'][number];
 
 function buildCopyPayloadBody(
     message: MessageRecord,
@@ -411,5 +412,7 @@ export function projectConversationTanstackMessages(
     messages: MessageRecord[],
     partsByMessageId: Map<string, MessagePartRecord[]>
 ): ConversationTanstackMessage[] {
-    return messages.map((message) => projectConversationTanstackMessage(message, partsByMessageId.get(message.id) ?? []));
+    return messages.map((message) =>
+        projectConversationTanstackMessage(message, partsByMessageId.get(message.id) ?? [])
+    );
 }

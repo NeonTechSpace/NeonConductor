@@ -71,12 +71,15 @@ describe('createNativeCheckpointForResolvedTarget', () => {
             executionTargetKind: 'workspace',
             executionTargetLabel: 'Workspace Root',
         });
-        mocks.captureExecutionTargetSnapshot.mockResolvedValue(
-            err({
-                reason: 'snapshot_invalid',
-                detail: 'Snapshot capture failed.',
-            })
+        const snapshotResult = err({
+            reason: 'snapshot_invalid',
+            detail: 'Snapshot capture failed.',
+        });
+        snapshotResult.match(
+            () => undefined,
+            () => undefined
         );
+        mocks.captureExecutionTargetSnapshot.mockResolvedValue(snapshotResult);
 
         const result = await createNativeCheckpointForResolvedTarget({
             profileId: 'profile_local_default',
@@ -85,7 +88,13 @@ describe('createNativeCheckpointForResolvedTarget', () => {
             runId: 'run_1',
             topLevelTab: 'agent',
             modeKey: 'code',
-            workspaceContext: { kind: 'workspace', workspaceFingerprint: 'ws_1', absolutePath: 'C:/repo', label: 'Workspace Root', executionEnvironmentMode: 'local' },
+            workspaceContext: {
+                kind: 'workspace',
+                workspaceFingerprint: 'ws_1',
+                absolutePath: 'C:/repo',
+                label: 'Workspace Root',
+                executionEnvironmentMode: 'local',
+            },
             createdByKind: 'system',
             checkpointKind: 'auto',
         });

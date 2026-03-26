@@ -27,9 +27,8 @@ describe('secret store', () => {
     });
 
     it('supports explicit in-memory injection for tests', async () => {
-        const { InMemorySecretStore, getSecretStore, getSecretStoreInfo, initializeSecretStore } = await import(
-            '@/app/backend/secrets/store'
-        );
+        const { InMemorySecretStore, getSecretStore, getSecretStoreInfo, initializeSecretStore } =
+            await import('@/app/backend/secrets/store');
         const injectedStore = new InMemorySecretStore();
         initializeSecretStore(injectedStore);
         const profileId = 'profile_test';
@@ -58,7 +57,8 @@ describe('secret store', () => {
         vi.resetModules();
         const { resetPersistenceForTests } = await import('@/app/backend/persistence/db');
         const { providerSecretStore } = await import('@/app/backend/persistence/stores');
-        const { getSecretStore, getSecretStoreInfo, initializeSecretStore } = await import('@/app/backend/secrets/store');
+        const { getSecretStore, getSecretStoreInfo, initializeSecretStore } =
+            await import('@/app/backend/secrets/store');
         const profileId = getDefaultProfileId();
         resetPersistenceForTests();
         initializeSecretStore();

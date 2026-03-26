@@ -2,13 +2,13 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { mapRunRecord } from '@/app/backend/persistence/stores/conversation/runs/runStoreMapper';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { RunRecord } from '@/app/backend/persistence/types';
+import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 import type {
     ProviderAuthMethod,
     RunStatus,
     RuntimeProviderId,
     RuntimeRunOptions,
 } from '@/app/backend/runtime/contracts';
-import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 
 export interface CreateRunInput {
@@ -175,4 +175,3 @@ export class RunStore {
 }
 
 export const runStore = new RunStore();
-

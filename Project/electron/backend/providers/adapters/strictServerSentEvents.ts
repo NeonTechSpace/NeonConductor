@@ -39,10 +39,7 @@ export function parseStrictServerSentEventFrame(input: {
             continue;
         }
 
-        return errProviderAdapter(
-            'invalid_payload',
-            `${input.sourceLabel} contained malformed SSE line "${line}".`
-        );
+        return errProviderAdapter('invalid_payload', `${input.sourceLabel} contained malformed SSE line "${line}".`);
     }
 
     if (dataLines.length === 0) {
@@ -70,7 +67,7 @@ export async function consumeStrictServerSentEvents(input: {
         const decoder = new TextDecoder();
         let buffer = '';
 
-        while (true) {
+        for (;;) {
             const { done, value } = await reader.read();
             buffer += decoder.decode(value, { stream: !done });
             buffer = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');

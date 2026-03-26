@@ -5,13 +5,13 @@ import { useEffect } from 'react';
 import { useNeonObservabilityStreamStore } from '@/web/lib/observability/eventStream';
 import { applyNeonObservabilitySubscriptionPayload } from '@/web/lib/observability/subscription';
 import { createTrpcNeonObservabilityTransport } from '@/web/lib/observability/transport';
-import { queryClient, trpcClient } from '@/web/lib/providers/trpcCore';
 import {
     isRuntimeEventRecord,
     isSubscriptionControlPayload,
     isWindowStateEvent,
     normalizeSubscriptionPayload,
 } from '@/web/lib/providers/subscriptionPayloads';
+import { queryClient, trpcClient } from '@/web/lib/providers/trpcCore';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 import { invalidateQueriesForRuntimeEvent } from '@/web/lib/runtime/runtimeEventInvalidation';
 import { trpcClient as runtimeClient } from '@/web/lib/trpcClient';

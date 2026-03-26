@@ -1,14 +1,19 @@
 import { providerStore } from '@/app/backend/persistence/stores';
-import { providerIds } from '@/app/backend/runtime/contracts';
+import { prepareRunnableCandidate } from '@/app/backend/runtime/services/runExecution/compatibility';
+import {
+    errRunExecution,
+    okRunExecution,
+    type RunExecutionResult,
+} from '@/app/backend/runtime/services/runExecution/errors';
+import type { PreparedRunnableCandidate, ResolvedRunTarget } from '@/app/backend/runtime/services/runExecution/types';
+
 import type {
     ComposerImageAttachmentInput,
     ModeDefinition,
     RuntimeRunOptions,
     TopLevelTab,
-} from '@/app/backend/runtime/contracts';
-import { errRunExecution, okRunExecution, type RunExecutionResult } from '@/app/backend/runtime/services/runExecution/errors';
-import { prepareRunnableCandidate } from '@/app/backend/runtime/services/runExecution/compatibility';
-import type { PreparedRunnableCandidate, ResolvedRunTarget } from '@/app/backend/runtime/services/runExecution/types';
+} from '@/shared/contracts';
+import { providerIds } from '@/shared/contracts';
 
 interface ResolveRunnableRunTargetInput {
     profileId: string;
@@ -69,3 +74,4 @@ export async function resolveFirstRunnableRunTarget(
 
     return okRunExecution(null);
 }
+

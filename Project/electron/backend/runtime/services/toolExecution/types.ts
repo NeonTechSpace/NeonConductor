@@ -41,12 +41,7 @@ export type ToolInvocationOutcome =
           args: Record<string, unknown>;
           at: string;
           policy: ToolExecutionPolicy;
-          reason:
-              | 'policy_denied'
-              | 'detached_scope'
-              | 'workspace_unresolved'
-              | 'outside_workspace'
-              | 'ignored_path';
+          reason: 'policy_denied' | 'detached_scope' | 'workspace_unresolved' | 'outside_workspace' | 'ignored_path';
       }
     | {
           kind: 'failed';
@@ -54,23 +49,13 @@ export type ToolInvocationOutcome =
           message: string;
           args: Record<string, unknown>;
           at: string;
-          error:
-              | 'tool_not_found'
-              | 'invalid_args'
-              | 'not_implemented'
-              | 'execution_failed';
+          error: 'tool_not_found' | 'invalid_args' | 'not_implemented' | 'execution_failed';
           policy?: ToolExecutionPolicy;
       };
 
-export type ToolBlockedInvocationOutcome = Extract<
-    ToolInvocationOutcome,
-    { kind: 'approval_required' | 'denied' }
->;
+export type ToolBlockedInvocationOutcome = Extract<ToolInvocationOutcome, { kind: 'approval_required' | 'denied' }>;
 
-export type ToolDispatchInvocationOutcome = Extract<
-    ToolInvocationOutcome,
-    { kind: 'executed' | 'failed' }
->;
+export type ToolDispatchInvocationOutcome = Extract<ToolInvocationOutcome, { kind: 'executed' | 'failed' }>;
 
 export type ToolExecutionResult =
     | {

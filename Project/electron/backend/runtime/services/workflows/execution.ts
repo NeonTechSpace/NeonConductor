@@ -1,7 +1,7 @@
 import { permissionStore, toolStore } from '@/app/backend/persistence/stores';
 import type { EntityId } from '@/app/backend/runtime/contracts';
-import { getExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
 import { resolveOverrideAndPresetPermissionPolicy } from '@/app/backend/runtime/services/permissions/policyResolver';
+import { getExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { invokeToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers';

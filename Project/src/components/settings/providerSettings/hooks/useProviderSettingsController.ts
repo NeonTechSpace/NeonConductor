@@ -160,7 +160,7 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         mutations.cancelAuthMutation.error?.message ??
         statusMessage;
     const feedbackTone =
-        mutations.setDefaultMutation.error ??
+        (mutations.setDefaultMutation.error ??
         mutations.setApiKeyMutation.error ??
         mutations.setConnectionProfileMutation.error ??
         mutations.setExecutionPreferenceMutation.error ??
@@ -169,7 +169,7 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         mutations.setOrganizationMutation.error ??
         mutations.startAuthMutation.error ??
         mutations.pollAuthMutation.error ??
-        mutations.cancelAuthMutation.error
+        mutations.cancelAuthMutation.error)
             ? ('error' as const)
             : statusMessage
               ? ('success' as const)

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ProfileStoreDb } from '@/app/backend/persistence/stores/profile/profileStoreHelpers/types';
-import { canonicalizeProviderModelId, kiloFrontierModelId } from '@/shared/kiloModels';
 import { isJsonString, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+
+import { canonicalizeProviderModelId, kiloFrontierModelId } from '@/shared/kiloModels';
 
 const FALLBACK_DEFAULT_PROVIDER_ID = 'kilo';
 const FALLBACK_DEFAULT_MODEL_ID = kiloFrontierModelId;

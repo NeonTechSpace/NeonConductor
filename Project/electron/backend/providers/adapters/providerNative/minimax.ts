@@ -4,17 +4,6 @@ import {
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
 import { resolveOpenAIEndpoints } from '@/app/backend/providers/adapters/openai/endpoints';
-import {
-    parseChatCompletionsPayload,
-    parseStructuredToolCall,
-    type RuntimeParsedCompletion,
-    type RuntimeParsedPart,
-} from '@/app/backend/providers/adapters/runtimePayload';
-import type {
-    ProviderRuntimeInput,
-    ProviderRuntimePart,
-    ProviderRuntimeUsage,
-} from '@/app/backend/providers/types';
 import type {
     ProviderNativeCompatibilityContext,
     ProviderNativeHttpRequest,
@@ -22,6 +11,13 @@ import type {
     ProviderNativeStreamEventResult,
     ProviderNativeStreamState,
 } from '@/app/backend/providers/adapters/providerNative';
+import {
+    parseChatCompletionsPayload,
+    parseStructuredToolCall,
+    type RuntimeParsedCompletion,
+    type RuntimeParsedPart,
+} from '@/app/backend/providers/adapters/runtimePayload';
+import type { ProviderRuntimeInput, ProviderRuntimePart, ProviderRuntimeUsage } from '@/app/backend/providers/types';
 
 interface MiniMaxToolCallAccumulator {
     index: number;
@@ -161,9 +157,7 @@ function buildChatCompletionsBody(input: ProviderRuntimeInput): Record<string, u
             messages.push(
                 ...message.parts
                     .filter(
-                        (
-                            part
-                        ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
+                        (part): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
                             part.type === 'tool_result'
                     )
                     .map((part) => ({
@@ -176,15 +170,11 @@ function buildChatCompletionsBody(input: ProviderRuntimeInput): Record<string, u
         }
 
         const contentParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+            (part): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
                 part.type === 'text' || part.type === 'image'
         );
         const toolCallParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+            (part): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
         );
 
         const content =
@@ -253,7 +243,9 @@ function buildChatCompletionsBody(input: ProviderRuntimeInput): Record<string, u
 function flushMiniMaxToolCalls(state: MiniMaxStreamState): ProviderAdapterResult<ProviderRuntimePart[]> {
     const toolCallParts: ProviderRuntimePart[] = [];
 
-    for (const accumulator of [...state.toolCallAccumulators.values()].sort((left, right) => left.index - right.index)) {
+    for (const accumulator of [...state.toolCallAccumulators.values()].sort(
+        (left, right) => left.index - right.index
+    )) {
         const parsedPart = parseStructuredToolCall({
             callId: accumulator.callId,
             toolName: accumulator.toolName,
@@ -266,7 +258,10 @@ function flushMiniMaxToolCalls(state: MiniMaxStreamState): ProviderAdapterResult
 
         const callId = parsedPart.value.payload['callId'];
         if (typeof callId !== 'string') {
-            return errProviderAdapter('invalid_payload', 'MiniMax stream emitted a tool call without a stable call id.');
+            return errProviderAdapter(
+                'invalid_payload',
+                'MiniMax stream emitted a tool call without a stable call id.'
+            );
         }
 
         if (state.emittedToolCallIds.has(callId)) {
@@ -281,7 +276,11 @@ function flushMiniMaxToolCalls(state: MiniMaxStreamState): ProviderAdapterResult
     return okProviderAdapter(toolCallParts);
 }
 
-function readToolCallAccumulatorById(state: MiniMaxStreamState, callId: string, excludeIndex: number): MiniMaxToolCallAccumulator | undefined {
+function readToolCallAccumulatorById(
+    state: MiniMaxStreamState,
+    callId: string,
+    excludeIndex: number
+): MiniMaxToolCallAccumulator | undefined {
     for (const accumulator of state.toolCallAccumulators.values()) {
         if (accumulator.index !== excludeIndex && accumulator.callId === callId) {
             return accumulator;
@@ -330,7 +329,10 @@ function accumulateMiniMaxToolCalls(
             const nextToolName = readOptionalString(functionRecord?.['name']);
 
             if (nextCallId && state.emittedToolCallIds.has(nextCallId)) {
-                return errProviderAdapter('invalid_payload', `MiniMax stream reused completed tool call id "${nextCallId}".`);
+                return errProviderAdapter(
+                    'invalid_payload',
+                    `MiniMax stream reused completed tool call id "${nextCallId}".`
+                );
             }
 
             if (nextCallId && current.callId && current.callId !== nextCallId) {

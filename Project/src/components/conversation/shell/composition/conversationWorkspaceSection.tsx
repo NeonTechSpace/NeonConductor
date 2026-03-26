@@ -1,8 +1,9 @@
-import { ConversationWorkspaceHeader } from '@/web/components/conversation/shell/composition/conversationWorkspaceHeader';
 import { SessionWorkspacePanel } from '@/web/components/conversation/sessions/sessionWorkspacePanel';
 import type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
+import { ConversationWorkspaceHeader } from '@/web/components/conversation/shell/composition/conversationWorkspaceHeader';
 
 import type { ThreadListRecord } from '@/app/backend/persistence/types';
+
 import type { TopLevelTab } from '@/shared/contracts';
 
 interface ConversationWorkspaceSectionHeaderState {

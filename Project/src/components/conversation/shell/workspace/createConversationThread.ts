@@ -1,13 +1,13 @@
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
-import { resolveTabSwitchNotice } from '@/web/components/conversation/shell/workspace/tabSwitch';
-import type { ThreadEntrySubmitResult } from '@/web/components/conversation/sidebar/sidebarTypes';
-import { trpc } from '@/web/trpc/client';
 
 import type { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
 import type { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import type { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import { resolveTabSwitchNotice } from '@/web/components/conversation/shell/workspace/tabSwitch';
+import type { ThreadEntrySubmitResult } from '@/web/components/conversation/sidebar/sidebarTypes';
+import { trpc } from '@/web/trpc/client';
 
 import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
@@ -24,10 +24,7 @@ interface CreateConversationThreadInput {
     sessionActions: ReturnType<typeof useConversationShellSessionActions>;
     onTopLevelTabChange: (nextTab: TopLevelTab) => void;
     onSelectedWorkspaceFingerprintChange: ((workspaceFingerprint: string | undefined) => void) | undefined;
-    onApplySessionWorkspaceUpdate: (input: {
-        session: SessionSummaryRecord;
-        thread?: ThreadListRecord;
-    }) => void;
+    onApplySessionWorkspaceUpdate: (input: { session: SessionSummaryRecord; thread?: ThreadListRecord }) => void;
     onSetTabSwitchNotice: (notice: string | undefined) => void;
     onFocusComposerRequest: () => void;
 }

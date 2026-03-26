@@ -64,11 +64,7 @@ export function ProviderAuthFlowSection({
 
                         <div className='flex flex-wrap gap-2'>
                             {canStartDeviceCode ? (
-                                <Button
-                                    type='button'
-                                    size='sm'
-                                    disabled={isStartingAuth}
-                                    onClick={onStartDeviceCode}>
+                                <Button type='button' size='sm' disabled={isStartingAuth} onClick={onStartDeviceCode}>
                                     {isStartingAuth ? 'Opening browser…' : 'Log In to Kilo'}
                                 </Button>
                             ) : null}
@@ -94,7 +90,12 @@ export function ProviderAuthFlowSection({
                             the Kilo website, then return here. Polling continues in the background.
                         </p>
                         <div className='mt-3 flex flex-wrap gap-2'>
-                            <Button type='button' size='sm' variant='outline' disabled={isPollingAuth} onClick={onPollNow}>
+                            <Button
+                                type='button'
+                                size='sm'
+                                variant='outline'
+                                disabled={isPollingAuth}
+                                onClick={onPollNow}>
                                 {isPollingAuth ? 'Polling…' : 'Check Login Status'}
                             </Button>
                             <Button

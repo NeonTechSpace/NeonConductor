@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
-import { providerCatalogStore, runtimeContractProfileId, registerRuntimeContractHooks, createCaller, createSessionInScope, defaultRuntimeOptions, getPersistence, waitForRunStatus } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    providerCatalogStore,
+    runtimeContractProfileId,
+    registerRuntimeContractHooks,
+    createCaller,
+    createSessionInScope,
+    defaultRuntimeOptions,
+    getPersistence,
+    waitForRunStatus,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 

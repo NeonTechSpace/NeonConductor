@@ -6,7 +6,7 @@ import {
     protocolTestProfileId,
     resolveProviderRuntimePathContextMock,
     resolveRuntimeProtocolForTest,
-} from './protocol.shared.test';
+} from '@/app/backend/runtime/services/runExecution/protocol.shared.test';
 
 describe('resolveRuntimeProtocol direct provider routing', () => {
     it('selects the direct Anthropic runtime path for Anthropic-native models on a compatible provider path', async () => {
@@ -139,3 +139,4 @@ describe('resolveRuntimeProtocol direct provider routing', () => {
         expect(result.error.code).toBe('runtime_option_invalid');
     });
 });
+

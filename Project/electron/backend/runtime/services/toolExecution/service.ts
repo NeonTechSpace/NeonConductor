@@ -4,23 +4,21 @@ import type { ToolInvocationObservabilityContext, ToolInvokeInput } from '@/app/
 import { mcpService } from '@/app/backend/runtime/services/mcp/service';
 import { publishToolStateChangedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
 import { getExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
-import {
-    buildBlockedToolOutcome,
-    buildDeniedToolOutcome,
-} from '@/app/backend/runtime/services/toolExecution/blocked';
+import { buildBlockedToolOutcome, buildDeniedToolOutcome } from '@/app/backend/runtime/services/toolExecution/blocked';
 import {
     boundaryDefaultPolicy,
     boundaryResource,
     resolveToolDecision,
 } from '@/app/backend/runtime/services/toolExecution/decision';
-import {
-    emitToolCompletedEvent,
-    emitToolFailedEvent,
-} from '@/app/backend/runtime/services/toolExecution/events';
+import { emitToolCompletedEvent, emitToolFailedEvent } from '@/app/backend/runtime/services/toolExecution/events';
 import { invokeToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers';
 import { findToolById } from '@/app/backend/runtime/services/toolExecution/lookup';
 import { serializeToolInvocationOutcome } from '@/app/backend/runtime/services/toolExecution/results';
-import { isIgnoredWorkspacePath, isPathInsideWorkspace, resolveWorkspaceToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
+import {
+    isIgnoredWorkspacePath,
+    isPathInsideWorkspace,
+    resolveWorkspaceToolPath,
+} from '@/app/backend/runtime/services/toolExecution/safety';
 import {
     buildShellApprovalContext,
     type ShellApprovalContext,
@@ -45,11 +43,7 @@ interface ToolRequestContext {
     workspaceFingerprint?: string;
     workspaceLabel?: string;
     workspaceRootPath?: string;
-    workspaceRequirement:
-        | 'not_required'
-        | 'resolved'
-        | 'detached_scope'
-        | 'workspace_unresolved';
+    workspaceRequirement: 'not_required' | 'resolved' | 'detached_scope' | 'workspace_unresolved';
     resolvedWorkspacePath?: {
         absolutePath: string;
         workspaceRootPath: string;
@@ -341,10 +335,7 @@ async function resolveToolApprovalDecision(input: {
         scopeKind: 'tool',
         toolDefaultPolicy: context.definition.tool.permissionPolicy,
         summary: {
-            title:
-                toolId === 'run_command'
-                    ? 'Shell Command Approval'
-                    : `${context.definition.tool.label} Request`,
+            title: toolId === 'run_command' ? 'Shell Command Approval' : `${context.definition.tool.label} Request`,
             detail:
                 toolId === 'run_command'
                     ? `${input.executionPreset} preset requires approval for "${context.shellApprovalContext?.commandText ?? ''}" in ${context.workspaceLabel ?? 'the active workspace'}.`
@@ -353,9 +344,7 @@ async function resolveToolApprovalDecision(input: {
         ...(context.shellApprovalContext?.approvalCandidates
             ? { approvalCandidates: context.shellApprovalContext.approvalCandidates }
             : {}),
-        ...(context.shellApprovalContext?.commandText
-            ? { commandText: context.shellApprovalContext.commandText }
-            : {}),
+        ...(context.shellApprovalContext?.commandText ? { commandText: context.shellApprovalContext.commandText } : {}),
         denyMessage:
             toolId === 'run_command'
                 ? 'Tool "run_command" is only available in workspace-bound agent.code and agent.debug sessions.'
@@ -533,10 +522,7 @@ function publishDispatchOutcomeObservability(input: {
     publishToolStateChangedObservabilityEvent(event);
 }
 
-function logBlockedOutcome(input: {
-    request: ToolInvokeInput;
-    outcome: BlockedToolOutcome;
-}): void {
+function logBlockedOutcome(input: { request: ToolInvokeInput; outcome: BlockedToolOutcome }): void {
     appLog[input.outcome.kind === 'denied' ? 'warn' : 'info']({
         tag: 'tool-execution',
         message:
@@ -548,10 +534,7 @@ function logBlockedOutcome(input: {
     });
 }
 
-function logDispatchOutcome(input: {
-    request: ToolInvokeInput;
-    outcome: DispatchToolOutcome;
-}): void {
+function logDispatchOutcome(input: { request: ToolInvokeInput; outcome: DispatchToolOutcome }): void {
     if (input.outcome.kind === 'failed') {
         appLog.warn({
             tag: 'tool-execution',

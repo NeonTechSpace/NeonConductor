@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createCaller, createSessionInScope, defaultRuntimeOptions, registerRuntimeContractHooks, runtimeContractProfileId, waitForRunStatus } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    createCaller,
+    createSessionInScope,
+    defaultRuntimeOptions,
+    registerRuntimeContractHooks,
+    runtimeContractProfileId,
+    waitForRunStatus,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 

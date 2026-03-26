@@ -1,5 +1,4 @@
 import { providerCatalogStore } from '@/app/backend/persistence/stores';
-
 import type { InvalidProviderModelDiagnostic } from '@/app/backend/persistence/stores/provider/providerCatalogStore';
 import type { ProviderCatalogState } from '@/app/backend/providers/service/types';
 
@@ -36,7 +35,10 @@ export async function resolveProviderCatalogState(input: {
 
     const snapshots = await providerCatalogStore.listDiscoverySnapshotsByProfile(input.profileId);
     const latestModelError = snapshots
-        .filter((snapshot) => snapshot.providerId === input.providerId && snapshot.kind === 'models' && snapshot.status === 'error')
+        .filter(
+            (snapshot) =>
+                snapshot.providerId === input.providerId && snapshot.kind === 'models' && snapshot.status === 'error'
+        )
         .sort((left, right) => right.fetchedAt.localeCompare(left.fetchedAt))[0];
 
     if (!latestModelError) {

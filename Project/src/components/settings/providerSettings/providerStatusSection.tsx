@@ -107,7 +107,7 @@ export function ProviderStatusSection({
                     <dl className='space-y-2 text-sm'>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Auth state</dt>
-                            <dd className='min-w-0 break-words font-medium'>{effectiveAuthState}</dd>
+                            <dd className='min-w-0 font-medium break-words'>{effectiveAuthState}</dd>
                         </div>
                         <div className='grid grid-cols-[8rem_1fr] gap-2'>
                             <dt className='text-muted-foreground'>Method</dt>
@@ -164,7 +164,7 @@ export function ProviderStatusSection({
                             </div>
                             <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                 <dt className='text-muted-foreground'>Auth guidance</dt>
-                                <dd className='text-muted-foreground min-w-0 break-words text-xs leading-5'>
+                                <dd className='text-muted-foreground min-w-0 text-xs leading-5 break-words'>
                                     {isOpenAICodex
                                         ? effectiveAuthState === 'authenticated'
                                             ? 'OpenAI Codex account context is ready.'
@@ -193,7 +193,9 @@ export function ProviderStatusSection({
                             </div>
                             <div className='sm:col-span-2'>
                                 <dt className='text-muted-foreground text-xs'>Billed cost</dt>
-                                <dd className='mt-1 font-medium'>{formatMicrounits(usageSummary.totalCostMicrounits)}</dd>
+                                <dd className='mt-1 font-medium'>
+                                    {formatMicrounits(usageSummary.totalCostMicrounits)}
+                                </dd>
                             </div>
                         </dl>
                     ) : (
@@ -203,7 +205,14 @@ export function ProviderStatusSection({
                     )}
                 </StatusCard>
 
-                <StatusCard title={provider.id === 'kilo' ? 'Provider Extras' : isOpenAICodex ? 'OpenAI Codex Windows' : 'Provider Extras'}>
+                <StatusCard
+                    title={
+                        provider.id === 'kilo'
+                            ? 'Provider Extras'
+                            : isOpenAICodex
+                              ? 'OpenAI Codex Windows'
+                              : 'Provider Extras'
+                    }>
                     {provider.id === 'kilo' ? (
                         isLoadingAccountContext ? (
                             <p className='text-muted-foreground text-xs'>Loading organization and balance state...</p>
@@ -217,20 +226,28 @@ export function ProviderStatusSection({
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Org count</dt>
-                                    <dd className='min-w-0 break-words'>{formatInteger(accountContext?.organizations.length)}</dd>
+                                    <dd className='min-w-0 break-words'>
+                                        {formatInteger(accountContext?.organizations.length)}
+                                    </dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Balance</dt>
                                     <dd className='min-w-0 break-words'>
                                         <SensitiveValue
-                                            value={accountContext?.balance ? formatBalance(accountContext.balance) : undefined}
+                                            value={
+                                                accountContext?.balance
+                                                    ? formatBalance(accountContext.balance)
+                                                    : undefined
+                                            }
                                             category='balance'
                                         />
                                     </dd>
                                 </div>
                                 <div className='grid grid-cols-[8rem_1fr] gap-2'>
                                     <dt className='text-muted-foreground'>Balance updated</dt>
-                                    <dd className='min-w-0 break-words'>{formatDateTime(accountContext?.balance?.updatedAt)}</dd>
+                                    <dd className='min-w-0 break-words'>
+                                        {formatDateTime(accountContext?.balance?.updatedAt)}
+                                    </dd>
                                 </div>
                             </dl>
                         )
@@ -241,7 +258,8 @@ export function ProviderStatusSection({
                                     <div>
                                         <p className='text-muted-foreground text-xs'>Account limits</p>
                                         <p className='text-muted-foreground mt-1 text-[11px]'>
-                                            Last refreshed {formatElapsedTimeFromTimestamp(openAISubscriptionRateLimits?.fetchedAt)}
+                                            Last refreshed{' '}
+                                            {formatElapsedTimeFromTimestamp(openAISubscriptionRateLimits?.fetchedAt)}
                                             {rateLimitsFetchedAt ? ` · ${formatDateTime(rateLimitsFetchedAt)}` : ''}
                                         </p>
                                         {hasStaleOpenAICodexSnapshot ? (
@@ -260,7 +278,9 @@ export function ProviderStatusSection({
                                     </Button>
                                 </div>
                                 {isLoadingOpenAIRateLimits ? (
-                                    <p className='text-muted-foreground mt-1 text-xs'>Loading OpenAI Codex account limits...</p>
+                                    <p className='text-muted-foreground mt-1 text-xs'>
+                                        Loading OpenAI Codex account limits...
+                                    </p>
                                 ) : openAISubscriptionRateLimits?.source === 'chatgpt_wham' ? (
                                     <dl className='mt-2 grid gap-2 sm:grid-cols-2'>
                                         <div>
@@ -275,7 +295,8 @@ export function ProviderStatusSection({
                                                 {formatPercent(openAISubscriptionRateLimits.primary?.usedPercent)}
                                             </dd>
                                             <dd className='text-muted-foreground mt-1 text-[11px]'>
-                                                Resets {formatResetCountdown(openAISubscriptionRateLimits.primary?.resetsAt)}
+                                                Resets{' '}
+                                                {formatResetCountdown(openAISubscriptionRateLimits.primary?.resetsAt)}
                                             </dd>
                                         </div>
                                         <div className='sm:col-span-2'>
@@ -284,7 +305,8 @@ export function ProviderStatusSection({
                                                 {formatPercent(openAISubscriptionRateLimits.secondary?.usedPercent)}
                                             </dd>
                                             <dd className='text-muted-foreground mt-1 text-[11px]'>
-                                                Resets {formatResetCountdown(openAISubscriptionRateLimits.secondary?.resetsAt)}
+                                                Resets{' '}
+                                                {formatResetCountdown(openAISubscriptionRateLimits.secondary?.resetsAt)}
                                             </dd>
                                         </div>
                                     </dl>
@@ -299,7 +321,9 @@ export function ProviderStatusSection({
                             <div>
                                 <p className='text-muted-foreground text-xs'>Local subscription windows</p>
                                 {isLoadingOpenAIUsage ? (
-                                    <p className='text-muted-foreground mt-1 text-xs'>Loading local OpenAI Codex usage...</p>
+                                    <p className='text-muted-foreground mt-1 text-xs'>
+                                        Loading local OpenAI Codex usage...
+                                    </p>
                                 ) : openAISubscriptionUsage ? (
                                     <dl className='mt-2 grid gap-2 sm:grid-cols-2'>
                                         <div>
@@ -332,4 +356,3 @@ export function ProviderStatusSection({
         </section>
     );
 }
-

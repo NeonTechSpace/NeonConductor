@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { useNeonObservabilityStreamStore } from '@/web/lib/observability/eventStream';
 
-import type { NeonObservabilityEvent } from '@/app/backend/runtime/contracts';
+import type { NeonObservabilityEvent } from '@/shared/contracts';
 
 export interface NeonRuntimeEventFilters {
     profileId: string;
@@ -60,19 +60,19 @@ export function NeonRuntimeDevtoolsPanel() {
     return (
         <div className='flex h-full min-h-0 flex-col gap-3 p-3 text-sm'>
             <div className='grid gap-2 md:grid-cols-4'>
-                <div className='rounded-md border border-border/60 bg-card/70 p-2'>
+                <div className='border-border/60 bg-card/70 rounded-md border p-2'>
                     <div className='text-muted-foreground text-xs uppercase'>Connection</div>
                     <div className='font-medium'>{connectionState}</div>
                 </div>
-                <div className='rounded-md border border-border/60 bg-card/70 p-2'>
+                <div className='border-border/60 bg-card/70 rounded-md border p-2'>
                     <div className='text-muted-foreground text-xs uppercase'>Buffered Events</div>
                     <div className='font-medium'>{String(filteredEvents.length)}</div>
                 </div>
-                <div className='rounded-md border border-border/60 bg-card/70 p-2'>
+                <div className='border-border/60 bg-card/70 rounded-md border p-2'>
                     <div className='text-muted-foreground text-xs uppercase'>Last Sequence</div>
                     <div className='font-medium'>{String(lastSequence)}</div>
                 </div>
-                <div className='rounded-md border border-border/60 bg-card/70 p-2'>
+                <div className='border-border/60 bg-card/70 rounded-md border p-2'>
                     <div className='text-muted-foreground text-xs uppercase'>Last Error</div>
                     <div className='font-medium'>{lastError ?? 'None'}</div>
                 </div>
@@ -81,7 +81,7 @@ export function NeonRuntimeDevtoolsPanel() {
                 <label className='flex flex-col gap-1'>
                     <span className='text-muted-foreground text-xs uppercase'>Profile</span>
                     <input
-                        className='rounded-md border border-border/60 bg-background px-2 py-1'
+                        className='border-border/60 bg-background rounded-md border px-2 py-1'
                         value={filters.profileId}
                         onChange={(event) => {
                             setFilters((current) => ({
@@ -94,7 +94,7 @@ export function NeonRuntimeDevtoolsPanel() {
                 <label className='flex flex-col gap-1'>
                     <span className='text-muted-foreground text-xs uppercase'>Session</span>
                     <input
-                        className='rounded-md border border-border/60 bg-background px-2 py-1'
+                        className='border-border/60 bg-background rounded-md border px-2 py-1'
                         value={filters.sessionId}
                         onChange={(event) => {
                             setFilters((current) => ({
@@ -107,7 +107,7 @@ export function NeonRuntimeDevtoolsPanel() {
                 <label className='flex flex-col gap-1'>
                     <span className='text-muted-foreground text-xs uppercase'>Run</span>
                     <input
-                        className='rounded-md border border-border/60 bg-background px-2 py-1'
+                        className='border-border/60 bg-background rounded-md border px-2 py-1'
                         value={filters.runId}
                         onChange={(event) => {
                             setFilters((current) => ({
@@ -119,11 +119,11 @@ export function NeonRuntimeDevtoolsPanel() {
                 </label>
             </div>
             <div className='grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]'>
-                <div className='min-h-0 overflow-auto rounded-md border border-border/60 bg-card/50'>
+                <div className='border-border/60 bg-card/50 min-h-0 overflow-auto rounded-md border'>
                     {filteredEvents.length === 0 ? (
                         <div className='text-muted-foreground p-3'>No Neon observability events buffered.</div>
                     ) : (
-                        <ul className='divide-y divide-border/50'>
+                        <ul className='divide-border/50 divide-y'>
                             {filteredEvents.map((event) => {
                                 const isSelected = selectedEvent?.sequence === event.sequence;
                                 return (
@@ -135,11 +135,12 @@ export function NeonRuntimeDevtoolsPanel() {
                                             type='button'
                                             onClick={() => {
                                                 setSelectedSequence(event.sequence);
-                                            }}
-                                        >
+                                            }}>
                                             <div className='flex items-center justify-between gap-2'>
                                                 <span className='font-medium'>{formatEventSummary(event)}</span>
-                                                <span className='text-muted-foreground text-xs'>#{String(event.sequence)}</span>
+                                                <span className='text-muted-foreground text-xs'>
+                                                    #{String(event.sequence)}
+                                                </span>
                                             </div>
                                             <div className='text-muted-foreground text-xs'>
                                                 {event.profileId} · {event.sessionId} · {event.runId}
@@ -151,9 +152,9 @@ export function NeonRuntimeDevtoolsPanel() {
                         </ul>
                     )}
                 </div>
-                <div className='min-h-0 overflow-auto rounded-md border border-border/60 bg-card/50 p-3'>
+                <div className='border-border/60 bg-card/50 min-h-0 overflow-auto rounded-md border p-3'>
                     {selectedEvent ? (
-                        <pre className='whitespace-pre-wrap break-words text-xs'>
+                        <pre className='text-xs break-words whitespace-pre-wrap'>
                             {JSON.stringify(selectedEvent, null, 2)}
                         </pre>
                     ) : (

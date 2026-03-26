@@ -1,9 +1,11 @@
-import type { BootStatusSnapshot } from '@/app/shared/splashContract';
-import { expectTypeOf, test } from 'vitest';
+import { expect, expectTypeOf, test } from 'vitest';
 
-import type { AppRouterInputs, AppRouterOutputs } from './app-router.types.shared';
+import type { AppRouterInputs, AppRouterOutputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
+import type { BootStatusSnapshot } from '@/app/shared/splashContract';
+
 
 test('AppRouter exposes system, runtime, tooling, and registry procedure contracts to clients', () => {
+    expect.hasAssertions();
     expectTypeOf<AppRouterInputs['permission']['request']>().toExtend<{
         policy: 'ask' | 'allow' | 'deny';
         resource: string;
@@ -43,7 +45,11 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         profileId: string;
         planId: string;
         runtimeOptions: {
-            reasoning: { effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'; summary: 'auto' | 'none'; includeEncrypted: boolean };
+            reasoning: {
+                effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+                summary: 'auto' | 'none';
+                includeEncrypted: boolean;
+            };
             cache: { strategy: 'auto' | 'manual'; key?: string };
             transport: { family: 'auto' | 'openai_responses' | 'openai_chat_completions' };
         };
@@ -210,3 +216,4 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         }>;
     }>();
 });
+

@@ -12,9 +12,7 @@ interface ComposerMediaSettingsSectionProps {
     };
     isSaving: boolean;
     onDraftChange: (
-        updater: (
-            current: ComposerMediaSettingsSectionProps['draft']
-        ) => ComposerMediaSettingsSectionProps['draft']
+        updater: (current: ComposerMediaSettingsSectionProps['draft']) => ComposerMediaSettingsSectionProps['draft']
     ) => void;
     onSave: () => void;
 }
@@ -30,8 +28,8 @@ export function ComposerMediaSettingsSection({
             <div className='space-y-1'>
                 <h4 className='text-sm font-semibold'>Composer media</h4>
                 <p className='text-muted-foreground text-xs leading-5'>
-                    These app-level defaults control how many images a message can hold and how many compress at once
-                    on this device.
+                    These app-level defaults control how many images a message can hold and how many compress at once on
+                    this device.
                 </p>
             </div>
 

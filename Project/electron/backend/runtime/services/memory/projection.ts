@@ -5,7 +5,6 @@ import path from 'node:path';
 
 import { conversationStore, memoryStore, runStore, threadStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
-import { readEnumValue } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import { memoryStates, type EntityId } from '@/app/backend/runtime/contracts';
 import type {
@@ -19,10 +18,11 @@ import type {
     MemoryScanProjectionEditsResult,
     ProjectedMemoryRecord,
 } from '@/app/backend/runtime/contracts';
+import { readEnumValue } from '@/app/backend/runtime/contracts/parsers/helpers';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
-import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
-import { memoryService } from '@/app/backend/runtime/services/memory/service';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
+import { memoryService } from '@/app/backend/runtime/services/memory/service';
+import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import { appLog } from '@/app/main/logging';
 
 interface ParsedFrontmatter {
@@ -68,10 +68,7 @@ function hashContent(content: string): string {
 
 function stripQuotes(value: string): string {
     const trimmed = value.trim();
-    if (
-        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))
-    ) {
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
         return trimmed.slice(1, -1);
     }
 
@@ -184,9 +181,7 @@ function renderProjectedMemoryFile(memory: MemoryRecord): string {
         frontmatterEntries.push(['runId', memory.runId]);
     }
 
-    const header = frontmatterEntries
-        .map(([key, value]) => `${key}: ${serializeFrontmatterValue(value)}`)
-        .join('\n');
+    const header = frontmatterEntries.map(([key, value]) => `${key}: ${serializeFrontmatterValue(value)}`).join('\n');
 
     return normalizeContent(`---\n${header}\n---\n${memory.bodyMarkdown.trim()}\n`);
 }
@@ -224,11 +219,7 @@ function readObject(attributes: Record<string, unknown>, field: string): Record<
     return Object.fromEntries(Object.entries(value));
 }
 
-function readExactValue(
-    attributes: Record<string, unknown>,
-    field: string,
-    expected: string | undefined
-): void {
+function readExactValue(attributes: Record<string, unknown>, field: string, expected: string | undefined): void {
     const value = readOptionalString(attributes, field);
     if ((expected ?? undefined) !== value) {
         throw new Error(`Projected memory "${field}" cannot be changed from the canonical value.`);
@@ -461,10 +452,7 @@ async function resolveProjectionContext(
         if (input.threadId && input.threadId !== parsedThreadId) {
             return errOp('invalid_input', 'Run projection context thread does not match the selected run.');
         }
-        if (
-            input.workspaceFingerprint &&
-            input.workspaceFingerprint !== sessionThread.workspaceFingerprint
-        ) {
+        if (input.workspaceFingerprint && input.workspaceFingerprint !== sessionThread.workspaceFingerprint) {
             return errOp('invalid_input', 'Run projection context workspace does not match the selected run.');
         }
 
@@ -588,7 +576,8 @@ class MemoryProjectionService {
         if (derivedSummariesResult.isErr()) {
             appLog.warn({
                 tag: 'memory-derived',
-                message: 'Advanced memory summaries failed during projection loading; continuing without derived metadata.',
+                message:
+                    'Advanced memory summaries failed during projection loading; continuing without derived metadata.',
                 profileId: input.profileId,
                 errorCode: derivedSummariesResult.error.code,
                 errorMessage: derivedSummariesResult.error.message,
@@ -597,9 +586,7 @@ class MemoryProjectionService {
 
         const scanned = await Promise.all(
             relevantMemories.map((memory) =>
-                scanProjectedMemory(
-                    toCandidateProjection(memory, paths, resolvedContext.value.workspaceFingerprint)
-                )
+                scanProjectedMemory(toCandidateProjection(memory, paths, resolvedContext.value.workspaceFingerprint))
             )
         );
 
@@ -618,7 +605,9 @@ class MemoryProjectionService {
         });
     }
 
-    async listProjectionStatus(input: MemoryProjectionContextInput): Promise<OperationalResult<MemoryProjectionStatusResult>> {
+    async listProjectionStatus(
+        input: MemoryProjectionContextInput
+    ): Promise<OperationalResult<MemoryProjectionStatusResult>> {
         const loaded = await this.loadRelevantProjections(input);
         if (loaded.isErr()) {
             return errOp(loaded.error.code, loaded.error.message, {
@@ -632,7 +621,9 @@ class MemoryProjectionService {
         });
     }
 
-    async syncProjection(input: MemoryProjectionContextInput): Promise<OperationalResult<MemoryProjectionStatusResult>> {
+    async syncProjection(
+        input: MemoryProjectionContextInput
+    ): Promise<OperationalResult<MemoryProjectionStatusResult>> {
         const loaded = await this.loadRelevantProjections(input);
         if (loaded.isErr()) {
             return errOp(loaded.error.code, loaded.error.message, {
@@ -738,7 +729,10 @@ class MemoryProjectionService {
             return errOp('not_found', `Edited projection for memory "${input.memoryId}" was not found.`);
         }
         if (proposal.observedContentHash !== input.observedContentHash) {
-            return errOp('invalid_input', 'Edited projection changed after it was reviewed. Scan again before applying.');
+            return errOp(
+                'invalid_input',
+                'Edited projection changed after it was reviewed. Scan again before applying.'
+            );
         }
 
         if (input.decision === 'reject') {
@@ -841,11 +835,7 @@ class MemoryProjectionService {
             ),
         ]);
         const refreshed = await scanProjectedMemory(
-            toCandidateProjectionForTarget(
-                superseded.value.replacement,
-                scanned.value.paths,
-                proposal.projectionTarget
-            )
+            toCandidateProjectionForTarget(superseded.value.replacement, scanned.value.paths, proposal.projectionTarget)
         );
         return okOp({
             decision: 'accept',

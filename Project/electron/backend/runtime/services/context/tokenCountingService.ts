@@ -36,14 +36,12 @@ const ZAI_GENERAL_BASE_URL = process.env['ZAI_GENERAL_BASE_URL']?.trim() || 'htt
 function resolveEncodingName(modelId: string): TokenizerEncodingName {
     const normalizedModelId = modelId.includes('/') ? (modelId.split('/').at(-1) ?? modelId) : modelId;
     const normalizedLookup = normalizedModelId.toLowerCase();
-    return (
-        normalizedLookup.startsWith('gpt-3.5') ||
+    return normalizedLookup.startsWith('gpt-3.5') ||
         normalizedLookup.startsWith('gpt-4') ||
         normalizedLookup.startsWith('text-embedding-3') ||
         normalizedLookup.startsWith('text-embedding-ada')
-            ? 'cl100k_base'
-            : DEFAULT_ENCODING
-    );
+        ? 'cl100k_base'
+        : DEFAULT_ENCODING;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,10 +60,7 @@ function buildHeuristicEstimatedPart(message: RunContextMessage): TokenCountEsti
     };
 }
 
-async function buildEstimatedPart(input: {
-    modelId: string;
-    message: RunContextMessage;
-}): Promise<{
+async function buildEstimatedPart(input: { modelId: string; message: RunContextMessage }): Promise<{
     part: TokenCountEstimatePart;
     tokenizerError?: TokenizerRuntimeError;
 }> {
@@ -110,7 +105,8 @@ async function buildEstimatedCount(input: {
     if (tokenizerError) {
         appLog.warn({
             tag: 'context.token-count',
-            message: 'Estimated token counting fell back to heuristic sizing because the tokenizer runtime was unavailable.',
+            message:
+                'Estimated token counting fell back to heuristic sizing because the tokenizer runtime was unavailable.',
             providerId: input.providerId,
             modelId: input.modelId,
             errorCode: tokenizerError.code,

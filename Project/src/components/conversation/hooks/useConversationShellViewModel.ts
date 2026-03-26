@@ -1,5 +1,5 @@
-import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import type { WorkspaceExecutionScope } from '@/web/components/conversation/shell/deriveConversationWorkspaceExecutionScope';
+import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import type { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
 import type { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -33,7 +33,9 @@ export function useConversationShellViewModel(input: {
         }
     );
     const pendingPermissions =
-        input.queries.pendingPermissionsQuery.data?.requests.filter((request) => request.profileId === input.profileId) ?? [];
+        input.queries.pendingPermissionsQuery.data?.requests.filter(
+            (request) => request.profileId === input.profileId
+        ) ?? [];
     const permissionWorkspaces = Object.fromEntries(
         (input.queries.shellBootstrapQuery.data?.workspaceRoots ?? []).map((workspaceRoot) => [
             workspaceRoot.fingerprint,
@@ -85,4 +87,3 @@ export function useConversationShellViewModel(input: {
         workspaceScope: input.workspaceScope,
     };
 }
-

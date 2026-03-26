@@ -1,12 +1,15 @@
 import { useState } from 'react';
 
+import type {
+    PromptSettingsSnapshot,
+    TopLevelDraftState,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import { resolveTopLevelDraftValue } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/shared/contracts';
 
-import type { PromptSettingsSnapshot, TopLevelDraftState } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
-import { resolveTopLevelDraftValue } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 
 export function useModesInstructionsGlobalController(input: {
     profileId: string;
@@ -95,13 +98,12 @@ export function useModesInstructionsGlobalController(input: {
     const profileGlobalInstructions =
         profileGlobalDraft?.profileId === input.profileId
             ? profileGlobalDraft.value
-            : input.persistedSettings?.profileGlobalInstructions ?? '';
+            : (input.persistedSettings?.profileGlobalInstructions ?? '');
 
     return {
         appGlobal: {
             value: appGlobalInstructions,
-            isSaving:
-                setAppGlobalInstructionsMutation.isPending || resetAppGlobalInstructionsMutation.isPending,
+            isSaving: setAppGlobalInstructionsMutation.isPending || resetAppGlobalInstructionsMutation.isPending,
             setValue: (value: string) => {
                 setAppGlobalDraft(value);
                 input.clearFeedback();

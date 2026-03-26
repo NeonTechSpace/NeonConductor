@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { collectSourceFiles } from './sourceFiles';
+import { collectSourceFiles } from '@/scripts/audit/sourceFiles';
+
 import type {
     AuditCategoryReport,
     AuditSourceFile,
@@ -11,7 +12,8 @@ import type {
     ReviewedAuditViolation,
     ReviewManifestStatus,
     ReviewStatus,
-} from './types';
+} from '@/scripts/audit/types';
+
 
 export const REVIEW_MANIFEST_RELATIVE_PATH = 'scripts/audit/agents-review-manifest.json';
 
@@ -185,9 +187,7 @@ export function annotateReviewCategories(input: {
     categories: AuditCategoryReport[];
 }): AuditCategoryReport[] {
     const manifest = loadReviewManifest(input.rootDir);
-    const manifestEntries = new Map(
-        manifest.entries.map((entry) => [buildManifestKey(entry), entry] as const)
-    );
+    const manifestEntries = new Map(manifest.entries.map((entry) => [buildManifestKey(entry), entry] as const));
     const fileHashByPath = new Map(
         input.sourceFiles.map((file) => [file.relativePath, buildContentHash(file.content)] as const)
     );
@@ -217,3 +217,4 @@ export function annotateReviewCategories(input: {
         };
     });
 }
+

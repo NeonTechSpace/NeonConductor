@@ -18,12 +18,15 @@ export function createProfileSettingsActions(input: {
     setActiveProfileCache: (profileId: string) => void;
     createMutation: { mutateAsync: (input: { name?: string }) => Promise<{ profile: ProfileRecord }> };
     renameMutation: {
-        mutateAsync: (input: { profileId: string; name: string }) => Promise<
-            { updated: false; reason: 'profile_not_found' } | { updated: true; profile: ProfileRecord }
-        >;
+        mutateAsync: (input: {
+            profileId: string;
+            name: string;
+        }) => Promise<{ updated: false; reason: 'profile_not_found' } | { updated: true; profile: ProfileRecord }>;
     };
     duplicateMutation: {
-        mutateAsync: (input: { profileId: string }) => Promise<
+        mutateAsync: (input: {
+            profileId: string;
+        }) => Promise<
             { duplicated: false; reason: 'profile_not_found' } | { duplicated: true; profile: ProfileRecord }
         >;
     };
@@ -35,9 +38,9 @@ export function createProfileSettingsActions(input: {
         }>;
     };
     setActiveMutation: {
-        mutateAsync: (input: { profileId: string }) => Promise<
-            { updated: false; reason: 'profile_not_found' } | { updated: true; profile: ProfileRecord }
-        >;
+        mutateAsync: (input: {
+            profileId: string;
+        }) => Promise<{ updated: false; reason: 'profile_not_found' } | { updated: true; profile: ProfileRecord }>;
     };
     setEditPreferenceMutation: {
         mutateAsync: (input: { profileId: string; value: 'ask' | 'truncate' | 'branch' }) => Promise<void>;
@@ -209,7 +212,9 @@ export function createProfileSettingsActions(input: {
             }
             input.setRenameDraft(undefined);
             input.setSelectedProfileId(undefined);
-            input.updateProfileList((profiles) => profiles.filter((profile) => profile.id !== input.selectedProfile?.id));
+            input.updateProfileList((profiles) =>
+                profiles.filter((profile) => profile.id !== input.selectedProfile?.id)
+            );
         },
     };
 }

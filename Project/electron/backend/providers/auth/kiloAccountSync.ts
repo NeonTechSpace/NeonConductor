@@ -56,7 +56,11 @@ export async function syncKiloAccountContext(input: {
     });
 
     if (defaultsResult.isOk() && defaultsResult.value.defaultModelId) {
-        const modelExists = await providerStore.modelExists(input.profileId, 'kilo', defaultsResult.value.defaultModelId);
+        const modelExists = await providerStore.modelExists(
+            input.profileId,
+            'kilo',
+            defaultsResult.value.defaultModelId
+        );
         if (modelExists) {
             await providerStore.setDefaults(input.profileId, 'kilo', defaultsResult.value.defaultModelId);
         }

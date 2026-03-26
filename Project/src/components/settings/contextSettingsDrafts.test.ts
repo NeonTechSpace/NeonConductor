@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-    resolveContextGlobalDraft,
-    resolveContextProfileDraft,
-} from '@/web/components/settings/contextSettingsDrafts';
+import { resolveContextGlobalDraft, resolveContextProfileDraft } from '@/web/components/settings/contextSettingsDrafts';
 
 describe('context settings drafts', () => {
     it('keeps the local global draft instead of replacing it with refreshed query data', () => {

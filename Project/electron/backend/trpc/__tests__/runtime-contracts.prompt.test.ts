@@ -105,9 +105,7 @@ describe('runtime contracts: prompt layers', () => {
             topLevelTab: 'agent',
             modeKey: 'code',
         });
-        expect(
-            resetBuiltInModeSettings.settings.builtInModes.agent.find((mode) => mode.modeKey === 'code')
-        ).toEqual({
+        expect(resetBuiltInModeSettings.settings.builtInModes.agent.find((mode) => mode.modeKey === 'code')).toEqual({
             topLevelTab: 'agent',
             modeKey: 'code',
             label: 'Agent Code',
@@ -134,7 +132,13 @@ describe('runtime contracts: prompt layers', () => {
                     VALUES (?, ?, ?, ?, ?)
                 `
             )
-            .run('setting_prompt_layer_profile_global_invalid', profileId, 'prompt_layer.profile_global_instructions', '42', now);
+            .run(
+                'setting_prompt_layer_profile_global_invalid',
+                profileId,
+                'prompt_layer.profile_global_instructions',
+                '42',
+                now
+            );
         sqlite
             .prepare(
                 `
@@ -317,9 +321,7 @@ describe('runtime contracts: prompt layers', () => {
                 toolCapabilities: ['filesystem_read', 'shell'],
             },
         ]);
-        expect(
-            importedGlobal.settings.builtInModes.chat.find((mode) => mode.modeKey === 'chat')?.prompt
-        ).toEqual({
+        expect(importedGlobal.settings.builtInModes.chat.find((mode) => mode.modeKey === 'chat')?.prompt).toEqual({
             roleDefinition: 'Built-in chat role override',
             customInstructions: 'Built-in chat custom override',
         });
@@ -332,7 +334,7 @@ describe('runtime contracts: prompt layers', () => {
         expect(globalModeMarkdown).toContain('toolCapabilities:');
         expect(globalModeMarkdown).toContain('- filesystem_read');
         expect(globalModeMarkdown).toContain('- shell');
-        expect(globalModeMarkdown).toContain('roleDefinition: \"Act as a precise reviewer.\"');
+        expect(globalModeMarkdown).toContain('roleDefinition: "Act as a precise reviewer."');
         expect(globalModeMarkdown).toContain('Review the current conversation carefully.');
 
         const exportedGlobal = await caller.prompt.exportCustomMode({
@@ -375,7 +377,11 @@ describe('runtime contracts: prompt layers', () => {
             profileId,
             workspaceFingerprint,
         });
-        const workspaceModesRoot = path.join(workspaceRegistry.paths.workspaceAssetsRoot!, 'modes');
+        const workspaceAssetsRoot = workspaceRegistry.paths.workspaceAssetsRoot;
+        if (!workspaceAssetsRoot) {
+            throw new Error('Expected workspace assets root for prompt portability test.');
+        }
+        const workspaceModesRoot = path.join(workspaceAssetsRoot, 'modes');
         rmSync(workspaceModesRoot, { recursive: true, force: true });
         mkdirSync(workspaceModesRoot, { recursive: true });
 
@@ -415,9 +421,9 @@ describe('runtime contracts: prompt layers', () => {
             topLevelTab: 'orchestrator',
             workspaceFingerprint,
         });
-        expect(
-            workspaceModes.modes.find((mode) => mode.modeKey === 'workspace-orchestrator')?.label
-        ).toBe('Workspace Orchestrator');
+        expect(workspaceModes.modes.find((mode) => mode.modeKey === 'workspace-orchestrator')?.label).toBe(
+            'Workspace Orchestrator'
+        );
     });
 
     it('creates, edits, and deletes file-backed custom modes without mutating unrelated state', async () => {
@@ -594,7 +600,11 @@ describe('runtime contracts: prompt layers', () => {
             profileId,
             workspaceFingerprint,
         });
-        const workspaceModesRoot = path.join(workspaceRegistry.paths.workspaceAssetsRoot!, 'modes');
+        const workspaceAssetsRoot = workspaceRegistry.paths.workspaceAssetsRoot;
+        if (!workspaceAssetsRoot) {
+            throw new Error('Expected workspace assets root for custom mode workspace test.');
+        }
+        const workspaceModesRoot = path.join(workspaceAssetsRoot, 'modes');
         rmSync(workspaceModesRoot, { recursive: true, force: true });
         mkdirSync(workspaceModesRoot, { recursive: true });
 

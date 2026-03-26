@@ -1,14 +1,11 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { refreshStaleReviewEntries, removeReviewManifestEntry, setReviewManifestEntry } from '@/scripts/audit/reviewManifest';
 import { scriptLog } from '@/scripts/logger';
 
-import {
-    refreshStaleReviewEntries,
-    removeReviewManifestEntry,
-    setReviewManifestEntry,
-} from './reviewManifest';
-import type { ReviewManifestStatus } from './types';
+import type { ReviewManifestStatus } from '@/scripts/audit/types';
+
 
 function isDirectExecution(importMetaUrl: string): boolean {
     const entryPath = process.argv[1];
@@ -53,10 +50,7 @@ export function runAuditReviewCommand(): void {
     });
 }
 
-export function runAuditReviewCommandWithArgs(input: {
-    args: string[];
-    rootDir: string;
-}): void {
+export function runAuditReviewCommandWithArgs(input: { args: string[]; rootDir: string }): void {
     if (input.args.includes('--refresh-stale')) {
         const manifest = refreshStaleReviewEntries(input.rootDir);
         scriptLog.info({
@@ -123,3 +117,4 @@ export function runAuditReviewCommandWithArgs(input: {
 if (isDirectExecution(import.meta.url)) {
     runAuditReviewCommand();
 }
+

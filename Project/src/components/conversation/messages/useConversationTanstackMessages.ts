@@ -5,8 +5,8 @@ import {
     buildConversationTranscriptBaselineKey,
     projectConversationTranscriptMessages,
 } from '@/web/components/conversation/messages/conversationTanstackTranscriptController';
-import type { ConversationTanstackMessage } from '@/web/components/conversation/messages/tanstackMessageBridge';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
+import type { ConversationTanstackMessage } from '@/web/components/conversation/messages/tanstackMessageBridge';
 import { hydrateTanstackTranscriptState } from '@/web/components/conversation/messages/tanstackTranscriptState';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 

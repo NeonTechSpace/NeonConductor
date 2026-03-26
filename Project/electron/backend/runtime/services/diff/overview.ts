@@ -1,5 +1,10 @@
 import type { DiffFileArtifact, DiffRecord } from '@/app/backend/persistence/types';
-import type { DiffDirectoryOverview, DiffHighlightedFileOverview, DiffOverview, DiffStatusCounts } from '@/app/backend/runtime/contracts';
+import type {
+    DiffDirectoryOverview,
+    DiffHighlightedFileOverview,
+    DiffOverview,
+    DiffStatusCounts,
+} from '@/app/backend/runtime/contracts';
 
 function emptyStatusCounts(): DiffStatusCounts {
     return {
@@ -99,8 +104,12 @@ export function buildDiffOverview(diff: DiffRecord): DiffOverview {
         kind: 'git',
         fileCount: diff.artifact.fileCount,
         summary: diff.summary,
-        ...(typeof diff.artifact.totalAddedLines === 'number' ? { totalAddedLines: diff.artifact.totalAddedLines } : {}),
-        ...(typeof diff.artifact.totalDeletedLines === 'number' ? { totalDeletedLines: diff.artifact.totalDeletedLines } : {}),
+        ...(typeof diff.artifact.totalAddedLines === 'number'
+            ? { totalAddedLines: diff.artifact.totalAddedLines }
+            : {}),
+        ...(typeof diff.artifact.totalDeletedLines === 'number'
+            ? { totalDeletedLines: diff.artifact.totalDeletedLines }
+            : {}),
         statusCounts: buildStatusCounts(diff.artifact.files),
         topDirectories: buildTopDirectories(diff.artifact.files),
         highlightedFiles: buildHighlightedFiles(diff.artifact.files),

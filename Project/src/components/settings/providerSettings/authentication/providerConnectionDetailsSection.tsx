@@ -11,10 +11,10 @@ interface ProviderConnectionDetailsSectionProps {
     resolvedBaseUrl: string | null;
     executionPreference:
         | {
-        mode: OpenAIExecutionMode;
-        canUseRealtimeWebSocket: boolean;
-        disabledReason?: 'provider_not_supported' | 'api_key_required' | 'base_url_not_supported';
-    }
+              mode: OpenAIExecutionMode;
+              canUseRealtimeWebSocket: boolean;
+              disabledReason?: 'provider_not_supported' | 'api_key_required' | 'base_url_not_supported';
+          }
         | undefined;
     isSavingConnectionProfile: boolean;
     isSavingExecutionPreference: boolean;
@@ -130,12 +130,12 @@ export function ProviderConnectionDetailsSection({
                 ) : null}
 
                 {selectedProviderId === 'openai' && executionPreference ? (
-                    <div className='space-y-2 rounded-2xl border border-dashed border-border/70 p-3'>
+                    <div className='border-border/70 space-y-2 rounded-2xl border border-dashed p-3'>
                         <div className='space-y-1'>
                             <p className='text-xs font-medium'>Execution mode</p>
                             <p className='text-muted-foreground text-xs leading-5'>
-                                Standard HTTP works everywhere. Realtime WebSocket is lower-latency, but only for
-                                agent and orchestrator runs on official OpenAI API-key setups.
+                                Standard HTTP works everywhere. Realtime WebSocket is lower-latency, but only for agent
+                                and orchestrator runs on official OpenAI API-key setups.
                             </p>
                         </div>
 

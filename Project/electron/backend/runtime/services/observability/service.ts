@@ -1,15 +1,9 @@
-import type {
-    NeonObservabilityEvent,
-    NeonObservabilitySubscriptionInput,
-} from '@/app/backend/runtime/contracts';
+import type { NeonObservabilityEvent, NeonObservabilitySubscriptionInput } from '@/app/backend/runtime/contracts';
 import { isNeonObservabilityEnabled } from '@/app/backend/runtime/services/observability/enabled';
 
 type Listener = (event: NeonObservabilityEvent) => void;
 
-type PublishableNeonObservabilityEvent = Omit<
-    NeonObservabilityEvent,
-    'sequence' | 'at' | 'kind'
-> & {
+type PublishableNeonObservabilityEvent = Omit<NeonObservabilityEvent, 'sequence' | 'at' | 'kind'> & {
     kind: NeonObservabilityEvent['kind'];
     at?: string;
     [key: string]: unknown;

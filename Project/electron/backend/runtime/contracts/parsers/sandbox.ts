@@ -62,8 +62,7 @@ export function parseSandboxRemoveInput(input: unknown): SandboxRemoveInput {
 export function parseSandboxConfigureThreadInput(input: unknown): SandboxConfigureThreadInput {
     const source = readObject(input, 'input');
     const mode = readEnumValue(source.mode, 'mode', executionEnvironmentModes);
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
 
     if (mode === 'sandbox' && !sandboxId) {
         throw new Error('Invalid "sandboxId": required when mode is "sandbox".');

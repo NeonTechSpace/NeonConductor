@@ -132,11 +132,9 @@ export function resolveAssetDefinitions<T extends RulesetDefinitionRecord | Skil
     });
 }
 
-export function resolveContextualAssetDefinitions<T extends RulesetDefinitionRecord | SkillfileDefinitionRecord>(input: {
-    items: T[];
-    workspaceFingerprint?: string;
-    activePresetKeys: RegistryPresetKey[];
-}): T[] {
+export function resolveContextualAssetDefinitions<
+    T extends RulesetDefinitionRecord | SkillfileDefinitionRecord,
+>(input: { items: T[]; workspaceFingerprint?: string; activePresetKeys: RegistryPresetKey[] }): T[] {
     const filtered = input.items.filter((item) => {
         if (!item.enabled) {
             return false;

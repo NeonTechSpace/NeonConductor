@@ -1,3 +1,5 @@
+import { err, ok, type Result } from 'neverthrow';
+
 import {
     errProviderAdapter,
     okProviderAdapter,
@@ -5,7 +7,6 @@ import {
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
 import { isEventStreamResponse } from '@/app/backend/providers/adapters/streaming';
-import { err, ok, type Result } from 'neverthrow';
 
 export interface HttpRuntimeRequest {
     url: string;

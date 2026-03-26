@@ -1,6 +1,8 @@
 import { skipToken } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import type { ChangedFilesSectionProps } from '@/web/components/conversation/panels/diffCheckpointPanel/changedFilesSection';
+import type { CheckpointMaintenanceActionsProps } from '@/web/components/conversation/panels/diffCheckpointPanel/checkpointMaintenanceActions';
 import {
     filterVisibleCheckpoints,
     resolveSelectedDiffPath,
@@ -9,10 +11,9 @@ import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptio
 import { trpc } from '@/web/trpc/client';
 
 import type { CheckpointRecord, DiffRecord } from '@/app/backend/persistence/types';
-import type { CheckpointStorageSummary } from '@/app/backend/runtime/contracts';
 
-import type { ChangedFilesSectionProps } from './changedFilesSection';
-import type { CheckpointMaintenanceActionsProps } from './checkpointMaintenanceActions';
+import type { CheckpointStorageSummary } from '@/shared/contracts';
+
 
 export interface DiffCheckpointPanelProps {
     profileId: string;
@@ -124,11 +125,12 @@ export function useDiffCheckpointPanelController({
 
             setFeedbackMessage('Checkpoint promoted to milestone.');
             setMilestoneDrafts((current) => {
-                const nextDrafts = { ...current };
-                if (result.checkpoint) {
-                    delete nextDrafts[result.checkpoint.id];
+                const checkpoint = result.checkpoint;
+                if (!checkpoint) {
+                    return current;
                 }
-                return nextDrafts;
+
+                return Object.fromEntries(Object.entries(current).filter(([checkpointId]) => checkpointId !== checkpoint.id));
             });
             await invalidateCheckpointList();
         },
@@ -145,11 +147,12 @@ export function useDiffCheckpointPanelController({
 
             setFeedbackMessage('Milestone renamed.');
             setMilestoneDrafts((current) => {
-                const nextDrafts = { ...current };
-                if (result.checkpoint) {
-                    delete nextDrafts[result.checkpoint.id];
+                const checkpoint = result.checkpoint;
+                if (!checkpoint) {
+                    return current;
                 }
-                return nextDrafts;
+
+                return Object.fromEntries(Object.entries(current).filter(([checkpointId]) => checkpointId !== checkpoint.id));
             });
             await invalidateCheckpointList();
         },
@@ -236,7 +239,8 @@ export function useDiffCheckpointPanelController({
         });
     };
 
-    const patchMarkdown = patchQuery.data?.found && patchQuery.data.patch ? `\`\`\`diff\n${patchQuery.data.patch}\n\`\`\`` : '';
+    const patchMarkdown =
+        patchQuery.data?.found && patchQuery.data.patch ? `\`\`\`diff\n${patchQuery.data.patch}\n\`\`\`` : '';
     const visibleCheckpoints = filterVisibleCheckpoints(checkpoints, milestonesOnly);
 
     async function handleRestoreCheckpoint(checkpointId: CheckpointRecord['id']) {
@@ -248,7 +252,9 @@ export function useDiffCheckpointPanelController({
                 checkpointId,
                 confirm: true,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleRevertChangeset(checkpointId: CheckpointRecord['id']) {
@@ -260,7 +266,9 @@ export function useDiffCheckpointPanelController({
                 checkpointId,
                 confirm: true,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handlePromoteMilestone(checkpointId: CheckpointRecord['id'], title: string) {
@@ -275,7 +283,9 @@ export function useDiffCheckpointPanelController({
                 checkpointId,
                 milestoneTitle: title,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleRenameMilestone(checkpointId: CheckpointRecord['id'], title: string) {
@@ -290,7 +300,9 @@ export function useDiffCheckpointPanelController({
                 checkpointId,
                 milestoneTitle: title,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleDeleteMilestone(checkpointId: CheckpointRecord['id']) {
@@ -301,7 +313,9 @@ export function useDiffCheckpointPanelController({
                 checkpointId,
                 confirm: true,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleApplyCleanup() {
@@ -316,7 +330,9 @@ export function useDiffCheckpointPanelController({
                 sessionId: selectedSessionId,
                 confirm: true,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleForceCompact() {
@@ -331,7 +347,9 @@ export function useDiffCheckpointPanelController({
                 sessionId: selectedSessionId,
                 confirm: true,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleSaveMilestone() {
@@ -346,7 +364,9 @@ export function useDiffCheckpointPanelController({
                 runId: selectedRunId,
                 milestoneTitle: milestoneTitle.trim(),
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleOpenPath() {
@@ -358,7 +378,9 @@ export function useDiffCheckpointPanelController({
             await openPathMutation.mutateAsync({
                 path: `${selectedDiff.artifact.workspaceRootPath}\\${resolvedSelectedPath.replaceAll('/', '\\')}`,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     const changedFilesSectionProps: ChangedFilesSectionProps | undefined = selectedDiff
@@ -464,3 +486,4 @@ export function useDiffCheckpointPanelController({
         },
     };
 }
+

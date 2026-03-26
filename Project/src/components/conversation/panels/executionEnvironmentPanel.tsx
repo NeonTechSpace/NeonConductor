@@ -19,10 +19,7 @@ interface ExecutionEnvironmentPanelProps {
     busy: boolean;
     feedbackMessage?: string;
     feedbackTone?: 'success' | 'error' | 'info';
-    onConfigureThread: (input: {
-        mode: 'local' | 'new_sandbox' | 'sandbox';
-        sandboxId?: string;
-    }) => void;
+    onConfigureThread: (input: { mode: 'local' | 'new_sandbox' | 'sandbox'; sandboxId?: string }) => void;
     onRefreshSandbox: (sandboxId: string) => void;
     onRemoveSandbox: (sandboxId: string) => void;
     onRemoveOrphaned: () => void;
@@ -196,7 +193,11 @@ export function ExecutionEnvironmentPanel({
                         </Button>
                     </>
                 ) : null}
-                <Button type='button' variant='outline' disabled={busy || sandboxes.length === 0} onClick={onRemoveOrphaned}>
+                <Button
+                    type='button'
+                    variant='outline'
+                    disabled={busy || sandboxes.length === 0}
+                    onClick={onRemoveOrphaned}>
                     Cleanup Orphaned
                 </Button>
             </div>
@@ -218,9 +219,10 @@ export function ExecutionEnvironmentPanel({
             <div className='text-muted-foreground mt-3 text-xs'>
                 {workspaceScope.kind === 'sandbox' ? (
                     <p>
-                        Running in managed sandbox <span className='font-medium text-foreground'>{workspaceScope.label}</span>
-                        {' '}from {workspaceScope.baseWorkspaceLabel}. Filesystem operations, checkpoints, and shell
-                        commands use {workspaceScope.absolutePath}.
+                        Running in managed sandbox{' '}
+                        <span className='text-foreground font-medium'>{workspaceScope.label}</span> from{' '}
+                        {workspaceScope.baseWorkspaceLabel}. Filesystem operations, checkpoints, and shell commands use{' '}
+                        {workspaceScope.absolutePath}.
                     </p>
                 ) : (
                     <p>

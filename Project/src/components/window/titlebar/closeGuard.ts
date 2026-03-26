@@ -10,9 +10,7 @@ export interface WindowCloseGuardState {
     closeWarningMessage?: string;
 }
 
-export function getWindowCloseGuardState(
-    updateStatus: UpdateSwitchStatusSnapshot | undefined
-): WindowCloseGuardState {
+export function getWindowCloseGuardState(updateStatus: UpdateSwitchStatusSnapshot | undefined): WindowCloseGuardState {
     if (!updateStatus || !isActiveUpdatePhase(updateStatus.phase)) {
         return {
             canCloseImmediately: true,
@@ -30,7 +28,8 @@ export function getWindowCloseGuardState(
 
     return {
         canCloseImmediately: false,
-        closeWarningTitle: updateStatus.phase === 'downloading' ? 'Update download in progress' : 'Update check in progress',
+        closeWarningTitle:
+            updateStatus.phase === 'downloading' ? 'Update download in progress' : 'Update check in progress',
         closeWarningMessage:
             'NeonConductor is still working on an update. Closing now may interrupt that work and it may need to resume or restart later.',
     };

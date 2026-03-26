@@ -108,10 +108,7 @@ export class MemoryStore {
         runId?: EntityId<'run'>;
     }): Promise<MemoryRecord[]> {
         const { db } = getPersistence();
-        let query = db
-            .selectFrom('memory_records')
-            .selectAll()
-            .where('profile_id', '=', input.profileId);
+        let query = db.selectFrom('memory_records').selectAll().where('profile_id', '=', input.profileId);
 
         if (input.memoryType) {
             query = query.where('memory_type', '=', input.memoryType);

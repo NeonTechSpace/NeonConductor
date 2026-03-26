@@ -2,7 +2,10 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef, useState } from 'react';
 
 import { MessageTimelineEmptyState, MessageTimelineItem } from '@/web/components/conversation/messages/messageTimeline';
-import { buildTimelineEntries, isWithinBottomThreshold } from '@/web/components/conversation/messages/messageTimelineModel';
+import {
+    buildTimelineEntries,
+    isWithinBottomThreshold,
+} from '@/web/components/conversation/messages/messageTimelineModel';
 import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import { useConversationTanstackMessages } from '@/web/components/conversation/messages/useConversationTanstackMessages';

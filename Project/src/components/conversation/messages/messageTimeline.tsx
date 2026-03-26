@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
+import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
 import { MessageTimelineBody } from '@/web/components/conversation/messages/timeline/messageTimelineBody';
 import { MessageTimelineHeader } from '@/web/components/conversation/messages/timeline/messageTimelineHeader';
 
-import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
 import type { RunRecord } from '@/app/backend/persistence/types';
 
 interface MessageTimelineItemProps {

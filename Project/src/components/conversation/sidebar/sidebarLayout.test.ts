@@ -203,7 +203,7 @@ describe('conversation sidebar layout', () => {
                 onShowAllModesChange: vi.fn(),
                 onGroupViewChange: vi.fn(),
                 onSelectWorkspaceFingerprint: vi.fn(),
-                upsertTag: vi.fn(async () => ({
+                upsertTag: vi.fn(() => Promise.resolve({
                     tag: {
                         id: 'tag_ui',
                         profileId: 'profile_default',
@@ -212,15 +212,15 @@ describe('conversation sidebar layout', () => {
                         updatedAt: '2026-03-12T09:00:00.000Z',
                     },
                 })),
-                setThreadTags: vi.fn(async () => ({ threadTags: [] })),
-                setThreadFavorite: vi.fn(async () => ({ updated: true })),
-                deleteWorkspaceThreads: vi.fn(async () => ({
+                setThreadTags: vi.fn(() => Promise.resolve({ threadTags: [] })),
+                setThreadFavorite: vi.fn(() => Promise.resolve({ updated: true })),
+                deleteWorkspaceThreads: vi.fn(() => Promise.resolve({
                     deletedThreadIds: [],
                     deletedTagIds: [],
                     deletedConversationIds: [],
                     sessionIds: [],
                 })),
-                onCreateThread: vi.fn(async () => ({
+                onCreateThread: vi.fn(() => Promise.resolve({
                     kind: 'created_with_starter_session' as const,
                     workspaceFingerprint: 'ws_alpha',
                 })),
@@ -235,3 +235,4 @@ describe('conversation sidebar layout', () => {
         expect(html).not.toContain('Optional thread title');
     });
 });
+

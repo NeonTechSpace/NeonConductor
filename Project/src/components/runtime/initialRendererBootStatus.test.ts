@@ -15,9 +15,8 @@ vi.mock('@/web/lib/trpcClient', () => ({
 describe('initialRendererBootStatus', () => {
     beforeEach(async () => {
         vi.clearAllMocks();
-        const { resetInitialRendererBootStatusForTests } = await import(
-            '@/web/components/runtime/initialRendererBootStatus'
-        );
+        const { resetInitialRendererBootStatusForTests } =
+            await import('@/web/components/runtime/initialRendererBootStatus');
         resetInitialRendererBootStatusForTests();
     });
 
@@ -30,10 +29,8 @@ describe('initialRendererBootStatus', () => {
                 })
         );
 
-        const {
-            ensureInitialRendererBootStatusReport,
-            getInitialRendererBootStatusSnapshot,
-        } = await import('@/web/components/runtime/initialRendererBootStatus');
+        const { ensureInitialRendererBootStatusReport, getInitialRendererBootStatusSnapshot } =
+            await import('@/web/components/runtime/initialRendererBootStatus');
 
         const firstReportPromise = ensureInitialRendererBootStatusReport();
         const secondReportPromise = ensureInitialRendererBootStatusReport();
@@ -56,10 +53,8 @@ describe('initialRendererBootStatus', () => {
             accepted: false,
         });
 
-        const {
-            ensureInitialRendererBootStatusReport,
-            getInitialRendererBootStatusSnapshot,
-        } = await import('@/web/components/runtime/initialRendererBootStatus');
+        const { ensureInitialRendererBootStatusReport, getInitialRendererBootStatusSnapshot } =
+            await import('@/web/components/runtime/initialRendererBootStatus');
 
         await expect(ensureInitialRendererBootStatusReport()).resolves.toBeUndefined();
         expect(getInitialRendererBootStatusSnapshot()).toEqual({

@@ -1,7 +1,8 @@
-import type { inferRouterOutputs } from '@trpc/server';
 
 import type { ProviderModelRecord, ProviderRecord } from '@/app/backend/persistence/types';
 import type { AppRouter } from '@/app/backend/trpc/router';
+
+import type { inferRouterOutputs } from '@trpc/server';
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ResolvedContextState = RouterOutputs['context']['getResolvedState'];

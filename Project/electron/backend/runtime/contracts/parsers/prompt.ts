@@ -1,4 +1,8 @@
-import { toolCapabilities as knownToolCapabilities, topLevelTabs, type ToolCapability } from '@/app/backend/runtime/contracts/enums';
+import {
+    toolCapabilities as knownToolCapabilities,
+    topLevelTabs,
+    type ToolCapability,
+} from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
     readBoolean,
@@ -49,7 +53,10 @@ function readCustomModeScope(value: unknown, field: string): 'global' | 'workspa
     return readEnumValue(value, field, ['global', 'workspace'] as const);
 }
 
-function readWorkspaceFingerprintForScope(source: Record<string, unknown>, scope: 'global' | 'workspace'): string | undefined {
+function readWorkspaceFingerprintForScope(
+    source: Record<string, unknown>,
+    scope: 'global' | 'workspace'
+): string | undefined {
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
     if (scope === 'workspace' && !workspaceFingerprint) {
         throw new Error('Invalid "workspaceFingerprint": required when scope is "workspace".');
@@ -100,10 +107,7 @@ function readOptionalToolCapabilities(value: unknown, field: string): ToolCapabi
     return capabilities.length > 0 ? Array.from(new Set(capabilities as ToolCapability[])) : undefined;
 }
 
-function parsePromptLayerCustomModePayload(
-    value: unknown,
-    field: string
-): PromptLayerCustomModePayload {
+function parsePromptLayerCustomModePayload(value: unknown, field: string): PromptLayerCustomModePayload {
     const source = readObject(value, field);
     const description = readOptionalInstructionText(source.description, `${field}.description`);
     const roleDefinition = readOptionalInstructionText(source.roleDefinition, `${field}.roleDefinition`);
@@ -157,7 +161,9 @@ export function parsePromptLayerGetSettingsInput(input: unknown): PromptLayerGet
     };
 }
 
-export function parsePromptLayerSetAppGlobalInstructionsInput(input: unknown): PromptLayerSetAppGlobalInstructionsInput {
+export function parsePromptLayerSetAppGlobalInstructionsInput(
+    input: unknown
+): PromptLayerSetAppGlobalInstructionsInput {
     const source = readObject(input, 'input');
 
     return {
@@ -189,9 +195,7 @@ export function parsePromptLayerResetProfileGlobalInstructionsInput(
     return parseProfileInput(input);
 }
 
-export function parsePromptLayerSetTopLevelInstructionsInput(
-    input: unknown
-): PromptLayerSetTopLevelInstructionsInput {
+export function parsePromptLayerSetTopLevelInstructionsInput(input: unknown): PromptLayerSetTopLevelInstructionsInput {
     const source = readObject(input, 'input');
 
     return {
@@ -224,9 +228,7 @@ export function parsePromptLayerSetBuiltInModePromptInput(input: unknown): Promp
     };
 }
 
-export function parsePromptLayerResetBuiltInModePromptInput(
-    input: unknown
-): PromptLayerResetBuiltInModePromptInput {
+export function parsePromptLayerResetBuiltInModePromptInput(input: unknown): PromptLayerResetBuiltInModePromptInput {
     const source = readObject(input, 'input');
 
     return {
@@ -324,7 +326,9 @@ export function parsePromptLayerImportCustomModeInput(input: unknown): PromptLay
 }
 
 export const promptLayerGetSettingsInputSchema = createParser(parsePromptLayerGetSettingsInput);
-export const promptLayerSetAppGlobalInstructionsInputSchema = createParser(parsePromptLayerSetAppGlobalInstructionsInput);
+export const promptLayerSetAppGlobalInstructionsInputSchema = createParser(
+    parsePromptLayerSetAppGlobalInstructionsInput
+);
 export const promptLayerResetAppGlobalInstructionsInputSchema = createParser(
     parsePromptLayerResetAppGlobalInstructionsInput
 );
@@ -334,16 +338,12 @@ export const promptLayerSetProfileGlobalInstructionsInputSchema = createParser(
 export const promptLayerResetProfileGlobalInstructionsInputSchema = createParser(
     parsePromptLayerResetProfileGlobalInstructionsInput
 );
-export const promptLayerSetTopLevelInstructionsInputSchema = createParser(
-    parsePromptLayerSetTopLevelInstructionsInput
-);
+export const promptLayerSetTopLevelInstructionsInputSchema = createParser(parsePromptLayerSetTopLevelInstructionsInput);
 export const promptLayerResetTopLevelInstructionsInputSchema = createParser(
     parsePromptLayerResetTopLevelInstructionsInput
 );
 export const promptLayerSetBuiltInModePromptInputSchema = createParser(parsePromptLayerSetBuiltInModePromptInput);
-export const promptLayerResetBuiltInModePromptInputSchema = createParser(
-    parsePromptLayerResetBuiltInModePromptInput
-);
+export const promptLayerResetBuiltInModePromptInputSchema = createParser(parsePromptLayerResetBuiltInModePromptInput);
 export const promptLayerExportCustomModeInputSchema = createParser(parsePromptLayerExportCustomModeInput);
 export const promptLayerGetCustomModeInputSchema = createParser(parsePromptLayerGetCustomModeInput);
 export const promptLayerCreateCustomModeInputSchema = createParser(parsePromptLayerCreateCustomModeInput);

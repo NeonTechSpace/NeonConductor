@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 
-import { resolveProviderBaseUrl } from '@/app/backend/providers/providerBaseUrls';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
+import { resolveProviderBaseUrl } from '@/app/backend/providers/providerBaseUrls';
+import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 import { resolveConnectionProfile } from '@/app/backend/providers/service/endpointProfiles';
 import {
     errProviderService,
@@ -9,7 +10,6 @@ import {
     type ProviderServiceResult,
 } from '@/app/backend/providers/service/errors';
 import { resolveSecret } from '@/app/backend/providers/service/helpers';
-import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 import type { ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 
 export interface ResolvedProviderCatalogContext {
@@ -77,7 +77,8 @@ export async function resolveProviderCatalogFetchState(
         credentialFingerprint,
         organizationId: authState.organizationId ?? null,
         optionProfileId: connectionProfile.optionProfileId,
-        resolvedBaseUrl: connectionProfile.resolvedBaseUrl ?? resolveProviderBaseUrl(providerId, connectionProfile.optionProfileId),
+        resolvedBaseUrl:
+            connectionProfile.resolvedBaseUrl ?? resolveProviderBaseUrl(providerId, connectionProfile.optionProfileId),
     } satisfies Omit<ResolvedProviderCatalogContext, 'cacheKey'>;
 
     return okProviderService({

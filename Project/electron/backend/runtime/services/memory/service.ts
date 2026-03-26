@@ -56,7 +56,9 @@ class MemoryService {
         });
     }
 
-    private async resolveCreateProvenance(input: MemoryCreateInput): Promise<OperationalResult<ResolvedMemoryProvenance>> {
+    private async resolveCreateProvenance(
+        input: MemoryCreateInput
+    ): Promise<OperationalResult<ResolvedMemoryProvenance>> {
         if (input.scopeKind === 'global') {
             const validation = validateNoAdditionalProvenance(input);
             if (validation.isErr()) {
@@ -101,10 +103,7 @@ class MemoryService {
 
             const derivedWorkspaceFingerprint =
                 conversation.scope === 'workspace' ? conversation.workspaceFingerprint : undefined;
-            if (
-                input.workspaceFingerprint &&
-                input.workspaceFingerprint !== derivedWorkspaceFingerprint
-            ) {
+            if (input.workspaceFingerprint && input.workspaceFingerprint !== derivedWorkspaceFingerprint) {
                 return errOp('invalid_input', 'Thread-scoped memory workspace provenance does not match the thread.');
             }
 
@@ -131,10 +130,7 @@ class MemoryService {
             return errOp('thread_not_found', `Session thread for run "${input.runId}" was not found.`);
         }
 
-        if (
-            input.workspaceFingerprint &&
-            input.workspaceFingerprint !== sessionThread.workspaceFingerprint
-        ) {
+        if (input.workspaceFingerprint && input.workspaceFingerprint !== sessionThread.workspaceFingerprint) {
             return errOp('invalid_input', 'Run-scoped memory workspace provenance does not match the run session.');
         }
 

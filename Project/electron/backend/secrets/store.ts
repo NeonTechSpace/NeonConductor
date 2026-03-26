@@ -35,10 +35,7 @@ export class InMemorySecretStore implements ProviderSecretStoreBackend {
         secretKind: ProviderSecretKind;
         secretValue: string;
     }): Promise<void> {
-        this.data.set(
-            buildSecretMapKey(input.profileId, input.providerId, input.secretKind),
-            input.secretValue
-        );
+        this.data.set(buildSecretMapKey(input.profileId, input.providerId, input.secretKind), input.secretValue);
         return Promise.resolve();
     }
 
@@ -68,11 +65,7 @@ class DatabaseSecretStore implements ProviderSecretStoreBackend {
     }
 
     async deleteValue(profileId: string, providerId: RuntimeProviderId, secretKind: ProviderSecretKind): Promise<void> {
-        await providerSecretStore.deleteByProfileProviderAndKind(
-            profileId,
-            providerId,
-            secretKind
-        );
+        await providerSecretStore.deleteByProfileProviderAndKind(profileId, providerId, secretKind);
     }
 }
 

@@ -13,10 +13,7 @@ export interface KiloRejectedModelDiagnostic {
     label: string;
     upstreamProvider?: string;
     promptFamily?: string;
-    reason:
-        | 'provider_native'
-        | 'missing_runtime_family'
-        | 'contradictory_metadata';
+    reason: 'provider_native' | 'missing_runtime_family' | 'contradictory_metadata';
     detail: string;
     raw: Record<string, unknown>;
 }
@@ -156,10 +153,7 @@ function collectSpecialRoutingSignals(
     const specialFamilies = getSpecialProviderMembershipFamilies(model.id, input);
     const promptFamily = model.promptFamily?.trim().toLowerCase();
     const promptRoutedApiFamily = promptFamily ? mapPromptFamilyToRoutedApiFamily(promptFamily) : undefined;
-    if (
-        promptRoutedApiFamily === 'anthropic_messages' ||
-        promptRoutedApiFamily === 'google_generativeai'
-    ) {
+    if (promptRoutedApiFamily === 'anthropic_messages' || promptRoutedApiFamily === 'google_generativeai') {
         specialFamilies.add(promptRoutedApiFamily);
     }
 

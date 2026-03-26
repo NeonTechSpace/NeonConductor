@@ -47,11 +47,11 @@ vi.mock('@/web/trpc/client', () => ({
     },
 }));
 
-import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import {
     ComposerActionPanel,
     shouldSubmitComposerOnEnter,
 } from '@/web/components/conversation/panels/composerActionPanel';
+import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 
 import type { ResolvedContextState } from '@/shared/contracts';
 
@@ -175,38 +175,41 @@ describe('composer enter handling', () => {
 
     it('disables reasoning selection when the active model does not support it', () => {
         const html = renderToStaticMarkup(
-            createElement(ComposerActionPanel, createComposerActionPanelProps({
-                pendingImages: [],
-                disabled: false,
-                isSubmitting: false,
-                selectedProviderId: 'openai',
-                selectedModelId: 'openai/gpt-5',
-                topLevelTab: 'chat',
-                activeModeKey: 'chat',
-                modes: [],
-                reasoningEffort: 'none',
-                selectedModelSupportsReasoning: false,
-                canAttachImages: false,
-                maxImageAttachmentsPerMessage: 4,
-                modelOptions: [
-                    createModelOption({
-                        id: 'openai/gpt-5',
-                        label: 'GPT-5',
-                        providerId: 'openai',
-                        providerLabel: 'OpenAI',
-                    }),
-                ],
-                runErrorMessage: undefined,
-                onProviderChange: () => {},
-                onModelChange: () => {},
-                onReasoningEffortChange: () => {},
-                onModeChange: () => {},
-                onPromptEdited: () => {},
-                onAddImageFiles: () => {},
-                onRemovePendingImage: () => {},
-                onRetryPendingImage: () => {},
-                onSubmitPrompt: () => {},
-            }))
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
+                    pendingImages: [],
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'openai',
+                    selectedModelId: 'openai/gpt-5',
+                    topLevelTab: 'chat',
+                    activeModeKey: 'chat',
+                    modes: [],
+                    reasoningEffort: 'none',
+                    selectedModelSupportsReasoning: false,
+                    canAttachImages: false,
+                    maxImageAttachmentsPerMessage: 4,
+                    modelOptions: [
+                        createModelOption({
+                            id: 'openai/gpt-5',
+                            label: 'GPT-5',
+                            providerId: 'openai',
+                            providerLabel: 'OpenAI',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddImageFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                })
+            )
         );
 
         expect(html).toContain('Reasoning');
@@ -217,39 +220,42 @@ describe('composer enter handling', () => {
 
     it('disables adjustable reasoning when Kilo does not advertise valid effort levels', () => {
         const html = renderToStaticMarkup(
-            createElement(ComposerActionPanel, createComposerActionPanelProps({
-                pendingImages: [],
-                disabled: false,
-                isSubmitting: false,
-                selectedProviderId: 'kilo',
-                selectedModelId: 'google/gemini-2.5-flash-lite',
-                topLevelTab: 'chat',
-                activeModeKey: 'chat',
-                modes: [],
-                reasoningEffort: 'none',
-                selectedModelSupportsReasoning: true,
-                supportedReasoningEfforts: [],
-                canAttachImages: false,
-                maxImageAttachmentsPerMessage: 4,
-                modelOptions: [
-                    createModelOption({
-                        id: 'google/gemini-2.5-flash-lite',
-                        label: 'Gemini 2.5 Flash Lite',
-                        providerId: 'kilo',
-                        providerLabel: 'Kilo',
-                    }),
-                ],
-                runErrorMessage: undefined,
-                onProviderChange: () => {},
-                onModelChange: () => {},
-                onReasoningEffortChange: () => {},
-                onModeChange: () => {},
-                onPromptEdited: () => {},
-                onAddImageFiles: () => {},
-                onRemovePendingImage: () => {},
-                onRetryPendingImage: () => {},
-                onSubmitPrompt: () => {},
-            }))
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
+                    pendingImages: [],
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'kilo',
+                    selectedModelId: 'google/gemini-2.5-flash-lite',
+                    topLevelTab: 'chat',
+                    activeModeKey: 'chat',
+                    modes: [],
+                    reasoningEffort: 'none',
+                    selectedModelSupportsReasoning: true,
+                    supportedReasoningEfforts: [],
+                    canAttachImages: false,
+                    maxImageAttachmentsPerMessage: 4,
+                    modelOptions: [
+                        createModelOption({
+                            id: 'google/gemini-2.5-flash-lite',
+                            label: 'Gemini 2.5 Flash Lite',
+                            providerId: 'kilo',
+                            providerLabel: 'Kilo',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddImageFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                })
+            )
         );
 
         expect(html).toContain(
@@ -260,38 +266,41 @@ describe('composer enter handling', () => {
 
     it('disables adjustable reasoning when Kilo omits trusted effort metadata entirely', () => {
         const html = renderToStaticMarkup(
-            createElement(ComposerActionPanel, createComposerActionPanelProps({
-                pendingImages: [],
-                disabled: false,
-                isSubmitting: false,
-                selectedProviderId: 'kilo',
-                selectedModelId: 'openai/gpt-5',
-                topLevelTab: 'chat',
-                activeModeKey: 'chat',
-                modes: [],
-                reasoningEffort: 'high',
-                selectedModelSupportsReasoning: true,
-                canAttachImages: false,
-                maxImageAttachmentsPerMessage: 4,
-                modelOptions: [
-                    createModelOption({
-                        id: 'openai/gpt-5',
-                        label: 'GPT-5',
-                        providerId: 'kilo',
-                        providerLabel: 'Kilo',
-                    }),
-                ],
-                runErrorMessage: undefined,
-                onProviderChange: () => {},
-                onModelChange: () => {},
-                onReasoningEffortChange: () => {},
-                onModeChange: () => {},
-                onPromptEdited: () => {},
-                onAddImageFiles: () => {},
-                onRemovePendingImage: () => {},
-                onRetryPendingImage: () => {},
-                onSubmitPrompt: () => {},
-            }))
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
+                    pendingImages: [],
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'kilo',
+                    selectedModelId: 'openai/gpt-5',
+                    topLevelTab: 'chat',
+                    activeModeKey: 'chat',
+                    modes: [],
+                    reasoningEffort: 'high',
+                    selectedModelSupportsReasoning: true,
+                    canAttachImages: false,
+                    maxImageAttachmentsPerMessage: 4,
+                    modelOptions: [
+                        createModelOption({
+                            id: 'openai/gpt-5',
+                            label: 'GPT-5',
+                            providerId: 'kilo',
+                            providerLabel: 'Kilo',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddImageFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                })
+            )
         );
 
         expect(html).toContain(
@@ -302,42 +311,45 @@ describe('composer enter handling', () => {
 
     it('shows the selected model incompatibility reason inline', () => {
         const html = renderToStaticMarkup(
-            createElement(ComposerActionPanel, createComposerActionPanelProps({
-                pendingImages: [],
-                disabled: false,
-                isSubmitting: false,
-                selectedProviderId: 'openai',
-                selectedModelId: 'openai/gpt-5-text',
-                topLevelTab: 'agent',
-                activeModeKey: 'code',
-                modes: [],
-                reasoningEffort: 'none',
-                selectedModelSupportsReasoning: true,
-                canAttachImages: false,
-                maxImageAttachmentsPerMessage: 4,
-                selectedModelCompatibilityState: 'incompatible',
-                selectedModelCompatibilityReason: 'This mode requires native tool calling.',
-                modelOptions: [
-                    createModelOption({
-                        id: 'openai/gpt-5-text',
-                        label: 'GPT-5 Text',
-                        providerId: 'openai',
-                        providerLabel: 'OpenAI',
-                        compatibilityState: 'incompatible',
-                        compatibilityReason: 'This mode requires native tool calling.',
-                    }),
-                ],
-                runErrorMessage: undefined,
-                onProviderChange: () => {},
-                onModelChange: () => {},
-                onReasoningEffortChange: () => {},
-                onModeChange: () => {},
-                onPromptEdited: () => {},
-                onAddImageFiles: () => {},
-                onRemovePendingImage: () => {},
-                onRetryPendingImage: () => {},
-                onSubmitPrompt: () => {},
-            }))
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
+                    pendingImages: [],
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'openai',
+                    selectedModelId: 'openai/gpt-5-text',
+                    topLevelTab: 'agent',
+                    activeModeKey: 'code',
+                    modes: [],
+                    reasoningEffort: 'none',
+                    selectedModelSupportsReasoning: true,
+                    canAttachImages: false,
+                    maxImageAttachmentsPerMessage: 4,
+                    selectedModelCompatibilityState: 'incompatible',
+                    selectedModelCompatibilityReason: 'This mode requires native tool calling.',
+                    modelOptions: [
+                        createModelOption({
+                            id: 'openai/gpt-5-text',
+                            label: 'GPT-5 Text',
+                            providerId: 'openai',
+                            providerLabel: 'OpenAI',
+                            compatibilityState: 'incompatible',
+                            compatibilityReason: 'This mode requires native tool calling.',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddImageFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                })
+            )
         );
 
         expect(html).toContain('This mode requires native tool calling.');
@@ -347,14 +359,69 @@ describe('composer enter handling', () => {
         'shows live context usage details for %s',
         (topLevelTab) => {
             const html = renderToStaticMarkup(
-                createElement(ComposerActionPanel, createComposerActionPanelProps({
+                createElement(
+                    ComposerActionPanel,
+                    createComposerActionPanelProps({
+                        pendingImages: [],
+                        disabled: false,
+                        isSubmitting: false,
+                        selectedProviderId: 'openai',
+                        selectedModelId: 'openai/gpt-5',
+                        topLevelTab,
+                        activeModeKey: topLevelTab,
+                        modes: [],
+                        reasoningEffort: 'none',
+                        selectedModelSupportsReasoning: false,
+                        canAttachImages: false,
+                        maxImageAttachmentsPerMessage: 4,
+                        modelOptions: [
+                            createModelOption({
+                                id: 'openai/gpt-5',
+                                label: 'GPT-5',
+                                providerId: 'openai',
+                                providerLabel: 'OpenAI',
+                            }),
+                        ],
+                        runErrorMessage: undefined,
+                        contextState: createContextState({
+                            totalTokens: 40000,
+                            usableInputBudgetTokens: 100000,
+                            thresholdTokens: 80000,
+                            estimateMode: 'exact',
+                        }),
+                        onProviderChange: () => {},
+                        onModelChange: () => {},
+                        onReasoningEffortChange: () => {},
+                        onModeChange: () => {},
+                        onPromptEdited: () => {},
+                        onAddImageFiles: () => {},
+                        onRemovePendingImage: () => {},
+                        onRetryPendingImage: () => {},
+                        onSubmitPrompt: () => {},
+                    })
+                )
+            );
+
+            expect(html).toContain('40,000 used of 100,000 usable input tokens');
+            expect(html).toContain('Remaining 60,000');
+            expect(html).toContain('Usage 40%');
+            expect(html).toContain('Exact counting');
+            expect(html).toContain('Compaction threshold: 80,000 tokens.');
+        }
+    );
+
+    it('keeps context disabled-state messaging focused on thread usage', () => {
+        const html = renderToStaticMarkup(
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
                     pendingImages: [],
                     disabled: false,
                     isSubmitting: false,
                     selectedProviderId: 'openai',
                     selectedModelId: 'openai/gpt-5',
-                    topLevelTab,
-                    activeModeKey: topLevelTab,
+                    topLevelTab: 'chat',
+                    activeModeKey: 'chat',
                     modes: [],
                     reasoningEffort: 'none',
                     selectedModelSupportsReasoning: false,
@@ -370,10 +437,10 @@ describe('composer enter handling', () => {
                     ],
                     runErrorMessage: undefined,
                     contextState: createContextState({
-                        totalTokens: 40000,
-                        usableInputBudgetTokens: 100000,
-                        thresholdTokens: 80000,
-                        estimateMode: 'exact',
+                        disabledReason: 'multimodal_counting_unavailable',
+                        includeBudget: false,
+                        includeThreshold: false,
+                        includeEstimate: false,
                     }),
                     onProviderChange: () => {},
                     onModelChange: () => {},
@@ -384,57 +451,8 @@ describe('composer enter handling', () => {
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},
-                }))
-            );
-
-            expect(html).toContain('40,000 used of 100,000 usable input tokens');
-            expect(html).toContain('Remaining 60,000');
-            expect(html).toContain('Usage 40%');
-            expect(html).toContain('Exact counting');
-            expect(html).toContain('Compaction threshold: 80,000 tokens.');
-        }
-    );
-
-    it('keeps context disabled-state messaging focused on thread usage', () => {
-        const html = renderToStaticMarkup(
-            createElement(ComposerActionPanel, createComposerActionPanelProps({
-                pendingImages: [],
-                disabled: false,
-                isSubmitting: false,
-                selectedProviderId: 'openai',
-                selectedModelId: 'openai/gpt-5',
-                topLevelTab: 'chat',
-                activeModeKey: 'chat',
-                modes: [],
-                reasoningEffort: 'none',
-                selectedModelSupportsReasoning: false,
-                canAttachImages: false,
-                maxImageAttachmentsPerMessage: 4,
-                modelOptions: [
-                    createModelOption({
-                        id: 'openai/gpt-5',
-                        label: 'GPT-5',
-                        providerId: 'openai',
-                        providerLabel: 'OpenAI',
-                    }),
-                ],
-                runErrorMessage: undefined,
-                contextState: createContextState({
-                    disabledReason: 'multimodal_counting_unavailable',
-                    includeBudget: false,
-                    includeThreshold: false,
-                    includeEstimate: false,
-                }),
-                onProviderChange: () => {},
-                onModelChange: () => {},
-                onReasoningEffortChange: () => {},
-                onModeChange: () => {},
-                onPromptEdited: () => {},
-                onAddImageFiles: () => {},
-                onRemovePendingImage: () => {},
-                onRetryPendingImage: () => {},
-                onSubmitPrompt: () => {},
-            }))
+                })
+            )
         );
 
         expect(html).toContain(

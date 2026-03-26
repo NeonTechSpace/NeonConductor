@@ -24,10 +24,7 @@ interface StartedChildStep {
     runId: EntityId<'run'>;
 }
 
-function isRunCancelled(
-    activeRuns: ActiveOrchestratorRunRegistry,
-    orchestratorRunId: EntityId<'orch'>
-): boolean {
+function isRunCancelled(activeRuns: ActiveOrchestratorRunRegistry, orchestratorRunId: EntityId<'orch'>): boolean {
     const active = activeRuns.get(orchestratorRunId);
     return !active || active.cancelled;
 }

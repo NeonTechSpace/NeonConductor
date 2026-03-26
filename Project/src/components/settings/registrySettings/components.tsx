@@ -1,6 +1,10 @@
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
 
-import type { ModeDefinitionRecord, RulesetDefinitionRecord, SkillfileDefinitionRecord } from '@/app/backend/persistence/types';
+import type {
+    ModeDefinitionRecord,
+    RulesetDefinitionRecord,
+    SkillfileDefinitionRecord,
+} from '@/app/backend/persistence/types';
 
 type RegistryAsset = ModeDefinitionRecord | RulesetDefinitionRecord | SkillfileDefinitionRecord;
 
@@ -10,7 +14,10 @@ function previewMarkdown(markdown: string): string {
 }
 
 function formatScopeLabel(asset: RegistryAsset): string {
-    const presetLabel = 'presetKey' in asset && asset.presetKey ? ` · ${asset.presetKey}` : '';
+    const presetLabel =
+        'presetKey' in asset && typeof asset.presetKey === 'string' && asset.presetKey.length > 0
+            ? ` · ${asset.presetKey}`
+            : '';
     return `${asset.scope}${presetLabel}`;
 }
 
@@ -20,10 +27,14 @@ export function AssetMeta({ asset }: { asset: RegistryAsset }) {
             <span className='bg-background rounded-full px-2 py-1 font-medium'>{formatScopeLabel(asset)}</span>
             <span className='bg-background rounded-full px-2 py-1 font-medium'>{asset.sourceKind}</span>
             {'activationMode' in asset ? (
-                <span className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>{asset.activationMode}</span>
+                <span className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>
+                    {asset.activationMode}
+                </span>
             ) : null}
             {asset.tags?.map((tag) => (
-                <span key={`${asset.id}:${tag}`} className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>
+                <span
+                    key={`${asset.id}:${tag}`}
+                    className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>
                     {tag}
                 </span>
             ))}
@@ -50,7 +61,9 @@ export function AssetCard({
                 <div className='min-w-0'>
                     <p className='truncate text-sm font-semibold'>{title}</p>
                     <p className='text-muted-foreground mt-1 text-xs'>{subtitle}</p>
-                    {asset.description ? <p className='text-muted-foreground mt-2 text-xs'>{asset.description}</p> : null}
+                    {asset.description ? (
+                        <p className='text-muted-foreground mt-2 text-xs'>{asset.description}</p>
+                    ) : null}
                 </div>
                 <div className='text-right text-[11px] font-semibold'>
                     <p>{asset.enabled ? 'Enabled' : 'Disabled'}</p>
@@ -64,7 +77,7 @@ export function AssetCard({
                 </div>
             ) : null}
             {asset.originPath ? (
-                <p className='text-muted-foreground mt-3 break-all rounded-xl bg-background/60 px-3 py-2 text-[11px]'>
+                <p className='text-muted-foreground bg-background/60 mt-3 rounded-xl px-3 py-2 text-[11px] break-all'>
                     {asset.originPath}
                 </p>
             ) : null}

@@ -54,7 +54,7 @@ export function ConfirmDialog({
                 <h2 id={titleId} className='text-base font-semibold'>
                     {title}
                 </h2>
-                <p id={descriptionId} className='text-muted-foreground mt-2 break-words text-sm leading-6 text-balance'>
+                <p id={descriptionId} className='text-muted-foreground mt-2 text-sm leading-6 text-balance break-words'>
                     {message}
                 </p>
                 {children ? <div className='mt-4'>{children}</div> : null}

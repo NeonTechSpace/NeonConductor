@@ -1,6 +1,6 @@
 import { FlowMessageView } from '@/web/components/conversation/messages/flow/flowMessageView';
-
 import type { MessageFlowMessage, MessageFlowTurn } from '@/web/components/conversation/messages/messageFlowModel';
+
 import type { RunRecord } from '@/app/backend/persistence/types';
 
 interface MessageFlowTurnViewProps {

@@ -1,13 +1,20 @@
 import { planStore } from '@/app/backend/persistence/stores';
 import type { PlanRecordView, PlanStartInput } from '@/app/backend/runtime/contracts';
-import { errPlan, type PlanServiceError, okPlan, validatePlanStartInput } from '@/app/backend/runtime/services/plan/errors';
+import {
+    errPlan,
+    type PlanServiceError,
+    okPlan,
+    validatePlanStartInput,
+} from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanQuestionRequestedEvents, appendPlanStartedEvent } from '@/app/backend/runtime/services/plan/events';
 import { createDefaultQuestions, requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { appLog } from '@/app/main/logging';
 
 import type { Result } from 'neverthrow';
 
-export async function startPlanFlow(input: PlanStartInput): Promise<Result<{ plan: PlanRecordView }, PlanServiceError>> {
+export async function startPlanFlow(
+    input: PlanStartInput
+): Promise<Result<{ plan: PlanRecordView }, PlanServiceError>> {
     const validation = validatePlanStartInput(input);
     if (validation.isErr()) {
         return errPlan(validation.error.code, validation.error.message);

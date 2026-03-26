@@ -1,5 +1,4 @@
 import os from 'node:os';
-
 import { describe, expect, it } from 'vitest';
 
 import { getPersistence } from '@/app/backend/persistence/db';

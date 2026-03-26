@@ -1,5 +1,4 @@
 import { messageMediaStore, messageStore, runStore, sessionStore } from '@/app/backend/persistence/stores';
-import { createAssistantStatusPartPayload } from '@/app/backend/runtime/contracts/types/messagePart';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
 import { publishRunStartedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
@@ -13,12 +12,11 @@ import {
 import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
-import type { EntityId } from '@/app/backend/runtime/contracts';
 
-export async function persistRunStart(input: {
-    input: StartRunInput;
-    prepared: PreparedRunStart;
-}): Promise<{
+import type { EntityId } from '@/shared/contracts';
+import { createAssistantStatusPartPayload } from '@/shared/contracts/types/messagePart';
+
+export async function persistRunStart(input: { input: StartRunInput; prepared: PreparedRunStart }): Promise<{
     run: Awaited<ReturnType<typeof runStore.create>>;
     assistantMessageId: EntityId<'msg'>;
 }> {

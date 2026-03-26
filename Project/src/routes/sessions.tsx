@@ -37,7 +37,7 @@ function SessionsRouteComponent() {
 }
 
 export const Route = createFileRoute('/sessions')({
-    loader: async ({ context }) => {
+    loader: ({ context }) => {
         void startWorkspaceBootPrefetch({
             trpcClient: context.trpcClient,
             trpcUtils: context.trpcUtils,

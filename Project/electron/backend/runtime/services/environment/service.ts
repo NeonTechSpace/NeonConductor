@@ -1,6 +1,6 @@
+import { spawn } from 'node:child_process';
 import { access, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 
 import type {
     WorkspaceDetectedPackageManager,
@@ -65,7 +65,10 @@ async function pathExists(targetPath: string): Promise<boolean> {
     }
 }
 
-async function lookupExecutable(command: TrackedCommand, platform: SupportedPlatform): Promise<WorkspaceEnvironmentCommandAvailabilityEntry> {
+async function lookupExecutable(
+    command: TrackedCommand,
+    platform: SupportedPlatform
+): Promise<WorkspaceEnvironmentCommandAvailabilityEntry> {
     const lookupCommand = platform === 'win32' ? 'where.exe' : 'which';
     const lookupArgs = [command];
 
@@ -239,8 +242,10 @@ function resolveVcsPreference(input: {
         family: input.override,
         source: 'override',
         requestedOverride: input.override,
-        available: input.override === 'jj' ? input.availableCommands.jj.available : input.availableCommands.git.available,
-        mismatch: input.override === 'jj' ? !input.availableCommands.jj.available : !input.availableCommands.git.available,
+        available:
+            input.override === 'jj' ? input.availableCommands.jj.available : input.availableCommands.git.available,
+        mismatch:
+            input.override === 'jj' ? !input.availableCommands.jj.available : !input.availableCommands.git.available,
     };
 }
 
@@ -372,7 +377,9 @@ function buildNotes(input: {
     }
 
     if (input.effectivePreferences.vcs.mismatch) {
-        notes.push(`The pinned VCS preference "${input.effectivePreferences.vcs.family}" is not available on this machine.`);
+        notes.push(
+            `The pinned VCS preference "${input.effectivePreferences.vcs.family}" is not available on this machine.`
+        );
     }
 
     if (input.effectivePreferences.packageManager.mismatch) {

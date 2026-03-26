@@ -1,4 +1,9 @@
-import { appPromptLayerSettingsStore, builtInModePromptOverrideStore, modeStore, settingsStore } from '@/app/backend/persistence/stores';
+import {
+    appPromptLayerSettingsStore,
+    builtInModePromptOverrideStore,
+    modeStore,
+    settingsStore,
+} from '@/app/backend/persistence/stores';
 import {
     type FileBackedCustomModeSettingsItem,
     normalizeModePromptDefinition,
@@ -11,11 +16,11 @@ import {
     type ToolCapability,
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
+import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import { buildCanonicalCustomModePayload } from '@/app/backend/runtime/services/promptLayers/customModePortability';
 import { buildDiscoveredAssets, replaceDiscoveredModes } from '@/app/backend/runtime/services/registry/discovery';
 import { resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
-import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 
-import { buildCanonicalCustomModePayload } from '@/app/backend/runtime/services/promptLayers/customModePortability';
 
 export const PROFILE_GLOBAL_INSTRUCTIONS_KEY = 'prompt_layer.profile_global_instructions';
 const TOP_LEVEL_INSTRUCTIONS_KEY_PREFIX = 'prompt_layer.top_level.';
@@ -83,7 +88,9 @@ async function readFileBackedCustomModes(input: {
             ...(mode.description ? { description: mode.description } : {}),
             ...(mode.whenToUse ? { whenToUse: mode.whenToUse } : {}),
             ...(mode.tags ? { tags: mode.tags } : {}),
-            ...(mode.executionPolicy.toolCapabilities ? { toolCapabilities: mode.executionPolicy.toolCapabilities } : {}),
+            ...(mode.executionPolicy.toolCapabilities
+                ? { toolCapabilities: mode.executionPolicy.toolCapabilities }
+                : {}),
         };
         if (mode.scope === 'workspace') {
             workspaceModes[mode.topLevelTab].push(item);
@@ -104,7 +111,9 @@ async function readFileBackedCustomModes(input: {
     };
 }
 
-export async function readBuiltInModes(profileId: string): Promise<Record<TopLevelTab, BuiltInModePromptSettingsItem[]>> {
+export async function readBuiltInModes(
+    profileId: string
+): Promise<Record<TopLevelTab, BuiltInModePromptSettingsItem[]>> {
     const [storedModes, overrides] = await Promise.all([
         modeStore.listByProfile(profileId),
         builtInModePromptOverrideStore.listByProfile(profileId),
@@ -113,18 +122,16 @@ export async function readBuiltInModes(profileId: string): Promise<Record<TopLev
         overrides.map((override) => [`${override.topLevelTab}:${override.modeKey}`, override] as const)
     );
 
-    const builtInModes = storedModes
-        .filter(isBuiltInMode)
-        .map((mode) => {
-            const override = overrideByKey.get(`${mode.topLevelTab}:${mode.modeKey}`);
-            return {
-                topLevelTab: mode.topLevelTab,
-                modeKey: mode.modeKey,
-                label: mode.label,
-                prompt: override ? normalizeModePromptDefinition({ ...mode.prompt, ...override.prompt }) : mode.prompt,
-                hasOverride: override !== undefined,
-            } satisfies BuiltInModePromptSettingsItem;
-        });
+    const builtInModes = storedModes.filter(isBuiltInMode).map((mode) => {
+        const override = overrideByKey.get(`${mode.topLevelTab}:${mode.modeKey}`);
+        return {
+            topLevelTab: mode.topLevelTab,
+            modeKey: mode.modeKey,
+            label: mode.label,
+            prompt: override ? normalizeModePromptDefinition({ ...mode.prompt, ...override.prompt }) : mode.prompt,
+            hasOverride: override !== undefined,
+        } satisfies BuiltInModePromptSettingsItem;
+    });
 
     return {
         chat: builtInModes.filter((mode) => mode.topLevelTab === 'chat').sort(sortBuiltInModes),
@@ -151,7 +158,10 @@ export async function assertBuiltInModeExists(
 export async function readTopLevelInstructions(profileId: string): Promise<Record<TopLevelTab, string>> {
     const storedInstructions = await Promise.all(
         topLevelTabs.map(async (topLevelTab) => {
-            const storedValue = await settingsStore.getStringOptional(profileId, getTopLevelInstructionsKey(topLevelTab));
+            const storedValue = await settingsStore.getStringOptional(
+                profileId,
+                getTopLevelInstructionsKey(topLevelTab)
+            );
             return [topLevelTab, normalizeInstructions(storedValue)] as const;
         })
     );

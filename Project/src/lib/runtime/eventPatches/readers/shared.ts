@@ -14,7 +14,10 @@ export function readNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-export function readLiteral<TValue extends string>(value: unknown, allowedValues: readonly TValue[]): TValue | undefined {
+export function readLiteral<TValue extends string>(
+    value: unknown,
+    allowedValues: readonly TValue[]
+): TValue | undefined {
     if (typeof value !== 'string') {
         return undefined;
     }

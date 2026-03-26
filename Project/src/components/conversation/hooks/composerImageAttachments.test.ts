@@ -76,9 +76,7 @@ describe('prepareComposerImageAttachment', () => {
             )
         );
         vi.mocked(compressComposerImageInWorker).mockImplementation(() =>
-            Promise.resolve().then(() =>
-                err(composerImageCompressionError('worker_unavailable', 'worker unavailable'))
-            )
+            Promise.resolve().then(() => err(composerImageCompressionError('worker_unavailable', 'worker unavailable')))
         );
 
         const result = await prepareComposerImageAttachment(

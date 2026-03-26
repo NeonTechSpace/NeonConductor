@@ -1,4 +1,10 @@
-import { conversationStore, sessionStore, threadStore, workspaceRootStore, sandboxStore } from '@/app/backend/persistence/stores';
+import {
+    conversationStore,
+    sessionStore,
+    threadStore,
+    workspaceRootStore,
+    sandboxStore,
+} from '@/app/backend/persistence/stores';
 import type { ThreadRecord } from '@/app/backend/persistence/types';
 import type { EntityId, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
 import { sandboxService } from '@/app/backend/runtime/services/sandbox/service';
@@ -16,7 +22,8 @@ async function resolveWorkspaceBoundContext(input: {
             workspaceFingerprint: input.workspaceFingerprint,
             label: input.workspaceFingerprint,
             absolutePath: 'Unresolved workspace root',
-            executionEnvironmentMode: input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
+            executionEnvironmentMode:
+                input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
         };
     }
 
@@ -44,7 +51,8 @@ async function resolveWorkspaceBoundContext(input: {
         workspaceFingerprint: input.workspaceFingerprint,
         label: workspaceRoot.label,
         absolutePath: workspaceRoot.absolutePath,
-        executionEnvironmentMode: input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
+        executionEnvironmentMode:
+            input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
     };
 }
 
@@ -106,7 +114,10 @@ export class WorkspaceContextService {
         });
     }
 
-    async resolveForThread(input: { profileId: string; threadId: EntityId<'thr'> }): Promise<ResolvedWorkspaceContext | null> {
+    async resolveForThread(input: {
+        profileId: string;
+        threadId: EntityId<'thr'>;
+    }): Promise<ResolvedWorkspaceContext | null> {
         const thread = await threadStore.getById(input.profileId, input.threadId);
         if (!thread) {
             return null;

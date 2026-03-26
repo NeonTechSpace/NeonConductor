@@ -77,9 +77,7 @@ describe('conversation shell mode helpers', () => {
             modeRequiresNativeTools(createMode({ modeKey: 'orchestrate', toolCapabilities: ['filesystem_read'] }))
         ).toBe(true);
         expect(
-            modeRequiresNativeTools(
-                createMode({ modeKey: 'code', toolCapabilities: ['filesystem_read', 'shell'] })
-            )
+            modeRequiresNativeTools(createMode({ modeKey: 'code', toolCapabilities: ['filesystem_read', 'shell'] }))
         ).toBe(true);
     });
 });

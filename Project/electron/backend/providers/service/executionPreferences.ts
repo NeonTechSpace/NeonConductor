@@ -1,7 +1,7 @@
 import { settingsStore } from '@/app/backend/persistence/stores/profile/settingsStore';
 import type { ProviderExecutionPreferenceRecord } from '@/app/backend/persistence/types';
-import { resolveProviderRuntimePathContext } from '@/app/backend/providers/runtimePathContext';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
+import { resolveProviderRuntimePathContext } from '@/app/backend/providers/runtimePathContext';
 import {
     errProviderService,
     okProviderService,
@@ -13,10 +13,7 @@ import { openAIExecutionModes, type OpenAIExecutionMode } from '@/app/backend/ru
 const OPENAI_EXECUTION_PREFERENCE_KEY = 'provider_execution_preference:openai';
 const OFFICIAL_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
-type RealtimeDisabledReason =
-    | 'provider_not_supported'
-    | 'api_key_required'
-    | 'base_url_not_supported';
+type RealtimeDisabledReason = 'provider_not_supported' | 'api_key_required' | 'base_url_not_supported';
 
 function normalizeBaseUrl(baseUrl: string | null | undefined): string | null {
     const trimmed = baseUrl?.trim();
@@ -61,7 +58,9 @@ async function resolveExecutionPreferenceState(
     profileId: string,
     providerId: 'openai'
 ): Promise<ProviderServiceResult<ProviderExecutionPreferenceRecord>> {
-    const storedMode = normalizeStoredMode(await settingsStore.getStringOptional(profileId, OPENAI_EXECUTION_PREFERENCE_KEY));
+    const storedMode = normalizeStoredMode(
+        await settingsStore.getStringOptional(profileId, OPENAI_EXECUTION_PREFERENCE_KEY)
+    );
     const authState = await providerAuthExecutionService.getAuthState(profileId, providerId);
     const runtimePathResult = await resolveProviderRuntimePathContext(profileId, providerId);
     if (runtimePathResult.isErr()) {

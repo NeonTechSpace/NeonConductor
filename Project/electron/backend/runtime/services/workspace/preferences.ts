@@ -1,15 +1,16 @@
 import { settingsStore, workspaceRootStore } from '@/app/backend/persistence/stores';
 import { nowIso, isJsonRecord, isJsonString, isJsonUnknownArray } from '@/app/backend/persistence/stores/shared/utils';
 import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
-import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
-import { canonicalizeProviderModelId } from '@/shared/kiloModels';
-import { providerIds, topLevelTabs, type RuntimeProviderId, type TopLevelTab } from '@/shared/contracts';
 import {
     workspacePreferredPackageManagerValues,
     workspacePreferredVcsValues,
     type WorkspacePreferredPackageManager,
     type WorkspacePreferredVcs,
 } from '@/app/backend/runtime/contracts/types/runtime';
+import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+
+import { providerIds, topLevelTabs, type RuntimeProviderId, type TopLevelTab } from '@/shared/contracts';
+import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
 const WORKSPACE_PREFERENCES_SETTING_KEY = 'workspace_preferences';
 

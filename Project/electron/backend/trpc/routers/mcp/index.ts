@@ -8,9 +8,13 @@ import {
     mcpSetEnvSecretsInputSchema,
     mcpUpdateServerInputSchema,
 } from '@/app/backend/runtime/contracts';
-import { runtimeRemoveEvent, runtimeStatusEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
-import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { mcpService } from '@/app/backend/runtime/services/mcp/service';
+import {
+    runtimeRemoveEvent,
+    runtimeStatusEvent,
+    runtimeUpsertEvent,
+} from '@/app/backend/runtime/services/runtimeEventEnvelope';
+import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 
 export const mcpRouter = router({

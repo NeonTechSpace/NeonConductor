@@ -1,9 +1,5 @@
 import { planStore } from '@/app/backend/persistence/stores';
-import type {
-    EntityId,
-    PlanImplementInput,
-    PlanRecordView,
-} from '@/app/backend/runtime/contracts';
+import type { EntityId, PlanImplementInput, PlanRecordView } from '@/app/backend/runtime/contracts';
 import { orchestratorExecutionService } from '@/app/backend/runtime/services/orchestrator/executionService';
 import type { PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanImplementationStartedEvent } from '@/app/backend/runtime/services/plan/events';
@@ -17,10 +13,7 @@ export type PlanImplementationResult =
     | { started: true; mode: 'agent.code'; runId: EntityId<'run'>; plan: PlanRecordView }
     | { started: true; mode: 'orchestrator.orchestrate'; orchestratorRunId: EntityId<'orch'>; plan: PlanRecordView };
 
-function buildAgentImplementationPrompt(input: {
-    summaryMarkdown: string;
-    itemDescriptions: string[];
-}): string {
+function buildAgentImplementationPrompt(input: { summaryMarkdown: string; itemDescriptions: string[] }): string {
     const taskList = input.itemDescriptions.map((description) => `- ${description}`).join('\n');
     return [
         'Implement the approved plan.',

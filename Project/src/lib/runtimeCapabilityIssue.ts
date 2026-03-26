@@ -1,8 +1,4 @@
-import type {
-    RunStartRejectionAction,
-    RuntimeCompatibilityIssue,
-    RuntimeProviderId,
-} from '@/shared/contracts';
+import type { RunStartRejectionAction, RuntimeCompatibilityIssue, RuntimeProviderId } from '@/shared/contracts';
 
 export function isProviderRunnable(authState: string, authMethod: string): boolean {
     if (authMethod === 'none') {

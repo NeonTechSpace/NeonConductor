@@ -23,11 +23,13 @@ describe('runtimeLifecycle', () => {
         await emitRuntimeLifecycleSelection({
             handlers: {
                 onPart: () => undefined,
-                onTransportSelected: async () => {
+                onTransportSelected: () => {
                     events.push('transport');
+                    return Promise.resolve();
                 },
-                onCacheResolved: async () => {
+                onCacheResolved: () => {
                     events.push('cache');
+                    return Promise.resolve();
                 },
             },
             transportSelection: {

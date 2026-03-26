@@ -1,5 +1,6 @@
 import { useDeferredValue, useState } from 'react';
 
+import type { WorkspaceLifecycleDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
 import { resolveThreadDraftDefaults } from '@/web/components/conversation/sidebar/threadDraftDefaults';
 import { buildModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -7,10 +8,10 @@ import { trpc } from '@/web/trpc/client';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
 
-import type { WorkspaceLifecycleDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
+
 
 interface UseWorkspaceLifecycleDraftStateInput {
     profileId: string;

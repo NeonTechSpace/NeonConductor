@@ -1,6 +1,10 @@
-import { streamOpenAICompatibleRuntime } from '@/app/backend/providers/adapters/openaiCompatible/runtime';
 import { resolveOpenAIEndpoints } from '@/app/backend/providers/adapters/openai/endpoints';
-import type { ProviderAdapterResult, ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
+import { streamOpenAICompatibleRuntime } from '@/app/backend/providers/adapters/openaiCompatible/runtime';
+import type {
+    ProviderAdapterResult,
+    ProviderRuntimeHandlers,
+    ProviderRuntimeInput,
+} from '@/app/backend/providers/types';
 
 export async function streamOpenAICodexRuntime(
     input: ProviderRuntimeInput,

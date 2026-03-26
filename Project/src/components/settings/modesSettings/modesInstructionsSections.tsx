@@ -1,6 +1,6 @@
+import type { useModesInstructionsSettingsController } from '@/web/components/settings/modesSettings/useModesInstructionsSettingsController';
 import { Button } from '@/web/components/ui/button';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
-import type { useModesInstructionsSettingsController } from '@/web/components/settings/modesSettings/useModesInstructionsSettingsController';
 
 import { toolCapabilities, topLevelTabs, type ToolCapability, type TopLevelTab } from '@/shared/contracts';
 
@@ -34,8 +34,8 @@ export function PromptLayerCard(input: {
     isSaving: boolean;
     warning?: string;
     onChange: (value: string) => void;
-    onSave: () => Promise<unknown>;
-    onReset: () => Promise<unknown>;
+    onSave: () => void;
+    onReset: () => void;
 }) {
     return (
         <section className='border-border/70 bg-card/50 space-y-4 rounded-[24px] border p-5'>
@@ -45,7 +45,7 @@ export function PromptLayerCard(input: {
             </div>
 
             {input.warning ? (
-                <div className='border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100 rounded-2xl border px-3 py-2 text-sm'>
+                <div className='rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100'>
                     {input.warning}
                 </div>
             ) : null}
@@ -69,7 +69,9 @@ export function PromptLayerCard(input: {
                     type='button'
                     size='sm'
                     disabled={input.isSaving}
-                    onClick={input.onSave}>
+                    onClick={() => {
+                        input.onSave();
+                    }}>
                     {input.isSaving ? 'Saving…' : 'Save'}
                 </Button>
                 <Button
@@ -77,7 +79,9 @@ export function PromptLayerCard(input: {
                     size='sm'
                     variant='outline'
                     disabled={input.isSaving}
-                    onClick={input.onReset}>
+                    onClick={() => {
+                        input.onReset();
+                    }}>
                     Reset
                 </Button>
             </div>
@@ -95,8 +99,8 @@ export function BuiltInModePromptCard(input: {
     warning: string;
     onRoleDefinitionChange: (value: string) => void;
     onCustomInstructionsChange: (value: string) => void;
-    onSave: () => Promise<unknown>;
-    onReset: () => Promise<unknown>;
+    onSave: () => void;
+    onReset: () => void;
 }) {
     return (
         <section className='border-border/70 bg-card/50 space-y-4 rounded-[24px] border p-5'>
@@ -110,7 +114,7 @@ export function BuiltInModePromptCard(input: {
                 </div>
             </div>
 
-            <div className='border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100 rounded-2xl border px-3 py-2 text-sm'>
+            <div className='rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100'>
                 {input.warning}
             </div>
 
@@ -147,7 +151,9 @@ export function BuiltInModePromptCard(input: {
                     type='button'
                     size='sm'
                     disabled={input.isSaving}
-                    onClick={input.onSave}>
+                    onClick={() => {
+                        input.onSave();
+                    }}>
                     {input.isSaving ? 'Saving…' : 'Save'}
                 </Button>
                 <Button
@@ -155,7 +161,9 @@ export function BuiltInModePromptCard(input: {
                     size='sm'
                     variant='outline'
                     disabled={input.isSaving}
-                    onClick={input.onReset}>
+                    onClick={() => {
+                        input.onReset();
+                    }}>
                     Reset
                 </Button>
             </div>
@@ -164,11 +172,7 @@ export function BuiltInModePromptCard(input: {
 }
 
 export function formatTopLevelLabel(topLevelTab: TopLevelTab): string {
-    return topLevelTab === 'chat'
-        ? 'Chat'
-        : topLevelTab === 'agent'
-          ? 'Agent'
-          : 'Orchestrator';
+    return topLevelTab === 'chat' ? 'Chat' : topLevelTab === 'agent' ? 'Agent' : 'Orchestrator';
 }
 
 export function formatBuiltInModeDescription(topLevelTab: TopLevelTab, label: string): string {
@@ -227,7 +231,9 @@ export function CustomModeEditorSection(input: {
                         disabled={
                             input.editor.isSaving || (draft.scope === 'workspace' && !input.editor.hasWorkspaceScope)
                         }
-                        onClick={input.editor.save}>
+                        onClick={() => {
+                            void input.editor.save();
+                        }}>
                         {input.editor.isSaving
                             ? draft.kind === 'create'
                                 ? 'Creating…'
@@ -356,9 +362,7 @@ export function CustomModeEditorSection(input: {
             </label>
 
             <label className='space-y-2'>
-                <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
-                    Tags
-                </span>
+                <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>Tags</span>
                 <textarea
                     value={draft.tagsText}
                     onChange={(event) => {
@@ -368,9 +372,7 @@ export function CustomModeEditorSection(input: {
                     spellCheck={false}
                     placeholder='quality, review'
                 />
-                <p className='text-muted-foreground text-xs leading-5'>
-                    Separate tags with commas or new lines.
-                </p>
+                <p className='text-muted-foreground text-xs leading-5'>Separate tags with commas or new lines.</p>
             </label>
 
             <div className='space-y-2'>
@@ -428,11 +430,11 @@ export function CustomModeEditorSection(input: {
 
             <div className='border-border/70 bg-background/60 rounded-2xl border px-4 py-3 text-sm'>
                 {draft.scope === 'workspace' ? (
-                    <span>
-                        Workspace target: {input.editor.selectedWorkspaceLabel ?? 'Selected workspace'}
-                    </span>
+                    <span>Workspace target: {input.editor.selectedWorkspaceLabel ?? 'Selected workspace'}</span>
                 ) : (
-                    <span>Target root: global <code>modes/</code></span>
+                    <span>
+                        Target root: global <code>modes/</code>
+                    </span>
                 )}
             </div>
 
@@ -462,7 +464,9 @@ export function CustomModeEditorSection(input: {
                         size='sm'
                         variant='destructive'
                         disabled={input.editor.isSaving || !draft.deleteConfirmed}
-                        onClick={input.editor.deleteMode}>
+                        onClick={() => {
+                            void input.editor.deleteMode();
+                        }}>
                         {input.editor.isSaving ? 'Deleting…' : 'Delete Mode'}
                     </Button>
                 </div>
@@ -475,9 +479,9 @@ export function FileBackedModeInventorySection(input: {
     scope: 'global' | 'workspace';
     itemsByTab: ReturnType<typeof useModesInstructionsSettingsController>['customModes']['global'];
     isExporting: boolean;
-    onExport: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => Promise<void>;
-    onEdit: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => Promise<void>;
-    onDelete: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => Promise<void>;
+    onExport: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => void;
+    onEdit: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => void;
+    onDelete: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => void;
 }) {
     const hasItems = topLevelTabs.some((topLevelTab) => input.itemsByTab[topLevelTab].length > 0);
     if (!hasItems) {
@@ -505,7 +509,8 @@ export function FileBackedModeInventorySection(input: {
                     <div key={`${input.scope}:${topLevelTab}`} className='space-y-3'>
                         <div className='space-y-1'>
                             <h6 className='text-sm font-semibold'>
-                                {input.scope === 'global' ? 'Global' : 'Workspace'} {formatTopLevelLabel(topLevelTab)} Modes
+                                {input.scope === 'global' ? 'Global' : 'Workspace'} {formatTopLevelLabel(topLevelTab)}{' '}
+                                Modes
                             </h6>
                             <p className='text-muted-foreground text-sm leading-6'>
                                 These are file-backed custom modes discovered through the existing registry root.
@@ -562,8 +567,8 @@ export function FileBackedModeInventorySection(input: {
                                             type='button'
                                             size='sm'
                                             variant='outline'
-                                            onClick={async () => {
-                                                await input.onEdit(input.scope, mode.topLevelTab, mode.modeKey);
+                                            onClick={() => {
+                                                input.onEdit(input.scope, mode.topLevelTab, mode.modeKey);
                                             }}>
                                             Edit
                                         </Button>
@@ -571,8 +576,8 @@ export function FileBackedModeInventorySection(input: {
                                             type='button'
                                             size='sm'
                                             variant='outline'
-                                            onClick={async () => {
-                                                await input.onDelete(input.scope, mode.topLevelTab, mode.modeKey);
+                                            onClick={() => {
+                                                input.onDelete(input.scope, mode.topLevelTab, mode.modeKey);
                                             }}>
                                             Delete
                                         </Button>
@@ -581,8 +586,8 @@ export function FileBackedModeInventorySection(input: {
                                             size='sm'
                                             variant='outline'
                                             disabled={input.isExporting}
-                                            onClick={async () => {
-                                                await input.onExport(input.scope, mode.topLevelTab, mode.modeKey);
+                                            onClick={() => {
+                                                input.onExport(input.scope, mode.topLevelTab, mode.modeKey);
                                             }}>
                                             {input.isExporting ? 'Loading…' : 'Load Export JSON'}
                                         </Button>

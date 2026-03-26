@@ -7,10 +7,11 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { providerCatalogStore } from '@/app/backend/persistence/stores';
 import { providerMetadataOrchestrator } from '@/app/backend/providers/metadata/orchestrator';
-import type { EntityId } from '@/app/backend/runtime/contracts';
 import { initializeSecretStore } from '@/app/backend/secrets/store';
 import type { Context } from '@/app/backend/trpc/context';
 import { appRouter } from '@/app/backend/trpc/router';
+
+import type { EntityId } from '@/shared/contracts';
 
 export function createCaller() {
     const context: Context = {
@@ -193,3 +194,4 @@ export {
     rmSync,
     writeFileSync,
 };
+

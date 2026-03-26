@@ -11,9 +11,13 @@ import {
     providerListModelsInputSchema,
     providerListProvidersInputSchema,
 } from '@/app/backend/runtime/contracts';
-import { resolveEmptyCatalogState } from '@/app/backend/trpc/routers/provider/catalogState';
 import { publicProcedure } from '@/app/backend/trpc/init';
-import { isProviderNotFoundCode, mapAuthErrorToOperationalCode, throwWithCode } from '@/app/backend/trpc/routers/provider/shared';
+import { resolveEmptyCatalogState } from '@/app/backend/trpc/routers/provider/catalogState';
+import {
+    isProviderNotFoundCode,
+    mapAuthErrorToOperationalCode,
+    throwWithCode,
+} from '@/app/backend/trpc/routers/provider/shared';
 
 export const providerQueryProcedures = {
     getControlPlane: publicProcedure.input(providerListProvidersInputSchema).query(async ({ input }) => {

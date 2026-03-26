@@ -1,13 +1,14 @@
 import { AssetCard, AssetSection, SummaryCard } from '@/web/components/settings/registrySettings/components';
 import { useRegistrySettingsController } from '@/web/components/settings/registrySettings/controller';
-import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import {
     REGISTRY_SETTINGS_SUBSECTIONS,
     type RegistrySettingsSubsectionId,
 } from '@/web/components/settings/settingsNavigation';
+import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
+import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import { Button } from '@/web/components/ui/button';
-import { formatModePromptMarkdown } from '@/app/backend/runtime/contracts';
+
+import { formatModePromptMarkdown } from '@/shared/contracts';
 
 interface RegistrySettingsViewProps {
     profileId: string;
@@ -48,7 +49,9 @@ export function RegistrySettingsScreen({
     async function handleRefreshGlobal() {
         try {
             await controller.refreshMutation.mutateAsync({ profileId });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleRefreshWorkspace() {
@@ -61,7 +64,9 @@ export function RegistrySettingsScreen({
                 profileId,
                 workspaceFingerprint: controller.selectedWorkspaceFingerprint,
             });
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     return (

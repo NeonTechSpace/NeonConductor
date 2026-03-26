@@ -3,11 +3,7 @@ import { err, ok, type Result } from 'neverthrow';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { appLog } from '@/app/main/logging';
 
-import {
-    firstPartyProviderIds,
-    providerIds,
-    type FirstPartyProviderId,
-} from '@/shared/contracts/enums';
+import { firstPartyProviderIds, providerIds, type FirstPartyProviderId } from '@/shared/contracts/enums';
 
 export { firstPartyProviderIds, providerIds };
 export type { FirstPartyProviderId };

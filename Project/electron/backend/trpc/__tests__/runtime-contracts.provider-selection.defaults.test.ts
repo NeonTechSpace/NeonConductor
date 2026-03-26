@@ -80,33 +80,83 @@ describe('runtime contracts: provider selection defaults', () => {
         const now = new Date().toISOString();
 
         sqlite
-            .prepare(`INSERT OR REPLACE INTO provider_auth_states (profile_id, provider_id, auth_method, auth_state, account_id, organization_id, token_expires_at, last_error_code, last_error_message, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(profileId, 'openai', 'oauth_device', 'authenticated', 'account_legacy_codex', null, '2026-03-23T15:00:00.000Z', null, null, now);
+            .prepare(
+                `INSERT OR REPLACE INTO provider_auth_states (profile_id, provider_id, auth_method, auth_state, account_id, organization_id, token_expires_at, last_error_code, last_error_message, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .run(
+                profileId,
+                'openai',
+                'oauth_device',
+                'authenticated',
+                'account_legacy_codex',
+                null,
+                '2026-03-23T15:00:00.000Z',
+                null,
+                null,
+                now
+            );
         sqlite
-            .prepare(`INSERT OR REPLACE INTO provider_auth_flows (id, profile_id, provider_id, flow_type, auth_method, nonce, state, code_verifier, redirect_uri, device_code, user_code, verification_uri, poll_interval_seconds, expires_at, status, last_error_code, last_error_message, created_at, updated_at, consumed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run('flow_legacy_openai_oauth', profileId, 'openai', 'oauth_device', 'oauth_device', null, null, null, null, 'device_legacy', 'USER-LEGACY', 'https://chatgpt.com', 5, '2026-03-23T16:00:00.000Z', 'pending', null, null, now, now, null);
+            .prepare(
+                `INSERT OR REPLACE INTO provider_auth_flows (id, profile_id, provider_id, flow_type, auth_method, nonce, state, code_verifier, redirect_uri, device_code, user_code, verification_uri, poll_interval_seconds, expires_at, status, last_error_code, last_error_message, created_at, updated_at, consumed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .run(
+                'flow_legacy_openai_oauth',
+                profileId,
+                'openai',
+                'oauth_device',
+                'oauth_device',
+                null,
+                null,
+                null,
+                null,
+                'device_legacy',
+                'USER-LEGACY',
+                'https://chatgpt.com',
+                5,
+                '2026-03-23T16:00:00.000Z',
+                'pending',
+                null,
+                null,
+                now,
+                now,
+                null
+            );
         sqlite
-            .prepare(`INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+            )
             .run('secret_openai_api_key', profileId, 'openai', 'api_key', 'openai-api-key-keep', now);
         sqlite
-            .prepare(`INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+            )
             .run('secret_openai_access_token', profileId, 'openai', 'access_token', 'legacy-access-token', now);
         sqlite
-            .prepare(`INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+            )
             .run('secret_openai_refresh_token', profileId, 'openai', 'refresh_token', 'legacy-refresh-token', now);
         sqlite
-            .prepare(`INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run('setting_default_provider_id', profileId, 'default_provider_id', JSON.stringify('openai'), now);
         sqlite
-            .prepare(`INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run('setting_default_model_id', profileId, 'default_model_id', JSON.stringify('openai/gpt-5-codex'), now);
         sqlite
-            .prepare(`INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run(
                 'setting_specialist_defaults',
                 profileId,
                 'specialist_defaults',
-                JSON.stringify([{ topLevelTab: 'agent', modeKey: 'code', providerId: 'openai', modelId: 'openai/gpt-5.1-codex' }]),
+                JSON.stringify([
+                    { topLevelTab: 'agent', modeKey: 'code', providerId: 'openai', modelId: 'openai/gpt-5.1-codex' },
+                ]),
                 now
             );
 
@@ -132,11 +182,44 @@ describe('runtime contracts: provider selection defaults', () => {
         expect(codexState.state.accountId).toBe('account_legacy_codex');
 
         const snapshot = await caller.runtime.getDiagnosticSnapshot({ profileId });
-        expect(snapshot.providerSecrets.some((providerSecret) => providerSecret.providerId === 'openai' && providerSecret.secretKind === 'api_key')).toBe(true);
-        expect(snapshot.providerSecrets.some((providerSecret) => providerSecret.providerId === 'openai' && providerSecret.secretKind === 'access_token')).toBe(false);
-        expect(snapshot.providerSecrets.some((providerSecret) => providerSecret.providerId === 'openai_codex' && providerSecret.secretKind === 'access_token')).toBe(true);
-        expect(snapshot.providerSecrets.some((providerSecret) => providerSecret.providerId === 'openai_codex' && providerSecret.secretKind === 'refresh_token')).toBe(true);
-        expect(snapshot.providerAuthFlows.some((providerAuthFlow) => providerAuthFlow.providerId === 'openai_codex' && providerAuthFlow.authMethod === 'oauth_device' && providerAuthFlow.id === 'flow_legacy_openai_oauth')).toBe(true);
-        expect(snapshot.providerAuthFlows.some((providerAuthFlow) => providerAuthFlow.providerId === 'openai' && providerAuthFlow.authMethod === 'oauth_device' && providerAuthFlow.id === 'flow_legacy_openai_oauth')).toBe(false);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) => providerSecret.providerId === 'openai' && providerSecret.secretKind === 'api_key'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) =>
+                    providerSecret.providerId === 'openai' && providerSecret.secretKind === 'access_token'
+            )
+        ).toBe(false);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) =>
+                    providerSecret.providerId === 'openai_codex' && providerSecret.secretKind === 'access_token'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerSecrets.some(
+                (providerSecret) =>
+                    providerSecret.providerId === 'openai_codex' && providerSecret.secretKind === 'refresh_token'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerAuthFlows.some(
+                (providerAuthFlow) =>
+                    providerAuthFlow.providerId === 'openai_codex' &&
+                    providerAuthFlow.authMethod === 'oauth_device' &&
+                    providerAuthFlow.id === 'flow_legacy_openai_oauth'
+            )
+        ).toBe(true);
+        expect(
+            snapshot.providerAuthFlows.some(
+                (providerAuthFlow) =>
+                    providerAuthFlow.providerId === 'openai' &&
+                    providerAuthFlow.authMethod === 'oauth_device' &&
+                    providerAuthFlow.id === 'flow_legacy_openai_oauth'
+            )
+        ).toBe(false);
     });
 });

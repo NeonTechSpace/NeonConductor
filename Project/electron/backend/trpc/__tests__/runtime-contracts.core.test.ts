@@ -70,7 +70,6 @@ describe('runtime contracts: core flows', () => {
         expect(mcpServers.servers).toEqual([]);
     });
 
-
     it('returns a typed not-found error when no enabled modes exist for a tab', async () => {
         const caller = createCaller();
         const { db } = getPersistence();
@@ -86,7 +85,6 @@ describe('runtime contracts: core flows', () => {
             message: `No enabled modes found for tab "agent" on profile "${profileId}".`,
         });
     });
-
 
     it('supports profile lifecycle with active switching, secure duplication, and last-profile guard', async () => {
         const caller = createCaller();
@@ -170,7 +168,6 @@ describe('runtime contracts: core flows', () => {
         expect(deleteLast.reason).toBe('last_profile');
     });
 
-
     it('rejects invalid mode/tab combinations and missing execution context', async () => {
         const caller = createCaller();
         const created = await createSessionInScope(caller, profileId, {
@@ -211,7 +208,6 @@ describe('runtime contracts: core flows', () => {
             } as unknown as Parameters<typeof caller.session.startRun>[0])
         ).rejects.toThrow('modeKey');
     });
-
 
     it('supports workspace-scoped runtime reset dry-run and apply', async () => {
         const caller = createCaller();
@@ -332,7 +328,6 @@ describe('runtime contracts: core flows', () => {
         expect(remainingRulesetCount.count).toBe(1);
     });
 
-
     it('resets only targeted profile-scoped parity rows for profile_settings', async () => {
         const caller = createCaller();
         const { sqlite } = getPersistence();
@@ -429,7 +424,6 @@ describe('runtime contracts: core flows', () => {
             .get(otherProfileId) as { count: number };
         expect(otherProfileProviderSecretCount.count).toBe(1);
     });
-
 
     it('full reset clears parity rows and reseeds baseline modes', async () => {
         const caller = createCaller();
@@ -589,13 +583,15 @@ describe('runtime contracts: core flows', () => {
             expect(snapshot.conversations).toEqual([]);
             expect(snapshot.providerSecrets).toEqual([]);
 
-            const remainingWorkspaceRoots = sqlite
-                .prepare('SELECT COUNT(*) AS count FROM workspace_roots')
-                .get() as { count: number };
+            const remainingWorkspaceRoots = sqlite.prepare('SELECT COUNT(*) AS count FROM workspace_roots').get() as {
+                count: number;
+            };
             const remainingSandboxes = sqlite.prepare('SELECT COUNT(*) AS count FROM sandboxes').get() as {
                 count: number;
             };
-            const remainingProfiles = sqlite.prepare('SELECT COUNT(*) AS count FROM profiles').get() as { count: number };
+            const remainingProfiles = sqlite.prepare('SELECT COUNT(*) AS count FROM profiles').get() as {
+                count: number;
+            };
             expect(remainingWorkspaceRoots.count).toBe(0);
             expect(remainingSandboxes.count).toBe(0);
             expect(remainingProfiles.count).toBe(1);

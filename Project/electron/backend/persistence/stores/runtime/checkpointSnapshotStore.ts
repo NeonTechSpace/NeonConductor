@@ -139,7 +139,7 @@ export class CheckpointSnapshotStore {
             .orderBy('checkpoint_snapshot_entries.relative_path', 'asc')
             .execute();
 
-        const blobBytesBySha = await this.loadBlobBytesBySha(rows.map((row) => row.blob_sha256));
+        const blobBytesBySha = this.loadBlobBytesBySha(rows.map((row) => row.blob_sha256));
 
         return rows.map((row) => ({
             checkpointId: row.checkpoint_id as EntityId<'ckpt'>,
@@ -150,7 +150,7 @@ export class CheckpointSnapshotStore {
         }));
     }
 
-    async pruneUnreferencedBlobs(): Promise<number> {
+    pruneUnreferencedBlobs(): number {
         const { sqlite } = getPersistence();
         const result = sqlite
             .prepare(
@@ -187,7 +187,7 @@ export class CheckpointSnapshotStore {
         return Number(result.changes);
     }
 
-    async loadBlobBytesBySha(blobSha256s: string[]): Promise<Map<string, Uint8Array>> {
+    loadBlobBytesBySha(blobSha256s: string[]): Map<string, Uint8Array> {
         if (blobSha256s.length === 0) {
             return new Map();
         }
@@ -284,7 +284,7 @@ export class CheckpointSnapshotStore {
         return blobBytesBySha;
     }
 
-    async getStorageSummary(profileId: string): Promise<CheckpointStorageSummary> {
+    getStorageSummary(profileId: string): CheckpointStorageSummary {
         const { sqlite } = getPersistence();
         const statsRow = sqlite
             .prepare(
@@ -318,13 +318,15 @@ export class CheckpointSnapshotStore {
                     LEFT JOIN checkpoint_blob_pack_members ON checkpoint_blob_pack_members.blob_sha256 = checkpoint_snapshot_blobs.sha256
                 `
             )
-            .get(profileId, profileId, profileId) as {
-            total_blob_count: number;
-            loose_byte_size: number;
-            packed_byte_size: number;
-            loose_blob_count: number;
-            packed_blob_count: number;
-        };
+            .get(profileId, profileId, profileId) as
+            | {
+                  total_blob_count: number;
+                  loose_byte_size: number;
+                  packed_byte_size: number;
+                  loose_blob_count: number;
+                  packed_blob_count: number;
+              }
+            | undefined;
         const lastRunRow = sqlite
             .prepare(
                 `
@@ -366,15 +368,15 @@ export class CheckpointSnapshotStore {
               }
             | undefined;
 
-        const looseReferencedByteSize = Number(statsRow?.loose_byte_size ?? 0);
-        const packedReferencedByteSize = Number(statsRow?.packed_byte_size ?? 0);
-        const totalReferencedBlobCount = Number(statsRow?.total_blob_count ?? 0);
+        const looseReferencedByteSize = statsRow?.loose_byte_size ?? 0;
+        const packedReferencedByteSize = statsRow?.packed_byte_size ?? 0;
+        const totalReferencedBlobCount = statsRow?.total_blob_count ?? 0;
 
         return {
             profileId,
-            looseReferencedBlobCount: Number(statsRow?.loose_blob_count ?? 0),
+            looseReferencedBlobCount: statsRow?.loose_blob_count ?? 0,
             looseReferencedByteSize,
-            packedReferencedBlobCount: Number(statsRow?.packed_blob_count ?? 0),
+            packedReferencedBlobCount: statsRow?.packed_blob_count ?? 0,
             packedReferencedByteSize,
             totalReferencedBlobCount,
             totalReferencedByteSize: looseReferencedByteSize + packedReferencedByteSize,
@@ -382,12 +384,12 @@ export class CheckpointSnapshotStore {
         };
     }
 
-    async listCompactionCandidates(input: {
+    listCompactionCandidates(input: {
         profileId: string;
         includeAllAges: boolean;
         maxOriginalByteSize?: number;
         cutoffCreatedAt?: string;
-    }): Promise<ReferencedInlineBlobCandidate[]> {
+    }): ReferencedInlineBlobCandidate[] {
         const { sqlite } = getPersistence();
         const blobRows = sqlite
             .prepare(

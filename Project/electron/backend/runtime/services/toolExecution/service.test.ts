@@ -3,6 +3,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
 
+function createHandledErrResult(error: { code: string; message: string }) {
+    const result = err(error);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
+
+function createHandledOkResult<T>(value: T) {
+    const result = ok(value);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
+
 const {
     buildBlockedToolOutcomeMock,
     buildDeniedToolOutcomeMock,
@@ -158,11 +176,13 @@ describe('ToolExecutionService outcomes', () => {
             resource: 'tool:read_file',
             policy: { effective: 'allow', source: 'mode' },
         });
-        invokeToolHandlerMock.mockResolvedValue(
-            err({
-                code: 'execution_failed',
-                message: 'boom',
-            })
+        invokeToolHandlerMock.mockImplementation(() =>
+            Promise.resolve(
+                createHandledErrResult({
+                    code: 'execution_failed',
+                    message: 'boom',
+                })
+            )
         );
 
         const service = new ToolExecutionService();
@@ -187,7 +207,7 @@ describe('ToolExecutionService outcomes', () => {
             resource: 'tool:read_file',
             policy: { effective: 'allow', source: 'mode' },
         });
-        invokeToolHandlerMock.mockResolvedValue(ok({ text: 'hello' }));
+        invokeToolHandlerMock.mockImplementation(() => Promise.resolve(createHandledOkResult({ text: 'hello' })));
 
         const service = new ToolExecutionService();
         const result = await service.invoke({

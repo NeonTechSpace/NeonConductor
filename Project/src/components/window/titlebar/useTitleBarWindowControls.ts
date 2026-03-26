@@ -1,5 +1,8 @@
-import { getUpdatesStatusRefetchInterval, UPDATES_STATUS_QUERY_OPTIONS } from '@/web/components/window/updatesStatusQueryOptions';
 import { getWindowCloseGuardState } from '@/web/components/window/titlebar/closeGuard';
+import {
+    getUpdatesStatusRefetchInterval,
+    UPDATES_STATUS_QUERY_OPTIONS,
+} from '@/web/components/window/updatesStatusQueryOptions';
 import { useWindowStateStreamStore } from '@/web/lib/window/stateStream';
 import { trpc } from '@/web/trpc/client';
 

@@ -20,7 +20,7 @@ export function WorkspaceBootDiagnosticsPanel({ status }: WorkspaceBootDiagnosti
                     <p className='text-sm font-semibold'>{status.headline}</p>
                     <p className='text-muted-foreground text-sm'>{status.detail}</p>
                 </div>
-                <p className='text-muted-foreground text-xs uppercase tracking-[0.16em]'>
+                <p className='text-muted-foreground text-xs tracking-[0.16em] uppercase'>
                     {status.isStuck ? 'Boot diagnostics' : 'Startup status'}
                 </p>
             </div>

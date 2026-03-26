@@ -3,10 +3,10 @@ import { RefreshCw } from 'lucide-react';
 import { getModelRuntimeNotes } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import type { ProviderModelOption } from '@/web/components/settings/providerSettings/types';
+import type { ProviderCatalogStateReason } from '@/web/components/settings/providerSettings/types';
 import { Button } from '@/web/components/ui/button';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
-import type { ProviderCatalogStateReason } from '@/web/components/settings/providerSettings/types';
 
 interface ProviderDefaultModelSectionProps {
     selectedProviderId: RuntimeProviderId | undefined;
@@ -49,11 +49,11 @@ export function ProviderDefaultModelSection({
                     : isKilo
                       ? 'Catalog refreshed, but none of the returned Kilo models are currently usable in NeonConductor.'
                       : 'Catalog refreshed, but none of the returned models are currently usable.'
-              : catalogStateReason === 'provider_not_found'
-                ? 'This provider is no longer available for the current profile.'
-                : isKilo
-                  ? 'No usable Kilo models are available yet. Refresh the catalog or check your account setup.'
-                  : 'No models are currently available for this provider.';
+                : catalogStateReason === 'provider_not_found'
+                  ? 'This provider is no longer available for the current profile.'
+                  : isKilo
+                    ? 'No usable Kilo models are available yet. Refresh the catalog or check your account setup.'
+                    : 'No models are currently available for this provider.';
 
     return (
         <section className='border-border/70 bg-card/40 space-y-3 rounded-2xl border p-4'>

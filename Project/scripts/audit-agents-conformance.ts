@@ -1,10 +1,14 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { scriptLog } from '@/scripts/logger';
 
-import { annotateReviewCategories } from './audit/reviewManifest';
-import { buildAuditSummary, formatAuditWorklist } from './audit/reporting';
+import { buildAuditSummary, formatAuditWorklist } from '@/scripts/audit/reporting';
+import { annotateReviewCategories } from '@/scripts/audit/reviewManifest';
+import {
+    collectAsyncOwnershipViolations,
+    collectCallSiteCastViolations,
+    collectPlaceholderQueryInputViolations,
+} from '@/scripts/audit/rules/astActionableRules';
 import {
     collectRepositoryTextFiles,
     collectSourceFiles,
@@ -15,19 +19,16 @@ import {
     isRendererSourceFile,
     isSizeReviewException,
     isTestFile,
-} from './audit/sourceFiles';
-import {
-    collectAsyncOwnershipViolations,
-    collectCallSiteCastViolations,
-    collectPlaceholderQueryInputViolations,
-} from './audit/rules/astActionableRules';
+} from '@/scripts/audit/sourceFiles';
+import { scriptLog } from '@/scripts/logger';
+
 import type {
     AgentsConformanceReport,
     AuditCategoryReport,
     AuditWorklistOptions,
     AuditViolation,
     ReviewedAuditViolation,
-} from './audit/types';
+} from '@/scripts/audit/types';
 
 const REVIEW_SOURCE_LINES = 900;
 const STRICT_REVIEW_SOURCE_LINES = 1200;
@@ -45,10 +46,7 @@ function isAuditSupportFile(relativePath: string): boolean {
 function collectPatternViolations(input: {
     files: ReturnType<typeof collectSourceFiles>;
     shouldInclude: (file: ReturnType<typeof collectSourceFiles>[number]) => boolean;
-    shouldIncludeLine?: (
-        file: ReturnType<typeof collectSourceFiles>[number],
-        lineContent: string
-    ) => boolean;
+    shouldIncludeLine?: (file: ReturnType<typeof collectSourceFiles>[number], lineContent: string) => boolean;
     pattern: RegExp | string;
     message: string;
 }): AuditViolation[] {
@@ -163,10 +161,7 @@ function isIntentionalThrowLine(relativePath: string, lineContent: string): bool
         return true;
     }
 
-    if (
-        relativePath === 'src/lib/privacy/privacyContext.tsx' ||
-        relativePath === 'src/lib/theme/themeContext.tsx'
-    ) {
+    if (relativePath === 'src/lib/privacy/privacyContext.tsx' || relativePath === 'src/lib/theme/themeContext.tsx') {
         return trimmedLine.startsWith('throw new Error(');
     }
 
@@ -236,7 +231,8 @@ function collectRendererElectronImportViolations(files: ReturnType<typeof collec
         files,
         shouldInclude: (file) => !isTestFile(file.relativePath) && isRendererSourceFile(file.relativePath),
         pattern: /from\s+['"]electron['"]/,
-        message: 'Renderer source must not import from electron directly; route access through preload or shared contracts.',
+        message:
+            'Renderer source must not import from electron directly; route access through preload or shared contracts.',
     });
 }
 
@@ -277,7 +273,9 @@ function countOccurrences(value: string, pattern: RegExp): number {
     return matches ? matches.length : 0;
 }
 
-function collectBrowserWindowSegments(file: ReturnType<typeof collectSourceFiles>[number]): Array<{ line: number; content: string }> {
+function collectBrowserWindowSegments(
+    file: ReturnType<typeof collectSourceFiles>[number]
+): Array<{ line: number; content: string }> {
     const lines = file.content.split(/\r?\n/);
     const segments: Array<{ line: number; content: string }> = [];
 
@@ -356,7 +354,8 @@ function collectAsyncEffectViolations(files: ReturnType<typeof collectSourceFile
         files,
         shouldInclude: (file) => !isTestFile(file.relativePath) && isRendererSourceFile(file.relativePath),
         pattern: /useEffect\s*\(\s*async\b/,
-        message: 'Do not write useEffect(async () => ...); keep the effect synchronous and call an inner async function.',
+        message:
+            'Do not write useEffect(async () => ...); keep the effect synchronous and call an inner async function.',
     });
 }
 
@@ -400,7 +399,8 @@ function collectSuspiciousEffectViolations(files: ReturnType<typeof collectSourc
             violations.push({
                 path: file.relativePath,
                 line,
-                message: 'Review effect-driven state mirroring and replace it with derived state, a keyed draft reset, or an explicit reconciliation boundary.',
+                message:
+                    'Review effect-driven state mirroring and replace it with derived state, a keyed draft reset, or an explicit reconciliation boundary.',
             });
         }
     }
@@ -536,7 +536,8 @@ export function auditAgentsConformance(rootDir: string): AgentsConformanceReport
                 shouldInclude: (file) => !isTestFile(file.relativePath) && isRendererSourceFile(file.relativePath),
                 pattern: 'useLayoutEffect',
                 shouldIncludeLine: (_file, lineContent) => isForbiddenLayoutEffectLine(lineContent),
-                message: 'useLayoutEffect is not allowed unless the file is explicitly allowlisted for a proven pre-paint layout need.',
+                message:
+                    'useLayoutEffect is not allowed unless the file is explicitly allowlisted for a proven pre-paint layout need.',
             }),
         },
         {
@@ -630,7 +631,8 @@ export function auditAgentsConformance(rootDir: string): AgentsConformanceReport
                     !isAuditSupportFile(file.relativePath),
                 shouldIncludeLine: (file, lineContent) => !isIntentionalThrowLine(file.relativePath, lineContent),
                 pattern: /\bthrow\b/,
-                message: 'Review non-parser throw and confirm it is an invariant, data-corruption, or impossible-readback case.',
+                message:
+                    'Review non-parser throw and confirm it is an invariant, data-corruption, or impossible-readback case.',
             }),
         },
     ];
@@ -656,12 +658,14 @@ export function hasManualReviewCandidates(report: AgentsConformanceReport): bool
     return report.summary.manualReviewOutstandingCount > 0;
 }
 
-export function runAgentsConformanceAudit(options: {
-    rootDir?: string;
-    reportOnly?: boolean;
-    outputMode?: 'log' | 'json' | 'worklist';
-    worklistOptions?: AuditWorklistOptions;
-} = {}): AgentsConformanceReport {
+export function runAgentsConformanceAudit(
+    options: {
+        rootDir?: string;
+        reportOnly?: boolean;
+        outputMode?: 'log' | 'json' | 'worklist';
+        worklistOptions?: AuditWorklistOptions;
+    } = {}
+): AgentsConformanceReport {
     const rootDir = options.rootDir ?? process.cwd();
     const report = auditAgentsConformance(rootDir);
     const outputMode = options.outputMode ?? 'log';
@@ -697,7 +701,9 @@ if (isDirectExecution(import.meta.url)) {
           ? 'worklist'
           : 'log';
     const laneOption = process.argv.find((argument) => argument.startsWith('--lane='))?.slice('--lane='.length);
-    const categoryOption = process.argv.find((argument) => argument.startsWith('--category='))?.slice('--category='.length);
+    const categoryOption = process.argv
+        .find((argument) => argument.startsWith('--category='))
+        ?.slice('--category='.length);
     const worklistOptions: AuditWorklistOptions = {
         includeReviewed: process.argv.includes('--include-reviewed'),
         newOnly: process.argv.includes('--new-only'),
@@ -716,3 +722,4 @@ if (isDirectExecution(import.meta.url)) {
         worklistOptions,
     });
 }
+

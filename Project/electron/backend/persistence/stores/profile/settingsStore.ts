@@ -87,11 +87,7 @@ export class SettingsStore {
     async delete(profileId: string, key: string): Promise<void> {
         const { db } = getPersistence();
 
-        await db
-            .deleteFrom('settings')
-            .where('profile_id', '=', profileId)
-            .where('key', '=', key)
-            .execute();
+        await db.deleteFrom('settings').where('profile_id', '=', profileId).where('key', '=', key).execute();
     }
 
     async deleteByProfile(profileId: string): Promise<number> {

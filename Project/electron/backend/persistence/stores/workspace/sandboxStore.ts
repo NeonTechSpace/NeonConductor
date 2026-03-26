@@ -173,10 +173,14 @@ export class SandboxStore {
         const rows = await db
             .selectFrom('sandboxes')
             .leftJoin('threads', (join) =>
-                join.onRef('threads.sandbox_id', '=', 'sandboxes.id').onRef('threads.profile_id', '=', 'sandboxes.profile_id')
+                join
+                    .onRef('threads.sandbox_id', '=', 'sandboxes.id')
+                    .onRef('threads.profile_id', '=', 'sandboxes.profile_id')
             )
             .leftJoin('sessions', (join) =>
-                join.onRef('sessions.sandbox_id', '=', 'sandboxes.id').onRef('sessions.profile_id', '=', 'sandboxes.profile_id')
+                join
+                    .onRef('sessions.sandbox_id', '=', 'sandboxes.id')
+                    .onRef('sessions.profile_id', '=', 'sandboxes.profile_id')
             )
             .select([
                 'sandboxes.id',
@@ -226,4 +230,3 @@ export class SandboxStore {
 }
 
 export const sandboxStore = new SandboxStore();
-

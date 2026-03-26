@@ -40,7 +40,7 @@ export type SessionEditResult =
           reason: SessionEditFailureReason;
           sessionId?: EntityId<'sess'>;
       }
-      | {
+    | {
           edited: true;
           editMode: SessionEditInput['editMode'];
           sourceSessionId: EntityId<'sess'>;
@@ -75,7 +75,11 @@ export class SessionEditService {
         let threadId: string | undefined;
         let threadTopLevelTab: 'chat' | 'agent' | 'orchestrator' | undefined;
         if (input.editMode === 'truncate') {
-            const truncated = await sessionHistoryService.truncateFromRun(input.profileId, input.sessionId, target.runId);
+            const truncated = await sessionHistoryService.truncateFromRun(
+                input.profileId,
+                input.sessionId,
+                target.runId
+            );
             if (!truncated.truncated) {
                 return {
                     edited: false,

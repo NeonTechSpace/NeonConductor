@@ -6,7 +6,6 @@ vi.mock('@/web/components/ui/sensitiveValue', () => ({
 }));
 
 import { ProviderStatusSection } from '@/web/components/settings/providerSettings/providerStatusSection';
-
 import type { ProviderListItem } from '@/web/components/settings/providerSettings/types';
 
 function createProvider(id: ProviderListItem['id'], label: string): ProviderListItem {

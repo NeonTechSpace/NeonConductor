@@ -3,15 +3,25 @@ import type {
     ProviderRuntimeToolDefinition,
     ProviderRuntimeTransportSelection,
 } from '@/app/backend/providers/types';
-import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
-import type { OpenAIExecutionMode } from '@/app/backend/runtime/contracts';
 import { captureCheckpointDiffForRun, ensureCheckpointForRun } from '@/app/backend/runtime/services/checkpoint/service';
 import { executeRun, isAbortError } from '@/app/backend/runtime/services/runExecution/executeRun';
-import { applyRunTerminalOutcome, moveRunToAbortedState, moveRunToFailedState } from '@/app/backend/runtime/services/runExecution/terminalState';
-import type { ResolvedKiloRouting, RunCacheResolution, RunContextMessage, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+import {
+    applyRunTerminalOutcome,
+    moveRunToAbortedState,
+    moveRunToFailedState,
+} from '@/app/backend/runtime/services/runExecution/terminalState';
+import type {
+    ResolvedKiloRouting,
+    RunCacheResolution,
+    RunContextMessage,
+    StartRunInput,
+} from '@/app/backend/runtime/services/runExecution/types';
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
-import type { ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
+
+import type { ResolvedWorkspaceContext } from '@/shared/contracts';
+import type { OpenAIExecutionMode } from '@/shared/contracts';
+import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
 export async function runToTerminalState(input: {
@@ -193,3 +203,4 @@ export async function runToTerminalState(input: {
         });
     }
 }
+

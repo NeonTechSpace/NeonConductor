@@ -85,34 +85,18 @@ describe('static model catalog', () => {
         expect(openAiModelIds).not.toContain('openai/gpt-5-codex');
         expect(
             listStaticModelDefinitions('zai', 'coding_international').map((definition) => definition.modelId)
-        ).toEqual([
-            'zai/glm-4.5',
-            'zai/glm-4.5-air',
-            'zai/glm-4.5-flash',
-            'zai/glm-4.5v',
-            'zai/glm-4.6',
-        ]);
+        ).toEqual(['zai/glm-4.5', 'zai/glm-4.5-air', 'zai/glm-4.5-flash', 'zai/glm-4.5v', 'zai/glm-4.6']);
         expect(
             listStaticModelDefinitions('zai', 'general_international').map((definition) => definition.modelId)
-        ).toEqual([
-            'zai/glm-4.5',
-            'zai/glm-4.5-air',
-            'zai/glm-4.5-flash',
-            'zai/glm-4.5v',
-            'zai/glm-4.6',
-        ]);
-        expect(
-            listStaticModelDefinitions('moonshot', 'coding_plan').map((definition) => definition.modelId)
-        ).toEqual([
+        ).toEqual(['zai/glm-4.5', 'zai/glm-4.5-air', 'zai/glm-4.5-flash', 'zai/glm-4.5v', 'zai/glm-4.6']);
+        expect(listStaticModelDefinitions('moonshot', 'coding_plan').map((definition) => definition.modelId)).toEqual([
             'moonshot/kimi-for-coding',
             'moonshot/kimi-k2',
             'moonshot/kimi-k2-thinking',
             'moonshot/kimi-k2-thinking-turbo',
             'moonshot/kimi-latest',
         ]);
-        expect(
-            listStaticModelDefinitions('moonshot', 'standard_api').map((definition) => definition.modelId)
-        ).toEqual([
+        expect(listStaticModelDefinitions('moonshot', 'standard_api').map((definition) => definition.modelId)).toEqual([
             'moonshot/kimi-k2-thinking',
             'moonshot/kimi-k2',
             'moonshot/kimi-k2-thinking-turbo',

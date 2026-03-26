@@ -52,7 +52,7 @@ describe('electron-builder packaging config', () => {
         const contents = readFileSync(viteConfigPath, 'utf8');
 
         expect(contents).toContain('autoCodeSplitting: true');
-        expect(contents).toContain("exclude: /\\?tsr-split=/");
+        expect(contents).toContain('exclude: /\\?tsr-split=/');
         expect(contents).toContain("plugins: ['jsx', 'typescript']");
     });
 

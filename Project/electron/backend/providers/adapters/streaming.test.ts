@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseChatCompletionsPayload } from '@/app/backend/providers/adapters/runtimePayload';
 import {
     consumeChatCompletionsStreamResponse,
     parseChatCompletionsStreamChunk,
     parseResponsesStreamChunk,
 } from '@/app/backend/providers/adapters/streaming';
-import { parseChatCompletionsPayload } from '@/app/backend/providers/adapters/runtimePayload';
 
 describe('provider streaming parsers', () => {
     it('parses chat completion text deltas and usage', () => {
@@ -145,11 +145,7 @@ describe('provider streaming parsers', () => {
             },
         ];
         const response = new Response(
-            [
-                ...frames.flatMap((frame) => [`data: ${JSON.stringify(frame)}`, '']),
-                'data: [DONE]',
-                '',
-            ].join('\n'),
+            [...frames.flatMap((frame) => [`data: ${JSON.stringify(frame)}`, '']), 'data: [DONE]', ''].join('\n'),
             {
                 headers: {
                     'content-type': 'text/event-stream',

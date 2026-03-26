@@ -1,5 +1,6 @@
-import type { NeonObservabilityEvent, NeonObservabilitySubscriptionInput } from '@/app/backend/runtime/contracts';
 import { trpcClient as runtimeClient } from '@/web/lib/trpcClient';
+
+import type { NeonObservabilityEvent, NeonObservabilitySubscriptionInput } from '@/shared/contracts';
 
 export interface NeonObservabilityTransportHandlers {
     onData: (event: unknown) => void;

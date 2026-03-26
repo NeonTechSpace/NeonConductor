@@ -2,7 +2,12 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { isJsonString, isJsonUnknownArray, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
 import type { RulesetDefinitionRecord } from '@/app/backend/persistence/types';
-import { registryPresetKeys, registryScopes, registrySourceKinds, ruleActivationModes } from '@/app/backend/runtime/contracts';
+import {
+    registryPresetKeys,
+    registryScopes,
+    registrySourceKinds,
+    ruleActivationModes,
+} from '@/app/backend/runtime/contracts';
 
 function parseTags(value: string): string[] | undefined {
     const parsed = parseJsonValue(value, [], isJsonUnknownArray).filter(isJsonString);
@@ -36,7 +41,9 @@ function mapRulesetDefinition(row: {
         assetKey: row.asset_key,
         scope: parseEnumValue(row.scope, 'rulesets.scope', registryScopes),
         ...(row.workspace_fingerprint ? { workspaceFingerprint: row.workspace_fingerprint } : {}),
-        ...(row.preset_key ? { presetKey: parseEnumValue(row.preset_key, 'rulesets.preset_key', registryPresetKeys) } : {}),
+        ...(row.preset_key
+            ? { presetKey: parseEnumValue(row.preset_key, 'rulesets.preset_key', registryPresetKeys) }
+            : {}),
         name: row.name,
         bodyMarkdown: row.body_markdown,
         activationMode: parseEnumValue(row.activation_mode, 'rulesets.activation_mode', ruleActivationModes),

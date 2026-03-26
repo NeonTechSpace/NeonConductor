@@ -74,7 +74,11 @@ export function ConversationWorkspaceHeader({
                     aria-label={isSidebarCollapsed ? 'Expand threads sidebar' : 'Collapse threads sidebar'}
                     title={isSidebarCollapsed ? 'Expand threads sidebar' : 'Collapse threads sidebar'}
                     onClick={onToggleSidebar}>
-                    {isSidebarCollapsed ? <PanelLeftOpen className='h-4 w-4' /> : <PanelLeftClose className='h-4 w-4' />}
+                    {isSidebarCollapsed ? (
+                        <PanelLeftOpen className='h-4 w-4' />
+                    ) : (
+                        <PanelLeftClose className='h-4 w-4' />
+                    )}
                 </button>
 
                 <div className='min-w-0'>

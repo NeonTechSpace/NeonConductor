@@ -1,10 +1,10 @@
+import { getPersistence } from '@/app/backend/persistence/db';
+import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import {
     DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
     DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
     type ComposerMediaSettings,
 } from '@/app/backend/runtime/contracts';
-import { getPersistence } from '@/app/backend/persistence/db';
-import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 
 const APP_COMPOSER_MEDIA_SETTINGS_ID = 'global';
 

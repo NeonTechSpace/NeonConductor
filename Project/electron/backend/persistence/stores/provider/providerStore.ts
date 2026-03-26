@@ -15,8 +15,9 @@ import {
     type ProviderSpecialistDefaultTopLevelTab,
     providerIds,
 } from '@/app/backend/runtime/contracts';
-import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
+
 import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
 const SPECIALIST_DEFAULTS_KEY = 'specialist_defaults';
@@ -51,9 +52,7 @@ function isPersistedSpecialistDefaultRecordArray(value: unknown): value is Provi
     return isJsonUnknownArray(value) && value.every(isPersistedSpecialistDefaultRecord);
 }
 
-function canonicalizeSpecialistDefaultRecord(
-    value: ProviderSpecialistDefaultRecord
-): ProviderSpecialistDefaultRecord {
+function canonicalizeSpecialistDefaultRecord(value: ProviderSpecialistDefaultRecord): ProviderSpecialistDefaultRecord {
     return {
         ...value,
         modelId: canonicalizeProviderModelId(value.providerId, value.modelId),
@@ -152,7 +151,11 @@ export class ProviderStore {
         return providerCatalogStore.modelExists(profileId, providerId, modelId);
     }
 
-    async getModel(profileId: string, providerId: RuntimeProviderId, modelId: string): Promise<ProviderModelRecord | null> {
+    async getModel(
+        profileId: string,
+        providerId: RuntimeProviderId,
+        modelId: string
+    ): Promise<ProviderModelRecord | null> {
         return providerCatalogStore.getModel(profileId, providerId, modelId);
     }
 

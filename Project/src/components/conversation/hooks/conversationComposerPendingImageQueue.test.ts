@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type {
+    ComposerPendingImage,
+    PreparedComposerImageAttachment,
+} from '@/web/components/conversation/hooks/composerImageAttachments';
 import {
     failComposerPendingImage,
     pumpComposerPendingImages,
@@ -7,10 +11,6 @@ import {
     resolvePreparedComposerPendingImage,
 } from '@/web/components/conversation/hooks/conversationComposerPendingImageQueue';
 
-import type {
-    ComposerPendingImage,
-    PreparedComposerImageAttachment,
-} from '@/web/components/conversation/hooks/composerImageAttachments';
 
 function createPendingImage(input: {
     clientId: string;

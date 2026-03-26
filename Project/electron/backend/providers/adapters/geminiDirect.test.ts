@@ -322,24 +322,20 @@ describe('geminiDirect', () => {
         expect(directParsed.value.parts.map((part) => part.partType).sort()).toEqual(
             routedParsed.value.parts.map((part) => part.partType).sort()
         );
-        expect(
-            directParsed.value.parts.find((part) => part.partType === 'reasoning_summary')?.payload['text']
-        ).toBe('Primary reasoning');
-        expect(
-            routedParsed.value.parts.find((part) => part.partType === 'reasoning_summary')?.payload['text']
-        ).toBe('Primary reasoning');
-        expect(
-            directParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']
-        ).toBe('call_1');
-        expect(
-            routedParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']
-        ).toBe('call_1');
-        expect(
-            directParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']
-        ).toBe('Done');
-        expect(
-            routedParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']
-        ).toBe('Done');
+        expect(directParsed.value.parts.find((part) => part.partType === 'reasoning_summary')?.payload['text']).toBe(
+            'Primary reasoning'
+        );
+        expect(routedParsed.value.parts.find((part) => part.partType === 'reasoning_summary')?.payload['text']).toBe(
+            'Primary reasoning'
+        );
+        expect(directParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']).toBe(
+            'call_1'
+        );
+        expect(routedParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']).toBe(
+            'call_1'
+        );
+        expect(directParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']).toBe('Done');
+        expect(routedParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']).toBe('Done');
     });
 
     it('assembles direct Gemini stream events into normalized runtime parts', async () => {
@@ -415,11 +411,14 @@ describe('geminiDirect', () => {
     });
 
     it('fails closed on malformed Gemini stream payloads', async () => {
-        const response = new Response('data: {"candidates":[{"content":{"parts":[{"functionCall":{"args":{}}}]}}]}\n\n', {
-            headers: {
-                'content-type': 'text/event-stream',
-            },
-        });
+        const response = new Response(
+            'data: {"candidates":[{"content":{"parts":[{"functionCall":{"args":{}}}]}}]}\n\n',
+            {
+                headers: {
+                    'content-type': 'text/event-stream',
+                },
+            }
+        );
 
         const result = await consumeDirectGeminiStreamResponse({
             response,

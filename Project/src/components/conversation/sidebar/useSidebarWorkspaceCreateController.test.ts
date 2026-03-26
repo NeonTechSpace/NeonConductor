@@ -51,7 +51,7 @@ describe('browseSidebarWorkspaceDirectory', () => {
 
 describe('submitSidebarWorkspaceLifecycle', () => {
     it('returns a created-with-starter-thread result when the starter thread succeeds', async () => {
-        const registerWorkspaceRoot = vi.fn(async () => ({
+        const registerWorkspaceRoot = vi.fn(() => Promise.resolve({
             workspaceRoot: {
                 profileId: 'profile_default',
                 fingerprint: 'ws_alpha',
@@ -61,8 +61,8 @@ describe('submitSidebarWorkspaceLifecycle', () => {
                 updatedAt: '2026-03-26T10:00:00.000Z',
             },
         }));
-        const setWorkspacePreference = vi.fn(async () => undefined);
-        const onCreateThread = vi.fn(async () => ({
+        const setWorkspacePreference = vi.fn(() => Promise.resolve(undefined));
+        const onCreateThread = vi.fn(() => Promise.resolve({
             kind: 'created_with_starter_session' as const,
             workspaceFingerprint: 'ws_alpha',
         }));
@@ -111,7 +111,7 @@ describe('submitSidebarWorkspaceLifecycle', () => {
             defaultTopLevelTab: 'agent',
             defaultProviderId: 'kilo',
             defaultModelId: 'kilo-auto/frontier',
-            registerWorkspaceRoot: async () => ({
+            registerWorkspaceRoot: () => Promise.resolve({
                 workspaceRoot: {
                     profileId: 'profile_default',
                     fingerprint: 'ws_alpha',
@@ -121,8 +121,8 @@ describe('submitSidebarWorkspaceLifecycle', () => {
                     updatedAt: '2026-03-26T10:00:00.000Z',
                 },
             }),
-            setWorkspacePreference: async () => undefined,
-            onCreateThread: async () => ({
+            setWorkspacePreference: () => Promise.resolve(undefined),
+            onCreateThread: () => Promise.resolve({
                 kind: 'failed',
                 workspaceFingerprint: 'ws_alpha',
                 message: 'The starter thread failed.',
@@ -158,11 +158,9 @@ describe('submitSidebarWorkspaceLifecycle', () => {
             defaultTopLevelTab: 'agent',
             defaultProviderId: 'kilo',
             defaultModelId: 'kilo-auto/frontier',
-            registerWorkspaceRoot: async () => {
-                throw new Error('Workspace could not be registered.');
-            },
-            setWorkspacePreference: async () => undefined,
-            onCreateThread: async () => ({
+            registerWorkspaceRoot: () => Promise.reject(new Error('Workspace could not be registered.')),
+            setWorkspacePreference: () => Promise.resolve(undefined),
+            onCreateThread: () => Promise.resolve({
                 kind: 'created_with_starter_session',
                 workspaceFingerprint: 'ws_alpha',
             }),
@@ -174,3 +172,4 @@ describe('submitSidebarWorkspaceLifecycle', () => {
         });
     });
 });
+

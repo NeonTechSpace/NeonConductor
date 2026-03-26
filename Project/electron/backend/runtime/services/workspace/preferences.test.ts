@@ -2,10 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { workspaceRootStore } from '@/app/backend/persistence/stores';
-import {
-    getWorkspacePreference,
-    setWorkspacePreference,
-} from '@/app/backend/runtime/services/workspace/preferences';
+import { getWorkspacePreference, setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
 
 describe('workspace preferences', () => {
     beforeEach(() => {

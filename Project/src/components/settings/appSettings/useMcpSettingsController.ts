@@ -9,17 +9,14 @@ import {
 } from '@/web/components/settings/appSettings/mcpSection.shared';
 import { trpc } from '@/web/trpc/client';
 
-import type { McpServerRecord } from '@/app/backend/runtime/contracts/types/mcp';
+import type { McpServerRecord } from '@/shared/contracts/types/mcp';
 
 interface McpSettingsControllerInput {
     profileId: string;
     currentWorkspaceFingerprint?: string;
 }
 
-export function useMcpSettingsController({
-    profileId,
-    currentWorkspaceFingerprint,
-}: McpSettingsControllerInput) {
+export function useMcpSettingsController({ profileId, currentWorkspaceFingerprint }: McpSettingsControllerInput) {
     const utils = trpc.useUtils();
     const serversQuery = trpc.mcp.listServers.useQuery();
     const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create');
@@ -29,9 +26,7 @@ export function useMcpSettingsController({
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | undefined>(undefined);
 
     const servers = serversQuery.data?.servers ?? [];
-    const selectedServer = editingServerId
-        ? servers.find((server) => server.id === editingServerId)
-        : undefined;
+    const selectedServer = editingServerId ? servers.find((server) => server.id === editingServerId) : undefined;
 
     async function invalidateMcpQueries() {
         await Promise.all([utils.mcp.listServers.invalidate(), utils.mcp.getServer.invalidate()]);
@@ -131,14 +126,18 @@ export function useMcpSettingsController({
                 ...(currentWorkspaceFingerprint ? { workspaceFingerprint: currentWorkspaceFingerprint } : {}),
             });
             await invalidateMcpQueries();
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function disconnectServer(serverId: string) {
         try {
             await disconnectMutation.mutateAsync({ serverId });
             await invalidateMcpQueries();
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function confirmDeleteServer() {
@@ -153,7 +152,9 @@ export function useMcpSettingsController({
                 startCreateServerDraft();
             }
             setDeleteTarget(undefined);
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     return {

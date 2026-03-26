@@ -24,7 +24,10 @@ export async function invalidateSessionQueries(utils: TrpcUtils, context: Runtim
     ];
 
     if (hasSelectedWorkspaceImpact(context)) {
-        addInvalidation(invalidations, invalidateSessionRuns(utils, context.profileId, context.selection.selectedSessionId));
+        addInvalidation(
+            invalidations,
+            invalidateSessionRuns(utils, context.profileId, context.selection.selectedSessionId)
+        );
         addInvalidation(invalidations, invalidateSelectedMessages(utils, context));
     }
 

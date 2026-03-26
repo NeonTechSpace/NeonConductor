@@ -1,3 +1,4 @@
+import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import {
     formatRunStartRejection,
     isEntityId,
@@ -15,7 +16,6 @@ import type {
     SessionStartRunInput,
     TopLevelTab,
 } from '@/shared/contracts';
-import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 
 interface ProviderAuthView {
     label: string;
@@ -27,9 +27,7 @@ type PlanStartSuccessResult = { plan: PlanRecordView };
 type RunStartAcceptedResult = { accepted: true };
 type RunStartRejectedResult = RunStartRejectedResultLike;
 
-function isAcceptedRunResult<
-    TRunStartAcceptedResult extends RunStartAcceptedResult,
->(
+function isAcceptedRunResult<TRunStartAcceptedResult extends RunStartAcceptedResult>(
     result: TRunStartAcceptedResult | RunStartRejectedResult
 ): result is TRunStartAcceptedResult {
     return result.accepted;
@@ -65,9 +63,7 @@ interface SubmitPromptInput<
 export async function submitPrompt<
     TPlanStartResult extends PlanStartSuccessResult,
     TRunStartAcceptedResult extends RunStartAcceptedResult,
->(
-    input: SubmitPromptInput<TPlanStartResult, TRunStartAcceptedResult>
-): Promise<void> {
+>(input: SubmitPromptInput<TPlanStartResult, TRunStartAcceptedResult>): Promise<void> {
     const trimmedPrompt = input.prompt.trim();
     const attachments = input.attachments ?? [];
     if ((trimmedPrompt.length === 0 && attachments.length === 0) || input.isStartingRun) {
@@ -161,4 +157,3 @@ export async function submitPrompt<
         input.onError(`Run failed: ${message}`);
     }
 }
-

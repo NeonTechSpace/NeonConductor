@@ -1,5 +1,5 @@
-import type { VisibleThreadSelectionResolution } from '@/web/components/conversation/hooks/useThreadSidebarState';
 import type { SelectionResolutionState } from '@/web/components/conversation/hooks/useSessionRunSelection';
+import type { VisibleThreadSelectionResolution } from '@/web/components/conversation/hooks/useThreadSidebarState';
 
 export interface ConversationSelectionSyncPatch {
     selectedThreadId?: string | undefined;

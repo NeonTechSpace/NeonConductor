@@ -1,9 +1,10 @@
 import type { ProviderListItem } from '@/web/components/settings/providerSettings/types';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
-import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
+import { canonicalizeProviderModelId } from '@/shared/kiloModels';
+
 
 export function resolveSelectedProviderId(
     providers: ProviderListItem[],
@@ -52,4 +53,3 @@ export function resolveSelectedModelId(input: {
 
     return input.models[0]?.id ?? '';
 }
-

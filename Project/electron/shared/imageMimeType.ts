@@ -1,4 +1,7 @@
-import { composerImageAttachmentMimeTypes, type ComposerImageAttachmentMimeType } from '@/shared/contracts/types/session';
+import {
+    composerImageAttachmentMimeTypes,
+    type ComposerImageAttachmentMimeType,
+} from '@/shared/contracts/types/session';
 
 export function readImageMimeType(value: unknown): ComposerImageAttachmentMimeType | undefined {
     if (typeof value !== 'string') {

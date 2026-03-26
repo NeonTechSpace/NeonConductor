@@ -20,7 +20,10 @@ interface PersistedWorkflowRecord {
     updatedAt: string;
 }
 
-function sanitizeWorkflowFields(input: { label: string; command: string }): OperationalResult<{ label: string; command: string }> {
+function sanitizeWorkflowFields(input: {
+    label: string;
+    command: string;
+}): OperationalResult<{ label: string; command: string }> {
     const label = input.label.trim();
     const command = input.command.trim();
     if (label.length === 0) {
@@ -183,7 +186,9 @@ export class WorkflowService {
         return okOp(workflow);
     }
 
-    async updateProjectWorkflow(input: ProjectWorkflowUpdateInput): Promise<OperationalResult<ProjectWorkflowRecord | null>> {
+    async updateProjectWorkflow(
+        input: ProjectWorkflowUpdateInput
+    ): Promise<OperationalResult<ProjectWorkflowRecord | null>> {
         const directory = await resolveWorkflowDirectory(input);
         if (directory.isErr()) {
             return errOp(directory.error.code, directory.error.message);

@@ -2,7 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { checkpointChangesetStore, checkpointSnapshotStore, checkpointStore } from '@/app/backend/persistence/stores';
 import type { EntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
-import { runtimeContractProfileId, registerRuntimeContractHooks, createCaller, defaultRuntimeOptions, getPersistence, mkdtempSync, os, path, readFileSync, requireEntityId, rmSync, waitForRunStatus, writeFileSync } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    runtimeContractProfileId,
+    registerRuntimeContractHooks,
+    createCaller,
+    defaultRuntimeOptions,
+    getPersistence,
+    mkdtempSync,
+    os,
+    path,
+    readFileSync,
+    requireEntityId,
+    rmSync,
+    waitForRunStatus,
+    writeFileSync,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 
@@ -141,7 +155,9 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(compacted.compacted).toBe(true);
         expect(compacted.storage.packedReferencedBlobCount).toBeGreaterThan(0);
-        expect(readFileSync(path.join(workspacePath, 'notes.txt'), 'utf8').replace(/\r\n/g, '\n')).toBe('new content\n');
+        expect(readFileSync(path.join(workspacePath, 'notes.txt'), 'utf8').replace(/\r\n/g, '\n')).toBe(
+            'new content\n'
+        );
 
         const preview = await caller.checkpoint.previewRollback({
             profileId,
@@ -289,7 +305,7 @@ describe('runtime contracts: permissions and tooling', () => {
 
         vi.stubGlobal(
             'fetch',
-            vi.fn().mockImplementation(async () => {
+            vi.fn().mockImplementation(() => {
                 fetchCallCount += 1;
                 if (fetchCallCount === 1) {
                     writeFileSync(path.join(workspacePath, 'first.txt'), 'first change\n');

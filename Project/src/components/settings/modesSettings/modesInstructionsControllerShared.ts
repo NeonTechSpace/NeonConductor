@@ -83,9 +83,7 @@ export function parseListText(value: string): string[] | undefined {
 }
 
 export function toggleToolCapability(value: ToolCapability[], capability: ToolCapability): ToolCapability[] {
-    return value.includes(capability)
-        ? value.filter((candidate) => candidate !== capability)
-        : [...value, capability];
+    return value.includes(capability) ? value.filter((candidate) => candidate !== capability) : [...value, capability];
 }
 
 export function createEmptyCustomModeEditorDraft(scope: CustomModeScope): CreateCustomModeEditorDraft {

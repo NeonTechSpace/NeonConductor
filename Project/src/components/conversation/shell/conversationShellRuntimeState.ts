@@ -8,8 +8,9 @@ import {
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
-import type { ResolvedContextStateInput } from '@/app/backend/runtime/contracts/types/context';
 import type { RuntimeProviderId, RuntimeReasoningEffort, RuntimeRunOptions, TopLevelTab } from '@/shared/contracts';
+import type { ResolvedContextStateInput } from '@/shared/contracts/types/context';
+
 
 export function buildConversationReasoningState(input: {
     modelsByProvider: Map<

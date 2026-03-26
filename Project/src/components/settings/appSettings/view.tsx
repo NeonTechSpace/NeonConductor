@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
 import { McpSettingsSection } from '@/web/components/settings/appSettings/mcpSection';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import { APP_SETTINGS_SUBSECTIONS, type AppSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
-import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
+import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
+import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
 import { trpc } from '@/web/trpc/client';
 
 import { FACTORY_RESET_CONFIRMATION_TEXT } from '@/shared/contracts';
@@ -16,13 +16,7 @@ interface AppSettingsViewProps {
     onSubsectionChange?: (subsection: AppSettingsSubsectionId) => void;
 }
 
-function AppSectionHeader({
-    title,
-    description,
-}: {
-    title: string;
-    description: string;
-}) {
+function AppSectionHeader({ title, description }: { title: string; description: string }) {
     return (
         <div className='space-y-2'>
             <p className='text-primary text-[11px] font-semibold tracking-[0.16em] uppercase'>App</p>
@@ -50,12 +44,12 @@ export function AppSettingsView({
     });
 
     async function handleConfirmFactoryReset() {
-        try {
-            await factoryResetMutation.mutateAsync({
+        await factoryResetMutation
+            .mutateAsync({
                 confirm: true,
                 confirmationText,
-            });
-        } catch {}
+            })
+            .catch(() => undefined);
     }
 
     return (
@@ -97,7 +91,7 @@ export function AppSettingsView({
                                     </p>
                                 </div>
 
-                                <div className='flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-4 py-3'>
+                                <div className='border-border/70 bg-background/70 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3'>
                                     <div className='space-y-1'>
                                         <p className='text-sm font-medium'>Redact sensitive values</p>
                                         <p className='text-muted-foreground text-xs'>
@@ -147,7 +141,7 @@ export function AppSettingsView({
                                 <div className='flex justify-end'>
                                     <button
                                         type='button'
-                                        className='rounded-full border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive disabled:cursor-not-allowed disabled:opacity-60'
+                                        className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60'
                                         disabled={factoryResetMutation.isPending}
                                         onClick={() => {
                                             setConfirmOpen(true);

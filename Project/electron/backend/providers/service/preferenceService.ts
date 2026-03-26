@@ -1,6 +1,4 @@
 import { providerStore } from '@/app/backend/persistence/stores';
-import { appLog } from '@/app/main/logging';
-
 import { ensureSupportedProvider } from '@/app/backend/providers/service/helpers';
 import type {
     ProviderSpecialistDefaultModeKey,
@@ -8,6 +6,7 @@ import type {
     RuntimeProviderId,
 } from '@/app/backend/runtime/contracts';
 import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
+import { appLog } from '@/app/main/logging';
 
 export async function getDefaults(profileId: string): Promise<{ providerId: string; modelId: string }> {
     return providerStore.getDefaults(profileId);
@@ -113,7 +112,11 @@ export async function setSpecialistDefault(input: {
         };
     }
 
-    const modelCapabilities = await providerStore.getModelCapabilities(input.profileId, input.providerId, input.modelId);
+    const modelCapabilities = await providerStore.getModelCapabilities(
+        input.profileId,
+        input.providerId,
+        input.modelId
+    );
     if (!modelCapabilities) {
         return {
             success: false,

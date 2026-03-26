@@ -96,7 +96,10 @@ function createStandardTextModelDefinition(
     providerId: 'openai' | 'openai_codex',
     modelName: string,
     label: string,
-    options: Pick<OpenAIModelOptions, 'contextLength' | 'maxOutputTokens' | 'supportsReasoning' | 'supportsPromptCache' | 'supportsRealtimeWebSocket'>
+    options: Pick<
+        OpenAIModelOptions,
+        'contextLength' | 'maxOutputTokens' | 'supportsReasoning' | 'supportsPromptCache' | 'supportsRealtimeWebSocket'
+    >
 ): StaticProviderModelDefinition {
     return createOpenAIResponsesModelDefinition(providerId, {
         modelName,

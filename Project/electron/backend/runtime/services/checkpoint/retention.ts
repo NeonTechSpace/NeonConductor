@@ -1,5 +1,9 @@
 import type { CheckpointRecord } from '@/app/backend/persistence/types';
-import type { CheckpointCleanupCandidate, CheckpointCleanupPreview, CheckpointRetentionDisposition } from '@/app/backend/runtime/contracts';
+import type {
+    CheckpointCleanupCandidate,
+    CheckpointCleanupPreview,
+    CheckpointRetentionDisposition,
+} from '@/app/backend/runtime/contracts';
 
 export const CHECKPOINT_RETENTION_POLICY = {
     protectedRecentPerSession: 20,

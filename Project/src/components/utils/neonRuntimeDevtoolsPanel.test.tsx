@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { NeonRuntimeDevtoolsPanel, filterNeonObservabilityEvents } from '@/web/components/utils/neonRuntimeDevtoolsPanel';
+import {
+    NeonRuntimeDevtoolsPanel,
+    filterNeonObservabilityEvents,
+} from '@/web/components/utils/neonRuntimeDevtoolsPanel';
 
 const { mockObservabilityStreamState } = vi.hoisted(() => ({
     mockObservabilityStreamState: {

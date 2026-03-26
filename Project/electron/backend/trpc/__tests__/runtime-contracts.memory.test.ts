@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { runStore, sandboxStore } from '@/app/backend/persistence/stores';
-import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { errOp } from '@/app/backend/runtime/services/common/operationalError';
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import {
     createCaller,
     createSessionInScope,
@@ -227,7 +227,8 @@ describe('runtime contracts: memory', () => {
 
     it('creates automatic finished-run memory after a completed run', async () => {
         const caller = createCaller();
-        const completionFetchMock = vi.fn(async () => ({
+        const completionFetchMock = vi.fn(() =>
+            Promise.resolve({
             ok: true,
             status: 200,
             statusText: 'OK',
@@ -245,7 +246,8 @@ describe('runtime contracts: memory', () => {
                     total_tokens: 28,
                 },
             }),
-        }));
+        })
+        );
         vi.stubGlobal('fetch', completionFetchMock);
 
         const configured = await caller.provider.setApiKey({
@@ -280,9 +282,7 @@ describe('runtime contracts: memory', () => {
 
         await waitForRunStatus(caller, profileId, created.session.id, 'completed');
 
-        let automaticMemory:
-            | (Awaited<ReturnType<typeof caller.memory.list>>['memories'][number])
-            | undefined;
+        let automaticMemory: Awaited<ReturnType<typeof caller.memory.list>>['memories'][number] | undefined;
         for (let attempt = 0; attempt < 20; attempt += 1) {
             const runScopedMemories = await caller.memory.list({
                 profileId,
@@ -316,12 +316,12 @@ describe('runtime contracts: memory', () => {
         const requestBodies: string[] = [];
         vi.stubGlobal(
             'fetch',
-            vi.fn(async (_url: string, init?: RequestInit) => {
+            vi.fn((_url: string, init?: RequestInit) => {
                 if (typeof init?.body === 'string') {
                     requestBodies.push(init.body);
                 }
 
-                return {
+                return Promise.resolve({
                     ok: true,
                     status: 200,
                     statusText: 'OK',
@@ -339,7 +339,7 @@ describe('runtime contracts: memory', () => {
                             total_tokens: 22,
                         },
                     }),
-                };
+                });
             })
         );
 
@@ -407,7 +407,11 @@ describe('runtime contracts: memory', () => {
             if (!started.accepted) {
                 throw new Error(`Expected ${scenario.topLevelTab} retrieval run to start.`);
             }
-            expect(started.resolvedContextState.retrievedMemory?.records.some((record) => record.title === 'Cross-tab retrieval memory')).toBe(true);
+            expect(
+                started.resolvedContextState.retrievedMemory?.records.some(
+                    (record) => record.title === 'Cross-tab retrieval memory'
+                )
+            ).toBe(true);
 
             await waitForRunStatus(caller, profileId, created.session.id, 'completed');
         }
@@ -489,8 +493,8 @@ describe('runtime contracts: memory', () => {
             topLevelTab: 'agent',
         });
 
-        const workspaceRootRow = getPersistence().sqlite
-            .prepare('SELECT absolute_path FROM workspace_roots WHERE profile_id = ? AND fingerprint = ?')
+        const workspaceRootRow = getPersistence()
+            .sqlite.prepare('SELECT absolute_path FROM workspace_roots WHERE profile_id = ? AND fingerprint = ?')
             .get(profileId, workspaceFingerprint) as { absolute_path: string } | undefined;
         if (!workspaceRootRow) {
             throw new Error('Expected workspace root for memory sandbox projection test.');
@@ -570,7 +574,9 @@ describe('runtime contracts: memory', () => {
             workspaceFingerprint,
             threadId,
         });
-        const projectedMemory = synced.projectedMemories.find((record) => record.memory.id === editableMemory.memory.id);
+        const projectedMemory = synced.projectedMemories.find(
+            (record) => record.memory.id === editableMemory.memory.id
+        );
         if (!projectedMemory) {
             throw new Error('Expected synced projected memory.');
         }
@@ -674,7 +680,9 @@ describe('runtime contracts: memory', () => {
             workspaceFingerprint,
             threadId,
         });
-        const projectedMemory = firstSync.projectedMemories.find((record) => record.memory.id === editableMemory.memory.id);
+        const projectedMemory = firstSync.projectedMemories.find(
+            (record) => record.memory.id === editableMemory.memory.id
+        );
         if (!projectedMemory) {
             throw new Error('Expected projected memory for sync preservation test.');
         }
@@ -735,7 +743,14 @@ describe('runtime contracts: memory', () => {
 
         const summarySpy = vi
             .spyOn(advancedMemoryDerivationService, 'getDerivedSummaries')
-            .mockResolvedValue(errOp('request_failed', 'Derived summaries failed.'));
+            .mockImplementation(() => {
+                const result = errOp('request_failed', 'Derived summaries failed.');
+                result.match(
+                    () => undefined,
+                    () => undefined
+                );
+                return Promise.resolve(result);
+            });
 
         try {
             const synced = await caller.memory.syncProjection({

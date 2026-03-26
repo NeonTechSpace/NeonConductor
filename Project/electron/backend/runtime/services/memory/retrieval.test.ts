@@ -1,14 +1,13 @@
 import { writeFileSync } from 'node:fs';
-
 import { describe, expect, it, vi } from 'vitest';
 
 import { memoryStore } from '@/app/backend/persistence/stores';
 import type { ModeDefinition } from '@/app/backend/runtime/contracts';
-import { memoryService } from '@/app/backend/runtime/services/memory/service';
+import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
+import { memoryService } from '@/app/backend/runtime/services/memory/service';
 import { buildRunContext } from '@/app/backend/runtime/services/runExecution/contextBuilder';
-import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import {
     createCaller,
     createSessionInScope,
@@ -18,6 +17,15 @@ import {
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
+
+function createHandledErrOp(code: 'request_failed', message: string) {
+    const result = errOp(code, message);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
 
 function createResolvedMode(modeKey: string, topLevelTab: 'chat' | 'agent' | 'orchestrator'): { mode: ModeDefinition } {
     return {
@@ -141,9 +149,9 @@ describe('memoryRetrievalService', () => {
             'Global memory',
         ]);
         expect(retrieved.summary?.records.some((record) => record.memoryId === disabledMemory.id)).toBe(false);
-        expect(
-            retrieved.summary?.records.some((record) => record.memoryId === supersededOriginal.memory.id)
-        ).toBe(false);
+        expect(retrieved.summary?.records.some((record) => record.memoryId === supersededOriginal.memory.id)).toBe(
+            false
+        );
         expect(retrieved.summary?.records.some((record) => record.memoryId === promptMatch.memory.id)).toBe(true);
         expect(retrieved.summary?.records.some((record) => record.title === 'Superseded zebra memory v2')).toBe(true);
     });
@@ -180,9 +188,9 @@ describe('memoryRetrievalService', () => {
             throw new Error(firstContext.isErr() ? firstContext.error.message : 'Expected first run context.');
         }
         expect(firstContext.value.retrievedMemory?.records.map((record) => record.title)).toEqual(['Digest memory']);
-        expect(firstContext.value.messages.some((message) => JSON.stringify(message).includes('Retrieved memory'))).toBe(
-            true
-        );
+        expect(
+            firstContext.value.messages.some((message) => JSON.stringify(message).includes('Retrieved memory'))
+        ).toBe(true);
 
         const updated = await memoryService.updateMemory({
             profileId,
@@ -300,12 +308,12 @@ describe('memoryRetrievalService', () => {
             bodyMarkdown: 'Use the scoped memory even if derivation breaks.',
         });
 
-        const expandSpy = vi
-            .spyOn(advancedMemoryDerivationService, 'expandMatchedMemories')
-            .mockResolvedValue(errOp('request_failed', 'Derived retrieval failed.'));
-        const summariesSpy = vi
-            .spyOn(advancedMemoryDerivationService, 'getDerivedSummaries')
-            .mockResolvedValue(errOp('request_failed', 'Derived summaries failed.'));
+        const expandSpy = vi.spyOn(advancedMemoryDerivationService, 'expandMatchedMemories').mockImplementation(() =>
+            Promise.resolve(createHandledErrOp('request_failed', 'Derived retrieval failed.'))
+        );
+        const summariesSpy = vi.spyOn(advancedMemoryDerivationService, 'getDerivedSummaries').mockImplementation(() =>
+            Promise.resolve(createHandledErrOp('request_failed', 'Derived summaries failed.'))
+        );
 
         try {
             const retrieved = await memoryRetrievalService.retrieveRelevantMemory({

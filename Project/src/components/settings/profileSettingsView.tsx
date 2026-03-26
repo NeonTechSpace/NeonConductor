@@ -1,12 +1,12 @@
-import { useProfileSettingsController } from '@/web/components/settings/profileSettings/useProfileSettingsController';
 import { ProfileCreateSection } from '@/web/components/settings/profileSettings/profileCreateSection';
-import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
-import { SettingsPlannedSection } from '@/web/components/settings/shared/settingsPlannedSection';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
+import { useProfileSettingsController } from '@/web/components/settings/profileSettings/useProfileSettingsController';
 import {
     PROFILE_SETTINGS_SUBSECTIONS,
     type ProfileSettingsSubsectionId,
 } from '@/web/components/settings/settingsNavigation';
+import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
+import { SettingsPlannedSection } from '@/web/components/settings/shared/settingsPlannedSection';
+import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import { Button } from '@/web/components/ui/button';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 
@@ -128,7 +128,9 @@ function ProfileManagementScreen({
                             controller.renameValue.trim().length === 0 ||
                             controller.renameValue.trim() === selectedProfile.name
                         }
-                        onClick={controller.renameProfile}>
+                        onClick={() => {
+                            void controller.renameProfile();
+                        }}>
                         Rename
                     </Button>
                     <Button
@@ -136,7 +138,9 @@ function ProfileManagementScreen({
                         size='sm'
                         variant='outline'
                         disabled={controller.duplicateMutation.isPending}
-                        onClick={controller.duplicateProfile}>
+                        onClick={() => {
+                            void controller.duplicateProfile();
+                        }}>
                         Duplicate
                     </Button>
                 </div>
@@ -147,7 +151,9 @@ function ProfileManagementScreen({
                         size='sm'
                         variant='outline'
                         disabled={controller.setActiveMutation.isPending || selectedProfile.id === activeProfileId}
-                        onClick={controller.activateProfile}>
+                        onClick={() => {
+                            void controller.activateProfile();
+                        }}>
                         {selectedProfile.id === activeProfileId ? 'Active' : 'Set Active'}
                     </Button>
 
@@ -173,17 +179,15 @@ function ProfileManagementScreen({
                 value={controller.newProfileName}
                 isPending={controller.createMutation.isPending}
                 onValueChange={controller.setNewProfileName}
-                onCreate={controller.createProfile}
+                onCreate={() => {
+                    void controller.createProfile();
+                }}
             />
         </div>
     );
 }
 
-function ProfileExecutionScreen({
-    controller,
-}: {
-    controller: ReturnType<typeof useProfileSettingsController>;
-}) {
+function ProfileExecutionScreen({ controller }: { controller: ReturnType<typeof useProfileSettingsController> }) {
     const executionPreset =
         controller.executionPresetQuery.data?.preset === 'privacy' ||
         controller.executionPresetQuery.data?.preset === 'standard' ||
@@ -230,7 +234,7 @@ function ProfileExecutionScreen({
                             return;
                         }
 
-                        controller.updateExecutionPreset(nextPreset);
+                        void controller.updateExecutionPreset(nextPreset);
                     }}>
                     <option value='privacy'>Privacy: ask on every tool</option>
                     <option value='standard'>Standard: allow safe workspace reads</option>
@@ -256,7 +260,7 @@ function ProfileExecutionScreen({
                             return;
                         }
 
-                        controller.updateEditPreference(nextValue);
+                        void controller.updateEditPreference(nextValue);
                     }}>
                     <option value='ask'>Ask every time</option>
                     <option value='truncate'>Always truncate</option>
@@ -312,7 +316,7 @@ function ProfileConversationNamingScreen({
                             return;
                         }
 
-                        controller.updateThreadTitleMode(nextMode);
+                        void controller.updateThreadTitleMode(nextMode);
                     }}>
                     <option value='template'>Template only</option>
                     <option value='ai_optional'>Template + optional AI refine</option>
@@ -341,7 +345,9 @@ function ProfileConversationNamingScreen({
                         controller.setThreadTitlePreferenceMutation.isPending ||
                         controller.threadTitleAiModelInput.trim().length === 0
                     }
-                    onClick={controller.saveThreadTitleAiModel}>
+                    onClick={() => {
+                        void controller.saveThreadTitleAiModel();
+                    }}>
                     Save AI Model
                 </Button>
             </section>
@@ -407,7 +413,9 @@ export function ProfileSettingsView({
                 onCancel={() => {
                     controller.setConfirmDeleteOpen(false);
                 }}
-                onConfirm={controller.deleteProfile}
+                onConfirm={() => {
+                    void controller.deleteProfile();
+                }}
             />
         </section>
     );

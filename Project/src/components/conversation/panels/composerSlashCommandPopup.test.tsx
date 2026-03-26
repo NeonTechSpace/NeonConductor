@@ -95,7 +95,9 @@ describe('ComposerSlashCommandPopup', () => {
         expect(skillsHtml).toContain('Debugging helper skill.');
         expect(skillsHtml).toContain('Workspace');
         expect(skillsHtml).toContain('Attached');
-        expect(skillsHtml).toContain('Unresolved attached skills will only be pruned if you explicitly change the attachment set.');
+        expect(skillsHtml).toContain(
+            'Unresolved attached skills will only be pruned if you explicitly change the attachment set.'
+        );
 
         expect(rulesHtml).toContain('Manual Rule Selection');
         expect(rulesHtml).toContain('Manual Debug');

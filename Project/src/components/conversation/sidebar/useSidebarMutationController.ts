@@ -9,6 +9,7 @@ import {
     sidebarMutationFailure,
     sidebarMutationSuccess,
 } from '@/web/components/conversation/sidebar/sidebarMutationResult';
+import type { SidebarMutationResult } from '@/web/components/conversation/sidebar/sidebarMutationResult';
 import { resolveSidebarSelectionAfterMutation } from '@/web/components/conversation/sidebar/useSidebarMutationOutcomeHandler';
 import { trpc } from '@/web/trpc/client';
 
@@ -21,7 +22,7 @@ import type {
 } from '@/app/backend/persistence/types';
 
 import type { EntityId, TopLevelTab } from '@/shared/contracts';
-import type { SidebarMutationResult } from './sidebarMutationResult';
+
 
 interface SidebarThreadListQueryInput {
     profileId: string;
@@ -319,3 +320,4 @@ export function useSidebarMutationController(input: UseSidebarMutationController
         },
     };
 }
+

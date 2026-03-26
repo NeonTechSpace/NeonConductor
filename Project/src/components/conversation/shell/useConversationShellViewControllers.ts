@@ -5,28 +5,30 @@ import { setResolvedContextStateCache } from '@/web/components/context/contextSt
 import { useConversationShellBranchWorkflowFlow } from '@/web/components/conversation/hooks/useConversationShellBranchWorkflowFlow';
 import { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
 import { useConversationShellRoutingBadge } from '@/web/components/conversation/hooks/useConversationShellRoutingBadge';
-import type { ThreadEntrySubmitResult } from '@/web/components/conversation/sidebar/sidebarTypes';
 import { buildConversationPlanOrchestrator } from '@/web/components/conversation/shell/composition/buildConversationPlanOrchestrator';
 import { buildConversationWorkspacePanelProps } from '@/web/components/conversation/shell/composition/buildConversationWorkspacePanelProps';
 import { buildConversationWorkspacePanels } from '@/web/components/conversation/shell/composition/buildConversationWorkspacePanels';
 import { buildConversationWorkspaceSectionState } from '@/web/components/conversation/shell/composition/buildConversationWorkspaceSectionState';
 import { setOrchestratorLatestCache } from '@/web/components/conversation/shell/planCache';
 import { useConversationShellSync } from '@/web/components/conversation/shell/useConversationShellSync';
+import type { UseConversationShellViewControllersInput } from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
 import { createConversationThread } from '@/web/components/conversation/shell/workspace/createConversationThread';
 import { isEntityId, isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
+import type { ThreadEntrySubmitResult } from '@/web/components/conversation/sidebar/sidebarTypes';
 import {
     getProviderControlDefaults,
     listProviderControlModels,
     listProviderControlProviders,
 } from '@/web/lib/providerControl/selectors';
 
-import type { ResolvedContextState } from '@/app/backend/runtime/contracts/types/context';
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
+
 
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 import { DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE } from '@/shared/contracts';
-import type { UseConversationShellViewControllersInput } from './useConversationShellViewControllers.types';
+import type { ResolvedContextState } from '@/shared/contracts/types/context';
+
 
 export function useConversationShellViewControllers(input: UseConversationShellViewControllersInput) {
     const {
@@ -139,13 +141,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         onComposerFocusRequest: () => {
             setFocusComposerRequestKey((current: number) => current + 1);
         },
-        onSessionEdited: ({
-            session,
-            thread,
-        }: {
-            session: SessionSummaryRecord;
-            thread?: ThreadListRecord;
-        }) => {
+        onSessionEdited: ({ session, thread }: { session: SessionSummaryRecord; thread?: ThreadListRecord }) => {
             applySessionWorkspaceUpdate({
                 session,
                 ...(thread ? { thread } : {}),
@@ -234,40 +230,42 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         mutations,
         onResolvePermission: composer.clearRunSubmitError,
     });
-    const handleCreateThread = useEffectEvent(async (threadCreationInput: {
-        workspaceFingerprint: string;
-        workspaceAbsolutePath: string;
-        title: string;
-        topLevelTab: TopLevelTab;
-        providerId?: RuntimeProviderId;
-        modelId?: string;
-    }): Promise<ThreadEntrySubmitResult> => {
-        return await createConversationThread(
-            {
-                profileId,
-                topLevelTab,
-                utils,
-                listThreadsInput: queries.listThreadsInput,
-                uiState,
-                composer,
-                mutations,
-                sessionActions,
-                onTopLevelTabChange,
-                onSelectedWorkspaceFingerprintChange,
-                onApplySessionWorkspaceUpdate: ({ session, thread }) => {
-                    applySessionWorkspaceUpdate({
-                        session,
-                        ...(thread ? { thread } : {}),
-                    });
+    const handleCreateThread = useEffectEvent(
+        async (threadCreationInput: {
+            workspaceFingerprint: string;
+            workspaceAbsolutePath: string;
+            title: string;
+            topLevelTab: TopLevelTab;
+            providerId?: RuntimeProviderId;
+            modelId?: string;
+        }): Promise<ThreadEntrySubmitResult> => {
+            return await createConversationThread(
+                {
+                    profileId,
+                    topLevelTab,
+                    utils,
+                    listThreadsInput: queries.listThreadsInput,
+                    uiState,
+                    composer,
+                    mutations,
+                    sessionActions,
+                    onTopLevelTabChange,
+                    onSelectedWorkspaceFingerprintChange,
+                    onApplySessionWorkspaceUpdate: ({ session, thread }) => {
+                        applySessionWorkspaceUpdate({
+                            session,
+                            ...(thread ? { thread } : {}),
+                        });
+                    },
+                    onSetTabSwitchNotice: setTabSwitchNotice,
+                    onFocusComposerRequest: () => {
+                        setFocusComposerRequestKey((current: number) => current + 1);
+                    },
                 },
-                onSetTabSwitchNotice: setTabSwitchNotice,
-                onFocusComposerRequest: () => {
-                    setFocusComposerRequestKey((current: number) => current + 1);
-                },
-            },
-            threadCreationInput
-        );
-    });
+                threadCreationInput
+            );
+        }
+    );
     const providerControl = queries.shellBootstrapQuery.data?.providerControl;
     const workspaceSectionState = buildConversationWorkspaceSectionState({
         topLevelTab,
@@ -484,3 +482,4 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         },
     } as const;
 }
+

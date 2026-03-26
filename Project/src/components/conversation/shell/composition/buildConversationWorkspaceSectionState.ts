@@ -12,9 +12,7 @@ interface BuildConversationWorkspaceSectionStateInput {
     runTargetState: ReturnType<typeof useConversationRunTarget>;
 }
 
-export function buildConversationWorkspaceSectionState(
-    input: BuildConversationWorkspaceSectionStateInput
-){
+export function buildConversationWorkspaceSectionState(input: BuildConversationWorkspaceSectionStateInput) {
     return {
         ...(input.runTargetState.selectedProviderIdForComposer && input.shellViewModel.selectedProviderStatus
             ? {
@@ -52,7 +50,8 @@ export function buildConversationWorkspaceSectionState(
                   },
               }
             : {}),
-        ...(input.queries.runDiffsQuery.data?.overview ? { runDiffOverview: input.queries.runDiffsQuery.data.overview } : {}),
+        ...(input.queries.runDiffsQuery.data?.overview
+            ? { runDiffOverview: input.queries.runDiffsQuery.data.overview }
+            : {}),
     };
 }
-

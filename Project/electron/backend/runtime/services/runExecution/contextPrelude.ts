@@ -1,27 +1,37 @@
 import { sessionAttachedRuleStore, sessionAttachedSkillStore } from '@/app/backend/persistence/stores';
-import type { RegistryPresetKey, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/app/backend/runtime/contracts';
-import { getRegistryPresetKeysForMode, type ModeDefinition } from '@/app/backend/runtime/contracts';
-import { getPromptLayerSettings } from '@/app/backend/runtime/services/promptLayers/service';
-import {
-    resolveProjectInstructionDocuments,
-    type ProjectInstructionDocument,
-} from '@/app/backend/runtime/services/projectInstructions/service';
-import { readRegistryMarkdownBody } from '@/app/backend/runtime/services/registry/filesystem';
-import { resolveContextualAssetDefinitions } from '@/app/backend/runtime/services/registry/resolution';
-import { listResolvedRegistry, resolveRulesetsByAssetKeys, resolveSkillfilesByAssetKeys } from '@/app/backend/runtime/services/registry/service';
-import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
-import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 import {
     buildWorkspaceEnvironmentGuidance,
     workspaceEnvironmentService,
 } from '@/app/backend/runtime/services/environment/service';
-import { getWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
+import {
+    resolveProjectInstructionDocuments,
+    type ProjectInstructionDocument,
+} from '@/app/backend/runtime/services/projectInstructions/service';
+import { getPromptLayerSettings } from '@/app/backend/runtime/services/promptLayers/service';
+import { readRegistryMarkdownBody } from '@/app/backend/runtime/services/registry/filesystem';
+import { resolveContextualAssetDefinitions } from '@/app/backend/runtime/services/registry/resolution';
+import {
+    listResolvedRegistry,
+    resolveRulesetsByAssetKeys,
+    resolveSkillfilesByAssetKeys,
+} from '@/app/backend/runtime/services/registry/service';
+import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
+import { getWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
+import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
+
+import { getRegistryPresetKeysForMode, type ModeDefinition } from '@/shared/contracts';
+import type {
+    RegistryPresetKey,
+    RulesetDefinition,
+    SkillfileDefinition,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 function readPromptText(value: string | undefined): string | undefined {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -32,7 +42,10 @@ function createSystemMessage(label: string, body: string): RunContextMessage {
 }
 
 function buildWorkspacePrelude(input: {
-    workspaceContext: Exclude<Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>, null | { kind: 'detached' }>;
+    workspaceContext: Exclude<
+        Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>,
+        null | { kind: 'detached' }
+    >;
 }): RunContextMessage {
     if (input.workspaceContext.kind === 'sandbox') {
         return createSystemMessage(
@@ -58,7 +71,10 @@ function buildWorkspacePrelude(input: {
 async function buildWorkspacePreludeMessages(input: {
     profileId: string;
     workspaceFingerprint: string;
-    workspaceContext: Exclude<Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>, null | { kind: 'detached' }>;
+    workspaceContext: Exclude<
+        Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>,
+        null | { kind: 'detached' }
+    >;
 }): Promise<RunContextMessage[]> {
     const messages = [buildWorkspacePrelude({ workspaceContext: input.workspaceContext })];
     const workspacePreference = await getWorkspacePreference(input.profileId, input.workspaceFingerprint);
@@ -70,9 +86,7 @@ async function buildWorkspacePreludeMessages(input: {
         ...(workspacePreference
             ? {
                   overrides: {
-                      ...(workspacePreference.preferredVcs
-                          ? { preferredVcs: workspacePreference.preferredVcs }
-                          : {}),
+                      ...(workspacePreference.preferredVcs ? { preferredVcs: workspacePreference.preferredVcs } : {}),
                       ...(workspacePreference.preferredPackageManager
                           ? { preferredPackageManager: workspacePreference.preferredPackageManager }
                           : {}),
@@ -315,3 +329,4 @@ export async function buildSessionSystemPrelude(input: {
         })
     );
 }
+

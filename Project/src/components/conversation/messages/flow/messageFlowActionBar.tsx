@@ -1,8 +1,8 @@
 import { Copy, GitBranch, PencilLine } from 'lucide-react';
 
+import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { copyText } from '@/web/lib/copy';
 
-import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { MouseEvent, ReactNode } from 'react';
 
 function MessageActionButton({
@@ -55,8 +55,7 @@ export function getFlowMessageCapabilities(message: MessageFlowMessage) {
     const hasBranchableAssistantContent = message.body.some((item) => item.type !== 'assistant_status');
 
     return {
-        canCopy:
-            !message.isOptimistic && typeof message.plainCopyText === 'string' && message.plainCopyText.length > 0,
+        canCopy: !message.isOptimistic && typeof message.plainCopyText === 'string' && message.plainCopyText.length > 0,
         canEdit:
             !message.isOptimistic &&
             message.role === 'user' &&

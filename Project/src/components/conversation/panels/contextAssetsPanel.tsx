@@ -20,7 +20,7 @@ interface ContextAssetsPanelProps {
     missingAttachedSkillKeys: string[];
 }
 
-function ScopeBadge({ scope }: { scope: RulesetDefinition['scope'] | SkillfileDefinition['scope'] }) {
+function ScopeBadge({ scope }: { scope: RulesetDefinition['scope']   }) {
     const label = scope === 'workspace' ? 'Workspace' : scope === 'global' ? 'Global' : 'Session';
     return (
         <span className='bg-muted text-muted-foreground rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase'>
@@ -29,11 +29,7 @@ function ScopeBadge({ scope }: { scope: RulesetDefinition['scope'] | SkillfileDe
     );
 }
 
-function PresetBadge({
-    presetKey,
-}: {
-    presetKey?: RulesetDefinition['presetKey'] | SkillfileDefinition['presetKey'];
-}) {
+function PresetBadge({ presetKey }: { presetKey?: RulesetDefinition['presetKey']   }) {
     return (
         <span className='bg-background text-muted-foreground rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase'>
             {presetKey ?? 'shared'}
@@ -227,17 +223,19 @@ export function ContextAssetsPanel({
             </label>
 
             {missingAttachedRuleKeys.length > 0 ? (
-                <div className='border-amber-500/30 bg-amber-500/10 mt-3 rounded-xl border px-3 py-2 text-xs'>
+                <div className='mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs'>
                     Unresolved attached rules: {missingAttachedRuleKeys.join(', ')}. Any save here will prune them.
                 </div>
             ) : null}
             {missingAttachedSkillKeys.length > 0 ? (
-                <div className='border-amber-500/30 bg-amber-500/10 mt-3 rounded-xl border px-3 py-2 text-xs'>
+                <div className='mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs'>
                     Unresolved attached skills: {missingAttachedSkillKeys.join(', ')}. Any save here will prune them.
                 </div>
             ) : null}
             {mutationError ? (
-                <div aria-live='polite' className='text-destructive mt-3 rounded-xl border border-current/20 px-3 py-2 text-xs'>
+                <div
+                    aria-live='polite'
+                    className='text-destructive mt-3 rounded-xl border border-current/20 px-3 py-2 text-xs'>
                     {mutationError}
                 </div>
             ) : null}
@@ -259,7 +257,9 @@ export function ContextAssetsPanel({
                                     <PresetBadge presetKey={ruleset.presetKey} />
                                     <ActivationBadge activationMode={ruleset.activationMode} />
                                 </div>
-                                <p className='text-muted-foreground mt-1 text-xs'>{ruleset.description ?? ruleset.assetKey}</p>
+                                <p className='text-muted-foreground mt-1 text-xs'>
+                                    {ruleset.description ?? ruleset.assetKey}
+                                </p>
                             </div>
                             <Button
                                 type='button'
@@ -361,7 +361,9 @@ export function ContextAssetsPanel({
                     })
                 ) : (
                     <p className='text-muted-foreground rounded-xl border border-dashed px-3 py-3 text-sm'>
-                        {debouncedQuery.length > 0 ? 'No manual rules match this search.' : 'No manual rules available.'}
+                        {debouncedQuery.length > 0
+                            ? 'No manual rules match this search.'
+                            : 'No manual rules available.'}
                     </p>
                 )}
             </div>
@@ -403,7 +405,9 @@ export function ContextAssetsPanel({
                     })
                 ) : (
                     <p className='text-muted-foreground rounded-xl border border-dashed px-3 py-3 text-sm'>
-                        {debouncedQuery.length > 0 ? 'No resolved skills match this search.' : 'No resolved skills available.'}
+                        {debouncedQuery.length > 0
+                            ? 'No resolved skills match this search.'
+                            : 'No resolved skills available.'}
                     </p>
                 )}
             </div>

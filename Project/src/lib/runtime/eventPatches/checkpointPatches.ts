@@ -1,8 +1,8 @@
+import { readCheckpointRecord, readDiffRecord } from '@/web/lib/runtime/eventPatches/readers';
 import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
 
 import type { RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 
-import { readCheckpointRecord, readDiffRecord } from './readers';
 
 function isRunId(value: string | undefined): value is `run_${string}` {
     return typeof value === 'string' && value.startsWith('run_');
@@ -29,12 +29,15 @@ export function applyCheckpointRuntimeEventPatch(
                 current
                     ? {
                           ...current,
-                          checkpoints: [checkpoint, ...current.checkpoints.filter((candidate) => candidate.id !== checkpoint.id)],
+                          checkpoints: [
+                              checkpoint,
+                              ...current.checkpoints.filter((candidate) => candidate.id !== checkpoint.id),
+                          ],
                       }
                     : current
         );
         const diff = readDiffRecord(event.payload['diff']);
-        const runId = diff ? diff.runId ?? undefined : undefined;
+        const runId = diff ? (diff.runId ?? undefined) : undefined;
         if (diff && isRunId(runId)) {
             utils.diff.listByRun.setData(
                 {
@@ -51,3 +54,4 @@ export function applyCheckpointRuntimeEventPatch(
 
     return event.eventType === 'checkpoint.rolled_back' || event.eventType === 'checkpoint.compaction_completed';
 }
+

@@ -15,4 +15,3 @@ export function resolvePinnedProviderId(input: {
 }): string | undefined {
     return input.pinnedProviderId?.trim() || input.availableProviderIds[0];
 }
-

@@ -1,5 +1,6 @@
-import { createBootStatusSnapshot } from '@/app/shared/splashContract';
 import { trpcClient } from '@/web/lib/trpcClient';
+
+import { createBootStatusSnapshot } from '@/app/shared/splashContract';
 
 export interface InitialRendererBootStatusSnapshot {
     reportState: 'idle' | 'pending' | 'sent' | 'failed';

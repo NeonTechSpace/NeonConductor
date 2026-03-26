@@ -1,8 +1,8 @@
 import { useDeferredValue, useId, useRef, useState } from 'react';
 
+import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 
-import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 
 interface WorkspaceCommandPaletteProps {
     open: boolean;

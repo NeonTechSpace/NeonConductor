@@ -42,12 +42,7 @@ export function DiffPatchPreviewPanel({
                     </p>
                 </div>
                 {canOpenPath ? (
-                    <Button
-                        type='button'
-                        size='sm'
-                        className='h-11'
-                        disabled={isOpeningPath}
-                        onClick={onOpenPath}>
+                    <Button type='button' size='sm' className='h-11' disabled={isOpeningPath} onClick={onOpenPath}>
                         Open in Editor
                     </Button>
                 ) : null}

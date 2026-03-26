@@ -119,7 +119,9 @@ export function ModeExecutionPanel({
                                                 const next = event.target.value;
                                                 setDraftState((current) => {
                                                     const nextState =
-                                                        current?.planId === activePlan.id ? current : resolvedDraftState;
+                                                        current?.planId === activePlan.id
+                                                            ? current
+                                                            : resolvedDraftState;
                                                     return nextState
                                                         ? {
                                                               ...nextState,
@@ -177,7 +179,9 @@ export function ModeExecutionPanel({
                                     {summaryDraft.trim().length > 0 ? (
                                         <MarkdownContent markdown={summaryDraft} />
                                     ) : (
-                                        <p className='text-muted-foreground text-xs'>Summary preview will render here.</p>
+                                        <p className='text-muted-foreground text-xs'>
+                                            Summary preview will render here.
+                                        </p>
                                     )}
                                 </div>
                             </div>
@@ -212,14 +216,12 @@ export function ModeExecutionPanel({
 
                             <div className='flex flex-wrap gap-2'>
                                 {topLevelTab === 'orchestrator' && canConfigureExecutionStrategy ? (
-                                    <div className='flex items-center gap-2 rounded-xl border border-border/70 bg-background/70 p-1 text-xs'>
+                                    <div className='border-border/70 bg-background/70 flex items-center gap-2 rounded-xl border p-1 text-xs'>
                                         <span className='px-2 font-medium'>Strategy</span>
                                         <Button
                                             type='button'
                                             size='sm'
-                                            variant={
-                                                selectedExecutionStrategy === 'delegate' ? 'default' : 'ghost'
-                                            }
+                                            variant={selectedExecutionStrategy === 'delegate' ? 'default' : 'ghost'}
                                             disabled={isPlanMutating}
                                             onClick={() => {
                                                 onExecutionStrategyChange('delegate');
@@ -229,9 +231,7 @@ export function ModeExecutionPanel({
                                         <Button
                                             type='button'
                                             size='sm'
-                                            variant={
-                                                selectedExecutionStrategy === 'parallel' ? 'default' : 'ghost'
-                                            }
+                                            variant={selectedExecutionStrategy === 'parallel' ? 'default' : 'ghost'}
                                             disabled={isPlanMutating}
                                             onClick={() => {
                                                 onExecutionStrategyChange('parallel');
@@ -337,7 +337,7 @@ export function ModeExecutionPanel({
                                 {step.childSessionId || step.activeRunId || step.runId ? (
                                     <div className='text-muted-foreground mt-2 flex flex-wrap gap-2 text-[11px]'>
                                         {step.childSessionId ? (
-                                            <span className='rounded-full border border-border/70 px-2 py-0.5'>
+                                            <span className='border-border/70 rounded-full border px-2 py-0.5'>
                                                 Session {step.childSessionId}
                                             </span>
                                         ) : null}
@@ -347,7 +347,7 @@ export function ModeExecutionPanel({
                                             </span>
                                         ) : null}
                                         {step.runId ? (
-                                            <span className='rounded-full border border-border/70 px-2 py-0.5'>
+                                            <span className='border-border/70 rounded-full border px-2 py-0.5'>
                                                 Final run {step.runId}
                                             </span>
                                         ) : null}
@@ -361,4 +361,3 @@ export function ModeExecutionPanel({
         </section>
     );
 }
-

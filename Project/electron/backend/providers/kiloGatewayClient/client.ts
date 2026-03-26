@@ -78,7 +78,10 @@ export class KiloGatewayClient {
         };
     }
 
-    private async fetchGateway(path: string, headers?: RequestHeadersInput): Promise<KiloGatewayResult<Record<string, unknown>>> {
+    private async fetchGateway(
+        path: string,
+        headers?: RequestHeadersInput
+    ): Promise<KiloGatewayResult<Record<string, unknown>>> {
         const endpoint = `${this.gatewayBaseUrl}${path}`;
         const requestInput = {
             endpoint,
@@ -143,7 +146,9 @@ export class KiloGatewayClient {
         });
     }
 
-    async getModelsByProvider(headers?: RequestHeadersInput): Promise<KiloGatewayResult<KiloGatewayModelsByProvider[]>> {
+    async getModelsByProvider(
+        headers?: RequestHeadersInput
+    ): Promise<KiloGatewayResult<KiloGatewayModelsByProvider[]>> {
         return this.parsePayload({
             endpoint: `${this.gatewayBaseUrl}/models-by-provider`,
             payloadResult: await this.fetchGateway('/models-by-provider', headers),

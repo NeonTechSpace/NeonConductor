@@ -1,9 +1,9 @@
 import { Copy } from 'lucide-react';
 
+import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
 import { Button } from '@/web/components/ui/button';
 import { copyText } from '@/web/lib/copy';
 
-import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
 
 interface MessageTimelineHeaderProps {
     entry: MessageTimelineEntry;
@@ -40,7 +40,10 @@ export function MessageTimelineHeader({
     onBranchFromMessage,
 }: MessageTimelineHeaderProps) {
     const canEdit =
-        !entry.isOptimistic && entry.role === 'user' && typeof entry.editableText === 'string' && entry.editableText.length > 0;
+        !entry.isOptimistic &&
+        entry.role === 'user' &&
+        typeof entry.editableText === 'string' &&
+        entry.editableText.length > 0;
     const canCopy = !entry.isOptimistic && typeof entry.plainCopyText === 'string' && entry.plainCopyText.length > 0;
 
     return (

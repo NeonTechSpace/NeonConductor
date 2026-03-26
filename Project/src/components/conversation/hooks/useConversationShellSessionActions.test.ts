@@ -13,7 +13,7 @@ describe('submitConversationSessionCreate', () => {
         await submitConversationSessionCreate({
             profileId: 'profile_default',
             selectedThreadId: 'thr_123',
-            createSession: async () => ({ created: false as const, reason: 'missing_thread' }),
+            createSession: () => Promise.resolve({ created: false as const, reason: 'missing_thread' }),
             onClearError,
             onError,
             onSelectSessionId,
@@ -32,9 +32,7 @@ describe('submitConversationSessionCreate', () => {
         await submitConversationSessionCreate({
             profileId: 'profile_default',
             selectedThreadId: 'thr_123',
-            createSession: async () => {
-                throw new Error('Session service unavailable');
-            },
+            createSession: () => Promise.reject(new Error('Session service unavailable')),
             onClearError: vi.fn(),
             onError,
             onSelectSessionId: vi.fn(),

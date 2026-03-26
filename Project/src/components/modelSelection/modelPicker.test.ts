@@ -4,15 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import {
-    kiloBalancedModelId,
-    kiloFrontierModelId,
-    kiloSmallModelId,
-} from '@/shared/kiloModels';
-import {
     getModelLabelCollisionIndex,
     getOptionDisplayText,
     ModelPicker,
 } from '@/web/components/modelSelection/modelPicker';
+
+import { kiloBalancedModelId, kiloFrontierModelId, kiloSmallModelId } from '@/shared/kiloModels';
 
 function createOption(input: Partial<ModelPickerOption> & Pick<ModelPickerOption, 'id' | 'label'>): ModelPickerOption {
     return {
@@ -133,9 +130,14 @@ describe('model picker', () => {
             }),
         ];
         const collisionIndex = getModelLabelCollisionIndex(models);
+        const firstModel = models[0];
+        const secondModel = models[1];
+        if (!firstModel || !secondModel) {
+            throw new Error('Expected two Kilo models for collision test.');
+        }
 
-        expect(getOptionDisplayText(models[0]!, collisionIndex)).toBe('Kilo Auto Balanced · OpenAI');
-        expect(getOptionDisplayText(models[1]!, collisionIndex)).toBe('Kilo Auto Balanced · Anthropic');
+        expect(getOptionDisplayText(firstModel, collisionIndex)).toBe('Kilo Auto Balanced · OpenAI');
+        expect(getOptionDisplayText(secondModel, collisionIndex)).toBe('Kilo Auto Balanced · Anthropic');
 
         const html = renderToStaticMarkup(
             createElement(ModelPicker, {
@@ -160,8 +162,12 @@ describe('model picker', () => {
             }),
         ];
         const collisionIndex = getModelLabelCollisionIndex(models);
+        const firstModel = models[0];
+        if (!firstModel) {
+            throw new Error('Expected a Kilo model for non-collision test.');
+        }
 
-        expect(getOptionDisplayText(models[0]!, collisionIndex)).toBe('Kilo Auto Frontier');
+        expect(getOptionDisplayText(firstModel, collisionIndex)).toBe('Kilo Auto Frontier');
     });
 
     it('switches to the popover picker when capability badges or incompatibility reasons are present', () => {

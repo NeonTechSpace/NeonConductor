@@ -1,10 +1,7 @@
 import { useState } from 'react';
 
 import { createProfileSettingsActions } from '@/web/components/settings/profileSettings/actions';
-import {
-    resolveProfileRenameValue,
-    type ProfileRenameDraft,
-} from '@/web/components/settings/profileSettings/drafts';
+import { resolveProfileRenameValue, type ProfileRenameDraft } from '@/web/components/settings/profileSettings/drafts';
 import { resolveSelectedProfileId } from '@/web/components/settings/profileSettings/selection';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -59,9 +56,7 @@ export function useProfileSettingsController(input: {
         renameDraft,
     });
 
-    function updateProfileList(
-        updater: (profiles: ProfileRecord[]) => ProfileRecord[]
-    ) {
+    function updateProfileList(updater: (profiles: ProfileRecord[]) => ProfileRecord[]) {
         utils.profile.list.setData(undefined, (current) => {
             if (!current) {
                 return current;
@@ -193,7 +188,7 @@ export function useProfileSettingsController(input: {
     const threadTitleAiModelInput =
         threadTitleAiModelDraft?.profileId === selectedProfileIdForSettings
             ? threadTitleAiModelDraft.value
-            : threadTitlePreferenceQuery.data?.aiModel ?? '';
+            : (threadTitlePreferenceQuery.data?.aiModel ?? '');
     const setEditPreference = async (input: {
         profileId: string;
         value: 'ask' | 'truncate' | 'branch';
@@ -311,7 +306,7 @@ export function useProfileSettingsController(input: {
             setExecutionPresetMutation.error?.message ??
             statusMessage,
         feedbackTone:
-            createMutation.error ??
+            (createMutation.error ??
             renameMutation.error ??
             duplicateMutation.error ??
             deleteMutation.error ??
@@ -319,7 +314,7 @@ export function useProfileSettingsController(input: {
             factoryResetMutation.error ??
             setEditPreferenceMutation.error ??
             setThreadTitlePreferenceMutation.error ??
-            setExecutionPresetMutation.error
+            setExecutionPresetMutation.error)
                 ? ('error' as const)
                 : statusMessage
                   ? ('success' as const)
@@ -405,4 +400,3 @@ export function useProfileSettingsController(input: {
         saveThreadTitleAiModel: wrapFailClosedAction(actions.saveThreadTitleAiModel),
     };
 }
-

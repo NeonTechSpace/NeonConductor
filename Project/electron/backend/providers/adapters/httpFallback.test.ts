@@ -3,6 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { errProviderAdapter, okProviderAdapter } from '@/app/backend/providers/adapters/errors';
 import { executeHttpFallback } from '@/app/backend/providers/adapters/httpFallback';
 
+function createHandledOkProviderAdapterResult() {
+    const result = okProviderAdapter(undefined);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
+
+function createHandledErrProviderAdapterResult(code: 'invalid_payload', message: string) {
+    const result = errProviderAdapter(code, message);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
+
 describe('executeHttpFallback', () => {
     it('retries with the fallback request only on supported non-stream statuses', async () => {
         const fetchMock = vi
@@ -26,7 +44,7 @@ describe('executeHttpFallback', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         const consumeStreamResponse = vi.fn();
-        const emitPayload = vi.fn().mockResolvedValue(okProviderAdapter(undefined));
+        const emitPayload = vi.fn().mockImplementation(() => Promise.resolve(createHandledOkProviderAdapterResult()));
 
         const result = await executeHttpFallback({
             signal: new AbortController().signal,
@@ -75,7 +93,7 @@ describe('executeHttpFallback', () => {
                 body: { stream: true },
             },
             consumeStreamResponse: vi.fn(),
-            emitPayload: vi.fn().mockResolvedValue(okProviderAdapter(undefined)),
+            emitPayload: vi.fn().mockImplementation(() => Promise.resolve(createHandledOkProviderAdapterResult())),
             formatHttpFailure: ({ response }) => `failed: ${String(response.status)}`,
         });
 
@@ -102,7 +120,9 @@ describe('executeHttpFallback', () => {
         );
 
         const consumeStreamResponse = vi.fn();
-        const emitPayload = vi.fn().mockResolvedValue(errProviderAdapter('invalid_payload', 'bad payload'));
+        const emitPayload = vi.fn().mockImplementation(() =>
+            Promise.resolve(createHandledErrProviderAdapterResult('invalid_payload', 'bad payload'))
+        );
 
         const result = await executeHttpFallback({
             signal: new AbortController().signal,
@@ -139,7 +159,9 @@ describe('executeHttpFallback', () => {
             )
         );
 
-        const consumeStreamResponse = vi.fn().mockResolvedValue(okProviderAdapter(undefined));
+        const consumeStreamResponse = vi
+            .fn()
+            .mockImplementation(() => Promise.resolve(createHandledOkProviderAdapterResult()));
         const emitPayload = vi.fn();
 
         const result = await executeHttpFallback({

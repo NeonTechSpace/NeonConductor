@@ -129,7 +129,10 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
     const runsQuery = trpc.session.listRuns.useQuery(runsInput, PROGRESSIVE_QUERY_OPTIONS);
     const messagesQuery = trpc.session.listMessages.useQuery(messagesInput, PROGRESSIVE_QUERY_OPTIONS);
     const attachedRulesQuery = trpc.session.getAttachedRules.useQuery(attachedRegistryInput, PROGRESSIVE_QUERY_OPTIONS);
-    const attachedSkillsQuery = trpc.session.getAttachedSkills.useQuery(attachedRegistryInput, PROGRESSIVE_QUERY_OPTIONS);
+    const attachedSkillsQuery = trpc.session.getAttachedSkills.useQuery(
+        attachedRegistryInput,
+        PROGRESSIVE_QUERY_OPTIONS
+    );
     const usageSummaryQuery = trpc.provider.getUsageSummary.useQuery(
         { profileId: input.profileId },
         PROGRESSIVE_QUERY_OPTIONS

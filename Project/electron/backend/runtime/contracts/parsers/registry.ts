@@ -1,3 +1,4 @@
+import { topLevelTabs } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
     readEnumValue,
@@ -6,7 +7,6 @@ import {
     readOptionalString,
     readProfileId,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
-import { topLevelTabs } from '@/app/backend/runtime/contracts/enums';
 import type {
     RegistryListResolvedInput,
     RegistryRefreshInput,

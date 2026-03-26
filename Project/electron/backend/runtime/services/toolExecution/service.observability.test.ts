@@ -4,6 +4,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
 import { ToolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
 
+function createHandledErrResult(error: { code: string; message: string }) {
+    const result = err(error);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
+
+function createHandledOkResult<T>(value: T) {
+    const result = ok(value);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
+
 const {
     buildBlockedToolOutcomeMock,
     emitToolCompletedEventMock,
@@ -133,7 +151,7 @@ describe('ToolExecutionService observability', () => {
             resource: 'tool:read_file',
             policy: { effective: 'allow', source: 'mode' },
         });
-        invokeToolHandlerMock.mockResolvedValue(ok({ text: 'hello' }));
+        invokeToolHandlerMock.mockImplementation(() => Promise.resolve(createHandledOkResult({ text: 'hello' })));
         emitToolCompletedEventMock.mockResolvedValue(undefined);
 
         const service = new ToolExecutionService();
@@ -160,7 +178,7 @@ describe('ToolExecutionService observability', () => {
             neonObservabilityService
                 .list({}, 10)
                 .filter((event) => event.kind === 'tool_state_changed')
-                .map((event) => (event.kind === 'tool_state_changed' ? event.state : null))
+                .map((event) => event.state)
         ).toEqual(['approved', 'executing', 'completed']);
     });
 
@@ -170,11 +188,13 @@ describe('ToolExecutionService observability', () => {
             resource: 'tool:read_file',
             policy: { effective: 'allow', source: 'mode' },
         });
-        invokeToolHandlerMock.mockResolvedValue(
-            err({
-                code: 'execution_failed',
-                message: 'boom',
-            })
+        invokeToolHandlerMock.mockImplementation(() =>
+            Promise.resolve(
+                createHandledErrResult({
+                    code: 'execution_failed',
+                    message: 'boom',
+                })
+            )
         );
         emitToolFailedEventMock.mockResolvedValue(undefined);
 

@@ -32,9 +32,12 @@ describe('main preload bridge', () => {
         try {
             await import('@/app/main/preload/index');
 
-            expect(exposeInMainWorldSpy).toHaveBeenCalledWith('neonDesktop', expect.objectContaining({
-                pickDirectory: expect.any(Function),
-            }));
+            expect(exposeInMainWorldSpy).toHaveBeenCalledWith(
+                'neonDesktop',
+                expect.objectContaining({
+                    pickDirectory: expect.any(Function),
+                })
+            );
             expect(processOnceSpy).toHaveBeenCalledWith('loaded', expect.any(Function));
 
             const loadedHandler = processOnceSpy.mock.calls.find((call) => call[0] === 'loaded')?.[1];

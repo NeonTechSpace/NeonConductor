@@ -1,11 +1,12 @@
 import { log } from 'evlog';
 
-import type { NeonObservabilityEvent } from '@/app/backend/runtime/contracts';
 import {
     isNeonObservabilityEvent,
     isSubscriptionControlPayload,
     normalizeSubscriptionPayload,
 } from '@/web/lib/providers/subscriptionPayloads';
+
+import type { NeonObservabilityEvent } from '@/shared/contracts';
 
 export interface ApplyNeonObservabilitySubscriptionPayloadInput {
     payload: unknown;
@@ -14,9 +15,7 @@ export interface ApplyNeonObservabilitySubscriptionPayloadInput {
     pushEvent: (event: NeonObservabilityEvent) => void;
 }
 
-export function applyNeonObservabilitySubscriptionPayload(
-    input: ApplyNeonObservabilitySubscriptionPayloadInput
-): void {
+export function applyNeonObservabilitySubscriptionPayload(input: ApplyNeonObservabilitySubscriptionPayloadInput): void {
     const normalizedPayload = normalizeSubscriptionPayload(input.payload);
 
     if (isSubscriptionControlPayload(normalizedPayload)) {

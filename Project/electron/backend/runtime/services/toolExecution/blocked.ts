@@ -1,6 +1,9 @@
 import { permissionStore } from '@/app/backend/persistence/stores';
 import type { ToolDecision } from '@/app/backend/runtime/services/toolExecution/decision';
-import { emitPermissionRequestedEvent, emitToolBlockedEvent } from '@/app/backend/runtime/services/toolExecution/events';
+import {
+    emitPermissionRequestedEvent,
+    emitToolBlockedEvent,
+} from '@/app/backend/runtime/services/toolExecution/events';
 import type {
     ToolBlockedInvocationOutcome,
     ToolExecutionPolicy,
@@ -78,12 +81,7 @@ export async function buildDeniedToolOutcome(input: {
     toolId: string;
     resource: string;
     policy: ToolExecutionPolicy;
-    reason:
-        | 'policy_denied'
-        | 'detached_scope'
-        | 'workspace_unresolved'
-        | 'outside_workspace'
-        | 'ignored_path';
+    reason: 'policy_denied' | 'detached_scope' | 'workspace_unresolved' | 'outside_workspace' | 'ignored_path';
     message: string;
     args: Record<string, unknown>;
     at: string;

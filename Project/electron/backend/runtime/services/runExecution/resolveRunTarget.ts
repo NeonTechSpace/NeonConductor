@@ -1,17 +1,18 @@
 import { providerStore } from '@/app/backend/persistence/stores';
 import { toSupportedProviderIdResult } from '@/app/backend/providers/registry';
 import {
-    findProviderSpecialistDefault,
-    isSupportedProviderSpecialistDefaultTarget,
-    type RuntimeProviderId,
-    type TopLevelTab,
-} from '@/app/backend/runtime/contracts';
-import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
 import type { ResolvedRunTarget } from '@/app/backend/runtime/services/runExecution/types';
+
+import {
+    findProviderSpecialistDefault,
+    isSupportedProviderSpecialistDefaultTarget,
+    type RuntimeProviderId,
+    type TopLevelTab,
+} from '@/shared/contracts';
 import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
 function tryAssertProviderId(value: string): RuntimeProviderId | undefined {
@@ -39,7 +40,7 @@ export async function resolveRequestedOrDefaultRunTarget(input: {
         providerId = assertedProviderId;
     }
 
-    let modelId = input.modelId;
+    const modelId = input.modelId;
     if (!providerId && modelId) {
         const inferredProviderToken = modelId.split('/')[0] ?? '';
         const inferredProviderId = tryAssertProviderId(inferredProviderToken);
@@ -110,3 +111,4 @@ export async function verifyResolvedRunTargetAvailability(input: {
 
     return okRunExecution(input.target);
 }
+

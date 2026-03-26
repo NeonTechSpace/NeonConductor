@@ -6,7 +6,11 @@ export function useProviderSettingsAuthPolling(input: {
     profileId: string;
     activeAuthFlow: ActiveAuthFlow | undefined;
     isPolling: boolean;
-    pollAuth: (payload: { profileId: string; providerId: ActiveAuthFlow['providerId']; flowId: string }) => Promise<void>;
+    pollAuth: (payload: {
+        profileId: string;
+        providerId: ActiveAuthFlow['providerId'];
+        flowId: string;
+    }) => Promise<void>;
 }) {
     useEffect(() => {
         if (!input.activeAuthFlow || input.isPolling) {

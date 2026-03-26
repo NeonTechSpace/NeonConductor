@@ -56,7 +56,7 @@ function createRuntimeEvent(input: {
 }): RuntimeEventRecordV1 {
     return {
         sequence: input.sequence,
-        eventId: `evt_${String(input.sequence)}` as RuntimeEventRecordV1['eventId'],
+        eventId: `evt_${String(input.sequence)}`,
         entityType: input.entityType,
         domain: input.domain,
         operation: input.operation,

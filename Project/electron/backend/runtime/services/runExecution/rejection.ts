@@ -1,14 +1,22 @@
-import type { RunStartRejectionAction } from '@/app/backend/runtime/contracts';
+import { providerIds, type RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import type { RunExecutionError } from '@/app/backend/runtime/services/runExecution/errors';
 import type { StartRunInput, StartRunResult } from '@/app/backend/runtime/services/runExecution/types';
 
-function inferRequestedProviderId(input: Pick<StartRunInput, 'providerId' | 'modelId'>): string | undefined {
+import type { RunStartRejectionAction } from '@/shared/contracts';
+
+function isRuntimeProviderId(value: string): value is RuntimeProviderId {
+    return providerIds.includes(value as RuntimeProviderId);
+}
+
+function inferRequestedProviderId(input: Pick<StartRunInput, 'providerId' | 'modelId'>): RuntimeProviderId | undefined {
     if (input.providerId) {
         return input.providerId;
     }
 
     const inferredProviderId = input.modelId?.split('/')[0]?.trim();
-    return inferredProviderId && inferredProviderId.length > 0 ? inferredProviderId : undefined;
+    return inferredProviderId && inferredProviderId.length > 0 && isRuntimeProviderId(inferredProviderId)
+        ? inferredProviderId
+        : undefined;
 }
 
 function inferAction(
@@ -85,3 +93,4 @@ export function toRejectedStartResult(
         ...(action ? { action } : {}),
     };
 }
+

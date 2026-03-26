@@ -301,7 +301,9 @@ function toRuntimeDescriptor(definition: StaticProviderModelDefinition): Provide
         };
     }
 
-    throw new Error(`Static model "${definition.providerId}:${definition.modelId}" is missing a supported runtime descriptor.`);
+    throw new Error(
+        `Static model "${definition.providerId}:${definition.modelId}" is missing a supported runtime descriptor.`
+    );
 }
 
 export function toStaticProviderCatalogModel(

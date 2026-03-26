@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import { trpc } from '@/web/trpc/client';
 
 import type { PromptSettingsSnapshot } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { useModesInstructionsBuiltInModesController } from '@/web/components/settings/modesSettings/useModesInstructionsBuiltInModesController';
 import { useModesInstructionsCustomModesController } from '@/web/components/settings/modesSettings/useModesInstructionsCustomModesController';
 import { useModesInstructionsGlobalController } from '@/web/components/settings/modesSettings/useModesInstructionsGlobalController';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { trpc } from '@/web/trpc/client';
 
 export function useModesInstructionsSettingsController(input: {
     profileId: string;

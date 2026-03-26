@@ -364,7 +364,7 @@ export function registerBootWindows(input: {
         app.quit();
     });
 
-    if (typeof input.mainWindow.webContents?.once === 'function') {
+    if (typeof input.mainWindow.webContents.once === 'function') {
         input.mainWindow.webContents.once('did-finish-load', () => {
             startBootTimers(input.warningMs ?? BOOT_STUCK_WARNING_MS, input.forceShowMs ?? BOOT_FORCE_SHOW_MS);
         });

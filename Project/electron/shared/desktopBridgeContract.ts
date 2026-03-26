@@ -12,5 +12,9 @@ export function isPickDirectoryResult(value: unknown): value is PickDirectoryRes
         return true;
     }
 
-    return candidate['canceled'] === false && typeof candidate['absolutePath'] === 'string' && candidate['absolutePath'].trim().length > 0;
+    return (
+        candidate['canceled'] === false &&
+        typeof candidate['absolutePath'] === 'string' &&
+        candidate['absolutePath'].trim().length > 0
+    );
 }

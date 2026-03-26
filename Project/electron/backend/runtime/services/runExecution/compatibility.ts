@@ -1,13 +1,6 @@
 import { providerStore } from '@/app/backend/persistence/stores';
 import type { ProviderServiceErrorCode } from '@/app/backend/providers/service/errors';
 import { getExecutionPreferenceState } from '@/app/backend/providers/service/executionPreferences';
-import type {
-    ComposerImageAttachmentInput,
-    ModeDefinition,
-    RuntimeProviderId,
-    RuntimeRunOptions,
-    TopLevelTab,
-} from '@/app/backend/runtime/contracts';
 import { validateRunCapabilities } from '@/app/backend/runtime/services/runExecution/capabilities';
 import {
     errRunExecution,
@@ -20,9 +13,15 @@ import { resolveRuntimeProtocol } from '@/app/backend/runtime/services/runExecut
 import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
 import type { PreparedRunnableCandidate } from '@/app/backend/runtime/services/runExecution/types';
 
-function mapProviderServiceErrorCodeToRunExecutionCode(
-    code: ProviderServiceErrorCode
-): RunExecutionErrorCode {
+import type {
+    ComposerImageAttachmentInput,
+    ModeDefinition,
+    RuntimeProviderId,
+    RuntimeRunOptions,
+    TopLevelTab,
+} from '@/shared/contracts';
+
+function mapProviderServiceErrorCodeToRunExecutionCode(code: ProviderServiceErrorCode): RunExecutionErrorCode {
     if (code === 'request_failed') {
         return 'provider_request_failed';
     }
@@ -214,3 +213,4 @@ export async function prepareRunnableCandidate(
         },
     });
 }
+

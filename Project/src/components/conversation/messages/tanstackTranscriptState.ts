@@ -4,7 +4,12 @@ import {
 } from '@/web/components/conversation/messages/tanstackMessageBridge';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
-import type { MessagePartRecord, MessageRecord, RuntimeEventRecordV1, RunRecord } from '@/app/backend/persistence/types';
+import type {
+    MessagePartRecord,
+    MessageRecord,
+    RuntimeEventRecordV1,
+    RunRecord,
+} from '@/app/backend/persistence/types';
 
 interface TranscriptStateMaps {
     messagesById: Map<string, MessageRecord>;
@@ -57,7 +62,7 @@ function buildDigest(state: {
                 message?.updatedAt ?? '',
                 message?.createdAt ?? '',
                 message?.role ?? '',
-                ...messageParts.map((part) => `${part.id}:${part.sequence}:${part.createdAt}:${part.partType}`),
+                ...messageParts.map((part) => `${part.id}:${String(part.sequence)}:${part.createdAt}:${part.partType}`),
             ].join('|');
         })
         .join('||');
@@ -147,7 +152,7 @@ function readMessagePartRecord(value: unknown): MessagePartRecord | undefined {
 
     return {
         id: id as MessagePartRecord['id'],
-        messageId: messageId as MessagePartRecord['messageId'],
+        messageId: messageId,
         sequence,
         partType: partType as MessagePartRecord['partType'],
         payload: payload as MessagePartRecord['payload'],
@@ -302,7 +307,9 @@ export function applyRuntimeEventToTanstackTranscriptState(
             return state;
         }
 
-        return message.sessionId === state.sessionId ? applyMessageUpsertToTanstackTranscriptState(state, message) : state;
+        return message.sessionId === state.sessionId
+            ? applyMessageUpsertToTanstackTranscriptState(state, message)
+            : state;
     }
 
     if (event.domain === 'messagePart') {

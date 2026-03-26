@@ -1,13 +1,14 @@
 import { buildAutoCacheKey } from '@/app/backend/providers/behaviors/cacheKey';
 import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
-import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts';
-import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
 import type { RunCacheResolution } from '@/app/backend/runtime/services/runExecution/types';
+
+import type { RuntimeRunOptions } from '@/shared/contracts';
+import type { RuntimeProviderId } from '@/shared/contracts';
 
 interface ResolveRunCacheInput {
     profileId: string;
@@ -62,3 +63,4 @@ export function resolveRunCache(input: ResolveRunCacheInput): RunExecutionResult
         reason: 'provider_managed',
     });
 }
+

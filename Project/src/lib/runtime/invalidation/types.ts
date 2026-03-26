@@ -21,4 +21,3 @@ export interface RuntimeEventContext {
     topLevelTab: TopLevelTab | undefined;
     selection: ConversationSelectionState;
 }
-

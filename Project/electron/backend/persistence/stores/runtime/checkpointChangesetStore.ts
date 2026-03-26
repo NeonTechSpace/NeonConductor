@@ -30,7 +30,13 @@ function mapCheckpointChangesetRecord(row: {
         profileId: row.profile_id,
         checkpointId: parseEntityId(row.checkpoint_id, 'checkpoint_changesets.checkpoint_id', 'ckpt'),
         ...(row.source_changeset_id
-            ? { sourceChangesetId: parseEntityId(row.source_changeset_id, 'checkpoint_changesets.source_changeset_id', 'chg') }
+            ? {
+                  sourceChangesetId: parseEntityId(
+                      row.source_changeset_id,
+                      'checkpoint_changesets.source_changeset_id',
+                      'chg'
+                  ),
+              }
             : {}),
         sessionId: parseEntityId(row.session_id, 'checkpoint_changesets.session_id', 'sess'),
         threadId: parseEntityId(row.thread_id, 'checkpoint_changesets.thread_id', 'thr'),
@@ -91,14 +97,10 @@ export class CheckpointChangesetStore {
             changeKind: entry.changeKind,
             beforeBytes: entry.beforeBytes,
             beforeByteSize: entry.beforeBytes?.byteLength ?? null,
-            beforeBlobSha256: entry.beforeBytes
-                ? createHash('sha256').update(entry.beforeBytes).digest('hex')
-                : null,
+            beforeBlobSha256: entry.beforeBytes ? createHash('sha256').update(entry.beforeBytes).digest('hex') : null,
             afterBytes: entry.afterBytes,
             afterByteSize: entry.afterBytes?.byteLength ?? null,
-            afterBlobSha256: entry.afterBytes
-                ? createHash('sha256').update(entry.afterBytes).digest('hex')
-                : null,
+            afterBlobSha256: entry.afterBytes ? createHash('sha256').update(entry.afterBytes).digest('hex') : null,
         }));
 
         return db.transaction().execute(async (transaction) => {
@@ -309,8 +311,10 @@ export class CheckpointChangesetStore {
             .where('checkpoint_changeset_entries.changeset_id', '=', input.changesetId)
             .orderBy('checkpoint_changeset_entries.relative_path', 'asc')
             .execute();
-        const blobBytesBySha = await checkpointSnapshotStore.loadBlobBytesBySha(
-            entryRows.flatMap((entryRow) => [entryRow.before_blob_sha256, entryRow.after_blob_sha256]).filter(Boolean) as string[]
+        const blobBytesBySha = checkpointSnapshotStore.loadBlobBytesBySha(
+            entryRows
+                .flatMap((entryRow) => [entryRow.before_blob_sha256, entryRow.after_blob_sha256])
+                .filter(Boolean) as string[]
         );
 
         return {

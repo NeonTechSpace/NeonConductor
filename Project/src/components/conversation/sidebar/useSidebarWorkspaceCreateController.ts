@@ -1,10 +1,10 @@
-import { trpc } from '@/web/trpc/client';
-
-import type { WorkspaceRootRecord } from '@/app/backend/runtime/contracts';
 import type {
     ThreadEntrySubmitResult,
     WorkspaceLifecycleResult,
 } from '@/web/components/conversation/sidebar/sidebarTypes';
+import { trpc } from '@/web/trpc/client';
+
+import type { WorkspaceRootRecord } from '@/shared/contracts';
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 interface UseSidebarWorkspaceCreateControllerInput {
@@ -26,11 +26,7 @@ export async function submitSidebarWorkspaceLifecycle(input: {
     defaultTopLevelTab: TopLevelTab;
     defaultProviderId: RuntimeProviderId | undefined;
     defaultModelId: string;
-    registerWorkspaceRoot: (args: {
-        profileId: string;
-        absolutePath: string;
-        label: string;
-    }) => Promise<{
+    registerWorkspaceRoot: (args: { profileId: string; absolutePath: string; label: string }) => Promise<{
         workspaceRoot: WorkspaceRootRecord;
     }>;
     setWorkspacePreference: (args: {
@@ -146,8 +142,7 @@ export function useSidebarWorkspaceCreateController(input: UseSidebarWorkspaceCr
                             ? [
                                   result.workspaceRoot,
                                   ...current.workspaceRoots.filter(
-                                      (workspaceRoot) =>
-                                          workspaceRoot.fingerprint !== result.workspaceRoot.fingerprint
+                                      (workspaceRoot) => workspaceRoot.fingerprint !== result.workspaceRoot.fingerprint
                                   ),
                               ]
                             : [result.workspaceRoot],

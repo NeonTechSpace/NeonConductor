@@ -1,7 +1,7 @@
-import { checkpointSnapshotStore } from '@/app/backend/persistence/stores';
-import type { CheckpointCompactionRunRecord, CheckpointStorageSummary } from '@/app/backend/persistence/types';
-import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import { getPersistence } from '@/app/backend/persistence/db';
+import { checkpointSnapshotStore } from '@/app/backend/persistence/stores';
+import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
+import type { CheckpointCompactionRunRecord, CheckpointStorageSummary } from '@/app/backend/persistence/types';
 
 const AUTO_COMPACTION_MIN_BYTE_SIZE = 64 * 1024 * 1024;
 const AUTO_COMPACTION_MIN_BLOB_COUNT = 250;
@@ -16,17 +16,17 @@ export interface CheckpointCompactionResult {
 }
 
 export async function getCheckpointStorageSummary(profileId: string): Promise<CheckpointStorageSummary> {
-    return checkpointSnapshotStore.getStorageSummary(profileId);
+    return Promise.resolve(checkpointSnapshotStore.getStorageSummary(profileId));
 }
 
 function subtractMs(isoTimestamp: string, ms: number): string {
     return new Date(Date.parse(isoTimestamp) - ms).toISOString();
 }
 
-async function reclaimDatabaseSpace(): Promise<boolean> {
+function reclaimDatabaseSpace(): Promise<boolean> {
     const { sqlite } = getPersistence();
     sqlite.exec('VACUUM');
-    return true;
+    return Promise.resolve(true);
 }
 
 export async function compactCheckpointStorage(input: {
@@ -35,7 +35,7 @@ export async function compactCheckpointStorage(input: {
     force: boolean;
 }): Promise<CheckpointCompactionResult> {
     const startedAt = nowIso();
-    const beforeStorage = await checkpointSnapshotStore.getStorageSummary(input.profileId);
+    const beforeStorage = checkpointSnapshotStore.getStorageSummary(input.profileId);
     const isAutomaticThresholdMet =
         beforeStorage.looseReferencedByteSize >= AUTO_COMPACTION_MIN_BYTE_SIZE ||
         beforeStorage.looseReferencedBlobCount >= AUTO_COMPACTION_MIN_BLOB_COUNT;
@@ -57,11 +57,11 @@ export async function compactCheckpointStorage(input: {
                 startedAt,
                 completedAt,
             }),
-            storage: await checkpointSnapshotStore.getStorageSummary(input.profileId),
+            storage: checkpointSnapshotStore.getStorageSummary(input.profileId),
         };
     }
 
-    const candidates = await checkpointSnapshotStore.listCompactionCandidates({
+    const candidates = checkpointSnapshotStore.listCompactionCandidates({
         profileId: input.profileId,
         includeAllAges: input.force,
         ...(input.force ? {} : { cutoffCreatedAt: subtractMs(startedAt, AUTO_COMPACTION_MIN_AGE_MS) }),
@@ -86,7 +86,7 @@ export async function compactCheckpointStorage(input: {
                 startedAt,
                 completedAt,
             }),
-            storage: await checkpointSnapshotStore.getStorageSummary(input.profileId),
+            storage: checkpointSnapshotStore.getStorageSummary(input.profileId),
         };
     }
 
@@ -113,7 +113,7 @@ export async function compactCheckpointStorage(input: {
                 startedAt,
                 completedAt,
             }),
-            storage: await checkpointSnapshotStore.getStorageSummary(input.profileId),
+            storage: checkpointSnapshotStore.getStorageSummary(input.profileId),
         };
     } catch (error) {
         const completedAt = nowIso();
@@ -133,7 +133,7 @@ export async function compactCheckpointStorage(input: {
                 startedAt,
                 completedAt,
             }),
-            storage: await checkpointSnapshotStore.getStorageSummary(input.profileId),
+            storage: checkpointSnapshotStore.getStorageSummary(input.profileId),
         };
     }
 }

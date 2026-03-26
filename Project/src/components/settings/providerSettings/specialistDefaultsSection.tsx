@@ -10,17 +10,15 @@ import {
     listProviderControlProviders,
 } from '@/web/lib/providerControl/selectors';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 import { trpc } from '@/web/trpc/client';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import {
-    findProviderSpecialistDefault,
-    providerSpecialistDefaultTargets,
-} from '@/app/backend/runtime/contracts';
-import { canonicalizeProviderModelId } from '@/shared/kiloModels';
+
+import { findProviderSpecialistDefault, providerSpecialistDefaultTargets } from '@/shared/contracts';
 import { providerIds } from '@/shared/contracts';
-import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
+import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
 interface ProviderSpecialistDefaultsSectionProps {
     profileId: string;
@@ -80,7 +78,9 @@ export function ProviderSpecialistDefaultsSection({ profileId }: ProviderSpecial
     });
 
     const providerControl = shellBootstrapQuery.data?.providerControl;
-    const providers = listProviderControlProviders(providerControl).filter((provider) => isRuntimeProviderId(provider.id));
+    const providers = listProviderControlProviders(providerControl).filter((provider) =>
+        isRuntimeProviderId(provider.id)
+    );
     const providerModels = listProviderControlModels(providerControl);
     const defaults = getProviderControlDefaults(providerControl);
     const specialistDefaults = getProviderControlSpecialistDefaults(providerControl);
@@ -101,15 +101,15 @@ export function ProviderSpecialistDefaultsSection({ profileId }: ProviderSpecial
         providerId: ProviderListItem['id'];
         modelId: string;
     }) {
-        try {
-            await setSpecialistDefaultMutation.mutateAsync({
+        await setSpecialistDefaultMutation
+            .mutateAsync({
                 profileId,
                 topLevelTab: input.topLevelTab,
                 modeKey: input.modeKey,
                 providerId: input.providerId,
                 modelId: input.modelId,
-            });
-        } catch {}
+            })
+            .catch(() => undefined);
     }
 
     return (
@@ -145,9 +145,14 @@ export function ProviderSpecialistDefaultsSection({ profileId }: ProviderSpecial
                                     topLevelTab: target.topLevelTab,
                                     modeKey: target.modeKey,
                                 });
-                                const savedSpecialistDefault = findProviderSpecialistDefault(specialistDefaults, target);
+                                const savedSpecialistDefault = findProviderSpecialistDefault(
+                                    specialistDefaults,
+                                    target
+                                );
                                 const fallbackProviderId =
-                                    defaults && isRuntimeProviderId(defaults.providerId) ? defaults.providerId : undefined;
+                                    defaults && isRuntimeProviderId(defaults.providerId)
+                                        ? defaults.providerId
+                                        : undefined;
                                 const fallbackModelId =
                                     fallbackProviderId && defaults?.modelId
                                         ? canonicalizeProviderModelId(fallbackProviderId, defaults.modelId)
@@ -180,7 +185,9 @@ export function ProviderSpecialistDefaultsSection({ profileId }: ProviderSpecial
                                         ? fallbackProviderId
                                         : undefined);
                                 const selectedOption = modeOptions.find((option) => option.id === selectedModelId);
-                                const sourceLabel = savedSpecialistDefault ? 'Saved specialist default' : 'Using shared fallback';
+                                const sourceLabel = savedSpecialistDefault
+                                    ? 'Saved specialist default'
+                                    : 'Using shared fallback';
 
                                 return (
                                     <div key={`${target.topLevelTab}:${target.modeKey}`} className='space-y-2'>

@@ -4,22 +4,29 @@ import { Route } from '@/web/routes/index';
 
 describe('index route', () => {
     it('redirects the root route to /sessions', () => {
+        let caughtResponse: Response & {
+            options?: {
+                to?: string;
+                statusCode?: number;
+            };
+        };
+
         try {
             Route.options.beforeLoad?.({} as never);
             throw new Error('Expected the root route to redirect.');
         } catch (error) {
-            const response = error as Response & {
+            caughtResponse = error as Response & {
                 options?: {
                     to?: string;
                     statusCode?: number;
                 };
             };
-
-            expect(response.status).toBe(307);
-            expect(response.options).toEqual({
-                to: '/sessions',
-                statusCode: 307,
-            });
         }
+
+        expect(caughtResponse.status).toBe(307);
+        expect(caughtResponse.options).toEqual({
+            to: '/sessions',
+            statusCode: 307,
+        });
     });
 });

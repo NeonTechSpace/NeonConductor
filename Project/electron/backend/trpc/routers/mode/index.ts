@@ -45,16 +45,16 @@ export const modeRouter = router({
 
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
-            entityType: 'runtime',
-            domain: 'runtime',
-            entityId: `mode:${input.topLevelTab}`,
-            eventType: 'mode.active.set',
-            payload: {
-                profileId: input.profileId,
-                topLevelTab: input.topLevelTab,
-                modeKey: mode.modeKey,
-                workspaceFingerprint: input.workspaceFingerprint ?? null,
-            },
+                entityType: 'runtime',
+                domain: 'runtime',
+                entityId: `mode:${input.topLevelTab}`,
+                eventType: 'mode.active.set',
+                payload: {
+                    profileId: input.profileId,
+                    topLevelTab: input.topLevelTab,
+                    modeKey: mode.modeKey,
+                    workspaceFingerprint: input.workspaceFingerprint ?? null,
+                },
             })
         );
 

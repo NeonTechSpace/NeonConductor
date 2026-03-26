@@ -36,7 +36,15 @@ export async function emitToolBlockedEvent(input: {
 }
 
 export async function emitPermissionRequestedEvent(input: {
-    request: { id: string; policy: string; resource: string; decision: string; createdAt: string; updatedAt: string; rationale?: string };
+    request: {
+        id: string;
+        policy: string;
+        resource: string;
+        decision: string;
+        createdAt: string;
+        updatedAt: string;
+        rationale?: string;
+    };
     toolId: string;
 }) {
     await runtimeEventLogService.append(

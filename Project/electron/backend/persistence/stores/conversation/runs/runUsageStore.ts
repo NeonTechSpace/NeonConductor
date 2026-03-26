@@ -151,11 +151,7 @@ export interface UpsertRunUsageInput {
 export class RunUsageStore {
     async getByRunId(runId: string): Promise<RunUsageRecord | null> {
         const { db } = getPersistence();
-        const row = await db
-            .selectFrom('run_usage')
-            .selectAll()
-            .where('run_id', '=', runId)
-            .executeTakeFirst();
+        const row = await db.selectFrom('run_usage').selectAll().where('run_id', '=', runId).executeTakeFirst();
 
         return row ? mapRunUsageRecord(row) : null;
     }

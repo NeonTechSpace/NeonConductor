@@ -33,8 +33,7 @@ export function ImageLightboxModal({
             return;
         }
 
-        restoreFocusElementRef.current =
-            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        restoreFocusElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
         const previousOverflow = document.body.style.overflow;
         const previousOverscrollBehavior = document.body.style.overscrollBehavior;
@@ -111,7 +110,7 @@ export function ImageLightboxModal({
                             {previewState === 'idle' ? 'Preparing preview…' : 'Loading image…'}
                         </div>
                     ) : (
-                        <div className='flex min-h-[18rem] w-full max-w-3xl items-center justify-center rounded-2xl border border-dashed border-destructive/25 bg-destructive/5 px-4 text-center text-sm text-destructive'>
+                        <div className='border-destructive/25 bg-destructive/5 text-destructive flex min-h-[18rem] w-full max-w-3xl items-center justify-center rounded-2xl border border-dashed px-4 text-center text-sm'>
                             {errorMessage ?? 'Image preview is unavailable.'}
                         </div>
                     )}

@@ -1,4 +1,4 @@
-import type { ModeDefinition } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
 export function resolveKiloModeHeader(mode: ModeDefinition): KiloModeHeader | undefined {
@@ -25,3 +25,4 @@ export function resolveKiloModeHeader(mode: ModeDefinition): KiloModeHeader | un
 
     return undefined;
 }
+

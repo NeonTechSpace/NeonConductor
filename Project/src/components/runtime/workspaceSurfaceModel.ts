@@ -40,10 +40,6 @@ export function resolveActiveWorkspaceProfileId(input: {
     return input.profiles[0]?.id;
 }
 
-export function resolveWorkspaceActiveModeKey(
-    topLevelTab: TopLevelTab,
-    activeModeKey: string | undefined
-): string {
+export function resolveWorkspaceActiveModeKey(topLevelTab: TopLevelTab, activeModeKey: string | undefined): string {
     return activeModeKey ?? FALLBACK_MODE_BY_TAB[topLevelTab];
 }
-

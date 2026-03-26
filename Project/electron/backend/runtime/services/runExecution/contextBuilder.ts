@@ -1,4 +1,3 @@
-import type { ModeDefinition, RuntimeProviderId, TopLevelTab } from '@/app/backend/runtime/contracts';
 import type { OperationalErrorCode } from '@/app/backend/runtime/services/common/operationalError';
 import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
@@ -9,6 +8,8 @@ import {
     type RunExecutionErrorCode,
 } from '@/app/backend/runtime/services/runExecution/errors';
 import type { RunContext, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+
+import type { ModeDefinition, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 function toRunExecutionErrorCode(code: OperationalErrorCode): RunExecutionErrorCode {
     switch (code) {
@@ -82,3 +83,4 @@ export async function buildRunContext(input: {
         ...(preparedContext.value.retrievedMemory ? { retrievedMemory: preparedContext.value.retrievedMemory } : {}),
     });
 }
+

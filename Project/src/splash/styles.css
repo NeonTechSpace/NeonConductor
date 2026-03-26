@@ -24,7 +24,7 @@ body {
     background:
         radial-gradient(circle at top, rgba(125, 211, 252, 0.16), transparent 42%),
         linear-gradient(180deg, #0a0d17 0%, var(--surface) 100%);
-    font-family: "Segoe UI Variable Text", "Aptos", "Segoe UI", sans-serif;
+    font-family: 'Segoe UI Variable Text', 'Aptos', 'Segoe UI', sans-serif;
     color: var(--text);
 }
 

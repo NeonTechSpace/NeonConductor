@@ -46,8 +46,14 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         workspaceRoots,
         sandboxes,
     ] = await Promise.all([
-        db.selectFrom('settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('app_context_settings').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('settings')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('app_context_settings')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
         db
             .selectFrom('app_prompt_layer_settings')
             .select((eb) => eb.fn.count<number>('id').as('count'))
@@ -56,25 +62,82 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
             .selectFrom('built_in_mode_prompt_overrides')
             .select((eb) => eb.fn.count<number>('mode_key').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('profile_context_settings').select((eb) => eb.fn.count<number>('profile_id').as('count')).executeTakeFirst(),
-        db.selectFrom('session_context_compactions').select((eb) => eb.fn.count<number>('session_id').as('count')).executeTakeFirst(),
-        db.selectFrom('model_limit_overrides').select((eb) => eb.fn.count<number>('model_id').as('count')).executeTakeFirst(),
-        db.selectFrom('runtime_events').select((eb) => eb.fn.count<number>('sequence').as('count')).executeTakeFirst(),
-        db.selectFrom('sessions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('runs').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('messages').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('message_parts').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('run_usage').select((eb) => eb.fn.count<number>('run_id').as('count')).executeTakeFirst(),
-        db.selectFrom('permissions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('conversations').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('threads').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('thread_tags').select((eb) => eb.fn.count<number>('thread_id').as('count')).executeTakeFirst(),
-        db.selectFrom('tags').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('diffs').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('checkpoints').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('mode_definitions').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('rulesets').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('skillfiles').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('profile_context_settings')
+            .select((eb) => eb.fn.count<number>('profile_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('session_context_compactions')
+            .select((eb) => eb.fn.count<number>('session_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('model_limit_overrides')
+            .select((eb) => eb.fn.count<number>('model_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('runtime_events')
+            .select((eb) => eb.fn.count<number>('sequence').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('sessions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('runs')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('messages')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('message_parts')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('run_usage')
+            .select((eb) => eb.fn.count<number>('run_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('permissions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('conversations')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('threads')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('thread_tags')
+            .select((eb) => eb.fn.count<number>('thread_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('tags')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('diffs')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('checkpoints')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('mode_definitions')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('rulesets')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('skillfiles')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
         db
             .selectFrom('marketplace_packages')
             .select((eb) => eb.fn.count<number>('id').as('count'))
@@ -87,13 +150,22 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
             .selectFrom('kilo_account_snapshots')
             .select((eb) => eb.fn.count<number>('profile_id').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('kilo_org_snapshots').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('provider_secrets').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('kilo_org_snapshots')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('provider_secrets')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
         db
             .selectFrom('provider_auth_states')
             .select((eb) => eb.fn.count<number>('provider_id').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('provider_auth_flows').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('provider_auth_flows')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
         db
             .selectFrom('provider_model_catalog')
             .select((eb) => eb.fn.count<number>('model_id').as('count'))
@@ -106,18 +178,30 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
             .selectFrom('kilo_model_routing_preferences')
             .select((eb) => eb.fn.count<number>('model_id').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('mcp_servers').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
-        db.selectFrom('mcp_server_tools').select((eb) => eb.fn.count<number>('tool_name').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('mcp_servers')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('mcp_server_tools')
+            .select((eb) => eb.fn.count<number>('tool_name').as('count'))
+            .executeTakeFirst(),
         db
             .selectFrom('mcp_server_env_secrets')
             .select((eb) => eb.fn.count<number>('env_key').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('profiles').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('profiles')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
         db
             .selectFrom('workspace_roots')
             .select((eb) => eb.fn.count<number>('fingerprint').as('count'))
             .executeTakeFirst(),
-        db.selectFrom('sandboxes').select((eb) => eb.fn.count<number>('id').as('count')).executeTakeFirst(),
+        db
+            .selectFrom('sandboxes')
+            .select((eb) => eb.fn.count<number>('id').as('count'))
+            .executeTakeFirst(),
     ]);
 
     return {

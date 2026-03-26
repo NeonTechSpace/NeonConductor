@@ -7,7 +7,7 @@ interface ContextSummaryCardProps {
     remainingInputTokens: number | undefined;
     usagePercent: string | undefined;
     countingModeLabel: string;
-    missingReason: 'missing_model_limits' | 'feature_disabled' | 'multimodal_counting_unavailable' | string | undefined;
+    missingReason: string | undefined;
     countingMode: string | undefined;
     thresholdTokens: number | undefined;
     limitsSource: string;
@@ -59,7 +59,8 @@ export function ContextSummaryCard({
                     {hasUsageNumbers && totalTokens !== undefined && usableInputBudgetTokens !== undefined ? (
                         <>
                             <p className='text-xs font-medium'>
-                                {formatTokenCount(totalTokens)} used of {formatTokenCount(usableInputBudgetTokens)} usable input tokens
+                                {formatTokenCount(totalTokens)} used of {formatTokenCount(usableInputBudgetTokens)}{' '}
+                                usable input tokens
                             </p>
                             <div className='text-muted-foreground grid gap-1 text-[11px] sm:grid-cols-3'>
                                 <p>Remaining {formatTokenCount(remainingInputTokens ?? 0)}</p>
@@ -77,7 +78,8 @@ export function ContextSummaryCard({
                         </p>
                     ) : missingReason === 'multimodal_counting_unavailable' ? (
                         <p className='text-muted-foreground text-xs'>
-                            Current thread usage is unavailable for image sessions because multimodal token counting is not implemented yet.
+                            Current thread usage is unavailable for image sessions because multimodal token counting is
+                            not implemented yet.
                         </p>
                     ) : (
                         <p className='text-muted-foreground text-xs'>
@@ -86,7 +88,12 @@ export function ContextSummaryCard({
                     )}
                 </div>
                 {onCompactContext ? (
-                    <Button type='button' size='sm' variant='outline' disabled={!canCompactContext || isCompactingContext} onClick={onCompactContext}>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        disabled={!canCompactContext || isCompactingContext}
+                        onClick={onCompactContext}>
                         {isCompactingContext ? 'Compacting...' : 'Compact now'}
                     </Button>
                 ) : null}

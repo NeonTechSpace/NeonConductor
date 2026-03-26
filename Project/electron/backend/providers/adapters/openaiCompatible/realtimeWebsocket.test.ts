@@ -1,5 +1,4 @@
 import { Buffer } from 'node:buffer';
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type FakeMessageListener = (data: string) => void;
@@ -30,7 +29,10 @@ const { FakeWebSocket } = vi.hoisted(() => {
             HoistedFakeWebSocket.instances.push(this);
         }
 
-        on(event: 'open' | 'message' | 'close' | 'error', listener: FakeOpenListener | FakeMessageListener | FakeCloseListener | FakeErrorListener) {
+        on(
+            event: 'open' | 'message' | 'close' | 'error',
+            listener: FakeOpenListener | FakeMessageListener | FakeCloseListener | FakeErrorListener
+        ) {
             if (event === 'open') {
                 this.openListeners.add(listener as FakeOpenListener);
                 return;
@@ -47,7 +49,10 @@ const { FakeWebSocket } = vi.hoisted(() => {
             this.errorListeners.add(listener as FakeErrorListener);
         }
 
-        off(event: 'open' | 'message' | 'close' | 'error', listener: FakeOpenListener | FakeMessageListener | FakeCloseListener | FakeErrorListener) {
+        off(
+            event: 'open' | 'message' | 'close' | 'error',
+            listener: FakeOpenListener | FakeMessageListener | FakeCloseListener | FakeErrorListener
+        ) {
             if (event === 'open') {
                 this.openListeners.delete(listener as FakeOpenListener);
                 return;

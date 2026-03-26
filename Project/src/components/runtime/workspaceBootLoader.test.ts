@@ -145,23 +145,17 @@ describe('workspaceBootLoader', () => {
 
         expect(profileListFetch).toHaveBeenCalledOnce();
         expect(activeProfileFetch).toHaveBeenCalledOnce();
-        expect(modeListPrefetch).toHaveBeenCalledWith(
-            {
-                profileId: 'profile_default',
-                topLevelTab: 'chat',
-            },
-        );
-        expect(modeActivePrefetch).toHaveBeenCalledWith(
-            {
-                profileId: 'profile_default',
-                topLevelTab: 'chat',
-            },
-        );
-        expect(shellBootstrapPrefetch).toHaveBeenCalledWith(
-            {
-                profileId: 'profile_default',
-            },
-        );
+        expect(modeListPrefetch).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            topLevelTab: 'chat',
+        });
+        expect(modeActivePrefetch).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            topLevelTab: 'chat',
+        });
+        expect(shellBootstrapPrefetch).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+        });
     });
 
     it('stops after ensuring profile state when no profile can be resolved', async () => {

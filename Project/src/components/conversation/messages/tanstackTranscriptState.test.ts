@@ -56,7 +56,7 @@ function createRuntimeEvent(input: {
 }): RuntimeEventRecordV1 {
     return {
         sequence: input.sequence,
-        eventId: `evt_${String(input.sequence)}` as RuntimeEventRecordV1['eventId'],
+        eventId: `evt_${String(input.sequence)}`,
         entityType: input.entityType,
         domain: input.domain,
         operation: input.operation,
@@ -93,12 +93,7 @@ describe('tanstack transcript state', () => {
 
         const state = hydrateTanstackTranscriptState(
             [userMessage, assistantMessage],
-            new Map([
-                [
-                    assistantMessage.id,
-                    assistantParts,
-                ],
-            ])
+            new Map([[assistantMessage.id, assistantParts]])
         );
 
         const projected = projectTanstackTranscriptState(state);
@@ -156,7 +151,9 @@ describe('tanstack transcript state', () => {
         );
 
         expect(afterMessage).not.toBe('resync');
-        const projected = projectTanstackTranscriptState(afterMessage as ReturnType<typeof hydrateTanstackTranscriptState>);
+        const projected = projectTanstackTranscriptState(
+            afterMessage as ReturnType<typeof hydrateTanstackTranscriptState>
+        );
         expect(projected[0]?.uiMessage.parts).toEqual([
             {
                 type: 'text',
@@ -183,7 +180,9 @@ describe('tanstack transcript state', () => {
             })
         );
 
-        expect(projectTanstackTranscriptState(ignoredState as ReturnType<typeof hydrateTanstackTranscriptState>)).toHaveLength(0);
+        expect(
+            projectTanstackTranscriptState(ignoredState as ReturnType<typeof hydrateTanstackTranscriptState>)
+        ).toHaveLength(0);
     });
 
     it('requests a resync for runtime reset events', () => {

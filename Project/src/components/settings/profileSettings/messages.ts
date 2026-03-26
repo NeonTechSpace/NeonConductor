@@ -1,7 +1,4 @@
-export function getRenameProfileStatusMessage(input: {
-    updated: boolean;
-    profileName: string | undefined;
-}): string {
+export function getRenameProfileStatusMessage(input: { updated: boolean; profileName: string | undefined }): string {
     return input.updated && input.profileName
         ? `Renamed profile to "${input.profileName}".`
         : 'Rename failed: profile not found.';
@@ -16,10 +13,7 @@ export function getDuplicateProfileStatusMessage(input: {
         : 'Duplicate failed: profile not found.';
 }
 
-export function getActivateProfileStatusMessage(input: {
-    updated: boolean;
-    profileName: string | undefined;
-}): string {
+export function getActivateProfileStatusMessage(input: { updated: boolean; profileName: string | undefined }): string {
     return input.updated && input.profileName
         ? `Active profile set to "${input.profileName}".`
         : 'Set active failed: profile not found.';

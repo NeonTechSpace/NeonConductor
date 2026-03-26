@@ -1,9 +1,4 @@
 import {
-    errProviderAdapter,
-    okProviderAdapter,
-    type ProviderAdapterResult,
-} from '@/app/backend/providers/adapters/errors';
-import {
     isRecord,
     normalizeAnthropicChatUsage,
     parseAnthropicContentTextParts,
@@ -14,19 +9,17 @@ import {
     readOptionalString,
 } from '@/app/backend/providers/adapters/anthropicFamilyCore';
 import {
-    type RuntimeParsedCompletion,
-    type RuntimeParsedPart,
-} from '@/app/backend/providers/adapters/runtimePayload';
+    errProviderAdapter,
+    okProviderAdapter,
+    type ProviderAdapterResult,
+} from '@/app/backend/providers/adapters/errors';
+import { type RuntimeParsedCompletion, type RuntimeParsedPart } from '@/app/backend/providers/adapters/runtimePayload';
+import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
 import {
     consumeStrictServerSentEvents,
     type StrictServerSentEventFrame,
 } from '@/app/backend/providers/adapters/strictServerSentEvents';
-import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
-import type {
-    ProviderRuntimeHandlers,
-    ProviderRuntimePart,
-    ProviderRuntimeUsage,
-} from '@/app/backend/providers/types';
+import type { ProviderRuntimeHandlers, ProviderRuntimePart, ProviderRuntimeUsage } from '@/app/backend/providers/types';
 
 interface AnthropicRoutedToolCallAccumulator {
     index: number;
@@ -53,7 +46,9 @@ function flushAnthropicRoutedToolCalls(
 ): ProviderAdapterResult<RuntimeParsedPart[]> {
     const toolCallParts: RuntimeParsedPart[] = [];
 
-    for (const accumulator of [...state.toolCallAccumulators.values()].sort((left, right) => left.index - right.index)) {
+    for (const accumulator of [...state.toolCallAccumulators.values()].sort(
+        (left, right) => left.index - right.index
+    )) {
         const parsedPart = parseAnthropicToolCallPart({
             callId: accumulator.callId,
             toolName: accumulator.toolName,
@@ -249,11 +244,13 @@ export function parseKiloAnthropicRoutedStreamEvent(input: {
             continue;
         }
 
-        parts.push(...parseAnthropicReasoningDetails({
-            value: delta['reasoning_details'],
-            includeEncrypted: input.includeEncrypted,
-            state: input.state,
-        }));
+        parts.push(
+            ...parseAnthropicReasoningDetails({
+                value: delta['reasoning_details'],
+                includeEncrypted: input.includeEncrypted,
+                state: input.state,
+            })
+        );
         parts.push(...parseTopLevelReasoningParts({ delta, state: input.state }));
         parts.push(...parseAnthropicContentTextParts(delta['content']));
     }

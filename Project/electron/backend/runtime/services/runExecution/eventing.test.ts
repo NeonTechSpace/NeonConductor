@@ -10,8 +10,11 @@ vi.mock('@/app/backend/runtime/services/runtimeEventLog', () => ({
     },
 }));
 
-import { emitCacheResolutionEvent, emitTransportSelectionEvent } from '@/app/backend/runtime/services/runExecution/eventing';
 import type { RunRecord } from '@/app/backend/persistence/types';
+import {
+    emitCacheResolutionEvent,
+    emitTransportSelectionEvent,
+} from '@/app/backend/runtime/services/runExecution/eventing';
 
 function createRunRecord(): RunRecord {
     return {

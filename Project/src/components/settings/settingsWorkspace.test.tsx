@@ -33,8 +33,8 @@ vi.mock('@/web/lib/privacy/privacyContext', () => ({
     usePrivacyMode: () => ({ enabled: false }),
 }));
 
-import { SettingsWorkspace } from '@/web/components/settings/settingsWorkspace';
 import { getDefaultSettingsSelection } from '@/web/components/settings/settingsNavigation';
+import { SettingsWorkspace } from '@/web/components/settings/settingsWorkspace';
 
 describe('settings workspace', () => {
     it('keeps the return affordance inside the settings surface', () => {

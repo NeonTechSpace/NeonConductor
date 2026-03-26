@@ -42,25 +42,20 @@ export function patchSandboxCaches(input: {
     const removedSandboxIds = input.removedSandboxIds ?? [];
 
     if (nextThread) {
-        input.utils.conversation.listThreads.setData(
-            input.listThreadsInput,
-            (current: ThreadListData | undefined) =>
-                current
-                    ? {
-                          ...current,
-                          threads: patchThreadListRecord(current.threads, nextThread),
-                      }
-                    : current
+        input.utils.conversation.listThreads.setData(input.listThreadsInput, (current: ThreadListData | undefined) =>
+            current
+                ? {
+                      ...current,
+                      threads: patchThreadListRecord(current.threads, nextThread),
+                  }
+                : current
         );
     }
 
     if (nextSandbox) {
-        input.utils.sandbox.list.setData(
-            { profileId: input.profileId },
-            (current: SandboxListData | undefined) => ({
-                sandboxes: upsertSandbox(current?.sandboxes ?? [], nextSandbox),
-            })
-        );
+        input.utils.sandbox.list.setData({ profileId: input.profileId }, (current: SandboxListData | undefined) => ({
+            sandboxes: upsertSandbox(current?.sandboxes ?? [], nextSandbox),
+        }));
         input.utils.runtime.getShellBootstrap.setData(
             { profileId: input.profileId },
             (current: ShellBootstrapData | undefined) =>
@@ -74,14 +69,12 @@ export function patchSandboxCaches(input: {
     }
 
     if (removedSandboxIds.length > 0) {
-        input.utils.sandbox.list.setData(
-            { profileId: input.profileId },
-            (current: SandboxListData | undefined) =>
-                current
-                    ? {
-                          sandboxes: removeSandboxes(current.sandboxes, removedSandboxIds),
-                      }
-                    : current
+        input.utils.sandbox.list.setData({ profileId: input.profileId }, (current: SandboxListData | undefined) =>
+            current
+                ? {
+                      sandboxes: removeSandboxes(current.sandboxes, removedSandboxIds),
+                  }
+                : current
         );
         input.utils.runtime.getShellBootstrap.setData(
             { profileId: input.profileId },

@@ -37,8 +37,7 @@ function mapCheckpointRecord(row: {
         workspaceFingerprint: row.workspace_fingerprint,
         ...(row.sandbox_id ? { sandboxId: parseEntityId(row.sandbox_id, 'checkpoints.sandbox_id', 'sb') } : {}),
         executionTargetKey: row.execution_target_key,
-        executionTargetKind:
-            row.execution_target_kind === 'sandbox' ? 'sandbox' : 'workspace',
+        executionTargetKind: row.execution_target_kind === 'sandbox' ? 'sandbox' : 'workspace',
         executionTargetLabel: row.execution_target_label,
         createdByKind: row.created_by_kind === 'user' ? 'user' : 'system',
         checkpointKind:

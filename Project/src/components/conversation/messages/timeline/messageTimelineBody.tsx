@@ -1,8 +1,11 @@
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
 import { MessageMediaPreview } from '@/web/components/conversation/messages/messageMediaPreview';
 import { describeAssistantPlaceholder } from '@/web/components/conversation/messages/messagePlaceholderState';
+import type {
+    MessageTimelineBodyEntry,
+    MessageTimelineEntry,
+} from '@/web/components/conversation/messages/messageTimelineModel';
 
-import type { MessageTimelineBodyEntry, MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
 import type { RunRecord } from '@/app/backend/persistence/types';
 
 interface MessageTimelineBodyProps {
@@ -12,12 +15,7 @@ interface MessageTimelineBodyProps {
     runErrorMessage: string | undefined;
 }
 
-export function MessageTimelineBody({
-    profileId,
-    entry,
-    runStatus,
-    runErrorMessage,
-}: MessageTimelineBodyProps) {
+export function MessageTimelineBody({ profileId, entry, runStatus, runErrorMessage }: MessageTimelineBodyProps) {
     if (entry.body.length === 0 && entry.role === 'assistant') {
         return (
             <p className='text-muted-foreground text-sm'>
@@ -81,7 +79,8 @@ function AssistantStatusRow({ item }: { item: Extract<MessageTimelineBodyEntry, 
             : 'border-border/70 bg-background/60 text-muted-foreground';
 
     return (
-        <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${className}`}>
+        <div
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${className}`}>
             <span
                 className={`h-1.5 w-1.5 rounded-full ${item.code === 'failed_before_output' ? 'bg-current' : 'animate-pulse bg-current'}`}
             />

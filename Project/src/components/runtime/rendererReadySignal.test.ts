@@ -37,10 +37,8 @@ describe('rendererReadySignal', () => {
                 })
         );
 
-        const {
-            ensureRendererReadySignal,
-            getRendererReadySignalSnapshot,
-        } = await import('@/web/components/runtime/rendererReadySignal');
+        const { ensureRendererReadySignal, getRendererReadySignalSnapshot } =
+            await import('@/web/components/runtime/rendererReadySignal');
 
         const firstSignalPromise = ensureRendererReadySignal();
         const secondSignalPromise = ensureRendererReadySignal();
@@ -59,9 +57,8 @@ describe('rendererReadySignal', () => {
     it('records a failed snapshot without rejecting when the ready signal fails', async () => {
         const expectedError = new Error('boot failed');
         signalReadyMutationSpy.mockRejectedValueOnce(expectedError);
-        const { ensureRendererReadySignal, getRendererReadySignalSnapshot } = await import(
-            '@/web/components/runtime/rendererReadySignal'
-        );
+        const { ensureRendererReadySignal, getRendererReadySignalSnapshot } =
+            await import('@/web/components/runtime/rendererReadySignal');
 
         await expect(ensureRendererReadySignal()).resolves.toBeUndefined();
         expect(signalReadyMutationSpy).toHaveBeenCalledTimes(1);

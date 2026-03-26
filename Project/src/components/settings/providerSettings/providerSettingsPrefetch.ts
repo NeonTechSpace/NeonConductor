@@ -72,4 +72,3 @@ export function prefetchProviderSettingsData(input: ProviderSettingsPrefetchInpu
 
     void Promise.all(tasks);
 }
-

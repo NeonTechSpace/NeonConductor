@@ -5,12 +5,13 @@ import {
     FlowUserMessageActionBar,
 } from '@/web/components/conversation/messages/flow/messageFlowActionBar';
 import { MessageFlowBody } from '@/web/components/conversation/messages/flow/messageFlowBody';
+import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
-import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
+import type { RunRecord } from '@/app/backend/persistence/types';
+
 import type { FocusEvent } from 'react';
 
-import type { RunRecord } from '@/app/backend/persistence/types';
 
 interface FlowMessageViewProps {
     profileId: string;
@@ -20,13 +21,7 @@ interface FlowMessageViewProps {
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
 }
 
-export function FlowMessageView({
-    profileId,
-    message,
-    run,
-    onEditMessage,
-    onBranchFromMessage,
-}: FlowMessageViewProps) {
+export function FlowMessageView({ profileId, message, run, onEditMessage, onBranchFromMessage }: FlowMessageViewProps) {
     const [copyFeedback, setCopyFeedback] = useState<string | undefined>(undefined);
     const [isPinnedVisible, setIsPinnedVisible] = useState(false);
     const isUserMessage = message.role === 'user';

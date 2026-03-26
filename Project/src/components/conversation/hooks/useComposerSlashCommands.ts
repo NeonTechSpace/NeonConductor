@@ -28,9 +28,7 @@ interface UseComposerSlashCommandsInput {
     missingAttachedSkillKeys: string[];
 }
 
-export type SlashAcceptResult =
-    | { handled: false }
-    | { handled: true; nextDraft?: string; clearDraft?: boolean };
+export type SlashAcceptResult = { handled: false } | { handled: true; nextDraft?: string; clearDraft?: boolean };
 
 function buildSkillItems(input: {
     attachedSkills: SkillfileDefinition[];
@@ -161,7 +159,9 @@ export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
                 }),
                 highlightIndex,
                 emptyMessage:
-                    deferredQuery.length > 0 ? 'No resolved skills match this search.' : 'No resolved skills available.',
+                    deferredQuery.length > 0
+                        ? 'No resolved skills match this search.'
+                        : 'No resolved skills available.',
                 ...(input.missingAttachedSkillKeys.length > 0
                     ? {
                           warningMessage: `Unresolved attached skills will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedSkillKeys.join(', ')}.`,

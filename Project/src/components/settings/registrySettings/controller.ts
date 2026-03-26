@@ -12,10 +12,7 @@ export function useRegistrySettingsController(profileId: string) {
     const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>(undefined);
     const [feedbackTone, setFeedbackTone] = useState<'success' | 'error' | 'info'>('info');
 
-    const workspaceRootsQuery = trpc.runtime.listWorkspaceRoots.useQuery(
-        { profileId },
-        PROGRESSIVE_QUERY_OPTIONS
-    );
+    const workspaceRootsQuery = trpc.runtime.listWorkspaceRoots.useQuery({ profileId }, PROGRESSIVE_QUERY_OPTIONS);
     const workspaceRoots = workspaceRootsQuery.data?.workspaceRoots ?? [];
     const resolvedSelectedWorkspaceFingerprint =
         selectedWorkspaceFingerprint &&
@@ -53,8 +50,7 @@ export function useRegistrySettingsController(profileId: string) {
         },
     });
 
-    const resolvedAgentModes =
-        registryQuery.data?.resolved.modes.filter((mode) => mode.topLevelTab === 'agent') ?? [];
+    const resolvedAgentModes = registryQuery.data?.resolved.modes.filter((mode) => mode.topLevelTab === 'agent') ?? [];
     const selectedWorkspaceRoot = resolvedSelectedWorkspaceFingerprint
         ? workspaceRoots.find((workspaceRoot) => workspaceRoot.fingerprint === resolvedSelectedWorkspaceFingerprint)
         : undefined;

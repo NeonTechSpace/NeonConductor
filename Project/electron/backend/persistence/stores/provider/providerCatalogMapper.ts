@@ -435,11 +435,14 @@ export function mapProviderCatalogModel(row: ProviderCatalogModelRow): ProviderM
         features: {
             supportsTools: row.supports_tools === 1,
             supportsReasoning,
-            supportsVision: row.supports_vision === null ? inputModalities.includes('image') : row.supports_vision === 1,
+            supportsVision:
+                row.supports_vision === null ? inputModalities.includes('image') : row.supports_vision === 1,
             supportsAudioInput:
                 row.supports_audio_input === null ? inputModalities.includes('audio') : row.supports_audio_input === 1,
             supportsAudioOutput:
-                row.supports_audio_output === null ? outputModalities.includes('audio') : row.supports_audio_output === 1,
+                row.supports_audio_output === null
+                    ? outputModalities.includes('audio')
+                    : row.supports_audio_output === 1,
             ...(row.supports_prompt_cache !== null ? { supportsPromptCache: row.supports_prompt_cache === 1 } : {}),
             inputModalities,
             outputModalities,
@@ -522,9 +525,7 @@ export function mapComparableModelFromExistingRow(row: ExistingCatalogModelRow):
         providerNativeId: readProviderNativeId(providerSettings['providerNativeId']),
     });
     if (!runtime) {
-        throw new Error(
-            `Persisted provider model "${row.model_id}" is missing a valid comparable runtime descriptor.`
-        );
+        throw new Error(`Persisted provider model "${row.model_id}" is missing a valid comparable runtime descriptor.`);
     }
 
     return {

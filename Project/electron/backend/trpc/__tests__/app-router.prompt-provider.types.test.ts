@@ -1,7 +1,7 @@
 import { expect, expectTypeOf, test } from 'vitest';
 
-import type { AppRouterInputs, AppRouterOutputs } from './app-router.types.shared';
-import { OPENAI_RATE_LIMITS_PROCEDURE, OPENAI_USAGE_PROCEDURE } from './app-router.types.shared';
+import { OPENAI_RATE_LIMITS_PROCEDURE, OPENAI_USAGE_PROCEDURE } from '@/app/backend/trpc/__tests__/app-router.types.shared';
+import type { AppRouterInputs, AppRouterOutputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
 
 test('AppRouter exposes prompt and provider procedure contracts to clients', () => {
     expect(OPENAI_USAGE_PROCEDURE.startsWith('getOpenAI')).toBe(true);
@@ -188,8 +188,28 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         usage: {
             providerId: 'openai_codex';
             billedVia: 'openai_subscription';
-            fiveHour: { windowLabel: 'last_5_hours' | 'last_7_days'; runCount: number; totalTokens: number; inputTokens: number; outputTokens: number; cachedTokens: number; reasoningTokens: number; totalCostMicrounits: number; averageLatencyMs?: number };
-            weekly: { windowLabel: 'last_5_hours' | 'last_7_days'; runCount: number; totalTokens: number; inputTokens: number; outputTokens: number; cachedTokens: number; reasoningTokens: number; totalCostMicrounits: number; averageLatencyMs?: number };
+            fiveHour: {
+                windowLabel: 'last_5_hours' | 'last_7_days';
+                runCount: number;
+                totalTokens: number;
+                inputTokens: number;
+                outputTokens: number;
+                cachedTokens: number;
+                reasoningTokens: number;
+                totalCostMicrounits: number;
+                averageLatencyMs?: number;
+            };
+            weekly: {
+                windowLabel: 'last_5_hours' | 'last_7_days';
+                runCount: number;
+                totalTokens: number;
+                inputTokens: number;
+                outputTokens: number;
+                cachedTokens: number;
+                reasoningTokens: number;
+                totalCostMicrounits: number;
+                averageLatencyMs?: number;
+            };
         };
     }>();
     expectTypeOf<AppRouterOutputs['provider'][typeof OPENAI_RATE_LIMITS_PROCEDURE]>().toExtend<{
@@ -206,7 +226,12 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                 primary?: { usedPercent: number; windowMinutes?: number; resetsAt?: number };
                 secondary?: { usedPercent: number; windowMinutes?: number; resetsAt?: number };
             }>;
-            reason?: 'oauth_required' | 'not_authenticated' | 'missing_access_token' | 'fetch_failed' | 'invalid_payload';
+            reason?:
+                | 'oauth_required'
+                | 'not_authenticated'
+                | 'missing_access_token'
+                | 'fetch_failed'
+                | 'invalid_payload';
             detail?: string;
         };
     }>();
@@ -291,32 +316,41 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             appGlobalInstructions: string;
             profileGlobalInstructions: string;
             topLevelInstructions: Record<'chat' | 'agent' | 'orchestrator', string>;
-            builtInModes: Record<'chat' | 'agent' | 'orchestrator', Array<{
-                topLevelTab: 'chat' | 'agent' | 'orchestrator';
-                modeKey: string;
-                label: string;
-                prompt: { roleDefinition?: string; customInstructions?: string };
-                hasOverride: boolean;
-            }>>;
+            builtInModes: Record<
+                'chat' | 'agent' | 'orchestrator',
+                Array<{
+                    topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                    modeKey: string;
+                    label: string;
+                    prompt: { roleDefinition?: string; customInstructions?: string };
+                    hasOverride: boolean;
+                }>
+            >;
             fileBackedCustomModes: {
-                global: Record<'chat' | 'agent' | 'orchestrator', Array<{
-                    topLevelTab: 'chat' | 'agent' | 'orchestrator';
-                    modeKey: string;
-                    label: string;
-                    description?: string;
-                    whenToUse?: string;
-                    tags?: string[];
-                    toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
-                }>>;
-                workspace?: Record<'chat' | 'agent' | 'orchestrator', Array<{
-                    topLevelTab: 'chat' | 'agent' | 'orchestrator';
-                    modeKey: string;
-                    label: string;
-                    description?: string;
-                    whenToUse?: string;
-                    tags?: string[];
-                    toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
-                }>>;
+                global: Record<
+                    'chat' | 'agent' | 'orchestrator',
+                    Array<{
+                        topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                        modeKey: string;
+                        label: string;
+                        description?: string;
+                        whenToUse?: string;
+                        tags?: string[];
+                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+                    }>
+                >;
+                workspace?: Record<
+                    'chat' | 'agent' | 'orchestrator',
+                    Array<{
+                        topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                        modeKey: string;
+                        label: string;
+                        description?: string;
+                        whenToUse?: string;
+                        tags?: string[];
+                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+                    }>
+                >;
             };
         };
     }>();
@@ -341,3 +375,4 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         };
     }>();
 });
+

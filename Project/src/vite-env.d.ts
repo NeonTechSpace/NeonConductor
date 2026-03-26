@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-import type { BootStatusSnapshot } from '@/app/shared/splashContract';
 import type { PickDirectoryResult } from '@/app/shared/desktopBridgeContract';
+import type { BootStatusSnapshot } from '@/app/shared/splashContract';
 
 declare module '*.wasm?url' {
     const wasmAssetUrl: string;

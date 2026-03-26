@@ -1,9 +1,10 @@
 import { createContext, useContext } from 'react';
 
-import type { ReactNode } from 'react';
 
 import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
 import type { useWorkspaceSurfaceController } from '@/web/components/runtime/workspaceSurfaceController';
+
+import type { ReactNode } from 'react';
 
 interface WorkspaceSurfaceControllerContextValue {
     controller: ReturnType<typeof useWorkspaceSurfaceController>;
@@ -19,7 +20,11 @@ export function WorkspaceSurfaceControllerProvider({
     value: WorkspaceSurfaceControllerContextValue;
     children: ReactNode;
 }) {
-    return <WorkspaceSurfaceControllerContext.Provider value={value}>{children}</WorkspaceSurfaceControllerContext.Provider>;
+    return (
+        <WorkspaceSurfaceControllerContext.Provider value={value}>
+            {children}
+        </WorkspaceSurfaceControllerContext.Provider>
+    );
 }
 
 export function useWorkspaceSurfaceControllerContext(): WorkspaceSurfaceControllerContextValue {

@@ -63,7 +63,9 @@ function readMetadataCacheTtlMs(): number {
 }
 
 function isStaticProviderId(providerId: RuntimeProviderId): providerId is Exclude<RuntimeProviderId, 'kilo'> {
-    return providerId === 'openai' || providerId === 'openai_codex' || providerId === 'zai' || providerId === 'moonshot';
+    return (
+        providerId === 'openai' || providerId === 'openai_codex' || providerId === 'zai' || providerId === 'moonshot'
+    );
 }
 
 export class ProviderMetadataOrchestrator {

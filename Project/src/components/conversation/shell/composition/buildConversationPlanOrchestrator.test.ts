@@ -9,7 +9,7 @@ describe('runConversationPlanMutation', () => {
 
         await runConversationPlanMutation({
             mutation: {
-                mutateAsync: async () => ({ found: true as const }),
+                mutateAsync: () => Promise.resolve({ found: true as const }),
             },
             applyResult,
             onError,
@@ -26,9 +26,7 @@ describe('runConversationPlanMutation', () => {
 
         await runConversationPlanMutation({
             mutation: {
-                mutateAsync: async () => {
-                    throw new Error('network down');
-                },
+                mutateAsync: () => Promise.reject(new Error('network down')),
             },
             applyResult,
             onError,

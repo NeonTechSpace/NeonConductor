@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { buildTinyPngBase64 } from '@/app/backend/trpc/__tests__/runtime-contracts.provider-selection.shared';
 import {
     createCaller,
     createSessionInScope,
@@ -10,7 +11,6 @@ import {
     waitForRunStatus,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
-import { buildTinyPngBase64 } from './runtime-contracts.provider-selection.shared';
 
 registerRuntimeContractHooks();
 
@@ -29,7 +29,9 @@ describe('runtime contracts: provider selection tool and vision requirements', (
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
         sqlite
-            .prepare(`INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run('openai/gpt-5-no-tools', 'openai', 'GPT 5 No Tools', now, now);
         sqlite
             .prepare(
@@ -105,7 +107,9 @@ describe('runtime contracts: provider selection tool and vision requirements', (
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
         sqlite
-            .prepare(`INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run('openai/gpt-5-no-tools', 'openai', 'GPT 5 No Tools', now, now);
         sqlite
             .prepare(
@@ -208,7 +212,9 @@ describe('runtime contracts: provider selection tool and vision requirements', (
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
         sqlite
-            .prepare(`INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run('openai/gpt-5-no-vision', 'openai', 'GPT 5 No Vision', now, now);
         sqlite
             .prepare(
@@ -300,7 +306,9 @@ describe('runtime contracts: provider selection tool and vision requirements', (
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
         sqlite
-            .prepare(`INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+            .prepare(
+                `INSERT OR IGNORE INTO provider_models (id, provider_id, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+            )
             .run('openai/a-text-only-default', 'openai', 'A Text Only Default', now, now);
         sqlite
             .prepare(
@@ -377,3 +385,4 @@ describe('runtime contracts: provider selection tool and vision requirements', (
         expect(selectedModel?.features.supportsVision).toBe(true);
     });
 });
+

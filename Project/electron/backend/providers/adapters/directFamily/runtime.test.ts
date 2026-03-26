@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveDirectFamilyRuntimeHandler, streamDirectFamilyRuntime } from '@/app/backend/providers/adapters/directFamily/runtime';
+import {
+    resolveDirectFamilyRuntimeHandler,
+    streamDirectFamilyRuntime,
+} from '@/app/backend/providers/adapters/directFamily/runtime';
 import type { ProviderRuntimeInput } from '@/app/backend/providers/types';
 
 function createRuntimeInput(overrides?: Partial<ProviderRuntimeInput>): ProviderRuntimeInput {

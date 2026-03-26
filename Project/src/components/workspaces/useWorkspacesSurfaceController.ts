@@ -1,11 +1,11 @@
-import { trpc } from '@/web/trpc/client';
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import {
     getProviderControlDefaults,
     listProviderControlModels,
     listProviderControlProviders,
 } from '@/web/lib/providerControl/selectors';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
+import { trpc } from '@/web/trpc/client';
 
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 

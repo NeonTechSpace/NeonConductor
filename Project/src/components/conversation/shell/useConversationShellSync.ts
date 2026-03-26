@@ -1,17 +1,17 @@
 import { skipToken } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useRef } from 'react';
 
-import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
+import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
+import { buildConversationUiSyncPatch } from '@/web/components/conversation/shell/queries/useConversationSync';
 import type { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { useConversationRunTarget } from '@/web/components/conversation/shell/workspace/useConversationRunTarget';
-import { trpc } from '@/web/trpc/client';
 import type { ConversationShellBootChromeReadiness } from '@/web/components/runtime/bootReadiness';
+import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/shared/contracts';
 
-import { buildConversationUiSyncPatch } from '@/web/components/conversation/shell/queries/useConversationSync';
 
 interface UseConversationShellSyncInput {
     profileId: string;
@@ -122,7 +122,12 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
             profileId: input.profileId,
             sessionId: nextSession.id,
         });
-    }, [input.profileId, input.queries.sessionsQuery.data?.sessions, input.selectionState.selectedThread?.id, input.utils.session.listRuns]);
+    }, [
+        input.profileId,
+        input.queries.sessionsQuery.data?.sessions,
+        input.selectionState.selectedThread?.id,
+        input.utils.session.listRuns,
+    ]);
 
     useEffect(() => {
         if (!selectedSessionId) {
@@ -176,7 +181,12 @@ export function useConversationShellSync(input: UseConversationShellSyncInput): 
             profileId: input.profileId,
             workspaceFingerprint: input.selectionState.selectedThread.workspaceFingerprint,
         });
-    }, [input.profileId, input.selectionState.selectedThread?.workspaceFingerprint, input.topLevelTab, input.utils.sandbox.list]);
+    }, [
+        input.profileId,
+        input.selectionState.selectedThread?.workspaceFingerprint,
+        input.topLevelTab,
+        input.utils.sandbox.list,
+    ]);
 
     const refetchSelectedConversationState = useEffectEvent(() => {
         if (!selectedSessionId) {

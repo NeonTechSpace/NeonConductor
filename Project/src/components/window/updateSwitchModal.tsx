@@ -23,13 +23,17 @@ export default function UpdateSwitchModal() {
     async function handleDismiss() {
         try {
             await dismissMutation.mutateAsync();
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     async function handleRestart() {
         try {
             await restartMutation.mutateAsync();
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     if (!status || !isActiveUpdatePhase(status.phase)) {

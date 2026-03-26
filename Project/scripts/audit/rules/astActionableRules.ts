@@ -1,7 +1,8 @@
 import ts from 'typescript';
 
-import { isRendererSourceFile, isTestFile } from '../sourceFiles';
-import type { AuditSourceFile, AuditViolation } from '../types';
+import { isRendererSourceFile, isTestFile } from '@/scripts/audit/sourceFiles';
+
+import type { AuditSourceFile, AuditViolation } from '@/scripts/audit/types';
 
 function getLineNumber(sourceFile: ts.SourceFile, node: ts.Node): number {
     return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
@@ -19,10 +20,7 @@ function pushUniqueViolation(target: AuditViolation[], nextViolation: AuditViola
     }
 }
 
-type NamedAsyncDeclaration =
-    | ts.FunctionDeclaration
-    | ts.ArrowFunction
-    | ts.FunctionExpression;
+type NamedAsyncDeclaration = ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression;
 
 function collectNamedAsyncDeclarations(sourceFile: ts.SourceFile): Map<string, NamedAsyncDeclaration> {
     const asyncDeclarations = new Map<string, NamedAsyncDeclaration>();
@@ -173,7 +171,8 @@ function functionBodyCanRejectOutward(
     const declarationName =
         ts.isFunctionDeclaration(declaration) && declaration.name
             ? declaration.name.text
-            : declaration.parent && ts.isVariableDeclaration(declaration.parent) && ts.isIdentifier(declaration.parent.name)
+            : ts.isVariableDeclaration(declaration.parent) &&
+                ts.isIdentifier(declaration.parent.name)
               ? declaration.parent.name.text
               : undefined;
 
@@ -203,7 +202,10 @@ function functionBodyCanRejectOutward(
             return false;
         }
 
-        if ((ts.isAwaitExpression(node) || ts.isReturnStatement(node) || ts.isExpressionStatement(node)) && protectedByCatch) {
+        if (
+            (ts.isAwaitExpression(node) || ts.isReturnStatement(node) || ts.isExpressionStatement(node)) &&
+            protectedByCatch
+        ) {
             let childCanReject = false;
             ts.forEachChild(node, (childNode) => {
                 if (!childCanReject && nodeCanRejectOutward(childNode, true)) {
@@ -225,11 +227,7 @@ function functionBodyCanRejectOutward(
             if (ts.isIdentifier(node.expression)) {
                 const localAsyncDeclaration = asyncDeclarations.get(node.expression.text);
                 if (localAsyncDeclaration) {
-                    return functionBodyCanRejectOutward(
-                        localAsyncDeclaration,
-                        asyncDeclarations,
-                        nextSeenDeclarations
-                    );
+                    return functionBodyCanRejectOutward(localAsyncDeclaration, asyncDeclarations, nextSeenDeclarations);
                 }
             }
         }
@@ -286,7 +284,8 @@ export function collectAsyncOwnershipViolations(files: AuditSourceFile[]): Audit
                     pushUniqueViolation(violations, {
                         path: file.relativePath,
                         line: getLineNumber(sourceFile, node),
-                        message: 'Review discarded async action and own the rejection path with await/catch or a fail-closed helper.',
+                        message:
+                            'Review discarded async action and own the rejection path with await/catch or a fail-closed helper.',
                     });
                 }
             }
@@ -317,11 +316,16 @@ export function collectPlaceholderQueryInputViolations(files: AuditSourceFile[])
         );
 
         function visit(node: ts.Node): void {
-            if (ts.isCallExpression(node) && isQueryLikeCall(node) && node.arguments.some((argument) => containsMissingSentinel(argument))) {
+            if (
+                ts.isCallExpression(node) &&
+                isQueryLikeCall(node) &&
+                node.arguments.some((argument) => containsMissingSentinel(argument))
+            ) {
                 pushUniqueViolation(violations, {
                     path: file.relativePath,
                     line: getLineNumber(sourceFile, node),
-                    message: 'Review placeholder query input and replace fake sentinel IDs with skipToken or mounted-only query ownership.',
+                    message:
+                        'Review placeholder query input and replace fake sentinel IDs with skipToken or mounted-only query ownership.',
                 });
             }
 
@@ -351,11 +355,16 @@ export function collectCallSiteCastViolations(files: AuditSourceFile[]): AuditVi
         );
 
         function visit(node: ts.Node): void {
-            if (ts.isCallExpression(node) && isBoundaryCall(node) && node.arguments.some((argument) => containsCallSiteCast(argument))) {
+            if (
+                ts.isCallExpression(node) &&
+                isBoundaryCall(node) &&
+                node.arguments.some((argument) => containsCallSiteCast(argument))
+            ) {
                 pushUniqueViolation(violations, {
                     path: file.relativePath,
                     line: getLineNumber(sourceFile, node),
-                    message: 'Review call-site cast at a query or mutation boundary and replace it with validated narrowing before the call.',
+                    message:
+                        'Review call-site cast at a query or mutation boundary and replace it with validated narrowing before the call.',
                 });
             }
 
@@ -367,3 +376,4 @@ export function collectCallSiteCastViolations(files: AuditSourceFile[]): AuditVi
 
     return violations;
 }
+

@@ -53,9 +53,9 @@ describe('runtime contracts: provider auth flows', () => {
         expect(cleared.authState.authState).toBe('logged_out');
 
         const snapshotAfterClear = await caller.runtime.getDiagnosticSnapshot({ profileId });
-        expect(snapshotAfterClear.providerSecrets.some((providerSecret) => providerSecret.providerId === 'openai')).toBe(
-            false
-        );
+        expect(
+            snapshotAfterClear.providerSecrets.some((providerSecret) => providerSecret.providerId === 'openai')
+        ).toBe(false);
     });
 
     it('persists kilo browser auth and exposes the stored session token through provider credential queries', async () => {

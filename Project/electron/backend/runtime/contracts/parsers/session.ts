@@ -86,8 +86,7 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
     const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
     const modelId = readOptionalString(source.modelId, 'modelId');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
     const attachments =
         source.attachments !== undefined
             ? readArray(source.attachments, 'attachments').map((value, index) =>
@@ -189,8 +188,7 @@ export function parseSessionEditInput(input: unknown): SessionEditInput {
     const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
     const modelId = readOptionalString(source.modelId, 'modelId');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
     const runtimeOptions =
         source.runtimeOptions !== undefined ? parseRuntimeRunOptions(source.runtimeOptions) : undefined;
     const modeKey = readOptionalString(source.modeKey, 'modeKey');
@@ -254,4 +252,6 @@ export const sessionGetAttachedRulesInputSchema = createParser(parseSessionGetAt
 export const sessionSetAttachedRulesInputSchema = createParser(parseSessionSetAttachedRulesInput);
 export const sessionEditInputSchema = createParser(parseSessionEditInput);
 export const sessionBranchFromMessageInputSchema = createParser(parseSessionBranchFromMessageInput);
-export const sessionBranchFromMessageWithWorkflowInputSchema = createParser(parseSessionBranchFromMessageWithWorkflowInput);
+export const sessionBranchFromMessageWithWorkflowInputSchema = createParser(
+    parseSessionBranchFromMessageWithWorkflowInput
+);

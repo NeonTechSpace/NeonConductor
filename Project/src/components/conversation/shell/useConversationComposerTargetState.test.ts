@@ -4,7 +4,8 @@ import { useConversationComposerTargetState } from '@/web/components/conversatio
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderControlSnapshot, ProviderListItem } from '@/app/backend/providers/service/types';
-import type { RuntimeShellBootstrap } from '@/app/backend/runtime/contracts';
+
+import type { RuntimeShellBootstrap } from '@/shared/contracts';
 
 function createProvider(input: {
     id: ProviderListItem['id'];

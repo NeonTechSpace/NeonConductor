@@ -5,6 +5,14 @@ import type {
     SessionSummaryRecord,
     ThreadListRecord,
 } from '@/app/backend/persistence/types';
+import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
+import type {
+    ProviderModelCapabilities,
+    ProviderRuntimeDescriptor,
+    ProviderRuntimeTransportFamily,
+} from '@/app/backend/providers/types';
+import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runExecution/errors';
+
 import type {
     ComposerImageAttachmentInput,
     EntityId,
@@ -19,14 +27,7 @@ import type {
     TopLevelTab,
     RunStartRejectionAction,
     ResolvedWorkspaceContext,
-} from '@/app/backend/runtime/contracts';
-import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runExecution/errors';
-import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
-import type {
-    ProviderModelCapabilities,
-    ProviderRuntimeDescriptor,
-    ProviderRuntimeTransportFamily,
-} from '@/app/backend/providers/types';
+} from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
 export interface StartRunInput {
@@ -216,3 +217,4 @@ export type StartRunResult =
           thread?: ThreadListRecord;
           resolvedContextState: ResolvedContextState;
       };
+

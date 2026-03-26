@@ -1,12 +1,12 @@
-import type {
-    ProviderAuthStateRecord,
-    ProviderModelRecord,
-} from '@/app/backend/persistence/types';
+import { hasRequiredStringFields, isRecord, readBoolean, readLiteral, readString } from '@/web/lib/runtime/eventPatches/readers/shared';
+
+import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type {
     KiloModelProviderOption,
     ProviderConnectionProfileResult,
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
+
 import {
     kiloDynamicSorts,
     kiloRoutingModes,
@@ -16,14 +16,6 @@ import {
     providerIds,
 } from '@/shared/contracts';
 import type { KiloModelRoutingPreference } from '@/shared/contracts';
-
-import {
-    hasRequiredStringFields,
-    isRecord,
-    readBoolean,
-    readLiteral,
-    readString,
-} from './shared';
 
 const providerCatalogStrategies = ['dynamic', 'static'] as const;
 
@@ -95,31 +87,30 @@ export function readProviderListItem(value: unknown): ProviderListItem | undefin
     const baseUrlOverride = readString(connectionProfileValue['baseUrlOverride']);
     const resolvedBaseUrl = readString(connectionProfileValue['resolvedBaseUrl']);
     const organizationId =
-        connectionProfileValue['organizationId'] === null
-            ? null
-            : readString(connectionProfileValue['organizationId']);
+        connectionProfileValue['organizationId'] === null ? null : readString(connectionProfileValue['organizationId']);
+    const executionPreferenceProviderId = isRecord(executionPreferenceValue)
+        ? readLiteral(executionPreferenceValue['providerId'], ['openai'] as const)
+        : undefined;
+    const executionPreferenceMode = isRecord(executionPreferenceValue)
+        ? readLiteral(executionPreferenceValue['mode'], openAIExecutionModes)
+        : undefined;
+    const canUseRealtimeWebSocket = isRecord(executionPreferenceValue)
+        ? readBoolean(executionPreferenceValue['canUseRealtimeWebSocket'])
+        : undefined;
+    const disabledReason = isRecord(executionPreferenceValue)
+        ? readLiteral(executionPreferenceValue['disabledReason'], [
+              'provider_not_supported',
+              'api_key_required',
+              'base_url_not_supported',
+          ] as const)
+        : undefined;
     const executionPreference: ProviderListItem['executionPreference'] =
-        isRecord(executionPreferenceValue) &&
-        readLiteral(executionPreferenceValue['providerId'], ['openai'] as const) &&
-        readLiteral(executionPreferenceValue['mode'], openAIExecutionModes) &&
-        readBoolean(executionPreferenceValue['canUseRealtimeWebSocket']) !== undefined
+        executionPreferenceProviderId && executionPreferenceMode && canUseRealtimeWebSocket !== undefined
             ? {
-                  providerId: 'openai',
-                  mode: readLiteral(executionPreferenceValue['mode'], openAIExecutionModes)!,
-                  canUseRealtimeWebSocket: readBoolean(executionPreferenceValue['canUseRealtimeWebSocket'])!,
-                  ...(readLiteral(executionPreferenceValue['disabledReason'], [
-                      'provider_not_supported',
-                      'api_key_required',
-                      'base_url_not_supported',
-                  ] as const)
-                      ? {
-                            disabledReason: readLiteral(executionPreferenceValue['disabledReason'], [
-                                'provider_not_supported',
-                                'api_key_required',
-                                'base_url_not_supported',
-                            ] as const)!,
-                        }
-                      : {}),
+                  providerId: executionPreferenceProviderId,
+                  mode: executionPreferenceMode,
+                  canUseRealtimeWebSocket,
+                  ...(disabledReason ? { disabledReason } : {}),
               }
             : undefined;
     if (
@@ -295,8 +286,7 @@ export function readProviderModels(value: unknown): ProviderModelRecord[] | unde
     }
 
     return value.filter(
-        (entry): entry is ProviderModelRecord =>
-            isRecord(entry) && hasRequiredStringFields(entry, ['id', 'providerId'])
+        (entry): entry is ProviderModelRecord => isRecord(entry) && hasRequiredStringFields(entry, ['id', 'providerId'])
     );
 }
 
@@ -331,12 +321,14 @@ export function readModelProviderOptions(value: unknown): KiloModelProviderOptio
     }
 
     return value.filter(
-        (entry): entry is KiloModelProviderOption =>
-            isRecord(entry) && hasRequiredStringFields(entry, ['providerId'])
+        (entry): entry is KiloModelProviderOption => isRecord(entry) && hasRequiredStringFields(entry, ['providerId'])
     );
 }
 
-export function replaceProviderModels(currentModels: ProviderModelRecord[], nextModels: ProviderModelRecord[]): ProviderModelRecord[] {
+export function replaceProviderModels(
+    currentModels: ProviderModelRecord[],
+    nextModels: ProviderModelRecord[]
+): ProviderModelRecord[] {
     if (nextModels.length === 0) {
         return currentModels;
     }
@@ -344,3 +336,4 @@ export function replaceProviderModels(currentModels: ProviderModelRecord[], next
     const providerId = nextModels[0]?.providerId;
     return [...currentModels.filter((model) => model.providerId !== providerId), ...nextModels];
 }
+

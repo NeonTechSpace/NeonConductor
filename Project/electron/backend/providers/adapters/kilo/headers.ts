@@ -12,6 +12,7 @@ import {
     HEADER_TASK_ID,
 } from '@/app/backend/providers/kiloGatewayClient/constants';
 import type { ProviderRuntimeInput, ProviderRoutedApiFamily } from '@/app/backend/providers/types';
+
 import { isKiloAutoModelId } from '@/shared/kiloModels';
 
 export function resolveKiloRuntimeAuthToken(input: ProviderRuntimeInput): ProviderAdapterResult<string> {
@@ -161,9 +162,7 @@ export function buildKiloRuntimeBody(input: ProviderRuntimeInput): Record<string
         if (message.role === 'tool') {
             const toolMessages = message.parts
                 .filter(
-                    (
-                        part
-                    ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
+                    (part): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
                         part.type === 'tool_result'
                 )
                 .map((part) => ({
@@ -176,15 +175,11 @@ export function buildKiloRuntimeBody(input: ProviderRuntimeInput): Record<string
         }
 
         const contentParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+            (part): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
                 part.type === 'text' || part.type === 'image'
         );
         const toolCallParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+            (part): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
         );
         const content =
             contentParts.length === 0

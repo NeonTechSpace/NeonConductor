@@ -255,24 +255,20 @@ describe('anthropicDirect', () => {
         expect(directParsed.value.parts.map((part) => part.partType).sort()).toEqual(
             routedParsed.value.parts.map((part) => part.partType).sort()
         );
-        expect(
-            directParsed.value.parts.find((part) => part.partType === 'reasoning')?.payload['text']
-        ).toBe('Primary reasoning');
-        expect(
-            routedParsed.value.parts.find((part) => part.partType === 'reasoning')?.payload['text']
-        ).toBe('Primary reasoning');
-        expect(
-            directParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']
-        ).toBe('call_1');
-        expect(
-            routedParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']
-        ).toBe('call_1');
-        expect(
-            directParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']
-        ).toBe('Done');
-        expect(
-            routedParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']
-        ).toBe('Done');
+        expect(directParsed.value.parts.find((part) => part.partType === 'reasoning')?.payload['text']).toBe(
+            'Primary reasoning'
+        );
+        expect(routedParsed.value.parts.find((part) => part.partType === 'reasoning')?.payload['text']).toBe(
+            'Primary reasoning'
+        );
+        expect(directParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']).toBe(
+            'call_1'
+        );
+        expect(routedParsed.value.parts.find((part) => part.partType === 'tool_call')?.payload['callId']).toBe(
+            'call_1'
+        );
+        expect(directParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']).toBe('Done');
+        expect(routedParsed.value.parts.find((part) => part.partType === 'text')?.payload['text']).toBe('Done');
     });
 
     it('assembles Anthropic stream events into normalized runtime parts', async () => {
@@ -337,11 +333,14 @@ describe('anthropicDirect', () => {
     });
 
     it('fails closed on malformed Anthropic stream payloads', async () => {
-        const response = new Response('data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{"}}\n\n', {
-            headers: {
-                'content-type': 'text/event-stream',
-            },
-        });
+        const response = new Response(
+            'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{"}}\n\n',
+            {
+                headers: {
+                    'content-type': 'text/event-stream',
+                },
+            }
+        );
 
         const result = await consumeDirectAnthropicStreamResponse({
             response,

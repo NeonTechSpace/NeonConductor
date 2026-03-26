@@ -14,10 +14,7 @@ import {
 } from '@/web/components/settings/contextSettingsDrafts';
 import { resolveSelectedProfileId } from '@/web/components/settings/profileSettings/selection';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
-import {
-    findProviderControlEntry,
-    getProviderControlDefaults,
-} from '@/web/lib/providerControl/selectors';
+import { findProviderControlEntry, getProviderControlDefaults } from '@/web/lib/providerControl/selectors';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
@@ -37,7 +34,8 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
 
     const profilesQuery = trpc.profile.list.useQuery(undefined, PROGRESSIVE_QUERY_OPTIONS);
     const profiles = profilesQuery.data?.profiles ?? [];
-    const resolvedSelectedProfileId = resolveSelectedProfileId(profiles, selectedProfileId, activeProfileId) ?? activeProfileId;
+    const resolvedSelectedProfileId =
+        resolveSelectedProfileId(profiles, selectedProfileId, activeProfileId) ?? activeProfileId;
 
     const globalSettingsQuery = trpc.context.getGlobalSettings.useQuery(undefined, PROGRESSIVE_QUERY_OPTIONS);
     const profileSettingsQuery = trpc.context.getProfileSettings.useQuery(
@@ -108,10 +106,7 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
         onSuccess: ({ settings, resolvedState }) => {
             setFeedbackTone('success');
             setFeedbackMessage('Saved profile context override.');
-            utils.context.getProfileSettings.setData(
-                { profileId: resolvedSelectedProfileId },
-                { settings }
-            );
+            utils.context.getProfileSettings.setData({ profileId: resolvedSelectedProfileId }, { settings });
             if (resolvedState) {
                 setResolvedContextStateCache({
                     utils,

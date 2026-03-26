@@ -16,11 +16,7 @@ const defaultRuntimeOptions = {
     },
 };
 
-const {
-    applyRunTerminalOutcomeMock,
-    ensureCheckpointForRunMock,
-    executeRunMock,
-} = vi.hoisted(() => ({
+const { applyRunTerminalOutcomeMock, ensureCheckpointForRunMock, executeRunMock } = vi.hoisted(() => ({
     applyRunTerminalOutcomeMock: vi.fn(),
     ensureCheckpointForRunMock: vi.fn(),
     executeRunMock: vi.fn(),

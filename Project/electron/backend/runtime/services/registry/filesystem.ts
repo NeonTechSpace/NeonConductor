@@ -21,10 +21,7 @@ export interface RegistryAssetFile {
 
 function stripQuotes(value: string): string {
     const trimmed = value.trim();
-    if (
-        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))
-    ) {
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
         return trimmed.slice(1, -1);
     }
 
@@ -156,11 +153,7 @@ async function collectMarkdownFiles(rootPath: string, relativePrefix = ''): Prom
     return results;
 }
 
-async function collectNamedMarkdownFiles(
-    rootPath: string,
-    fileName: string,
-    relativePrefix = ''
-): Promise<string[]> {
+async function collectNamedMarkdownFiles(rootPath: string, fileName: string, relativePrefix = ''): Promise<string[]> {
     const dirents = await readdir(rootPath, { withFileTypes: true });
     const results: string[] = [];
 
@@ -301,12 +294,7 @@ export function slugifyAssetKey(value: string): string {
 }
 
 export function titleCaseFromKey(value: string): string {
-    const key = value
-        .replace(/\\/g, '/')
-        .split('/')
-        .at(-1)
-        ?.replace(/[_-]+/g, ' ')
-        .trim();
+    const key = value.replace(/\\/g, '/').split('/').at(-1)?.replace(/[_-]+/g, ' ').trim();
     if (!key || key.length === 0) {
         return 'Untitled';
     }
@@ -317,9 +305,8 @@ export function titleCaseFromKey(value: string): string {
         .join(' ');
 }
 
-export function toSourceKind(scope: Extract<RegistryScope, 'global' | 'workspace'>): Extract<
-    RegistrySourceKind,
-    'global_file' | 'workspace_file'
-> {
+export function toSourceKind(
+    scope: Extract<RegistryScope, 'global' | 'workspace'>
+): Extract<RegistrySourceKind, 'global_file' | 'workspace_file'> {
     return scope === 'global' ? 'global_file' : 'workspace_file';
 }

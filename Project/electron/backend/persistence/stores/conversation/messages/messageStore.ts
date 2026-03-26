@@ -133,10 +133,7 @@ export class MessageStore {
         return this.createPart(input);
     }
 
-    async extendTextPart(input: {
-        partId: EntityId<'part'>;
-        appendText: string;
-    }): Promise<MessagePartRecord> {
+    async extendTextPart(input: { partId: EntityId<'part'>; appendText: string }): Promise<MessagePartRecord> {
         if (input.appendText.length === 0) {
             return this.readPartById(input.partId);
         }

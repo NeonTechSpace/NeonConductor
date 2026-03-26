@@ -1,6 +1,11 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
-import { isJsonRecord, isJsonString, isJsonUnknownArray, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+import {
+    isJsonRecord,
+    isJsonString,
+    isJsonUnknownArray,
+    parseJsonValue,
+} from '@/app/backend/persistence/stores/shared/utils';
 import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
 import {
     normalizeModeMetadata,

@@ -5,12 +5,6 @@ import {
 } from '@/app/backend/providers/adapters/errors';
 import { executeHttpFallback } from '@/app/backend/providers/adapters/httpFallback';
 import {
-    emitRuntimeLifecycleSelection,
-    failRuntimeAdapter,
-    mapHttpFallbackFailureStage,
-} from '@/app/backend/providers/adapters/runtimeLifecycle';
-import { unsupportedProviderNativeRuntime } from '@/app/backend/providers/adapters/providerNative';
-import {
     consumeKiloAnthropicRoutedStreamResponse,
     emitKiloAnthropicRoutedPayload,
 } from '@/app/backend/providers/adapters/kilo/anthropicRouted';
@@ -24,10 +18,16 @@ import {
     buildKiloRuntimeHeaders,
     resolveKiloRuntimeAuthToken,
 } from '@/app/backend/providers/adapters/kilo/headers';
+import { unsupportedProviderNativeRuntime } from '@/app/backend/providers/adapters/providerNative';
+import {
+    emitRuntimeLifecycleSelection,
+    failRuntimeAdapter,
+    mapHttpFallbackFailureStage,
+} from '@/app/backend/providers/adapters/runtimeLifecycle';
 import { parseChatCompletionsPayload } from '@/app/backend/providers/adapters/runtimePayload';
-import { getRuntimeFamilyDefinition, resolveRuntimeFamilyExecutionPath } from '@/app/backend/providers/runtimeFamilies';
 import { consumeChatCompletionsStreamResponse, emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
 import { KILO_GATEWAY_BASE_URL } from '@/app/backend/providers/kiloGatewayClient/constants';
+import { getRuntimeFamilyDefinition, resolveRuntimeFamilyExecutionPath } from '@/app/backend/providers/runtimeFamilies';
 import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
 
 type KiloRoutedRuntimeFamily = 'openai_compatible' | 'anthropic_messages' | 'google_generativeai';
@@ -72,25 +72,11 @@ function resolveKiloRoutedRuntimeFamily(input: ProviderRuntimeInput): ProviderAd
         );
     }
 
-    if (!input.runtime.routedApiFamily) {
-        return errProviderAdapter(
-            'invalid_payload',
-            `Model "${input.modelId}" is missing required Kilo routed upstream family metadata.`
-        );
-    }
-
-    if (
-        input.runtime.routedApiFamily === 'openai_compatible' ||
-        input.runtime.routedApiFamily === 'anthropic_messages' ||
-        input.runtime.routedApiFamily === 'google_generativeai'
-    ) {
+    if (input.runtime.routedApiFamily === 'openai_compatible' || input.runtime.routedApiFamily === 'anthropic_messages') {
         return okProviderAdapter(input.runtime.routedApiFamily);
     }
 
-    return errProviderAdapter(
-        'invalid_payload',
-        `Model "${input.modelId}" routes through unsupported Kilo upstream family "${input.runtime.routedApiFamily}".`
-    );
+    return okProviderAdapter(input.runtime.routedApiFamily);
 }
 
 const kiloRoutedRuntimeHandlers: Record<KiloRoutedRuntimeFamily, KiloRoutedRuntimeHandler> = {

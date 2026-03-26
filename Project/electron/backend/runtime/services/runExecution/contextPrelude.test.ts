@@ -1,7 +1,6 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
@@ -16,9 +15,9 @@ import {
     threadStore,
     workspaceRootStore,
 } from '@/app/backend/persistence/stores';
-import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
 import { appPromptLayerSettingsStore } from '@/app/backend/persistence/stores/runtime/appPromptLayerSettingsStore';
 import { resolveActiveMode } from '@/app/backend/runtime/services/mode/activeMode';
+import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
 
 describe('buildSessionSystemPrelude', () => {
     beforeEach(() => {
@@ -325,7 +324,11 @@ Nested project instructions.
 
         const sandboxPath = path.join(workspaceRoot.absolutePath, '.sandboxes', 'agents-root');
         mkdirSync(sandboxPath, { recursive: true });
-        writeFileSync(path.join(workspaceRoot.absolutePath, 'AGENTS.md'), '# Base Workspace\n\nBase instructions.', 'utf8');
+        writeFileSync(
+            path.join(workspaceRoot.absolutePath, 'AGENTS.md'),
+            '# Base Workspace\n\nBase instructions.',
+            'utf8'
+        );
         writeFileSync(path.join(sandboxPath, 'AGENTS.md'), '# Sandbox Root\n\nSandbox instructions.', 'utf8');
 
         const sandbox = await sandboxStore.create({

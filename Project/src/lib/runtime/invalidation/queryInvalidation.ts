@@ -6,10 +6,7 @@ function toVoidPromise<TResult>(task: Promise<TResult>): Promise<void> {
     return task.then(() => undefined);
 }
 
-export function addInvalidation(
-    invalidations: Promise<void>[],
-    task: Promise<void> | undefined
-): void {
+export function addInvalidation(invalidations: Promise<void>[], task: Promise<void> | undefined): void {
     if (task) {
         invalidations.push(task);
     }
@@ -218,4 +215,3 @@ export function invalidateSessionAttachedRules(utils: TrpcUtils): Promise<void> 
 export function invalidateSessionAttachedSkills(utils: TrpcUtils): Promise<void> {
     return toVoidPromise(utils.session.getAttachedSkills.invalidate());
 }
-

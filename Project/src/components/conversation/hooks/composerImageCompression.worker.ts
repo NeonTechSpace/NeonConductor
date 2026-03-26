@@ -1,9 +1,6 @@
 import { err, ok } from 'neverthrow';
 
-import {
-    composerImageCompressionError,
-    type ComposerImageCompressionResult,
-} from './composerImageCompressionErrors';
+import { composerImageCompressionError, type ComposerImageCompressionResult } from '@/web/components/conversation/hooks/composerImageCompressionErrors';
 
 const composerImageAttachmentMimeTypes = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type ComposerImageAttachmentMimeType = (typeof composerImageAttachmentMimeTypes)[number];
@@ -158,7 +155,10 @@ async function finalizePreparedAttachment(
     });
 }
 
-async function compressImage(file: File, clientId: string): Promise<ComposerImageCompressionResult<CompressionSuccessMessage>> {
+async function compressImage(
+    file: File,
+    clientId: string
+): Promise<ComposerImageCompressionResult<CompressionSuccessMessage>> {
     if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') {
         return err(composerImageCompressionError('worker_unavailable', 'Image compression worker is unavailable.'));
     }
@@ -209,7 +209,12 @@ async function compressImage(file: File, clientId: string): Promise<ComposerImag
             if (preservePng) {
                 const pngBlob = await canvasToBlob(canvas, 'image/png');
                 if (pngBlob.size <= MAX_COMPRESSED_IMAGE_BYTES) {
-                    const prepared = await finalizePreparedAttachment(pngBlob, dimensions.width, dimensions.height, clientId);
+                    const prepared = await finalizePreparedAttachment(
+                        pngBlob,
+                        dimensions.width,
+                        dimensions.height,
+                        clientId
+                    );
                     if (prepared.isErr()) {
                         return err(prepared.error);
                     }
@@ -231,7 +236,12 @@ async function compressImage(file: File, clientId: string): Promise<ComposerImag
                 for (const quality of JPEG_QUALITY_STEPS) {
                     const jpegBlob = await canvasToBlob(canvas, 'image/jpeg', quality);
                     if (jpegBlob.size <= MAX_COMPRESSED_IMAGE_BYTES) {
-                        const prepared = await finalizePreparedAttachment(jpegBlob, dimensions.width, dimensions.height, clientId);
+                        const prepared = await finalizePreparedAttachment(
+                            jpegBlob,
+                            dimensions.width,
+                            dimensions.height,
+                            clientId
+                        );
                         if (prepared.isErr()) {
                             return err(prepared.error);
                         }
@@ -267,10 +277,7 @@ async function compressImage(file: File, clientId: string): Promise<ComposerImag
     }
 
     return err(
-        composerImageCompressionError(
-            'size_limit_exceeded',
-            `"${file.name}" could not be compressed below 1.5 MB.`
-        )
+        composerImageCompressionError('size_limit_exceeded', `"${file.name}" could not be compressed below 1.5 MB.`)
     );
 }
 

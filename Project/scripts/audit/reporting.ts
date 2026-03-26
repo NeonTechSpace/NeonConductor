@@ -4,7 +4,7 @@ import type {
     AuditSummary,
     AuditWorklistOptions,
     ReviewedAuditViolation,
-} from './types';
+} from '@/scripts/audit/types';
 
 function sumViolations(categories: AuditCategoryReport[], lane: AuditCategoryReport['lane']): number {
     return categories
@@ -21,10 +21,7 @@ function isReviewViolationUnresolved(violation: ReviewedAuditViolation): boolean
     );
 }
 
-function filterViolations(
-    category: AuditCategoryReport,
-    options: AuditWorklistOptions
-): ReviewedAuditViolation[] {
+function filterViolations(category: AuditCategoryReport, options: AuditWorklistOptions): ReviewedAuditViolation[] {
     let violations = category.violations;
 
     if (options.newOnly) {
@@ -71,11 +68,19 @@ export function buildAuditSummary(categories: AuditCategoryReport[]): AuditSumma
         .filter((category) => category.lane === 'actionable-review')
         .flatMap((category) => category.violations);
 
-    const reviewedCleanCount = manualReviewViolations.filter((violation) => violation.reviewStatus === 'reviewed-clean').length;
-    const acceptedRiskCount = manualReviewViolations.filter((violation) => violation.reviewStatus === 'accepted-risk').length;
+    const reviewedCleanCount = manualReviewViolations.filter(
+        (violation) => violation.reviewStatus === 'reviewed-clean'
+    ).length;
+    const acceptedRiskCount = manualReviewViolations.filter(
+        (violation) => violation.reviewStatus === 'accepted-risk'
+    ).length;
     const staleReviewCount = manualReviewViolations.filter((violation) => violation.reviewStatus === 'stale').length;
-    const manualReviewOutstandingCount = manualReviewViolations.filter((violation) => isReviewViolationUnresolved(violation)).length;
-    const unresolvedActionableCount = actionableReviewViolations.filter((violation) => isReviewViolationUnresolved(violation)).length;
+    const manualReviewOutstandingCount = manualReviewViolations.filter((violation) =>
+        isReviewViolationUnresolved(violation)
+    ).length;
+    const unresolvedActionableCount = actionableReviewViolations.filter((violation) =>
+        isReviewViolationUnresolved(violation)
+    ).length;
     const unresolvedManualCount = manualReviewOutstandingCount;
 
     let overallStatus: AuditSummary['overallStatus'] = 'clean';
@@ -101,10 +106,7 @@ export function buildAuditSummary(categories: AuditCategoryReport[]): AuditSumma
     };
 }
 
-export function formatAuditWorklist(
-    report: AgentsConformanceReport,
-    options: AuditWorklistOptions = {}
-): string {
+export function formatAuditWorklist(report: AgentsConformanceReport, options: AuditWorklistOptions = {}): string {
     const categories = filterAuditCategories(report.categories, options);
 
     const sections = categories.map((category) => {
@@ -150,3 +152,4 @@ export function formatAuditWorklist(
         ...sections,
     ].join('\n');
 }
+

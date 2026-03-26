@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
@@ -16,11 +15,7 @@ function buildFileBytes(index: number, byteSize: number): Uint8Array {
     return Buffer.alloc(byteSize, index % 251);
 }
 
-async function createCheckpointFixture(input: {
-    fileCount: number;
-    byteSize: number;
-    includeChangeset?: boolean;
-}) {
+async function createCheckpointFixture(input: { fileCount: number; byteSize: number; includeChangeset?: boolean }) {
     const caller = createCaller();
     const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-compaction-'));
     const threadResult = await caller.conversation.createThread({
@@ -207,16 +202,20 @@ describe('checkpoint compaction service', () => {
 
         const snapshotEntries = await checkpointSnapshotStore.listSnapshotEntries(checkpoint.id);
         expect(snapshotEntries).toHaveLength(250);
-        expect(Buffer.from(snapshotEntries[0]?.bytes ?? new Uint8Array()).equals(Buffer.from(files[0]?.bytes ?? []))).toBe(
-            true
-        );
+        expect(
+            Buffer.from(snapshotEntries[0]?.bytes ?? new Uint8Array()).equals(Buffer.from(files[0]?.bytes ?? []))
+        ).toBe(true);
 
         const changeset = await checkpointChangesetStore.getByCheckpointId(profileId, checkpoint.id);
         expect(changeset).not.toBeNull();
-        expect(Buffer.from(changeset?.entries[0]?.beforeBytes ?? new Uint8Array()).equals(Buffer.from(files[0]?.bytes ?? []))).toBe(
-            true
+        expect(
+            Buffer.from(changeset?.entries[0]?.beforeBytes ?? new Uint8Array()).equals(
+                Buffer.from(files[0]?.bytes ?? [])
+            )
+        ).toBe(true);
+        expect(Buffer.from(changeset?.entries[0]?.afterBytes ?? new Uint8Array()).toString('utf8')).toBe(
+            'after state\n'
         );
-        expect(Buffer.from(changeset?.entries[0]?.afterBytes ?? new Uint8Array()).toString('utf8')).toBe('after state\n');
 
         const orphanRow = sqlite
             .prepare(

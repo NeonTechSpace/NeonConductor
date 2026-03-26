@@ -8,10 +8,7 @@ import {
 } from '@/app/backend/runtime/services/orchestrator/events';
 import { appLog } from '@/app/main/logging';
 
-function findLinkedPlanItem(
-    planItems: PlanItemRecord[],
-    step: OrchestratorStepRecord
-): PlanItemRecord | undefined {
+function findLinkedPlanItem(planItems: PlanItemRecord[], step: OrchestratorStepRecord): PlanItemRecord | undefined {
     return planItems.find((item) => item.sequence === step.sequence);
 }
 
@@ -201,9 +198,7 @@ export async function markOrchestratorCompleted(input: {
     });
 }
 
-export async function markOrchestratorStopped(input: {
-    orchestratorRunId: EntityId<'orch'>;
-}): Promise<void> {
+export async function markOrchestratorStopped(input: { orchestratorRunId: EntityId<'orch'> }): Promise<void> {
     await orchestratorStore.setRunStatus(input.orchestratorRunId, { status: 'aborted' });
     appLog.warn({
         tag: 'orchestrator',

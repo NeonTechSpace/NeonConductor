@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { deriveConversationWorkspaceExecutionScope } from '@/web/components/conversation/shell/deriveConversationWorkspaceExecutionScope';
 
 import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
-import type { RuntimeShellBootstrap } from '@/app/backend/runtime/contracts';
+
+import type { RuntimeShellBootstrap } from '@/shared/contracts';
 
 function createThread(overrides: Partial<ThreadListRecord> = {}): ThreadListRecord {
     return {
@@ -156,8 +157,7 @@ describe('deriveConversationWorkspaceExecutionScope', () => {
                 selectedThread: createThread({
                     sandboxId: 'sb_thread',
                 }),
-                selectedSession: createSession({
-                }),
+                selectedSession: createSession({}),
                 workspaceRoots,
                 sandboxes,
             })

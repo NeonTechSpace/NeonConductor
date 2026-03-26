@@ -11,7 +11,7 @@ export type RuntimeCompatibilityIssue =
       }
     | {
           code: 'provider_not_runnable';
-          providerId?: RuntimeProviderId | string;
+          providerId?: RuntimeProviderId;
       }
     | {
           code: 'provider_unsupported';
@@ -19,18 +19,18 @@ export type RuntimeCompatibilityIssue =
       }
     | {
           code: 'model_unavailable';
-          providerId?: RuntimeProviderId | string;
+          providerId?: RuntimeProviderId;
           modelId?: string;
       }
     | {
           code: 'model_tools_required';
-          providerId?: RuntimeProviderId | string;
+          providerId?: RuntimeProviderId;
           modelId?: string;
           modeKey: string;
       }
     | {
           code: 'model_vision_required';
-          providerId?: RuntimeProviderId | string;
+          providerId?: RuntimeProviderId;
           modelId?: string;
       }
     | {
@@ -40,12 +40,12 @@ export type RuntimeCompatibilityIssue =
       }
     | {
           code: 'provider_native_unsupported';
-          providerId?: RuntimeProviderId | string;
+          providerId?: RuntimeProviderId;
           modelId?: string;
       }
     | {
           code: 'runtime_options_invalid';
-          providerId?: RuntimeProviderId | string;
+          providerId?: RuntimeProviderId;
           modelId?: string;
           modeKey?: string;
           detail?:

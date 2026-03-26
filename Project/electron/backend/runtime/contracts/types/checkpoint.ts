@@ -186,12 +186,7 @@ export interface CheckpointRollbackInput extends ProfileInput {
 
 export interface CheckpointRollbackResult {
     rolledBack: boolean;
-    reason?:
-        | 'confirmation_required'
-        | 'not_found'
-        | 'workspace_unresolved'
-        | 'snapshot_invalid'
-        | 'restore_failed';
+    reason?: 'confirmation_required' | 'not_found' | 'workspace_unresolved' | 'snapshot_invalid' | 'restore_failed';
     message?: string;
     checkpoint?: {
         id: EntityId<'ckpt'>;

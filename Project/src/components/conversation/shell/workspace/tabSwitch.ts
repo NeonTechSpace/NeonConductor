@@ -18,4 +18,3 @@ export function resolveTabSwitchNotice(
         notice: `Switched to ${nextTab} to open this thread.`,
     };
 }
-

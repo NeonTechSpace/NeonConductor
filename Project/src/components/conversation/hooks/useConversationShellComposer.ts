@@ -172,7 +172,7 @@ export function useConversationShellComposer<
     }
 
     function startCompressingImage(clientId: string, sourceFile: File) {
-        preparePendingComposerImage({
+        void preparePendingComposerImage({
             clientId,
             sourceFile,
             prepareImageAttachment: prepareComposerImageAttachment,
@@ -256,7 +256,7 @@ export function useConversationShellComposer<
         sessionId: OptimisticConversationUserMessage['sessionId'],
         prompt: string
     ): OptimisticConversationUserMessage {
-        const seed = `${Date.now()}_${Math.round(Math.random() * 1000)}`;
+        const seed = `${String(Date.now())}_${String(Math.round(Math.random() * 1000))}`;
         return {
             id: `optimistic_msg_${seed}`,
             runId: `optimistic_run_${seed}`,

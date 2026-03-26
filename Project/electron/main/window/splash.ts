@@ -54,7 +54,9 @@ export function resolveSplashAssetUrl(input: {
     ).toString();
 }
 
-export function resolveSplashPageLocation(options: SplashWindowOptions): { kind: 'url'; value: string } | { kind: 'file'; value: string } {
+export function resolveSplashPageLocation(
+    options: SplashWindowOptions
+): { kind: 'url'; value: string } | { kind: 'file'; value: string } {
     if (!options.isPackaged && options.devServerUrl) {
         return {
             kind: 'url',

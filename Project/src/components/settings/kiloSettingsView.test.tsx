@@ -31,17 +31,14 @@ describe('Kilo initial catalog bootstrap contract', () => {
     });
 
     it('re-enables automatic bootstrap after auth leaves eligibility and becomes authenticated again', () => {
-        let hasAttemptedBootstrap = true;
-
         expect(shouldResetKiloInitialCatalogBootstrapAttempt('logged_out')).toBe(true);
-        hasAttemptedBootstrap = false;
 
         const shouldAttemptAfterAuthReturns = shouldAttemptKiloInitialCatalogBootstrap({
             selectedProviderId: 'kilo',
             effectiveAuthState: 'authenticated',
             modelOptionCount: 0,
             isSyncingCatalog: false,
-            hasAttemptedBootstrap,
+            hasAttemptedBootstrap: false,
         });
         expect(shouldAttemptAfterAuthReturns).toBe(true);
     });

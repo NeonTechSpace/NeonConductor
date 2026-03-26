@@ -1,4 +1,4 @@
-import type { McpServerRecord } from '@/app/backend/runtime/contracts/types/mcp';
+import type { McpServerRecord } from '@/shared/contracts/types/mcp';
 
 export function McpServerListSection(input: {
     servers: McpServerRecord[];
@@ -23,28 +23,36 @@ export function McpServerListSection(input: {
                     const needsWorkspace = server.workingDirectoryMode === 'workspace_root';
                     const canConnect = !needsWorkspace || !!input.currentWorkspaceFingerprint;
                     return (
-                        <article key={server.id} className='border-border/70 bg-background/70 space-y-3 rounded-2xl border p-4'>
+                        <article
+                            key={server.id}
+                            className='border-border/70 bg-background/70 space-y-3 rounded-2xl border p-4'>
                             <div className='space-y-1'>
                                 <div className='flex flex-wrap items-center gap-2'>
                                     <p className='text-sm font-semibold'>{server.label}</p>
-                                    <span className='rounded-full border border-border/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground'>
+                                    <span className='border-border/80 text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] tracking-[0.14em] uppercase'>
                                         {server.connectionState}
                                     </span>
-                                    <span className='rounded-full border border-border/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground'>
+                                    <span className='border-border/80 text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] tracking-[0.14em] uppercase'>
                                         {server.toolDiscoveryState}
                                     </span>
                                 </div>
                                 <p className='text-muted-foreground text-xs break-all'>{server.command}</p>
-                                {server.lastError ? <p className='text-destructive text-xs'>{server.lastError}</p> : null}
+                                {server.lastError ? (
+                                    <p className='text-destructive text-xs'>{server.lastError}</p>
+                                ) : null}
                                 {needsWorkspace && !input.currentWorkspaceFingerprint ? (
-                                    <p className='text-muted-foreground text-xs'>Select a workspace before connecting this server.</p>
+                                    <p className='text-muted-foreground text-xs'>
+                                        Select a workspace before connecting this server.
+                                    </p>
                                 ) : null}
                             </div>
 
                             {server.envKeys.length > 0 ? (
                                 <div className='flex flex-wrap gap-2'>
                                     {server.envKeys.map((envKey) => (
-                                        <span key={envKey} className='rounded-full border border-border/80 px-2 py-0.5 text-[11px] text-muted-foreground'>
+                                        <span
+                                            key={envKey}
+                                            className='border-border/80 text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]'>
                                             {envKey}
                                         </span>
                                     ))}
@@ -54,9 +62,13 @@ export function McpServerListSection(input: {
                             {server.tools.length > 0 ? (
                                 <div className='space-y-2'>
                                     {server.tools.map((tool) => (
-                                        <div key={tool.name} className='rounded-2xl border border-border/70 bg-card/50 px-3 py-2'>
+                                        <div
+                                            key={tool.name}
+                                            className='border-border/70 bg-card/50 rounded-2xl border px-3 py-2'>
                                             <p className='text-xs font-medium'>{tool.name}</p>
-                                            {tool.description ? <p className='text-muted-foreground text-xs'>{tool.description}</p> : null}
+                                            {tool.description ? (
+                                                <p className='text-muted-foreground text-xs'>{tool.description}</p>
+                                            ) : null}
                                         </div>
                                     ))}
                                 </div>
@@ -65,7 +77,7 @@ export function McpServerListSection(input: {
                             <div className='flex flex-wrap gap-2'>
                                 <button
                                     type='button'
-                                    className='rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium'
+                                    className='border-border/80 rounded-full border px-3 py-1.5 text-xs font-medium'
                                     onClick={() => {
                                         input.onEditServer(server);
                                     }}>
@@ -73,7 +85,7 @@ export function McpServerListSection(input: {
                                 </button>
                                 <button
                                     type='button'
-                                    className='rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium disabled:opacity-60'
+                                    className='border-border/80 rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-60'
                                     disabled={input.isBusy || !canConnect}
                                     onClick={() => {
                                         void input.onConnectServer(server);
@@ -82,7 +94,7 @@ export function McpServerListSection(input: {
                                 </button>
                                 <button
                                     type='button'
-                                    className='rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium disabled:opacity-60'
+                                    className='border-border/80 rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-60'
                                     disabled={input.isBusy || server.connectionState === 'disconnected'}
                                     onClick={() => {
                                         void input.onDisconnectServer(server.id);
@@ -91,7 +103,7 @@ export function McpServerListSection(input: {
                                 </button>
                                 <button
                                     type='button'
-                                    className='rounded-full border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive'
+                                    className='border-destructive/40 text-destructive rounded-full border px-3 py-1.5 text-xs font-medium'
                                     onClick={() => {
                                         input.onRequestDelete(server);
                                     }}>
@@ -103,7 +115,7 @@ export function McpServerListSection(input: {
                 })}
 
                 {input.servers.length === 0 ? (
-                    <div className='rounded-2xl border border-dashed border-border/80 px-4 py-6 text-sm text-muted-foreground'>
+                    <div className='border-border/80 text-muted-foreground rounded-2xl border border-dashed px-4 py-6 text-sm'>
                         No MCP servers configured yet.
                     </div>
                 ) : null}

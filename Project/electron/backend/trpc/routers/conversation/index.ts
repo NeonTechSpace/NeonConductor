@@ -1,4 +1,10 @@
-import { conversationStore, settingsStore, tagStore, threadStore, workspaceRootStore } from '@/app/backend/persistence/stores';
+import {
+    conversationStore,
+    settingsStore,
+    tagStore,
+    threadStore,
+    workspaceRootStore,
+} from '@/app/backend/persistence/stores';
 import {
     conversationCreateThreadInputSchema,
     conversationDeleteWorkspaceThreadsInputSchema,
@@ -119,25 +125,35 @@ export const conversationRouter = router({
             });
         }
 
-        const resolvedBucket = (await conversationStore.createOrGetBucket({
-            profileId: input.profileId,
-            scope: input.scope,
-            ...(input.workspacePath
-                ? {
-                      workspaceFingerprint: (
-                          await workspaceRootStore.resolveOrCreate(input.profileId, input.workspacePath)
-                      ).fingerprint,
-                  }
-                : {}),
-        })).match((value) => value, (error) => raiseMappedTrpcError(error, toTrpcError));
-        const createdThread = (await threadStore.create({
-            profileId: input.profileId,
-            conversationId: resolvedBucket.id,
-            title: input.title,
-            topLevelTab,
-            ...(input.executionEnvironmentMode ? { executionEnvironmentMode: input.executionEnvironmentMode } : {}),
-            ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
-        })).match((value) => value, (error) => raiseMappedTrpcError(error, toTrpcError));
+        const resolvedBucket = (
+            await conversationStore.createOrGetBucket({
+                profileId: input.profileId,
+                scope: input.scope,
+                ...(input.workspacePath
+                    ? {
+                          workspaceFingerprint: (
+                              await workspaceRootStore.resolveOrCreate(input.profileId, input.workspacePath)
+                          ).fingerprint,
+                      }
+                    : {}),
+            })
+        ).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
+        const createdThread = (
+            await threadStore.create({
+                profileId: input.profileId,
+                conversationId: resolvedBucket.id,
+                title: input.title,
+                topLevelTab,
+                ...(input.executionEnvironmentMode ? { executionEnvironmentMode: input.executionEnvironmentMode } : {}),
+                ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
+            })
+        ).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
 
         await runtimeEventLogService.append(
             runtimeUpsertEvent({
@@ -201,7 +217,9 @@ export const conversationRouter = router({
     setThreadFavorite: publicProcedure
         .input(conversationSetThreadFavoriteInputSchema)
         .mutation(async ({ input, ctx }) => {
-            const updatedThread = (await threadStore.setFavorite(input.profileId, input.threadId, input.isFavorite)).match(
+            const updatedThread = (
+                await threadStore.setFavorite(input.profileId, input.threadId, input.isFavorite)
+            ).match(
                 (value) => value,
                 (error) => raiseMappedTrpcError(error, toTrpcError)
             );
@@ -218,12 +236,12 @@ export const conversationRouter = router({
                     domain: 'thread',
                     entityId: updatedThread.id,
                     eventType: 'conversation.thread.favorite.updated',
-                payload: {
-                    profileId: input.profileId,
-                    threadId: updatedThread.id,
-                    isFavorite: updatedThread.isFavorite,
-                    thread: updatedThread,
-                },
+                    payload: {
+                        profileId: input.profileId,
+                        threadId: updatedThread.id,
+                        isFavorite: updatedThread.isFavorite,
+                        thread: updatedThread,
+                    },
                     ...eventMetadata({
                         requestId: ctx.requestId,
                         correlationId: ctx.correlationId,

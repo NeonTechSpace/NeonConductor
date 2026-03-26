@@ -1,8 +1,8 @@
-import { Buffer } from 'node:buffer';
 
 import { Client } from '@modelcontextprotocol/sdk/client';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { Buffer } from 'node:buffer';
 
 import { mcpStore, workspaceRootStore } from '@/app/backend/persistence/stores';
 import type { McpServerRecord } from '@/app/backend/persistence/types';
@@ -150,9 +150,7 @@ class McpService {
         return servers
             .filter(
                 (server) =>
-                    server.enabled &&
-                    server.connectionState === 'connected' &&
-                    server.toolDiscoveryState === 'ready'
+                    server.enabled && server.connectionState === 'connected' && server.toolDiscoveryState === 'ready'
             )
             .flatMap((server) => server.tools.map((tool) => toRuntimeToolDefinition(server, tool)));
     }
@@ -165,7 +163,12 @@ class McpService {
 
         await this.ensureStartupStateNormalized();
         const server = await mcpStore.getServer(decoded.serverId);
-        if (!server || !server.enabled || server.connectionState !== 'connected' || server.toolDiscoveryState !== 'ready') {
+        if (
+            !server ||
+            !server.enabled ||
+            server.connectionState !== 'connected' ||
+            server.toolDiscoveryState !== 'ready'
+        ) {
             return null;
         }
 
@@ -177,7 +180,11 @@ class McpService {
         return toRuntimeToolDefinition(server, tool);
     }
 
-    async connect(input: { profileId: string; serverId: string; workspaceFingerprint?: string }): Promise<McpServerRecord | null> {
+    async connect(input: {
+        profileId: string;
+        serverId: string;
+        workspaceFingerprint?: string;
+    }): Promise<McpServerRecord | null> {
         await this.ensureStartupStateNormalized();
         const serverConfig = await mcpStore.getServerRuntimeConfig(input.serverId);
         if (!serverConfig) {
@@ -211,7 +218,7 @@ class McpService {
                 ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             });
             if (cwd.isErr()) {
-                return mcpStore.setLifecycleState({
+                return await mcpStore.setLifecycleState({
                     serverId: input.serverId,
                     connectionState: 'error',
                     toolDiscoveryState: 'error',
@@ -232,7 +239,7 @@ class McpService {
                 transport,
             });
 
-            return mcpStore.replaceDiscoveredTools({
+            return await mcpStore.replaceDiscoveredTools({
                 serverId: input.serverId,
                 tools,
                 connectionState: 'connected',
@@ -243,7 +250,7 @@ class McpService {
             if (transport) {
                 await closeConnection({ client, transport });
             }
-            return mcpStore.setLifecycleState({
+            return await mcpStore.setLifecycleState({
                 serverId: input.serverId,
                 connectionState: 'error',
                 toolDiscoveryState: 'error',
@@ -293,10 +300,7 @@ class McpService {
                 ...(result._meta !== undefined ? { meta: result._meta } : {}),
             });
         } catch (error) {
-            return errOp(
-                'request_failed',
-                error instanceof Error ? error.message : 'MCP tool execution failed.'
-            );
+            return errOp('request_failed', error instanceof Error ? error.message : 'MCP tool execution failed.');
         }
     }
 }

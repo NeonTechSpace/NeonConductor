@@ -1,16 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { patchProviderCache } from '@/web/components/settings/providerSettings/providerSettingsCache';
+
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 function createSetDataSpy<T>() {
     let current: T | undefined;
-    const setData = vi.fn(
-        (_input: unknown, next: T | ((value: T | undefined) => T | undefined)) => {
-            current = typeof next === 'function' ? (next as (value: T | undefined) => T | undefined)(current) : next;
-            return current;
-        }
-    );
+    const setData = vi.fn((_input: unknown, next: T | ((value: T | undefined) => T | undefined)) => {
+        current = typeof next === 'function' ? (next as (value: T | undefined) => T | undefined)(current) : next;
+        return current;
+    });
 
     return {
         setData,

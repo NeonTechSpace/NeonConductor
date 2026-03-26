@@ -16,10 +16,10 @@ import type {
 } from '@/app/backend/persistence/types';
 import type { EntityId, OrchestratorStartInput, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
-import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
+import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
-import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
+import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
 type WorkspaceExecutionTarget = Extract<ResolvedWorkspaceContext, { kind: 'workspace' | 'sandbox' }>;
 
@@ -210,9 +210,14 @@ export async function startDelegatedChildRun(input: {
         };
     }
 
-    const createdSession = await sessionStore.create(input.profileId, createdThread.value.id, childExecutionBinding.sessionKind, {
-        delegatedFromOrchestratorRunId: input.orchestratorRunId,
-    });
+    const createdSession = await sessionStore.create(
+        input.profileId,
+        createdThread.value.id,
+        childExecutionBinding.sessionKind,
+        {
+            delegatedFromOrchestratorRunId: input.orchestratorRunId,
+        }
+    );
     if (!createdSession.created) {
         await threadStore.deleteDelegatedChildLane({
             profileId: input.profileId,

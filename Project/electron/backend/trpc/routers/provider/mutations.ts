@@ -23,7 +23,11 @@ import {
     emitProviderSyncEvent,
     emitProviderUpsertEvent,
 } from '@/app/backend/trpc/routers/provider/events';
-import { isProviderNotFoundCode, mapAuthErrorToOperationalCode, throwWithCode } from '@/app/backend/trpc/routers/provider/shared';
+import {
+    isProviderNotFoundCode,
+    mapAuthErrorToOperationalCode,
+    throwWithCode,
+} from '@/app/backend/trpc/routers/provider/shared';
 
 async function getProviderListItem(profileId: string, providerId: RuntimeProviderId) {
     const providers = await providerManagementService.listProviders(profileId);
@@ -390,7 +394,8 @@ export const providerMutationProcedures = {
         if (models.isErr()) {
             throwWithCode(models.error.code, models.error.message);
         }
-        const emptyCatalogState = models.value.length === 0 ? await resolveEmptyCatalogState(input.profileId, input.providerId) : null;
+        const emptyCatalogState =
+            models.value.length === 0 ? await resolveEmptyCatalogState(input.profileId, input.providerId) : null;
 
         await emitProviderSyncEvent({
             providerId: input.providerId,
@@ -438,26 +443,24 @@ export const providerMutationProcedures = {
 
         return result;
     }),
-    setSpecialistDefault: publicProcedure
-        .input(providerSetSpecialistDefaultInputSchema)
-        .mutation(async ({ input }) => {
-            const result = await providerManagementService.setSpecialistDefault(input);
+    setSpecialistDefault: publicProcedure.input(providerSetSpecialistDefaultInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.setSpecialistDefault(input);
 
-            if (result.success) {
-                await emitProviderUpsertEvent({
+        if (result.success) {
+            await emitProviderUpsertEvent({
+                providerId: input.providerId,
+                eventType: 'provider.specialist-default-set',
+                payload: {
+                    profileId: input.profileId,
+                    topLevelTab: input.topLevelTab,
+                    modeKey: input.modeKey,
                     providerId: input.providerId,
-                    eventType: 'provider.specialist-default-set',
-                    payload: {
-                        profileId: input.profileId,
-                        topLevelTab: input.topLevelTab,
-                        modeKey: input.modeKey,
-                        providerId: input.providerId,
-                        modelId: input.modelId,
-                        specialistDefaults: result.specialistDefaults,
-                    },
-                });
-            }
+                    modelId: input.modelId,
+                    specialistDefaults: result.specialistDefaults,
+                },
+            });
+        }
 
-            return result;
-        }),
+        return result;
+    }),
 };

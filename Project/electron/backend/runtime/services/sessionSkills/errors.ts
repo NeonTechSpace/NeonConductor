@@ -1,7 +1,12 @@
 import { err } from 'neverthrow';
 
 import type { EntityId } from '@/app/backend/runtime/contracts';
-import { errOp, okOp, type OperationalError, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import {
+    errOp,
+    okOp,
+    type OperationalError,
+    type OperationalResult,
+} from '@/app/backend/runtime/services/common/operationalError';
 
 export type SessionRegistryResult<T> = OperationalResult<T>;
 export type SessionSkillsResult<T> = SessionRegistryResult<T>;

@@ -51,7 +51,7 @@ export function CheckpointMilestoneActions({
             {feedbackMessage ? (
                 <div
                     aria-live='polite'
-                    className='mt-3 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive'>
+                    className='border-destructive/20 bg-destructive/10 text-destructive mt-3 rounded-xl border px-3 py-2 text-xs'>
                     {feedbackMessage}
                 </div>
             ) : null}

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import type { AuditSourceFile } from './types';
+import type { AuditSourceFile } from '@/scripts/audit/types';
 
 const SOURCE_FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 const REPOSITORY_TEXT_FILE_EXTENSIONS = new Set([
@@ -152,12 +152,7 @@ function collectFilesFromRoots(input: {
                 lineCount,
             });
         } catch (error) {
-            if (
-                typeof error === 'object' &&
-                error !== null &&
-                'code' in error &&
-                error.code === 'ENOENT'
-            ) {
+            if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
                 continue;
             }
 
@@ -202,3 +197,4 @@ export function collectRepositoryTextFiles(rootDir: string): AuditSourceFile[] {
         shouldIncludeFile: isRepositoryTextFile,
     });
 }
+

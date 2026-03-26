@@ -3,12 +3,12 @@ import { ContextGlobalDefaultsSection } from '@/web/components/settings/contextS
 import { ContextProfileOverrideSection } from '@/web/components/settings/contextSettings/contextProfileOverrideSection';
 import { ContextResolvedSummarySection } from '@/web/components/settings/contextSettings/contextResolvedSummarySection';
 import { useContextSettingsController } from '@/web/components/settings/contextSettings/useContextSettingsController';
-import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import {
     CONTEXT_SETTINGS_SUBSECTIONS,
     type ContextSettingsSubsectionId,
 } from '@/web/components/settings/settingsNavigation';
+import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
+import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 
 interface ContextSettingsViewProps {
     activeProfileId: string;
@@ -32,7 +32,9 @@ function ContextSectionHeader({
     return (
         <div className='flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between'>
             <div className='space-y-2'>
-                <p className='text-primary text-[11px] font-semibold tracking-[0.16em] uppercase'>Context &amp; Limits</p>
+                <p className='text-primary text-[11px] font-semibold tracking-[0.16em] uppercase'>
+                    Context &amp; Limits
+                </p>
                 <div className='space-y-1'>
                     <h4 className='text-xl font-semibold text-balance'>{title}</h4>
                     <p className='text-muted-foreground max-w-3xl text-sm leading-6'>{description}</p>

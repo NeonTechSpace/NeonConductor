@@ -19,13 +19,13 @@ import {
     toPortableModePayload,
     writePortableModeFile,
 } from '@/app/backend/runtime/services/promptLayers/customModePortability';
+import { getPromptLayerSettings } from '@/app/backend/runtime/services/promptLayers/settingsService';
 import {
     buildEditableCustomModePayload,
     findFileBackedCustomMode,
     refreshDiscoveredModesForScope,
     toPromptLayerCustomModeRecord,
 } from '@/app/backend/runtime/services/promptLayers/shared';
-import { getPromptLayerSettings } from '@/app/backend/runtime/services/promptLayers/settingsService';
 
 export async function exportCustomMode(input: {
     profileId: string;
@@ -133,7 +133,10 @@ export async function updateCustomMode(input: {
         return errOp('not_found', `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" was not found.`);
     }
     if (!existingMode.originPath) {
-        return errOp('not_found', `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" has no origin path.`);
+        return errOp(
+            'not_found',
+            `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" has no origin path.`
+        );
     }
 
     const payload = buildEditableCustomModePayload({
@@ -184,7 +187,10 @@ export async function deleteCustomMode(input: {
         return errOp('not_found', `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" was not found.`);
     }
     if (!existingMode.originPath) {
-        return errOp('not_found', `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" has no origin path.`);
+        return errOp(
+            'not_found',
+            `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" has no origin path.`
+        );
     }
     if (!(await fileExists(existingMode.originPath))) {
         return errOp('not_found', `File-backed custom mode "${input.topLevelTab}:${input.modeKey}" file is missing.`);

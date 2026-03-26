@@ -94,11 +94,7 @@ export type RuntimeReasoningSummary = (typeof runtimeReasoningSummaries)[number]
 export const runtimeCacheStrategies = ['auto', 'manual'] as const;
 export type RuntimeCacheStrategy = (typeof runtimeCacheStrategies)[number];
 
-export const runtimeRequestedTransportFamilies = [
-    'auto',
-    'openai_responses',
-    'openai_chat_completions',
-] as const;
+export const runtimeRequestedTransportFamilies = ['auto', 'openai_responses', 'openai_chat_completions'] as const;
 export type RuntimeRequestedTransportFamily = (typeof runtimeRequestedTransportFamilies)[number];
 
 export const kiloRoutingModes = ['dynamic', 'pinned'] as const;

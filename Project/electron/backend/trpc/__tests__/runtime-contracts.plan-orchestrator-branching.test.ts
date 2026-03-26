@@ -1,14 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createCaller, createSessionInScope, defaultRuntimeOptions, getPersistence, mkdirSync, path, registerRuntimeContractHooks, requireEntityId, rmSync, runtimeContractProfileId, waitForOrchestratorStatus, writeFileSync } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    createCaller,
+    createSessionInScope,
+    defaultRuntimeOptions,
+    getPersistence,
+    mkdirSync,
+    path,
+    registerRuntimeContractHooks,
+    requireEntityId,
+    rmSync,
+    runtimeContractProfileId,
+    waitForOrchestratorStatus,
+    writeFileSync,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 
-function insertChatCompletionsTestModel(input: {
-    profileId: string;
-    modelId: string;
-    label: string;
-}) {
+function insertChatCompletionsTestModel(input: { profileId: string; modelId: string; label: string }) {
     const { sqlite } = getPersistence();
     const now = new Date().toISOString();
     sqlite
@@ -94,20 +103,268 @@ function extractChatMessageContents(requestBody: Record<string, unknown>): strin
 
 describe('runtime contracts: planning and orchestrator', () => {
     const profileId = runtimeContractProfileId;
-    it(
-        'projects delegated child lanes onto the root sandbox immediately and propagates rules, skills, and root-thread memory',
-        async () => {
-            const caller = createCaller();
-            const requestBodies: Array<Record<string, unknown>> = [];
-            let resolveFetch: (() => void) | undefined;
-            vi.stubGlobal(
-                'fetch',
-                vi.fn((_url: string, init?: RequestInit) => {
-                    if (typeof init?.body === 'string') {
-                        requestBodies.push(JSON.parse(init.body) as Record<string, unknown>);
-                    }
+    it('projects delegated child lanes onto the root sandbox immediately and propagates rules, skills, and root-thread memory', async () => {
+        const caller = createCaller();
+        const requestBodies: Array<Record<string, unknown>> = [];
+        let resolveFetch: (() => void) | undefined;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((_url: string, init?: RequestInit) => {
+                if (typeof init?.body === 'string') {
+                    requestBodies.push(JSON.parse(init.body) as Record<string, unknown>);
+                }
 
-                    return new Promise((resolve) => {
+                return new Promise((resolve) => {
+                    resolveFetch = () => {
+                        resolve({
+                            ok: true,
+                            status: 200,
+                            statusText: 'OK',
+                            json: () => ({
+                                choices: [
+                                    {
+                                        message: {
+                                            content: 'Delegated child completed with inherited context.',
+                                        },
+                                    },
+                                ],
+                                usage: {
+                                    prompt_tokens: 17,
+                                    completion_tokens: 12,
+                                    total_tokens: 29,
+                                },
+                            }),
+                        });
+                    };
+                });
+            })
+        );
+
+        await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-orchestrator-child-context-key',
+        });
+        insertChatCompletionsTestModel({
+            profileId,
+            modelId: 'openai/orchestrator-child-context-test',
+            label: 'Orchestrator Child Context Test',
+        });
+
+        const workspaceFingerprint = 'wsf_orchestrator_child_context_propagation';
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Sandbox root orchestrator thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+        const rootThreadId = requireEntityId(created.thread.id, 'thr', 'Expected orchestrator root thread id.');
+        const configuredThread = await caller.sandbox.configureThread({
+            profileId,
+            threadId: rootThreadId,
+            mode: 'new_sandbox',
+        });
+        expect(configuredThread.thread.executionEnvironmentMode).toBe('new_sandbox');
+        expect(configuredThread.thread.sandboxId).toBeUndefined();
+
+        const registryPaths = await caller.registry.listResolved({
+            profileId,
+            workspaceFingerprint,
+        });
+        const workspaceAssetsRoot = registryPaths.paths.workspaceAssetsRoot;
+        if (!workspaceAssetsRoot) {
+            throw new Error('Expected workspace assets root for delegated child propagation test.');
+        }
+
+        rmSync(workspaceAssetsRoot, { recursive: true, force: true });
+        mkdirSync(path.join(workspaceAssetsRoot, 'rules-code'), { recursive: true });
+        mkdirSync(path.join(workspaceAssetsRoot, 'skills-code'), { recursive: true });
+        writeFileSync(
+            path.join(workspaceAssetsRoot, 'rules-code', 'delegated-manual-rule.md'),
+            `---
+key: delegated_manual_rule
+name: Delegated Manual Rule
+activationMode: manual
+---
+# Delegated Manual Rule
+
+- Apply this rule to delegated child runs.
+`,
+            'utf8'
+        );
+        writeFileSync(
+            path.join(workspaceAssetsRoot, 'skills-code', 'delegated-repo-search.md'),
+            `---
+key: delegated_repo_search
+name: Delegated Repo Search
+---
+# Delegated Repo Search
+
+- Use repository search inside the delegated child lane.
+`,
+            'utf8'
+        );
+        await caller.registry.refresh({
+            profileId,
+            workspaceFingerprint,
+        });
+
+        await caller.session.setAttachedRules({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            assetKeys: ['delegated_manual_rule'],
+        });
+        await caller.session.setAttachedSkills({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            assetKeys: ['delegated_repo_search'],
+        });
+        await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId: rootThreadId,
+            title: 'Delegated root memory',
+            bodyMarkdown: 'Remember the orchestrator root context.',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'plan',
+            prompt: 'Delegate one child task with inherited sandbox and context.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Run one delegated child with inherited execution target and context.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Keep the child on the same sandbox and inherit attached registry context.',
+        });
+        await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Delegated Context Plan',
+            items: [{ description: 'Execute one delegated child with inherited context.' }],
+        });
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+        });
+
+        const implemented = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: {
+                ...defaultRuntimeOptions,
+                transport: {
+                    family: 'openai_chat_completions',
+                },
+            },
+            providerId: 'openai',
+            modelId: 'openai/orchestrator-child-context-test',
+        });
+        expect(implemented.found).toBe(true);
+        if (!implemented.found) {
+            throw new Error('Expected orchestrator implementation start for child propagation test.');
+        }
+        if (implemented.mode !== 'orchestrator.orchestrate') {
+            throw new Error('Expected orchestrator mode for child propagation test.');
+        }
+
+        let childSessionId: `sess_${string}` | undefined;
+        let childThreadId: `thr_${string}` | undefined;
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+            const status = await caller.orchestrator.status({
+                profileId,
+                orchestratorRunId: implemented.orchestratorRunId,
+            });
+            if (status.found && status.steps[0]?.status === 'running') {
+                childSessionId = status.steps[0].childSessionId;
+                childThreadId = status.steps[0].childThreadId;
+                break;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+
+        expect(childSessionId).toBeDefined();
+        expect(childThreadId).toBeDefined();
+        if (!childSessionId || !childThreadId) {
+            throw new Error('Expected running delegated child lane with projected identifiers.');
+        }
+
+        const threadList = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'orchestrator',
+            showAllModes: false,
+            groupView: 'workspace',
+        });
+        const rootThread = threadList.threads.find((thread) => thread.id === rootThreadId);
+        const childThread = threadList.threads.find((thread) => thread.id === childThreadId);
+        expect(rootThread?.executionEnvironmentMode).toBe('sandbox');
+        expect(rootThread?.sandboxId).toEqual(expect.stringMatching(/^sb_/));
+        expect(childThread?.executionEnvironmentMode).toBe('sandbox');
+        expect(childThread?.sandboxId).toBe(rootThread?.sandboxId);
+        expect(childThread?.workspaceFingerprint).toBe(workspaceFingerprint);
+
+        const sessionList = await caller.session.list({ profileId });
+        const childSession = sessionList.sessions.find((session) => session.id === childSessionId);
+        expect(childSession?.kind).toBe('sandbox');
+        expect(childSession?.sandboxId).toBe(rootThread?.sandboxId);
+
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+            if (resolveFetch) {
+                break;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+
+        if (!resolveFetch) {
+            throw new Error('Expected delegated child provider request before completion.');
+        }
+        resolveFetch();
+
+        await waitForOrchestratorStatus(caller, profileId, implemented.orchestratorRunId, 'completed');
+
+        const requestBody = requestBodies.at(-1);
+        expect(requestBody).toBeDefined();
+        if (!requestBody) {
+            throw new Error('Expected delegated child provider request body.');
+        }
+
+        const contents = extractChatMessageContents(requestBody);
+        expect(contents.some((content) => content.includes('Delegated Manual Rule'))).toBe(true);
+        expect(contents.some((content) => content.includes('Apply this rule to delegated child runs.'))).toBe(true);
+        expect(contents.some((content) => content.includes('Delegated Repo Search'))).toBe(true);
+        expect(
+            contents.some((content) => content.includes('Use repository search inside the delegated child lane.'))
+        ).toBe(true);
+        expect(contents.some((content) => content.includes('Delegated root memory'))).toBe(true);
+        expect(contents.some((content) => content.includes('Remember the orchestrator root context.'))).toBe(true);
+    }, 15000);
+
+    it('keeps delegated child lanes on the base workspace when the orchestrator root is explicitly local', async () => {
+        const caller = createCaller();
+        let resolveFetch: (() => void) | undefined;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                () =>
+                    new Promise((resolve) => {
                         resolveFetch = () => {
                             resolve({
                                 ok: true,
@@ -117,404 +374,148 @@ describe('runtime contracts: planning and orchestrator', () => {
                                     choices: [
                                         {
                                             message: {
-                                                content: 'Delegated child completed with inherited context.',
+                                                content: 'Delegated local child completed.',
                                             },
                                         },
                                     ],
                                     usage: {
-                                        prompt_tokens: 17,
-                                        completion_tokens: 12,
-                                        total_tokens: 29,
+                                        prompt_tokens: 10,
+                                        completion_tokens: 8,
+                                        total_tokens: 18,
                                     },
                                 }),
                             });
                         };
-                    });
-                })
-            );
+                    })
+            )
+        );
 
-            await caller.provider.setApiKey({
-                profileId,
-                providerId: 'openai',
-                apiKey: 'openai-orchestrator-child-context-key',
-            });
-            insertChatCompletionsTestModel({
-                profileId,
-                modelId: 'openai/orchestrator-child-context-test',
-                label: 'Orchestrator Child Context Test',
-            });
+        await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-orchestrator-child-local-key',
+        });
+        insertChatCompletionsTestModel({
+            profileId,
+            modelId: 'openai/orchestrator-child-local-test',
+            label: 'Orchestrator Child Local Test',
+        });
 
-            const workspaceFingerprint = 'wsf_orchestrator_child_context_propagation';
-            const created = await createSessionInScope(caller, profileId, {
-                scope: 'workspace',
-                workspaceFingerprint,
-                title: 'Sandbox root orchestrator thread',
-                kind: 'local',
-                topLevelTab: 'orchestrator',
-            });
-            const rootThreadId = requireEntityId(created.thread.id, 'thr', 'Expected orchestrator root thread id.');
-            const configuredThread = await caller.sandbox.configureThread({
-                profileId,
-                threadId: rootThreadId,
-                mode: 'new_sandbox',
-            });
-            expect(configuredThread.thread.executionEnvironmentMode).toBe('new_sandbox');
-            expect(configuredThread.thread.sandboxId).toBeUndefined();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_orchestrator_child_local_propagation',
+            title: 'Local root orchestrator thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+        const rootThreadId = requireEntityId(created.thread.id, 'thr', 'Expected local orchestrator root thread id.');
+        const configuredThread = await caller.sandbox.configureThread({
+            profileId,
+            threadId: rootThreadId,
+            mode: 'local',
+        });
+        expect(configuredThread.thread.executionEnvironmentMode).toBe('local');
 
-            const registryPaths = await caller.registry.listResolved({
-                profileId,
-                workspaceFingerprint,
-            });
-            const workspaceAssetsRoot = registryPaths.paths.workspaceAssetsRoot;
-            if (!workspaceAssetsRoot) {
-                throw new Error('Expected workspace assets root for delegated child propagation test.');
-            }
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'plan',
+            prompt: 'Delegate one child task from a local root.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Run one delegated child on the shared base workspace.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Do not create or bind a sandbox for the child lane.',
+        });
+        await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Local Delegation Plan',
+            items: [{ description: 'Run one delegated local child.' }],
+        });
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+        });
 
-            rmSync(workspaceAssetsRoot, { recursive: true, force: true });
-            mkdirSync(path.join(workspaceAssetsRoot, 'rules-code'), { recursive: true });
-            mkdirSync(path.join(workspaceAssetsRoot, 'skills-code'), { recursive: true });
-            writeFileSync(
-                path.join(workspaceAssetsRoot, 'rules-code', 'delegated-manual-rule.md'),
-                `---
-key: delegated_manual_rule
-name: Delegated Manual Rule
-activationMode: manual
----
-# Delegated Manual Rule
-
-- Apply this rule to delegated child runs.
-`,
-                'utf8'
-            );
-            writeFileSync(
-                path.join(workspaceAssetsRoot, 'skills-code', 'delegated-repo-search.md'),
-                `---
-key: delegated_repo_search
-name: Delegated Repo Search
----
-# Delegated Repo Search
-
-- Use repository search inside the delegated child lane.
-`,
-                'utf8'
-            );
-            await caller.registry.refresh({
-                profileId,
-                workspaceFingerprint,
-            });
-
-            await caller.session.setAttachedRules({
-                profileId,
-                sessionId: created.session.id,
-                topLevelTab: 'agent',
-                modeKey: 'code',
-                assetKeys: ['delegated_manual_rule'],
-            });
-            await caller.session.setAttachedSkills({
-                profileId,
-                sessionId: created.session.id,
-                topLevelTab: 'agent',
-                modeKey: 'code',
-                assetKeys: ['delegated_repo_search'],
-            });
-            await caller.memory.create({
-                profileId,
-                memoryType: 'procedural',
-                scopeKind: 'thread',
-                createdByKind: 'user',
-                threadId: rootThreadId,
-                title: 'Delegated root memory',
-                bodyMarkdown: 'Remember the orchestrator root context.',
-            });
-
-            const started = await caller.plan.start({
-                profileId,
-                sessionId: created.session.id,
-                topLevelTab: 'orchestrator',
-                modeKey: 'plan',
-                prompt: 'Delegate one child task with inherited sandbox and context.',
-            });
-            await caller.plan.answerQuestion({
-                profileId,
-                planId: started.plan.id,
-                questionId: 'scope',
-                answer: 'Run one delegated child with inherited execution target and context.',
-            });
-            await caller.plan.answerQuestion({
-                profileId,
-                planId: started.plan.id,
-                questionId: 'constraints',
-                answer: 'Keep the child on the same sandbox and inherit attached registry context.',
-            });
-            await caller.plan.revise({
-                profileId,
-                planId: started.plan.id,
-                summaryMarkdown: '# Delegated Context Plan',
-                items: [{ description: 'Execute one delegated child with inherited context.' }],
-            });
-            await caller.plan.approve({
-                profileId,
-                planId: started.plan.id,
-            });
-
-            const implemented = await caller.plan.implement({
-                profileId,
-                planId: started.plan.id,
-                runtimeOptions: {
-                    ...defaultRuntimeOptions,
-                    transport: {
-                        family: 'openai_chat_completions',
-                    },
+        const implemented = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: {
+                ...defaultRuntimeOptions,
+                transport: {
+                    family: 'openai_chat_completions',
                 },
-                providerId: 'openai',
-                modelId: 'openai/orchestrator-child-context-test',
-            });
-            expect(implemented.found).toBe(true);
-            if (!implemented.found) {
-                throw new Error('Expected orchestrator implementation start for child propagation test.');
-            }
-            if (implemented.mode !== 'orchestrator.orchestrate') {
-                throw new Error('Expected orchestrator mode for child propagation test.');
-            }
+            },
+            providerId: 'openai',
+            modelId: 'openai/orchestrator-child-local-test',
+        });
+        expect(implemented.found).toBe(true);
+        if (!implemented.found) {
+            throw new Error('Expected local-root orchestrator implementation start.');
+        }
+        if (implemented.mode !== 'orchestrator.orchestrate') {
+            throw new Error('Expected orchestrator mode for local-root child propagation test.');
+        }
 
-            let childSessionId: `sess_${string}` | undefined;
-            let childThreadId: `thr_${string}` | undefined;
-            for (let attempt = 0; attempt < 200; attempt += 1) {
-                const status = await caller.orchestrator.status({
-                    profileId,
-                    orchestratorRunId: implemented.orchestratorRunId,
-                });
-                if (status.found && status.steps[0]?.status === 'running') {
-                    childSessionId = status.steps[0].childSessionId;
-                    childThreadId = status.steps[0].childThreadId;
-                    break;
-                }
-
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
-
-            expect(childSessionId).toBeDefined();
-            expect(childThreadId).toBeDefined();
-            if (!childSessionId || !childThreadId) {
-                throw new Error('Expected running delegated child lane with projected identifiers.');
-            }
-
-            const threadList = await caller.conversation.listThreads({
+        let childSessionId: `sess_${string}` | undefined;
+        let childThreadId: `thr_${string}` | undefined;
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+            const status = await caller.orchestrator.status({
                 profileId,
-                activeTab: 'orchestrator',
-                showAllModes: false,
-                groupView: 'workspace',
+                orchestratorRunId: implemented.orchestratorRunId,
             });
-            const rootThread = threadList.threads.find((thread) => thread.id === rootThreadId);
-            const childThread = threadList.threads.find((thread) => thread.id === childThreadId);
-            expect(rootThread?.executionEnvironmentMode).toBe('sandbox');
-            expect(rootThread?.sandboxId).toEqual(expect.stringMatching(/^sb_/));
-            expect(childThread?.executionEnvironmentMode).toBe('sandbox');
-            expect(childThread?.sandboxId).toBe(rootThread?.sandboxId);
-            expect(childThread?.workspaceFingerprint).toBe(workspaceFingerprint);
-
-            const sessionList = await caller.session.list({ profileId });
-            const childSession = sessionList.sessions.find((session) => session.id === childSessionId);
-            expect(childSession?.kind).toBe('sandbox');
-            expect(childSession?.sandboxId).toBe(rootThread?.sandboxId);
-
-            for (let attempt = 0; attempt < 200; attempt += 1) {
-                if (resolveFetch) {
-                    break;
-                }
-
-                await new Promise((resolve) => setTimeout(resolve, 25));
+            if (status.found && status.steps[0]?.status === 'running') {
+                childSessionId = status.steps[0].childSessionId;
+                childThreadId = status.steps[0].childThreadId;
+                break;
             }
 
-            if (!resolveFetch) {
-                throw new Error('Expected delegated child provider request before completion.');
-            }
-            resolveFetch();
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
 
-            await waitForOrchestratorStatus(caller, profileId, implemented.orchestratorRunId, 'completed');
+        expect(childSessionId).toBeDefined();
+        expect(childThreadId).toBeDefined();
+        if (!childSessionId || !childThreadId) {
+            throw new Error('Expected running delegated local child lane.');
+        }
 
-            const requestBody = requestBodies.at(-1);
-            expect(requestBody).toBeDefined();
-            if (!requestBody) {
-                throw new Error('Expected delegated child provider request body.');
-            }
+        const threadList = await caller.conversation.listThreads({
+            profileId,
+            activeTab: 'orchestrator',
+            showAllModes: false,
+            groupView: 'workspace',
+        });
+        const rootThread = threadList.threads.find((thread) => thread.id === rootThreadId);
+        const childThread = threadList.threads.find((thread) => thread.id === childThreadId);
+        expect(rootThread?.executionEnvironmentMode).toBe('local');
+        expect(rootThread?.sandboxId).toBeUndefined();
+        expect(childThread?.executionEnvironmentMode).toBe('local');
+        expect(childThread?.sandboxId).toBeUndefined();
+        expect(childThread?.workspaceFingerprint).toBe(rootThread?.workspaceFingerprint);
 
-            const contents = extractChatMessageContents(requestBody);
-            expect(contents.some((content) => content.includes('Delegated Manual Rule'))).toBe(true);
-            expect(contents.some((content) => content.includes('Apply this rule to delegated child runs.'))).toBe(true);
-            expect(contents.some((content) => content.includes('Delegated Repo Search'))).toBe(true);
-            expect(contents.some((content) => content.includes('Use repository search inside the delegated child lane.'))).toBe(true);
-            expect(contents.some((content) => content.includes('Delegated root memory'))).toBe(true);
-            expect(contents.some((content) => content.includes('Remember the orchestrator root context.'))).toBe(true);
-        },
-        15000
-    );
+        const sessionList = await caller.session.list({ profileId });
+        const childSession = sessionList.sessions.find((session) => session.id === childSessionId);
+        expect(childSession?.kind).toBe('local');
+        expect(childSession?.sandboxId).toBeUndefined();
 
-    it(
-        'keeps delegated child lanes on the base workspace when the orchestrator root is explicitly local',
-        async () => {
-            const caller = createCaller();
-            let resolveFetch: (() => void) | undefined;
-            vi.stubGlobal(
-                'fetch',
-                vi.fn(
-                    () =>
-                        new Promise((resolve) => {
-                            resolveFetch = () => {
-                                resolve({
-                                    ok: true,
-                                    status: 200,
-                                    statusText: 'OK',
-                                    json: () => ({
-                                        choices: [
-                                            {
-                                                message: {
-                                                    content: 'Delegated local child completed.',
-                                                },
-                                            },
-                                        ],
-                                        usage: {
-                                            prompt_tokens: 10,
-                                            completion_tokens: 8,
-                                            total_tokens: 18,
-                                        },
-                                    }),
-                                });
-                            };
-                        })
-                )
-            );
+        if (!resolveFetch) {
+            throw new Error('Expected delegated local child provider request before completion.');
+        }
+        resolveFetch();
 
-            await caller.provider.setApiKey({
-                profileId,
-                providerId: 'openai',
-                apiKey: 'openai-orchestrator-child-local-key',
-            });
-            insertChatCompletionsTestModel({
-                profileId,
-                modelId: 'openai/orchestrator-child-local-test',
-                label: 'Orchestrator Child Local Test',
-            });
+        await waitForOrchestratorStatus(caller, profileId, implemented.orchestratorRunId, 'completed');
+    }, 15000);
 
-            const created = await createSessionInScope(caller, profileId, {
-                scope: 'workspace',
-                workspaceFingerprint: 'wsf_orchestrator_child_local_propagation',
-                title: 'Local root orchestrator thread',
-                kind: 'local',
-                topLevelTab: 'orchestrator',
-            });
-            const rootThreadId = requireEntityId(created.thread.id, 'thr', 'Expected local orchestrator root thread id.');
-            const configuredThread = await caller.sandbox.configureThread({
-                profileId,
-                threadId: rootThreadId,
-                mode: 'local',
-            });
-            expect(configuredThread.thread.executionEnvironmentMode).toBe('local');
-
-            const started = await caller.plan.start({
-                profileId,
-                sessionId: created.session.id,
-                topLevelTab: 'orchestrator',
-                modeKey: 'plan',
-                prompt: 'Delegate one child task from a local root.',
-            });
-            await caller.plan.answerQuestion({
-                profileId,
-                planId: started.plan.id,
-                questionId: 'scope',
-                answer: 'Run one delegated child on the shared base workspace.',
-            });
-            await caller.plan.answerQuestion({
-                profileId,
-                planId: started.plan.id,
-                questionId: 'constraints',
-                answer: 'Do not create or bind a sandbox for the child lane.',
-            });
-            await caller.plan.revise({
-                profileId,
-                planId: started.plan.id,
-                summaryMarkdown: '# Local Delegation Plan',
-                items: [{ description: 'Run one delegated local child.' }],
-            });
-            await caller.plan.approve({
-                profileId,
-                planId: started.plan.id,
-            });
-
-            const implemented = await caller.plan.implement({
-                profileId,
-                planId: started.plan.id,
-                runtimeOptions: {
-                    ...defaultRuntimeOptions,
-                    transport: {
-                        family: 'openai_chat_completions',
-                    },
-                },
-                providerId: 'openai',
-                modelId: 'openai/orchestrator-child-local-test',
-            });
-            expect(implemented.found).toBe(true);
-            if (!implemented.found) {
-                throw new Error('Expected local-root orchestrator implementation start.');
-            }
-            if (implemented.mode !== 'orchestrator.orchestrate') {
-                throw new Error('Expected orchestrator mode for local-root child propagation test.');
-            }
-
-            let childSessionId: `sess_${string}` | undefined;
-            let childThreadId: `thr_${string}` | undefined;
-            for (let attempt = 0; attempt < 200; attempt += 1) {
-                const status = await caller.orchestrator.status({
-                    profileId,
-                    orchestratorRunId: implemented.orchestratorRunId,
-                });
-                if (status.found && status.steps[0]?.status === 'running') {
-                    childSessionId = status.steps[0].childSessionId;
-                    childThreadId = status.steps[0].childThreadId;
-                    break;
-                }
-
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
-
-            expect(childSessionId).toBeDefined();
-            expect(childThreadId).toBeDefined();
-            if (!childSessionId || !childThreadId) {
-                throw new Error('Expected running delegated local child lane.');
-            }
-
-            const threadList = await caller.conversation.listThreads({
-                profileId,
-                activeTab: 'orchestrator',
-                showAllModes: false,
-                groupView: 'workspace',
-            });
-            const rootThread = threadList.threads.find((thread) => thread.id === rootThreadId);
-            const childThread = threadList.threads.find((thread) => thread.id === childThreadId);
-            expect(rootThread?.executionEnvironmentMode).toBe('local');
-            expect(rootThread?.sandboxId).toBeUndefined();
-            expect(childThread?.executionEnvironmentMode).toBe('local');
-            expect(childThread?.sandboxId).toBeUndefined();
-            expect(childThread?.workspaceFingerprint).toBe(rootThread?.workspaceFingerprint);
-
-            const sessionList = await caller.session.list({ profileId });
-            const childSession = sessionList.sessions.find((session) => session.id === childSessionId);
-            expect(childSession?.kind).toBe('local');
-            expect(childSession?.sandboxId).toBeUndefined();
-
-            if (!resolveFetch) {
-                throw new Error('Expected delegated local child provider request before completion.');
-            }
-            resolveFetch();
-
-            await waitForOrchestratorStatus(caller, profileId, implemented.orchestratorRunId, 'completed');
-        },
-        15000
-    );
-
-    it(
-        'marks orchestrator-backed plans as failed when the orchestrator run is aborted',
-        async () => {
+    it('marks orchestrator-backed plans as failed when the orchestrator run is aborted', async () => {
         const caller = createCaller();
         const completionFetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
             const signal = init?.signal;
@@ -593,17 +594,16 @@ name: Delegated Repo Search
         }
 
         let observedRunningStep = false;
+        let allRunningStepsLinked = false;
         for (let attempt = 0; attempt < 200; attempt += 1) {
             const status = await caller.orchestrator.status({
                 profileId,
                 orchestratorRunId: implemented.orchestratorRunId,
             });
             if (status.found && status.steps.some((step) => step.status === 'running')) {
-                expect(
-                    status.steps
-                        .filter((step) => step.status === 'running')
-                        .every((step) => step.childThreadId && step.childSessionId && step.activeRunId)
-                ).toBe(true);
+                allRunningStepsLinked = status.steps
+                    .filter((step) => step.status === 'running')
+                    .every((step) => step.childThreadId && step.childSessionId && step.activeRunId);
                 observedRunningStep = true;
                 break;
             }
@@ -611,6 +611,7 @@ name: Delegated Repo Search
             await new Promise((resolve) => setTimeout(resolve, 25));
         }
         expect(observedRunningStep).toBe(true);
+        expect(allRunningStepsLinked).toBe(true);
 
         const aborted = await caller.orchestrator.abort({
             profileId,
@@ -641,7 +642,5 @@ name: Delegated Repo Search
         }
         expect(planState.plan.status).toBe('failed');
         expect(planState.plan.items[0]?.status).toBe('aborted');
-        },
-        15000
-    );
+    }, 15000);
 });

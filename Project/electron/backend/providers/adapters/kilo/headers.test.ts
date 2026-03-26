@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildKiloRuntimeHeaders } from '@/app/backend/providers/adapters/kilo/headers';
-import {
-    kiloBalancedModelId,
-    kiloFrontierModelId,
-} from '@/shared/kiloModels';
+
+import { kiloBalancedModelId, kiloFrontierModelId } from '@/shared/kiloModels';
 
 describe('buildKiloRuntimeHeaders', () => {
     it.each([

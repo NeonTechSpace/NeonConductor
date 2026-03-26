@@ -5,7 +5,6 @@ import {
     useComposerSlashCommands,
     type SlashAcceptResult,
 } from '@/web/components/conversation/hooks/useComposerSlashCommands';
-import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ContextSummaryCard } from '@/web/components/conversation/panels/composerActionPanel/contextSummaryCard';
 import {
     extractClipboardFiles,
@@ -21,14 +20,16 @@ import {
     PendingImagesGrid,
     type PendingImageCardView,
 } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
-import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
 import { ComposerSlashCommandPopup } from '@/web/components/conversation/panels/composerSlashCommandPopup';
 import { shouldInterceptSlashSubmit } from '@/web/components/conversation/panels/composerSlashCommands';
+import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
+import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
+import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
 import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
-import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
+
 import type {
     EntityId,
     ResolvedContextState,
@@ -37,6 +38,7 @@ import type {
     SkillfileDefinition,
     TopLevelTab,
 } from '@/shared/contracts';
+
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 export { shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
@@ -134,11 +136,11 @@ interface ComposerActionPanelProps {
     onRetryPendingImage: (clientId: string) => void;
     onSubmitPrompt: (prompt: string) => void;
     onCompactContext?: () => Promise<
-        | void
         | {
               message: string;
               tone: 'success' | 'error' | 'info';
           }
+        | undefined
     >;
 }
 
@@ -152,11 +154,11 @@ function ComposerContextSummarySection(input: {
     canCompactContext: boolean;
     isCompactingContext: boolean;
     onCompactContext?: () => Promise<
-        | void
         | {
               message: string;
               tone: 'success' | 'error' | 'info';
           }
+        | undefined
     >;
 }) {
     const [contextFeedback, setContextFeedback] = useState<
@@ -171,11 +173,11 @@ function ComposerContextSummarySection(input: {
     const usableInputBudgetTokens = input.contextState.policy.usableInputBudgetTokens;
     const hasUsageNumbers = totalTokens !== undefined && usableInputBudgetTokens !== undefined;
     const remainingInputTokens =
-        hasUsageNumbers && usableInputBudgetTokens !== undefined && totalTokens !== undefined
+        hasUsageNumbers
             ? Math.max(usableInputBudgetTokens - totalTokens, 0)
             : undefined;
     const usagePercent =
-        hasUsageNumbers && usableInputBudgetTokens !== undefined && totalTokens !== undefined
+        hasUsageNumbers
             ? formatUsagePercent(totalTokens, usableInputBudgetTokens)
             : undefined;
     const countingModeLabel =
@@ -188,7 +190,8 @@ function ComposerContextSummarySection(input: {
         }
 
         setContextFeedback(undefined);
-        void input.onCompactContext()
+        void input
+            .onCompactContext()
             .then((result) => {
                 if (!result) {
                     return;
@@ -291,7 +294,8 @@ function ComposerActionPanelDraftBoundary({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
-    const hasSubmittableContent = draftPrompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
+    const hasSubmittableContent =
+        draftPrompt.trim().length > 0 || pendingImages.some((image) => image.status === 'ready');
     const hasUnsupportedPendingImages = pendingImages.length > 0 && !canAttachImages;
     const composerControlsDisabled = controlsDisabled ?? disabled;
     const composerSubmitDisabled = submitDisabled ?? disabled;
@@ -319,12 +323,9 @@ function ComposerActionPanelDraftBoundary({
     const compactConnectionLabel = selectedProviderStatus
         ? `${selectedProviderStatus.label} · ${selectedProviderStatus.authState.replace('_', ' ')}`
         : undefined;
-    const contextFeedbackResetKey = [
-        selectedProviderId ?? '',
-        selectedModelId ?? '',
-        topLevelTab,
-        activeModeKey,
-    ].join('|');
+    const contextFeedbackResetKey = [selectedProviderId ?? '', selectedModelId ?? '', topLevelTab, activeModeKey].join(
+        '|'
+    );
     const slashCommands = useComposerSlashCommands({
         draftPrompt,
         profileId,
@@ -415,7 +416,7 @@ function ComposerActionPanelDraftBoundary({
                 }}
                 onSubmit={(event) => {
                     event.preventDefault();
-                    handleSlashCommandAccept(true);
+                    void handleSlashCommandAccept(true);
                 }}>
                 <input
                     ref={fileInputRef}
@@ -528,7 +529,7 @@ function ComposerActionPanelDraftBoundary({
 
                             if (shouldInterceptSlashSubmit({ popupState: slashCommands.popupState })) {
                                 event.preventDefault();
-                                handleSlashCommandAccept(false);
+                                void handleSlashCommandAccept(false);
                                 return;
                             }
 

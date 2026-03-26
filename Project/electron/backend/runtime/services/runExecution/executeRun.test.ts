@@ -78,18 +78,20 @@ describe('executeRun', () => {
 
     it('returns a completed loop outcome instead of finalizing the run directly', async () => {
         getProviderAdapterMock.mockReturnValue({
-            streamCompletion: vi.fn(async (_runtimeInput: unknown, callbacks: { onPart: (part: unknown) => Promise<void> }) => {
-                await callbacks.onPart({
-                    partType: 'text',
-                    payload: {
-                        text: 'hello',
-                    },
-                });
-                return {
-                    isErr: () => false,
-                    value: undefined,
-                };
-            }),
+            streamCompletion: vi.fn(
+                async (_runtimeInput: unknown, callbacks: { onPart: (part: unknown) => Promise<void> }) => {
+                    await callbacks.onPart({
+                        partType: 'text',
+                        payload: {
+                            text: 'hello',
+                        },
+                    });
+                    return {
+                        isErr: () => false,
+                        value: undefined,
+                    };
+                }
+            ),
         });
 
         const result = await executeRun({
@@ -133,23 +135,25 @@ describe('executeRun', () => {
 
     it('fails closed when a provider emits an unsupported tool', async () => {
         getProviderAdapterMock.mockReturnValue({
-            streamCompletion: vi.fn(async (_runtimeInput: unknown, callbacks: { onPart: (part: unknown) => Promise<void> }) => {
-                await callbacks.onPart({
-                    partType: 'tool_call',
-                    payload: {
-                        callId: 'call_1',
-                        toolName: 'write_file',
-                        argumentsText: '{"path":"README.md"}',
-                        args: {
-                            path: 'README.md',
+            streamCompletion: vi.fn(
+                async (_runtimeInput: unknown, callbacks: { onPart: (part: unknown) => Promise<void> }) => {
+                    await callbacks.onPart({
+                        partType: 'tool_call',
+                        payload: {
+                            callId: 'call_1',
+                            toolName: 'write_file',
+                            argumentsText: '{"path":"README.md"}',
+                            args: {
+                                path: 'README.md',
+                            },
                         },
-                    },
-                });
-                return {
-                    isErr: () => false,
-                    value: undefined,
-                };
-            }),
+                    });
+                    return {
+                        isErr: () => false,
+                        value: undefined,
+                    };
+                }
+            ),
         });
 
         const result = await executeRun({

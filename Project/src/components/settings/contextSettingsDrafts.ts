@@ -11,10 +11,12 @@ export interface ContextProfileDraft {
 }
 
 export function resolveContextGlobalDraft(input: {
-    settings: {
-        enabled: boolean;
-        percent: number;
-    } | undefined;
+    settings:
+        | {
+              enabled: boolean;
+              percent: number;
+          }
+        | undefined;
     draft: ContextGlobalDraft | undefined;
 }): ContextGlobalDraft {
     if (input.draft) {
@@ -47,7 +49,6 @@ export function resolveContextProfileDraft(input: {
         profileId: input.profileId,
         overrideMode: input.settings?.overrideMode ?? 'inherit',
         percent: input.settings?.percent !== undefined ? String(input.settings.percent) : input.inheritedPercent,
-        fixedInputTokens:
-            input.settings?.fixedInputTokens !== undefined ? String(input.settings.fixedInputTokens) : '',
+        fixedInputTokens: input.settings?.fixedInputTokens !== undefined ? String(input.settings.fixedInputTokens) : '',
     };
 }

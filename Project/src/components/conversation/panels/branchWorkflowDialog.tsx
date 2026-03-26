@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import { trpc } from '@/web/trpc/client';
 
-import type { ProjectWorkflowRecord } from '@/app/backend/runtime/contracts';
+import type { ProjectWorkflowRecord } from '@/shared/contracts';
 
 interface BranchWorkflowDialogProps {
     open: boolean;
@@ -58,21 +58,21 @@ function WorkflowRow({
     onCancelDelete: () => void;
 }) {
     return (
-        <div className='rounded-2xl border border-border/70 bg-card/40 p-4'>
+        <div className='border-border/70 bg-card/40 rounded-2xl border p-4'>
             <div className='flex flex-wrap items-start justify-between gap-3'>
                 <div className='space-y-1'>
                     <div className='flex flex-wrap items-center gap-2'>
                         <p className='text-sm font-medium'>{workflow.label}</p>
-                        <span className='text-muted-foreground rounded-full border border-border/70 px-2 py-0.5 text-[11px]'>
+                        <span className='text-muted-foreground border-border/70 rounded-full border px-2 py-0.5 text-[11px]'>
                             {workflow.enabled ? 'Enabled' : 'Disabled'}
                         </span>
                     </div>
-                    <p className='text-muted-foreground break-all text-xs leading-5'>{workflow.command}</p>
+                    <p className='text-muted-foreground text-xs leading-5 break-all'>{workflow.command}</p>
                 </div>
                 <div className='flex flex-wrap items-center gap-2'>
                     <button
                         type='button'
-                        className='rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-60'
+                        className='border-primary/40 bg-primary/10 text-primary rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-60'
                         disabled={!workflow.enabled}
                         onClick={() => {
                             onBranch(workflow.id);
@@ -91,7 +91,7 @@ function WorkflowRow({
                         <>
                             <button
                                 type='button'
-                                className='rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive'
+                                className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-3 py-1.5 text-xs font-medium'
                                 onClick={() => {
                                     onConfirmDelete(workflow.id);
                                 }}>
@@ -107,7 +107,7 @@ function WorkflowRow({
                     ) : (
                         <button
                             type='button'
-                            className='rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive'
+                            className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-3 py-1.5 text-xs font-medium'
                             onClick={() => {
                                 onDelete(workflow.id);
                             }}>
@@ -140,16 +140,8 @@ function BranchWorkflowDialogBody({
     const updateWorkflowMutation = trpc.workflow.update.useMutation();
     const deleteWorkflowMutation = trpc.workflow.delete.useMutation();
     const [draftState, setDraftState] = useState(() => createEmptyWorkflowDraftState());
-    const {
-        formMode,
-        editingWorkflowId,
-        label,
-        command,
-        enabled,
-        isFormVisible,
-        statusMessage,
-        deleteCandidateId,
-    } = draftState;
+    const { formMode, editingWorkflowId, label, command, enabled, isFormVisible, statusMessage, deleteCandidateId } =
+        draftState;
 
     const busyForm =
         createWorkflowMutation.isPending || updateWorkflowMutation.isPending || deleteWorkflowMutation.isPending;
@@ -254,7 +246,7 @@ function BranchWorkflowDialogBody({
             <div className='mt-4 flex flex-wrap items-center gap-2'>
                 <button
                     type='button'
-                    className='rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary disabled:opacity-60'
+                    className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
                     disabled={busy}
                     onClick={() => {
                         void onBranch(undefined);
@@ -270,11 +262,12 @@ function BranchWorkflowDialogBody({
             </div>
 
             {isFormVisible ? (
-                <div className='mt-4 rounded-2xl border border-border/70 bg-card/40 p-4'>
+                <div className='border-border/70 bg-card/40 mt-4 rounded-2xl border p-4'>
                     <div className='space-y-1'>
                         <p className='text-sm font-medium'>{formMode === 'edit' ? 'Edit workflow' : 'New workflow'}</p>
                         <p className='text-muted-foreground text-xs'>
-                            One workflow is one reusable shell command stored under <code>.neonconductor/workflows</code>.
+                            One workflow is one reusable shell command stored under{' '}
+                            <code>.neonconductor/workflows</code>.
                         </p>
                     </div>
 
@@ -346,7 +339,7 @@ function BranchWorkflowDialogBody({
                         {formMode === 'create' ? (
                             <button
                                 type='button'
-                                className='rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary disabled:opacity-60'
+                                className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
                                 disabled={busy || busyForm}
                                 onClick={() => {
                                     void saveWorkflow(true);
@@ -360,11 +353,11 @@ function BranchWorkflowDialogBody({
 
             <div className='mt-4 space-y-3'>
                 {workflowsQuery.isLoading ? (
-                    <div className='text-muted-foreground rounded-2xl border border-border/70 bg-card/30 px-4 py-5 text-sm'>
+                    <div className='text-muted-foreground border-border/70 bg-card/30 rounded-2xl border px-4 py-5 text-sm'>
                         Loading workflows…
                     </div>
                 ) : workflows.length === 0 ? (
-                    <div className='text-muted-foreground rounded-2xl border border-border/70 bg-card/30 px-4 py-5 text-sm'>
+                    <div className='text-muted-foreground border-border/70 bg-card/30 rounded-2xl border px-4 py-5 text-sm'>
                         No project workflows yet.
                     </div>
                 ) : (
@@ -402,7 +395,7 @@ function BranchWorkflowDialogBody({
                                         }
                                         await refreshList();
                                     })
-                                    .catch((error) => {
+                                    .catch((error: unknown) => {
                                         setDraftState((current) => ({
                                             ...current,
                                             statusMessage:

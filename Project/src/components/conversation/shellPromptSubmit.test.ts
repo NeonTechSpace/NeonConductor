@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { submitPrompt } from '@/web/components/conversation/shell/actions/promptSubmit';
 import { DEFAULT_RUN_OPTIONS } from '@/web/components/conversation/shell/workspace/helpers';
+
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 describe('submitPrompt', () => {

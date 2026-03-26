@@ -1,7 +1,11 @@
 import { err, ok, type Result } from 'neverthrow';
 import { readFile } from 'node:fs/promises';
 
-import { readNumberArg, readStringArg, resolveAbsoluteToolPath } from '@/app/backend/runtime/services/toolExecution/args';
+import {
+    readNumberArg,
+    readStringArg,
+    resolveAbsoluteToolPath,
+} from '@/app/backend/runtime/services/toolExecution/args';
 import type { ToolExecutionFailure, ToolExecutionOutput } from '@/app/backend/runtime/services/toolExecution/types';
 
 export async function readFileToolHandler(

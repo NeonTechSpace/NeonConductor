@@ -35,10 +35,7 @@ function mapRole(role: MessageRecord['role']): RunContextMessage['role'] | null 
     if (role === 'system') {
         return 'system';
     }
-    if (role === 'tool') {
-        return 'tool';
-    }
-    return null;
+    return 'tool';
 }
 
 function extractReplayParts(parts: MessagePartRecord[]): RunContextPart[] {
@@ -124,11 +121,7 @@ function extractReplayParts(parts: MessagePartRecord[]): RunContextPart[] {
             const callId = part.payload['callId'];
             const toolName = part.payload['toolName'];
             const argumentsText = part.payload['argumentsText'];
-            if (
-                typeof callId === 'string' &&
-                typeof toolName === 'string' &&
-                typeof argumentsText === 'string'
-            ) {
+            if (typeof callId === 'string' && typeof toolName === 'string' && typeof argumentsText === 'string') {
                 replayParts.push(
                     createToolCallPart({
                         callId,

@@ -149,10 +149,7 @@ describe('useSessionRunSelection', () => {
         expect(result.sessions.map((session) => session.id)).toEqual(['sess_new', 'sess_old']);
         expect(result.runs.map((run) => run.id)).toEqual(['run_new', 'run_old']);
         expect(result.messages.map((message) => message.id)).toEqual(['msg_first', 'msg_second']);
-        expect(result.partsByMessageId.get('msg_first')?.map((part) => part.id)).toEqual([
-            'part_first',
-            'part_second',
-        ]);
+        expect(result.partsByMessageId.get('msg_first')?.map((part) => part.id)).toEqual(['part_first', 'part_second']);
         expect(result.partsByMessageId.has('msg_ignored_run')).toBe(false);
         expect(result.selection).toEqual({
             resolvedSessionId: 'sess_new',
@@ -240,8 +237,6 @@ describe('useSessionRunSelection', () => {
             shouldUpdateRunSelection: false,
         });
         expect(result.messages.map((message) => message.id)).toEqual(['msg_without_run']);
-        expect(result.partsByMessageId.get('msg_without_run')?.map((part) => part.id)).toEqual([
-            'part_without_run',
-        ]);
+        expect(result.partsByMessageId.get('msg_without_run')?.map((part) => part.id)).toEqual(['part_without_run']);
     });
 });

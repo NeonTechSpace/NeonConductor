@@ -4,15 +4,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { formatAuditWorklist } from '@/scripts/audit/reporting';
+import { runAuditReviewCommandWithArgs } from '@/scripts/audit/review-command';
+import { loadReviewManifest } from '@/scripts/audit/reviewManifest';
 import {
     auditAgentsConformance,
     hasActionableReviewCandidates,
     hasBlockingViolations,
     hasManualReviewCandidates,
-} from '../audit-agents-conformance';
-import { formatAuditWorklist } from '../audit/reporting';
-import { runAuditReviewCommandWithArgs } from '../audit/review-command';
-import { loadReviewManifest } from '../audit/reviewManifest';
+} from '@/scripts/audit-agents-conformance';
 
 function writeFixture(rootDir: string, relativePath: string, content: string): void {
     const absolutePath = path.join(rootDir, relativePath);
@@ -94,7 +94,11 @@ describe('auditAgentsConformance', () => {
         const rootDir = mkdtempSync(path.join(os.tmpdir(), 'agents-audit-'));
 
         try {
-            writeFixture(rootDir, 'electron/backend/persistence/generatedMigrations.ts', 'const value = 1;\n'.repeat(1200));
+            writeFixture(
+                rootDir,
+                'electron/backend/persistence/generatedMigrations.ts',
+                'const value = 1;\n'.repeat(1200)
+            );
             writeFixture(
                 rootDir,
                 'electron/backend/persistence/migrations/001_runtime_baseline.sql',
@@ -143,7 +147,7 @@ describe('auditAgentsConformance', () => {
         const rootDir = mkdtempSync(path.join(os.tmpdir(), 'agents-audit-'));
 
         try {
-            writeFixture(rootDir, 'src/view.tsx', "function View() { useLayoutEffect(() => {}, []); return null; }\n");
+            writeFixture(rootDir, 'src/view.tsx', 'function View() { useLayoutEffect(() => {}, []); return null; }\n');
 
             const report = auditAgentsConformance(rootDir);
 
@@ -171,7 +175,7 @@ describe('auditAgentsConformance', () => {
             writeFixture(
                 rootDir,
                 'src/diff.tsx',
-                "function View({ firstSelectablePath, selectedDiff }) { const [selectedPath, setSelectedPath] = useState(undefined); useEffect(() => { setSelectedPath(firstSelectablePath); }, [firstSelectablePath, selectedDiff?.id]); return selectedPath; }\n"
+                'function View({ firstSelectablePath, selectedDiff }) { const [selectedPath, setSelectedPath] = useState(undefined); useEffect(() => { setSelectedPath(firstSelectablePath); }, [firstSelectablePath, selectedDiff?.id]); return selectedPath; }\n'
             );
 
             const report = auditAgentsConformance(rootDir);
@@ -211,7 +215,7 @@ describe('auditAgentsConformance', () => {
             writeFixture(
                 rootDir,
                 'electron/backend/trpc/routers/context/index.ts',
-                "const value = result.match((ok) => ok, (error) => { throw toTrpcError(error); });\n"
+                'const value = result.match((ok) => ok, (error) => { throw toTrpcError(error); });\n'
             );
 
             const report = auditAgentsConformance(rootDir);
@@ -226,7 +230,11 @@ describe('auditAgentsConformance', () => {
         const rootDir = mkdtempSync(path.join(os.tmpdir(), 'agents-audit-'));
 
         try {
-            writeFixture(rootDir, 'src/view.tsx', "import { shell } from 'electron';\nexport function View() { return shell; }\n");
+            writeFixture(
+                rootDir,
+                'src/view.tsx',
+                "import { shell } from 'electron';\nexport function View() { return shell; }\n"
+            );
             writeFixture(
                 rootDir,
                 'electron/main/runtime.ts',
@@ -643,7 +651,7 @@ describe('auditAgentsConformance', () => {
             writeFixture(
                 rootDir,
                 'src/view.tsx',
-                "function View(query: { useQuery: Function }, value: unknown) { return query.useQuery({ sessionId: value as SessionId }); }\n"
+                'function View(query: { useQuery: Function }, value: unknown) { return query.useQuery({ sessionId: value as SessionId }); }\n'
             );
             writeFixture(rootDir, 'src/large.ts', 'const value = 1;\n'.repeat(950));
 
@@ -661,3 +669,4 @@ describe('auditAgentsConformance', () => {
         }
     });
 });
+

@@ -45,8 +45,9 @@ function ApiKeyField({
     onCopyStoredCredential,
     compactIntro,
 }: ProviderCredentialSectionProps & { compactIntro: string }) {
-    const credentialActionMessageClassName =
-        propsCredentialActionToneToClassName(credentialActionStatus?.tone ?? undefined);
+    const credentialActionMessageClassName = propsCredentialActionToneToClassName(
+        credentialActionStatus?.tone ?? undefined
+    );
 
     return (
         <div className='border-border/70 bg-background/75 space-y-3 rounded-2xl border p-4'>
@@ -91,10 +92,23 @@ function ApiKeyField({
                         type='button'
                         size='sm'
                         variant='ghost'
-                        onClick={isCredentialVisible ? onHideStoredCredential : onRevealStoredCredential}>
+                        onClick={() => {
+                            if (isCredentialVisible) {
+                                onHideStoredCredential();
+                                return;
+                            }
+
+                            void onRevealStoredCredential();
+                        }}>
                         {isCredentialVisible ? 'Hide' : 'Reveal'}
                     </Button>
-                    <Button type='button' size='sm' variant='ghost' onClick={onCopyStoredCredential}>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='ghost'
+                        onClick={() => {
+                            void onCopyStoredCredential();
+                        }}>
                         Copy
                     </Button>
                 </div>

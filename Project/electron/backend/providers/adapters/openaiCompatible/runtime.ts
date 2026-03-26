@@ -1,29 +1,24 @@
+import { streamDirectFamilyRuntime } from '@/app/backend/providers/adapters/directFamily/runtime';
 import {
     errProviderAdapter,
     okProviderAdapter,
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
-import { streamDirectFamilyRuntime } from '@/app/backend/providers/adapters/directFamily/runtime';
 import { executeHttpFallback } from '@/app/backend/providers/adapters/httpFallback';
+import { streamOpenAIRealtimeWebSocketRuntime } from '@/app/backend/providers/adapters/openaiCompatible/realtimeWebsocket';
+import { streamProviderNativeRuntime } from '@/app/backend/providers/adapters/providerNative';
 import {
     emitRuntimeLifecycleSelection,
     failRuntimeAdapter,
     mapHttpFallbackFailureStage,
 } from '@/app/backend/providers/adapters/runtimeLifecycle';
-import {
-    streamProviderNativeRuntime,
-} from '@/app/backend/providers/adapters/providerNative';
-import { streamOpenAIRealtimeWebSocketRuntime } from '@/app/backend/providers/adapters/openaiCompatible/realtimeWebsocket';
-import { resolveRuntimeFamilyExecutionPath } from '@/app/backend/providers/runtimeFamilies';
+import { parseChatCompletionsPayload, parseResponsesPayload } from '@/app/backend/providers/adapters/runtimePayload';
 import {
     consumeChatCompletionsStreamResponse,
     consumeResponsesStreamResponse,
     emitParsedCompletion,
 } from '@/app/backend/providers/adapters/streaming';
-import {
-    parseChatCompletionsPayload,
-    parseResponsesPayload,
-} from '@/app/backend/providers/adapters/runtimePayload';
+import { resolveRuntimeFamilyExecutionPath } from '@/app/backend/providers/runtimeFamilies';
 import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
 
 interface OpenAICompatibleRuntimeConfig {
@@ -198,20 +193,15 @@ function buildResponsesBody(input: ProviderRuntimeInput, modelPrefix: string): R
 
     const responseInputItems = contextMessages.flatMap((message) => {
         const textAndImageParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+            (part): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
                 part.type === 'text' || part.type === 'image'
         );
         const toolCallParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+            (part): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
         );
         const toolResultParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> => part.type === 'tool_result'
+            (part): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
+                part.type === 'tool_result'
         );
 
         const items: Array<Record<string, unknown>> = [];
@@ -323,9 +313,7 @@ function buildChatCompletionsBody(input: ProviderRuntimeInput, modelPrefix: stri
         if (message.role === 'tool') {
             const toolMessages = message.parts
                 .filter(
-                    (
-                        part
-                    ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
+                    (part): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
                         part.type === 'tool_result'
                 )
                 .map((part) => ({
@@ -338,15 +326,11 @@ function buildChatCompletionsBody(input: ProviderRuntimeInput, modelPrefix: stri
         }
 
         const contentParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+            (part): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
                 part.type === 'text' || part.type === 'image'
         );
         const toolCallParts = message.parts.filter(
-            (
-                part
-            ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+            (part): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
         );
         const content =
             contentParts.length === 0
@@ -482,13 +466,7 @@ export async function streamOpenAICompatibleRuntime(
             startedAt,
         });
         if (result.isErr()) {
-            return failWithLog(
-                input,
-                config,
-                'realtime websocket',
-                result.error.code,
-                result.error.message
-            );
+            return failWithLog(input, config, 'realtime websocket', result.error.code, result.error.message);
         }
 
         return okProviderAdapter(undefined);

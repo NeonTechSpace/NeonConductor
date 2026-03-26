@@ -14,10 +14,10 @@ function isProviderRoutingEvent(event: RuntimeEventRecordV1, context: RuntimeEve
 function isProviderDefaultEvent(event: RuntimeEventRecordV1, context: RuntimeEventContext): boolean {
     return Boolean(
         context.providerId &&
-            context.modelId &&
-            event.operation === 'upsert' &&
-            !hasPayloadKey(event, 'routingMode') &&
-            !hasPayloadKey(event, 'flowId')
+        context.modelId &&
+        event.operation === 'upsert' &&
+        !hasPayloadKey(event, 'routingMode') &&
+        !hasPayloadKey(event, 'flowId')
     );
 }
 

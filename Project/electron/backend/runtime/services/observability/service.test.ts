@@ -40,12 +40,14 @@ describe('neonObservabilityService', () => {
             )
         ).toHaveLength(1);
         expect(
-            neonObservabilityService.list(
-                {
-                    afterSequence: 1,
-                },
-                10
-            ).map((event) => event.runId)
+            neonObservabilityService
+                .list(
+                    {
+                        afterSequence: 1,
+                    },
+                    10
+                )
+                .map((event) => event.runId)
         ).toEqual(['run_beta']);
     });
 

@@ -1,6 +1,6 @@
+import type { WorkspaceInspectorSection } from '@/web/components/conversation/sessions/workspaceShellModel';
 import { Button } from '@/web/components/ui/button';
 
-import type { WorkspaceInspectorSection } from '@/web/components/conversation/sessions/workspaceShellModel';
 
 interface WorkspaceInspectorProps {
     sections: WorkspaceInspectorSection[];
@@ -29,7 +29,9 @@ export function WorkspaceInspector({ sections, onClose }: WorkspaceInspectorProp
                             <div className='flex items-start justify-between gap-3'>
                                 <div className='min-w-0'>
                                     <p className='text-sm font-semibold'>{section.label}</p>
-                                    <p className='text-muted-foreground mt-1 text-xs leading-5'>{section.description}</p>
+                                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                        {section.description}
+                                    </p>
                                 </div>
                                 {section.badge ? (
                                     <span

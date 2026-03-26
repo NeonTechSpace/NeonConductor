@@ -1,10 +1,8 @@
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import { isRecord, readBoolean, readLiteral, readNumber, readString } from '@/web/lib/runtime/eventPatches/readers/shared';
 
-import type {
-    MessagePartRecord,
-    MessageRecord,
-    RunRecord,
-} from '@/app/backend/persistence/types';
+import type { MessagePartRecord, MessageRecord, RunRecord } from '@/app/backend/persistence/types';
+
 import {
     providerAuthMethods,
     providerIds,
@@ -14,8 +12,6 @@ import {
     runtimeRequestedTransportFamilies,
 } from '@/shared/contracts';
 
-import { isRecord, readBoolean, readLiteral, readNumber, readString } from './shared';
-
 export function readMessagePartRecord(value: unknown): MessagePartRecord | undefined {
     if (!isRecord(value)) {
         return undefined;
@@ -24,14 +20,30 @@ export function readMessagePartRecord(value: unknown): MessagePartRecord | undef
     const id = readString(value['id']);
     const messageId = readString(value['messageId']);
     const sequence = readNumber(value['sequence']);
-    const partType = readLiteral(
-        value['partType'],
-        ['text', 'image', 'reasoning', 'reasoning_summary', 'reasoning_encrypted', 'tool_call', 'tool_result', 'error', 'status'] as const
-    );
+    const partType = readLiteral(value['partType'], [
+        'text',
+        'image',
+        'reasoning',
+        'reasoning_summary',
+        'reasoning_encrypted',
+        'tool_call',
+        'tool_result',
+        'error',
+        'status',
+    ] as const);
     const payload = isRecord(value['payload']) ? value['payload'] : undefined;
     const createdAt = readString(value['createdAt']);
 
-    if (!id || !isEntityId(id, 'part') || !messageId || !isEntityId(messageId, 'msg') || sequence === undefined || !partType || !payload || !createdAt) {
+    if (
+        !id ||
+        !isEntityId(id, 'part') ||
+        !messageId ||
+        !isEntityId(messageId, 'msg') ||
+        sequence === undefined ||
+        !partType ||
+        !payload ||
+        !createdAt
+    ) {
         return undefined;
     }
 
@@ -122,52 +134,60 @@ export function readRunRecord(value: unknown): RunRecord | undefined {
     const cacheValue = value['cache'];
     const transportValue = value['transport'];
 
+    const reasoningEffort = isRecord(reasoningValue)
+        ? readLiteral(reasoningValue['effort'], runtimeReasoningEfforts)
+        : undefined;
+    const reasoningSummary = isRecord(reasoningValue)
+        ? readLiteral(reasoningValue['summary'], runtimeReasoningSummaries)
+        : undefined;
+    const includeEncrypted = isRecord(reasoningValue) ? readBoolean(reasoningValue['includeEncrypted']) : undefined;
     const reasoning =
-        isRecord(reasoningValue) &&
-        readLiteral(reasoningValue['effort'], runtimeReasoningEfforts) &&
-        readLiteral(reasoningValue['summary'], runtimeReasoningSummaries) &&
-        readBoolean(reasoningValue['includeEncrypted']) !== undefined
+        reasoningEffort && reasoningSummary && includeEncrypted !== undefined
             ? {
-                  effort: readLiteral(reasoningValue['effort'], runtimeReasoningEfforts)!,
-                  summary: readLiteral(reasoningValue['summary'], runtimeReasoningSummaries)!,
-                  includeEncrypted: readBoolean(reasoningValue['includeEncrypted'])!,
+                  effort: reasoningEffort,
+                  summary: reasoningSummary,
+                  includeEncrypted,
               }
             : undefined;
 
+    const cacheRecord = isRecord(cacheValue) ? cacheValue : undefined;
+    const cacheStrategy = cacheRecord ? readLiteral(cacheRecord['strategy'], ['auto', 'manual'] as const) : undefined;
+    const cacheApplied = cacheRecord ? readBoolean(cacheRecord['applied']) : undefined;
     const cache =
-        isRecord(cacheValue) &&
-        readLiteral(cacheValue['strategy'], ['auto', 'manual'] as const) &&
-        readBoolean(cacheValue['applied']) !== undefined
+        cacheStrategy && cacheApplied !== undefined
             ? (() => {
-                  const key = readString(cacheValue['key']);
-                  const reason = readString(cacheValue['reason']);
+                  const key = cacheRecord ? readString(cacheRecord['key']) : undefined;
+                  const reason = cacheRecord ? readString(cacheRecord['reason']) : undefined;
                   return {
-                      strategy: readLiteral(cacheValue['strategy'], ['auto', 'manual'] as const)!,
-                      applied: readBoolean(cacheValue['applied'])!,
+                      strategy: cacheStrategy,
+                      applied: cacheApplied,
                       ...(key ? { key } : {}),
                       ...(reason ? { reason } : {}),
                   };
               })()
             : undefined;
 
+    const transportRecord = isRecord(transportValue) ? transportValue : undefined;
+    const requestedFamily = transportRecord
+        ? readLiteral(transportRecord['requestedFamily'], runtimeRequestedTransportFamilies)
+        : undefined;
     const transport =
-        isRecord(transportValue) && readLiteral(transportValue['requestedFamily'], runtimeRequestedTransportFamilies)
+        requestedFamily
             ? (() => {
-                  const selected = readLiteral(
-                      transportValue['selected'],
-                      [
-                          'openai_responses',
-                          'openai_chat_completions',
-                          'openai_realtime_websocket',
-                          'kilo_gateway',
-                          'provider_native',
-                          'anthropic_messages',
-                          'google_generativeai',
-                      ] as const
-                  );
-                  const degradedReason = readString(transportValue['degradedReason']);
+                  const selected = transportRecord
+                      ? readLiteral(transportRecord['selected'], [
+                            'openai_responses',
+                            'openai_chat_completions',
+                            'openai_realtime_websocket',
+                            'kilo_gateway',
+                            'provider_native',
+                            'anthropic_messages',
+                            'google_generativeai',
+                        ] as const)
+                      : undefined;
+                  const degradedReason = transportRecord ? readString(transportRecord['degradedReason']) : undefined;
                   return {
-                      requestedFamily: readLiteral(transportValue['requestedFamily'], runtimeRequestedTransportFamilies)!,
+                      requestedFamily,
                       ...(selected ? { selected } : {}),
                       ...(degradedReason ? { degradedReason } : {}),
                   };
@@ -196,7 +216,10 @@ export function readRunRecord(value: unknown): RunRecord | undefined {
     };
 }
 
-export function upsertMessagePartRecord(messageParts: MessagePartRecord[], nextPart: MessagePartRecord): MessagePartRecord[] {
+export function upsertMessagePartRecord(
+    messageParts: MessagePartRecord[],
+    nextPart: MessagePartRecord
+): MessagePartRecord[] {
     return [...messageParts.filter((candidate) => candidate.id !== nextPart.id), nextPart].sort((left, right) => {
         if (left.createdAt !== right.createdAt) {
             return left.createdAt.localeCompare(right.createdAt);
@@ -212,10 +235,14 @@ export function upsertRunRecord(runs: RunRecord[], nextRun: RunRecord): RunRecor
     );
 }
 
-export function resolveSessionActiveRunId(currentActiveRunId: RunRecord['id'] | null, run: RunRecord): RunRecord['id'] | null {
+export function resolveSessionActiveRunId(
+    currentActiveRunId: RunRecord['id'] | null,
+    run: RunRecord
+): RunRecord['id'] | null {
     if (run.status === 'running') {
         return run.id;
     }
 
     return currentActiveRunId === run.id ? null : currentActiveRunId;
 }
+

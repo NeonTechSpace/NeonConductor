@@ -36,8 +36,7 @@ export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
     const source = readObject(input, 'input');
     const summaryText = readOptionalString(source.summaryText, 'summaryText');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const threadId =
-        source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
+    const threadId = source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
     const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
     const metadata = readMetadataRecord(source.metadata, 'metadata');
 
@@ -64,8 +63,7 @@ export function parseMemoryListInput(input: unknown): MemoryListInput {
         source.scopeKind !== undefined ? readEnumValue(source.scopeKind, 'scopeKind', memoryScopeKinds) : undefined;
     const state = source.state !== undefined ? readEnumValue(source.state, 'state', memoryStates) : undefined;
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const threadId =
-        source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
+    const threadId = source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
     const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
 
     return {
@@ -111,10 +109,8 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
 export function parseMemoryProjectionContextInput(input: unknown): MemoryProjectionContextInput {
     const source = readObject(input, 'input');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
-    const sandboxId =
-        source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
-    const threadId =
-        source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    const threadId = source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
     const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
     const includeBroaderScopes = readOptionalBoolean(source.includeBroaderScopes, 'includeBroaderScopes');
 

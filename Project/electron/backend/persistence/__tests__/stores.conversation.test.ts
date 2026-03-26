@@ -86,7 +86,6 @@ describe('persistence stores: conversation domain', () => {
         expect(reverted.reverted).toBe(true);
     });
 
-
     it('returns typed errors for invalid tag writes and missing session refreshes', async () => {
         const profileId = getDefaultProfileId();
 
@@ -104,7 +103,6 @@ describe('persistence stores: conversation domain', () => {
         }
         expect(missingRefresh.error.code).toBe('not_found');
     });
-
 
     it('supports conversations, threads, tags, diffs, and checkpoints', async () => {
         const profileId = getDefaultProfileId();
@@ -291,11 +289,15 @@ describe('persistence stores: conversation domain', () => {
             throw new Error(favoriteTag.error.message);
         }
 
-        const removableTagLink = await tagStore.setThreadTags(profileId, removableThread.value.id, [removableTag.value.id]);
+        const removableTagLink = await tagStore.setThreadTags(profileId, removableThread.value.id, [
+            removableTag.value.id,
+        ]);
         if (removableTagLink.isErr()) {
             throw new Error(removableTagLink.error.message);
         }
-        const favoriteTagLink = await tagStore.setThreadTags(profileId, favoriteThread.value.id, [favoriteTag.value.id]);
+        const favoriteTagLink = await tagStore.setThreadTags(profileId, favoriteThread.value.id, [
+            favoriteTag.value.id,
+        ]);
         if (favoriteTagLink.isErr()) {
             throw new Error(favoriteTagLink.error.message);
         }

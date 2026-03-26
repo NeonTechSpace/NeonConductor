@@ -182,7 +182,9 @@ function createCanvasSurface(width: number, height: number): Result<CanvasSurfac
         const canvas = new OffscreenCanvas(width, height);
         const context = canvas.getContext('2d');
         if (!context) {
-            return err(createCanvasUnavailableError('Image compression could not acquire an offscreen 2D canvas context.'));
+            return err(
+                createCanvasUnavailableError('Image compression could not acquire an offscreen 2D canvas context.')
+            );
         }
 
         return ok({
@@ -256,7 +258,9 @@ async function canvasToBlob(
         });
 
         if (!blob) {
-            return err(composerImageCompressionError('encode_failed', 'Image compression could not encode the canvas output.'));
+            return err(
+                composerImageCompressionError('encode_failed', 'Image compression could not encode the canvas output.')
+            );
         }
 
         return ok(blob);
@@ -416,10 +420,7 @@ async function prepareComposerImageAttachmentOnMainThread(
     }
 
     return err(
-        composerImageCompressionError(
-            'size_limit_exceeded',
-            `"${file.name}" could not be compressed below 1.5 MB.`
-        )
+        composerImageCompressionError('size_limit_exceeded', `"${file.name}" could not be compressed below 1.5 MB.`)
     );
 }
 
@@ -467,4 +468,3 @@ export function summarizeReadyImageBytes(images: ComposerPendingImage[], excludi
         return total + (image.byteSize ?? 0);
     }, 0);
 }
-

@@ -1,8 +1,8 @@
 import { methodLabel } from '@/web/components/settings/providerSettings/helpers';
 import { patchProviderCache } from '@/web/components/settings/providerSettings/providerSettingsCache';
 import type { ActiveAuthFlow } from '@/web/components/settings/providerSettings/types';
-import { trpc } from '@/web/trpc/client';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
+import { trpc } from '@/web/trpc/client';
 
 import type { ProviderAuthStateRecord } from '@/app/backend/persistence/types';
 

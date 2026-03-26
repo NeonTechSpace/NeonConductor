@@ -8,11 +8,13 @@ beforeAll(async () => {
     });
     vi.stubGlobal(
         'createImageBitmap',
-        vi.fn(async () => ({
-            width: 4,
-            height: 4,
-            close: vi.fn(),
-        }))
+        vi.fn(() =>
+            Promise.resolve({
+                width: 4,
+                height: 4,
+                close: vi.fn(),
+            })
+        )
     );
     vi.stubGlobal(
         'OffscreenCanvas',

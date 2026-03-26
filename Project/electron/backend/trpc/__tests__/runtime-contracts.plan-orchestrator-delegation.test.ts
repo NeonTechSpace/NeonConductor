@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
-
-import { createCaller, createSessionInScope, defaultRuntimeOptions, registerRuntimeContractHooks, requireEntityId, runtimeContractProfileId, waitForOrchestratorStatus } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    createCaller,
+    createSessionInScope,
+    defaultRuntimeOptions,
+    registerRuntimeContractHooks,
+    requireEntityId,
+    runtimeContractProfileId,
+    waitForOrchestratorStatus,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 
@@ -101,7 +108,11 @@ describe('runtime contracts: planning and orchestrator', () => {
             throw new Error('Expected orchestrator status for child guard.');
         }
 
-        const childSessionId = requireEntityId(status.steps[0]?.childSessionId, 'sess', 'Expected delegated child session.');
+        const childSessionId = requireEntityId(
+            status.steps[0]?.childSessionId,
+            'sess',
+            'Expected delegated child session.'
+        );
         const childPlan = await caller.plan.start({
             profileId,
             sessionId: childSessionId,

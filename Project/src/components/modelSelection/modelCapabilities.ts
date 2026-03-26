@@ -1,3 +1,5 @@
+import { formatRuntimeCapabilityIssue, isProviderRunnable } from '@/web/lib/runtimeCapabilityIssue';
+
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 import type { ProviderToolProtocol } from '@/app/backend/providers/types';
@@ -8,7 +10,6 @@ import type {
     RuntimeProviderId,
     RuntimeReasoningEffort,
 } from '@/shared/contracts';
-import { formatRuntimeCapabilityIssue, isProviderRunnable } from '@/web/lib/runtimeCapabilityIssue';
 
 export type ModelCompatibilityState = RuntimeCompatibilityState;
 
@@ -20,7 +21,7 @@ export interface ModelCapabilityBadge {
 export interface ModelPickerOption {
     id: string;
     label: string;
-    providerId?: RuntimeProviderId | string;
+    providerId?: RuntimeProviderId;
     providerLabel?: string;
     sourceProvider?: string;
     source?: string;
@@ -121,7 +122,7 @@ export function resolveModelCompatibility(
             scope: 'provider',
             issue: {
                 code: 'provider_not_runnable',
-                ...(context.provider?.id ? { providerId: context.provider.id } : {}),
+                providerId: context.provider.id,
             },
         };
     }
@@ -196,7 +197,7 @@ export function buildModelPickerOption(input: {
         ...(input.model.features.supportsPromptCache !== undefined
             ? { supportsPromptCache: input.model.features.supportsPromptCache }
             : {}),
-        ...(input.model.runtime.toolProtocol ? { toolProtocol: input.model.runtime.toolProtocol } : {}),
+        toolProtocol: input.model.runtime.toolProtocol,
         capabilityBadges: getModelCapabilityBadges(input.model),
         compatibilityState: compatibility.state,
         ...(compatibility.scope ? { compatibilityScope: compatibility.scope } : {}),
@@ -205,7 +206,8 @@ export function buildModelPickerOption(input: {
             ? {
                   compatibilityReason: formatRuntimeCapabilityIssue({
                       issue: compatibility.issue,
-                      surface: input.compatibilityContext.surface === 'settings' ? 'settings_option' : 'conversation_option',
+                      surface:
+                          input.compatibilityContext.surface === 'settings' ? 'settings_option' : 'conversation_option',
                       ...(input.provider
                           ? {
                                 providerLabel: input.provider.label,

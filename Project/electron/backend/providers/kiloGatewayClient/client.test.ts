@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { KiloGatewayClient } from '@/app/backend/providers/kiloGatewayClient/client';
+
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 describe('KiloGatewayClient', () => {
@@ -222,22 +223,22 @@ describe('KiloGatewayClient', () => {
                     status: 200,
                     statusText: 'OK',
                     json: () => ({
-                            data: [
-                                {
-                                    id: kiloFrontierModelId,
-                                    name: 'Kilo Auto Free',
-                                    owned_by: 'openai',
-                                    supported_parameters: [],
+                        data: [
+                            {
+                                id: kiloFrontierModelId,
+                                name: 'Kilo Auto Free',
+                                owned_by: 'openai',
+                                supported_parameters: [],
                                 architecture: {
                                     input_modalities: ['text'],
                                     output_modalities: ['text'],
                                 },
-                                },
-                                {
-                                    id: kiloFrontierModelId,
-                                    name: 'Kilo Auto Free',
-                                    owned_by: 'anthropic',
-                                    supported_parameters: ['reasoning'],
+                            },
+                            {
+                                id: kiloFrontierModelId,
+                                name: 'Kilo Auto Free',
+                                owned_by: 'anthropic',
+                                supported_parameters: ['reasoning'],
                                 architecture: {
                                     input_modalities: ['text'],
                                     output_modalities: ['text'],

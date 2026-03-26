@@ -68,7 +68,11 @@ export class WorkspaceRootStore {
         return row ? mapWorkspaceRootRecord(row) : null;
     }
 
-    async resolveOrCreate(profileId: string, workspacePath: string, labelOverride?: string): Promise<WorkspaceRootRecord> {
+    async resolveOrCreate(
+        profileId: string,
+        workspacePath: string,
+        labelOverride?: string
+    ): Promise<WorkspaceRootRecord> {
         const { db } = getPersistence();
         const absolutePath = canonicalizeWorkspacePath(workspacePath);
         const pathKey = toPathKey(absolutePath);
@@ -119,10 +123,13 @@ export class WorkspaceRootStore {
 
     async deleteByProfile(profileId: string): Promise<number> {
         const { db } = getPersistence();
-        const rows = await db.deleteFrom('workspace_roots').where('profile_id', '=', profileId).returning('fingerprint').execute();
+        const rows = await db
+            .deleteFrom('workspace_roots')
+            .where('profile_id', '=', profileId)
+            .returning('fingerprint')
+            .execute();
         return rows.length;
     }
 }
 
 export const workspaceRootStore = new WorkspaceRootStore();
-

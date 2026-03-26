@@ -1,14 +1,14 @@
 import { useState } from 'react';
 
+import type {
+    BuiltInModeDraftState,
+    PromptSettingsSnapshot,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { trpc } from '@/web/trpc/client';
 
 import type { TopLevelTab } from '@/shared/contracts';
 
-import type {
-    BuiltInModeDraftState,
-    PromptSettingsSnapshot,
-} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 
 function getBuiltInModeDraftKey(topLevelTab: TopLevelTab, modeKey: string): string {
     return `${topLevelTab}:${modeKey}`;
@@ -107,8 +107,7 @@ export function useModesInstructionsBuiltInModesController(input: {
                     [draftKey]: {
                         profileId: input.profileId,
                         roleDefinition: field === 'roleDefinition' ? value : currentPrompt.roleDefinition,
-                        customInstructions:
-                            field === 'customInstructions' ? value : currentPrompt.customInstructions,
+                        customInstructions: field === 'customInstructions' ? value : currentPrompt.customInstructions,
                     },
                 }));
                 input.clearFeedback();

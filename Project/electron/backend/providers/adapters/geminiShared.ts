@@ -222,9 +222,7 @@ function buildMessageContent(
     message: NonNullable<ProviderRuntimeInput['contextMessages']>[number]
 ): GeminiCompatibilityMessage['content'] {
     const contentParts = message.parts.filter(
-        (
-            part
-        ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
+        (part): part is Extract<(typeof message.parts)[number], { type: 'text' | 'image' }> =>
             part.type === 'text' || part.type === 'image'
     );
 
@@ -273,9 +271,7 @@ function buildRawGeminiCompatibilityMessages(input: ProviderRuntimeInput): Gemin
             messages.push(
                 ...message.parts
                     .filter(
-                        (
-                            part
-                        ): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
+                        (part): part is Extract<(typeof message.parts)[number], { type: 'tool_result' }> =>
                             part.type === 'tool_result'
                     )
                     .map((part) => ({
@@ -289,9 +285,8 @@ function buildRawGeminiCompatibilityMessages(input: ProviderRuntimeInput): Gemin
 
         const toolCalls = message.parts
             .filter(
-                (
-                    part
-                ): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> => part.type === 'tool_call'
+                (part): part is Extract<(typeof message.parts)[number], { type: 'tool_call' }> =>
+                    part.type === 'tool_call'
             )
             .map((part) => ({
                 id: part.callId,
@@ -322,7 +317,9 @@ function buildRawGeminiCompatibilityMessages(input: ProviderRuntimeInput): Gemin
         messages.push({
             role: message.role,
             content:
-                message.role === 'assistant' && content === null && (toolCalls.length > 0 || reasoningDetails.length > 0)
+                message.role === 'assistant' &&
+                content === null &&
+                (toolCalls.length > 0 || reasoningDetails.length > 0)
                     ? ''
                     : content,
             ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
@@ -391,7 +388,9 @@ function sanitizeGeminiCompatibilityMessages(messages: GeminiCompatibilityMessag
         }> = [];
         const validReasoningDetails: GeminiReasoningDetail[] = [];
         const matchedToolCallIds = new Set<string>();
-        const hasTaggedReasoningDetails = reasoningDetails.some((detail) => typeof detail.id === 'string' && detail.id.length > 0);
+        const hasTaggedReasoningDetails = reasoningDetails.some(
+            (detail) => typeof detail.id === 'string' && detail.id.length > 0
+        );
 
         for (const toolCall of message.tool_calls) {
             const matchingDetails = reasoningDetails.filter((detail) => detail.id === toolCall.id);
@@ -422,7 +421,11 @@ function sanitizeGeminiCompatibilityMessages(messages: GeminiCompatibilityMessag
         const filteredReasoningDetails: GeminiReasoningDetail[] = consolidatedReasoningDetails.filter(
             (detail) => !detail.id || matchedToolCallIds.has(detail.id)
         );
-        if (validToolCalls.length === 0 && filteredReasoningDetails.length === 0 && !hasMessageContent(message.content)) {
+        if (
+            validToolCalls.length === 0 &&
+            filteredReasoningDetails.length === 0 &&
+            !hasMessageContent(message.content)
+        ) {
             continue;
         }
 

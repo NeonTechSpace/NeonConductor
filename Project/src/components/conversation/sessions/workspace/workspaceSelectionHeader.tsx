@@ -32,8 +32,9 @@ export function WorkspaceSelectionHeader({
     isInspectorOpen,
     onToggleInspector,
 }: WorkspaceSelectionHeaderProps) {
+    const runStatus = selectedRun ? formatRunStatus(selectedRun) : undefined;
     const activeSummary = selectedSession
-        ? `${String(selectedSession.turnCount)} turns${selectedRun ? ` · ${formatRunStatus(selectedRun)}` : ''}`
+        ? `${String(selectedSession.turnCount)} turns${runStatus ? ` · ${runStatus}` : ''}`
         : 'Choose or create a thread to start working.';
 
     return (
@@ -60,7 +61,11 @@ export function WorkspaceSelectionHeader({
                             {String(pendingPermissionCount)} approvals waiting
                         </span>
                     ) : null}
-                    <Button type='button' size='sm' variant={isInspectorOpen ? 'secondary' : 'outline'} onClick={onToggleInspector}>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant={isInspectorOpen ? 'secondary' : 'outline'}
+                        onClick={onToggleInspector}>
                         {isInspectorOpen ? 'Hide Inspector' : 'Show Inspector'}
                     </Button>
                 </div>

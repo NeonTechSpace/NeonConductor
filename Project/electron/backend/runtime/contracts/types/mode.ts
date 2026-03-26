@@ -23,9 +23,7 @@ function readPromptTextArray(value: unknown): string[] | undefined {
         return undefined;
     }
 
-    const items = value
-        .map((item) => (typeof item === 'string' ? item.trim() : ''))
-        .filter((item) => item.length > 0);
+    const items = value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter((item) => item.length > 0);
     return items.length > 0 ? Array.from(new Set(items)) : undefined;
 }
 
@@ -43,7 +41,8 @@ export function normalizeModePromptDefinition(value: unknown): ModePromptDefinit
     }
 
     const roleDefinition = readPromptText(value['roleDefinition']);
-    const customInstructions = readPromptText(value['customInstructions']) ?? readPromptText(value['instructionsMarkdown']);
+    const customInstructions =
+        readPromptText(value['customInstructions']) ?? readPromptText(value['instructionsMarkdown']);
 
     return {
         ...(roleDefinition ? { roleDefinition } : {}),

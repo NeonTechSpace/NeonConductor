@@ -1,11 +1,12 @@
 import { readProviderCatalog } from '@/app/backend/providers/service/catalogReadService';
+import { okProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
 import { getDefaults, getSpecialistDefaults } from '@/app/backend/providers/service/preferenceService';
 import { listProviders } from '@/app/backend/providers/service/readService';
-import {
-    okProviderService,
-    type ProviderServiceResult,
-} from '@/app/backend/providers/service/errors';
-import type { ProviderControlEntry, ProviderControlSnapshot, ProviderListItem } from '@/app/backend/providers/service/types';
+import type {
+    ProviderControlEntry,
+    ProviderControlSnapshot,
+    ProviderListItem,
+} from '@/app/backend/providers/service/types';
 
 function compareProviderEntries(left: ProviderListItem, right: ProviderListItem): number {
     if (left.id === 'kilo') {
@@ -19,7 +20,9 @@ function compareProviderEntries(left: ProviderListItem, right: ProviderListItem)
     return left.label.localeCompare(right.label);
 }
 
-export async function getProviderControlSnapshot(profileId: string): Promise<ProviderServiceResult<ProviderControlSnapshot>> {
+export async function getProviderControlSnapshot(
+    profileId: string
+): Promise<ProviderServiceResult<ProviderControlSnapshot>> {
     const [providers, defaults, specialistDefaults] = await Promise.all([
         listProviders(profileId),
         getDefaults(profileId),

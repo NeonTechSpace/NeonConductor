@@ -1,4 +1,5 @@
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import { isRecord, readBoolean, readLiteral, readNumber, readString } from '@/web/lib/runtime/eventPatches/readers/shared';
 
 import type {
     ConversationRecord,
@@ -6,9 +7,8 @@ import type {
     TagRecord,
     ThreadRecord,
 } from '@/app/backend/persistence/types';
-import { executionEnvironmentModes, topLevelTabs } from '@/shared/contracts';
 
-import { isRecord, readBoolean, readLiteral, readNumber, readString } from './shared';
+import { executionEnvironmentModes, topLevelTabs } from '@/shared/contracts';
 
 const conversationScopes = ['detached', 'workspace'] as const;
 
@@ -164,3 +164,4 @@ export function readTagRecord(value: unknown): TagRecord | undefined {
         updatedAt,
     };
 }
+

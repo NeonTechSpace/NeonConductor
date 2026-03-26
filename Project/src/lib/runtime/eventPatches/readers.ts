@@ -3,12 +3,8 @@ export {
     readSessionSummaryRecord,
     readTagRecord,
     readThreadRecord,
-} from './readers/conversationReaders';
-export {
-    readCheckpointRecord,
-    readDiffArtifact,
-    readDiffRecord,
-} from './readers/checkpointDiffReaders';
+} from '@/web/lib/runtime/eventPatches/readers/conversationReaders';
+export { readCheckpointRecord, readDiffArtifact, readDiffRecord } from '@/web/lib/runtime/eventPatches/readers/checkpointDiffReaders';
 export {
     readConnectionProfile,
     readExecutionPreference,
@@ -19,7 +15,7 @@ export {
     readProviderModels,
     readRoutingPreference,
     replaceProviderModels,
-} from './readers/providerReaders';
+} from '@/web/lib/runtime/eventPatches/readers/providerReaders';
 export {
     readMessagePartRecord,
     readMessageRecord,
@@ -27,7 +23,7 @@ export {
     resolveSessionActiveRunId,
     upsertMessagePartRecord,
     upsertRunRecord,
-} from './readers/messageRunReaders';
+} from '@/web/lib/runtime/eventPatches/readers/messageRunReaders';
 export {
     hasRequiredStringFields,
     isRecord,
@@ -36,4 +32,5 @@ export {
     readNumber,
     readString,
     readStringArray,
-} from './readers/shared';
+} from '@/web/lib/runtime/eventPatches/readers/shared';
+

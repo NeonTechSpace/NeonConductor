@@ -10,10 +10,13 @@ import type {
     ProviderRuntimeTransportSelection,
     ProviderRuntimeUsage,
 } from '@/app/backend/providers/types';
-import { createAssistantStatusPartPayload } from '@/app/backend/runtime/contracts/types/messagePart';
-import type { EntityId, KiloDynamicSort, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
-import type { OpenAIExecutionMode } from '@/app/backend/runtime/contracts';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
+import {
+    publishProviderPartObservabilityEvent,
+    publishToolStateChangedObservabilityEvent,
+    publishUsageObservabilityEvent,
+} from '@/app/backend/runtime/services/observability/publishers';
+import { createReasoningPartFromProviderPart } from '@/app/backend/runtime/services/runExecution/contextParts';
 import {
     errRunExecution,
     okRunExecution,
@@ -26,12 +29,6 @@ import {
     emitToolResultObservabilityEvent,
     emitTransportSelectionEvent,
 } from '@/app/backend/runtime/services/runExecution/eventing';
-import {
-    publishProviderPartObservabilityEvent,
-    publishToolStateChangedObservabilityEvent,
-    publishUsageObservabilityEvent,
-} from '@/app/backend/runtime/services/observability/publishers';
-import { createReasoningPartFromProviderPart } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type {
     RunContextMessage,
     RunCacheResolution,
@@ -40,9 +37,13 @@ import type {
 } from '@/app/backend/runtime/services/runExecution/types';
 import { accumulateUsage } from '@/app/backend/runtime/services/runExecution/usage';
 import type { UsageAccumulator } from '@/app/backend/runtime/services/runExecution/usage';
-import { toolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
 import { serializeToolInvocationOutcome } from '@/app/backend/runtime/services/toolExecution/results';
+import { toolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
 import type { ToolInvocationOutcome } from '@/app/backend/runtime/services/toolExecution/types';
+
+import type { OpenAIExecutionMode } from '@/shared/contracts';
+import type { EntityId, KiloDynamicSort, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
+import { createAssistantStatusPartPayload } from '@/shared/contracts/types/messagePart';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
 interface ExecutableToolCall {
@@ -197,9 +198,7 @@ function assertNotAborted(signal: AbortSignal): void {
     }
 }
 
-async function resolveContextMessages(
-    input: ExecuteRunInput
-): Promise<ProviderContextMessage[] | undefined> {
+async function resolveContextMessages(input: ExecuteRunInput): Promise<ProviderContextMessage[] | undefined> {
     if (!input.contextMessages) {
         return undefined;
     }
@@ -221,12 +220,11 @@ async function resolveContextMessages(
                             return part;
                         }
 
-                        const mediaPayload =
-                            part.dataUrl
-                                ? undefined
-                                : part.mediaId
-                                  ? await messageMediaStore.getPayload(part.mediaId)
-                                  : null;
+                        const mediaPayload = part.dataUrl
+                            ? undefined
+                            : part.mediaId
+                              ? await messageMediaStore.getPayload(part.mediaId)
+                              : null;
                         const dataUrl =
                             part.dataUrl ??
                             (mediaPayload
@@ -498,39 +496,37 @@ async function executeProviderTurn(input: {
     let firstOutputTimedOut = input.state.firstOutputTimedOut;
     let usage = input.state.usage;
     let transportSelection = input.state.transportSelection;
-    const stalledTimer: ReturnType<typeof setTimeout> | null =
-        input.state.firstRenderableOutputReceived
-            ? null
-            : globalThis.setTimeout(() => {
-                  if (firstRenderableOutputReceived || firstOutputTimedOut || input.executeRunInput.signal.aborted) {
-                      return;
-                  }
+    const stalledTimer: ReturnType<typeof setTimeout> | null = input.state.firstRenderableOutputReceived
+        ? null
+        : globalThis.setTimeout(() => {
+              if (firstRenderableOutputReceived || firstOutputTimedOut || input.executeRunInput.signal.aborted) {
+                  return;
+              }
 
-                  void appendAssistantLifecycleStatusPart({
-                      partRecorder,
-                      code: 'stalled',
-                      label: 'Still waiting for the first response chunk...',
-                      elapsedMs: FIRST_OUTPUT_STALLED_MS,
-                      observabilityContext: {
-                          profileId: input.executeRunInput.profileId,
-                          sessionId: input.executeRunInput.sessionId,
-                          runId: input.executeRunInput.runId,
-                          providerId: input.executeRunInput.providerId,
-                          modelId: input.executeRunInput.modelId,
-                      },
-                  }).catch(() => undefined);
-              }, FIRST_OUTPUT_STALLED_MS);
-    const timeoutTimer: ReturnType<typeof setTimeout> | null =
-        input.state.firstRenderableOutputReceived
-            ? null
-            : globalThis.setTimeout(() => {
-                  if (firstRenderableOutputReceived || firstOutputTimedOut || input.executeRunInput.signal.aborted) {
-                      return;
-                  }
+              void appendAssistantLifecycleStatusPart({
+                  partRecorder,
+                  code: 'stalled',
+                  label: 'Still waiting for the first response chunk...',
+                  elapsedMs: FIRST_OUTPUT_STALLED_MS,
+                  observabilityContext: {
+                      profileId: input.executeRunInput.profileId,
+                      sessionId: input.executeRunInput.sessionId,
+                      runId: input.executeRunInput.runId,
+                      providerId: input.executeRunInput.providerId,
+                      modelId: input.executeRunInput.modelId,
+                  },
+              }).catch(() => undefined);
+          }, FIRST_OUTPUT_STALLED_MS);
+    const timeoutTimer: ReturnType<typeof setTimeout> | null = input.state.firstRenderableOutputReceived
+        ? null
+        : globalThis.setTimeout(() => {
+              if (firstRenderableOutputReceived || firstOutputTimedOut || input.executeRunInput.signal.aborted) {
+                  return;
+              }
 
-                  firstOutputTimedOut = true;
-                  timeoutController.abort();
-              }, FIRST_OUTPUT_TIMEOUT_MS);
+              firstOutputTimedOut = true;
+              timeoutController.abort();
+          }, FIRST_OUTPUT_TIMEOUT_MS);
     const disposeFirstOutputWatchdog = () => {
         if (stalledTimer !== null) {
             globalThis.clearTimeout(stalledTimer);
@@ -691,10 +687,7 @@ async function executeToolRound(input: {
         });
 
         if (!input.allowedToolIds.has(toolCall.toolName)) {
-            return errRunExecution(
-                'invalid_payload',
-                `Provider emitted unsupported tool "${toolCall.toolName}".`
-            );
+            return errRunExecution('invalid_payload', `Provider emitted unsupported tool "${toolCall.toolName}".`);
         }
 
         const toolOutcome = await toolExecutionService.invokeWithOutcome(
@@ -867,3 +860,4 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
         `Run exceeded the maximum of ${String(MAX_AGENT_TOOL_ROUNDS)} tool rounds.`
     );
 }
+

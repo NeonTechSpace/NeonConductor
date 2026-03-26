@@ -10,18 +10,18 @@ interface WorkspaceStatusPanelProps {
               kind: 'detached';
           }
         | {
-          kind: 'workspace';
-          label: string;
-          absolutePath: string;
-          executionEnvironmentMode: 'local' | 'new_sandbox';
-      }
-    | {
-          kind: 'sandbox';
-          label: string;
-          absolutePath: string;
-          baseWorkspaceLabel: string;
-          baseWorkspacePath: string;
-          sandboxId: string;
+              kind: 'workspace';
+              label: string;
+              absolutePath: string;
+              executionEnvironmentMode: 'local' | 'new_sandbox';
+          }
+        | {
+              kind: 'sandbox';
+              label: string;
+              absolutePath: string;
+              baseWorkspaceLabel: string;
+              baseWorkspacePath: string;
+              sandboxId: string;
           };
     provider:
         | {
@@ -58,15 +58,7 @@ function formatMicrounits(value: number | undefined): string {
     return `${Math.round(value).toLocaleString()} microunits`;
 }
 
-function StatusCard({
-    label,
-    value,
-    detail,
-}: {
-    label: string;
-    value: string;
-    detail: string;
-}) {
+function StatusCard({ label, value, detail }: { label: string; value: string; detail: string }) {
     return (
         <div className='border-border bg-card/90 rounded-2xl border px-4 py-3 shadow-sm'>
             <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>{label}</p>

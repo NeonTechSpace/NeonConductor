@@ -2,9 +2,13 @@ import { access, mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
+import {
+    toolCapabilities as knownToolCapabilities,
+    type ToolCapability,
+    type TopLevelTab,
+} from '@/app/backend/runtime/contracts';
 import { slugifyAssetKey, resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
 
-import { toolCapabilities as knownToolCapabilities, type ToolCapability, type TopLevelTab } from '@/app/backend/runtime/contracts';
 
 export interface CanonicalCustomModePayload {
     slug: string;
@@ -49,9 +53,7 @@ const unsupportedPortableGroups = new Set(['browser', 'mcp', 'ask', 'modes']);
 
 function readOptionalPortableString(
     value: unknown,
-    field:
-        | keyof PortableCustomModePayload
-        | keyof CanonicalCustomModePayload
+    field: keyof PortableCustomModePayload | keyof CanonicalCustomModePayload
 ): string | undefined {
     if (value === undefined) {
         return undefined;
@@ -73,7 +75,9 @@ function readOptionalPortableStringArray(value: unknown, field: 'groups' | 'tags
 
     const items = value.map((item, index) => {
         if (Array.isArray(item)) {
-            throw new Error(`Unsupported "${field}[${String(index)}]": restricted tuple forms are not supported in this slice.`);
+            throw new Error(
+                `Unsupported "${field}[${String(index)}]": restricted tuple forms are not supported in this slice.`
+            );
         }
         if (typeof item !== 'string') {
             throw new Error(`Invalid "${field}": expected string array.`);
@@ -169,10 +173,10 @@ function convertPortableGroupsToToolCapabilities(groups: string[] | undefined): 
         if (unsupportedPortableGroups.has(group)) {
             throw new Error(`Unsupported portable tool group "${group}".`);
         }
-        const mappedCapabilities = portableGroupCapabilityMap[group as keyof typeof portableGroupCapabilityMap];
-        if (!mappedCapabilities) {
+        if (!(group in portableGroupCapabilityMap)) {
             throw new Error(`Unsupported portable tool group "${group}".`);
         }
+        const mappedCapabilities = portableGroupCapabilityMap[group as keyof typeof portableGroupCapabilityMap];
 
         mappedCapabilities.forEach((capability) => capabilities.add(capability));
     }
@@ -218,7 +222,9 @@ export function parsePortableCustomModeJson(jsonText: string): PortableCustomMod
     try {
         parsed = JSON.parse(jsonText);
     } catch (error) {
-        throw new Error(`Invalid custom mode JSON: ${(error as Error).message}`);
+        throw new Error(`Invalid custom mode JSON: ${(error as Error).message}`, {
+            cause: error,
+        });
     }
 
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -283,10 +289,10 @@ function stringifyFrontmatterValue(value: string): string {
     return JSON.stringify(value.replace(/\r\n?/g, '\n'));
 }
 
-export function renderCanonicalModeMarkdown(input: {
-    topLevelTab: TopLevelTab;
-    payload: CanonicalCustomModePayload;
-}): { modeKey: string; fileContent: string } {
+export function renderCanonicalModeMarkdown(input: { topLevelTab: TopLevelTab; payload: CanonicalCustomModePayload }): {
+    modeKey: string;
+    fileContent: string;
+} {
     const payload = normalizeCanonicalCustomModePayload(input.payload);
     const modeKey = slugifyAssetKey(payload.slug).replace(/\//g, '_');
     if (modeKey.length === 0) {
@@ -298,17 +304,13 @@ export function renderCanonicalModeMarkdown(input: {
         `topLevelTab: ${input.topLevelTab}`,
         `modeKey: ${modeKey}`,
         `label: ${stringifyFrontmatterValue(payload.name)}`,
-        ...(payload.description
-            ? [`description: ${stringifyFrontmatterValue(payload.description)}`]
-            : []),
+        ...(payload.description ? [`description: ${stringifyFrontmatterValue(payload.description)}`] : []),
         ...(payload.whenToUse ? [`whenToUse: ${stringifyFrontmatterValue(payload.whenToUse)}`] : []),
         ...(payload.tags ? ['tags:', ...payload.tags.map((tag) => `  - ${stringifyFrontmatterValue(tag)}`)] : []),
         ...(payload.toolCapabilities
             ? ['toolCapabilities:', ...payload.toolCapabilities.map((capability) => `  - ${capability}`)]
             : []),
-        ...(payload.roleDefinition
-            ? [`roleDefinition: ${stringifyFrontmatterValue(payload.roleDefinition)}`]
-            : []),
+        ...(payload.roleDefinition ? [`roleDefinition: ${stringifyFrontmatterValue(payload.roleDefinition)}`] : []),
         '---',
     ];
     const body = payload.customInstructions?.replace(/\r\n?/g, '\n').trim() ?? '';
@@ -344,10 +346,7 @@ export async function resolveCustomModeDirectory(input: {
     return directory;
 }
 
-export async function writePortableModeFile(input: {
-    absolutePath: string;
-    fileContent: string;
-}): Promise<void> {
+export async function writePortableModeFile(input: { absolutePath: string; fileContent: string }): Promise<void> {
     const directory = path.dirname(input.absolutePath);
     await mkdir(directory, { recursive: true });
     const tempPath = `${input.absolutePath}.tmp`;

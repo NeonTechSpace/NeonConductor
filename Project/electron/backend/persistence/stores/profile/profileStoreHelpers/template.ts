@@ -1,4 +1,8 @@
-import { errProfileStore, okProfileStore, type ProfileStoreResult } from '@/app/backend/persistence/stores/profile/profileStoreErrors';
+import {
+    errProfileStore,
+    okProfileStore,
+    type ProfileStoreResult,
+} from '@/app/backend/persistence/stores/profile/profileStoreErrors';
 import type { ProfileStoreDb } from '@/app/backend/persistence/stores/profile/profileStoreHelpers/types';
 
 export async function resolveTemplateProfileId(

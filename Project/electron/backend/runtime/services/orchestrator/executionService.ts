@@ -1,6 +1,11 @@
 import { err, type Result } from 'neverthrow';
 
-import type { OrchestratorRunRecord, OrchestratorStepRecord, PlanItemRecord, PlanRecord } from '@/app/backend/persistence/types';
+import type {
+    OrchestratorRunRecord,
+    OrchestratorStepRecord,
+    PlanItemRecord,
+    PlanRecord,
+} from '@/app/backend/persistence/types';
 import type { EntityId, OrchestratorStartInput } from '@/app/backend/runtime/contracts';
 import { abortOrchestratorRun } from '@/app/backend/runtime/services/orchestrator/abort';
 import { ActiveOrchestratorRunRegistry } from '@/app/backend/runtime/services/orchestrator/activeRunRegistry';
@@ -11,15 +16,22 @@ import {
     logRejectedOrchestratorStart,
     prepareOrchestratorStart,
 } from '@/app/backend/runtime/services/orchestrator/start';
-import { getLatestOrchestratorBySession, getOrchestratorStatus } from '@/app/backend/runtime/services/orchestrator/status';
-
+import {
+    getLatestOrchestratorBySession,
+    getOrchestratorStatus,
+} from '@/app/backend/runtime/services/orchestrator/status';
 
 export class OrchestratorExecutionService {
     private readonly activeRuns = new ActiveOrchestratorRunRegistry();
 
     async start(
         input: OrchestratorStartInput
-    ): Promise<Result<{ started: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }, OrchestratorExecutionError>> {
+    ): Promise<
+        Result<
+            { started: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] },
+            OrchestratorExecutionError
+        >
+    > {
         const prepared = await prepareOrchestratorStart(input);
         if (prepared.isErr()) {
             logRejectedOrchestratorStart(input, prepared.error);
@@ -76,7 +88,11 @@ export class OrchestratorExecutionService {
         orchestratorRunId: EntityId<'orch'>
     ): Promise<
         | { aborted: false; reason: 'not_found' }
-        | { aborted: true; runId: EntityId<'orch'>; latest: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] } }
+        | {
+              aborted: true;
+              runId: EntityId<'orch'>;
+              latest: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] };
+          }
     > {
         const result = await abortOrchestratorRun({
             profileId,

@@ -7,12 +7,25 @@ import {
     upsertTagRecord,
     upsertThreadListRecord,
 } from '@/web/components/conversation/sidebar/sidebarCache';
+import { updateMatchingQueryData } from '@/web/lib/runtime/eventPatches/queryCache';
+import {
+    readConversationRecord,
+    readSessionSummaryRecord,
+    readString,
+    readStringArray,
+    readTagRecord,
+    readThreadRecord,
+} from '@/web/lib/runtime/eventPatches/readers';
 import type { RuntimeEventContext, TrpcUtils } from '@/web/lib/runtime/invalidation/types';
 
-import type { ConversationRecord, RuntimeEventRecordV1, SessionSummaryRecord, TagRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
+import type {
+    ConversationRecord,
+    RuntimeEventRecordV1,
+    SessionSummaryRecord,
+    TagRecord,
+    ThreadTagRecord,
+} from '@/app/backend/persistence/types';
 
-import { updateMatchingQueryData } from './queryCache';
-import { readConversationRecord, readSessionSummaryRecord, readString, readStringArray, readTagRecord, readThreadRecord } from './readers';
 
 type ThreadListQueryData = {
     sort: 'latest' | 'alphabetical';
@@ -116,7 +129,9 @@ export function applyThreadRuntimeEventPatch(
         updateMatchingQueryData<{ buckets: ConversationRecord[] }>(['conversation', 'listBuckets'], (current) =>
             current
                 ? {
-                      buckets: current.buckets.filter((bucketRecord) => !deletedConversationIdsSet.has(bucketRecord.id)),
+                      buckets: current.buckets.filter(
+                          (bucketRecord) => !deletedConversationIdsSet.has(bucketRecord.id)
+                      ),
                   }
                 : current
         );
@@ -174,8 +189,8 @@ export function applySessionRuntimeEventPatch(event: RuntimeEventRecordV1): (() 
         updateMatchingQueryData<{ sessions: SessionSummaryRecord[] }>(['session', 'list'], (current) =>
             current
                 ? {
-                      sessions: [session, ...current.sessions.filter((candidate) => candidate.id !== session.id)].sort((left, right) =>
-                          right.updatedAt.localeCompare(left.updatedAt)
+                      sessions: [session, ...current.sessions.filter((candidate) => candidate.id !== session.id)].sort(
+                          (left, right) => right.updatedAt.localeCompare(left.updatedAt)
                       ),
                   }
                 : current
@@ -214,3 +229,4 @@ export function applyTagRuntimeEventPatch(event: RuntimeEventRecordV1): boolean 
     );
     return true;
 }
+

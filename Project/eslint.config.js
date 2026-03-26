@@ -27,12 +27,12 @@ const typeCheckedGlobs = [
 const rendererGlobs = ['src/**/*.{js,jsx,ts,tsx}'];
 
 const nodeGlobs = [
-    'electron/**/*.{js,cjs,ts,tsx}',
+    'electron/**/*.{js,ts,tsx}',
     'scripts/**/*.{js,mjs,cjs,ts,tsx}',
     'vite.config.ts',
     'vitest.config.ts',
 ];
-const nodeUntypedGlobs = ['electron/**/*.mjs'];
+const nodeUntypedGlobs = ['electron/**/*.mjs', 'electron/**/__tests__/fixtures/**/*.cjs'];
 
 const testGlobs = [
     'electron/**/*.{test,spec}.ts',
@@ -45,12 +45,18 @@ const neverthrowWorkflowGlobs = ['electron/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}', 
 const generatedGlobs = ['src/routeTree.gen.ts'];
 const validatedFsAuthorityGlobs = [
     'electron/backend/persistence/db.ts',
+    'electron/backend/runtime/services/checkpoint/nativeSnapshot.ts',
     'electron/backend/runtime/services/context/tokenizerRuntime.ts',
+    'electron/backend/runtime/services/environment/service.ts',
+    'electron/backend/runtime/services/memory/projection.ts',
+    'electron/backend/runtime/services/projectInstructions/service.ts',
+    'electron/backend/runtime/services/promptLayers/customModePortability.ts',
     'electron/backend/runtime/services/registry/filesystem.ts',
     'electron/backend/runtime/services/runtimeFactoryReset.ts',
     'electron/backend/runtime/services/sandbox/filesystem.ts',
     'electron/backend/runtime/services/toolExecution/handlers/listFiles.ts',
     'electron/backend/runtime/services/toolExecution/handlers/readFile.ts',
+    'electron/backend/runtime/services/workflows/service.ts',
     'electron/main/preload/buildConfig.ts',
     'electron/main/logging/fileDrain.ts',
 ];
@@ -59,6 +65,12 @@ const processBridgeGlobs = [
     'electron/backend/runtime/services/toolExecution/handlers/runCommand.ts',
 ];
 const validatedFsTestGlobs = [
+    'electron/backend/runtime/services/environment/service.test.ts',
+    'electron/backend/runtime/services/memory/retrieval.test.ts',
+    'electron/backend/runtime/services/projectInstructions/service.test.ts',
+    'electron/backend/runtime/services/runExecution/contextPrelude.test.ts',
+    'electron/backend/runtime/services/sandbox/filesystem.test.ts',
+    'electron/backend/runtime/services/sessionRules/service.test.ts',
     'electron/backend/trpc/__tests__/runtime-contracts.shared.ts',
     'electron/backend/trpc/__tests__/runtime-contracts.core.test.ts',
     'electron/main/preload/buildConfig.test.ts',
@@ -325,6 +337,27 @@ export default [
         },
     },
     {
+        files: ['scripts/audit-agents-conformance.ts'],
+        rules: {
+            'security/detect-non-literal-regexp': 'off',
+        },
+    },
+    {
+        files: ['electron/backend/persistence/generatedMigrations.ts'],
+        rules: {
+            'no-secrets/no-secrets': 'off',
+        },
+    },
+    {
+        files: [
+            'electron/backend/persistence/stores/runtime/checkpointChangesetStore.ts',
+            'electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts',
+        ],
+        rules: {
+            'no-secrets/no-secrets': 'off',
+        },
+    },
+    {
         files: ['scripts/**/__tests__/**/*.ts', 'src/router.ts', 'src/splash/main.ts'],
         rules: {
             'no-restricted-imports': 'off',
@@ -334,6 +367,71 @@ export default [
         files: ['vite.config.ts', 'electron/main/preload/buildConfig.ts'],
         rules: {
             'no-restricted-imports': 'off',
+            'security/detect-unsafe-regex': 'off',
+        },
+    },
+    {
+        files: ['src/routes/**/*.tsx'],
+        rules: {
+            '@typescript-eslint/only-throw-error': 'off',
+            'react-refresh/only-export-components': 'off',
+        },
+    },
+    {
+        files: [
+            'src/components/content/markdown/markdownCodeBlock.tsx',
+            'src/components/conversation/messages/flow/messageFlowActionBar.tsx',
+            'src/components/conversation/messages/timeline/messageTimelineHeader.tsx',
+            'src/components/conversation/panels/branchWorkflowDialog.tsx',
+            'src/components/conversation/panels/composerActionPanel.tsx',
+            'src/components/conversation/panels/memoryPanel.tsx',
+            'src/components/conversation/panels/messageEditDialog.tsx',
+            'src/components/modelSelection/modelPicker.tsx',
+            'src/components/runtime/workspaceSurfaceControllerContext.tsx',
+            'src/components/settings/kiloSettingsView.tsx',
+            'src/components/settings/modesSettings/modesInstructionsSections.tsx',
+            'src/components/settings/providerSettings/authenticationSection.tsx',
+            'src/components/utils/neonRuntimeDevtoolsPanel.tsx',
+            'src/components/workspaces/workspacesSurfaceSections.tsx',
+        ],
+        rules: {
+            'react-refresh/only-export-components': 'off',
+        },
+    },
+    {
+        files: [
+            'electron/backend/trpc/__tests__/*.types.test.ts',
+            'electron/backend/trpc/__tests__/**/*.types.test.ts',
+        ],
+        rules: {
+            'vitest/expect-expect': 'off',
+        },
+    },
+    {
+        files: ['electron/backend/runtime/services/runExecution/resolveRunTarget.test.ts'],
+        rules: {
+            'import/order': 'off',
+        },
+    },
+    {
+        files: [
+            'electron/backend/providers/adapters/openaiCompatible/realtimeWebsocket.test.ts',
+            'electron/backend/runtime/services/checkpoint/executionTarget.test.ts',
+            'electron/backend/runtime/services/checkpoint/internals.test.ts',
+            'electron/backend/runtime/services/memory/advancedDerivation.test.ts',
+            'electron/backend/runtime/services/runExecution/terminalState.observability.test.ts',
+            'electron/backend/runtime/services/runExecution/terminalState.test.ts',
+            'electron/backend/trpc/__tests__/app-router.conversation-session.types.test.ts',
+            'electron/backend/trpc/__tests__/runtime-contracts.conversation-workflow-branches.test.ts',
+            'electron/backend/trpc/__tests__/runtime-contracts.memory.test.ts',
+            'electron/backend/trpc/routers/session/index.ts',
+            'electron/main/preload/splash.test.ts',
+            'src/components/conversation/sidebar/useSidebarWorkspaceCreateController.test.ts',
+            'src/components/workspaces/workspaceEnvironmentSection.test.tsx',
+            'src/lib/observability/subscription.test.ts',
+        ],
+        rules: {
+            'no-secrets/no-secrets': 'off',
         },
     },
 

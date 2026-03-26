@@ -91,7 +91,7 @@ describe('provider authentication draft helpers', () => {
                     hasLoadedStoredCredential: false,
                 },
                 hasStoredCredential: true,
-                onLoadStoredCredential: async () => 'stored-kilo-token',
+                onLoadStoredCredential: () => Promise.resolve('stored-kilo-token'),
             })
         ).resolves.toEqual({
             draftState: {
@@ -113,9 +113,7 @@ describe('provider authentication draft helpers', () => {
                     hasLoadedStoredCredential: false,
                 },
                 hasStoredCredential: true,
-                onLoadStoredCredential: async () => {
-                    throw new Error('load failed');
-                },
+                onLoadStoredCredential: () => Promise.reject(new Error('load failed')),
             })
         ).resolves.toEqual({
             status: {
@@ -126,7 +124,7 @@ describe('provider authentication draft helpers', () => {
     });
 
     it('copies the loaded credential and reports success', async () => {
-        const writeText = vi.fn(async () => undefined);
+        const writeText = vi.fn(() => Promise.resolve(undefined));
 
         await expect(
             resolveCopyStoredCredentialAction({
@@ -136,7 +134,7 @@ describe('provider authentication draft helpers', () => {
                     isCredentialVisible: false,
                     hasLoadedStoredCredential: false,
                 },
-                onLoadStoredCredential: async () => 'stored-kilo-token',
+                onLoadStoredCredential: () => Promise.resolve('stored-kilo-token'),
                 writeText,
             })
         ).resolves.toEqual({
@@ -163,10 +161,8 @@ describe('provider authentication draft helpers', () => {
                     isCredentialVisible: true,
                     hasLoadedStoredCredential: true,
                 },
-                onLoadStoredCredential: async () => undefined,
-                writeText: async () => {
-                    throw new Error('clipboard denied');
-                },
+                onLoadStoredCredential: () => Promise.resolve(undefined),
+                writeText: () => Promise.reject(new Error('clipboard denied')),
             })
         ).resolves.toEqual({
             status: {
@@ -176,3 +172,4 @@ describe('provider authentication draft helpers', () => {
         });
     });
 });
+

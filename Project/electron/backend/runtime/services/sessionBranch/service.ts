@@ -7,11 +7,11 @@ import type {
 } from '@/app/backend/runtime/contracts';
 import { sandboxService } from '@/app/backend/runtime/services/sandbox/service';
 import { sessionHistoryService } from '@/app/backend/runtime/services/sessionHistory/service';
-import { workflowService } from '@/app/backend/runtime/services/workflows/service';
 import {
     workflowExecutionService,
     type BranchWorkflowExecutionResult,
 } from '@/app/backend/runtime/services/workflows/execution';
+import { workflowService } from '@/app/backend/runtime/services/workflows/service';
 
 export type SessionBranchFromMessageResult =
     | {
@@ -169,11 +169,16 @@ export class SessionBranchService {
             };
         }
 
-        const branched = await sessionHistoryService.createBranchThroughRun(input.profileId, input.sessionId, target.runId, {
-            branchExecutionEnvironmentMode: 'new_sandbox',
-            branchSessionKind: 'local',
-            branchSessionSandboxId: null,
-        });
+        const branched = await sessionHistoryService.createBranchThroughRun(
+            input.profileId,
+            input.sessionId,
+            target.runId,
+            {
+                branchExecutionEnvironmentMode: 'new_sandbox',
+                branchSessionKind: 'local',
+                branchSessionSandboxId: null,
+            }
+        );
         if (!branched.branched) {
             return {
                 branched: false,
@@ -181,7 +186,7 @@ export class SessionBranchService {
             };
         }
 
-        let branchThread = await threadStore.getById(input.profileId, branched.thread.id);
+        const branchThread = await threadStore.getById(input.profileId, branched.thread.id);
         let branchSession = branched.session;
         if (branchThread) {
             const materializedSandbox = await sandboxService.materializeThreadSandbox({
@@ -190,12 +195,7 @@ export class SessionBranchService {
                 workspaceFingerprint: sessionThread.workspaceFingerprint,
             });
             if (materializedSandbox.isOk() && materializedSandbox.value) {
-                branchThread =
-                    (await threadStore.getById(input.profileId, branched.thread.id)) ?? {
-                        ...branchThread,
-                        executionEnvironmentMode: 'sandbox',
-                        sandboxId: materializedSandbox.value.id,
-                    };
+                await threadStore.getById(input.profileId, branched.thread.id);
                 branchSession =
                     (await sessionStore.setSandboxBinding({
                         profileId: input.profileId,

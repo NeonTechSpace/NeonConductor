@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import {
     registerPersistenceStoreHooks,
     accountSnapshotStore,
@@ -21,6 +20,7 @@ import {
     threadStore,
     toolStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
+import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 
 registerPersistenceStoreHooks();
 
@@ -369,7 +369,6 @@ describe('persistence stores: runtime domain', () => {
         ).rejects.toThrow();
     });
 
-
     it('supports mcp and tool seed stores', async () => {
         const tools = await toolStore.list();
         expect(tools.some((tool) => tool.id === 'read_file')).toBe(true);
@@ -433,7 +432,6 @@ describe('persistence stores: runtime domain', () => {
         expect(envRowCount.count).toBe(0);
     });
 
-
     it('seeds parity baseline stores', async () => {
         const profileId = getDefaultProfileId();
 
@@ -453,5 +451,4 @@ describe('persistence stores: runtime domain', () => {
         expect(marketplacePackages).toEqual([]);
         expect(providerSecrets).toEqual([]);
     });
-
 });

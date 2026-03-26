@@ -1,6 +1,5 @@
 import { runStore, runUsageStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import { getProviderRuntimeBehavior } from '@/app/backend/providers/behaviors';
-import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/backend/runtime/contracts';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
 import {
@@ -8,16 +7,15 @@ import {
     publishRunCompletedObservabilityEvent,
     publishRunFailedObservabilityEvent,
 } from '@/app/backend/runtime/services/observability/publishers';
+import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/types';
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { threadTitleService } from '@/app/backend/runtime/services/threadTitle/service';
-import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/types';
 import { appLog } from '@/app/main/logging';
 
-async function markThreadAssistantActivity(input: {
-    profileId: string;
-    threadId: EntityId<'thr'>;
-}): Promise<void> {
+import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
+
+async function markThreadAssistantActivity(input: { profileId: string; threadId: EntityId<'thr'> }): Promise<void> {
     await threadStore.markAssistantActivity(input.profileId, input.threadId, new Date().toISOString());
 }
 
@@ -41,7 +39,9 @@ export async function applyRunTerminalOutcome(input: {
             status: 'completed',
         });
         if (!run) {
-            throw new InvariantError('Run completion persisted successfully but the updated run snapshot could not be reloaded.');
+            throw new InvariantError(
+                'Run completion persisted successfully but the updated run snapshot could not be reloaded.'
+            );
         }
 
         await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'completed');
@@ -121,7 +121,9 @@ export async function applyRunTerminalOutcome(input: {
             status: 'aborted',
         });
         if (!run) {
-            throw new InvariantError('Run abort persisted successfully but the updated run snapshot could not be reloaded.');
+            throw new InvariantError(
+                'Run abort persisted successfully but the updated run snapshot could not be reloaded.'
+            );
         }
         await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'aborted');
         await runtimeEventLogService.append(
@@ -163,7 +165,9 @@ export async function applyRunTerminalOutcome(input: {
         errorMessage: input.outcome.errorMessage,
     });
     if (!run) {
-        throw new InvariantError('Run failure persisted successfully but the updated run snapshot could not be reloaded.');
+        throw new InvariantError(
+            'Run failure persisted successfully but the updated run snapshot could not be reloaded.'
+        );
     }
     await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'error');
     await runtimeEventLogService.append(
@@ -246,3 +250,4 @@ export async function moveRunToFailedState(input: {
         logMessage: input.logMessage,
     });
 }
+

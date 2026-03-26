@@ -231,5 +231,4 @@ describe('runtime contracts: provider and account flows', () => {
         });
         expect(moonshotRuns.runs[0]?.transport?.selected).toBe('openai_chat_completions');
     });
-
 });

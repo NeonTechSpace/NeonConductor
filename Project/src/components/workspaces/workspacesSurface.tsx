@@ -1,9 +1,9 @@
 import { startTransition, useDeferredValue, useState } from 'react';
 
+import { useWorkspacesSurfaceController } from '@/web/components/workspaces/useWorkspacesSurfaceController';
 import { WorkspaceCreateDialog } from '@/web/components/workspaces/workspaceCreateDialog';
 import { WorkspaceDeleteConversationsDialog } from '@/web/components/workspaces/workspaceDeleteConversationsDialog';
 import { WorkspaceDetailsPanel } from '@/web/components/workspaces/workspaceDetailsPanel';
-import { useWorkspacesSurfaceController } from '@/web/components/workspaces/useWorkspacesSurfaceController';
 
 interface WorkspacesSurfaceProps {
     profileId: string;
@@ -59,7 +59,9 @@ export function WorkspacesSurface({
         try {
             await controller.deleteWorkspaceConversations(pendingDeleteWorkspace.fingerprint);
             setConfirmDeleteWorkspaceFingerprint(undefined);
-        } catch {}
+        } catch {
+            return;
+        }
     }
 
     return (
@@ -142,8 +144,8 @@ export function WorkspacesSurface({
                         isRefreshingRegistry={controller.isRefreshingRegistry}
                         isDeletingWorkspaceConversations={controller.isDeletingWorkspaceConversations}
                         onOpenSessions={onOpenSessions}
-                        onRefreshRegistry={async () => {
-                            await controller.refreshRegistry(selectedWorkspace.fingerprint);
+                        onRefreshRegistry={() => {
+                            void controller.refreshRegistry(selectedWorkspace.fingerprint);
                         }}
                         onRequestDeleteConversations={() => {
                             setConfirmDeleteWorkspaceFingerprint(selectedWorkspace.fingerprint);

@@ -3,8 +3,8 @@ import { ProviderDefaultModelSection } from '@/web/components/settings/providerS
 import { useProviderSettingsController } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsController';
 import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
 import { ProviderSidebar } from '@/web/components/settings/providerSettings/providerSidebar';
-import { ProviderSpecialistDefaultsSection } from '@/web/components/settings/providerSettings/specialistDefaultsSection';
 import { ProviderStatusSection } from '@/web/components/settings/providerSettings/providerStatusSection';
+import { ProviderSpecialistDefaultsSection } from '@/web/components/settings/providerSettings/specialistDefaultsSection';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
@@ -22,11 +22,12 @@ function buildProviderSettingsControllerKey(profileId: string, selectedProviderI
 function KiloProviderContent({
     profileId,
     controller,
+    selectedProvider,
 }: {
     profileId: string;
     controller: ReturnType<typeof useProviderSettingsController>;
+    selectedProvider: NonNullable<ReturnType<typeof useProviderSettingsController>['selection']['selectedProvider']>;
 }) {
-    const selectedProvider = controller.selection.selectedProvider!;
     const shouldShowRoutingSection =
         selectedProvider.features.supportsKiloRouting &&
         controller.models.selectedModelId.trim().length > 0 &&
@@ -73,20 +74,28 @@ function KiloProviderContent({
                 isPollingAuth={controller.authentication.isPollingAuth}
                 isCancellingAuth={controller.authentication.isCancellingAuth}
                 isOpeningVerificationPage={controller.authentication.isOpeningVerificationPage}
-                onConnectionProfileChange={controller.authentication.changeConnectionProfile}
+                onConnectionProfileChange={(value) => {
+                    void controller.authentication.changeConnectionProfile(value);
+                }}
                 onExecutionPreferenceChange={() => {}}
-                onSaveApiKey={(value) => {
-                    return controller.authentication.saveApiKey(value);
+                onSaveApiKey={(value) => controller.authentication.saveApiKey(value)}
+                onSaveBaseUrlOverride={(value) => controller.authentication.saveBaseUrlOverride(value)}
+                onLoadStoredCredential={() => controller.authentication.loadStoredCredential()}
+                onStartOAuthDevice={() => {
+                    void controller.authentication.startOAuthDevice();
                 }}
-                onSaveBaseUrlOverride={(value) => {
-                    return controller.authentication.saveBaseUrlOverride(value);
+                onStartDeviceCode={() => {
+                    void controller.authentication.startDeviceCode();
                 }}
-                onLoadStoredCredential={controller.authentication.loadStoredCredential}
-                onStartOAuthDevice={controller.authentication.startOAuthDevice}
-                onStartDeviceCode={controller.authentication.startDeviceCode}
-                onPollNow={controller.authentication.pollNow}
-                onCancelFlow={controller.authentication.cancelFlow}
-                onOpenVerificationPage={controller.authentication.openVerificationPage}
+                onPollNow={() => {
+                    void controller.authentication.pollNow();
+                }}
+                onCancelFlow={() => {
+                    void controller.authentication.cancelFlow();
+                }}
+                onOpenVerificationPage={() => {
+                    void controller.authentication.openVerificationPage();
+                }}
                 {...(controller.authentication.credentialSummary
                     ? { credentialSummary: controller.authentication.credentialSummary }
                     : {})}
@@ -109,9 +118,11 @@ function KiloProviderContent({
                         return;
                     }
 
-                    controller.models.setDefaultModel(modelId);
+                    void controller.models.setDefaultModel(modelId);
                 }}
-                onSyncCatalog={controller.models.syncCatalog}
+                onSyncCatalog={() => {
+                    void controller.models.syncCatalog();
+                }}
             />
 
             {shouldShowRoutingSection && controller.kilo.routingDraft ? (
@@ -122,9 +133,15 @@ function KiloProviderContent({
                     isLoadingPreference={controller.kilo.isLoadingRoutingPreference}
                     isLoadingProviders={controller.kilo.isLoadingModelProviders}
                     isSaving={controller.kilo.isSavingRoutingPreference}
-                    onModeChange={controller.kilo.changeRoutingMode}
-                    onSortChange={controller.kilo.changeRoutingSort}
-                    onPinnedProviderChange={controller.kilo.changePinnedProvider}
+                    onModeChange={(value) => {
+                        void controller.kilo.changeRoutingMode(value);
+                    }}
+                    onSortChange={(value) => {
+                        void controller.kilo.changeRoutingSort(value);
+                    }}
+                    onPinnedProviderChange={(value) => {
+                        void controller.kilo.changePinnedProvider(value);
+                    }}
                 />
             ) : null}
         </div>
@@ -134,12 +151,12 @@ function KiloProviderContent({
 function DirectProviderContent({
     profileId,
     controller,
+    selectedProvider,
 }: {
     profileId: string;
     controller: ReturnType<typeof useProviderSettingsController>;
+    selectedProvider: NonNullable<ReturnType<typeof useProviderSettingsController>['selection']['selectedProvider']>;
 }) {
-    const selectedProvider = controller.selection.selectedProvider!;
-
     return (
         <div className='flex w-full min-w-0 flex-col gap-4'>
             <div className='mb-4'>
@@ -172,7 +189,9 @@ function DirectProviderContent({
                 isLoadingOpenAIUsage={controller.providerStatus.isLoadingOpenAIUsage}
                 isLoadingOpenAIRateLimits={controller.providerStatus.isLoadingOpenAIRateLimits}
                 isRefreshingOpenAICodexUsage={controller.providerStatus.isRefreshingOpenAICodexUsage}
-                onRefreshOpenAICodexUsage={controller.providerStatus.refreshOpenAICodexUsage}
+                onRefreshOpenAICodexUsage={() => {
+                    void controller.providerStatus.refreshOpenAICodexUsage();
+                }}
             />
 
             <ProviderAuthenticationSection
@@ -197,20 +216,30 @@ function DirectProviderContent({
                 isPollingAuth={controller.authentication.isPollingAuth}
                 isCancellingAuth={controller.authentication.isCancellingAuth}
                 isOpeningVerificationPage={controller.authentication.isOpeningVerificationPage}
-                onConnectionProfileChange={controller.authentication.changeConnectionProfile}
-                onExecutionPreferenceChange={controller.authentication.changeExecutionPreference}
-                onSaveApiKey={(value) => {
-                    return controller.authentication.saveApiKey(value);
+                onConnectionProfileChange={(value) => {
+                    void controller.authentication.changeConnectionProfile(value);
                 }}
-                onSaveBaseUrlOverride={(value) => {
-                    return controller.authentication.saveBaseUrlOverride(value);
+                onExecutionPreferenceChange={(value) => {
+                    void controller.authentication.changeExecutionPreference(value);
                 }}
-                onLoadStoredCredential={controller.authentication.loadStoredCredential}
-                onStartOAuthDevice={controller.authentication.startOAuthDevice}
-                onStartDeviceCode={controller.authentication.startDeviceCode}
-                onPollNow={controller.authentication.pollNow}
-                onCancelFlow={controller.authentication.cancelFlow}
-                onOpenVerificationPage={controller.authentication.openVerificationPage}
+                onSaveApiKey={(value) => controller.authentication.saveApiKey(value)}
+                onSaveBaseUrlOverride={(value) => controller.authentication.saveBaseUrlOverride(value)}
+                onLoadStoredCredential={() => controller.authentication.loadStoredCredential()}
+                onStartOAuthDevice={() => {
+                    void controller.authentication.startOAuthDevice();
+                }}
+                onStartDeviceCode={() => {
+                    void controller.authentication.startDeviceCode();
+                }}
+                onPollNow={() => {
+                    void controller.authentication.pollNow();
+                }}
+                onCancelFlow={() => {
+                    void controller.authentication.cancelFlow();
+                }}
+                onOpenVerificationPage={() => {
+                    void controller.authentication.openVerificationPage();
+                }}
                 {...(controller.authentication.credentialSummary
                     ? { credentialSummary: controller.authentication.credentialSummary }
                     : {})}
@@ -233,9 +262,11 @@ function DirectProviderContent({
                         return;
                     }
 
-                    controller.models.setDefaultModel(modelId);
+                    void controller.models.setDefaultModel(modelId);
                 }}
-                onSyncCatalog={controller.models.syncCatalog}
+                onSyncCatalog={() => {
+                    void controller.models.syncCatalog();
+                }}
             />
         </div>
     );
@@ -267,9 +298,17 @@ function ProviderSettingsViewBody({ profileId, selectedProviderId, onProviderCha
             <div className='min-h-0 min-w-0 overflow-y-auto p-4 md:p-5'>
                 {selectedProvider ? (
                     selectedProvider.id === 'kilo' ? (
-                        <KiloProviderContent profileId={profileId} controller={controller} />
+                        <KiloProviderContent
+                            profileId={profileId}
+                            controller={controller}
+                            selectedProvider={selectedProvider}
+                        />
                     ) : (
-                        <DirectProviderContent profileId={profileId} controller={controller} />
+                        <DirectProviderContent
+                            profileId={profileId}
+                            controller={controller}
+                            selectedProvider={selectedProvider}
+                        />
                     )
                 ) : (
                     <div className='border-border/70 bg-card/40 space-y-2 rounded-[24px] border p-5'>

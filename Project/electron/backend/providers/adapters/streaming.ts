@@ -104,9 +104,7 @@ function parseChatDeltaParts(deltaValue: unknown): RuntimeParsedPart[] {
             parts.push(
                 ...textPart(
                     'text',
-                    item['text'] ??
-                        item['delta'] ??
-                        (isRecord(item['text']) ? item['text']['value'] : undefined)
+                    item['text'] ?? item['delta'] ?? (isRecord(item['text']) ? item['text']['value'] : undefined)
                 )
             );
         }
@@ -146,10 +144,7 @@ function parseResponsesPayloadByType(type: string, payload: Record<string, unkno
     return [];
 }
 
-export function parseResponsesStreamChunk(input: {
-    eventName?: string;
-    payload: unknown;
-}): {
+export function parseResponsesStreamChunk(input: { eventName?: string; payload: unknown }): {
     parts: RuntimeParsedPart[];
     usage?: ProviderRuntimeUsage;
 } {
@@ -240,7 +235,7 @@ async function consumeServerSentEvents(
         const decoder = new TextDecoder();
         let buffer = '';
 
-        while (true) {
+        for (;;) {
             const { done, value } = await reader.read();
             buffer += decoder.decode(value, { stream: !done });
             buffer = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');

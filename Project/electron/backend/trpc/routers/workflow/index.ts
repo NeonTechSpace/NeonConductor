@@ -4,8 +4,8 @@ import {
     projectWorkflowListInputSchema,
     projectWorkflowUpdateInputSchema,
 } from '@/app/backend/runtime/contracts';
-import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { workflowService } from '@/app/backend/runtime/services/workflows/service';
+import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
 export const workflowRouter = router({

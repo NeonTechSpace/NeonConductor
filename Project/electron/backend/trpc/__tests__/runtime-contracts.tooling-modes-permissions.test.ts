@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import type { EntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
-import { runtimeContractProfileId, registerRuntimeContractHooks, createCaller, getPersistence, isEntityId, mkdtempSync, os, path, writeFileSync } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    runtimeContractProfileId,
+    registerRuntimeContractHooks,
+    createCaller,
+    getPersistence,
+    isEntityId,
+    mkdtempSync,
+    os,
+    path,
+    writeFileSync,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { kiloFrontierModelId } from '@/shared/kiloModels';
-
 import {
     createProtocolModelCapabilities,
     createProtocolRuntimeOptions,
     protocolTestProfileId,
     resolveRuntimeProtocolForTest,
-} from './protocol.shared.test';
+} from '@/app/backend/runtime/services/runExecution/protocol.shared.test';
+
+import { kiloFrontierModelId } from '@/shared/kiloModels';
+
 
 describe('resolveRuntimeProtocol kilo gateway routing', () => {
     it('rejects OpenAI transport overrides for kilo gateway models', async () => {
@@ -137,3 +138,4 @@ describe('resolveRuntimeProtocol kilo gateway routing', () => {
         expect(result.value.transport.selected).toBe('kilo_gateway');
     });
 });
+

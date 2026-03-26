@@ -1,4 +1,5 @@
 import { settingsStore } from '@/app/backend/persistence/stores';
+import { resolveProviderBaseUrl } from '@/app/backend/providers/providerBaseUrls';
 import {
     getDefaultEndpointProfile,
     getProviderDefinition,
@@ -7,7 +8,6 @@ import {
     resolveProviderApiKeyCta,
     type FirstPartyProviderId,
 } from '@/app/backend/providers/registry';
-import { resolveProviderBaseUrl } from '@/app/backend/providers/providerBaseUrls';
 import {
     errProviderService,
     okProviderService,
@@ -61,8 +61,7 @@ function resolveSelectedOption(
         storedOptionProfileId && isValidEndpointProfile(providerId, storedOptionProfileId)
             ? storedOptionProfileId
             : fallbackOptionProfileId;
-    const definition =
-        providerDefinition.endpointProfiles.find((profile) => profile.value === optionProfileId) ??
+    const definition = providerDefinition.endpointProfiles.find((profile) => profile.value === optionProfileId) ??
         providerDefinition.endpointProfiles[0] ?? {
             value: optionProfileId,
             label: optionProfileId,

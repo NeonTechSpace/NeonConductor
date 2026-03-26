@@ -1,5 +1,13 @@
-import { appPromptLayerSettingsStore, builtInModePromptOverrideStore, settingsStore } from '@/app/backend/persistence/stores';
-import { normalizeModePromptDefinition, type PromptLayerSettings, type TopLevelTab } from '@/app/backend/runtime/contracts';
+import {
+    appPromptLayerSettingsStore,
+    builtInModePromptOverrideStore,
+    settingsStore,
+} from '@/app/backend/persistence/stores';
+import {
+    normalizeModePromptDefinition,
+    type PromptLayerSettings,
+    type TopLevelTab,
+} from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import {
     PROFILE_GLOBAL_INSTRUCTIONS_KEY,

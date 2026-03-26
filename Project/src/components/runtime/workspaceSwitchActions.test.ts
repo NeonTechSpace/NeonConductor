@@ -5,9 +5,7 @@ import { createSelectProfileAction } from '@/web/components/runtime/useWorkspace
 
 describe('workspace switch actions', () => {
     it('fails closed when profile switching rejects', async () => {
-        const mutateAsync = vi.fn(async () => {
-            throw new Error('profile switch failed');
-        });
+        const mutateAsync = vi.fn(() => Promise.reject(new Error('profile switch failed')));
         const selectProfile = createSelectProfileAction({
             resolvedProfileId: 'profile_default',
             mutateAsync,
@@ -20,7 +18,7 @@ describe('workspace switch actions', () => {
     });
 
     it('does not issue a profile mutation for the already-selected profile', async () => {
-        const mutateAsync = vi.fn(async () => undefined);
+        const mutateAsync = vi.fn(() => Promise.resolve(undefined));
         const selectProfile = createSelectProfileAction({
             resolvedProfileId: 'profile_default',
             mutateAsync,
@@ -31,9 +29,7 @@ describe('workspace switch actions', () => {
     });
 
     it('fails closed when mode switching rejects', async () => {
-        const mutateAsync = vi.fn(async () => {
-            throw new Error('mode switch failed');
-        });
+        const mutateAsync = vi.fn(() => Promise.reject(new Error('mode switch failed')));
         const selectMode = createSelectModeAction({
             resolvedProfileId: 'profile_default',
             topLevelTab: 'chat',
@@ -52,7 +48,7 @@ describe('workspace switch actions', () => {
     });
 
     it('does not issue a mode mutation while a mode update is already pending', async () => {
-        const mutateAsync = vi.fn(async () => undefined);
+        const mutateAsync = vi.fn(() => Promise.resolve(undefined));
         const selectMode = createSelectModeAction({
             resolvedProfileId: 'profile_default',
             topLevelTab: 'chat',
@@ -64,3 +60,4 @@ describe('workspace switch actions', () => {
         expect(mutateAsync).not.toHaveBeenCalled();
     });
 });
+

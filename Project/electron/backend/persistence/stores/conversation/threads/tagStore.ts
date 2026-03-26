@@ -114,7 +114,11 @@ export class TagStore {
         return rows.map(mapThreadTagRecord);
     }
 
-    async setThreadTags(profileId: string, threadId: string, tagIds: string[]): Promise<OperationalResult<ThreadTagRecord[]>> {
+    async setThreadTags(
+        profileId: string,
+        threadId: string,
+        tagIds: string[]
+    ): Promise<OperationalResult<ThreadTagRecord[]>> {
         const { db } = getPersistence();
         const now = nowIso();
         const dedupedTagIds = [...new Set(tagIds)];

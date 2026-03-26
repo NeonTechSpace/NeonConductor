@@ -5,24 +5,20 @@ import type {
     ProviderControlSnapshot,
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
-import type { ProviderSpecialistDefaultRecord } from '@/app/backend/runtime/contracts/types/provider';
-import type { RuntimeProviderId } from '@/shared/contracts';
 
-export function listProviderControlEntries(
-    snapshot: ProviderControlSnapshot | undefined
-): ProviderControlEntry[] {
+import type { RuntimeProviderId } from '@/shared/contracts';
+import type { ProviderSpecialistDefaultRecord } from '@/shared/contracts/types/provider';
+
+
+export function listProviderControlEntries(snapshot: ProviderControlSnapshot | undefined): ProviderControlEntry[] {
     return snapshot?.entries ?? [];
 }
 
-export function listProviderControlProviders(
-    snapshot: ProviderControlSnapshot | undefined
-): ProviderListItem[] {
+export function listProviderControlProviders(snapshot: ProviderControlSnapshot | undefined): ProviderListItem[] {
     return listProviderControlEntries(snapshot).map((entry) => entry.provider);
 }
 
-export function listProviderControlModels(
-    snapshot: ProviderControlSnapshot | undefined
-): ProviderModelRecord[] {
+export function listProviderControlModels(snapshot: ProviderControlSnapshot | undefined): ProviderModelRecord[] {
     return listProviderControlEntries(snapshot).flatMap((entry) => entry.models);
 }
 
@@ -55,3 +51,4 @@ export function getProviderControlCatalogState(
 ): ProviderCatalogState | undefined {
     return findProviderControlEntry(snapshot, providerId)?.catalogState;
 }
+

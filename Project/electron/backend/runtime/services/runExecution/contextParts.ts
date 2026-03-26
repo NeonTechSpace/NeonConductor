@@ -1,8 +1,9 @@
 import { Buffer } from 'node:buffer';
 
 import type { ProviderRuntimePart } from '@/app/backend/providers/types';
-import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
 import type { RunContextMessage, RunContextPart } from '@/app/backend/runtime/services/runExecution/types';
+
+import type { ComposerImageAttachmentInput } from '@/shared/contracts';
 
 export function createTextPart(text: string): RunContextPart | null {
     const normalized = text.trim();
@@ -16,11 +17,7 @@ export function createTextPart(text: string): RunContextPart | null {
     };
 }
 
-export function createToolCallPart(input: {
-    callId: string;
-    toolName: string;
-    argumentsText: string;
-}): RunContextPart {
+export function createToolCallPart(input: { callId: string; toolName: string; argumentsText: string }): RunContextPart {
     return {
         type: 'tool_call',
         callId: input.callId,
@@ -149,10 +146,7 @@ export function createReasoningPartFromProviderPart(
     return null;
 }
 
-export function createTextMessage(
-    role: RunContextMessage['role'],
-    text: string
-): RunContextMessage {
+export function createTextMessage(role: RunContextMessage['role'], text: string): RunContextMessage {
     const textPart = createTextPart(text);
     return {
         role,
@@ -268,3 +262,4 @@ export function hashablePartContent(part: RunContextPart): string {
 export function decodeAttachmentBytes(attachment: ComposerImageAttachmentInput): Uint8Array {
     return Uint8Array.from(Buffer.from(attachment.bytesBase64, 'base64'));
 }
+

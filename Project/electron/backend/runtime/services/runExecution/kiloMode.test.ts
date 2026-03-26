@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { resolveKiloModeHeader } from '@/app/backend/runtime/services/runExecution/kiloMode';
 
-import type { ModeDefinition } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition } from '@/shared/contracts';
+
 
 function createMode(topLevelTab: ModeDefinition['topLevelTab'], modeKey: string): ModeDefinition {
     return {
@@ -40,3 +41,4 @@ describe('resolveKiloModeHeader', () => {
         expect(resolveKiloModeHeader(createMode('agent', 'plan'))).toBeUndefined();
     });
 });
+

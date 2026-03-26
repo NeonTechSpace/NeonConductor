@@ -1,9 +1,10 @@
-import { WorkspaceDefaultsSection, formatTimestamp } from '@/web/components/workspaces/workspacesSurfaceSections';
 import { WorkspaceEnvironmentSection } from '@/web/components/workspaces/workspaceEnvironmentSection';
+import { WorkspaceDefaultsSection, formatTimestamp } from '@/web/components/workspaces/workspacesSurfaceSections';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
-import type { WorkspacePreferenceRecord } from '@/app/backend/runtime/contracts/types/runtime';
+
+import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
 
 export function WorkspaceDetailsPanel(input: {
     profileId: string;

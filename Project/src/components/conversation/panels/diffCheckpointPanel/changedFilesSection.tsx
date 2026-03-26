@@ -61,14 +61,16 @@ export function ChangedFilesSection({
                 <header className='border-border bg-background/60 flex min-h-11 items-center justify-between border-b px-3'>
                     <span className='text-sm font-medium'>Changed Files</span>
                     <span className='text-muted-foreground text-xs'>
-                        {selectedDiff.artifact.kind === 'git' ? `${String(selectedDiff.artifact.fileCount)} files` : 'Unavailable'}
+                        {selectedDiff.artifact.kind === 'git'
+                            ? `${String(selectedDiff.artifact.fileCount)} files`
+                            : 'Unavailable'}
                     </span>
                 </header>
                 {selectedDiff.artifact.kind === 'git' ? (
                     <div className='max-h-72 overflow-y-auto p-2'>
                         {fileGroups.map((group) => (
                             <div key={group.directory} className='mb-3 last:mb-0'>
-                                <p className='text-muted-foreground px-1 pb-1 font-mono text-[11px] uppercase tracking-[0.12em]'>
+                                <p className='text-muted-foreground px-1 pb-1 font-mono text-[11px] tracking-[0.12em] uppercase'>
                                     {group.directory}
                                 </p>
                                 <div className='space-y-1'>
@@ -114,10 +116,20 @@ export function ChangedFilesSection({
                 <header className='border-border bg-background/60 flex min-h-11 items-center justify-between border-b px-3'>
                     <span className='text-sm font-medium'>Checkpoints</span>
                     <div className='flex items-center gap-2'>
-                        <Button type='button' size='sm' variant={milestonesOnly ? 'default' : 'outline'} className='h-9' onClick={onToggleMilestonesOnly}>
+                        <Button
+                            type='button'
+                            size='sm'
+                            variant={milestonesOnly ? 'default' : 'outline'}
+                            className='h-9'
+                            onClick={onToggleMilestonesOnly}>
                             Milestones Only
                         </Button>
-                        <Button type='button' size='sm' variant='outline' className='h-9' onClick={onToggleCleanupPreview}>
+                        <Button
+                            type='button'
+                            size='sm'
+                            variant='outline'
+                            className='h-9'
+                            onClick={onToggleCleanupPreview}>
                             {cleanupPreviewOpen ? 'Hide Cleanup' : 'Review Cleanup'}
                         </Button>
                         <span className='text-muted-foreground text-xs'>{String(checkpointsCount)} saved</span>

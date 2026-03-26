@@ -1,5 +1,9 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-import { errProfileStore, okProfileStore, type ProfileStoreResult } from '@/app/backend/persistence/stores/profile/profileStoreErrors';
+import {
+    errProfileStore,
+    okProfileStore,
+    type ProfileStoreResult,
+} from '@/app/backend/persistence/stores/profile/profileStoreErrors';
 import {
     createProfileId,
     createTimestamp,

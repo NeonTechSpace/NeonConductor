@@ -1,25 +1,22 @@
+import { providerCatalogStore } from '@/app/backend/persistence/stores';
 import {
     errProviderAdapter,
     okProviderAdapter,
     type ProviderAdapterResult,
 } from '@/app/backend/providers/adapters/errors';
-import {
-    executeHttpFallback,
-    type HttpRuntimeRequest,
-} from '@/app/backend/providers/adapters/httpFallback';
+import { executeHttpFallback, type HttpRuntimeRequest } from '@/app/backend/providers/adapters/httpFallback';
+import { miniMaxOpenAICompatibilitySpecialization } from '@/app/backend/providers/adapters/providerNative/minimax';
 import {
     emitRuntimeLifecycleSelection,
     failRuntimeAdapter,
     mapHttpFallbackFailureStage,
 } from '@/app/backend/providers/adapters/runtimeLifecycle';
+import type { RuntimeParsedCompletion } from '@/app/backend/providers/adapters/runtimePayload';
+import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
 import {
     consumeStrictServerSentEvents,
     type StrictServerSentEventFrame,
 } from '@/app/backend/providers/adapters/strictServerSentEvents';
-import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
-import { providerCatalogStore } from '@/app/backend/persistence/stores';
-import type { RuntimeParsedCompletion } from '@/app/backend/providers/adapters/runtimePayload';
-import { miniMaxOpenAICompatibilitySpecialization } from '@/app/backend/providers/adapters/providerNative/minimax';
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
 import { resolveProviderRuntimePathContext } from '@/app/backend/providers/runtimePathContext';
 import type {
@@ -177,7 +174,11 @@ export async function streamProviderNativeRuntime(
     input: ProviderRuntimeInput,
     handlers: ProviderRuntimeHandlers
 ): Promise<ProviderAdapterResult<void>> {
-    const specialization = await resolveProviderNativeRuntimeSpecialization(input.providerId, input.modelId, input.profileId);
+    const specialization = await resolveProviderNativeRuntimeSpecialization(
+        input.providerId,
+        input.modelId,
+        input.profileId
+    );
     if (!specialization) {
         return unsupportedProviderNativeRuntime(input);
     }
@@ -292,7 +293,6 @@ export function unsupportedProviderNativeRuntime(
 ): ProviderAdapterResult<never> {
     return errProviderAdapter(
         'invalid_payload',
-        message ??
-            `Model "${input.modelId}" requires a provider-native runtime specialization that is not registered.`
+        message ?? `Model "${input.modelId}" requires a provider-native runtime specialization that is not registered.`
     );
 }

@@ -1,3 +1,5 @@
+import { formatRuntimeCapabilityIssue, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
+
 import type { ModeDefinitionRecord, ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
 
 import type {
@@ -8,7 +10,6 @@ import type {
     RuntimeRunOptions,
 } from '@/shared/contracts';
 import { providerIds } from '@/shared/contracts';
-import { formatRuntimeCapabilityIssue, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
 export const DEFAULT_REASONING_EFFORT: RuntimeReasoningEffort = 'medium';
 

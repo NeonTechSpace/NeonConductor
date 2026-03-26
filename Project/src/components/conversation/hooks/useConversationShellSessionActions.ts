@@ -84,7 +84,9 @@ export function useConversationShellSessionActions(input: UseConversationShellSe
                 return;
             }
 
-            setSessionTargetBySessionId((current) => applySessionModelOverride(current, sessionId, providerId, modelId));
+            setSessionTargetBySessionId((current) =>
+                applySessionModelOverride(current, sessionId, providerId, modelId)
+            );
             input.onClearError();
         },
         resetSessionActions: () => {
@@ -100,7 +102,9 @@ export function useConversationShellSessionActions(input: UseConversationShellSe
             }
 
             const sessionId = input.selectedSessionId;
-            setSessionTargetBySessionId((current) => applySessionProviderOverride(current, sessionId, providerId, firstModelId));
+            setSessionTargetBySessionId((current) =>
+                applySessionProviderOverride(current, sessionId, providerId, firstModelId)
+            );
             input.onClearError();
         },
         onModelChange: (providerId: RuntimeProviderId | undefined, modelId: string) => {
@@ -109,7 +113,9 @@ export function useConversationShellSessionActions(input: UseConversationShellSe
             }
 
             const sessionId = input.selectedSessionId;
-            setSessionTargetBySessionId((current) => applySessionModelOverride(current, sessionId, providerId, modelId));
+            setSessionTargetBySessionId((current) =>
+                applySessionModelOverride(current, sessionId, providerId, modelId)
+            );
             input.onClearError();
         },
         onCreateSession: () => {
@@ -130,4 +136,3 @@ export function useConversationShellSessionActions(input: UseConversationShellSe
         },
     };
 }
-

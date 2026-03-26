@@ -1,8 +1,12 @@
 import { toolStore } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
-import type { ModeDefinition } from '@/app/backend/runtime/contracts';
 import { mcpService } from '@/app/backend/runtime/services/mcp/service';
-import { modeAllowsToolCapabilities, modeRequiresNativeTools } from '@/app/backend/runtime/services/mode/toolCapabilities';
+import {
+    modeAllowsToolCapabilities,
+    modeRequiresNativeTools,
+} from '@/app/backend/runtime/services/mode/toolCapabilities';
+
+import type { ModeDefinition } from '@/shared/contracts';
 
 const TOOL_INPUT_SCHEMAS: Record<string, ProviderRuntimeToolDefinition['inputSchema']> = {
     list_files: {
@@ -63,7 +67,9 @@ export function runModeRequiresNativeTools(input: { mode: ModeDefinition }): boo
     return modeRequiresNativeTools(input.mode);
 }
 
-export async function resolveRuntimeToolsForMode(input: { mode: ModeDefinition }): Promise<ProviderRuntimeToolDefinition[]> {
+export async function resolveRuntimeToolsForMode(input: {
+    mode: ModeDefinition;
+}): Promise<ProviderRuntimeToolDefinition[]> {
     if (!modeRequiresNativeTools(input.mode)) {
         return [];
     }
@@ -88,3 +94,4 @@ export async function resolveRuntimeToolsForMode(input: { mode: ModeDefinition }
     const mcpTools = modeAllowsToolCapabilities(input.mode, ['mcp']) ? await mcpService.listRuntimeTools() : [];
     return [...nativeTools, ...mcpTools];
 }
+

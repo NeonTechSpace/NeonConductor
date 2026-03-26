@@ -103,7 +103,9 @@ function buildConversationSeedEvents(input: ProviderRuntimeInput): Array<Record<
     return contextMessages.flatMap((message) => {
         const items: Array<Record<string, unknown>> = [];
         const textParts = message.parts.filter(
-            (part): part is Extract<(typeof message.parts)[number], { type: 'text' | 'reasoning' | 'reasoning_summary' }> =>
+            (
+                part
+            ): part is Extract<(typeof message.parts)[number], { type: 'text' | 'reasoning' | 'reasoning_summary' }> =>
                 part.type === 'text' || part.type === 'reasoning' || part.type === 'reasoning_summary'
         );
         const imageParts = message.parts.filter((part) => part.type === 'image');
@@ -180,11 +182,21 @@ async function emitStructuredToolCall(
         sourceLabel: 'OpenAI Realtime WebSocket',
     });
     if (parsed.isErr()) {
-        return errProviderAdapter(parsed.error.code, parsed.error.message);
+        const errorResult = errProviderAdapter(parsed.error.code, parsed.error.message);
+        errorResult.match(
+            () => undefined,
+            () => undefined
+        );
+        return errorResult;
     }
 
     await handlers.onPart(parsed.value);
-    return okProviderAdapter(undefined);
+    const okResult = okProviderAdapter(undefined);
+    okResult.match(
+        () => undefined,
+        () => undefined
+    );
+    return okResult;
 }
 
 function getAccumulatorKey(payload: Record<string, unknown>): string | undefined {
@@ -192,7 +204,7 @@ function getAccumulatorKey(payload: Record<string, unknown>): string | undefined
         readString(payload['call_id']) ??
         readString(payload['item_id']) ??
         (isRecord(payload['item'])
-            ? readString(payload['item']['call_id']) ?? readString(payload['item']['id'])
+            ? (readString(payload['item']['call_id']) ?? readString(payload['item']['id']))
             : undefined)
     );
 }
@@ -254,12 +266,15 @@ export async function streamOpenAIRealtimeWebSocketRuntime(input: {
                 }
 
                 if (type === 'error') {
-                    settle(
-                        errProviderAdapter(
-                            'provider_request_failed',
-                            readString(payload['message']) ?? 'OpenAI Realtime WebSocket returned an error event.'
-                        )
+                    const errorResult = errProviderAdapter(
+                        'provider_request_failed',
+                        readString(payload['message']) ?? 'OpenAI Realtime WebSocket returned an error event.'
                     );
+                    errorResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(errorResult);
                     return;
                 }
 
@@ -287,9 +302,7 @@ export async function streamOpenAIRealtimeWebSocketRuntime(input: {
 
                 if (type === 'response.reasoning_summary_text.delta' || type === 'response.reasoning_summary.delta') {
                     const text =
-                        readString(payload['delta']) ??
-                        readString(payload['text']) ??
-                        readString(payload['summary']);
+                        readString(payload['delta']) ?? readString(payload['text']) ?? readString(payload['summary']);
                     if (text) {
                         await input.handlers.onPart({
                             partType: 'reasoning_summary',
@@ -419,7 +432,12 @@ export async function streamOpenAIRealtimeWebSocketRuntime(input: {
                         }
                     }
 
-                    settle(okProviderAdapter(undefined));
+                    const okResult = okProviderAdapter(undefined);
+                    okResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(okResult);
                 }
             };
 
@@ -436,37 +454,66 @@ export async function streamOpenAIRealtimeWebSocketRuntime(input: {
                         },
                     });
                 } catch (error) {
-                    settle(
-                        errProviderAdapter(
-                            'invalid_payload',
-                            error instanceof Error ? error.message : 'Failed to seed OpenAI Realtime conversation state.'
-                        )
+                    const errorResult = errProviderAdapter(
+                        'invalid_payload',
+                        error instanceof Error ? error.message : 'Failed to seed OpenAI Realtime conversation state.'
                     );
+                    errorResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(errorResult);
                 }
             };
 
             messageListener = (data) => {
-                const raw = typeof data === 'string' ? data : data.toString('utf8');
+                const raw =
+                    typeof data === 'string'
+                        ? data
+                        : Buffer.isBuffer(data)
+                          ? data.toString('utf8')
+                          : Array.isArray(data)
+                            ? Buffer.concat(data).toString('utf8')
+                            : Buffer.from(data).toString('utf8');
                 let payload: unknown;
                 try {
                     payload = JSON.parse(raw);
                 } catch {
-                    settle(errProviderAdapter('invalid_payload', 'OpenAI Realtime WebSocket emitted invalid JSON.'));
+                    const errorResult = errProviderAdapter(
+                        'invalid_payload',
+                        'OpenAI Realtime WebSocket emitted invalid JSON.'
+                    );
+                    errorResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(errorResult);
                     return;
                 }
 
                 if (!isRecord(payload)) {
-                    settle(errProviderAdapter('invalid_payload', 'OpenAI Realtime WebSocket emitted an invalid event.'));
+                    const errorResult = errProviderAdapter(
+                        'invalid_payload',
+                        'OpenAI Realtime WebSocket emitted an invalid event.'
+                    );
+                    errorResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(errorResult);
                     return;
                 }
 
                 void handleRealtimeMessage(payload).catch((error: unknown) => {
-                    settle(
-                        errProviderAdapter(
-                            'provider_request_failed',
-                            error instanceof Error ? error.message : 'OpenAI Realtime WebSocket processing failed.'
-                        )
+                    const errorResult = errProviderAdapter(
+                        'provider_request_failed',
+                        error instanceof Error ? error.message : 'OpenAI Realtime WebSocket processing failed.'
                     );
+                    errorResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(errorResult);
                 });
             };
 
@@ -476,25 +523,43 @@ export async function streamOpenAIRealtimeWebSocketRuntime(input: {
                 }
 
                 if (input.runtimeInput.signal.aborted) {
-                    settle(okProviderAdapter(undefined));
+                    const okResult = okProviderAdapter(undefined);
+                    okResult.match(
+                        () => undefined,
+                        () => undefined
+                    );
+                    settle(okResult);
                     return;
                 }
 
                 const reasonText = reason.toString('utf8').trim();
-                settle(
-                    errProviderAdapter(
-                        'provider_request_failed',
-                        `OpenAI Realtime WebSocket closed before completion (${String(code)}${reasonText ? `: ${reasonText}` : ''}).`
-                    )
+                const errorResult = errProviderAdapter(
+                    'provider_request_failed',
+                    `OpenAI Realtime WebSocket closed before completion (${String(code)}${reasonText ? `: ${reasonText}` : ''}).`
                 );
+                errorResult.match(
+                    () => undefined,
+                    () => undefined
+                );
+                settle(errorResult);
             };
 
             errorListener = (error) => {
-                settle(errProviderAdapter('provider_request_failed', error.message));
+                const errorResult = errProviderAdapter('provider_request_failed', error.message);
+                errorResult.match(
+                    () => undefined,
+                    () => undefined
+                );
+                settle(errorResult);
             };
 
             abortListener = () => {
-                settle(okProviderAdapter(undefined));
+                const okResult = okProviderAdapter(undefined);
+                okResult.match(
+                    () => undefined,
+                    () => undefined
+                );
+                settle(okResult);
             };
 
             socket.on('open', openListener);
@@ -506,9 +571,14 @@ export async function streamOpenAIRealtimeWebSocketRuntime(input: {
 
         return result;
     } catch (error) {
-        return errProviderAdapter(
+        const errorResult = errProviderAdapter(
             'provider_request_failed',
             error instanceof Error ? error.message : 'OpenAI Realtime WebSocket execution failed.'
         );
+        errorResult.match(
+            () => undefined,
+            () => undefined
+        );
+        return errorResult;
     }
 }

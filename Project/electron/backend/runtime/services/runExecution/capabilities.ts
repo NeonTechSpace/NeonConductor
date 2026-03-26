@@ -1,12 +1,18 @@
 import { getProviderRuntimeBehavior } from '@/app/backend/providers/behaviors';
 import type { ProviderModelCapabilities } from '@/app/backend/providers/types';
-import type { ModeDefinition, RuntimeProviderId, RuntimeRunOptions, TopLevelTab } from '@/app/backend/runtime/contracts';
 import {
     errRunExecution,
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
 import { runModeRequiresNativeTools } from '@/app/backend/runtime/services/runExecution/tools';
+
+import type {
+    ModeDefinition,
+    RuntimeProviderId,
+    RuntimeRunOptions,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 interface ValidateRunCapabilitiesInput {
     providerId: RuntimeProviderId;
@@ -58,3 +64,4 @@ export function validateRunCapabilities(input: ValidateRunCapabilitiesInput): Ru
 
     return okRunExecution(undefined);
 }
+

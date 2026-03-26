@@ -118,8 +118,9 @@ describe('runtime contracts: provider and account flows', () => {
         process.env['OPENAI_BASE_URL'] = 'https://api.minimax.io/v1';
 
         try {
-            const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
-                Promise.resolve({
+            const fetchMock = vi.fn((...requestArguments: Parameters<typeof fetch>) => {
+                void requestArguments;
+                return Promise.resolve({
                     ok: true,
                     status: 200,
                     statusText: 'OK',
@@ -143,8 +144,8 @@ describe('runtime contracts: provider and account flows', () => {
                             total_tokens: 18,
                         },
                     }),
-                })
-            );
+                });
+            });
             vi.stubGlobal('fetch', fetchMock);
 
             const configured = await caller.provider.setApiKey({
@@ -242,12 +243,11 @@ describe('runtime contracts: provider and account flows', () => {
             });
             expect(runs.runs[0]?.transport?.selected).toBe('provider_native');
 
-            const firstRequestInit = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+            const firstRequestInit = fetchMock.mock.calls[0]?.[1];
             expect(firstRequestInit).toBeDefined();
+            const firstRequestBodyText = firstRequestInit?.body;
             const firstRequestBody =
-                firstRequestInit && typeof firstRequestInit.body === 'string'
-                    ? JSON.parse(firstRequestInit.body)
-                    : undefined;
+                typeof firstRequestBodyText === 'string' ? (JSON.parse(firstRequestBodyText) as Record<string, unknown>) : undefined;
             expect(firstRequestBody?.['reasoning_split']).toBe(true);
         } finally {
             if (originalOpenAIBaseUrl === undefined) {
@@ -484,5 +484,4 @@ describe('runtime contracts: provider and account flows', () => {
             }
         }
     });
-
 });

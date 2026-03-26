@@ -73,10 +73,7 @@ export class ProviderCatalogStore {
                 model: mapProviderCatalogModel(row),
             };
         } catch (error) {
-            if (
-                error instanceof Error &&
-                error.message.includes('is missing a valid runtime descriptor')
-            ) {
+            if (error instanceof Error && error.message.includes('is missing a valid runtime descriptor')) {
                 return {
                     kind: 'invalid',
                     diagnostic: {
@@ -97,7 +94,10 @@ export class ProviderCatalogStore {
         }
     }
 
-    private async readProviderModels(profileId: string, providerId?: RuntimeProviderId): Promise<PersistedProviderModelReadState[]> {
+    private async readProviderModels(
+        profileId: string,
+        providerId?: RuntimeProviderId
+    ): Promise<PersistedProviderModelReadState[]> {
         const { db } = getPersistence();
 
         let query = db
@@ -144,7 +144,10 @@ export class ProviderCatalogStore {
         );
     }
 
-    async listInvalidModelDiagnostics(profileId: string, providerId: RuntimeProviderId): Promise<InvalidProviderModelDiagnostic[]> {
+    async listInvalidModelDiagnostics(
+        profileId: string,
+        providerId: RuntimeProviderId
+    ): Promise<InvalidProviderModelDiagnostic[]> {
         const states = await this.readProviderModels(profileId, providerId);
         return states.flatMap((state) => (state.kind === 'invalid' ? [state.diagnostic] : []));
     }
@@ -259,7 +262,12 @@ export class ProviderCatalogStore {
         const { db } = getPersistence();
         const updatedAt = nowIso();
         const dedupedModels = Array.from(
-            models.reduce((accumulator, model) => accumulator.set(model.modelId, model), new Map<string, ProviderCatalogModelUpsert>()).values()
+            models
+                .reduce(
+                    (accumulator, model) => accumulator.set(model.modelId, model),
+                    new Map<string, ProviderCatalogModelUpsert>()
+                )
+                .values()
         );
         const normalizedModels = dedupedModels.map(normalizeComparableModel);
 
@@ -332,7 +340,11 @@ export class ProviderCatalogStore {
                     supports_audio_input: model.features.supportsAudioInput ? 1 : 0,
                     supports_audio_output: model.features.supportsAudioOutput ? 1 : 0,
                     supports_prompt_cache:
-                        model.features.supportsPromptCache === undefined ? null : model.features.supportsPromptCache ? 1 : 0,
+                        model.features.supportsPromptCache === undefined
+                            ? null
+                            : model.features.supportsPromptCache
+                              ? 1
+                              : 0,
                     tool_protocol: model.runtime.toolProtocol,
                     api_family: model.runtime.apiFamily ?? null,
                     routed_api_family:

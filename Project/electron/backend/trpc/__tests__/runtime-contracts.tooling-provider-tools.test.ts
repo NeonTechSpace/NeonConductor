@@ -1,6 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runtimeContractProfileId, registerRuntimeContractHooks, createCaller, defaultRuntimeOptions, getPersistence, mkdtempSync, os, path, requireEntityId, rmSync, waitForRunStatus, writeFileSync } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    runtimeContractProfileId,
+    registerRuntimeContractHooks,
+    createCaller,
+    defaultRuntimeOptions,
+    getPersistence,
+    mkdtempSync,
+    os,
+    path,
+    requireEntityId,
+    rmSync,
+    waitForRunStatus,
+    writeFileSync,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 
@@ -139,7 +152,7 @@ describe('runtime contracts: permissions and tooling', () => {
                 (part) =>
                     part.partType === 'tool_result' &&
                     typeof part.payload['outputText'] === 'string' &&
-                    String(part.payload['outputText']).includes('native tool loop')
+                    part.payload['outputText'].includes('native tool loop')
             )
         ).toBe(true);
 
@@ -147,9 +160,7 @@ describe('runtime contracts: permissions and tooling', () => {
         const secondCallInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
         expect(secondCallInit).toBeDefined();
         const secondCallBody =
-            secondCallInit && typeof secondCallInit.body === 'string'
-                ? JSON.parse(secondCallInit.body)
-                : undefined;
+            secondCallInit && typeof secondCallInit.body === 'string' ? JSON.parse(secondCallInit.body) : undefined;
         expect(JSON.stringify(secondCallBody)).toContain('function_call_output');
         expect(JSON.stringify(secondCallBody)).toContain('call_readme');
 
@@ -242,9 +253,11 @@ describe('runtime contracts: permissions and tooling', () => {
                 .fn()
                 .mockResolvedValueOnce(
                     new Response(
-                        [...streamedFrames.flatMap((frame) => [`data: ${JSON.stringify(frame)}`, '']), 'data: [DONE]', ''].join(
-                            '\n'
-                        ),
+                        [
+                            ...streamedFrames.flatMap((frame) => [`data: ${JSON.stringify(frame)}`, '']),
+                            'data: [DONE]',
+                            '',
+                        ].join('\n'),
                         {
                             headers: {
                                 'content-type': 'text/event-stream',
@@ -406,7 +419,7 @@ describe('runtime contracts: permissions and tooling', () => {
                     (part) =>
                         part.partType === 'reasoning' &&
                         typeof part.payload['text'] === 'string' &&
-                        String(part.payload['text']).length > 0
+                        part.payload['text'].length > 0
                 )
             ).toBe(true);
             expect(
@@ -422,7 +435,7 @@ describe('runtime contracts: permissions and tooling', () => {
                     (part) =>
                         part.partType === 'tool_result' &&
                         typeof part.payload['outputText'] === 'string' &&
-                        String(part.payload['outputText']).includes('provider native tool loop')
+                        part.payload['outputText'].includes('provider native tool loop')
                 )
             ).toBe(true);
 
@@ -430,9 +443,7 @@ describe('runtime contracts: permissions and tooling', () => {
             const secondCallInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
             expect(secondCallInit).toBeDefined();
             const secondCallBody =
-                secondCallInit && typeof secondCallInit.body === 'string'
-                    ? JSON.parse(secondCallInit.body)
-                    : undefined;
+                secondCallInit && typeof secondCallInit.body === 'string' ? JSON.parse(secondCallInit.body) : undefined;
             expect(JSON.stringify(secondCallBody)).toContain('tool_call_id');
             expect(JSON.stringify(secondCallBody)).toContain('call_readme');
         } finally {
@@ -680,7 +691,7 @@ describe('runtime contracts: permissions and tooling', () => {
                         part.partType === 'tool_result' &&
                         part.payload['callId'] === syntheticCallId &&
                         typeof part.payload['outputText'] === 'string' &&
-                        String(part.payload['outputText']).includes('direct gemini tool loop')
+                        part.payload['outputText'].includes('direct gemini tool loop')
                 )
             ).toBe(true);
             expect(
@@ -688,7 +699,7 @@ describe('runtime contracts: permissions and tooling', () => {
                     (part) =>
                         part.partType === 'reasoning_summary' &&
                         typeof part.payload['text'] === 'string' &&
-                        String(part.payload['text']).includes('Need to inspect')
+                        part.payload['text'].includes('Need to inspect')
                 )
             ).toBe(true);
 
@@ -696,9 +707,7 @@ describe('runtime contracts: permissions and tooling', () => {
             const secondCallInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
             expect(secondCallInit).toBeDefined();
             const secondCallBody =
-                secondCallInit && typeof secondCallInit.body === 'string'
-                    ? JSON.parse(secondCallInit.body)
-                    : undefined;
+                secondCallInit && typeof secondCallInit.body === 'string' ? JSON.parse(secondCallInit.body) : undefined;
             expect(JSON.stringify(secondCallBody)).toContain('functionCall');
             expect(JSON.stringify(secondCallBody)).toContain('functionResponse');
             expect(JSON.stringify(secondCallBody)).toContain('read_file');
