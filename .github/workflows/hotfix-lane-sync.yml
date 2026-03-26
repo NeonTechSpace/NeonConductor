@@ -44,6 +44,40 @@ jobs:
             const mergeSha = (pr.merge_commit_sha || "").trim();
             const isHotfixBranch = /^[^/]+\/hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(head);
             const isLaneSyncBranch = head.startsWith("lane-sync/");
+            const allowedCarryLabels = [
+              "ignore-for-release",
+              "release: hotfix",
+              "type: breaking",
+              "type: bug",
+              "type: feature",
+              "type: chore",
+              "type: build",
+              "type: ci",
+              "type: docs",
+              "type: dependencies",
+              "type: refactor",
+              "type: test",
+              "type: performance",
+              "type: ui-ux",
+              "type: style",
+              "type: revert",
+              "type: security",
+              "scope: agent-core",
+              "scope: orchestration",
+              "scope: tools",
+              "scope: memory",
+              "scope: ui",
+              "scope: api",
+              "scope: integrations",
+              "scope: infra",
+              "scope: docs",
+              "scope: tests",
+              "scope: dependencies",
+              "release:bump:none",
+              "release:bump:patch",
+              "release:bump:minor",
+              "release:bump:major",
+            ];
 
             function parseMetadata(body) {
               const match = String(body || "").match(
@@ -57,23 +91,27 @@ jobs:
               }
             }
 
-            async function listChangesetFiles(pullNumber) {
-              const files = await github.paginate(github.rest.pulls.listFiles, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pullNumber,
-                per_page: 100,
-              });
+            function parseReleaseBump(body) {
+              const match = String(body || "").match(/^\s*Release-Bump:\s*(none|patch|minor|major)\s*$/im);
+              return match ? match[1].toLowerCase() : "none";
+            }
 
+            function releaseBumpFromPullRequest(pullRequest) {
+              const labels = new Set((pullRequest.labels || []).map((label) => label.name));
+              for (const bump of ["major", "minor", "patch", "none"]) {
+                if (labels.has(`release:bump:${bump}`)) {
+                  return bump;
+                }
+              }
+              return parseReleaseBump(pullRequest.body || "");
+            }
+
+            function carriedLabelsFromPullRequest(pullRequest) {
               return [...new Set(
-                files
-                  .map((file) => (file.filename || "").trim())
-                  .filter((filename) =>
-                    filename.startsWith("Project/.changeset/") &&
-                    filename.endsWith(".md") &&
-                    filename !== "Project/.changeset/README.md"
-                  )
-              )].sort((a, b) => a.localeCompare(b));
+                (pullRequest.labels || [])
+                  .map((label) => label.name)
+                  .filter((label) => allowedCarryLabels.includes(label))
+              )].sort((left, right) => left.localeCompare(right));
             }
 
             if (!mergeSha) {
@@ -89,8 +127,8 @@ jobs:
                 origin_base: base,
                 origin_head: head,
                 origin_merge_sha: mergeSha,
-                changeset_files: await listChangesetFiles(pr.number),
-                changeset_consumed_by_main: false,
+                release_bump: releaseBumpFromPullRequest(pr),
+                carried_labels: carriedLabelsFromPullRequest(pr),
               };
             } else if (isLaneSyncBranch) {
               metadata = parseMetadata(pr.body || "");
@@ -176,57 +214,6 @@ jobs:
               git cherry-pick -x "$MERGE_SHA"
             fi
 
-            consumed_on_main="$(
-              METADATA_JSON="$METADATA_JSON" node --input-type=module - <<'NODE'
-              import { execFileSync } from "node:child_process";
-              const metadata = JSON.parse(process.env.METADATA_JSON);
-              const files = Array.isArray(metadata.changeset_files) ? metadata.changeset_files : [];
-              if (files.length === 0) {
-                process.stdout.write("false");
-                process.exit(0);
-              }
-              process.stdout.write(
-                files.every((file) => {
-                  try {
-                    execFileSync("git", ["cat-file", "-e", `origin/main:${file}`], {
-                      stdio: ["ignore", "ignore", "ignore"],
-                    });
-                    return false;
-                  } catch {
-                    return true;
-                  }
-                })
-                  ? "true"
-                  : "false",
-              );
-              NODE
-            )"
-
-            if [ "$target" != "main" ] && [ "$consumed_on_main" = "true" ]; then
-              METADATA_JSON="$METADATA_JSON" node --input-type=module - <<'NODE' | while IFS= read -r file_path; do
-              const metadata = JSON.parse(process.env.METADATA_JSON);
-              const files = Array.isArray(metadata.changeset_files) ? metadata.changeset_files : [];
-              process.stdout.write(`${files.join("\n")}\n`);
-              NODE
-                [ -z "${file_path:-}" ] && continue
-                if git ls-files --error-unmatch "$file_path" >/dev/null 2>&1; then
-                  git rm --quiet -- "$file_path"
-                fi
-              done
-
-              if ! git diff --cached --quiet; then
-                git commit -m "chore(release): remove consumed hotfix changeset before syncing to ${target}"
-              fi
-            fi
-
-            metadata_for_target="$(
-              METADATA_JSON="$METADATA_JSON" CONSUMED_ON_MAIN="$consumed_on_main" node --input-type=module - <<'NODE'
-              const metadata = JSON.parse(process.env.METADATA_JSON);
-              metadata.changeset_consumed_by_main = process.env.CONSUMED_ON_MAIN === "true";
-              process.stdout.write(JSON.stringify(metadata));
-              NODE
-            )"
-
             if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/$target)" ]; then
               echo "No sync changes remained for ${source} -> ${target}; skipping."
               continue
@@ -235,7 +222,7 @@ jobs:
             git push --force-with-lease origin "$branch"
 
             comment="$(
-              METADATA_JSON="$metadata_for_target" node --input-type=module - <<'NODE'
+              METADATA_JSON="$METADATA_JSON" node --input-type=module - <<'NODE'
               import { buildHotfixSyncMetadataComment } from "./.github/scripts/hotfix-sync-metadata.mjs";
               process.stdout.write(
                 buildHotfixSyncMetadataComment(JSON.parse(process.env.METADATA_JSON)),
@@ -243,25 +230,44 @@ jobs:
               NODE
             )"
 
-            changeset_lines="$(
-              METADATA_JSON="$metadata_for_target" node --input-type=module - <<'NODE'
+            release_bump="$(
+              METADATA_JSON="$METADATA_JSON" node --input-type=module - <<'NODE'
               const metadata = JSON.parse(process.env.METADATA_JSON);
-              const files = Array.isArray(metadata.changeset_files) ? metadata.changeset_files : [];
+              process.stdout.write(metadata.release_bump || "none");
+              NODE
+            )"
+
+            carried_labels="$(
+              METADATA_JSON="$METADATA_JSON" node --input-type=module - <<'NODE'
+              const metadata = JSON.parse(process.env.METADATA_JSON);
+              const labels = Array.isArray(metadata.carried_labels) ? metadata.carried_labels : [];
               process.stdout.write(
-                files.length > 0 ? files.map((file) => `- \`${file}\``).join("\n") : "- _none_",
+                labels.length > 0 ? labels.map((label) => `- \`${label}\``).join("\n") : "- _none_",
               );
               NODE
             )"
 
-            ORIGIN_PR="$ORIGIN_PR" SOURCE="$source" TARGET="$target" MERGE_SHA="$MERGE_SHA" CHANGESET_LINES="$changeset_lines" COMMENT="$comment" node --input-type=module - <<'NODE' > sync-pr-body.md
+            labels_json="$(
+              METADATA_JSON="$METADATA_JSON" node --input-type=module - <<'NODE'
+              const metadata = JSON.parse(process.env.METADATA_JSON);
+              const labels = new Set(["automation: lane-sync", "ignore-for-release"]);
+              for (const label of Array.isArray(metadata.carried_labels) ? metadata.carried_labels : []) {
+                labels.add(label);
+              }
+              process.stdout.write(JSON.stringify({ labels: [...labels].sort((a, b) => a.localeCompare(b)) }));
+              NODE
+            )"
+
+            ORIGIN_PR="$ORIGIN_PR" SOURCE="$source" TARGET="$target" MERGE_SHA="$MERGE_SHA" RELEASE_BUMP="$release_bump" CARRIED_LABELS="$carried_labels" COMMENT="$comment" node --input-type=module - <<'NODE' > sync-pr-body.md
             const lines = [
               `Auto-generated lane sync after merging #${process.env.ORIGIN_PR}.`,
               "",
               `This PR cherry-picks \`${process.env.MERGE_SHA}\` from \`${process.env.SOURCE}\` into \`${process.env.TARGET}\` so the hotfix continues through the release lanes.`,
               "",
               `Origin hotfix PR: #${process.env.ORIGIN_PR}`,
-              "Changeset files carried:",
-              process.env.CHANGESET_LINES || "- _none_",
+              `Release-Bump: ${process.env.RELEASE_BUMP || "none"}`,
+              "Carried labels:",
+              process.env.CARRIED_LABELS || "- _none_",
               "",
               process.env.COMMENT || "",
             ];
@@ -284,6 +290,11 @@ jobs:
                 --repo "${REPO_OWNER}/${REPO_NAME}" \
                 --title "$title" \
                 --body-file sync-pr-body.md
+              gh api \
+                --method PUT \
+                -H "Accept: application/vnd.github+json" \
+                "repos/${REPO_OWNER}/${REPO_NAME}/issues/${existing_pr}/labels" \
+                --input - <<< "$labels_json"
             else
               gh pr create \
                 --repo "${REPO_OWNER}/${REPO_NAME}" \
@@ -293,5 +304,23 @@ jobs:
                 --body-file sync-pr-body.md \
                 --label "automation: lane-sync" \
                 --label "ignore-for-release"
+
+              created_pr="$(
+                gh pr list \
+                  --repo "${REPO_OWNER}/${REPO_NAME}" \
+                  --head "$branch" \
+                  --base "$target" \
+                  --state open \
+                  --json number \
+                  --jq '.[0].number // ""'
+              )"
+
+              if [ -n "$created_pr" ]; then
+                gh api \
+                  --method PUT \
+                  -H "Accept: application/vnd.github+json" \
+                  "repos/${REPO_OWNER}/${REPO_NAME}/issues/${created_pr}/labels" \
+                  --input - <<< "$labels_json"
+              fi
             fi
           done <<< "$TARGET_PLANS"

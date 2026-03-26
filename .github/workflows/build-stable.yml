@@ -54,7 +54,7 @@ jobs:
           set -euo pipefail
           changed="$(git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA")"
           echo "$changed"
-          if [[ "$PR_HEAD_REF" != "changeset-release/main" ]]; then
+          if [[ "$PR_HEAD_REF" != "release-bot/main" ]]; then
             echo "Not an automation release PR branch. Skipping."
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif echo "$changed" | grep -q "^Project/package.json$" && echo "$changed" | grep -q "^Project/CHANGELOG.md$"; then
@@ -173,7 +173,7 @@ jobs:
           set -euo pipefail
           changed="$(git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA")"
           echo "$changed"
-          if [[ "$PR_HEAD_REF" != "changeset-release/main" ]]; then
+          if [[ "$PR_HEAD_REF" != "release-bot/main" ]]; then
             echo "Not an automation release PR branch. Skipping."
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif echo "$changed" | grep -q "^Project/package.json$" && echo "$changed" | grep -q "^Project/CHANGELOG.md$"; then

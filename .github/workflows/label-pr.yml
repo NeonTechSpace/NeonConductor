@@ -59,18 +59,21 @@ jobs:
               "type: dependencies",
               "release: hotfix",
               "automation: lane-sync",
-              "automation: changeset-cleanup",
             ];
             const desiredLabels = new Set();
+            const isAutomationBranch =
+              headRef.startsWith("lane-sync/") ||
+              headRef.startsWith("release-sync/") ||
+              headRef.startsWith("release-bot/");
 
-            if (match) {
+            if (match && !isAutomationBranch) {
               const [, type, scope, isBreaking] = match;
               desiredLabels.add(typeToLabel[type]);
               if (isBreaking) desiredLabels.add("type: breaking");
               if (scope === "dependencies" || scope === "deps") {
                 desiredLabels.add("type: dependencies");
               }
-            } else {
+            } else if (!isAutomationBranch) {
               core.info("PR title does not match semantic format, skipping managed type labels.");
             }
 
@@ -80,12 +83,12 @@ jobs:
             if (headRef.startsWith("lane-sync/")) {
               desiredLabels.add("automation: lane-sync");
             }
-            if (headRef.startsWith("changeset-sync/hotfix-cleanup/")) {
-              desiredLabels.add("automation: changeset-cleanup");
-            }
 
             const currentLabels = (pullRequest.labels || []).map((label) => label.name);
-            const toRemove = managedTypeLabels.filter(
+            const labelsToManage = isAutomationBranch
+              ? ["release: hotfix", "automation: lane-sync"]
+              : managedTypeLabels;
+            const toRemove = labelsToManage.filter(
               (label) => currentLabels.includes(label) && !desiredLabels.has(label)
             );
             const toAdd = [...desiredLabels].filter((label) => !currentLabels.includes(label));
