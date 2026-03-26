@@ -130,6 +130,35 @@ export interface RunTransportResolution {
     degradedReason?: string;
 }
 
+export interface RunUsageSummary {
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedTokens?: number;
+    reasoningTokens?: number;
+    totalTokens?: number;
+    latencyMs?: number;
+    costMicrounits?: number;
+}
+
+export interface RunExecutionLoopOutcome {
+    kind: 'completed';
+    usage: RunUsageSummary;
+}
+
+export type RunTerminalOutcome =
+    | {
+          kind: 'completed';
+          usage: RunUsageSummary;
+      }
+    | {
+          kind: 'failed';
+          errorCode: string;
+          errorMessage: string;
+      }
+    | {
+          kind: 'aborted';
+      };
+
 export interface PreparedRunnableCandidate {
     target: ResolvedRunTarget;
     resolvedAuth: ResolvedRunAuth;

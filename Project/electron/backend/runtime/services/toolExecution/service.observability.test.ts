@@ -5,7 +5,7 @@ import { neonObservabilityService } from '@/app/backend/runtime/services/observa
 import { ToolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
 
 const {
-    buildBlockedToolResultMock,
+    buildBlockedToolOutcomeMock,
     emitToolCompletedEventMock,
     emitToolFailedEventMock,
     findToolByIdMock,
@@ -13,7 +13,7 @@ const {
     invokeToolHandlerMock,
     resolveToolDecisionMock,
 } = vi.hoisted(() => ({
-    buildBlockedToolResultMock: vi.fn(),
+    buildBlockedToolOutcomeMock: vi.fn(),
     emitToolCompletedEventMock: vi.fn(),
     emitToolFailedEventMock: vi.fn(),
     findToolByIdMock: vi.fn(),
@@ -37,7 +37,8 @@ vi.mock('@/app/backend/runtime/services/toolExecution/decision', () => ({
 }));
 
 vi.mock('@/app/backend/runtime/services/toolExecution/blocked', () => ({
-    buildBlockedToolResult: buildBlockedToolResultMock,
+    buildBlockedToolOutcome: buildBlockedToolOutcomeMock,
+    buildDeniedToolOutcome: vi.fn(),
 }));
 
 vi.mock('@/app/backend/runtime/services/toolExecution/handlers', () => ({
@@ -85,10 +86,9 @@ describe('ToolExecutionService observability', () => {
             message: 'Need approval',
             policy: { effective: 'ask', source: 'profile' },
         });
-        buildBlockedToolResultMock.mockResolvedValue({
-            ok: false,
+        buildBlockedToolOutcomeMock.mockResolvedValue({
+            kind: 'approval_required',
             toolId: 'read_file',
-            error: 'permission_required',
             message: 'Need approval',
             args: {},
             at: '2026-03-25T10:00:00.000Z',

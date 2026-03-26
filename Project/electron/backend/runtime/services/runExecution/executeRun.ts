@@ -1,8 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { messageMediaStore, messageStore, runStore, runUsageStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
+import { messageMediaStore, messageStore, runStore } from '@/app/backend/persistence/stores';
 import { getProviderAdapter } from '@/app/backend/providers/adapters';
-import { getProviderRuntimeBehavior } from '@/app/backend/providers/behaviors';
 import type {
     ProviderRuntimeInput,
     ProviderRuntimePart,
@@ -29,7 +28,6 @@ import {
 } from '@/app/backend/runtime/services/runExecution/eventing';
 import {
     publishProviderPartObservabilityEvent,
-    publishRunCompletedObservabilityEvent,
     publishToolStateChangedObservabilityEvent,
     publishUsageObservabilityEvent,
 } from '@/app/backend/runtime/services/observability/publishers';
@@ -37,31 +35,15 @@ import { createReasoningPartFromProviderPart } from '@/app/backend/runtime/servi
 import type {
     RunContextMessage,
     RunCacheResolution,
+    RunExecutionLoopOutcome,
     StartRunInput,
 } from '@/app/backend/runtime/services/runExecution/types';
 import { accumulateUsage } from '@/app/backend/runtime/services/runExecution/usage';
 import type { UsageAccumulator } from '@/app/backend/runtime/services/runExecution/usage';
-import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
-import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
-import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
-import { threadTitleService } from '@/app/backend/runtime/services/threadTitle/service';
 import { toolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
-import type { ToolExecutionResult } from '@/app/backend/runtime/services/toolExecution/types';
+import { serializeToolInvocationOutcome } from '@/app/backend/runtime/services/toolExecution/results';
+import type { ToolInvocationOutcome } from '@/app/backend/runtime/services/toolExecution/types';
 import type { KiloModeHeader } from '@/shared/kiloModels';
-
-interface RunUsageWriteInput {
-    runId: string;
-    providerId: RuntimeProviderId;
-    modelId: string;
-    inputTokens?: number;
-    outputTokens?: number;
-    cachedTokens?: number;
-    reasoningTokens?: number;
-    totalTokens?: number;
-    latencyMs?: number;
-    costMicrounits?: number;
-    billedVia: 'kilo_gateway' | 'openai_api' | 'openai_subscription' | 'zai_api' | 'moonshot_api';
-}
 
 interface ExecutableToolCall {
     callId: string;
@@ -74,6 +56,18 @@ interface ToolResultContext {
     message: ProviderContextMessage;
     outputText: string;
     isError: boolean;
+}
+
+interface ProviderTurnState {
+    usage: UsageAccumulator;
+    transportSelection: ProviderRuntimeTransportSelection;
+    firstRenderableOutputReceived: boolean;
+    firstOutputTimedOut: boolean;
+}
+
+interface ProviderTurnResult extends ProviderTurnState {
+    assistantContextMessage?: ProviderContextMessage;
+    toolCalls: ExecutableToolCall[];
 }
 
 const MAX_AGENT_TOOL_ROUNDS = 12;
@@ -256,33 +250,34 @@ async function resolveContextMessages(
     );
 }
 
-function stringifyToolResult(result: ToolExecutionResult): {
+function stringifyToolOutcome(outcome: ToolInvocationOutcome): {
     outputText: string;
     isError: boolean;
     normalizedPayload: Record<string, unknown>;
 } {
-    const normalizedPayload = result.ok
+    const serializedResult = serializeToolInvocationOutcome(outcome);
+    const normalizedPayload = serializedResult.ok
         ? {
               ok: true,
-              toolId: result.toolId,
-              output: result.output,
-              at: result.at,
-              policy: result.policy,
+              toolId: serializedResult.toolId,
+              output: serializedResult.output,
+              at: serializedResult.at,
+              policy: serializedResult.policy,
           }
         : {
               ok: false,
-              toolId: result.toolId,
-              error: result.error,
-              message: result.message,
-              args: result.args,
-              at: result.at,
-              ...(result.policy ? { policy: result.policy } : {}),
-              ...(result.requestId ? { requestId: result.requestId } : {}),
+              toolId: serializedResult.toolId,
+              error: serializedResult.error,
+              message: serializedResult.message,
+              args: serializedResult.args,
+              at: serializedResult.at,
+              ...(serializedResult.policy ? { policy: serializedResult.policy } : {}),
+              ...(serializedResult.requestId ? { requestId: serializedResult.requestId } : {}),
           };
 
     return {
         outputText: JSON.stringify(normalizedPayload, null, 2),
-        isError: !result.ok,
+        isError: !serializedResult.ok,
         normalizedPayload,
     };
 }
@@ -399,7 +394,7 @@ async function persistToolResultMessage(input: {
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
     toolCall: ExecutableToolCall;
-    toolResult: ToolExecutionResult;
+    toolOutcome: ToolInvocationOutcome;
 }): Promise<ToolResultContext> {
     const toolMessage = await createRuntimeMessage({
         profileId: input.profileId,
@@ -413,7 +408,7 @@ async function persistToolResultMessage(input: {
         sessionId: input.sessionId,
         messageId: toolMessage.id,
     });
-    const serializedResult = stringifyToolResult(input.toolResult);
+    const serializedResult = stringifyToolOutcome(input.toolOutcome);
     await partRecorder.recordPart({
         partType: 'tool_result',
         payload: {
@@ -443,16 +438,330 @@ async function persistToolResultMessage(input: {
     };
 }
 
-export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionResult<void>> {
-    const adapter = getProviderAdapter(input.providerId);
-    const behavior = getProviderRuntimeBehavior(input.providerId);
+function createProviderRuntimeInput(input: {
+    executeRunInput: ExecuteRunInput;
+    conversationMessages: ProviderContextMessage[];
+    timeoutSignal: AbortSignal;
+}): ProviderRuntimeInput {
+    const { executeRunInput } = input;
+
+    return {
+        profileId: executeRunInput.profileId,
+        sessionId: executeRunInput.sessionId,
+        runId: executeRunInput.runId,
+        providerId: executeRunInput.providerId,
+        modelId: executeRunInput.modelId,
+        runtime: executeRunInput.runtime,
+        promptText: executeRunInput.prompt,
+        ...(input.conversationMessages.length > 0 ? { contextMessages: input.conversationMessages } : {}),
+        ...(executeRunInput.toolDefinitions.length > 0
+            ? { tools: executeRunInput.toolDefinitions, toolChoice: 'auto' as const }
+            : {}),
+        cache: executeRunInput.cache,
+        authMethod: executeRunInput.authMethod,
+        ...(executeRunInput.apiKey ? { apiKey: executeRunInput.apiKey } : {}),
+        ...(executeRunInput.accessToken ? { accessToken: executeRunInput.accessToken } : {}),
+        ...(executeRunInput.organizationId ? { organizationId: executeRunInput.organizationId } : {}),
+        ...(executeRunInput.kiloModeHeader ? { kiloModeHeader: executeRunInput.kiloModeHeader } : {}),
+        ...(executeRunInput.kiloRouting ? { kiloRouting: executeRunInput.kiloRouting } : {}),
+        runtimeOptions: {
+            ...executeRunInput.runtimeOptions,
+            execution: {
+                ...(executeRunInput.openAIExecutionMode
+                    ? { openAIExecutionMode: executeRunInput.openAIExecutionMode }
+                    : {}),
+            },
+        },
+        signal: input.timeoutSignal,
+    };
+}
+
+async function executeProviderTurn(input: {
+    executeRunInput: ExecuteRunInput;
+    assistantMessageId: EntityId<'msg'>;
+    conversationMessages: ProviderContextMessage[];
+    state: ProviderTurnState;
+}): Promise<RunExecutionResult<ProviderTurnResult>> {
+    const adapter = getProviderAdapter(input.executeRunInput.providerId);
+    const assistantCollector = createAssistantTurnCollector();
+    const partRecorder = createMessagePartRecorder({
+        runId: input.executeRunInput.runId,
+        profileId: input.executeRunInput.profileId,
+        sessionId: input.executeRunInput.sessionId,
+        messageId: input.assistantMessageId,
+    });
+    const timeoutController = new AbortController();
+    const timeoutSignal = input.state.firstRenderableOutputReceived
+        ? input.executeRunInput.signal
+        : AbortSignal.any([input.executeRunInput.signal, timeoutController.signal]);
+    let firstRenderableOutputReceived = input.state.firstRenderableOutputReceived;
+    let firstOutputTimedOut = input.state.firstOutputTimedOut;
+    let usage = input.state.usage;
+    let transportSelection = input.state.transportSelection;
+    const stalledTimer: ReturnType<typeof setTimeout> | null =
+        input.state.firstRenderableOutputReceived
+            ? null
+            : globalThis.setTimeout(() => {
+                  if (firstRenderableOutputReceived || firstOutputTimedOut || input.executeRunInput.signal.aborted) {
+                      return;
+                  }
+
+                  void appendAssistantLifecycleStatusPart({
+                      partRecorder,
+                      code: 'stalled',
+                      label: 'Still waiting for the first response chunk...',
+                      elapsedMs: FIRST_OUTPUT_STALLED_MS,
+                      observabilityContext: {
+                          profileId: input.executeRunInput.profileId,
+                          sessionId: input.executeRunInput.sessionId,
+                          runId: input.executeRunInput.runId,
+                          providerId: input.executeRunInput.providerId,
+                          modelId: input.executeRunInput.modelId,
+                      },
+                  }).catch(() => undefined);
+              }, FIRST_OUTPUT_STALLED_MS);
+    const timeoutTimer: ReturnType<typeof setTimeout> | null =
+        input.state.firstRenderableOutputReceived
+            ? null
+            : globalThis.setTimeout(() => {
+                  if (firstRenderableOutputReceived || firstOutputTimedOut || input.executeRunInput.signal.aborted) {
+                      return;
+                  }
+
+                  firstOutputTimedOut = true;
+                  timeoutController.abort();
+              }, FIRST_OUTPUT_TIMEOUT_MS);
+    const disposeFirstOutputWatchdog = () => {
+        if (stalledTimer !== null) {
+            globalThis.clearTimeout(stalledTimer);
+        }
+        if (timeoutTimer !== null) {
+            globalThis.clearTimeout(timeoutTimer);
+        }
+    };
+
+    const streamResult = await adapter.streamCompletion(
+        createProviderRuntimeInput({
+            executeRunInput: input.executeRunInput,
+            conversationMessages: input.conversationMessages,
+            timeoutSignal,
+        }),
+        {
+            onPart: async (part) => {
+                if (!firstRenderableOutputReceived && isRenderableAssistantOutputPart(part)) {
+                    firstRenderableOutputReceived = true;
+                    disposeFirstOutputWatchdog();
+                }
+                publishProviderPartObservabilityEvent({
+                    profileId: input.executeRunInput.profileId,
+                    sessionId: input.executeRunInput.sessionId,
+                    runId: input.executeRunInput.runId,
+                    providerId: input.executeRunInput.providerId,
+                    modelId: input.executeRunInput.modelId,
+                    part,
+                });
+                await partRecorder.recordPart(part);
+                assistantCollector.recordPart(part);
+            },
+            onUsage: (nextUsage: ProviderRuntimeUsage) => {
+                usage = accumulateUsage(usage, nextUsage);
+                publishUsageObservabilityEvent({
+                    profileId: input.executeRunInput.profileId,
+                    sessionId: input.executeRunInput.sessionId,
+                    runId: input.executeRunInput.runId,
+                    providerId: input.executeRunInput.providerId,
+                    modelId: input.executeRunInput.modelId,
+                    usage: nextUsage,
+                });
+            },
+            onTransportSelected: async (selection) => {
+                if (
+                    selection.selected === transportSelection.selected &&
+                    selection.degraded === transportSelection.degraded &&
+                    selection.degradedReason === transportSelection.degradedReason
+                ) {
+                    return;
+                }
+
+                transportSelection = selection;
+                const run = await runStore.updateRuntimeMetadata(input.executeRunInput.runId, {
+                    transportSelected: selection.selected,
+                    ...(selection.degradedReason
+                        ? {
+                              transportDegradedReason: selection.degradedReason,
+                          }
+                        : {}),
+                });
+                if (!run) {
+                    throw new InvariantError(
+                        'Run transport metadata persisted successfully but the updated run snapshot could not be reloaded.'
+                    );
+                }
+                await emitTransportSelectionEvent({
+                    runId: input.executeRunInput.runId,
+                    profileId: input.executeRunInput.profileId,
+                    sessionId: input.executeRunInput.sessionId,
+                    selection,
+                    run,
+                });
+            },
+        }
+    );
+    disposeFirstOutputWatchdog();
+
+    if (streamResult.isErr()) {
+        if (!firstRenderableOutputReceived && firstOutputTimedOut && !input.executeRunInput.signal.aborted) {
+            await appendAssistantLifecycleStatusPart({
+                partRecorder,
+                code: 'failed_before_output',
+                label: 'Agent timed out before sending the first response chunk.',
+                elapsedMs: FIRST_OUTPUT_TIMEOUT_MS,
+                observabilityContext: {
+                    profileId: input.executeRunInput.profileId,
+                    sessionId: input.executeRunInput.sessionId,
+                    runId: input.executeRunInput.runId,
+                    providerId: input.executeRunInput.providerId,
+                    modelId: input.executeRunInput.modelId,
+                },
+            });
+
+            return errRunExecution(
+                'provider_first_output_timeout',
+                `Agent did not begin streaming a response within ${String(FIRST_OUTPUT_TIMEOUT_MS / 1000)} seconds.`
+            );
+        }
+
+        if (!firstRenderableOutputReceived && timeoutSignal.aborted && !input.executeRunInput.signal.aborted) {
+            return errRunExecution(mapAbortToExecutionErrorCode(timeoutSignal), streamResult.error.message);
+        }
+
+        return mapProviderAdapterError({
+            code: streamResult.error.code,
+            message: streamResult.error.message,
+        });
+    }
+
+    const assistantContextMessage = assistantCollector.buildContextMessage();
+    return okRunExecution({
+        ...(assistantContextMessage ? { assistantContextMessage } : {}),
+        toolCalls: assistantCollector.getToolCalls(),
+        usage,
+        transportSelection,
+        firstRenderableOutputReceived,
+        firstOutputTimedOut,
+    });
+}
+
+async function executeToolRound(input: {
+    executeRunInput: ExecuteRunInput;
+    toolCalls: ExecutableToolCall[];
+    allowedToolIds: Set<string>;
+    conversationMessages: ProviderContextMessage[];
+}): Promise<RunExecutionResult<void>> {
+    if (input.executeRunInput.toolDefinitions.length === 0) {
+        return errRunExecution(
+            'invalid_payload',
+            'Provider emitted tool calls even though no runtime tools were exposed for this run.'
+        );
+    }
+
+    for (const toolCall of input.toolCalls) {
+        assertNotAborted(input.executeRunInput.signal);
+        publishToolStateChangedObservabilityEvent({
+            profileId: input.executeRunInput.profileId,
+            sessionId: input.executeRunInput.sessionId,
+            runId: input.executeRunInput.runId,
+            providerId: input.executeRunInput.providerId,
+            modelId: input.executeRunInput.modelId,
+            toolCallId: toolCall.callId,
+            toolName: toolCall.toolName,
+            state: 'proposed',
+            argumentsText: toolCall.argumentsText,
+        });
+        publishToolStateChangedObservabilityEvent({
+            profileId: input.executeRunInput.profileId,
+            sessionId: input.executeRunInput.sessionId,
+            runId: input.executeRunInput.runId,
+            providerId: input.executeRunInput.providerId,
+            modelId: input.executeRunInput.modelId,
+            toolCallId: toolCall.callId,
+            toolName: toolCall.toolName,
+            state: 'input_complete',
+            argumentsText: toolCall.argumentsText,
+        });
+
+        if (!input.allowedToolIds.has(toolCall.toolName)) {
+            return errRunExecution(
+                'invalid_payload',
+                `Provider emitted unsupported tool "${toolCall.toolName}".`
+            );
+        }
+
+        const toolOutcome = await toolExecutionService.invokeWithOutcome(
+            {
+                profileId: input.executeRunInput.profileId,
+                toolId: toolCall.toolName,
+                topLevelTab: input.executeRunInput.topLevelTab,
+                modeKey: input.executeRunInput.modeKey,
+                ...(input.executeRunInput.workspaceFingerprint
+                    ? { workspaceFingerprint: input.executeRunInput.workspaceFingerprint }
+                    : {}),
+                ...(input.executeRunInput.sandboxId ? { sandboxId: input.executeRunInput.sandboxId } : {}),
+                args: toolCall.args,
+            },
+            {
+                sessionId: input.executeRunInput.sessionId,
+                runId: input.executeRunInput.runId,
+                providerId: input.executeRunInput.providerId,
+                modelId: input.executeRunInput.modelId,
+                toolCallId: toolCall.callId,
+                toolName: toolCall.toolName,
+                argumentsText: toolCall.argumentsText,
+            }
+        );
+
+        const persistedToolResult = await persistToolResultMessage({
+            profileId: input.executeRunInput.profileId,
+            sessionId: input.executeRunInput.sessionId,
+            runId: input.executeRunInput.runId,
+            toolCall,
+            toolOutcome,
+        });
+        input.conversationMessages.push(persistedToolResult.message);
+        emitToolResultObservabilityEvent({
+            profileId: input.executeRunInput.profileId,
+            sessionId: input.executeRunInput.sessionId,
+            runId: input.executeRunInput.runId,
+            providerId: input.executeRunInput.providerId,
+            modelId: input.executeRunInput.modelId,
+            toolCallId: toolCall.callId,
+            toolName: toolCall.toolName,
+            outputText: persistedToolResult.outputText,
+            isError: persistedToolResult.isError,
+        });
+    }
+
+    return okRunExecution(undefined);
+}
+
+async function buildSuccessfulCompletionOutcome(input: {
+    onBeforeFinalize?: () => Promise<void>;
+    usage: UsageAccumulator;
+}): Promise<RunExecutionResult<RunExecutionLoopOutcome>> {
+    if (input.onBeforeFinalize) {
+        await input.onBeforeFinalize();
+    }
+
+    return okRunExecution({
+        kind: 'completed',
+        usage: input.usage,
+    });
+}
+
+export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionResult<RunExecutionLoopOutcome>> {
     const resolvedContextMessages = await resolveContextMessages(input);
     const allowedToolIds = new Set(input.toolDefinitions.map((tool) => tool.id));
-    let usage: UsageAccumulator = {};
-    let transportSelection = input.transportSelection;
     let assistantMessageId = input.assistantMessageId;
-    let firstRenderableOutputReceived = false;
-    let firstOutputTimedOut = false;
     const conversationMessages: ProviderContextMessage[] =
         resolvedContextMessages && resolvedContextMessages.length > 0
             ? [...resolvedContextMessages]
@@ -464,359 +773,60 @@ export async function executeRun(input: ExecuteRunInput): Promise<RunExecutionRe
                     },
                 ]
               : [];
+    let providerTurnState: ProviderTurnState = {
+        usage: {},
+        transportSelection: input.transportSelection,
+        firstRenderableOutputReceived: false,
+        firstOutputTimedOut: false,
+    };
 
     for (let roundIndex = 0; roundIndex < MAX_AGENT_TOOL_ROUNDS; roundIndex += 1) {
         assertNotAborted(input.signal);
 
-        const assistantCollector = createAssistantTurnCollector();
-        const partRecorder = createMessagePartRecorder({
-            runId: input.runId,
-            profileId: input.profileId,
-            sessionId: input.sessionId,
-            messageId: assistantMessageId,
+        const providerTurnResult = await executeProviderTurn({
+            executeRunInput: input,
+            assistantMessageId,
+            conversationMessages,
+            state: providerTurnState,
         });
-        const timeoutController = new AbortController();
-        const timeoutSignal = firstRenderableOutputReceived
-            ? input.signal
-            : AbortSignal.any([input.signal, timeoutController.signal]);
-        const stalledTimer: ReturnType<typeof setTimeout> | null =
-            firstRenderableOutputReceived || roundIndex > 0
-                ? null
-                : globalThis.setTimeout(() => {
-                      if (firstRenderableOutputReceived || firstOutputTimedOut || input.signal.aborted) {
-                          return;
-                      }
-
-                      void appendAssistantLifecycleStatusPart({
-                          partRecorder,
-                          code: 'stalled',
-                          label: 'Still waiting for the first response chunk...',
-                          elapsedMs: FIRST_OUTPUT_STALLED_MS,
-                          observabilityContext: {
-                              profileId: input.profileId,
-                              sessionId: input.sessionId,
-                              runId: input.runId,
-                              providerId: input.providerId,
-                              modelId: input.modelId,
-                          },
-                      }).catch(() => undefined);
-                  }, FIRST_OUTPUT_STALLED_MS);
-        const timeoutTimer: ReturnType<typeof setTimeout> | null =
-            firstRenderableOutputReceived || roundIndex > 0
-                ? null
-                : globalThis.setTimeout(() => {
-                      if (firstRenderableOutputReceived || firstOutputTimedOut || input.signal.aborted) {
-                          return;
-                      }
-
-                      firstOutputTimedOut = true;
-                      timeoutController.abort();
-                  }, FIRST_OUTPUT_TIMEOUT_MS);
-        const disposeFirstOutputWatchdog = () => {
-            if (stalledTimer !== null) {
-                globalThis.clearTimeout(stalledTimer);
-            }
-            if (timeoutTimer !== null) {
-                globalThis.clearTimeout(timeoutTimer);
-            }
-        };
-
-        const runtimeInput: ProviderRuntimeInput = {
-            profileId: input.profileId,
-            sessionId: input.sessionId,
-            runId: input.runId,
-            providerId: input.providerId,
-            modelId: input.modelId,
-            runtime: input.runtime,
-            promptText: input.prompt,
-            ...(conversationMessages.length > 0 ? { contextMessages: conversationMessages } : {}),
-            ...(input.toolDefinitions.length > 0 ? { tools: input.toolDefinitions, toolChoice: 'auto' as const } : {}),
-            cache: input.cache,
-            authMethod: input.authMethod,
-            ...(input.apiKey ? { apiKey: input.apiKey } : {}),
-            ...(input.accessToken ? { accessToken: input.accessToken } : {}),
-            ...(input.organizationId ? { organizationId: input.organizationId } : {}),
-            ...(input.kiloModeHeader ? { kiloModeHeader: input.kiloModeHeader } : {}),
-            ...(input.kiloRouting ? { kiloRouting: input.kiloRouting } : {}),
-            runtimeOptions: {
-                ...input.runtimeOptions,
-                execution: {
-                    ...(input.openAIExecutionMode ? { openAIExecutionMode: input.openAIExecutionMode } : {}),
-                },
-            },
-            signal: timeoutSignal,
-        };
-
-        const streamResult = await adapter.streamCompletion(
-            runtimeInput,
-            {
-                onPart: async (part) => {
-                    if (!firstRenderableOutputReceived && isRenderableAssistantOutputPart(part)) {
-                        firstRenderableOutputReceived = true;
-                        disposeFirstOutputWatchdog();
-                    }
-                    publishProviderPartObservabilityEvent({
-                        profileId: input.profileId,
-                        sessionId: input.sessionId,
-                        runId: input.runId,
-                        providerId: input.providerId,
-                        modelId: input.modelId,
-                        part,
-                    });
-                    await partRecorder.recordPart(part);
-                    assistantCollector.recordPart(part);
-                },
-                onUsage: (nextUsage: ProviderRuntimeUsage) => {
-                    usage = accumulateUsage(usage, nextUsage);
-                    publishUsageObservabilityEvent({
-                        profileId: input.profileId,
-                        sessionId: input.sessionId,
-                        runId: input.runId,
-                        providerId: input.providerId,
-                        modelId: input.modelId,
-                        usage: nextUsage,
-                    });
-                },
-                onTransportSelected: async (selection) => {
-                    if (
-                        selection.selected === transportSelection.selected &&
-                        selection.degraded === transportSelection.degraded &&
-                        selection.degradedReason === transportSelection.degradedReason
-                    ) {
-                        return;
-                    }
-
-                    transportSelection = selection;
-                    const run = await runStore.updateRuntimeMetadata(input.runId, {
-                        transportSelected: selection.selected,
-                        ...(selection.degradedReason
-                            ? {
-                                  transportDegradedReason: selection.degradedReason,
-                              }
-                            : {}),
-                    });
-                    if (!run) {
-                        throw new InvariantError(
-                            'Run transport metadata persisted successfully but the updated run snapshot could not be reloaded.'
-                        );
-                    }
-                    await emitTransportSelectionEvent({
-                        runId: input.runId,
-                        profileId: input.profileId,
-                        sessionId: input.sessionId,
-                        selection,
-                        run,
-                    });
-                },
-            }
-        );
-        disposeFirstOutputWatchdog();
-        if (streamResult.isErr()) {
-            if (!firstRenderableOutputReceived && firstOutputTimedOut && !input.signal.aborted) {
-                await appendAssistantLifecycleStatusPart({
-                    partRecorder,
-                    code: 'failed_before_output',
-                    label: 'Agent timed out before sending the first response chunk.',
-                    elapsedMs: FIRST_OUTPUT_TIMEOUT_MS,
-                    observabilityContext: {
-                        profileId: input.profileId,
-                        sessionId: input.sessionId,
-                        runId: input.runId,
-                        providerId: input.providerId,
-                        modelId: input.modelId,
-                    },
-                });
-
-                return errRunExecution(
-                    'provider_first_output_timeout',
-                    `Agent did not begin streaming a response within ${String(FIRST_OUTPUT_TIMEOUT_MS / 1000)} seconds.`
-                );
-            }
-
-            if (!firstRenderableOutputReceived && timeoutSignal.aborted && !input.signal.aborted) {
-                return errRunExecution(
-                    mapAbortToExecutionErrorCode(timeoutSignal),
-                    streamResult.error.message
-                );
-            }
-
-            return mapProviderAdapterError({
-                code: streamResult.error.code,
-                message: streamResult.error.message,
-            });
-        }
-
-        const assistantContextMessage = assistantCollector.buildContextMessage();
-        if (assistantContextMessage) {
-            conversationMessages.push(assistantContextMessage);
-        }
-
-        const toolCalls = assistantCollector.getToolCalls();
-        if (toolCalls.length === 0) {
-            if (input.onBeforeFinalize) {
-                await input.onBeforeFinalize();
-            }
-
-            const run = await runStore.finalize(input.runId, {
-                status: 'completed',
-            });
-            if (!run) {
-                throw new InvariantError(
-                    'Run completion persisted successfully but the updated run snapshot could not be reloaded.'
-                );
-            }
-            await sessionStore.markRunTerminal(input.profileId, input.sessionId, 'completed');
-            const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
-            if (sessionThread) {
-                await threadStore.markAssistantActivity(input.profileId, sessionThread.thread.id, new Date().toISOString());
-            }
-            await threadTitleService.maybeApply({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                prompt: input.prompt,
-                providerId: input.providerId,
-                modelId: input.modelId,
-            });
-
-            await runtimeEventLogService.append(
-                runtimeStatusEvent({
-                    entityType: 'run',
-                    domain: 'run',
-                    entityId: input.runId,
-                    eventType: 'run.completed',
-                    payload: {
-                        runId: input.runId,
-                        sessionId: input.sessionId,
-                        profileId: input.profileId,
-                        run,
-                    },
-                })
-            );
-            publishRunCompletedObservabilityEvent({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                runId: input.runId,
-                providerId: input.providerId,
-                modelId: input.modelId,
-            });
-
-            const usageRecordInput: RunUsageWriteInput = {
-                runId: input.runId,
-                providerId: input.providerId,
-                modelId: input.modelId,
-                billedVia: behavior.resolveBilledVia(input.authMethod),
-            };
-
-            if (usage.inputTokens !== undefined) usageRecordInput.inputTokens = usage.inputTokens;
-            if (usage.outputTokens !== undefined) usageRecordInput.outputTokens = usage.outputTokens;
-            if (usage.cachedTokens !== undefined) usageRecordInput.cachedTokens = usage.cachedTokens;
-            if (usage.reasoningTokens !== undefined) usageRecordInput.reasoningTokens = usage.reasoningTokens;
-            if (usage.totalTokens !== undefined) usageRecordInput.totalTokens = usage.totalTokens;
-            if (usage.latencyMs !== undefined) usageRecordInput.latencyMs = usage.latencyMs;
-            if (usage.costMicrounits !== undefined) usageRecordInput.costMicrounits = usage.costMicrounits;
-
-            const recordedUsage = await runUsageStore.upsert(usageRecordInput);
-
-            await runtimeEventLogService.append(
-                runtimeStatusEvent({
-                    entityType: 'run',
-                    domain: 'run',
-                    entityId: input.runId,
-                    eventType: 'run.usage.recorded',
-                    payload: {
-                        runId: input.runId,
-                        usage: recordedUsage,
-                    },
-                })
-            );
-
-            await memoryRuntimeService.captureFinishedRunMemorySafely({
-                profileId: input.profileId,
-                runId: input.runId,
-            });
-
-            return okRunExecution(undefined);
-        }
-
-        if (input.toolDefinitions.length === 0) {
+        if (providerTurnResult.isErr()) {
             return errRunExecution(
-                'invalid_payload',
-                'Provider emitted tool calls even though no runtime tools were exposed for this run.'
+                providerTurnResult.error.code,
+                providerTurnResult.error.message,
+                providerTurnResult.error.action ? { action: providerTurnResult.error.action } : undefined
             );
         }
 
-        for (const toolCall of toolCalls) {
-            assertNotAborted(input.signal);
-            publishToolStateChangedObservabilityEvent({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                runId: input.runId,
-                providerId: input.providerId,
-                modelId: input.modelId,
-                toolCallId: toolCall.callId,
-                toolName: toolCall.toolName,
-                state: 'proposed',
-                argumentsText: toolCall.argumentsText,
-            });
-            publishToolStateChangedObservabilityEvent({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                runId: input.runId,
-                providerId: input.providerId,
-                modelId: input.modelId,
-                toolCallId: toolCall.callId,
-                toolName: toolCall.toolName,
-                state: 'input_complete',
-                argumentsText: toolCall.argumentsText,
-            });
+        providerTurnState = {
+            usage: providerTurnResult.value.usage,
+            transportSelection: providerTurnResult.value.transportSelection,
+            firstRenderableOutputReceived: providerTurnResult.value.firstRenderableOutputReceived,
+            firstOutputTimedOut: providerTurnResult.value.firstOutputTimedOut,
+        };
 
-            if (!allowedToolIds.has(toolCall.toolName)) {
-                return errRunExecution(
-                    'invalid_payload',
-                    `Provider emitted unsupported tool "${toolCall.toolName}".`
-                );
-            }
+        if (providerTurnResult.value.assistantContextMessage) {
+            conversationMessages.push(providerTurnResult.value.assistantContextMessage);
+        }
 
-            const toolResult = await toolExecutionService.invoke(
-                {
-                    profileId: input.profileId,
-                    toolId: toolCall.toolName,
-                    topLevelTab: input.topLevelTab,
-                    modeKey: input.modeKey,
-                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                    ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
-                    args: toolCall.args,
-                },
-                {
-                    sessionId: input.sessionId,
-                    runId: input.runId,
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    toolCallId: toolCall.callId,
-                    toolName: toolCall.toolName,
-                    argumentsText: toolCall.argumentsText,
-                }
+        if (providerTurnResult.value.toolCalls.length === 0) {
+            return buildSuccessfulCompletionOutcome({
+                usage: providerTurnState.usage,
+                ...(input.onBeforeFinalize ? { onBeforeFinalize: input.onBeforeFinalize } : {}),
+            });
+        }
+
+        const toolRoundResult = await executeToolRound({
+            executeRunInput: input,
+            toolCalls: providerTurnResult.value.toolCalls,
+            allowedToolIds,
+            conversationMessages,
+        });
+        if (toolRoundResult.isErr()) {
+            return errRunExecution(
+                toolRoundResult.error.code,
+                toolRoundResult.error.message,
+                toolRoundResult.error.action ? { action: toolRoundResult.error.action } : undefined
             );
-
-            const persistedToolResult = await persistToolResultMessage({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                runId: input.runId,
-                toolCall,
-                toolResult,
-            });
-            conversationMessages.push(persistedToolResult.message);
-            emitToolResultObservabilityEvent({
-                profileId: input.profileId,
-                sessionId: input.sessionId,
-                runId: input.runId,
-                providerId: input.providerId,
-                modelId: input.modelId,
-                toolCallId: toolCall.callId,
-                toolName: toolCall.toolName,
-                outputText: persistedToolResult.outputText,
-                isError: persistedToolResult.isError,
-            });
         }
 
         if (roundIndex === MAX_AGENT_TOOL_ROUNDS - 1) {

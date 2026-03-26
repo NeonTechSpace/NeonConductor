@@ -7,7 +7,7 @@ import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/app/back
 import type { OpenAIExecutionMode } from '@/app/backend/runtime/contracts';
 import { captureCheckpointDiffForRun, ensureCheckpointForRun } from '@/app/backend/runtime/services/checkpoint/service';
 import { executeRun, isAbortError } from '@/app/backend/runtime/services/runExecution/executeRun';
-import { moveRunToAbortedState, moveRunToFailedState } from '@/app/backend/runtime/services/runExecution/terminalState';
+import { applyRunTerminalOutcome, moveRunToAbortedState, moveRunToFailedState } from '@/app/backend/runtime/services/runExecution/terminalState';
 import type { ResolvedKiloRouting, RunCacheResolution, RunContextMessage, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
@@ -158,6 +158,19 @@ export async function runToTerminalState(input: {
             });
             return;
         }
+
+        await applyRunTerminalOutcome({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            threadId: input.threadId,
+            runId: input.runId,
+            prompt: input.prompt,
+            providerId: input.providerId,
+            modelId: input.modelId,
+            authMethod: input.authMethod,
+            outcome: executionResult.value,
+            logMessage: 'Run moved to completed terminal state.',
+        });
     } catch (error) {
         if (isAbortError(error) || input.signal.aborted) {
             await moveRunToAbortedState({
