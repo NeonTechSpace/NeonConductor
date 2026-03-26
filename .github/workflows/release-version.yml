@@ -1,4 +1,4 @@
-name: Changeset Version
+name: Release Version
 
 on:
   pull_request:
@@ -6,11 +6,9 @@ on:
       - closed
     branches:
       - main
-    paths:
-      - "Project/.changeset/**"
 
 concurrency:
-  group: changeset-version-pr-${{ github.event.pull_request.number }}
+  group: release-version-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -22,8 +20,8 @@ jobs:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      !startsWith(github.event.pull_request.head.ref, 'changeset-release/') &&
-      !startsWith(github.event.pull_request.head.ref, 'changeset-sync/')
+      !startsWith(github.event.pull_request.head.ref, 'release-bot/') &&
+      !startsWith(github.event.pull_request.head.ref, 'release-sync/')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -33,20 +31,10 @@ jobs:
           fetch-depth: 0
           ref: main
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 10
-
       - name: Setup Node
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
           node-version: 24.13.1
-          cache: pnpm
-          cache-dependency-path: Project/pnpm-lock.yaml
-
-      - name: Install
-        run: pnpm -C Project install --frozen-lockfile
 
       - name: Create GitHub App token
         id: app_token
@@ -57,71 +45,39 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
 
-      - name: Version package from changesets
+      - name: Prepare stable release payload
+        id: prepare
+        shell: bash
         env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
-          pnpm -C Project exec changeset version
-          node <<'NODE'
-          const fs = require("node:fs");
-
-          const stableTagline = "The conductor just signed off on a new stable release.";
-          const targetPath = "Project/CHANGELOG.md";
-
-          if (!fs.existsSync(targetPath)) {
-            process.exit(0);
-          }
-
-          const original = fs.readFileSync(targetPath, "utf8");
-          const normalized = original.replace(/\r\n/g, "\n");
-          const lines = normalized.split("\n");
-
-          const firstReleaseHeaderIndex = lines.findIndex((line) => /^##\s+\S+/.test(line));
-          if (firstReleaseHeaderIndex === -1) {
-            process.exit(0);
-          }
-
-          let firstNonEmptyAfterHeader = firstReleaseHeaderIndex + 1;
-          while (
-            firstNonEmptyAfterHeader < lines.length &&
-            lines[firstNonEmptyAfterHeader].trim() === ""
-          ) {
-            firstNonEmptyAfterHeader += 1;
-          }
-
-          if (lines[firstNonEmptyAfterHeader] === stableTagline) {
-            process.exit(0);
-          }
-
-          lines.splice(firstReleaseHeaderIndex + 1, 0, "", stableTagline, "");
-          const updated = `${lines.join("\n")}\n`;
-          if (updated !== normalized) {
-            fs.writeFileSync(targetPath, updated, "utf8");
-          }
-          NODE
-
-      - name: Resolve stable release version
-        id: version
-        shell: bash
-        run: |
           set -euo pipefail
-          VERSION="$(node -p "require('./Project/package.json').version")"
-          if [[ -z "$VERSION" ]]; then
-            echo "Unable to resolve Project/package.json version after changeset version."
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          git fetch --tags --force
+          node .github/scripts/prepare-stable-release.mjs
 
-      - name: Create version PR
+      - name: Skip when no stable release is due
+        if: steps.prepare.outputs.should_release != 'true'
+        run: echo "No releasable PRs were found since the last stable tag."
+
+      - name: Create release PR
+        if: steps.prepare.outputs.should_release == 'true'
         id: release_pr
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
           token: ${{ steps.app_token.outputs.token }}
-          commit-message: "release(stable): v${{ steps.version.outputs.version }}"
-          title: "release(stable): v${{ steps.version.outputs.version }}"
-          branch: "changeset-release/main"
+          commit-message: "release(stable): v${{ steps.prepare.outputs.version }}"
+          title: "release(stable): v${{ steps.prepare.outputs.version }}"
+          body: ${{ steps.prepare.outputs.pr_body }}
+          labels: |
+            ignore-for-release
+          branch: "release-bot/main"
           base: "main"
           delete-branch: true
+          add-paths: |
+            Project/package.json
+            Project/CHANGELOG.md
 
       - name: Enable auto-merge for release PR
         if: steps.release_pr.outputs.pull-request-number != ''

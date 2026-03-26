@@ -25,71 +25,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect cleanup sync PR mode
-        id: mode
-        shell: bash
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          set -euo pipefail
-          if [[ "$HEAD_REF" == changeset-sync/* ]]; then
-            echo "is_cleanup_sync=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_cleanup_sync=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Validate cleanup sync PR scope
-        if: steps.mode.outputs.is_cleanup_sync == 'true'
-        shell: bash
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          set -euo pipefail
-          git fetch origin "$BASE_REF" --depth=1
-          raw="$(git diff --name-status "origin/${BASE_REF}...HEAD")"
-          echo "$raw"
-
-          invalid=0
-          while IFS=$'\t' read -r status path_a path_b; do
-            [ -z "${status:-}" ] && continue
-            state="${status:0:1}"
-            chosen_path="$path_a"
-            if [[ "$state" == "R" || "$state" == "C" ]]; then
-              chosen_path="$path_b"
-            fi
-            if [[ "$state" != "D" ]]; then
-              echo "Invalid change status for cleanup PR: $status $chosen_path"
-              invalid=1
-              continue
-            fi
-            if [[ "$chosen_path" == "Project/.changeset/README.md" ]]; then
-              echo "README cannot be deleted in cleanup PR: $chosen_path"
-              invalid=1
-              continue
-            fi
-            if [[ "$chosen_path" != Project/.changeset/*.md ]]; then
-              echo "Out-of-scope cleanup path: $chosen_path"
-              invalid=1
-            fi
-          done <<< "$raw"
-
-          if [[ "$invalid" -ne 0 ]]; then
-            echo "Cleanup sync PR contains out-of-scope changes."
-            exit 1
-          fi
-
-      - name: Skip full checks for cleanup sync PR
-        if: steps.mode.outputs.is_cleanup_sync == 'true'
-        run: echo "Cleanup sync PR validated with fast-path scope checks."
-
       - name: Setup pnpm
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
 
       - name: Setup Node
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
           node-version: 24.13.1
@@ -97,25 +38,19 @@ jobs:
           cache-dependency-path: Project/pnpm-lock.yaml
 
       - name: Install
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         run: pnpm -C Project install --frozen-lockfile
 
       - name: Lint
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         run: pnpm -C Project lint
 
       - name: Format check
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         run: pnpm -C Project format:check
 
       - name: Typecheck
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         run: pnpm -C Project typecheck
 
       - name: Test
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         run: pnpm -C Project test
 
       - name: Build
-        if: steps.mode.outputs.is_cleanup_sync != 'true'
         run: pnpm -C Project build

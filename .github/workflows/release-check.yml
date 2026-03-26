@@ -1,0 +1,237 @@
+name: Release Check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+      - labeled
+      - unlabeled
+    branches:
+      - dev
+      - prev
+      - main
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+      - labeled
+      - unlabeled
+    branches:
+      - dev
+      - prev
+      - main
+
+concurrency:
+  group: release-check-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate release intent labels
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const marker = "<!-- release-check-comment -->";
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const issueNumber = pr.number;
+            const headRef = pr.head.ref || "";
+            const baseRef = pr.base.ref || "";
+            const isExternalFork = pr.head.repo.full_name !== `${owner}/${repo}`;
+            const isAutomationPr =
+              headRef.startsWith("lane-sync/") ||
+              headRef.startsWith("release-sync/") ||
+              headRef.startsWith("release-bot/");
+            const bumpLabels = [
+              "release:bump:none",
+              "release:bump:patch",
+              "release:bump:minor",
+              "release:bump:major",
+            ];
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: issueNumber,
+              per_page: 100,
+            });
+
+            let projectTouched = false;
+            let requiresReleaseIntent = false;
+            for (const file of files) {
+              const path = (file.filename || "").trim();
+              if (!path.startsWith("Project/")) continue;
+              projectTouched = true;
+
+              if (path.startsWith("Project/docs/")) continue;
+              if (path.endsWith(".md") || path.endsWith(".mdx")) continue;
+
+              requiresReleaseIntent = true;
+              break;
+            }
+
+            const currentLabels = new Set((pr.labels || []).map((label) => label.name));
+            const matchedBumpLabels = bumpLabels.filter((label) => currentLabels.has(label));
+            const resolvedBump = matchedBumpLabels.length === 1
+              ? matchedBumpLabels[0].replace("release:bump:", "")
+              : "unresolved";
+            const passed =
+              isAutomationPr ||
+              !requiresReleaseIntent ||
+              matchedBumpLabels.length === 1;
+
+            const details = [];
+            if (isAutomationPr) {
+              details.push("Automation release PR detected. Release intent stays with the origin PR metadata.");
+            } else if (!projectTouched) {
+              details.push("No `Project/` changes detected.");
+            } else if (!requiresReleaseIntent) {
+              details.push("Docs-only `Project/` changes detected. No release bump label is required.");
+            } else if (matchedBumpLabels.length === 0) {
+              details.push("Release-impacting `Project/` changes require exactly one `release:bump:*` label.");
+            } else if (matchedBumpLabels.length > 1) {
+              details.push(`Multiple release bump labels found: ${matchedBumpLabels.map((label) => `\`${label}\``).join(", ")}.`);
+            } else {
+              details.push(`Release intent resolved to \`${resolvedBump}\`.`);
+            }
+
+            const body = [
+              marker,
+              "## Release Radar",
+              "",
+              `- Base branch: \`${baseRef}\``,
+              `- Project paths changed: ${projectTouched ? "yes" : "no"}`,
+              `- Requires release bump label: ${requiresReleaseIntent ? "yes" : "no"}`,
+              `- Automation PR: ${isAutomationPr ? "yes" : "no"}`,
+              `- Release bump labels: ${matchedBumpLabels.length > 0 ? matchedBumpLabels.map((label) => `\`${label}\``).join(", ") : "_none_"}`,
+              `- Result: ${passed ? "passed" : "failed"}`,
+              "",
+              ...details,
+              "",
+              "Accepted labels: `release:bump:none`, `release:bump:patch`, `release:bump:minor`, `release:bump:major`.",
+            ].join("\n");
+
+            if (!isExternalFork) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              });
+
+              const existing = comments.find((comment) => (comment.body || "").includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else if (projectTouched || isAutomationPr) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body,
+                });
+              }
+            }
+
+            if (!passed) {
+              core.setFailed("Release-impacting Project changes require exactly one release:bump label.");
+            }
+
+  fork-comment:
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Upsert fork-safe release comment
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const marker = "<!-- release-check-comment -->";
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const issueNumber = pr.number;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: issueNumber,
+              per_page: 100,
+            });
+
+            let projectTouched = false;
+            let requiresReleaseIntent = false;
+            for (const file of files) {
+              const path = (file.filename || "").trim();
+              if (!path.startsWith("Project/")) continue;
+              projectTouched = true;
+
+              if (path.startsWith("Project/docs/")) continue;
+              if (path.endsWith(".md") || path.endsWith(".mdx")) continue;
+
+              requiresReleaseIntent = true;
+              break;
+            }
+
+            const labels = new Set((pr.labels || []).map((label) => label.name));
+            const matchedBumpLabels = [
+              "release:bump:none",
+              "release:bump:patch",
+              "release:bump:minor",
+              "release:bump:major",
+            ].filter((label) => labels.has(label));
+
+            const body = [
+              marker,
+              "## Release Radar",
+              "",
+              `- Base branch: \`${pr.base.ref || ""}\``,
+              "- External fork PR: yes",
+              `- Project paths changed: ${projectTouched ? "yes" : "no"}`,
+              `- Requires release bump label: ${requiresReleaseIntent ? "yes" : "no"}`,
+              `- Release bump labels: ${matchedBumpLabels.length > 0 ? matchedBumpLabels.map((label) => `\`${label}\``).join(", ") : "_none_"}`,
+              "",
+              "Maintainers must ensure exactly one `release:bump:*` label is applied before merge for release-impacting `Project/` changes.",
+            ].join("\n");
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) => (comment.body || "").includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else if (projectTouched) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }

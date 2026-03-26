@@ -73,10 +73,15 @@ function unquote(value) {
 
 function parseReleaseConfig() {
   if (!fs.existsSync(RELEASE_CONFIG_PATH)) {
-    return { categories: DEFAULT_CATEGORY_CONFIG, excludeLabels: ["ignore-for-release"] };
+    return {
+      categories: DEFAULT_CATEGORY_CONFIG,
+      excludeLabels: ["ignore-for-release"],
+    };
   }
 
-  const source = fs.readFileSync(RELEASE_CONFIG_PATH, "utf8").replace(/\r\n/g, "\n");
+  const source = fs
+    .readFileSync(RELEASE_CONFIG_PATH, "utf8")
+    .replace(/\r\n/g, "\n");
   const categories = [];
 
   const categoriesMatch = source.match(/categories:\s*\n([\s\S]*)$/m);
@@ -112,7 +117,9 @@ function parseReleaseConfig() {
   }
 
   const excludeLabels = [];
-  const excludeMatch = source.match(/exclude:\s*\n\s*labels:\s*\n([\s\S]*?)\n\s*categories:/m);
+  const excludeMatch = source.match(
+    /exclude:\s*\n\s*labels:\s*\n([\s\S]*?)\n\s*categories:/m,
+  );
   if (excludeMatch) {
     for (const line of excludeMatch[1].split("\n")) {
       const labelMatch = line.match(/^\s*-\s+(.+)\s*$/);
@@ -143,7 +150,12 @@ function runGit(args) {
 
 function revList(range) {
   const raw = runGit(["rev-list", range]);
-  return raw ? raw.split("\n").map((x) => x.trim()).filter(Boolean) : [];
+  return raw
+    ? raw
+        .split("\n")
+        .map((x) => x.trim())
+        .filter(Boolean)
+    : [];
 }
 
 function resolveCommitSha(ref) {
@@ -167,9 +179,13 @@ function isCommitAncestor(ancestorSha, descendantSha) {
   if (!normalizedAncestor || !normalizedDescendant) return false;
 
   try {
-    execFileSync("git", ["merge-base", "--is-ancestor", normalizedAncestor, normalizedDescendant], {
-      stdio: ["ignore", "ignore", "ignore"],
-    });
+    execFileSync(
+      "git",
+      ["merge-base", "--is-ancestor", normalizedAncestor, normalizedDescendant],
+      {
+        stdio: ["ignore", "ignore", "ignore"],
+      },
+    );
     return true;
   } catch {
     return false;
@@ -189,8 +205,8 @@ function isWrapperPullRequest(pr, excludeLabels) {
   if (headRef === "dev" && baseRef === "prev") return true;
   if (headRef === "prev" && baseRef === "main") return true;
   if (headRef.startsWith("lane-sync/")) return true;
-  if (headRef.startsWith("changeset-release/")) return true;
-  if (headRef.startsWith("changeset-sync/")) return true;
+  if (headRef.startsWith("release-bot/")) return true;
+  if (headRef.startsWith("release-sync/")) return true;
   if (title.startsWith("chore(release): version")) return true;
   if (title.startsWith("release(stable): v")) return true;
   return false;
@@ -206,7 +222,7 @@ function normalizePrTitle(title) {
 
 function semanticLabelFromTitle(title) {
   const match = (title || "").match(
-    /^(feat|fix|chore|docs|refactor|test|perf|build|ci|ui-ux|revert)(?:\([^)]+\))?(!)?:\s/i
+    /^(feat|fix|chore|docs|refactor|test|perf|build|ci|ui-ux|revert)(?:\([^)]+\))?(!)?:\s/i,
   );
   if (!match) return null;
   if (match[2]) return "type: breaking";
@@ -262,7 +278,9 @@ function buildGitHubApiUrl(pathname, query) {
 function buildGitHubWebUrl(pathname) {
   const url = new URL(pathname, GITHUB_WEB_BASE);
   if (url.origin !== GITHUB_WEB_BASE.origin) {
-    throw new Error(`Refusing to build non-GitHub web URL origin: ${url.origin}`);
+    throw new Error(
+      `Refusing to build non-GitHub web URL origin: ${url.origin}`,
+    );
   }
   return url;
 }
@@ -271,7 +289,7 @@ function buildTagUrl(owner, repo, tagName) {
   if (!tagName) return null;
   const repoBasePath = buildGitHubRepoBasePath(owner, repo);
   const url = buildGitHubWebUrl(
-    `${repoBasePath.replace(/^\/repos/, "")}/releases/tag/${encodeURIComponent(tagName)}`
+    `${repoBasePath.replace(/^\/repos/, "")}/releases/tag/${encodeURIComponent(tagName)}`,
   );
   return url.toString();
 }
@@ -281,7 +299,7 @@ function buildCompareUrl(owner, repo, previousTag, tagName) {
   const repoBasePath = buildGitHubRepoBasePath(owner, repo);
   const compareSpec = `${previousTag}...${tagName}`;
   const url = buildGitHubWebUrl(
-    `${repoBasePath.replace(/^\/repos/, "")}/compare/${encodeURIComponent(compareSpec)}`
+    `${repoBasePath.replace(/^\/repos/, "")}/compare/${encodeURIComponent(compareSpec)}`,
   );
   return url.toString();
 }
@@ -293,7 +311,8 @@ function formatLinkedCode(text, href) {
 
 function githubRequest(pathname, { method = "GET", body, query } = {}) {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (!token) throw new Error("Missing GITHUB_TOKEN/GH_TOKEN for GitHub API calls.");
+  if (!token)
+    throw new Error("Missing GITHUB_TOKEN/GH_TOKEN for GitHub API calls.");
   const url = buildGitHubApiUrl(pathname, query);
   const payload = body ? JSON.stringify(body) : undefined;
 
@@ -329,8 +348,8 @@ function githubRequest(pathname, { method = "GET", body, query } = {}) {
           if (status < 200 || status >= 300) {
             reject(
               new Error(
-                `GitHub API ${method} ${url.pathname}${url.search} failed (${status}): ${responseText}`
-              )
+                `GitHub API ${method} ${url.pathname}${url.search} failed (${status}): ${responseText}`,
+              ),
             );
             return;
           }
@@ -343,10 +362,14 @@ function githubRequest(pathname, { method = "GET", body, query } = {}) {
           try {
             resolve(JSON.parse(responseText));
           } catch {
-            reject(new Error(`GitHub API ${method} ${url.pathname} returned invalid JSON.`));
+            reject(
+              new Error(
+                `GitHub API ${method} ${url.pathname} returned invalid JSON.`,
+              ),
+            );
           }
         });
-      }
+      },
     );
 
     request.on("error", (error) => reject(error));
@@ -369,7 +392,7 @@ async function listPullRequestsForCommit(owner, repo, sha) {
   try {
     const pulls = await githubRequest(
       `${repoBasePath}/commits/${encodeURIComponent(normalizedSha)}/pulls`,
-      { query: { per_page: "100" } }
+      { query: { per_page: "100" } },
     );
     return Array.isArray(pulls) ? pulls : [];
   } catch {
@@ -409,7 +432,7 @@ async function listClosedPullRequestsForBase(owner, repo, baseRef) {
 async function getPullRequestByNumber(owner, repo, prNumber) {
   const repoBasePath = buildGitHubRepoBasePath(owner, repo);
   const response = await githubRequest(
-    `${repoBasePath}/pulls/${encodeURIComponent(String(prNumber))}`
+    `${repoBasePath}/pulls/${encodeURIComponent(String(prNumber))}`,
   );
   return response && typeof response === "object" ? response : null;
 }
@@ -431,17 +454,27 @@ async function collectPullRequestsFromRange(owner, repo, range) {
   return [...pullRequestMap.values()];
 }
 
-async function collectLanePullRequestsForTagWindow(owner, repo, previousTag, currentTag, baseRefs) {
+async function collectLanePullRequestsForTagWindow(
+  owner,
+  repo,
+  previousTag,
+  currentTag,
+  baseRefs,
+) {
   const upperBoundIso = resolveCommitTimestamp(currentTag);
   const upperBound = parseTimestamp(upperBoundIso);
   if (upperBound === null) {
-    throw new Error(`Unable to resolve commit timestamp for tag ${currentTag}.`);
+    throw new Error(
+      `Unable to resolve commit timestamp for tag ${currentTag}.`,
+    );
   }
 
   const lowerBoundIso = previousTag ? resolveCommitTimestamp(previousTag) : "";
   const lowerBound = lowerBoundIso ? parseTimestamp(lowerBoundIso) : null;
   if (lowerBoundIso && lowerBound === null) {
-    throw new Error(`Unable to resolve commit timestamp for tag ${previousTag}.`);
+    throw new Error(
+      `Unable to resolve commit timestamp for tag ${previousTag}.`,
+    );
   }
 
   const currentTagSha = resolveCommitSha(currentTag);
@@ -452,7 +485,11 @@ async function collectLanePullRequestsForTagWindow(owner, repo, previousTag, cur
   const pullRequestMap = new Map();
 
   for (const baseRef of baseRefs) {
-    const closedPullRequests = await listClosedPullRequestsForBase(owner, repo, baseRef);
+    const closedPullRequests = await listClosedPullRequestsForBase(
+      owner,
+      repo,
+      baseRef,
+    );
 
     for (const pr of closedPullRequests) {
       if (!pr?.number || !pr?.merged_at) continue;
@@ -537,7 +574,9 @@ async function main() {
   const compareLink = buildCompareUrl(owner, repo, previousTag, tagName);
 
   if (!rangeEndRef) {
-    throw new Error("Unable to determine RANGE_END_REF or TAG_NAME for release note collection.");
+    throw new Error(
+      "Unable to determine RANGE_END_REF or TAG_NAME for release note collection.",
+    );
   }
 
   const { categories, excludeLabels } = parseReleaseConfig();
@@ -549,14 +588,16 @@ async function main() {
   lines.push("");
   lines.push(`- Version: ${formatLinkedCode(version, currentTagLink)}`);
   if (previousTag) {
-    lines.push(`- Previous ${channel} tag: ${formatLinkedCode(previousTag, previousTagLink)}`);
+    lines.push(
+      `- Previous ${channel} tag: ${formatLinkedCode(previousTag, previousTagLink)}`,
+    );
   } else {
     lines.push(`- Previous ${channel} tag: _none_ (first ${channel} release)`);
   }
   lines.push("");
   if (compareLink) {
     lines.push(
-      `### Changes since previous ${channel} ([compare](${compareLink}))`
+      `### Changes since previous ${channel} ([compare](${compareLink}))`,
     );
   } else {
     lines.push(`### Changes since previous ${channel}`);
@@ -564,14 +605,17 @@ async function main() {
 
   const pullRequests =
     channel === "beta"
-      ? await collectLanePullRequestsForTagWindow(owner, repo, previousTag, tagName, [
-          "dev",
-          "prev",
-        ])
+      ? await collectLanePullRequestsForTagWindow(
+          owner,
+          repo,
+          previousTag,
+          tagName,
+          ["dev", "prev"],
+        )
       : await collectPullRequestsFromRange(
           owner,
           repo,
-          previousTag ? `${previousTag}..${rangeEndRef}` : rangeEndRef
+          previousTag ? `${previousTag}..${rangeEndRef}` : rangeEndRef,
         );
 
   const resolvedPullRequests = await resolveReleaseNotePullRequests({
@@ -587,7 +631,11 @@ async function main() {
     if (channel === "stable") return true;
     if (channel === "beta") {
       const baseRef = pr.base?.ref || "";
-      return baseRef === "dev" || baseRef === "prev" || isHotfixBranch(pr.head?.ref || "");
+      return (
+        baseRef === "dev" ||
+        baseRef === "prev" ||
+        isHotfixBranch(pr.head?.ref || "")
+      );
     }
     return true;
   });
@@ -653,10 +701,12 @@ async function main() {
   if (!renderedAny) {
     if (previousTag) {
       lines.push(
-        `- No release-note entries were resolved between ${formatLinkedCode(previousTag, previousTagLink)} and ${formatLinkedCode(tagName, currentTagLink)}.`
+        `- No release-note entries were resolved between ${formatLinkedCode(previousTag, previousTagLink)} and ${formatLinkedCode(tagName, currentTagLink)}.`,
       );
     } else {
-      lines.push(`- No release-note entries were resolved for this first ${channel} release window.`);
+      lines.push(
+        `- No release-note entries were resolved for this first ${channel} release window.`,
+      );
     }
   }
 

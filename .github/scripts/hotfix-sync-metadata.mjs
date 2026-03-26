@@ -1,4 +1,5 @@
 export const HOTFIX_SYNC_METADATA_MARKER = "hotfix-sync-metadata";
+const RELEASE_BUMP_VALUES = new Set(["none", "patch", "minor", "major"]);
 
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -24,6 +25,11 @@ function normalizeNumber(value) {
   return null;
 }
 
+function normalizeReleaseBump(value) {
+  const normalized = normalizeString(value).toLowerCase();
+  return RELEASE_BUMP_VALUES.has(normalized) ? normalized : "none";
+}
+
 export function normalizeHotfixSyncMetadata(value) {
   if (!value || typeof value !== "object") {
     throw new Error("Hotfix sync metadata must be an object.");
@@ -37,7 +43,8 @@ export function normalizeHotfixSyncMetadata(value) {
   const originBase = normalizeString(value.origin_base);
   const originHead = normalizeString(value.origin_head);
   const originMergeSha = normalizeString(value.origin_merge_sha);
-  const changesetFiles = normalizeStringArray(value.changeset_files);
+  const carriedLabels = normalizeStringArray(value.carried_labels);
+  const releaseBump = normalizeReleaseBump(value.release_bump);
 
   if (!originBase || !originHead || !originMergeSha) {
     throw new Error(
@@ -50,8 +57,8 @@ export function normalizeHotfixSyncMetadata(value) {
     origin_base: originBase,
     origin_head: originHead,
     origin_merge_sha: originMergeSha,
-    changeset_files: changesetFiles,
-    changeset_consumed_by_main: value.changeset_consumed_by_main === true,
+    release_bump: releaseBump,
+    carried_labels: carriedLabels,
   };
 }
 
