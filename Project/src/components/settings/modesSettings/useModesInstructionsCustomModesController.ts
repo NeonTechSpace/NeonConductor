@@ -1,21 +1,16 @@
 import { useState } from 'react';
 
-import type {
-    CustomModeEditorDraft,
-    CustomModeScope,
-    PromptSettingsSnapshot,
-} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import type { PromptSettingsSnapshot } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import {
-    createEmptyCustomModeEditorDraft,
     emptyModeItems,
     normalizeOptionalText,
     parseListText,
-    toggleToolCapability,
 } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import { useModesInstructionsCustomModeEditorState } from '@/web/components/settings/modesSettings/useModesInstructionsCustomModeEditorState';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { trpc } from '@/web/trpc/client';
 
-import type { ToolCapability, TopLevelTab } from '@/shared/contracts';
+import type { TopLevelTab } from '@/shared/contracts';
 
 
 export function useModesInstructionsCustomModesController(input: {
@@ -30,15 +25,18 @@ export function useModesInstructionsCustomModesController(input: {
 }) {
     const wrapFailClosedAction = <TArgs extends unknown[]>(action: (...args: TArgs) => Promise<void>) =>
         createFailClosedAsyncAction(action);
-    const utils = trpc.useUtils();
     const [importJsonText, setImportJsonText] = useState('');
     const [importScope, setImportScope] = useState<'global' | 'workspace'>('global');
     const [importTopLevelTab, setImportTopLevelTab] = useState<TopLevelTab>('chat');
     const [allowOverwrite, setAllowOverwrite] = useState(false);
     const [exportJsonText, setExportJsonText] = useState('');
     const [selectedExportLabel, setSelectedExportLabel] = useState<string | undefined>(undefined);
-    const [customModeEditorDraft, setCustomModeEditorDraft] = useState<CustomModeEditorDraft | undefined>(undefined);
-    const [isLoadingCustomModeEditor, setIsLoadingCustomModeEditor] = useState(false);
+    const editorState = useModesInstructionsCustomModeEditorState({
+        profileId: input.profileId,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+        clearFeedback: input.clearFeedback,
+        setErrorFeedback: input.setErrorFeedback,
+    });
 
     function clearExportSelection(): void {
         setExportJsonText('');
@@ -69,7 +67,7 @@ export function useModesInstructionsCustomModesController(input: {
     const createCustomModeMutation = trpc.prompt.createCustomMode.useMutation({
         onSuccess: ({ settings }) => {
             input.applySettings(settings);
-            setCustomModeEditorDraft(undefined);
+            editorState.close();
             clearExportSelection();
             input.setSuccessFeedback('Created file-backed custom mode.');
         },
@@ -80,7 +78,7 @@ export function useModesInstructionsCustomModesController(input: {
     const updateCustomModeMutation = trpc.prompt.updateCustomMode.useMutation({
         onSuccess: ({ settings }) => {
             input.applySettings(settings);
-            setCustomModeEditorDraft(undefined);
+            editorState.close();
             clearExportSelection();
             input.setSuccessFeedback('Updated file-backed custom mode.');
         },
@@ -91,7 +89,7 @@ export function useModesInstructionsCustomModesController(input: {
     const deleteCustomModeMutation = trpc.prompt.deleteCustomMode.useMutation({
         onSuccess: ({ settings }) => {
             input.applySettings(settings);
-            setCustomModeEditorDraft(undefined);
+            editorState.close();
             clearExportSelection();
             input.setSuccessFeedback('Deleted file-backed custom mode.');
         },
@@ -109,43 +107,16 @@ export function useModesInstructionsCustomModesController(input: {
         input.setSuccessFeedback('Copied custom mode JSON.');
     }
 
-    async function loadCustomModeEditor(loadInput: {
-        scope: CustomModeScope;
-        topLevelTab: TopLevelTab;
-        modeKey: string;
-    }): Promise<void> {
-        setIsLoadingCustomModeEditor(true);
-        input.clearFeedback();
-        try {
-            const result = await utils.prompt.getCustomMode.fetch({
-                profileId: input.profileId,
-                topLevelTab: loadInput.topLevelTab,
-                modeKey: loadInput.modeKey,
-                scope: loadInput.scope,
-                ...(loadInput.scope === 'workspace' && input.workspaceFingerprint
-                    ? { workspaceFingerprint: input.workspaceFingerprint }
-                    : {}),
-            });
-            setCustomModeEditorDraft({
-                kind: 'edit',
-                scope: result.mode.scope,
-                topLevelTab: result.mode.topLevelTab,
-                modeKey: result.mode.modeKey,
-                slug: result.mode.slug,
-                name: result.mode.name,
-                description: result.mode.description ?? '',
-                roleDefinition: result.mode.roleDefinition ?? '',
-                customInstructions: result.mode.customInstructions ?? '',
-                whenToUse: result.mode.whenToUse ?? '',
-                tagsText: result.mode.tags?.join(', ') ?? '',
-                selectedToolCapabilities: result.mode.toolCapabilities ?? [],
-                deleteConfirmed: false,
-            });
-        } catch (error) {
-            input.setErrorFeedback(error instanceof Error ? error.message : 'Custom mode could not be loaded.');
-        } finally {
-            setIsLoadingCustomModeEditor(false);
-        }
+    async function loadExportJson(scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) {
+        await exportCustomModeMutation.mutateAsync({
+            profileId: input.profileId,
+            topLevelTab,
+            modeKey,
+            scope,
+            ...(scope === 'workspace' && input.workspaceFingerprint
+                ? { workspaceFingerprint: input.workspaceFingerprint }
+                : {}),
+        });
     }
 
     return {
@@ -153,97 +124,25 @@ export function useModesInstructionsCustomModesController(input: {
             global: input.persistedSettings?.fileBackedCustomModes.global ?? emptyModeItems(),
             workspace: input.persistedSettings?.fileBackedCustomModes.workspace ?? emptyModeItems(),
             editor: {
-                draft: customModeEditorDraft,
-                isLoading: isLoadingCustomModeEditor,
+                draft: editorState.draft,
+                isLoading: editorState.isLoading,
                 isSaving:
                     createCustomModeMutation.isPending ||
                     updateCustomModeMutation.isPending ||
                     deleteCustomModeMutation.isPending,
                 hasWorkspaceScope: Boolean(input.workspaceFingerprint),
                 selectedWorkspaceLabel: input.selectedWorkspaceLabel,
-                openCreate: (scope: CustomModeScope) => {
-                    setCustomModeEditorDraft(createEmptyCustomModeEditorDraft(scope));
-                    input.clearFeedback();
-                },
-                openEdit: async (scope: CustomModeScope, topLevelTab: TopLevelTab, modeKey: string) => {
-                    await loadCustomModeEditor({ scope, topLevelTab, modeKey });
-                },
-                openDelete: async (scope: CustomModeScope, topLevelTab: TopLevelTab, modeKey: string) => {
-                    await loadCustomModeEditor({ scope, topLevelTab, modeKey });
-                },
-                close: () => {
-                    setCustomModeEditorDraft(undefined);
-                    input.clearFeedback();
-                },
-                setScope: (scope: CustomModeScope) => {
-                    setCustomModeEditorDraft((currentDraft) =>
-                        currentDraft?.kind === 'create'
-                            ? {
-                                  ...currentDraft,
-                                  scope,
-                              }
-                            : currentDraft
-                    );
-                    input.clearFeedback();
-                },
-                setTopLevelTab: (topLevelTab: TopLevelTab) => {
-                    setCustomModeEditorDraft((currentDraft) =>
-                        currentDraft?.kind === 'create'
-                            ? {
-                                  ...currentDraft,
-                                  topLevelTab,
-                              }
-                            : currentDraft
-                    );
-                    input.clearFeedback();
-                },
-                setField: (
-                    field:
-                        | 'slug'
-                        | 'name'
-                        | 'description'
-                        | 'roleDefinition'
-                        | 'customInstructions'
-                        | 'whenToUse'
-                        | 'tagsText',
-                    value: string
-                ) => {
-                    setCustomModeEditorDraft((currentDraft) =>
-                        currentDraft
-                            ? {
-                                  ...currentDraft,
-                                  [field]: value,
-                              }
-                            : currentDraft
-                    );
-                    input.clearFeedback();
-                },
-                toggleToolCapability: (capability: ToolCapability) => {
-                    setCustomModeEditorDraft((currentDraft) =>
-                        currentDraft
-                            ? {
-                                  ...currentDraft,
-                                  selectedToolCapabilities: toggleToolCapability(
-                                      currentDraft.selectedToolCapabilities,
-                                      capability
-                                  ),
-                              }
-                            : currentDraft
-                    );
-                    input.clearFeedback();
-                },
-                setDeleteConfirmed: (value: boolean) => {
-                    setCustomModeEditorDraft((currentDraft) =>
-                        currentDraft
-                            ? {
-                                  ...currentDraft,
-                                  deleteConfirmed: value,
-                              }
-                            : currentDraft
-                    );
-                    input.clearFeedback();
-                },
+                openCreate: editorState.openCreate,
+                openEdit: editorState.openEdit,
+                openDelete: editorState.openDelete,
+                close: editorState.close,
+                setScope: editorState.setScope,
+                setTopLevelTab: editorState.setTopLevelTab,
+                setField: editorState.setField,
+                toggleToolCapability: editorState.toggleToolCapability,
+                setDeleteConfirmed: editorState.setDeleteConfirmed,
                 save: wrapFailClosedAction(async () => {
+                    const customModeEditorDraft = editorState.draft;
                     if (!customModeEditorDraft) {
                         return;
                     }
@@ -299,6 +198,7 @@ export function useModesInstructionsCustomModesController(input: {
                     });
                 }),
                 deleteMode: wrapFailClosedAction(async () => {
+                    const customModeEditorDraft = editorState.draft;
                     if (!customModeEditorDraft || customModeEditorDraft.kind !== 'edit') {
                         return;
                     }
@@ -326,6 +226,7 @@ export function useModesInstructionsCustomModesController(input: {
             exportState: {
                 jsonText: exportJsonText,
                 selectedLabel: selectedExportLabel,
+                loadExportJson: wrapFailClosedAction(loadExportJson),
             },
             isImporting: importCustomModeMutation.isPending,
             isExporting: exportCustomModeMutation.isPending,
@@ -357,19 +258,7 @@ export function useModesInstructionsCustomModesController(input: {
                     overwrite: allowOverwrite,
                 });
             }),
-            exportMode: wrapFailClosedAction(
-                async (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => {
-                    await exportCustomModeMutation.mutateAsync({
-                        profileId: input.profileId,
-                        topLevelTab,
-                        modeKey,
-                        scope,
-                        ...(scope === 'workspace' && input.workspaceFingerprint
-                            ? { workspaceFingerprint: input.workspaceFingerprint }
-                            : {}),
-                    });
-                }
-            ),
+            exportMode: wrapFailClosedAction(loadExportJson),
             copyExportJson: wrapFailClosedAction(copyExportJson),
         },
     };

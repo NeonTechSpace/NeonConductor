@@ -90,6 +90,136 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
             fingerprint: 'wsf_modes_screen',
             selectedLabel: 'Workspace Root',
         },
+        viewModel: {
+            promptLayers: {
+                appGlobal: {
+                    title: 'App-Scope Global Instructions',
+                    description: 'These instructions apply across the app before any profile, tab, mode, rule, or skill content.',
+                    value: '',
+                    isSaving: false,
+                },
+                profileGlobal: {
+                    title: 'Profile-Scope Global Instructions',
+                    description: 'These instructions apply only to the selected profile after app-scope instructions and before built-in tab instructions.',
+                    value: '',
+                    isSaving: false,
+                },
+                topLevel: [
+                    {
+                        topLevelTab: 'chat',
+                        title: 'Chat Instructions',
+                        description: 'Shipped chat behavior lives here before mode-specific instructions are applied.',
+                        warning: 'Editing built-in chat instructions can make the app behave differently than the shipped defaults.',
+                        value: '',
+                        isSaving: false,
+                    },
+                    {
+                        topLevelTab: 'agent',
+                        title: 'Agent Instructions',
+                        description: 'Shipped agent behavior lives here before mode-specific instructions are applied.',
+                        warning: 'Editing built-in agent instructions can make the app behave differently than the shipped defaults.',
+                        value: '',
+                        isSaving: false,
+                    },
+                    {
+                        topLevelTab: 'orchestrator',
+                        title: 'Orchestrator Instructions',
+                        description: 'Shipped orchestrator behavior lives here before mode-specific instructions are applied.',
+                        warning: 'Editing built-in orchestrator instructions can make the app behave differently than the shipped defaults.',
+                        value: '',
+                        isSaving: false,
+                    },
+                ],
+            },
+            builtInModeSections: [
+                {
+                    topLevelTab: 'chat',
+                    title: 'Chat Modes',
+                    description: 'Reset any edited built-in mode to restore the shipped default prompt for that mode.',
+                    cards: [
+                        {
+                            topLevelTab: 'chat',
+                            modeKey: 'chat',
+                            label: 'Chat',
+                            description: 'Shipped chat behavior for chat lives here before custom rules, skills, or prompt attachments are applied.',
+                            warning: 'Editing the built-in chat prompt can make the app behave unexpectedly. Reset restores the shipped behavior.',
+                            roleDefinition: '',
+                            customInstructions: '',
+                            hasOverride: false,
+                        },
+                    ],
+                },
+                {
+                    topLevelTab: 'agent',
+                    title: 'Agent Modes',
+                    description: 'Reset any edited built-in mode to restore the shipped default prompt for that mode.',
+                    cards: [
+                        {
+                            topLevelTab: 'agent',
+                            modeKey: 'code',
+                            label: 'Agent Code',
+                            description: 'Shipped agent behavior for agent code lives here before custom rules, skills, or prompt attachments are applied.',
+                            warning: 'Editing the built-in agent code prompt can make the app behave unexpectedly. Reset restores the shipped behavior.',
+                            roleDefinition: '',
+                            customInstructions: '',
+                            hasOverride: false,
+                        },
+                    ],
+                },
+                {
+                    topLevelTab: 'orchestrator',
+                    title: 'Orchestrator Modes',
+                    description: 'Reset any edited built-in mode to restore the shipped default prompt for that mode.',
+                    cards: [
+                        {
+                            topLevelTab: 'orchestrator',
+                            modeKey: 'orchestrate',
+                            label: 'Orchestrator Orchestrate',
+                            description: 'Shipped orchestrator behavior for orchestrator orchestrate lives here before custom rules, skills, or prompt attachments are applied.',
+                            warning: 'Editing the built-in orchestrator orchestrate prompt can make the app behave unexpectedly. Reset restores the shipped behavior.',
+                            roleDefinition: '',
+                            customInstructions: '',
+                            hasOverride: false,
+                        },
+                    ],
+                },
+            ],
+            modeLibrary: {
+                title: 'File-Backed Custom Modes',
+                description: 'Manage app-level file-backed custom modes while keeping the registry roots as the only source of truth.',
+                global: {
+                    chat: [
+                        {
+                            topLevelTab: 'chat',
+                            modeKey: 'review',
+                            label: 'Global Chat Review',
+                            description: 'Global chat review mode',
+                            whenToUse: 'Use when a conversation needs a strict review pass.',
+                            tags: ['quality', 'review'],
+                            toolCapabilities: ['filesystem_read', 'shell'],
+                        },
+                    ],
+                    agent: [],
+                    orchestrator: [],
+                },
+                workspace: {
+                    chat: [],
+                    agent: [],
+                    orchestrator: [
+                        {
+                            topLevelTab: 'orchestrator',
+                            modeKey: 'workspace-orchestrator',
+                            label: 'Workspace Orchestrator',
+                            description: 'Workspace orchestrator mode',
+                            whenToUse: 'Use when a workspace needs coordination.',
+                            toolCapabilities: ['filesystem_read', 'filesystem_write'],
+                        },
+                    ],
+                },
+                hasWorkspaceScope: true,
+                selectedWorkspaceLabel: 'Workspace Root',
+            },
+        },
         appGlobal: {
             value: '',
             isSaving: false,

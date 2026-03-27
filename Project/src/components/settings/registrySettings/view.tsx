@@ -36,15 +36,7 @@ export function RegistrySettingsScreen({
     onSubsectionChange,
 }: RegistrySettingsViewProps) {
     const controller = useRegistrySettingsController(profileId);
-    const resolvedRules = controller.registryQuery.data?.resolved.rulesets ?? [];
-    const resolvedSkills = controller.registryQuery.data?.resolved.skillfiles ?? [];
-    const resolvedModes = controller.resolvedAgentModes;
-    const discoveredGlobalModes = controller.registryQuery.data?.discovered.global.modes ?? [];
-    const discoveredWorkspaceModes = controller.registryQuery.data?.discovered.workspace?.modes ?? [];
-    const discoveredGlobalRules = controller.registryQuery.data?.discovered.global.rulesets ?? [];
-    const discoveredWorkspaceRules = controller.registryQuery.data?.discovered.workspace?.rulesets ?? [];
-    const discoveredGlobalSkills = controller.registryQuery.data?.discovered.global.skillfiles ?? [];
-    const discoveredWorkspaceSkills = controller.registryQuery.data?.discovered.workspace?.skillfiles ?? [];
+    const { readModel } = controller;
 
     async function handleRefreshGlobal() {
         try {
@@ -103,10 +95,10 @@ export function RegistrySettingsScreen({
                                 />
                                 <div className='flex flex-wrap gap-2'>
                                     <Button
-                                        type='button'
-                                        size='sm'
-                                        variant='outline'
-                                        disabled={controller.refreshMutation.isPending}
+                                            type='button'
+                                            size='sm'
+                                            variant='outline'
+                                            disabled={controller.refreshMutation.isPending}
                                         onClick={() => {
                                             void handleRefreshGlobal();
                                         }}>
@@ -116,12 +108,12 @@ export function RegistrySettingsScreen({
                                             : 'Refresh global files'}
                                     </Button>
                                     <Button
-                                        type='button'
-                                        size='sm'
-                                        variant='outline'
-                                        disabled={
-                                            controller.refreshMutation.isPending ||
-                                            !controller.selectedWorkspaceFingerprint
+                                            type='button'
+                                            size='sm'
+                                            variant='outline'
+                                            disabled={
+                                                controller.refreshMutation.isPending ||
+                                                !controller.selectedWorkspaceFingerprint
                                         }
                                         onClick={() => {
                                             void handleRefreshWorkspace();
@@ -142,7 +134,7 @@ export function RegistrySettingsScreen({
                                         <div>
                                             <p className='text-sm font-semibold'>Global files folder</p>
                                             <p className='text-muted-foreground mt-1 text-xs break-all'>
-                                                {controller.registryQuery.data?.paths.globalAssetsRoot ?? 'Loading...'}
+                                                {readModel.globalAssetsRoot ?? 'Loading...'}
                                             </p>
                                         </div>
                                         <div>
@@ -162,7 +154,7 @@ export function RegistrySettingsScreen({
                                                     );
                                                 }}>
                                                 <option value=''>No workspace selected</option>
-                                                {controller.workspaceRoots.map((workspaceRoot) => (
+                                                {readModel.workspaceRoots.map((workspaceRoot) => (
                                                     <option
                                                         key={workspaceRoot.fingerprint}
                                                         value={workspaceRoot.fingerprint}>
@@ -171,8 +163,8 @@ export function RegistrySettingsScreen({
                                                 ))}
                                             </select>
                                             <p className='text-muted-foreground mt-2 text-xs break-all'>
-                                                {controller.selectedWorkspaceRoot
-                                                    ? controller.selectedWorkspaceRoot.absolutePath
+                                                {readModel.selectedWorkspaceRoot
+                                                    ? readModel.selectedWorkspaceRoot.absolutePath
                                                     : 'Choose a workspace to inspect workspace-only files and refresh the local results.'}
                                             </p>
                                         </div>
@@ -182,17 +174,17 @@ export function RegistrySettingsScreen({
                                 <div className='grid gap-3 sm:grid-cols-3 lg:grid-cols-1'>
                                     <SummaryCard
                                         label='Available Modes'
-                                        value={String(resolvedModes.length)}
+                                        value={String(readModel.resolvedAgentModes.length)}
                                         detail='Modes Neon can use right now'
                                     />
                                     <SummaryCard
                                         label='Available Rules'
-                                        value={String(resolvedRules.length)}
+                                        value={String(readModel.resolvedRules.length)}
                                         detail='Rules Neon can use right now'
                                     />
                                     <SummaryCard
                                         label='Available Skills'
-                                        value={String(resolvedSkills.length)}
+                                        value={String(readModel.resolvedSkills.length)}
                                         detail='Skills Neon can use right now'
                                     />
                                 </div>
@@ -227,12 +219,12 @@ export function RegistrySettingsScreen({
                                         <div className='flex items-center justify-between gap-3'>
                                             <p className='text-sm font-semibold'>Matches</p>
                                             <span className='text-muted-foreground text-xs'>
-                                                {controller.skillMatches.length} skills
+                                                {readModel.skillMatches.length} skills
                                             </span>
                                         </div>
-                                        {controller.skillMatches.length > 0 ? (
+                                        {readModel.skillMatches.length > 0 ? (
                                             <div className='grid gap-3 xl:grid-cols-2'>
-                                                {controller.skillMatches.map((skillfile) => (
+                                                {readModel.skillMatches.map((skillfile) => (
                                                     <AssetCard
                                                         key={skillfile.id}
                                                         asset={skillfile}
@@ -254,7 +246,7 @@ export function RegistrySettingsScreen({
                             <AssetSection
                                 title='Resolved Skills'
                                 emptyLabel='No resolved skills are available yet.'
-                                assets={resolvedSkills}
+                                assets={readModel.resolvedSkills}
                                 renderTitle={(asset) => asset.name}
                                 renderSubtitle={(asset) => asset.assetKey}
                                 renderBodyMarkdown={(asset) => asset.bodyMarkdown}
@@ -263,7 +255,7 @@ export function RegistrySettingsScreen({
                             <AssetSection
                                 title='Discovered Global Skills'
                                 emptyLabel='No global skill assets have been discovered yet.'
-                                assets={discoveredGlobalSkills}
+                                assets={readModel.discoveredGlobalSkills}
                                 renderTitle={(asset) => asset.name}
                                 renderSubtitle={(asset) => asset.assetKey}
                                 renderBodyMarkdown={(asset) => asset.bodyMarkdown}
@@ -273,7 +265,7 @@ export function RegistrySettingsScreen({
                                 <AssetSection
                                     title='Discovered Workspace Skills'
                                     emptyLabel='No workspace skill assets have been discovered for this workspace yet.'
-                                    assets={discoveredWorkspaceSkills}
+                                    assets={readModel.discoveredWorkspaceSkills}
                                     renderTitle={(asset) => asset.name}
                                     renderSubtitle={(asset) => asset.assetKey}
                                     renderBodyMarkdown={(asset) => asset.bodyMarkdown}
@@ -291,7 +283,7 @@ export function RegistrySettingsScreen({
                             <AssetSection
                                 title='Resolved Rulesets'
                                 emptyLabel='No resolved rulesets are available yet.'
-                                assets={resolvedRules}
+                                assets={readModel.resolvedRules}
                                 renderTitle={(asset) => asset.name}
                                 renderSubtitle={(asset) => asset.assetKey}
                                 renderBodyMarkdown={(asset) => asset.bodyMarkdown}
@@ -299,7 +291,7 @@ export function RegistrySettingsScreen({
                             <AssetSection
                                 title='Discovered Global Rulesets'
                                 emptyLabel='No global file-backed rulesets have been discovered yet.'
-                                assets={discoveredGlobalRules}
+                                assets={readModel.discoveredGlobalRules}
                                 renderTitle={(asset) => asset.name}
                                 renderSubtitle={(asset) => asset.assetKey}
                                 renderBodyMarkdown={(asset) => asset.bodyMarkdown}
@@ -308,7 +300,7 @@ export function RegistrySettingsScreen({
                                 <AssetSection
                                     title='Discovered Workspace Rulesets'
                                     emptyLabel='No workspace rulesets have been discovered for this workspace yet.'
-                                    assets={discoveredWorkspaceRules}
+                                    assets={readModel.discoveredWorkspaceRules}
                                     renderTitle={(asset) => asset.name}
                                     renderSubtitle={(asset) => asset.assetKey}
                                     renderBodyMarkdown={(asset) => asset.bodyMarkdown}
@@ -326,7 +318,7 @@ export function RegistrySettingsScreen({
                             <AssetSection
                                 title='Resolved Agent Modes'
                                 emptyLabel='No resolved agent modes are available yet.'
-                                assets={resolvedModes}
+                                assets={readModel.resolvedAgentModes}
                                 renderTitle={(asset) => asset.label}
                                 renderSubtitle={(asset) => `${asset.modeKey} · ${asset.assetKey}`}
                                 renderBodyMarkdown={(asset) => formatModePromptMarkdown(asset.prompt)}
@@ -334,7 +326,7 @@ export function RegistrySettingsScreen({
                             <AssetSection
                                 title='Discovered Global Modes'
                                 emptyLabel='No global mode assets have been discovered yet.'
-                                assets={discoveredGlobalModes}
+                                assets={readModel.discoveredGlobalModes}
                                 renderTitle={(asset) => asset.label}
                                 renderSubtitle={(asset) => asset.assetKey}
                                 renderBodyMarkdown={(asset) => formatModePromptMarkdown(asset.prompt)}
@@ -343,7 +335,7 @@ export function RegistrySettingsScreen({
                                 <AssetSection
                                     title='Discovered Workspace Modes'
                                     emptyLabel='No workspace mode assets have been discovered for this workspace yet.'
-                                    assets={discoveredWorkspaceModes}
+                                    assets={readModel.discoveredWorkspaceModes}
                                     renderTitle={(asset) => asset.label}
                                     renderSubtitle={(asset) => asset.assetKey}
                                     renderBodyMarkdown={(asset) => formatModePromptMarkdown(asset.prompt)}

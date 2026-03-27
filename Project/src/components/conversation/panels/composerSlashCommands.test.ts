@@ -1,12 +1,54 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    buildComposerSlashInteractionState,
     buildComposerSlashCommandEntries,
+    buildComposerSlashRuleItems,
+    buildComposerSlashSkillItems,
     filterComposerSlashCommandEntries,
     moveComposerSlashHighlight,
     parseComposerSlashDraft,
     shouldInterceptSlashSubmit,
 } from '@/web/components/conversation/panels/composerSlashCommands';
+
+function createSkill(input: {
+    id: string;
+    assetKey: string;
+    name: string;
+    scope: 'global' | 'workspace';
+    sourceKind: 'global_file' | 'workspace_file';
+    precedence: number;
+}) {
+    return {
+        ...input,
+        profileId: 'prof_1',
+        source: input.scope,
+        bodyMarkdown: '',
+        enabled: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+}
+
+function createManualRule(input: {
+    id: string;
+    assetKey: string;
+    name: string;
+    scope: 'global' | 'workspace';
+    sourceKind: 'global_file' | 'workspace_file';
+    precedence: number;
+}) {
+    return {
+        ...input,
+        profileId: 'prof_1',
+        source: input.scope,
+        bodyMarkdown: '',
+        activationMode: 'manual' as const,
+        enabled: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+}
 
 describe('composerSlashCommands', () => {
     it('parses known commands and inline query text from leading slash drafts', () => {
@@ -94,6 +136,120 @@ describe('composerSlashCommands', () => {
                 direction: 'next',
             })
         ).toBe(0);
+    });
+
+    it('builds rules and skills result items from attached and resolved assets', () => {
+        const skillItems = buildComposerSlashSkillItems({
+            attachedSkills: [
+                createSkill({
+                    id: 'skill_1',
+                    assetKey: 'skills/debug',
+                    name: 'Debug',
+                    scope: 'global',
+                    sourceKind: 'global_file',
+                    precedence: 1,
+                }),
+            ],
+            resolvedSkills: [
+                createSkill({
+                    id: 'skill_1',
+                    assetKey: 'skills/debug',
+                    name: 'Debug',
+                    scope: 'global',
+                    sourceKind: 'global_file',
+                    precedence: 1,
+                }),
+                createSkill({
+                    id: 'skill_2',
+                    assetKey: 'skills/review',
+                    name: 'Review',
+                    scope: 'workspace',
+                    sourceKind: 'workspace_file',
+                    precedence: 2,
+                }),
+            ],
+        });
+        const ruleItems = buildComposerSlashRuleItems({
+            attachedRules: [
+                createManualRule({
+                    id: 'rule_1',
+                    assetKey: 'rules/manual',
+                    name: 'Manual',
+                    scope: 'global',
+                    sourceKind: 'global_file',
+                    precedence: 1,
+                }),
+            ],
+            resolvedRules: [
+                createManualRule({
+                    id: 'rule_1',
+                    assetKey: 'rules/manual',
+                    name: 'Manual',
+                    scope: 'global',
+                    sourceKind: 'global_file',
+                    precedence: 1,
+                }),
+                createManualRule({
+                    id: 'rule_2',
+                    assetKey: 'rules/review',
+                    name: 'Review',
+                    scope: 'workspace',
+                    sourceKind: 'workspace_file',
+                    precedence: 2,
+                }),
+            ],
+        });
+
+        expect(skillItems.map((item) => `${item.kind}:${item.assetKey}:${String(item.attached)}`)).toEqual([
+            'skill:skills/debug:true',
+            'skill:skills/review:false',
+        ]);
+        expect(ruleItems.map((item) => `${item.kind}:${item.assetKey}:${String(item.attached)}`)).toEqual([
+            'rule:rules/manual:true',
+            'rule:rules/review:false',
+        ]);
+    });
+
+    it('builds result popup state from exact slash commands', () => {
+        const commandEntries = buildComposerSlashCommandEntries({
+            topLevelTab: 'agent',
+            selectedSessionId: 'sess_test',
+        });
+        const exactCommand = commandEntries.find((entry) => entry.id === 'skills');
+        const interactionState = buildComposerSlashInteractionState({
+            draftPrompt: '/skills debug',
+            dismissedDraft: undefined,
+            highlightIndex: 0,
+            commandEntries,
+            exactCommand,
+            filteredCommandEntries: commandEntries,
+            ruleItems: [],
+            skillItems: buildComposerSlashSkillItems({
+                attachedSkills: [],
+                resolvedSkills: [
+                    createSkill({
+                        id: 'skill_1',
+                        assetKey: 'skills/debug',
+                        name: 'Debug',
+                        scope: 'global',
+                        sourceKind: 'global_file',
+                        precedence: 1,
+                    }),
+                ],
+            }),
+            query: 'debug',
+            missingAttachedRuleKeys: [],
+            missingAttachedSkillKeys: ['skills/missing'],
+        });
+
+        expect(interactionState.hasVisiblePopup).toBe(true);
+        expect(interactionState.popupState.kind).toBe('results');
+        if (interactionState.popupState.kind !== 'results') {
+            throw new Error('expected results popup');
+        }
+        expect(interactionState.popupState.commandId).toBe('skills');
+        expect(interactionState.popupState.warningMessage).toContain('skills/missing');
+        expect(interactionState.popupState.items).toHaveLength(1);
     });
 
     it('intercepts enter only for real slash popup states', () => {

@@ -11,12 +11,24 @@ vi.mock('@/web/components/settings/registrySettings/controller', () => ({
         },
         selectedWorkspaceFingerprint: undefined,
         setSelectedWorkspaceFingerprint: vi.fn(),
-        selectedWorkspaceRoot: undefined,
-        workspaceRoots: [],
         skillQuery: '',
         setSkillQuery: vi.fn(),
-        skillMatches: [],
-        resolvedAgentModes: [],
+        deferredSkillQuery: '',
+        readModel: {
+            workspaceRoots: [],
+            selectedWorkspaceRoot: undefined,
+            skillMatches: [],
+            resolvedAgentModes: [],
+            resolvedRules: [],
+            resolvedSkills: [],
+            discoveredGlobalModes: [],
+            discoveredWorkspaceModes: [],
+            discoveredGlobalRules: [],
+            discoveredWorkspaceRules: [],
+            discoveredGlobalSkills: [],
+            discoveredWorkspaceSkills: [],
+            globalAssetsRoot: 'C:/registry',
+        },
         registryQuery: {
             data: {
                 paths: {

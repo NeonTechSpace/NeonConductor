@@ -64,6 +64,11 @@ export type ComposerSlashPopupState =
           warningMessage?: string;
       };
 
+export interface ComposerSlashInteractionState {
+    popupState: ComposerSlashPopupState;
+    hasVisiblePopup: boolean;
+}
+
 export const composerSlashCommandDefinitions: ComposerSlashCommandDefinition[] = [
     {
         id: 'skills',
@@ -135,6 +140,155 @@ export function filterComposerSlashCommandEntries(
         const haystacks = [entry.id, entry.label, entry.description].map((value) => value.toLowerCase());
         return haystacks.some((value) => value.includes(normalizedQuery));
     });
+}
+
+export function buildComposerSlashSkillItems(input: {
+    attachedSkills: SkillfileDefinition[];
+    resolvedSkills: SkillfileDefinition[];
+}): ComposerSlashResultItem[] {
+    const attachedAssetKeys = new Set(input.attachedSkills.map((skill) => skill.assetKey));
+    const items: ComposerSlashResultItem[] = input.attachedSkills.map((skill) => ({
+        key: `skill:${skill.assetKey}`,
+        kind: 'skill',
+        assetKey: skill.assetKey,
+        label: skill.name,
+        ...(skill.description ? { description: skill.description } : { description: skill.assetKey }),
+        attached: true,
+        scope: skill.scope,
+        ...(skill.presetKey ? { presetKey: skill.presetKey } : {}),
+    }));
+
+    for (const skill of input.resolvedSkills) {
+        if (attachedAssetKeys.has(skill.assetKey)) {
+            continue;
+        }
+
+        items.push({
+            key: `skill:${skill.assetKey}`,
+            kind: 'skill',
+            assetKey: skill.assetKey,
+            label: skill.name,
+            ...(skill.description ? { description: skill.description } : { description: skill.assetKey }),
+            attached: false,
+            scope: skill.scope,
+            ...(skill.presetKey ? { presetKey: skill.presetKey } : {}),
+        });
+    }
+
+    return items.slice(0, 8);
+}
+
+export function buildComposerSlashRuleItems(input: {
+    attachedRules: RulesetDefinition[];
+    resolvedRules: RulesetDefinition[];
+}): ComposerSlashResultItem[] {
+    const attachedAssetKeys = new Set(input.attachedRules.map((rule) => rule.assetKey));
+    const items: ComposerSlashResultItem[] = input.attachedRules.map((rule) => ({
+        key: `rule:${rule.assetKey}`,
+        kind: 'rule',
+        assetKey: rule.assetKey,
+        label: rule.name,
+        ...(rule.description ? { description: rule.description } : { description: rule.assetKey }),
+        attached: true,
+        scope: rule.scope,
+        ...(rule.presetKey ? { presetKey: rule.presetKey } : {}),
+    }));
+
+    for (const rule of input.resolvedRules) {
+        if (attachedAssetKeys.has(rule.assetKey)) {
+            continue;
+        }
+
+        items.push({
+            key: `rule:${rule.assetKey}`,
+            kind: 'rule',
+            assetKey: rule.assetKey,
+            label: rule.name,
+            ...(rule.description ? { description: rule.description } : { description: rule.assetKey }),
+            attached: false,
+            scope: rule.scope,
+            ...(rule.presetKey ? { presetKey: rule.presetKey } : {}),
+        });
+    }
+
+    return items.slice(0, 8);
+}
+
+export function buildComposerSlashInteractionState(input: {
+    draftPrompt: string;
+    dismissedDraft: string | undefined;
+    highlightIndex: number;
+    commandEntries: ComposerSlashCommandEntry[];
+    exactCommand: ComposerSlashCommandEntry | undefined;
+    filteredCommandEntries: ComposerSlashCommandEntry[];
+    ruleItems: ComposerSlashResultItem[];
+    skillItems: ComposerSlashResultItem[];
+    query: string;
+    missingAttachedRuleKeys: string[];
+    missingAttachedSkillKeys: string[];
+}): ComposerSlashInteractionState {
+    const parsedDraft = parseComposerSlashDraft(input.draftPrompt);
+    if (!parsedDraft.hasLeadingSlash || input.dismissedDraft === input.draftPrompt) {
+        return {
+            popupState: { kind: 'hidden' },
+            hasVisiblePopup: false,
+        };
+    }
+
+    if (input.exactCommand?.available && parsedDraft.exactCommandId === 'skills') {
+        return {
+            popupState: {
+                kind: 'results',
+                commandId: 'skills',
+                query: input.query,
+                items: input.skillItems,
+                highlightIndex: input.highlightIndex,
+                emptyMessage: input.query.length > 0 ? 'No resolved skills match this search.' : 'No resolved skills available.',
+                ...(input.missingAttachedSkillKeys.length > 0
+                    ? {
+                          warningMessage: `Unresolved attached skills will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedSkillKeys.join(', ')}.`,
+                      }
+                    : {}),
+            },
+            hasVisiblePopup: true,
+        };
+    }
+
+    if (input.exactCommand?.available && parsedDraft.exactCommandId === 'rules') {
+        return {
+            popupState: {
+                kind: 'results',
+                commandId: 'rules',
+                query: input.query,
+                items: input.ruleItems,
+                highlightIndex: input.highlightIndex,
+                emptyMessage: input.query.length > 0 ? 'No manual rules match this search.' : 'No manual rules available.',
+                ...(input.missingAttachedRuleKeys.length > 0
+                    ? {
+                          warningMessage: `Unresolved attached rules will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedRuleKeys.join(', ')}.`,
+                      }
+                    : {}),
+            },
+            hasVisiblePopup: true,
+        };
+    }
+
+    return {
+        popupState: {
+            kind: 'commands',
+            typedQuery: parsedDraft.normalizedToken,
+            ...(parsedDraft.exactCommandId ? { exactCommandId: parsedDraft.exactCommandId } : {}),
+            items: input.filteredCommandEntries,
+            highlightIndex: input.highlightIndex,
+            emptyMessage:
+                input.filteredCommandEntries.length > 0
+                    ? ''
+                    : parsedDraft.normalizedToken.length > 0
+                      ? `No slash commands match "/${parsedDraft.token}".`
+                      : 'No slash commands are available in this context.',
+        },
+        hasVisiblePopup: true,
+    };
 }
 
 export function getFirstSelectableSlashIndex(items: Array<{ available?: boolean }>): number {

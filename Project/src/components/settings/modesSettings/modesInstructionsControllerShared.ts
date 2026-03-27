@@ -5,6 +5,15 @@ import type {
     TopLevelTab,
 } from '@/shared/contracts';
 
+export type FileBackedModeItemsByTab = Record<TopLevelTab, FileBackedCustomModeSettingsItem[]>;
+
+export interface BuiltInModePromptEntry extends Omit<BuiltInModePromptSettingsItem, 'prompt'> {
+    prompt: {
+        roleDefinition: string;
+        customInstructions: string;
+    };
+}
+
 export type TopLevelDraftState = Partial<Record<TopLevelTab, { profileId: string; value: string }>>;
 export type BuiltInModeDraftState = Partial<
     Record<string, { profileId: string; roleDefinition: string; customInstructions: string }>

@@ -1,4 +1,7 @@
-import type { useModesInstructionsSettingsController } from '@/web/components/settings/modesSettings/useModesInstructionsSettingsController';
+import type { ReactNode } from 'react';
+
+import type { FileBackedModeItemsByTab } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import type { PromptLayerSectionModel } from '@/web/components/settings/modesSettings/modesInstructionsViewModel';
 import { Button } from '@/web/components/ui/button';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
@@ -27,12 +30,23 @@ export function PromptInstructionsHeader() {
     );
 }
 
-export function PromptLayerCard(input: {
+export function TopLevelPromptSection(input: {
     title: string;
     description: string;
-    value: string;
-    isSaving: boolean;
-    warning?: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className='space-y-3'>
+            <div className='space-y-1'>
+                <h5 className='text-sm font-semibold'>{input.title}</h5>
+                <p className='text-muted-foreground text-sm leading-6'>{input.description}</p>
+            </div>
+            {input.children}
+        </div>
+    );
+}
+
+export function PromptLayerCard(input: PromptLayerSectionModel & {
     onChange: (value: string) => void;
     onSave: () => void;
     onReset: () => void;
@@ -187,7 +201,48 @@ export function formatToolCapabilityLabel(toolCapability: ToolCapability): strin
 }
 
 export function CustomModeEditorSection(input: {
-    editor: ReturnType<typeof useModesInstructionsSettingsController>['customModes']['editor'];
+    editor: {
+        draft: {
+            kind: 'create' | 'edit';
+            scope: 'global' | 'workspace';
+            topLevelTab: TopLevelTab;
+            modeKey?: string;
+            slug: string;
+            name: string;
+            description: string;
+            roleDefinition: string;
+            customInstructions: string;
+            whenToUse: string;
+            tagsText: string;
+            selectedToolCapabilities: ToolCapability[];
+            deleteConfirmed: boolean;
+        } | undefined;
+        isLoading: boolean;
+        isSaving: boolean;
+        hasWorkspaceScope: boolean;
+        selectedWorkspaceLabel: string | undefined;
+        openCreate: (scope: 'global' | 'workspace') => void;
+        openEdit: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => Promise<void>;
+        openDelete: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => Promise<void>;
+        close: () => void;
+        setScope: (scope: 'global' | 'workspace') => void;
+        setTopLevelTab: (topLevelTab: TopLevelTab) => void;
+        setField: (
+            field:
+                | 'slug'
+                | 'name'
+                | 'description'
+                | 'roleDefinition'
+                | 'customInstructions'
+                | 'whenToUse'
+                | 'tagsText',
+            value: string
+        ) => void;
+        toggleToolCapability: (toolCapability: ToolCapability) => void;
+        setDeleteConfirmed: (value: boolean) => void;
+        save: () => Promise<void>;
+        deleteMode: () => Promise<void>;
+    };
 }) {
     if (input.editor.isLoading && !input.editor.draft) {
         return (
@@ -477,7 +532,7 @@ export function CustomModeEditorSection(input: {
 
 export function FileBackedModeInventorySection(input: {
     scope: 'global' | 'workspace';
-    itemsByTab: ReturnType<typeof useModesInstructionsSettingsController>['customModes']['global'];
+    itemsByTab: FileBackedModeItemsByTab;
     isExporting: boolean;
     onExport: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => void;
     onEdit: (scope: 'global' | 'workspace', topLevelTab: TopLevelTab, modeKey: string) => void;

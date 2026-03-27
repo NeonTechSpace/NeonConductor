@@ -1,16 +1,16 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 
 import {
+    buildComposerSlashInteractionState,
+    buildComposerSlashRuleItems,
+    buildComposerSlashSkillItems,
     buildComposerSlashCommandEntries,
     filterComposerSlashCommandEntries,
     getFirstSelectableSlashIndex,
     moveComposerSlashHighlight,
     parseComposerSlashDraft,
-    type ComposerSlashPopupState,
-    type ComposerSlashResultItem,
 } from '@/web/components/conversation/panels/composerSlashCommands';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import { trpc } from '@/web/trpc/client';
+import { useContextAssetAttachmentController } from '@/web/components/conversation/panels/useContextAssetAttachmentController';
 
 import type { EntityId, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/shared/contracts';
 
@@ -30,80 +30,7 @@ interface UseComposerSlashCommandsInput {
 
 export type SlashAcceptResult = { handled: false } | { handled: true; nextDraft?: string; clearDraft?: boolean };
 
-function buildSkillItems(input: {
-    attachedSkills: SkillfileDefinition[];
-    resolvedSkills: SkillfileDefinition[];
-}): ComposerSlashResultItem[] {
-    const attachedAssetKeys = new Set(input.attachedSkills.map((skill) => skill.assetKey));
-    const items: ComposerSlashResultItem[] = input.attachedSkills.map((skill) => ({
-        key: `skill:${skill.assetKey}`,
-        kind: 'skill',
-        assetKey: skill.assetKey,
-        label: skill.name,
-        ...(skill.description ? { description: skill.description } : { description: skill.assetKey }),
-        attached: true,
-        scope: skill.scope,
-        ...(skill.presetKey ? { presetKey: skill.presetKey } : {}),
-    }));
-
-    for (const skill of input.resolvedSkills) {
-        if (attachedAssetKeys.has(skill.assetKey)) {
-            continue;
-        }
-
-        items.push({
-            key: `skill:${skill.assetKey}`,
-            kind: 'skill',
-            assetKey: skill.assetKey,
-            label: skill.name,
-            ...(skill.description ? { description: skill.description } : { description: skill.assetKey }),
-            attached: false,
-            scope: skill.scope,
-            ...(skill.presetKey ? { presetKey: skill.presetKey } : {}),
-        });
-    }
-
-    return items.slice(0, 8);
-}
-
-function buildRuleItems(input: {
-    attachedRules: RulesetDefinition[];
-    resolvedRules: RulesetDefinition[];
-}): ComposerSlashResultItem[] {
-    const attachedAssetKeys = new Set(input.attachedRules.map((rule) => rule.assetKey));
-    const items: ComposerSlashResultItem[] = input.attachedRules.map((rule) => ({
-        key: `rule:${rule.assetKey}`,
-        kind: 'rule',
-        assetKey: rule.assetKey,
-        label: rule.name,
-        ...(rule.description ? { description: rule.description } : { description: rule.assetKey }),
-        attached: true,
-        scope: rule.scope,
-        ...(rule.presetKey ? { presetKey: rule.presetKey } : {}),
-    }));
-
-    for (const rule of input.resolvedRules.filter((resolvedRule) => resolvedRule.activationMode === 'manual')) {
-        if (attachedAssetKeys.has(rule.assetKey)) {
-            continue;
-        }
-
-        items.push({
-            key: `rule:${rule.assetKey}`,
-            kind: 'rule',
-            assetKey: rule.assetKey,
-            label: rule.name,
-            ...(rule.description ? { description: rule.description } : { description: rule.assetKey }),
-            attached: false,
-            scope: rule.scope,
-            ...(rule.presetKey ? { presetKey: rule.presetKey } : {}),
-        });
-    }
-
-    return items.slice(0, 8);
-}
-
 export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
-    const utils = trpc.useUtils();
     const [dismissedDraft, setDismissedDraft] = useState<string | undefined>(undefined);
     const [highlightIndex, setHighlightIndex] = useState(-1);
     const parsedDraft = parseComposerSlashDraft(input.draftPrompt);
@@ -116,26 +43,22 @@ export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
     const exactCommand = parsedDraft.exactCommandId
         ? commandEntries.find((entry) => entry.id === parsedDraft.exactCommandId)
         : undefined;
-    const commandResultsEnabled =
+    const searchEnabled =
         Boolean(exactCommand?.available) && input.topLevelTab !== 'chat' && input.selectedSessionId !== undefined;
-    const registryQueryInput = {
+    const attachmentController = useContextAssetAttachmentController({
         profileId: input.profileId,
+        ...(input.selectedSessionId ? { sessionId: input.selectedSessionId } : {}),
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
-        ...(deferredQuery.length > 0 ? { query: deferredQuery } : {}),
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
-    };
-    const searchSkillsQuery = trpc.registry.searchSkills.useQuery(registryQueryInput, {
-        enabled: parsedDraft.exactCommandId === 'skills' && commandResultsEnabled,
-        ...PROGRESSIVE_QUERY_OPTIONS,
+        query: deferredQuery,
+        searchEnabled,
+        attachedRules: input.attachedRules,
+        missingAttachedRuleKeys: input.missingAttachedRuleKeys,
+        attachedSkills: input.attachedSkills,
+        missingAttachedSkillKeys: input.missingAttachedSkillKeys,
     });
-    const searchRulesQuery = trpc.registry.searchRules.useQuery(registryQueryInput, {
-        enabled: parsedDraft.exactCommandId === 'rules' && commandResultsEnabled,
-        ...PROGRESSIVE_QUERY_OPTIONS,
-    });
-    const setAttachedSkillsMutation = trpc.session.setAttachedSkills.useMutation();
-    const setAttachedRulesMutation = trpc.session.setAttachedRules.useMutation();
 
     useEffect(() => {
         if (dismissedDraft !== undefined && dismissedDraft !== input.draftPrompt) {
@@ -143,67 +66,26 @@ export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
         }
     }, [dismissedDraft, input.draftPrompt]);
 
-    const popupState: ComposerSlashPopupState = (() => {
-        if (!parsedDraft.hasLeadingSlash || dismissedDraft === input.draftPrompt) {
-            return { kind: 'hidden' };
-        }
-
-        if (exactCommand?.available && parsedDraft.exactCommandId === 'skills') {
-            return {
-                kind: 'results',
-                commandId: 'skills',
-                query: deferredQuery,
-                items: buildSkillItems({
-                    attachedSkills: input.attachedSkills,
-                    resolvedSkills: searchSkillsQuery.data?.skillfiles ?? [],
-                }),
-                highlightIndex,
-                emptyMessage:
-                    deferredQuery.length > 0
-                        ? 'No resolved skills match this search.'
-                        : 'No resolved skills available.',
-                ...(input.missingAttachedSkillKeys.length > 0
-                    ? {
-                          warningMessage: `Unresolved attached skills will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedSkillKeys.join(', ')}.`,
-                      }
-                    : {}),
-            };
-        }
-
-        if (exactCommand?.available && parsedDraft.exactCommandId === 'rules') {
-            return {
-                kind: 'results',
-                commandId: 'rules',
-                query: deferredQuery,
-                items: buildRuleItems({
-                    attachedRules: input.attachedRules,
-                    resolvedRules: searchRulesQuery.data?.rulesets ?? [],
-                }),
-                highlightIndex,
-                emptyMessage:
-                    deferredQuery.length > 0 ? 'No manual rules match this search.' : 'No manual rules available.',
-                ...(input.missingAttachedRuleKeys.length > 0
-                    ? {
-                          warningMessage: `Unresolved attached rules will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedRuleKeys.join(', ')}.`,
-                      }
-                    : {}),
-            };
-        }
-
-        return {
-            kind: 'commands',
-            typedQuery: parsedDraft.normalizedToken,
-            ...(parsedDraft.exactCommandId ? { exactCommandId: parsedDraft.exactCommandId } : {}),
-            items: filteredCommandEntries,
-            highlightIndex,
-            emptyMessage:
-                filteredCommandEntries.length > 0
-                    ? ''
-                    : parsedDraft.normalizedToken.length > 0
-                      ? `No slash commands match "/${parsedDraft.token}".`
-                      : 'No slash commands are available in this context.',
-        };
-    })();
+    const interactionState = buildComposerSlashInteractionState({
+        draftPrompt: input.draftPrompt,
+        dismissedDraft,
+        highlightIndex,
+        commandEntries,
+        exactCommand,
+        filteredCommandEntries,
+        ruleItems: buildComposerSlashRuleItems({
+            attachedRules: attachmentController.readModel.attachedRules,
+            resolvedRules: attachmentController.readModel.resolvedManualRules,
+        }),
+        skillItems: buildComposerSlashSkillItems({
+            attachedSkills: attachmentController.readModel.attachedSkills,
+            resolvedSkills: attachmentController.readModel.resolvedSkills,
+        }),
+        query: deferredQuery,
+        missingAttachedRuleKeys: attachmentController.readModel.missingAttachedRuleKeys,
+        missingAttachedSkillKeys: attachmentController.readModel.missingAttachedSkillKeys,
+    });
+    const popupState = interactionState.popupState;
 
     useEffect(() => {
         if (popupState.kind === 'hidden') {
@@ -262,58 +144,18 @@ export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
         }
 
         if (selectedItem.kind === 'skill') {
-            const attachedAssetKeys = input.attachedSkills.map((skill) => skill.assetKey);
-            const nextAssetKeys = selectedItem.attached
-                ? attachedAssetKeys.filter((assetKey) => assetKey !== selectedItem.assetKey)
-                : [...attachedAssetKeys, selectedItem.assetKey];
-
-            await setAttachedSkillsMutation.mutateAsync({
-                profileId: input.profileId,
-                sessionId: input.selectedSessionId,
-                topLevelTab: input.topLevelTab,
-                modeKey: input.modeKey,
-                assetKeys: nextAssetKeys,
-            });
-            await Promise.all([
-                utils.session.getAttachedSkills.invalidate({
-                    profileId: input.profileId,
-                    sessionId: input.selectedSessionId,
-                    topLevelTab: input.topLevelTab,
-                    modeKey: input.modeKey,
-                }),
-                utils.registry.searchSkills.invalidate(registryQueryInput),
-            ]);
+            await attachmentController.toggleSkill(selectedItem.assetKey);
             return { handled: true, clearDraft: true };
         }
 
-        const attachedAssetKeys = input.attachedRules.map((rule) => rule.assetKey);
-        const nextAssetKeys = selectedItem.attached
-            ? attachedAssetKeys.filter((assetKey) => assetKey !== selectedItem.assetKey)
-            : [...attachedAssetKeys, selectedItem.assetKey];
-
-        await setAttachedRulesMutation.mutateAsync({
-            profileId: input.profileId,
-            sessionId: input.selectedSessionId,
-            topLevelTab: input.topLevelTab,
-            modeKey: input.modeKey,
-            assetKeys: nextAssetKeys,
-        });
-        await Promise.all([
-            utils.session.getAttachedRules.invalidate({
-                profileId: input.profileId,
-                sessionId: input.selectedSessionId,
-                topLevelTab: input.topLevelTab,
-                modeKey: input.modeKey,
-            }),
-            utils.registry.searchRules.invalidate(registryQueryInput),
-        ]);
+        await attachmentController.toggleRule(selectedItem.assetKey);
         return { handled: true, clearDraft: true };
     }
 
     return {
         popupState,
-        hasVisiblePopup: popupState.kind !== 'hidden',
-        isBusy: setAttachedSkillsMutation.isPending || setAttachedRulesMutation.isPending,
+        hasVisiblePopup: interactionState.hasVisiblePopup,
+        isBusy: attachmentController.isBusy,
         dismiss: () => {
             if (parsedDraft.hasLeadingSlash) {
                 setDismissedDraft(input.draftPrompt);

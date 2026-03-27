@@ -4,7 +4,7 @@ import {
     FileBackedModeInventorySection,
     PromptInstructionsHeader,
     PromptLayerCard,
-    formatBuiltInModeDescription,
+    TopLevelPromptSection,
     formatTopLevelLabel,
 } from '@/web/components/settings/modesSettings/modesInstructionsSections';
 import { useModesInstructionsSettingsController } from '@/web/components/settings/modesSettings/useModesInstructionsSettingsController';
@@ -28,6 +28,7 @@ export function ModesInstructionsScreen(input: {
     selectedWorkspaceLabel?: string;
 }) {
     const controller = useModesInstructionsSettingsController(input);
+    const { viewModel } = controller;
 
     if (controller.query.isLoading) {
         return <p className='text-muted-foreground text-sm'>Loading mode settings…</p>;
@@ -41,10 +42,7 @@ export function ModesInstructionsScreen(input: {
 
             <div className='grid gap-5 xl:grid-cols-2'>
                 <PromptLayerCard
-                    title='App-Scope Global Instructions'
-                    description='These instructions apply across the app before any profile, tab, mode, rule, or skill content.'
-                    value={controller.appGlobal.value}
-                    isSaving={controller.appGlobal.isSaving}
+                    {...viewModel.promptLayers.appGlobal}
                     onChange={controller.appGlobal.setValue}
                     onSave={() => {
                         void controller.appGlobal.save();
@@ -55,10 +53,7 @@ export function ModesInstructionsScreen(input: {
                 />
 
                 <PromptLayerCard
-                    title='Profile-Scope Global Instructions'
-                    description='These instructions apply only to the selected profile after app-scope instructions and before built-in tab instructions.'
-                    value={controller.profileGlobal.value}
-                    isSaving={controller.profileGlobal.isSaving}
+                    {...viewModel.promptLayers.profileGlobal}
                     onChange={controller.profileGlobal.setValue}
                     onSave={() => {
                         void controller.profileGlobal.save();
@@ -69,110 +64,81 @@ export function ModesInstructionsScreen(input: {
                 />
             </div>
 
-            <div className='space-y-3'>
-                <div className='space-y-1'>
-                    <h5 className='text-sm font-semibold'>Built-In Top-Level Instructions</h5>
-                    <p className='text-muted-foreground text-sm leading-6'>
-                        These layers sit above mode-specific prompts and below app/profile global instructions.
-                    </p>
-                </div>
-
+            <TopLevelPromptSection
+                title='Built-In Top-Level Instructions'
+                description='These layers sit above mode-specific prompts and below app/profile global instructions.'>
                 <div className='grid gap-5 xl:grid-cols-3'>
-                    {topLevelTabs.map((topLevelTab) => (
+                    {viewModel.promptLayers.topLevel.map((section) => (
                         <PromptLayerCard
-                            key={topLevelTab}
-                            title={`${formatTopLevelLabel(topLevelTab)} Instructions`}
-                            description={`Shipped ${formatTopLevelLabel(topLevelTab).toLowerCase()} behavior lives here before mode-specific instructions are applied.`}
-                            value={controller.topLevel.getValue(topLevelTab)}
-                            isSaving={controller.topLevel.isSaving}
-                            warning={`Editing built-in ${formatTopLevelLabel(topLevelTab).toLowerCase()} instructions can make the app behave differently than the shipped defaults.`}
+                            key={section.topLevelTab}
+                            {...section}
                             onChange={(value) => {
-                                controller.topLevel.setValue(topLevelTab, value);
+                                controller.topLevel.setValue(section.topLevelTab, value);
                             }}
                             onSave={() => {
-                                void controller.topLevel.save(topLevelTab);
+                                void controller.topLevel.save(section.topLevelTab);
                             }}
                             onReset={() => {
-                                void controller.topLevel.reset(topLevelTab);
+                                void controller.topLevel.reset(section.topLevelTab);
                             }}
                         />
                     ))}
                 </div>
-            </div>
+            </TopLevelPromptSection>
 
-            <div className='space-y-4'>
-                <div className='space-y-1'>
-                    <h5 className='text-sm font-semibold'>Built-In Mode Prompts</h5>
-                    <p className='text-muted-foreground text-sm leading-6'>
-                        These prompts define shipped mode-specific behavior under each run family. Editing them can make
-                        the app behave unexpectedly.
-                    </p>
-                </div>
-
-                {topLevelTabs.map((topLevelTab) => {
-                    const items = controller.builtInModes.getItems(topLevelTab);
-                    if (items.length === 0) {
-                        return null;
-                    }
-
-                    return (
-                        <div key={topLevelTab} className='space-y-3'>
-                            <div className='space-y-1'>
-                                <h6 className='text-sm font-semibold'>{formatTopLevelLabel(topLevelTab)} Modes</h6>
-                                <p className='text-muted-foreground text-sm leading-6'>
-                                    Reset any edited built-in mode to restore the shipped default prompt for that mode.
-                                </p>
-                            </div>
-
-                            <div className='grid gap-5 xl:grid-cols-2'>
-                                {items.map((mode) => (
-                                    <BuiltInModePromptCard
-                                        key={`${mode.topLevelTab}:${mode.modeKey}`}
-                                        title={mode.label}
-                                        description={formatBuiltInModeDescription(topLevelTab, mode.label)}
-                                        roleDefinition={mode.prompt.roleDefinition}
-                                        customInstructions={mode.prompt.customInstructions}
-                                        hasOverride={mode.hasOverride}
-                                        isSaving={controller.builtInModes.isSaving}
-                                        warning={`Editing the built-in ${mode.label.toLowerCase()} prompt can make the app behave unexpectedly. Reset restores the shipped behavior.`}
-                                        onRoleDefinitionChange={(value) => {
-                                            controller.builtInModes.setPromptField(
-                                                topLevelTab,
-                                                mode.modeKey,
-                                                'roleDefinition',
-                                                value
-                                            );
-                                        }}
-                                        onCustomInstructionsChange={(value) => {
-                                            controller.builtInModes.setPromptField(
-                                                topLevelTab,
-                                                mode.modeKey,
-                                                'customInstructions',
-                                                value
-                                            );
-                                        }}
-                                        onSave={() => {
-                                            void controller.builtInModes.save(topLevelTab, mode.modeKey);
-                                        }}
-                                        onReset={() => {
-                                            void controller.builtInModes.reset(topLevelTab, mode.modeKey);
-                                        }}
-                                    />
-                                ))}
-                            </div>
+            <TopLevelPromptSection
+                title='Built-In Mode Prompts'
+                description='These prompts define shipped mode-specific behavior under each run family. Editing them can make the app behave unexpectedly.'>
+                {viewModel.builtInModeSections.map((section) => (
+                    <TopLevelPromptSection
+                        key={section.topLevelTab}
+                        title={section.title}
+                        description={section.description}>
+                        <div className='grid gap-5 xl:grid-cols-2'>
+                            {section.cards.map((mode) => (
+                                <BuiltInModePromptCard
+                                    key={`${mode.topLevelTab}:${mode.modeKey}`}
+                                    title={mode.label}
+                                    description={mode.description}
+                                    roleDefinition={mode.roleDefinition}
+                                    customInstructions={mode.customInstructions}
+                                    hasOverride={mode.hasOverride}
+                                    isSaving={controller.builtInModes.isSaving}
+                                    warning={mode.warning}
+                                    onRoleDefinitionChange={(value) => {
+                                        controller.builtInModes.setPromptField(
+                                            mode.topLevelTab,
+                                            mode.modeKey,
+                                            'roleDefinition',
+                                            value
+                                        );
+                                    }}
+                                    onCustomInstructionsChange={(value) => {
+                                        controller.builtInModes.setPromptField(
+                                            mode.topLevelTab,
+                                            mode.modeKey,
+                                            'customInstructions',
+                                            value
+                                        );
+                                    }}
+                                    onSave={() => {
+                                        void controller.builtInModes.save(mode.topLevelTab, mode.modeKey);
+                                    }}
+                                    onReset={() => {
+                                        void controller.builtInModes.reset(mode.topLevelTab, mode.modeKey);
+                                    }}
+                                />
+                            ))}
                         </div>
-                    );
-                })}
-            </div>
+                    </TopLevelPromptSection>
+                ))}
+            </TopLevelPromptSection>
 
             <div className='space-y-4'>
                 <div className='flex flex-wrap items-start justify-between gap-3'>
                     <div className='space-y-1'>
-                        <h5 className='text-sm font-semibold'>File-Backed Custom Modes</h5>
-                        <p className='text-muted-foreground text-sm leading-6'>
-                            Manage app-level file-backed custom modes while keeping the registry roots as the only
-                            source of truth.
-                        </p>
+                        <h5 className='text-sm font-semibold'>{viewModel.modeLibrary.title}</h5>
+                        <p className='text-muted-foreground text-sm leading-6'>{viewModel.modeLibrary.description}</p>
                     </div>
 
                     <div className='flex flex-wrap gap-2'>
@@ -189,7 +155,7 @@ export function ModesInstructionsScreen(input: {
                             type='button'
                             size='sm'
                             variant='outline'
-                            disabled={!controller.customModes.editor.hasWorkspaceScope}
+                            disabled={!viewModel.modeLibrary.hasWorkspaceScope}
                             onClick={() => {
                                 controller.customModes.editor.openCreate('workspace');
                             }}>
@@ -262,8 +228,7 @@ export function ModesInstructionsScreen(input: {
                                 controller.customModes.importDraft.scope === 'workspace' ? (
                                     <span>
                                         Workspace target:{' '}
-                                        {controller.customModes.importDraft.selectedWorkspaceLabel ??
-                                            'Selected workspace'}
+                                        {viewModel.modeLibrary.selectedWorkspaceLabel ?? 'Selected workspace'}
                                     </span>
                                 ) : (
                                     <span>
@@ -368,7 +333,7 @@ export function ModesInstructionsScreen(input: {
 
                 <FileBackedModeInventorySection
                     scope='global'
-                    itemsByTab={controller.customModes.global}
+                    itemsByTab={viewModel.modeLibrary.global}
                     isExporting={controller.customModes.isExporting}
                     onExport={(scope, topLevelTab, modeKey) => {
                         void controller.customModes.exportMode(scope, topLevelTab, modeKey);
@@ -384,7 +349,7 @@ export function ModesInstructionsScreen(input: {
                 {controller.workspace.fingerprint ? (
                     <FileBackedModeInventorySection
                         scope='workspace'
-                        itemsByTab={controller.customModes.workspace}
+                        itemsByTab={viewModel.modeLibrary.workspace}
                         isExporting={controller.customModes.isExporting}
                         onExport={(scope, topLevelTab, modeKey) => {
                             void controller.customModes.exportMode(scope, topLevelTab, modeKey);
