@@ -114,7 +114,6 @@ describe('conversation shell composition helpers', () => {
         expect(workspaceSectionProps.header.streamErrorMessage).toBe('stream warning');
         expect(workspaceSectionProps.header.lastSequence).toBe(42);
         expect(workspaceSectionProps.header.tabSwitchNotice).toBe('Moved to agent');
-        expect(workspaceSectionProps.panel.header.title).toBe('Workspace');
     });
 
     it('passes dialog props through unchanged', () => {

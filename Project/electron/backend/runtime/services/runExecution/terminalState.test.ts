@@ -1,13 +1,28 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { runStore, sessionStore } from '@/app/backend/persistence/stores';
+import { runStore, runUsageStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import type { RunRecord, RuntimeEventRecordV1 } from '@/app/backend/persistence/types';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
-import { moveRunToAbortedState, moveRunToFailedState } from '@/app/backend/runtime/services/runExecution/terminalState';
+import {
+    applyRunTerminalOutcome,
+    moveRunToAbortedState,
+    moveRunToFailedState,
+} from '@/app/backend/runtime/services/runExecution/terminalState';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
+import { threadTitleService } from '@/app/backend/runtime/services/threadTitle/service';
 
 const captureFinishedRunMemorySafelyMethodName = 'captureFinishedRunMemorySafely';
+
+const { publishRunCompletedObservabilityEventMock } = vi.hoisted(() => ({
+    publishRunCompletedObservabilityEventMock: vi.fn(),
+}));
+
+vi.mock('@/app/backend/runtime/services/observability/publishers', () => ({
+    publishRunAbortedObservabilityEvent: vi.fn(),
+    publishRunCompletedObservabilityEvent: publishRunCompletedObservabilityEventMock,
+    publishRunFailedObservabilityEvent: vi.fn(),
+}));
 
 function createRunRecord(overrides?: Partial<RunRecord>): RunRecord {
     return {
@@ -49,6 +64,83 @@ function createRuntimeEventRecord(event: {
 describe('run terminal state events', () => {
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    it('applies completed terminal state persistence and side effects', async () => {
+        const finalizeSpy = vi.spyOn(runStore, 'finalize').mockResolvedValue(
+            createRunRecord({
+                status: 'completed',
+            })
+        );
+        const markRunTerminalSpy = vi.spyOn(sessionStore, 'markRunTerminal').mockResolvedValue();
+        const markThreadAssistantActivitySpy = vi.spyOn(threadStore, 'markAssistantActivity').mockResolvedValue();
+        const threadTitleSpy = vi.spyOn(threadTitleService, 'maybeApply').mockResolvedValue(undefined);
+        const appendSpy = vi
+            .spyOn(runtimeEventLogService, 'append')
+            .mockImplementation((event) => Promise.resolve(createRuntimeEventRecord(event)));
+        const infoSpy = vi.spyOn(appLog, 'info').mockImplementation(() => {});
+        const usageSpy = vi.spyOn(runUsageStore, 'upsert').mockResolvedValue({
+            id: 'usage_test',
+        } as never);
+        const memorySpy = vi
+            .spyOn(memoryRuntimeService, captureFinishedRunMemorySafelyMethodName)
+            .mockResolvedValue(undefined);
+
+        await applyRunTerminalOutcome({
+            profileId: 'profile_test',
+            sessionId: 'sess_test',
+            runId: 'run_test',
+            threadId: 'thr_test',
+            prompt: 'Hello',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            outcome: {
+                kind: 'completed',
+                usage: {
+                    totalTokens: 7,
+                },
+            },
+            logMessage: 'completed',
+        });
+
+        expect(finalizeSpy).toHaveBeenCalledWith('run_test', {
+            status: 'completed',
+        });
+        expect(markRunTerminalSpy).toHaveBeenCalledWith('profile_test', 'sess_test', 'completed');
+        expect(markThreadAssistantActivitySpy).toHaveBeenCalledWith(
+            'profile_test',
+            'thr_test',
+            expect.any(String)
+        );
+        expect(threadTitleSpy).toHaveBeenCalledWith({
+            profileId: 'profile_test',
+            sessionId: 'sess_test',
+            prompt: 'Hello',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(appendSpy).toHaveBeenCalledTimes(2);
+        expect(usageSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                runId: 'run_test',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+                totalTokens: 7,
+            })
+        );
+        expect(infoSpy).toHaveBeenCalledTimes(1);
+        expect(memorySpy).toHaveBeenCalledWith({
+            profileId: 'profile_test',
+            runId: 'run_test',
+        });
+        expect(publishRunCompletedObservabilityEventMock).toHaveBeenCalledWith({
+            profileId: 'profile_test',
+            sessionId: 'sess_test',
+            runId: 'run_test',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
     });
 
     it('emits run snapshots for aborted runs', async () => {
