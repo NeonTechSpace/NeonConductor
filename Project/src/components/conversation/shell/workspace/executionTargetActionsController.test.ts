@@ -74,6 +74,12 @@ describe('executionTargetActionsController', () => {
         expect(result).toEqual({
             ok: true,
             action: 'thread_execution_configuration',
+            target: {
+                kind: 'execution_environment',
+                threadId: 'thr_test',
+                executionMode: 'sandbox',
+                sandboxId: sandbox.id,
+            },
             cacheEffect: {
                 kind: 'thread_execution_configured',
                 thread,
@@ -109,6 +115,41 @@ describe('executionTargetActionsController', () => {
         });
     });
 
+    it('returns a typed sandbox refresh outcome with explicit target metadata', async () => {
+        const sandbox = createSandbox({
+            status: 'ready',
+        });
+
+        const result = await refreshManagedSandbox({
+            profileId: 'profile_test',
+            sandboxId: 'sb_test',
+            mutateAsync: vi.fn(() =>
+                Promise.resolve({
+                    refreshed: true,
+                    sandbox,
+                })
+            ),
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            action: 'sandbox_refresh',
+            target: {
+                kind: 'sandbox',
+                sandboxId: 'sb_test',
+                workspaceFingerprint: 'ws_test',
+            },
+            cacheEffect: {
+                kind: 'sandbox_refreshed',
+                sandbox,
+            },
+            feedback: {
+                tone: 'success',
+                message: 'Managed sandbox status refreshed.',
+            },
+        });
+    });
+
     it('returns a typed sandbox removal outcome', async () => {
         const result = await removeManagedSandbox({
             profileId: 'profile_test',
@@ -124,6 +165,10 @@ describe('executionTargetActionsController', () => {
         expect(result).toEqual({
             ok: true,
             action: 'sandbox_removal',
+            target: {
+                kind: 'sandbox',
+                sandboxId: 'sb_test',
+            },
             cacheEffect: {
                 kind: 'sandboxes_removed',
                 removedSandboxIds: ['sb_test'],
@@ -149,6 +194,11 @@ describe('executionTargetActionsController', () => {
         expect(result).toEqual({
             ok: true,
             action: 'orphaned_sandbox_cleanup',
+            target: {
+                kind: 'workspace',
+                workspaceFingerprint: 'ws_test',
+                removedSandboxIds: [],
+            },
             cacheEffect: {
                 kind: 'sandboxes_removed',
                 removedSandboxIds: [],

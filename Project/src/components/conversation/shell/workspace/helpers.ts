@@ -1,6 +1,6 @@
 import { formatRuntimeCapabilityIssue, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
-import type { ModeDefinitionRecord, ProviderModelRecord, RunRecord } from '@/app/backend/persistence/types';
+import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
 
 import type {
     EntityId,
@@ -69,44 +69,6 @@ export function isProviderId(value: string | undefined): value is RuntimeProvide
     }
 
     return providerIds.some((providerId) => providerId === value);
-}
-
-export function modelExists(
-    modelsByProvider: Map<RuntimeProviderId, ProviderModelRecord[]>,
-    providerId: RuntimeProviderId,
-    modelId: string,
-    options?: {
-        requiresTools?: boolean;
-    }
-): boolean {
-    return (modelsByProvider.get(providerId) ?? []).some(
-        (model) => model.id === modelId && (!options?.requiresTools || model.features.supportsTools)
-    );
-}
-
-export function resolveLatestRunTarget(
-    runs: RunRecord[],
-    modelsByProvider: Map<RuntimeProviderId, ProviderModelRecord[]>,
-    options?: {
-        requiresTools?: boolean;
-    }
-): RunTargetSelection | undefined {
-    for (const run of runs) {
-        if (!isProviderId(run.providerId) || typeof run.modelId !== 'string') {
-            continue;
-        }
-
-        if (!modelExists(modelsByProvider, run.providerId, run.modelId, options)) {
-            continue;
-        }
-
-        return {
-            providerId: run.providerId,
-            modelId: run.modelId,
-        };
-    }
-
-    return undefined;
 }
 
 export function formatRunStartRejection(input: {

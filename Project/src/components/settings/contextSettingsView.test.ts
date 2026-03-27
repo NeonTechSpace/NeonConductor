@@ -85,10 +85,10 @@ describe('context settings view layout', () => {
     it('keeps the split pane constrained and leaves scrolling to the detail column', () => {
         const html = renderToStaticMarkup(createElement(ContextSettingsView, { activeProfileId: 'profile_default' }));
 
-        expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden grid-cols-[260px_1fr]');
-        expect(html).toContain('min-h-0 min-w-0 overflow-y-auto p-4');
-        expect(html).toContain('Profiles');
+        expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]');
+        expect(html).toContain('min-h-0 min-w-0 overflow-y-auto p-5 md:p-6');
+        expect(html).toContain('Profile Scope');
         expect(html).toContain('media');
-        expect(html).toContain('summary');
+        expect(html).toContain('global');
     });
 });

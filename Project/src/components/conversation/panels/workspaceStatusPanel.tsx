@@ -1,4 +1,5 @@
 import { formatInteger, methodLabel } from '@/web/components/settings/providerSettings/helpers';
+import type { ExecutionTargetExplanationModel } from '@/web/components/conversation/shell/workspace/runTargetSelection';
 
 import type { ProviderUsageSummary, RunRecord } from '@/app/backend/persistence/types';
 
@@ -31,6 +32,7 @@ interface WorkspaceStatusPanelProps {
           }
         | undefined;
     modelLabel: string | undefined;
+    targetExplanation?: ExecutionTargetExplanationModel;
     usageSummary: ProviderUsageSummary | undefined;
     routingBadge: string | undefined;
     registrySummary?:
@@ -74,6 +76,7 @@ export function WorkspaceStatusPanel({
     workspaceScope,
     provider,
     modelLabel,
+    targetExplanation,
     usageSummary,
     routingBadge,
     registrySummary,
@@ -113,7 +116,14 @@ export function WorkspaceStatusPanel({
                 value={modelLabel ?? provider?.label ?? 'Unresolved'}
                 detail={
                     provider
-                        ? `${provider.label} · ${provider.authState} via ${methodLabel(provider.authMethod)}${routingBadge ? ` · ${routingBadge}` : ''}`
+                        ? [
+                              provider.label,
+                              `${provider.authState} via ${methodLabel(provider.authMethod)}`,
+                              routingBadge,
+                              targetExplanation?.selectedSourceLabel,
+                          ]
+                              .filter((value): value is string => Boolean(value))
+                              .join(' · ')
                         : 'Select a runnable provider/model pair'
                 }
             />

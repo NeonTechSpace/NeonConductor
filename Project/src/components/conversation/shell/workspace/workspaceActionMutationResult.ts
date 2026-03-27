@@ -1,5 +1,6 @@
 import type { SandboxRecord, ThreadRecord } from '@/app/backend/persistence/types';
 import type { PermissionRecord } from '@/app/backend/persistence/types';
+import type { ConversationSetThreadExecutionEnvironmentInput } from '@/shared/contracts';
 
 export type WorkspaceActionName =
     | 'permission_resolution'
@@ -14,6 +15,24 @@ export interface WorkspaceActionFeedback {
     tone: WorkspaceActionFeedbackTone;
     message: string;
 }
+
+export type WorkspaceActionTarget =
+    | {
+          kind: 'execution_environment';
+          threadId: ThreadRecord['id'];
+          executionMode: ConversationSetThreadExecutionEnvironmentInput['mode'];
+          sandboxId?: SandboxRecord['id'];
+      }
+    | {
+          kind: 'sandbox';
+          sandboxId: SandboxRecord['id'];
+          workspaceFingerprint?: string;
+      }
+    | {
+          kind: 'workspace';
+          workspaceFingerprint?: string;
+          removedSandboxIds: SandboxRecord['id'][];
+      };
 
 export type WorkspaceActionCacheEffect =
     | {
@@ -34,13 +53,14 @@ export type WorkspaceActionCacheEffect =
       }
     | {
           kind: 'sandboxes_removed';
-          removedSandboxIds: string[];
+          removedSandboxIds: SandboxRecord['id'][];
       };
 
 export type WorkspaceActionMutationResult =
     | {
           ok: true;
           action: WorkspaceActionName;
+          target?: WorkspaceActionTarget;
           cacheEffect: WorkspaceActionCacheEffect;
           feedback?: WorkspaceActionFeedback;
       }
@@ -65,12 +85,20 @@ export function workspacePermissionResolutionSuccess(
 }
 
 export function workspaceThreadExecutionConfiguredSuccess(input: {
+    threadId: ThreadRecord['id'];
+    executionMode: ConversationSetThreadExecutionEnvironmentInput['mode'];
     thread: ThreadRecord;
     sandbox?: SandboxRecord;
 }): WorkspaceActionMutationResult {
     return {
         ok: true,
         action: 'thread_execution_configuration',
+        target: {
+            kind: 'execution_environment',
+            threadId: input.threadId,
+            executionMode: input.executionMode,
+            ...(input.sandbox ? { sandboxId: input.sandbox.id } : {}),
+        },
         cacheEffect: {
             kind: 'thread_execution_configured',
             thread: input.thread,
@@ -87,6 +115,11 @@ export function workspaceSandboxRefreshedSuccess(sandbox: SandboxRecord): Worksp
     return {
         ok: true,
         action: 'sandbox_refresh',
+        target: {
+            kind: 'sandbox',
+            sandboxId: sandbox.id,
+            ...(sandbox.workspaceFingerprint ? { workspaceFingerprint: sandbox.workspaceFingerprint } : {}),
+        },
         cacheEffect: {
             kind: 'sandbox_refreshed',
             sandbox,
@@ -98,10 +131,14 @@ export function workspaceSandboxRefreshedSuccess(sandbox: SandboxRecord): Worksp
     };
 }
 
-export function workspaceSandboxRemovedSuccess(sandboxId: string): WorkspaceActionMutationResult {
+export function workspaceSandboxRemovedSuccess(sandboxId: SandboxRecord['id']): WorkspaceActionMutationResult {
     return {
         ok: true,
         action: 'sandbox_removal',
+        target: {
+            kind: 'sandbox',
+            sandboxId,
+        },
         cacheEffect: {
             kind: 'sandboxes_removed',
             removedSandboxIds: [sandboxId],
@@ -113,13 +150,21 @@ export function workspaceSandboxRemovedSuccess(sandboxId: string): WorkspaceActi
     };
 }
 
-export function workspaceOrphanedSandboxesRemovedSuccess(removedSandboxIds: string[]): WorkspaceActionMutationResult {
+export function workspaceOrphanedSandboxesRemovedSuccess(input: {
+    removedSandboxIds: SandboxRecord['id'][];
+    workspaceFingerprint?: string;
+}): WorkspaceActionMutationResult {
     return {
         ok: true,
         action: 'orphaned_sandbox_cleanup',
+        target: {
+            kind: 'workspace',
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+            removedSandboxIds: input.removedSandboxIds,
+        },
         cacheEffect: {
             kind: 'sandboxes_removed',
-            removedSandboxIds,
+            removedSandboxIds: input.removedSandboxIds,
         },
         feedback: {
             tone: 'success',

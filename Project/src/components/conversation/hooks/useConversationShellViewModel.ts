@@ -59,6 +59,7 @@ export function useConversationShellViewModel(input: {
     const selectedUsageSummary = input.queries.usageSummaryQuery.data?.summaries.find(
         (summary) => summary.providerId === input.runTargetState.selectedProviderIdForComposer
     );
+    const selectedTargetExplanation = input.runTargetState.resolvedExecutionTarget?.explanation;
     const attachedRules = input.queries.attachedRulesQuery.data?.rulesets ?? [];
     const missingAttachedRuleKeys = input.queries.attachedRulesQuery.data?.missingAssetKeys ?? [];
     const attachedSkills = input.queries.attachedSkillsQuery.data?.skillfiles ?? [];
@@ -79,6 +80,7 @@ export function useConversationShellViewModel(input: {
         selectedProviderStatus,
         selectedModelLabel,
         selectedUsageSummary,
+        selectedTargetExplanation,
         attachedRules,
         missingAttachedRuleKeys,
         attachedSkills,

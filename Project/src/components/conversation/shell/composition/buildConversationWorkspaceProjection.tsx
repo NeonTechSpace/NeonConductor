@@ -262,6 +262,9 @@ export function buildConversationWorkspaceProjection(
         ...(input.shellViewModel.selectedModelLabel
             ? { selectedModelLabel: input.shellViewModel.selectedModelLabel }
             : {}),
+        ...(input.shellViewModel.selectedTargetExplanation
+            ? { selectedTargetExplanation: input.shellViewModel.selectedTargetExplanation }
+            : {}),
         ...(input.shellViewModel.selectedUsageSummary
             ? { selectedUsageSummary: input.shellViewModel.selectedUsageSummary }
             : {}),

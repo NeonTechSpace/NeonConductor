@@ -80,6 +80,8 @@ export async function configureConversationThreadExecution(
             ...(selectedSandboxId ? { sandboxId: selectedSandboxId } : {}),
         });
         return workspaceThreadExecutionConfiguredSuccess({
+            threadId: input.threadId,
+            executionMode: input.executionInput.mode,
             thread: result.thread,
             ...(result.sandbox ? { sandbox: result.sandbox } : {}),
         });
@@ -130,6 +132,12 @@ export async function removeManagedSandbox(input: RemoveSandboxInput) {
                 message: result.message ?? 'Managed sandbox removal failed.',
             });
         }
+        if (!isEntityId(result.sandboxId, 'sb')) {
+            return workspaceActionMutationFailure({
+                action: 'sandbox_removal',
+                message: 'Managed sandbox removal failed.',
+            });
+        }
         return workspaceSandboxRemovedSuccess(result.sandboxId);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Managed sandbox removal failed.';
@@ -146,7 +154,13 @@ export async function removeOrphanedManagedSandboxes(input: RemoveOrphanedSandbo
             profileId: input.profileId,
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         });
-        return workspaceOrphanedSandboxesRemovedSuccess(result.removedSandboxIds);
+        const removedSandboxIds = result.removedSandboxIds.filter(
+            (sandboxId): sandboxId is `sb_${string}` => isEntityId(sandboxId, 'sb')
+        );
+        return workspaceOrphanedSandboxesRemovedSuccess({
+            removedSandboxIds,
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+        });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Orphaned sandbox cleanup failed.';
         return workspaceActionMutationFailure({

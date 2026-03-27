@@ -1,7 +1,7 @@
+import { skipToken } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { setResolvedContextStateCache } from '@/web/components/context/contextStateCache';
-import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import {
     resolveComposerMediaSettingsDraft,
     type ComposerMediaSettingsDraft,
@@ -12,13 +12,11 @@ import {
     type ContextGlobalDraft,
     type ContextProfileDraft,
 } from '@/web/components/settings/contextSettingsDrafts';
+import { resolveContextPreviewTarget } from '@/web/components/settings/contextSettings/contextTargetPreview';
 import { resolveSelectedProfileId } from '@/web/components/settings/profileSettings/selection';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
-import { findProviderControlEntry, getProviderControlDefaults } from '@/web/lib/providerControl/selectors';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
-
-import type { RuntimeProviderId } from '@/shared/contracts';
 
 interface UseContextSettingsControllerInput {
     activeProfileId: string;
@@ -49,24 +47,18 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
     );
 
     const providerControl = shellBootstrapQuery.data?.providerControl;
-    const defaults = getProviderControlDefaults(providerControl);
-    const defaultProviderId = defaults?.providerId;
-    const defaultModelId = defaults?.modelId;
-    const effectiveProviderId: RuntimeProviderId = isProviderId(defaultProviderId) ? defaultProviderId : 'openai';
-    const effectiveModelId = defaultModelId ?? 'openai/gpt-5';
-    const defaultProviderEntry = findProviderControlEntry(providerControl, effectiveProviderId);
-    const defaultModel = defaultProviderEntry?.models.find((model) => model.id === defaultModelId);
-    const defaultProvider = defaultProviderEntry?.provider;
-
-    const resolvedContextStateQueryInput = {
+    const resolvedPreviewTarget = resolveContextPreviewTarget({
         profileId: resolvedSelectedProfileId,
-        providerId: effectiveProviderId,
-        modelId: effectiveModelId,
-    };
-    const resolvedContextStateQuery = trpc.context.getResolvedState.useQuery(resolvedContextStateQueryInput, {
-        enabled: resolvedSelectedProfileId.length > 0 && Boolean(defaultProviderId) && Boolean(defaultModelId),
-        ...PROGRESSIVE_QUERY_OPTIONS,
+        providerControl,
     });
+    const resolvedContextStateQueryInput = resolvedPreviewTarget?.previewQueryInput;
+    const resolvedContextStateQuery = resolvedContextStateQueryInput
+        ? trpc.context.getResolvedState.useQuery(resolvedContextStateQueryInput, {
+              ...PROGRESSIVE_QUERY_OPTIONS,
+          })
+        : trpc.context.getResolvedState.useQuery(skipToken, {
+              ...PROGRESSIVE_QUERY_OPTIONS,
+          });
 
     const globalDraft = resolveContextGlobalDraft({
         settings: globalSettingsQuery.data?.settings,
@@ -88,7 +80,7 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
             setFeedbackTone('success');
             setFeedbackMessage('Saved global context defaults.');
             utils.context.getGlobalSettings.setData(undefined, { settings });
-            if (resolvedState) {
+            if (resolvedState && resolvedContextStateQueryInput) {
                 setResolvedContextStateCache({
                     utils,
                     queryInput: resolvedContextStateQueryInput,
@@ -107,7 +99,7 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
             setFeedbackTone('success');
             setFeedbackMessage('Saved profile context override.');
             utils.context.getProfileSettings.setData({ profileId: resolvedSelectedProfileId }, { settings });
-            if (resolvedState) {
+            if (resolvedState && resolvedContextStateQueryInput) {
                 setResolvedContextStateCache({
                     utils,
                     queryInput: resolvedContextStateQueryInput,
@@ -141,20 +133,22 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
             return;
         }
 
+        const previewInput = resolvedContextStateQueryInput ? { preview: resolvedContextStateQueryInput } : {};
         await setGlobalSettingsMutation.mutateAsync({
             enabled: draft.enabled,
             mode: 'percent',
             percent,
-            preview: resolvedContextStateQueryInput,
+            ...previewInput,
         });
     }
 
     async function saveProfileSettings(draft: ContextProfileDraft): Promise<void> {
         if (draft.overrideMode === 'inherit') {
+            const previewInput = resolvedContextStateQueryInput ? { preview: resolvedContextStateQueryInput } : {};
             await setProfileSettingsMutation.mutateAsync({
                 profileId: resolvedSelectedProfileId,
                 overrideMode: 'inherit',
-                preview: resolvedContextStateQueryInput,
+                ...previewInput,
             });
             return;
         }
@@ -167,11 +161,12 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
                 return;
             }
 
+            const previewInput = resolvedContextStateQueryInput ? { preview: resolvedContextStateQueryInput } : {};
             await setProfileSettingsMutation.mutateAsync({
                 profileId: resolvedSelectedProfileId,
                 overrideMode: 'percent',
                 percent,
-                preview: resolvedContextStateQueryInput,
+                ...previewInput,
             });
             return;
         }
@@ -183,11 +178,12 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
             return;
         }
 
+        const previewInput = resolvedContextStateQueryInput ? { preview: resolvedContextStateQueryInput } : {};
         await setProfileSettingsMutation.mutateAsync({
             profileId: resolvedSelectedProfileId,
             overrideMode: 'fixed_tokens',
             fixedInputTokens,
-            preview: resolvedContextStateQueryInput,
+            ...previewInput,
         });
     }
 
@@ -251,8 +247,8 @@ export function useContextSettingsController({ activeProfileId }: UseContextSett
             modelLimitsKnown: resolvedContextStateQuery.data?.policy.limits.modelLimitsKnown ?? false,
         },
         resolvedPreview: {
-            defaultModel,
-            defaultProvider,
+            defaultModel: resolvedPreviewTarget?.defaultModel,
+            defaultProvider: resolvedPreviewTarget?.defaultProvider,
             state: resolvedContextStateQuery.data,
         },
     };

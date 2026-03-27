@@ -1,5 +1,6 @@
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
+import type { ExecutionTargetExplanationModel } from '@/web/components/conversation/shell/workspace/runTargetSelection';
 import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 
@@ -131,6 +132,7 @@ export interface SessionWorkspacePanelProps {
     selectedModelCompatibilityReason?: string;
     selectedProviderStatus?: ProviderStatusSummary;
     selectedModelLabel?: string;
+    selectedTargetExplanation?: ExecutionTargetExplanationModel;
     selectedUsageSummary?: ProviderUsageSummary;
     registrySummary?: RegistrySummary;
     agentContextSummary?: AgentContextSummary;
@@ -219,6 +221,9 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                     workspaceScope: input.workspaceScope,
                     provider: input.selectedProviderStatus,
                     modelLabel: input.selectedModelLabel,
+                    ...(input.selectedTargetExplanation
+                        ? { targetExplanation: input.selectedTargetExplanation }
+                        : {}),
                     usageSummary: input.selectedUsageSummary,
                     routingBadge: input.routingBadge,
                     registrySummary: input.registrySummary,

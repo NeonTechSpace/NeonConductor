@@ -125,6 +125,8 @@ describe('useConversationRunTarget', () => {
             providerId: 'openai',
             modelId: 'openai/gpt-5-tools',
         });
+        expect(state.resolvedExecutionTarget?.source).toBe('compatibility_fallback');
+        expect(state.resolvedExecutionTarget?.explanation.selectedSourceLabel).toBe('Compatibility fallback');
         expect(state.modelOptions.map((model) => model.id)).toEqual(['openai/gpt-5-no-tools', 'openai/gpt-5-tools']);
         expect(state.modelOptions.find((model) => model.id === 'openai/gpt-5-no-tools')?.compatibilityState).toBe(
             'incompatible'
@@ -159,6 +161,7 @@ describe('useConversationRunTarget', () => {
             providerId: 'openai',
             modelId: 'openai/gpt-5-tools',
         });
+        expect(state.resolvedExecutionTarget?.source).toBe('compatibility_fallback');
     });
 
     it('keeps the fresh Kilo default when usable Kilo models exist even if another provider model is available', () => {
@@ -193,6 +196,7 @@ describe('useConversationRunTarget', () => {
             providerId: 'kilo',
             modelId: kiloFrontierModelId,
         });
+        expect(state.resolvedExecutionTarget?.source).toBe('shared_defaults');
     });
 
     it('prefers the main-view draft over workspace and profile defaults when no session override exists', () => {
@@ -239,6 +243,8 @@ describe('useConversationRunTarget', () => {
             providerId: 'moonshot',
             modelId: 'moonshot/kimi-k2.5',
         });
+        expect(state.resolvedExecutionTarget?.source).toBe('main_view_draft');
+        expect(state.resolvedExecutionTarget?.explanation.selectedSourceLabel).toBe('Main-view draft');
         expect(state.selectedProviderIdForComposer).toBe('moonshot');
         expect(state.selectedModelIdForComposer).toBe('moonshot/kimi-k2.5');
     });
@@ -293,5 +299,47 @@ describe('useConversationRunTarget', () => {
             providerId: 'kilo',
             modelId: kiloFrontierModelId,
         });
+        expect(state.resolvedExecutionTarget?.source).toBe('specialist_default');
+    });
+
+    it('keeps a session override authoritative even when it is lower compatibility than other candidates', () => {
+        const state = useConversationRunTarget({
+            providers: [
+                createProvider({ id: 'openai', label: 'OpenAI', authMethod: 'api_key', authState: 'configured' }),
+                createProvider({ id: 'moonshot', label: 'Moonshot', authMethod: 'api_key', authState: 'configured' }),
+            ],
+            providerModels: [
+                createModel({
+                    id: 'openai/gpt-5-no-tools',
+                    providerId: 'openai',
+                    label: 'GPT 5 No Tools',
+                    supportsTools: false,
+                }),
+                createModel({
+                    id: 'moonshot/kimi-k2.5',
+                    providerId: 'moonshot',
+                    label: 'Kimi K2.5',
+                    supportsTools: true,
+                }),
+            ],
+            defaults: {
+                providerId: 'moonshot',
+                modelId: 'moonshot/kimi-k2.5',
+            },
+            sessionOverride: {
+                providerId: 'openai',
+                modelId: 'openai/gpt-5-no-tools',
+            },
+            runs: [createRun({ providerId: 'moonshot', modelId: 'moonshot/kimi-k2.5' })],
+            requiresTools: true,
+        });
+
+        expect(state.resolvedRunTarget).toEqual({
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-tools',
+        });
+        expect(state.resolvedExecutionTarget?.source).toBe('session_override');
+        expect(state.resolvedExecutionTarget?.explanation.selectedSourceLabel).toBe('Session override');
+        expect(state.resolvedExecutionTarget?.explanation.compatibilityMode).toBe('override');
     });
 });
