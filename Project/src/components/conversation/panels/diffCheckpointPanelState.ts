@@ -116,3 +116,70 @@ export function describeCompactionRun(run: CheckpointStorageSummary['lastCompact
     return run.message ? `${summary}. ${run.message}` : summary;
 }
 
+export function describeRollbackFeedback(input: { rolledBack: boolean; message?: string }): string {
+    if (!input.rolledBack) {
+        return input.message ?? 'Rollback could not be completed.';
+    }
+
+    return 'Checkpoint rollback completed.';
+}
+
+export function describeRevertChangesetFeedback(input: { reverted: boolean; message?: string }): string {
+    if (!input.reverted) {
+        return input.message ?? 'Changeset revert could not be completed.';
+    }
+
+    return 'Changeset revert completed.';
+}
+
+export function describeMilestoneSaveFeedback(input: { created: boolean }): string {
+    return input.created ? 'Milestone saved.' : 'Milestone could not be saved.';
+}
+
+export function describeMilestonePromoteFeedback(input: { promoted: boolean }): string {
+    return input.promoted ? 'Checkpoint promoted to milestone.' : 'Checkpoint could not be promoted to a milestone.';
+}
+
+export function describeMilestoneRenameFeedback(input: { renamed: boolean }): string {
+    return input.renamed ? 'Milestone renamed.' : 'Milestone could not be renamed.';
+}
+
+export function describeMilestoneDeleteFeedback(input: { deleted: boolean }): string {
+    return input.deleted ? 'Milestone deleted.' : 'Milestone could not be deleted.';
+}
+
+export function describeCleanupFeedback(input: {
+    cleanedUp: boolean;
+    message?: string;
+    deletedCount?: number;
+    prunedBlobCount?: number;
+}): string {
+    if (!input.cleanedUp) {
+        return input.message ?? 'Cleanup requires explicit confirmation.';
+    }
+
+    return `Cleanup removed ${String(input.deletedCount ?? 0)} checkpoints and pruned ${String(input.prunedBlobCount ?? 0)} snapshot blobs.`;
+}
+
+export function describeCompactionFeedback(input: {
+    compacted: boolean;
+    message?: string;
+    run?: {
+        status: 'success' | 'failed' | 'noop';
+        message?: string;
+    };
+}): string {
+    if (!input.compacted) {
+        return input.message ?? 'Compaction requires explicit confirmation.';
+    }
+
+    if (input.run?.status === 'failed') {
+        return input.run.message ?? 'Checkpoint compaction failed.';
+    }
+
+    if (input.run?.status === 'noop') {
+        return input.run.message ?? 'No checkpoint blobs were eligible for compaction.';
+    }
+
+    return input.run?.message ?? 'Checkpoint storage compaction completed.';
+}

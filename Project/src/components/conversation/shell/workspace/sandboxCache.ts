@@ -8,7 +8,7 @@ type ThreadListData = Awaited<ReturnType<TrpcUtils['conversation']['listThreads'
 type SandboxListData = Awaited<ReturnType<TrpcUtils['sandbox']['list']['fetch']>>;
 type ShellBootstrapData = Awaited<ReturnType<TrpcUtils['runtime']['getShellBootstrap']['fetch']>>;
 
-interface ThreadListInput {
+export interface ThreadListInput {
     profileId: string;
     activeTab: 'chat' | 'agent' | 'orchestrator';
     showAllModes: boolean;
@@ -16,6 +16,33 @@ interface ThreadListInput {
     scope?: 'detached' | 'workspace';
     workspaceFingerprint?: string;
     sort?: 'latest' | 'alphabetical';
+}
+
+export interface WorkspaceSandboxCacheUtils {
+    conversation: {
+        listThreads: {
+            setData: (
+                input: ThreadListInput,
+                updater: (current: ThreadListData | undefined) => ThreadListData | undefined
+            ) => unknown;
+        };
+    };
+    sandbox: {
+        list: {
+            setData: (
+                input: { profileId: string },
+                updater: (current: SandboxListData | undefined) => SandboxListData | undefined
+            ) => unknown;
+        };
+    };
+    runtime: {
+        getShellBootstrap: {
+            setData: (
+                input: { profileId: string },
+                updater: (current: ShellBootstrapData | undefined) => ShellBootstrapData | undefined
+            ) => unknown;
+        };
+    };
 }
 
 function removeSandboxes(current: SandboxRecord[], removedIds: readonly string[]): SandboxRecord[] {
@@ -30,7 +57,7 @@ function upsertSandbox(current: SandboxRecord[], sandbox: SandboxRecord): Sandbo
 }
 
 export function patchSandboxCaches(input: {
-    utils: TrpcUtils;
+    utils: WorkspaceSandboxCacheUtils;
     profileId: string;
     listThreadsInput: ThreadListInput;
     thread?: ThreadRecord;

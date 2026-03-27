@@ -110,20 +110,14 @@ export function buildConversationWorkspacePanels(input: BuildConversationWorkspa
                     topLevelTab={input.topLevelTab}
                     modeKey={input.modeKey}
                     isLoadingPlan={input.queries.activePlanQuery.isPending}
-                    isPlanMutating={input.planOrchestrator.isPlanMutating}
-                    isOrchestratorMutating={input.planOrchestrator.isOrchestratorMutating}
+                    actionController={input.planOrchestrator.actionController}
                     selectedExecutionStrategy={input.executionStrategy}
                     canConfigureExecutionStrategy={canConfigureExecutionStrategy}
                     {...(input.planOrchestrator.activePlan ? { activePlan: input.planOrchestrator.activePlan } : {})}
                     {...(input.planOrchestrator.orchestratorView
                         ? { orchestratorView: input.planOrchestrator.orchestratorView }
                         : {})}
-                    onAnswerQuestion={input.planOrchestrator.onAnswerQuestion}
-                    onRevisePlan={input.planOrchestrator.onRevisePlan}
-                    onApprovePlan={input.planOrchestrator.onApprovePlan}
                     onExecutionStrategyChange={input.onExecutionStrategyChange}
-                    onImplementPlan={input.planOrchestrator.onImplementPlan}
-                    onAbortOrchestrator={input.planOrchestrator.onAbortOrchestrator}
                     onSelectChildThread={(threadId: EntityId<'thr'>) => {
                         input.onTopLevelTabChange('agent');
                         input.onSelectThreadId(threadId);

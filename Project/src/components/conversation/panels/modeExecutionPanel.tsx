@@ -6,6 +6,7 @@ import {
     type ModeExecutionDraftState,
     type ModeExecutionPlanView,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
+import type { ConversationPlanActionController } from '@/web/components/conversation/shell/composition/planImplementationController';
 import { Button } from '@/web/components/ui/button';
 
 import type { EntityId, OrchestratorExecutionStrategy, TopLevelTab } from '@/shared/contracts';
@@ -37,16 +38,10 @@ export interface ModeExecutionPanelProps {
     activePlan?: PlanView;
     isLoadingPlan: boolean;
     orchestratorView?: OrchestratorView;
-    isPlanMutating: boolean;
-    isOrchestratorMutating: boolean;
+    actionController: ConversationPlanActionController;
     selectedExecutionStrategy: OrchestratorExecutionStrategy;
     canConfigureExecutionStrategy: boolean;
-    onAnswerQuestion: (planId: EntityId<'plan'>, questionId: string, answer: string) => void;
-    onRevisePlan: (planId: EntityId<'plan'>, summaryMarkdown: string, items: string[]) => void;
-    onApprovePlan: (planId: EntityId<'plan'>) => void;
     onExecutionStrategyChange: (executionStrategy: OrchestratorExecutionStrategy) => void;
-    onImplementPlan: (planId: EntityId<'plan'>, executionStrategy: OrchestratorExecutionStrategy) => void;
-    onAbortOrchestrator: (orchestratorRunId: EntityId<'orch'>) => void;
     onSelectChildThread?: (threadId: EntityId<'thr'>) => void;
 }
 
@@ -56,16 +51,10 @@ export function ModeExecutionPanel({
     activePlan,
     isLoadingPlan,
     orchestratorView,
-    isPlanMutating,
-    isOrchestratorMutating,
+    actionController,
     selectedExecutionStrategy,
     canConfigureExecutionStrategy,
-    onAnswerQuestion,
-    onRevisePlan,
-    onApprovePlan,
     onExecutionStrategyChange,
-    onImplementPlan,
-    onAbortOrchestrator,
     onSelectChildThread,
 }: ModeExecutionPanelProps) {
     const [draftState, setDraftState] = useState<ModeExecutionDraftState | undefined>(undefined);
@@ -73,6 +62,15 @@ export function ModeExecutionPanel({
         activePlan,
         draftState,
     });
+    const {
+        isPlanMutating,
+        isOrchestratorMutating,
+        onAnswerQuestion,
+        onRevisePlan,
+        onApprovePlan,
+        onImplementPlan,
+        onAbortOrchestrator,
+    } = actionController;
 
     if (modeKey !== 'plan' && topLevelTab !== 'orchestrator') {
         return null;

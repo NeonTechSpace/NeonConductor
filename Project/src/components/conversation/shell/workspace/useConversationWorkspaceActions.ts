@@ -1,12 +1,15 @@
 import { useState } from 'react';
 
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
-import { patchSandboxCaches } from '@/web/components/conversation/shell/workspace/sandboxCache';
 import {
-    workspaceActionMutationFailure,
-    workspaceActionMutationSuccess,
-} from '@/web/components/conversation/shell/workspace/workspaceActionMutationResult';
+    configureConversationThreadExecution,
+    refreshManagedSandbox,
+    removeManagedSandbox,
+    removeOrphanedManagedSandboxes,
+} from '@/web/components/conversation/shell/workspace/executionTargetActionsController';
+import { resolveConversationPermission } from '@/web/components/conversation/shell/workspace/permissionResolutionController';
+import type { WorkspaceActionMutationResult } from '@/web/components/conversation/shell/workspace/workspaceActionMutationResult';
+import { applyWorkspaceActionOutcome } from '@/web/components/conversation/shell/workspace/workspaceActionOutcomeHandler';
 import { trpc } from '@/web/trpc/client';
 
 import type { PermissionRecord } from '@/app/backend/persistence/types';
@@ -37,6 +40,20 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
     const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>(undefined);
     const [feedbackTone, setFeedbackTone] = useState<'success' | 'error' | 'info'>('info');
 
+    const commitActionOutcome = (result: WorkspaceActionMutationResult) => {
+        const feedback = applyWorkspaceActionOutcome({
+            utils,
+            profileId: input.profileId,
+            listThreadsInput: input.listThreadsInput,
+            result,
+        });
+        if (feedback) {
+            setFeedbackTone(feedback.tone);
+            setFeedbackMessage(feedback.message);
+        }
+        return result;
+    };
+
     return {
         feedbackMessage,
         feedbackTone,
@@ -49,140 +66,49 @@ export function useConversationWorkspaceActions(input: UseConversationWorkspaceA
             resolution: PermissionResolution;
             selectedApprovalResource?: string;
         }) {
-            input.onResolvePermission();
-            await input.mutations.resolvePermissionMutation.mutateAsync({
+            const result = await resolveConversationPermission({
                 profileId: input.profileId,
-                requestId: payload.requestId,
-                resolution: payload.resolution,
-                ...(payload.selectedApprovalResource
-                    ? { selectedApprovalResource: payload.selectedApprovalResource }
-                    : {}),
+                onResolvePermission: input.onResolvePermission,
+                mutateAsync: input.mutations.resolvePermissionMutation.mutateAsync,
+                payload,
             });
-            utils.permission.listPending.setData(undefined, (current) => {
-                if (!current) {
-                    return current;
-                }
-
-                return {
-                    requests: current.requests.filter((request) => request.id !== payload.requestId),
-                };
-            });
+            return commitActionOutcome(result);
         },
         async configureThreadExecution(payload: {
             threadId: EntityId<'thr'>;
             executionInput: Pick<ConversationSetThreadExecutionEnvironmentInput, 'mode' | 'sandboxId'>;
         }) {
-            const selectedSandboxId =
-                payload.executionInput.mode === 'sandbox' && isEntityId(payload.executionInput.sandboxId, 'sb')
-                    ? payload.executionInput.sandboxId
-                    : undefined;
-            try {
-                const result = await input.mutations.configureThreadSandboxMutation.mutateAsync({
-                    profileId: input.profileId,
-                    threadId: payload.threadId,
-                    mode: payload.executionInput.mode,
-                    ...(selectedSandboxId ? { sandboxId: selectedSandboxId } : {}),
-                });
-                patchSandboxCaches({
-                    utils,
-                    profileId: input.profileId,
-                    listThreadsInput: input.listThreadsInput,
-                    thread: result.thread,
-                    ...(result.sandbox ? { sandbox: result.sandbox } : {}),
-                });
-                setFeedbackTone('success');
-                setFeedbackMessage('Execution environment updated.');
-                return workspaceActionMutationSuccess();
-            } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : 'Execution environment update failed.';
-                setFeedbackTone('error');
-                setFeedbackMessage(message);
-                return workspaceActionMutationFailure(message);
-            }
+            const result = await configureConversationThreadExecution({
+                profileId: input.profileId,
+                threadId: payload.threadId,
+                executionInput: payload.executionInput,
+                mutateAsync: input.mutations.configureThreadSandboxMutation.mutateAsync,
+            });
+            return commitActionOutcome(result);
         },
         async refreshSandbox(sandboxId: `sb_${string}`) {
-            try {
-                const result = await input.mutations.refreshSandboxMutation.mutateAsync({
-                    profileId: input.profileId,
-                    sandboxId,
-                });
-                if (!result.refreshed || !result.sandbox) {
-                    const message =
-                        result.reason === 'not_found'
-                            ? 'Managed sandbox no longer exists.'
-                            : 'Managed sandbox refresh failed.';
-                    setFeedbackTone('error');
-                    setFeedbackMessage(message);
-                    return workspaceActionMutationFailure(message);
-                }
-                patchSandboxCaches({
-                    utils,
-                    profileId: input.profileId,
-                    listThreadsInput: input.listThreadsInput,
-                    sandbox: result.sandbox,
-                });
-                setFeedbackTone('success');
-                setFeedbackMessage('Managed sandbox status refreshed.');
-                return workspaceActionMutationSuccess();
-            } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : 'Managed sandbox refresh failed.';
-                setFeedbackTone('error');
-                setFeedbackMessage(message);
-                return workspaceActionMutationFailure(message);
-            }
+            const result = await refreshManagedSandbox({
+                profileId: input.profileId,
+                sandboxId,
+                mutateAsync: input.mutations.refreshSandboxMutation.mutateAsync,
+            });
+            return commitActionOutcome(result);
         },
         async removeSandbox(sandboxId: `sb_${string}`) {
-            try {
-                const result = await input.mutations.removeSandboxMutation.mutateAsync({
-                    profileId: input.profileId,
-                    sandboxId,
-                    removeFiles: true,
-                });
-                if (!result.removed || !result.sandboxId) {
-                    const message = result.message ?? 'Managed sandbox removal failed.';
-                    setFeedbackTone('error');
-                    setFeedbackMessage(message);
-                    return workspaceActionMutationFailure(message);
-                }
-                patchSandboxCaches({
-                    utils,
-                    profileId: input.profileId,
-                    listThreadsInput: input.listThreadsInput,
-                    removedSandboxIds: [result.sandboxId],
-                });
-                setFeedbackTone('success');
-                setFeedbackMessage('Managed sandbox removed.');
-                return workspaceActionMutationSuccess();
-            } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : 'Managed sandbox removal failed.';
-                setFeedbackTone('error');
-                setFeedbackMessage(message);
-                return workspaceActionMutationFailure(message);
-            }
+            const result = await removeManagedSandbox({
+                profileId: input.profileId,
+                sandboxId,
+                mutateAsync: input.mutations.removeSandboxMutation.mutateAsync,
+            });
+            return commitActionOutcome(result);
         },
         async removeOrphanedSandboxes(workspaceFingerprint: string | undefined) {
-            try {
-                const result = await input.mutations.removeOrphanedSandboxesMutation.mutateAsync({
-                    profileId: input.profileId,
-                    ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-                });
-                if (result.removedSandboxIds.length > 0) {
-                    patchSandboxCaches({
-                        utils,
-                        profileId: input.profileId,
-                        listThreadsInput: input.listThreadsInput,
-                        removedSandboxIds: result.removedSandboxIds,
-                    });
-                }
-                setFeedbackTone('success');
-                setFeedbackMessage('Removed orphaned managed sandboxes.');
-                return workspaceActionMutationSuccess();
-            } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : 'Orphaned sandbox cleanup failed.';
-                setFeedbackTone('error');
-                setFeedbackMessage(message);
-                return workspaceActionMutationFailure(message);
-            }
+            const result = await removeOrphanedManagedSandboxes({
+                profileId: input.profileId,
+                ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+                mutateAsync: input.mutations.removeOrphanedSandboxesMutation.mutateAsync,
+            });
+            return commitActionOutcome(result);
         },
     };
 }

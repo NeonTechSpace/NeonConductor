@@ -43,8 +43,15 @@ describe('resolveModeExecutionDraftState', () => {
                 topLevelTab: 'orchestrator',
                 modeKey: 'plan',
                 isLoadingPlan: false,
-                isPlanMutating: false,
-                isOrchestratorMutating: false,
+                actionController: {
+                    isPlanMutating: false,
+                    isOrchestratorMutating: false,
+                    onAnswerQuestion: vi.fn(),
+                    onRevisePlan: vi.fn(),
+                    onApprovePlan: vi.fn(),
+                    onImplementPlan: vi.fn(),
+                    onAbortOrchestrator: vi.fn(),
+                },
                 selectedExecutionStrategy: 'parallel',
                 canConfigureExecutionStrategy: true,
                 activePlan: {
@@ -72,12 +79,7 @@ describe('resolveModeExecutionDraftState', () => {
                         },
                     ],
                 },
-                onAnswerQuestion: vi.fn(),
-                onRevisePlan: vi.fn(),
-                onApprovePlan: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
-                onImplementPlan: vi.fn(),
-                onAbortOrchestrator: vi.fn(),
                 onSelectChildThread: vi.fn(),
             })
         );

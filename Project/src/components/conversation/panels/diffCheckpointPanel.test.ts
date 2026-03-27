@@ -112,7 +112,15 @@ import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCh
 import { CheckpointHistorySection } from '@/web/components/conversation/panels/diffCheckpointPanel/checkpointHistorySection';
 import {
     buildRollbackWarningLines,
+    describeCleanupFeedback,
+    describeCompactionFeedback,
     describeCompactionRun,
+    describeMilestoneDeleteFeedback,
+    describeMilestonePromoteFeedback,
+    describeMilestoneRenameFeedback,
+    describeMilestoneSaveFeedback,
+    describeRevertChangesetFeedback,
+    describeRollbackFeedback,
     describeRetentionDisposition,
     filterVisibleCheckpoints,
     formatCheckpointByteSize,
@@ -316,6 +324,65 @@ describe('checkpoint compaction helpers', () => {
                 completedAt: '2026-03-19T10:00:01.000Z',
             })
         ).toBe('Last manual compaction failed. Verification failed.');
+    });
+});
+
+describe('checkpoint feedback helpers', () => {
+    it('keeps rollback and revert status messaging in pure helpers', () => {
+        expect(describeRollbackFeedback({ rolledBack: true })).toBe('Checkpoint rollback completed.');
+        expect(describeRollbackFeedback({ rolledBack: false })).toBe('Rollback could not be completed.');
+        expect(describeRollbackFeedback({ rolledBack: false, message: 'Blocked by drift.' })).toBe('Blocked by drift.');
+
+        expect(describeRevertChangesetFeedback({ reverted: true })).toBe('Changeset revert completed.');
+        expect(describeRevertChangesetFeedback({ reverted: false })).toBe('Changeset revert could not be completed.');
+        expect(describeRevertChangesetFeedback({ reverted: false, message: 'Changeset is unsafe.' })).toBe(
+            'Changeset is unsafe.'
+        );
+    });
+
+    it('keeps milestone lifecycle feedback explicit', () => {
+        expect(describeMilestoneSaveFeedback({ created: true })).toBe('Milestone saved.');
+        expect(describeMilestoneSaveFeedback({ created: false })).toBe('Milestone could not be saved.');
+        expect(describeMilestonePromoteFeedback({ promoted: true })).toBe('Checkpoint promoted to milestone.');
+        expect(describeMilestonePromoteFeedback({ promoted: false })).toBe(
+            'Checkpoint could not be promoted to a milestone.'
+        );
+        expect(describeMilestoneRenameFeedback({ renamed: true })).toBe('Milestone renamed.');
+        expect(describeMilestoneRenameFeedback({ renamed: false })).toBe('Milestone could not be renamed.');
+        expect(describeMilestoneDeleteFeedback({ deleted: true })).toBe('Milestone deleted.');
+        expect(describeMilestoneDeleteFeedback({ deleted: false })).toBe('Milestone could not be deleted.');
+    });
+
+    it('keeps cleanup and compaction feedback semantics in one place', () => {
+        expect(
+            describeCleanupFeedback({
+                cleanedUp: true,
+                deletedCount: 2,
+                prunedBlobCount: 5,
+            })
+        ).toBe('Cleanup removed 2 checkpoints and pruned 5 snapshot blobs.');
+        expect(describeCleanupFeedback({ cleanedUp: false })).toBe('Cleanup requires explicit confirmation.');
+        expect(describeCleanupFeedback({ cleanedUp: false, message: 'Nothing eligible.' })).toBe('Nothing eligible.');
+
+        expect(describeCompactionFeedback({ compacted: false })).toBe('Compaction requires explicit confirmation.');
+        expect(describeCompactionFeedback({ compacted: true })).toBe('Checkpoint storage compaction completed.');
+        expect(
+            describeCompactionFeedback({
+                compacted: true,
+                run: {
+                    status: 'noop',
+                },
+            })
+        ).toBe('No checkpoint blobs were eligible for compaction.');
+        expect(
+            describeCompactionFeedback({
+                compacted: true,
+                run: {
+                    status: 'failed',
+                    message: 'Verification failed.',
+                },
+            })
+        ).toBe('Verification failed.');
     });
 });
 

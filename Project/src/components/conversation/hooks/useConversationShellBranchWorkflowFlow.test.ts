@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { shouldUseWorkflowBranchChooser } from '@/web/components/conversation/hooks/useConversationShellBranchWorkflowFlow';
+import {
+    interpretWorkflowExecutionStatus,
+    shouldUseWorkflowBranchChooser,
+} from '@/web/components/conversation/hooks/useConversationShellBranchWorkflowFlow';
 
 describe('shouldUseWorkflowBranchChooser', () => {
     it('only enables the chooser for workspace-bound agent and orchestrator threads', () => {
@@ -70,5 +73,38 @@ describe('shouldUseWorkflowBranchChooser', () => {
                 },
             })
         ).toBe(false);
+    });
+
+    it('turns workflow execution results into explicit branch feedback', () => {
+        expect(interpretWorkflowExecutionStatus({ status: 'not_requested' })).toEqual({
+            message: undefined,
+            shouldInvalidatePendingPermissions: false,
+        });
+
+        expect(interpretWorkflowExecutionStatus({ status: 'succeeded' })).toEqual({
+            message: undefined,
+            shouldInvalidatePendingPermissions: false,
+        });
+
+        expect(
+            interpretWorkflowExecutionStatus({
+                status: 'approval_required',
+                requestId: 'perm_123',
+                message: 'Approval required for npm publish.',
+            })
+        ).toEqual({
+            message: 'Branch created. Approval required for npm publish.',
+            shouldInvalidatePendingPermissions: true,
+        });
+
+        expect(
+            interpretWorkflowExecutionStatus({
+                status: 'failed',
+                message: 'pnpm install exited with 1',
+            })
+        ).toEqual({
+            message: 'Branch created, but the workflow failed: pnpm install exited with 1',
+            shouldInvalidatePendingPermissions: false,
+        });
     });
 });

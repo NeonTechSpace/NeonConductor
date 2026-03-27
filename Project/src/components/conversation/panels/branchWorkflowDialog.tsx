@@ -1,43 +1,20 @@
-import { useState } from 'react';
-
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
-import { trpc } from '@/web/trpc/client';
 
 import type { ProjectWorkflowRecord } from '@/shared/contracts';
 
-interface BranchWorkflowDialogProps {
+import {
+    createEmptyWorkflowDraftState,
+    useWorkflowLibraryController,
+    type WorkflowLibraryController,
+} from '@/web/components/conversation/panels/useWorkflowLibraryController';
+
+export interface BranchWorkflowDialogProps {
     open: boolean;
     profileId: string;
     workspaceFingerprint: string;
     busy: boolean;
     onClose: () => void;
     onBranch: (workflowId?: string) => Promise<void>;
-}
-
-type WorkflowFormMode = 'create' | 'edit';
-
-interface WorkflowDraftState {
-    formMode: WorkflowFormMode;
-    editingWorkflowId: string | undefined;
-    label: string;
-    command: string;
-    enabled: boolean;
-    isFormVisible: boolean;
-    statusMessage: string | undefined;
-    deleteCandidateId: string | undefined;
-}
-
-export function createEmptyWorkflowDraftState(): WorkflowDraftState {
-    return {
-        formMode: 'create',
-        editingWorkflowId: undefined,
-        label: '',
-        command: '',
-        enabled: true,
-        isFormVisible: false,
-        statusMessage: undefined,
-        deleteCandidateId: undefined,
-    };
 }
 
 function WorkflowRow({
@@ -120,117 +97,8 @@ function WorkflowRow({
     );
 }
 
-function BranchWorkflowDialogBody({
-    profileId,
-    workspaceFingerprint,
-    busy,
-    onBranch,
-}: Omit<BranchWorkflowDialogProps, 'open' | 'onClose'>) {
-    const utils = trpc.useUtils();
-    const workflowsQuery = trpc.workflow.list.useQuery(
-        {
-            profileId,
-            workspaceFingerprint,
-        },
-        {
-            enabled: true,
-        }
-    );
-    const createWorkflowMutation = trpc.workflow.create.useMutation();
-    const updateWorkflowMutation = trpc.workflow.update.useMutation();
-    const deleteWorkflowMutation = trpc.workflow.delete.useMutation();
-    const [draftState, setDraftState] = useState(() => createEmptyWorkflowDraftState());
-    const { formMode, editingWorkflowId, label, command, enabled, isFormVisible, statusMessage, deleteCandidateId } =
-        draftState;
-
-    const busyForm =
-        createWorkflowMutation.isPending || updateWorkflowMutation.isPending || deleteWorkflowMutation.isPending;
-
-    const resetWorkflowDraft = () => {
-        setDraftState((current) => ({
-            ...createEmptyWorkflowDraftState(),
-            statusMessage: current.statusMessage,
-        }));
-    };
-
-    const startCreateWorkflowDraft = () => {
-        setDraftState({
-            ...createEmptyWorkflowDraftState(),
-            isFormVisible: true,
-        });
-    };
-
-    const startEditWorkflowDraft = (workflow: ProjectWorkflowRecord) => {
-        setDraftState({
-            formMode: 'edit',
-            editingWorkflowId: workflow.id,
-            label: workflow.label,
-            command: workflow.command,
-            enabled: workflow.enabled,
-            isFormVisible: true,
-            statusMessage: undefined,
-            deleteCandidateId: undefined,
-        });
-    };
-
-    const refreshList = async () => {
-        await utils.workflow.list.invalidate({
-            profileId,
-            workspaceFingerprint,
-        });
-    };
-
-    const saveWorkflow = async (branchAfterSave: boolean) => {
-        setDraftState((current) => ({
-            ...current,
-            statusMessage: undefined,
-        }));
-        try {
-            if (formMode === 'edit' && editingWorkflowId) {
-                const result = await updateWorkflowMutation.mutateAsync({
-                    profileId,
-                    workspaceFingerprint,
-                    workflowId: editingWorkflowId,
-                    label,
-                    command,
-                    enabled,
-                });
-                if (!result.updated) {
-                    setDraftState((current) => ({
-                        ...current,
-                        statusMessage: 'The workflow no longer exists.',
-                    }));
-                    return;
-                }
-                await refreshList();
-                resetWorkflowDraft();
-                if (branchAfterSave) {
-                    await onBranch(result.workflow.id);
-                }
-                return;
-            }
-
-            const created = await createWorkflowMutation.mutateAsync({
-                profileId,
-                workspaceFingerprint,
-                label,
-                command,
-                enabled,
-            });
-            await refreshList();
-            resetWorkflowDraft();
-            if (branchAfterSave) {
-                await onBranch(created.workflow.id);
-            }
-        } catch (error) {
-            setDraftState((current) => ({
-                ...current,
-                statusMessage: error instanceof Error ? error.message : 'Workflow save failed.',
-            }));
-        }
-    };
-
-    const workflows = workflowsQuery.data?.workflows ?? [];
+function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibraryController }) {
+    const { draftState } = controller;
 
     return (
         <div className='border-border bg-background w-[min(94vw,46rem)] rounded-[28px] border p-5 shadow-xl'>
@@ -247,24 +115,24 @@ function BranchWorkflowDialogBody({
                 <button
                     type='button'
                     className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
-                    disabled={busy}
-                    onClick={() => {
-                        void onBranch(undefined);
-                    }}>
+                    disabled={controller.isBranchDisabled}
+                    onClick={controller.branchWithoutWorkflow}>
                     Branch with no workflow
                 </button>
                 <button
                     type='button'
                     className='border-border bg-card hover:bg-accent rounded-full border px-4 py-2 text-sm font-medium'
-                    onClick={startCreateWorkflowDraft}>
+                    onClick={controller.startCreateWorkflowDraft}>
                     Create workflow
                 </button>
             </div>
 
-            {isFormVisible ? (
+            {draftState.isFormVisible ? (
                 <div className='border-border/70 bg-card/40 mt-4 rounded-2xl border p-4'>
                     <div className='space-y-1'>
-                        <p className='text-sm font-medium'>{formMode === 'edit' ? 'Edit workflow' : 'New workflow'}</p>
+                        <p className='text-sm font-medium'>
+                            {draftState.formMode === 'edit' ? 'Edit workflow' : 'New workflow'}
+                        </p>
                         <p className='text-muted-foreground text-xs'>
                             One workflow is one reusable shell command stored under{' '}
                             <code>.neonconductor/workflows</code>.
@@ -276,12 +144,9 @@ function BranchWorkflowDialogBody({
                             <span className='text-sm font-medium'>Label</span>
                             <input
                                 type='text'
-                                value={label}
+                                value={draftState.label}
                                 onChange={(event) => {
-                                    setDraftState((current) => ({
-                                        ...current,
-                                        label: event.target.value,
-                                    }));
+                                    controller.updateLabel(event.target.value);
                                 }}
                                 className='border-border bg-card h-10 w-full rounded-2xl border px-3 text-sm'
                                 autoComplete='off'
@@ -292,12 +157,9 @@ function BranchWorkflowDialogBody({
                         <label className='block space-y-2'>
                             <span className='text-sm font-medium'>Command</span>
                             <textarea
-                                value={command}
+                                value={draftState.command}
                                 onChange={(event) => {
-                                    setDraftState((current) => ({
-                                        ...current,
-                                        command: event.target.value,
-                                    }));
+                                    controller.updateCommand(event.target.value);
                                 }}
                                 className='border-border bg-card min-h-28 w-full rounded-2xl border px-3 py-2 text-sm'
                                 spellCheck={false}
@@ -308,12 +170,9 @@ function BranchWorkflowDialogBody({
                         <label className='flex items-center gap-2 text-sm'>
                             <input
                                 type='checkbox'
-                                checked={enabled}
+                                checked={draftState.enabled}
                                 onChange={(event) => {
-                                    setDraftState((current) => ({
-                                        ...current,
-                                        enabled: event.target.checked,
-                                    }));
+                                    controller.updateEnabled(event.target.checked);
                                 }}
                             />
                             <span>Enabled</span>
@@ -324,25 +183,29 @@ function BranchWorkflowDialogBody({
                         <button
                             type='button'
                             className='border-border bg-card hover:bg-accent rounded-full border px-4 py-2 text-sm font-medium'
-                            onClick={resetWorkflowDraft}>
+                            onClick={controller.cancelWorkflowDraft}>
                             Cancel
                         </button>
                         <button
                             type='button'
                             className='border-border bg-card hover:bg-accent rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
-                            disabled={busy || busyForm}
+                            disabled={controller.isBranchDisabled || controller.busyForm}
                             onClick={() => {
-                                void saveWorkflow(false);
+                                controller.saveWorkflow(false);
                             }}>
-                            {busyForm ? 'Saving…' : formMode === 'edit' ? 'Save changes' : 'Save workflow'}
+                            {controller.busyForm
+                                ? 'Saving…'
+                                : draftState.formMode === 'edit'
+                                  ? 'Save changes'
+                                  : 'Save workflow'}
                         </button>
-                        {formMode === 'create' ? (
+                        {draftState.formMode === 'create' ? (
                             <button
                                 type='button'
                                 className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
-                                disabled={busy || busyForm}
+                                disabled={controller.isBranchDisabled || controller.busyForm}
                                 onClick={() => {
-                                    void saveWorkflow(true);
+                                    controller.saveWorkflow(true);
                                 }}>
                                 Save and branch
                             </button>
@@ -352,74 +215,60 @@ function BranchWorkflowDialogBody({
             ) : null}
 
             <div className='mt-4 space-y-3'>
-                {workflowsQuery.isLoading ? (
+                {controller.isLoading ? (
                     <div className='text-muted-foreground border-border/70 bg-card/30 rounded-2xl border px-4 py-5 text-sm'>
                         Loading workflows…
                     </div>
-                ) : workflows.length === 0 ? (
+                ) : controller.workflows.length === 0 ? (
                     <div className='text-muted-foreground border-border/70 bg-card/30 rounded-2xl border px-4 py-5 text-sm'>
                         No project workflows yet.
                     </div>
                 ) : (
-                    workflows.map((workflow) => (
+                    controller.workflows.map((workflow) => (
                         <WorkflowRow
                             key={workflow.id}
                             workflow={workflow}
-                            isDeleting={deleteCandidateId === workflow.id}
+                            isDeleting={draftState.deleteCandidateId === workflow.id}
                             onBranch={(workflowId) => {
-                                void onBranch(workflowId);
+                                if (workflowId) {
+                                    controller.branchWithWorkflow(workflowId);
+                                }
                             }}
-                            onEdit={startEditWorkflowDraft}
-                            onDelete={(workflowId) => {
-                                setDraftState((current) => ({
-                                    ...current,
-                                    deleteCandidateId: workflowId,
-                                    statusMessage: undefined,
-                                }));
-                            }}
-                            onConfirmDelete={(workflowId) => {
-                                void deleteWorkflowMutation
-                                    .mutateAsync({
-                                        profileId,
-                                        workspaceFingerprint,
-                                        workflowId,
-                                        confirm: true,
-                                    })
-                                    .then(async () => {
-                                        setDraftState((current) => ({
-                                            ...current,
-                                            deleteCandidateId: undefined,
-                                        }));
-                                        if (editingWorkflowId === workflowId) {
-                                            resetWorkflowDraft();
-                                        }
-                                        await refreshList();
-                                    })
-                                    .catch((error: unknown) => {
-                                        setDraftState((current) => ({
-                                            ...current,
-                                            statusMessage:
-                                                error instanceof Error ? error.message : 'Workflow delete failed.',
-                                        }));
-                                    });
-                            }}
-                            onCancelDelete={() => {
-                                setDraftState((current) => ({
-                                    ...current,
-                                    deleteCandidateId: undefined,
-                                }));
-                            }}
+                            onEdit={controller.startEditWorkflowDraft}
+                            onDelete={controller.requestDeleteWorkflow}
+                            onConfirmDelete={controller.confirmDeleteWorkflow}
+                            onCancelDelete={controller.cancelDeleteWorkflow}
                         />
                     ))
                 )}
             </div>
 
-            {statusMessage || workflowsQuery.error?.message ? (
-                <p className='text-destructive mt-4 text-sm'>{statusMessage ?? workflowsQuery.error?.message}</p>
+            {draftState.statusMessage || controller.queryErrorMessage ? (
+                <p className='text-destructive mt-4 text-sm'>
+                    {draftState.statusMessage ?? controller.queryErrorMessage}
+                </p>
             ) : null}
         </div>
     );
 }
+
+function BranchWorkflowDialogBody({
+    profileId,
+    workspaceFingerprint,
+    busy,
+    onBranch,
+}: Omit<BranchWorkflowDialogProps, 'open' | 'onClose'>) {
+    const controller = useWorkflowLibraryController({
+        profileId,
+        workspaceFingerprint,
+        busy,
+        onBranch,
+    });
+
+    return <BranchWorkflowDialogContent controller={controller} />;
+}
+
+export { createEmptyWorkflowDraftState };
 
 export function BranchWorkflowDialog({
     open,
