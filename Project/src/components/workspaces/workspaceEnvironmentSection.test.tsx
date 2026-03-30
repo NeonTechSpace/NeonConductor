@@ -92,6 +92,22 @@ const snapshot = {
     notes: ['This workspace prefers pnpm.', 'The pinned VCS preference "jj" is not available on this machine.'],
 };
 
+const snapshotWithNoAvailableCommands = {
+    ...snapshot,
+    availableCommands: {
+        jj: { available: false },
+        git: { available: false },
+        node: { available: false },
+        python: { available: false },
+        python3: { available: false },
+        pnpm: { available: false },
+        npm: { available: false },
+        yarn: { available: false },
+        bun: { available: false },
+        tsx: { available: false },
+    },
+};
+
 describe('WorkspaceEnvironmentPreviewCard', () => {
     it('renders backend snapshot guidance', () => {
         const html = renderToStaticMarkup(
@@ -107,6 +123,19 @@ describe('WorkspaceEnvironmentPreviewCard', () => {
         expect(html).toContain('pnpm');
         expect(html).toContain('PowerShell');
         expect(html).toContain('The pinned VCS preference');
+    });
+
+    it('renders the no-commands fallback when nothing is available', () => {
+        const html = renderToStaticMarkup(
+            <WorkspaceEnvironmentPreviewCard
+                isLoading={false}
+                errorMessage={undefined}
+                snapshot={snapshotWithNoAvailableCommands}
+                emptyMessage='No preview yet.'
+            />
+        );
+
+        expect(html).toContain('None detected');
     });
 
     it('renders error state when inspection fails', () => {

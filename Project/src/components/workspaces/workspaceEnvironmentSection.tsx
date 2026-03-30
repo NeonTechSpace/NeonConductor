@@ -2,12 +2,24 @@ import { useWorkspaceEnvironmentPreferencesController } from '@/web/components/w
 
 import type {
     WorkspaceEnvironmentCommandAvailability,
-    WorkspaceEnvironmentCommandAvailabilityEntry,
     WorkspaceEnvironmentSnapshot,
     WorkspacePreferenceRecord,
     WorkspacePreferredPackageManager,
     WorkspacePreferredVcs,
 } from '@/shared/contracts/types/runtime';
+
+const commandAvailabilityKeys = [
+    'jj',
+    'git',
+    'node',
+    'python',
+    'python3',
+    'pnpm',
+    'npm',
+    'yarn',
+    'bun',
+    'tsx',
+] as const satisfies ReadonlyArray<keyof WorkspaceEnvironmentCommandAvailability>;
 
 function formatFamilyLabel(value: string): string {
     if (value === 'unknown') {
@@ -49,12 +61,12 @@ function formatOverrideLabel(value: WorkspacePreferredVcs | WorkspacePreferredPa
     return value;
 }
 
+function getAvailableCommandLabels(snapshot: WorkspaceEnvironmentSnapshot): string[] {
+    return commandAvailabilityKeys.filter((command) => snapshot.availableCommands[command].available);
+}
+
 function listAvailableCommands(snapshot: WorkspaceEnvironmentSnapshot): string {
-    const labels = (Object.entries(snapshot.availableCommands) as Array<
-        [keyof WorkspaceEnvironmentCommandAvailability, WorkspaceEnvironmentCommandAvailabilityEntry]
-    >)
-        .filter(([, details]) => details.available)
-        .map(([command]) => command);
+    const labels = getAvailableCommandLabels(snapshot);
 
     return labels.length > 0 ? labels.join(', ') : 'None detected';
 }

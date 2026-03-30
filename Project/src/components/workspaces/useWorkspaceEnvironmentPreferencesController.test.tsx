@@ -12,7 +12,7 @@ const environmentTestState = vi.hoisted(() => ({
     inspectWorkspaceEnvironmentUseQueryMock: vi.fn(),
     useUtilsMock: vi.fn(),
     useMutationMock: vi.fn(),
-    workspacePreferenceMutationConfig: { current: undefined as any },
+    refetchMock: vi.fn(),
 }));
 
 vi.mock('@/web/trpc/client', () => ({
@@ -64,7 +64,8 @@ describe('useWorkspaceEnvironmentPreferencesController', () => {
         environmentTestState.inspectWorkspaceEnvironmentUseQueryMock.mockClear();
         environmentTestState.useUtilsMock.mockClear();
         environmentTestState.useMutationMock.mockClear();
-        environmentTestState.workspacePreferenceMutationConfig.current = undefined;
+        environmentTestState.refetchMock.mockReset();
+        environmentTestState.refetchMock.mockResolvedValue(undefined);
         environmentTestState.useUtilsMock.mockReturnValue({
             runtime: {
                 getShellBootstrap: {
@@ -135,30 +136,23 @@ describe('useWorkspaceEnvironmentPreferencesController', () => {
                     notes: [],
                 },
             },
-            refetch: vi.fn().mockResolvedValue(undefined),
+            refetch: environmentTestState.refetchMock,
         });
-        environmentTestState.useMutationMock.mockImplementation((config: any) => {
-            environmentTestState.workspacePreferenceMutationConfig.current = config;
+        environmentTestState.useMutationMock.mockImplementation(() => {
             return {
                 isPending: false,
                 mutateAsync: environmentTestState.setWorkspacePreferenceMutateAsyncMock,
             };
         });
-        environmentTestState.setWorkspacePreferenceMutateAsyncMock.mockImplementation(async (input: any) => {
-            const workspacePreference = {
+        environmentTestState.setWorkspacePreferenceMutateAsyncMock.mockImplementation(async (input: any) => ({
+            workspacePreference: {
                 profileId: input.profileId,
                 workspaceFingerprint: input.workspaceFingerprint,
                 preferredVcs: input.preferredVcs,
                 preferredPackageManager: input.preferredPackageManager,
                 updatedAt: '2026-03-25T12:00:00.000Z',
-            };
-
-            environmentTestState.workspacePreferenceMutationConfig.current?.onSuccess?.({
-                workspacePreference,
-            });
-
-            return { workspacePreference };
-        });
+            },
+        }));
     });
 
     it('projects the inspected environment and refetches after saving overrides', async () => {
@@ -184,8 +178,17 @@ describe('useWorkspaceEnvironmentPreferencesController', () => {
             { profileId: 'profile_default' },
             expect.any(Function)
         );
-        expect(environmentTestState.inspectWorkspaceEnvironmentUseQueryMock.mock.results[0]?.value.refetch).toHaveBeenCalledTimes(
-            1
-        );
+        expect(environmentTestState.refetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps save failure fail-closed and preserves the existing error feedback', async () => {
+        renderToStaticMarkup(<EnvironmentControllerProbe />);
+        environmentTestState.setWorkspacePreferenceMutateAsyncMock.mockRejectedValueOnce(new Error('save failed'));
+
+        await latestController?.savePreferences();
+
+        expect(environmentTestState.shellBootstrapSetDataMock).not.toHaveBeenCalled();
+        expect(environmentTestState.refetchMock).not.toHaveBeenCalled();
+        expect(ENVIRONMENT_SAVE_ERROR_MESSAGE).toBe('Could not save workspace tool preferences.');
     });
 });

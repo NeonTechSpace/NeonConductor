@@ -17,6 +17,7 @@ import type {
 } from '@/web/components/settings/providerSettings/providerSettingsCache.types';
 
 type ProviderControlPlanePatchInput = Parameters<typeof patchProviderControlSnapshot>[1];
+type ProviderSettingsCacheContext = Pick<ProviderSettingsCacheProjectionInput, 'utils' | 'profileId' | 'providerId'>;
 
 function replaceProvider(current: ProviderListData | undefined, provider: ProviderListItem): ProviderListData | undefined {
     if (!current) {
@@ -170,30 +171,69 @@ function buildProviderControlPlanePatchInput(
     };
 }
 
+function writeProviderListData(
+    context: ProviderSettingsCacheContext,
+    next: (current: ProviderListData | undefined) => ProviderListData | undefined
+): void {
+    context.utils.provider.listProviders.setData({ profileId: context.profileId }, next);
+}
+
+function writeProviderDefaultsData(
+    context: ProviderSettingsCacheContext,
+    next: (current: ProviderDefaultsData | undefined) => ProviderDefaultsData | undefined
+): void {
+    context.utils.provider.getDefaults.setData({ profileId: context.profileId }, next);
+}
+
+function writeProviderControlPlaneData(
+    context: ProviderSettingsCacheContext,
+    next: (current: ProviderControlData | undefined) => ProviderControlData | undefined
+): void {
+    context.utils.provider.getControlPlane.setData({ profileId: context.profileId }, next);
+}
+
+function writeProviderModelsData(
+    context: ProviderSettingsCacheContext,
+    next: (current: ProviderModelsData | undefined) => ProviderModelsData | undefined
+): void {
+    context.utils.provider.listModels.setData(
+        {
+            profileId: context.profileId,
+            providerId: context.providerId,
+        },
+        next
+    );
+}
+
+function writeShellBootstrapData(
+    context: ProviderSettingsCacheContext,
+    next: (current: ShellBootstrapData | undefined) => ShellBootstrapData | undefined
+): void {
+    context.utils.runtime.getShellBootstrap.setData({ profileId: context.profileId }, next);
+}
+
 export function projectProviderSettingsControlPlaneCache(input: ProviderSettingsCacheProjectionInput): void {
     if (input.provider) {
         const provider = input.provider;
-        input.utils.provider.listProviders.setData(
-            { profileId: input.profileId },
-            (current: ProviderListData | undefined) => replaceProvider(current, provider)
-        );
+        writeProviderListData(input, (current: ProviderListData | undefined) => replaceProvider(current, provider));
     }
 
     if (input.authState) {
-        input.utils.provider.listProviders.setData(
-            { profileId: input.profileId },
+        const authState = input.authState;
+        writeProviderListData(
+            input,
             (current: ProviderListData | undefined) =>
                 patchProviderAuthState(current, {
                     providerId: input.providerId,
-                    authState: input.authState as ProviderAuthStateRecord,
+                    authState,
                 })
         );
     }
 
     if (input.defaults) {
         const nextDefaults = input.defaults;
-        input.utils.provider.getDefaults.setData(
-            { profileId: input.profileId },
+        writeProviderDefaultsData(
+            input,
             (current: ProviderDefaultsData | undefined) => ({
                 defaults: nextDefaults,
                 specialistDefaults: input.specialistDefaults ?? current?.specialistDefaults ?? [],
@@ -206,10 +246,7 @@ export function projectProviderSettingsControlPlaneCache(input: ProviderSettings
         : undefined;
 
     if (shouldPatchControlPlane(input)) {
-        const getControlPlaneCache = (input.utils.provider as {
-            getControlPlane?: { setData: (input: { profileId: string }, next: (value: ProviderControlData | undefined) => ProviderControlData | undefined) => void };
-        }).getControlPlane;
-        getControlPlaneCache?.setData({ profileId: input.profileId }, (current: ProviderControlData | undefined) => {
+        writeProviderControlPlaneData(input, (current: ProviderControlData | undefined) => {
             if (!current || !nextControlPlaneInput) {
                 return current;
             }
@@ -227,11 +264,8 @@ export function projectProviderSettingsControlPlaneCache(input: ProviderSettings
 
     if (input.models !== undefined) {
         const nextModels = input.models;
-        input.utils.provider.listModels.setData(
-            {
-                profileId: input.profileId,
-                providerId: input.providerId,
-            },
+        writeProviderModelsData(
+            input,
             (current: ProviderModelsData | undefined) => {
                 if (nextModels.length > 0) {
                     return {
@@ -264,8 +298,8 @@ export function projectProviderSettingsControlPlaneCache(input: ProviderSettings
     }
 
     if (shouldPatchControlPlane(input)) {
-        input.utils.runtime.getShellBootstrap.setData(
-            { profileId: input.profileId },
+        writeShellBootstrapData(
+            input,
             (current: ShellBootstrapData | undefined) => {
                 if (!current || !nextControlPlaneInput) {
                     return current;

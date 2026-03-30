@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { patchWorkspacePreferenceCache } from '@/web/components/workspaces/workspacesSurfaceCacheProjector';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
@@ -55,35 +56,32 @@ export function useWorkspaceEnvironmentPreferencesController(
         },
         PROGRESSIVE_QUERY_OPTIONS
     );
-    const setWorkspacePreferenceMutation = trpc.runtime.setWorkspacePreference.useMutation({
-        onSuccess: ({ workspacePreference }) => {
+    const setWorkspacePreferenceMutation = trpc.runtime.setWorkspacePreference.useMutation();
+    const savePreferences = createFailClosedAsyncAction(
+        async () => {
+            const { workspacePreference } = await setWorkspacePreferenceMutation.mutateAsync({
+                profileId: input.profileId,
+                workspaceFingerprint: input.workspaceFingerprint,
+                preferredVcs,
+                preferredPackageManager,
+            });
+
             patchWorkspacePreferenceCache({
                 utils,
                 profileId: input.profileId,
                 workspacePreference,
             });
             setFeedbackMessage(ENVIRONMENT_SAVE_SUCCESS_MESSAGE);
-            void environmentQuery.refetch();
+            await environmentQuery.refetch();
         },
-        onError: () => {
+        () => {
             setFeedbackMessage(ENVIRONMENT_SAVE_ERROR_MESSAGE);
-        },
-    });
+        }
+    );
     const currentPreferredVcs = input.workspacePreference?.preferredVcs ?? 'auto';
     const currentPreferredPackageManager = input.workspacePreference?.preferredPackageManager ?? 'auto';
     const hasPendingChanges =
         preferredVcs !== currentPreferredVcs || preferredPackageManager !== currentPreferredPackageManager;
-
-    async function savePreferences() {
-        await setWorkspacePreferenceMutation
-            .mutateAsync({
-                profileId: input.profileId,
-                workspaceFingerprint: input.workspaceFingerprint,
-                preferredVcs,
-                preferredPackageManager,
-            })
-            .catch(() => undefined);
-    }
 
     return {
         preferredVcs,

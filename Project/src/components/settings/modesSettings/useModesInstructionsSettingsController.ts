@@ -1,15 +1,22 @@
 import { useState } from 'react';
 
-
 import type { PromptSettingsSnapshot } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import { buildModesInstructionsViewModel } from '@/web/components/settings/modesSettings/modesInstructionsViewModel';
 import { useModesInstructionsBuiltInModesController } from '@/web/components/settings/modesSettings/useModesInstructionsBuiltInModesController';
 import { useModesInstructionsCustomModesController } from '@/web/components/settings/modesSettings/useModesInstructionsCustomModesController';
 import { useModesInstructionsGlobalController } from '@/web/components/settings/modesSettings/useModesInstructionsGlobalController';
-import { buildModesInstructionsViewModel } from '@/web/components/settings/modesSettings/modesInstructionsViewModel';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
-import type { TopLevelTab } from '@/shared/contracts';
+import { type TopLevelTab } from '@/shared/contracts';
+
+export function buildTopLevelTabRecord<TValue>(createValue: (topLevelTab: TopLevelTab) => TValue): Record<TopLevelTab, TValue> {
+    return {
+        chat: createValue('chat'),
+        agent: createValue('agent'),
+        orchestrator: createValue('orchestrator'),
+    };
+}
 
 export function useModesInstructionsSettingsController(input: {
     profileId: string;
@@ -72,13 +79,10 @@ export function useModesInstructionsSettingsController(input: {
         setErrorFeedback,
         setSuccessFeedback,
     });
-    const topLevelTabs: TopLevelTab[] = ['chat', 'agent', 'orchestrator'];
-    const topLevelValues = Object.fromEntries(
-        topLevelTabs.map((topLevelTab) => [topLevelTab, globalController.topLevel.getValue(topLevelTab)])
-    ) as Record<TopLevelTab, string>;
-    const builtInModesByTab = Object.fromEntries(
-        topLevelTabs.map((topLevelTab) => [topLevelTab, builtInModesController.builtInModes.getItems(topLevelTab)])
-    ) as Record<TopLevelTab, ReturnType<typeof builtInModesController.builtInModes.getItems>>;
+    const topLevelValues = buildTopLevelTabRecord((topLevelTab) => globalController.topLevel.getValue(topLevelTab));
+    const builtInModesByTab = buildTopLevelTabRecord((topLevelTab) =>
+        builtInModesController.builtInModes.getItems(topLevelTab)
+    );
     const viewModel = buildModesInstructionsViewModel({
         appGlobalValue: globalController.appGlobal.value,
         appGlobalIsSaving: globalController.appGlobal.isSaving,

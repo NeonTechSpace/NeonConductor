@@ -8,77 +8,127 @@ import type {
     ProviderSettingsCacheProjectionInput,
 } from '@/web/components/settings/providerSettings/providerSettingsCache.types';
 
+type ProviderSettingsCacheContext = Pick<ProviderSettingsCacheProjectionInput, 'utils' | 'profileId' | 'providerId'>;
+
+function writeProviderAuthStateData(
+    context: ProviderSettingsCacheContext,
+    authState: ProviderAuthStateRecord
+): void {
+    context.utils.provider.getAuthState.setData(
+        {
+            profileId: context.profileId,
+            providerId: context.providerId,
+        },
+        {
+            found: true,
+            state: authState,
+        }
+    );
+}
+
+function writeProviderAccountContextData(
+    context: ProviderSettingsCacheContext,
+    accountContext: ProviderSettingsCacheProjectionInput['accountContext']
+): void {
+    if (!accountContext) {
+        return;
+    }
+
+    context.utils.provider.getAccountContext.setData(
+        {
+            profileId: context.profileId,
+            providerId: 'kilo',
+        },
+        accountContext
+    );
+}
+
+function writeProviderConnectionProfileData(
+    context: ProviderSettingsCacheContext,
+    connectionProfile: NonNullable<ProviderSettingsCacheProjectionInput['connectionProfile']>
+): void {
+    context.utils.provider.getConnectionProfile.setData(
+        {
+            profileId: context.profileId,
+            providerId: context.providerId,
+        },
+        {
+            connectionProfile,
+        } satisfies ProviderConnectionProfileData
+    );
+}
+
+function writeProviderExecutionPreferenceData(
+    context: ProviderSettingsCacheContext,
+    executionPreference: NonNullable<ProviderSettingsCacheProjectionInput['executionPreference']>
+): void {
+    context.utils.provider.getExecutionPreference.setData(
+        {
+            profileId: context.profileId,
+            providerId: 'openai',
+        },
+        {
+            executionPreference,
+        } satisfies ProviderExecutionPreferenceData
+    );
+}
+
+function writeProviderRoutingPreferenceData(
+    context: ProviderSettingsCacheContext,
+    routingModelId: string,
+    routingPreference: NonNullable<ProviderSettingsCacheProjectionInput['routingPreference']>
+): void {
+    context.utils.provider.getModelRoutingPreference.setData(
+        {
+            profileId: context.profileId,
+            providerId: 'kilo',
+            modelId: routingModelId,
+        },
+        {
+            preference: routingPreference,
+        } satisfies ProviderRoutingPreferenceData
+    );
+}
+
+function writeProviderRoutingProvidersData(
+    context: ProviderSettingsCacheContext,
+    routingModelId: string,
+    routingProviders: NonNullable<ProviderSettingsCacheProjectionInput['routingProviders']>
+): void {
+    context.utils.provider.listModelProviders.setData(
+        {
+            profileId: context.profileId,
+            providerId: 'kilo',
+            modelId: routingModelId,
+        },
+        {
+            providers: routingProviders,
+        } satisfies ProviderModelProvidersData
+    );
+}
+
 export function projectProviderSettingsSupplementalCache(input: ProviderSettingsCacheProjectionInput): void {
     if (input.authState) {
-        input.utils.provider.getAuthState.setData(
-            {
-                profileId: input.profileId,
-                providerId: input.providerId,
-            },
-            {
-                found: true,
-                state: input.authState as ProviderAuthStateRecord,
-            }
-        );
+        writeProviderAuthStateData(input, input.authState);
     }
 
     if (input.accountContext && input.providerId === 'kilo') {
-        input.utils.provider.getAccountContext.setData(
-            {
-                profileId: input.profileId,
-                providerId: 'kilo',
-            },
-            input.accountContext
-        );
+        writeProviderAccountContextData(input, input.accountContext);
     }
 
     if (input.connectionProfile) {
-        input.utils.provider.getConnectionProfile.setData(
-            {
-                profileId: input.profileId,
-                providerId: input.providerId,
-            },
-            {
-                connectionProfile: input.connectionProfile,
-            } satisfies ProviderConnectionProfileData
-        );
+        writeProviderConnectionProfileData(input, input.connectionProfile);
     }
 
     if (input.executionPreference && input.providerId === 'openai') {
-        input.utils.provider.getExecutionPreference.setData(
-            {
-                profileId: input.profileId,
-                providerId: 'openai',
-            },
-            {
-                executionPreference: input.executionPreference,
-            } satisfies ProviderExecutionPreferenceData
-        );
+        writeProviderExecutionPreferenceData(input, input.executionPreference);
     }
 
     if (input.routingPreference && input.routingModelId) {
-        input.utils.provider.getModelRoutingPreference.setData(
-            {
-                profileId: input.profileId,
-                providerId: 'kilo',
-                modelId: input.routingModelId,
-            },
-            {
-                preference: input.routingPreference,
-            } satisfies ProviderRoutingPreferenceData
-        );
+        writeProviderRoutingPreferenceData(input, input.routingModelId, input.routingPreference);
     }
 
     if (input.routingProviders && input.routingModelId) {
-        input.utils.provider.listModelProviders.setData(
-            {
-                profileId: input.profileId,
-                providerId: 'kilo',
-                modelId: input.routingModelId,
-            },
-            {
-                providers: input.routingProviders,
-            } satisfies ProviderModelProvidersData
-        );
+        writeProviderRoutingProvidersData(input, input.routingModelId, input.routingProviders);
     }
 }

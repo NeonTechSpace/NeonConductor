@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { McpSettingsSection } from '@/web/components/settings/appSettings/mcpSection';
 import { APP_SETTINGS_SUBSECTIONS, type AppSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
 import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
@@ -36,20 +37,34 @@ export function AppSettingsView({
 }: AppSettingsViewProps) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
-    const factoryResetMutation = trpc.runtime.factoryReset.useMutation({
-        onSuccess: () => {
-            setConfirmOpen(false);
-            setConfirmationText('');
-        },
+    const factoryResetMutation = trpc.runtime.factoryReset.useMutation();
+
+    const confirmFactoryReset = createFailClosedAsyncAction(async () => {
+        await factoryResetMutation.mutateAsync({
+            confirm: true,
+            confirmationText,
+        });
+
+        // Close and clear only after a successful reset confirmation.
+        setConfirmOpen(false);
+        setConfirmationText('');
     });
 
-    async function handleConfirmFactoryReset() {
-        await factoryResetMutation
-            .mutateAsync({
-                confirm: true,
-                confirmationText,
-            })
-            .catch(() => undefined);
+    function handleCancelFactoryReset() {
+        if (factoryResetMutation.isPending) {
+            return;
+        }
+
+        setConfirmOpen(false);
+        setConfirmationText('');
+    }
+
+    function handleOpenFactoryResetDialog() {
+        if (factoryResetMutation.isPending) {
+            return;
+        }
+
+        setConfirmOpen(true);
     }
 
     return (
@@ -144,7 +159,7 @@ export function AppSettingsView({
                                         className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60'
                                         disabled={factoryResetMutation.isPending}
                                         onClick={() => {
-                                            setConfirmOpen(true);
+                                            handleOpenFactoryResetDialog();
                                         }}>
                                         Factory reset app data
                                     </button>
@@ -164,11 +179,10 @@ export function AppSettingsView({
                 busy={factoryResetMutation.isPending}
                 confirmDisabled={confirmationText !== FACTORY_RESET_CONFIRMATION_TEXT}
                 onCancel={() => {
-                    setConfirmOpen(false);
-                    setConfirmationText('');
+                    handleCancelFactoryReset();
                 }}
                 onConfirm={() => {
-                    void handleConfirmFactoryReset();
+                    void confirmFactoryReset();
                 }}>
                 <div className='space-y-2'>
                     <p className='text-muted-foreground text-xs'>

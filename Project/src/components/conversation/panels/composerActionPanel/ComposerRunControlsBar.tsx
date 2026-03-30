@@ -4,17 +4,12 @@ import type { ConversationModeOption } from '@/web/components/conversation/shell
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
+import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
-import type { RuntimeProviderId, RuntimeReasoningEffort } from '@/shared/contracts';
+import { providerIds, type RuntimeProviderId, type RuntimeReasoningEffort } from '@/shared/contracts';
 
-const runtimeProviderIds = new Set<RuntimeProviderId>(['kilo', 'moonshot', 'openai', 'openai_codex', 'zai']);
-
-function readRuntimeProviderId(value: string | undefined): RuntimeProviderId | undefined {
-    if (!value || !runtimeProviderIds.has(value as RuntimeProviderId)) {
-        return undefined;
-    }
-
-    return value as RuntimeProviderId;
+export function readRuntimeProviderId(value: string | undefined): RuntimeProviderId | undefined {
+    return isOneOf(value, providerIds) ? value : undefined;
 }
 
 interface ComposerRunControlsBarProps {
