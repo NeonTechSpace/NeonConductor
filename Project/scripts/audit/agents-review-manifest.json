@@ -1,572 +1,540 @@
 {
-    "entries": [
-        {
-            "path": "src/components/conversation/sidebar/sections/sidebarThreadBrowser.tsx",
-            "category": "actionable-async-ownership",
-            "contentHash": "5f7bd058735d1a08",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "onAddTagToThread resolves to SidebarMutationResult and is fail-closed in conversationSidebarPane."
-        },
-        {
-            "path": "electron/backend/persistence/schema.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "baed13c79679824f",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Schema file is intentionally centralized and cohesive as the Kysely database shape definition."
-        },
-        {
-            "path": "electron/backend/persistence/stores/conversation/threads/threadStore.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "93465fa730d2914c",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Large but cohesive thread persistence service covering one store boundary and related deletion/list logic."
-        },
-        {
-            "path": "electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "ac921c1b3c15bc40",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Cohesive checkpoint snapshot store; one clear persistence responsibility."
-        },
-        {
-            "path": "electron/backend/persistence/types.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "91b7404c8cb65e0c",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Large type declaration file is intentionally cohesive as the persistence/runtime record contract surface."
-        },
-        {
-            "path": "electron/backend/providers/adapters/anthropicDirect.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "ea1bcea1794ec912",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Direct Anthropic adapter stays cohesive around one transport/payload integration path."
-        },
-        {
-            "path": "electron/backend/providers/adapters/geminiDirect.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "1e256902c9ab32e5",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Direct Gemini adapter is large but remains one integration boundary with shared parsing and streaming flow."
-        },
-        {
-            "path": "electron/backend/providers/adapters/openaiCompatible/realtimeWebsocket.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "0524194cd81f4d4f",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Realtime websocket adapter remains cohesive around one streaming transport boundary."
-        },
-        {
-            "path": "electron/backend/providers/adapters/openaiCompatible/runtime.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "2acd3b9c53bd9d3e",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "OpenAI-compatible runtime is large but cohesive around one runtime execution adapter boundary."
-        },
-        {
-            "path": "electron/backend/providers/adapters/providerNative/minimax.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "b5e476a171580db0",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Provider-native Minimax adapter remains a single cohesive integration boundary."
-        },
-        {
-            "path": "electron/backend/providers/adapters/streaming.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "5a617a114fe01c9f",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Streaming adapter module stays focused on stream parsing and completion emission helpers."
-        },
-        {
-            "path": "electron/backend/providers/metadata/orchestrator.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "198b5ae49e395e30",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Metadata orchestrator remains one coherent cache and sync coordinator for provider catalogs."
-        },
-        {
-            "path": "electron/backend/providers/runtimeFamilies.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "0769265f7a51881f",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Runtime-family resolution remains one cohesive selection layer for protocol and transport paths."
-        },
-        {
-            "path": "electron/backend/runtime/services/checkpoint/internals.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "f111391ad66e1f2b",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Checkpoint internals remain cohesive around checkpoint capture, retention, and revert helpers."
-        },
-        {
-            "path": "electron/backend/runtime/services/checkpoint/service.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "ad5001b07398aef0",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: checkpoint service is large but remains cohesive by responsibility."
-        },
-        {
-            "path": "electron/backend/runtime/services/context/sessionContextService.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "e2472f8518cb32c8",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: session context service is large but cohesive."
-        },
-        {
-            "path": "electron/backend/runtime/services/memory/projection.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "96373d46998d8ce4",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Large but cohesive memory projection service; responsibilities stay within projection derivation and updates."
-        },
-        {
-            "path": "electron/backend/runtime/services/registry/discovery.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "edf48c1eddf16364",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Registry discovery remains one cohesive service around filesystem discovery and normalization."
-        },
-        {
-            "path": "electron/backend/runtime/services/runExecution/executeRun.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "350796df17b037ec",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Run execution module is cohesive around a single execution pipeline despite its size."
-        },
-        {
-            "path": "electron/backend/runtime/services/runExecution/protocol.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "2c8eb1c055c57324",
-            "status": "needs-refactor",
-            "reviewedAt": "2026-03-25",
-            "note": "Still focused on resolveRuntimeProtocol, but 20 protocol cases in one 937-line test file should be split by transport/runtime family."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/app-router.types.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "3d02a70305897762",
-            "status": "needs-refactor",
-            "reviewedAt": "2026-03-25",
-            "note": "Single 954-line mega type-contract test should be split by router domain instead of one giant assertion block."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.conversation-media-sandboxes.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "ba7c7116cf4e0ccc",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Contract test file remains cohesive around conversation media and sandbox runtime flows."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.core.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "29b7e4e5985bd7f0",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Core runtime contract tests are broad but cohesive around root runtime surface behavior."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.memory.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "6c68bfe6e25e3be4",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Memory contract tests remain focused on API behavior for memory creation, listing, derivation, and retrieval."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.plan-orchestrator-branching.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "198db04d47a91d13",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Branching orchestrator contract suite remains focused on delegated-child and inheritance behavior."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.plan-orchestrator-execution.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "8b98dc0dd2e4688b",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Execution contract suite stays cohesive around orchestrator lifecycle and delegation behavior."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.prompt.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "a83c2c149d150384",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Prompt-layer contract tests are cohesive around prompt persistence, reset, and portability flows."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.provider-catalog.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "486f16e454805886",
-            "status": "needs-refactor",
-            "reviewedAt": "2026-03-25",
-            "note": "Provider catalog contract coverage is coherent but too large; split auth, static catalog, and Kilo sync scenarios."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.provider-openai-codex.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "93fb6fd14e1c35bc",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "OpenAI Codex contract tests remain focused on OAuth, usage, and catalog/runtime behavior."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.provider-selection.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "5eeeb771e72dbff6",
-            "status": "needs-refactor",
-            "reviewedAt": "2026-03-25",
-            "note": "Provider selection contract suite should be split by fallback, auth, attachments, and defaults instead of one 959-line file."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.registry.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "bde3210fb66fe0ce",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Registry contract tests remain focused on registry refresh, precedence, search, and attached asset behavior."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.tooling-mcp-shell-checkpoints.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "adaff549bff66550",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Tooling contract tests remain cohesive around MCP, shell, permissions, diffs, and checkpoint interactions."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.tooling-provider-tools.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "f67ff689842aec10",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Provider-tooling contract tests stay focused on provider-native tool loops and persisted tool results."
-        },
-        {
-            "path": "electron/backend/trpc/__tests__/runtime-contracts.tooling-rollback-cleanup.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "6a771bcf22fafb98",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Rollback and cleanup contract tests remain cohesive around revert, cleanup, and unsupported-diff checkpoint flows."
-        },
-        {
-            "path": "electron/main/updates/updater.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "314b82af4b74e1d6",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Updater module stays focused on channel selection and auto-update lifecycle coordination."
-        },
-        {
-            "path": "src/components/conversation/panels/composerActionPanel.tsx",
-            "category": "handwritten-source-review",
-            "contentHash": "d91580d33b0de178",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: large but cohesive conversation action boundary."
-        },
-        {
-            "path": "src/components/modelSelection/modelPicker.tsx",
-            "category": "handwritten-source-review",
-            "contentHash": "8a4ce41224b08cde",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: large but cohesive model selection surface."
-        },
-        {
-            "path": "src/components/settings/modesSettings/modesInstructionsSections.tsx",
-            "category": "handwritten-source-review",
-            "contentHash": "e3d0aeebc9a54388",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: presentational modes instructions surface remains cohesive."
-        },
-        {
-            "path": "src/lib/runtime/eventPatches/readers.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "3660fa0117ff434d",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: large but cohesive event patch reader module."
-        },
-        {
-            "path": "src/lib/runtime/runtimeEventInvalidation.test.ts",
-            "category": "handwritten-source-review",
-            "contentHash": "9c29f33e8e580d7d",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Large test file is cohesive around runtime-event invalidation contract coverage."
-        },
-        {
-            "path": "electron/backend/persistence/stores/provider/providerCatalogMapper.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "fa36528af87fb34b",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Casts are localized to persistence and catalog normalization boundaries with explicit parsing around them."
-        },
-        {
-            "path": "electron/backend/persistence/stores/provider/providerCatalogStore.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "9c0993b5c4c2fda5",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Catalog store casts stay within persistence mapping boundaries and do not hide call-site type holes."
-        },
-        {
-            "path": "electron/backend/persistence/stores/provider/providerStore.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "5db729cc118193f4",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Provider store casts are at persisted-default validation boundaries and remain justified."
-        },
-        {
-            "path": "electron/backend/persistence/stores/registry/modeStore.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "607f4e471f6bfc3d",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Mode-store casts are bounded to JSON parsing and enum narrowing inside persistence mapping."
-        },
-        {
-            "path": "electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "ac921c1b3c15bc40",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Casts are at validated persistence row boundaries and remain structurally justified."
-        },
-        {
-            "path": "electron/backend/persistence/stores/runtime/mcpStore.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "3a1fc36498251a83",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "MCP store casts are localized to row parsing and JSON decoding at persistence boundaries."
-        },
-        {
-            "path": "electron/backend/providers/adapters/providerNative/minimax.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "b5e476a171580db0",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Casts stay within provider-native normalization boundaries and are structurally justified."
-        },
-        {
-            "path": "electron/backend/providers/runtimeFamilies.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "0769265f7a51881f",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Any remaining cast sites are local discriminant narrowing inside runtime-family resolution and do not hide unsafe boundaries."
-        },
-        {
-            "path": "electron/backend/runtime/contracts/parsers/prompt.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "2c12a54492b6bcac",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Casts sit at parser boundaries and are immediately validated by prompt input normalization."
-        },
-        {
-            "path": "electron/backend/runtime/contracts/types/messagePart.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "7a8f4900b0b361f0",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Message-part casts are localized enum narrowing inside a small parser-style contract helper."
-        },
-        {
-            "path": "electron/backend/runtime/services/memory/advancedDerivation.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "faffbe8b0e48f11f",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Casts are used after local prefix/shape checks and stay within derived-memory provenance normalization."
-        },
-        {
-            "path": "electron/backend/runtime/services/promptLayers/customModePortability.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "693f3f14887ea1a4",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Portable-mode casts are confined to portability parsing and immediately normalized by validation helpers."
-        },
-        {
-            "path": "electron/backend/runtime/services/promptLayers/shared.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "79e28b002e20b0cf",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: cast is at a validated prompt-layer boundary."
-        },
-        {
-            "path": "electron/backend/runtime/services/registry/discovery.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "edf48c1eddf16364",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Casts are localized to validated discovery and normalization boundaries."
-        },
-        {
-            "path": "electron/backend/runtime/services/workflows/service.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "7c2a07bc4a2abc2b",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Workflow-service cast is a local object guard at file-backed JSON parse boundaries."
-        },
-        {
-            "path": "electron/backend/runtime/services/workspace/preferences.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "f20985f2be7a96a5",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Workspace preference casts are enum checks and persisted-record validation at a settings boundary."
-        },
-        {
-            "path": "electron/shared/desktopBridgeContract.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "c1b19673a928d501",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Single local record cast supports a narrow contract validator at the preload boundary."
-        },
-        {
-            "path": "src/components/conversation/messages/tanstackTranscriptState.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "03bd2f7395df883a",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Transcript state uses guarded record readers before narrowing and remains a valid parser-style boundary."
-        },
-        {
-            "path": "src/components/runtime/profileWarmData.ts",
-            "category": "manual-broad-casts",
-            "contentHash": "aaee53e76bc83975",
-            "status": "reviewed-clean",
-            "reviewedAt": "2026-03-25",
-            "note": "Unknown-to-record casts are guarded locally and used as narrow payload validators."
-        },
-        {
-            "path": "electron/backend/persistence/stores/runtime/checkpointChangesetStore.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "ce7d811c4426e251",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throw guards impossible post-write reload failure after successful changeset persistence."
-        },
-        {
-            "path": "electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "ac921c1b3c15bc40",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throws guard corruption and impossible readback states in snapshot storage paths."
-        },
-        {
-            "path": "electron/backend/providers/adapters/moonshot/runtime.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "2fb97ad09c78e36b",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throw guards an impossible missing base URL after fallback endpoint resolution for Moonshot."
-        },
-        {
-            "path": "electron/backend/providers/adapters/openaiCompatible/realtimeWebsocket.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "0524194cd81f4d4f",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throws are internal validation and unsupported-input guards caught and normalized at the websocket boundary."
-        },
-        {
-            "path": "electron/backend/providers/adapters/zai/runtime.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "dae996480ac45fa6",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throw guards an impossible missing base URL after fallback endpoint resolution for Z.AI."
-        },
-        {
-            "path": "electron/backend/runtime/services/memory/projection.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "5ea1dd3448579bd1",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throws remain parser-style invariant enforcement for malformed projected memory files and canonical-value mismatch checks."
-        },
-        {
-            "path": "electron/backend/runtime/services/promptLayers/customModePortability.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "693f3f14887ea1a4",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-24",
-            "note": "Manual review: throw sites are parser-normalization invariants and portability validation failures."
-        },
-        {
-            "path": "electron/backend/runtime/services/runExecution/executeRun.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "350796df17b037ec",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throws are explicit abort and invariant guards in the run execution pipeline."
-        },
-        {
-            "path": "electron/backend/runtime/services/workflows/execution.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "df12767009095874",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throw is a seeded-configuration invariant for missing shell-tool registration."
-        },
-        {
-            "path": "electron/main/preload/buildConfig.ts",
-            "category": "manual-non-parser-throws",
-            "contentHash": "a072bdc20162e25b",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throws guard build-time preload entry invariants and missing emitted bundles."
-        },
-        {
-            "path": "src/components/runtime/workspaceSurfaceControllerContext.tsx",
-            "category": "manual-non-parser-throws",
-            "contentHash": "0256bf00dc852bd9",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throw enforces the required React provider invariant for the controller context."
-        },
-        {
-            "path": "src/routes/index.tsx",
-            "category": "manual-non-parser-throws",
-            "contentHash": "6999824f2b88edf3",
-            "status": "accepted-risk",
-            "reviewedAt": "2026-03-25",
-            "note": "Throw is TanStack Router redirect control flow rather than an application failure path."
-        }
-    ]
+  "entries": [
+    {
+      "path": "src/components/conversation/sidebar/sections/sidebarThreadBrowser.tsx",
+      "category": "actionable-async-ownership",
+      "contentHash": "42ed7b9ba2bd8823",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "onAddTagToThread resolves to SidebarMutationResult and is fail-closed in conversationSidebarPane."
+    },
+    {
+      "path": "electron/backend/persistence/schema.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "baed13c79679824f",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-25",
+      "note": "Schema file is intentionally centralized and cohesive as the Kysely database shape definition."
+    },
+    {
+      "path": "electron/backend/persistence/stores/conversation/threads/threadStore.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "5b440a9db7364918",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Large but cohesive thread persistence service covering one store boundary and related deletion/list logic."
+    },
+    {
+      "path": "electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "981177b2658a7069",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Cohesive checkpoint snapshot store; one clear persistence responsibility."
+    },
+    {
+      "path": "electron/backend/persistence/types.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "14c0c289524d290a",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Large type declaration file is intentionally cohesive as the persistence/runtime record contract surface."
+    },
+    {
+      "path": "electron/backend/providers/adapters/anthropicDirect.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "6f6bf30df30e3a8b",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Direct Anthropic adapter stays cohesive around one transport/payload integration path."
+    },
+    {
+      "path": "electron/backend/providers/adapters/geminiDirect.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "1950eb7de20a02e2",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Direct Gemini adapter is large but remains one integration boundary with shared parsing and streaming flow."
+    },
+    {
+      "path": "electron/backend/providers/adapters/openaiCompatible/realtimeWebsocket.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "26eb596c01799d4e",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Realtime websocket adapter remains cohesive around one streaming transport boundary."
+    },
+    {
+      "path": "electron/backend/providers/adapters/openaiCompatible/runtime.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "68b8afbcd58a9c78",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "OpenAI-compatible runtime is large but cohesive around one runtime execution adapter boundary."
+    },
+    {
+      "path": "electron/backend/providers/adapters/providerNative/minimax.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "1615c653c9f4c8b2",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Provider-native Minimax adapter remains a single cohesive integration boundary."
+    },
+    {
+      "path": "electron/backend/providers/adapters/streaming.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "6e496617a09bbe8e",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Streaming adapter module stays focused on stream parsing and completion emission helpers."
+    },
+    {
+      "path": "electron/backend/providers/metadata/orchestrator.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "411458749b3cb514",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Metadata orchestrator remains one coherent cache and sync coordinator for provider catalogs."
+    },
+    {
+      "path": "electron/backend/providers/runtimeFamilies.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "b0db925e9dc151ff",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Runtime-family resolution remains one cohesive selection layer for protocol and transport paths."
+    },
+    {
+      "path": "electron/backend/runtime/services/checkpoint/internals.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "526231eff58d1c4c",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Checkpoint internals remain cohesive around checkpoint capture, retention, and revert helpers."
+    },
+    {
+      "path": "electron/backend/runtime/services/checkpoint/service.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "d7ba04d2e8eddb5d",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: checkpoint service is large but remains cohesive by responsibility."
+    },
+    {
+      "path": "electron/backend/runtime/services/context/sessionContextService.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "94508c8ba0690a18",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: session context service is large but cohesive."
+    },
+    {
+      "path": "electron/backend/runtime/services/memory/projection.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "e031e697979504ca",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Large but cohesive memory projection service; responsibilities stay within projection derivation and updates."
+    },
+    {
+      "path": "electron/backend/runtime/services/registry/discovery.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "ab13fb9f4d793520",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Registry discovery is now a thin compatibility seam over the extracted parser, builder, and persistence lifecycle modules."
+    },
+    {
+      "path": "electron/backend/runtime/services/runExecution/executeRun.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "5443cc4ab7606615",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Run execution module is cohesive around a single execution pipeline despite its size."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.conversation-media-sandboxes.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "c6b89892503994f7",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Contract test file remains cohesive around conversation media and sandbox runtime flows."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.core.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "991e3e7a59d349d8",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Core runtime contract tests are broad but cohesive around root runtime surface behavior."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.memory.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "f171b22086e44706",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Memory contract tests remain focused on API behavior for memory creation, listing, derivation, and retrieval."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.plan-orchestrator-branching.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "d209cb407d30e518",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Branching orchestrator contract suite remains focused on delegated-child and inheritance behavior."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.plan-orchestrator-execution.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "fec94230eeda42d7",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Execution contract suite stays cohesive around orchestrator lifecycle and delegation behavior."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.prompt.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "be1e78a1536adc17",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Prompt-layer contract tests are cohesive around prompt persistence, reset, and portability flows."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.provider-openai-codex.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "61ce725ae4958bd0",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "OpenAI Codex contract tests remain focused on OAuth, usage, and catalog/runtime behavior."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.registry.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "bd4a15160385179f",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Registry contract tests remain focused on registry refresh, precedence, search, and attached asset behavior."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.tooling-mcp-shell-checkpoints.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "da877896dbbe5583",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Tooling contract tests remain cohesive around MCP, shell, permissions, diffs, and checkpoint interactions."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.tooling-provider-tools.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "a319e8012fec85dd",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Provider-tooling contract tests stay focused on provider-native tool loops and persisted tool results."
+    },
+    {
+      "path": "electron/backend/trpc/__tests__/runtime-contracts.tooling-rollback-cleanup.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "5466dbaada239244",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Rollback and cleanup contract tests remain cohesive around revert, cleanup, and unsupported-diff checkpoint flows."
+    },
+    {
+      "path": "electron/main/updates/updater.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "314b82af4b74e1d6",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-25",
+      "note": "Updater module stays focused on channel selection and auto-update lifecycle coordination."
+    },
+    {
+      "path": "src/components/conversation/panels/composerActionPanel.tsx",
+      "category": "handwritten-source-review",
+      "contentHash": "acfa874faca2e8ef",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: large but cohesive conversation action boundary."
+    },
+    {
+      "path": "src/components/modelSelection/modelPicker.tsx",
+      "category": "handwritten-source-review",
+      "contentHash": "ce1760d477a8ad7b",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: large but cohesive model selection surface."
+    },
+    {
+      "path": "src/components/settings/modesSettings/modesInstructionsSections.tsx",
+      "category": "handwritten-source-review",
+      "contentHash": "04135f4c96987dd4",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: presentational modes instructions surface remains cohesive."
+    },
+    {
+      "path": "src/lib/runtime/eventPatches/readers.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "5610d6a8473495c1",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: large but cohesive event patch reader module."
+    },
+    {
+      "path": "src/lib/runtime/runtimeEventInvalidation.test.ts",
+      "category": "handwritten-source-review",
+      "contentHash": "99f43e0a35403518",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Large test file is cohesive around runtime-event invalidation contract coverage."
+    },
+    {
+      "path": "electron/backend/persistence/stores/provider/providerCatalogMapper.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "832446d2cda9416f",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Casts are localized to persistence and catalog normalization boundaries with explicit parsing around them."
+    },
+    {
+      "path": "electron/backend/persistence/stores/provider/providerCatalogStore.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "817b728035044522",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Catalog store casts stay within persistence mapping boundaries and do not hide call-site type holes."
+    },
+    {
+      "path": "electron/backend/persistence/stores/provider/providerStore.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "873e89226a9236a7",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Provider store casts are at persisted-default validation boundaries and remain justified."
+    },
+    {
+      "path": "electron/backend/persistence/stores/registry/modeStore.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "102053cbebcb8513",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Mode-store casts are bounded to JSON parsing and enum narrowing inside persistence mapping."
+    },
+    {
+      "path": "electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "981177b2658a7069",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Casts are at validated persistence row boundaries and remain structurally justified."
+    },
+    {
+      "path": "electron/backend/persistence/stores/runtime/mcpStore.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "c196994134c5cf38",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "MCP store casts are localized to row parsing and JSON decoding at persistence boundaries."
+    },
+    {
+      "path": "electron/backend/providers/adapters/providerNative/minimax.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "1615c653c9f4c8b2",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Casts stay within provider-native normalization boundaries and are structurally justified."
+    },
+    {
+      "path": "electron/backend/providers/runtimeFamilies.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "b0db925e9dc151ff",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Any remaining cast sites are local discriminant narrowing inside runtime-family resolution and do not hide unsafe boundaries."
+    },
+    {
+      "path": "electron/backend/runtime/contracts/parsers/prompt.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "4d82fe945f639f22",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Casts sit at parser boundaries and are immediately validated by prompt input normalization."
+    },
+    {
+      "path": "electron/backend/runtime/contracts/types/messagePart.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "7a8f4900b0b361f0",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-25",
+      "note": "Message-part casts are localized enum narrowing inside a small parser-style contract helper."
+    },
+    {
+      "path": "electron/backend/runtime/services/memory/advancedDerivation.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "0138b2e8db831fb9",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Casts are used after local prefix/shape checks and stay within derived-memory provenance normalization."
+    },
+    {
+      "path": "electron/backend/runtime/services/promptLayers/customModePortability.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "4725d5fbb632e6eb",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Portable-mode casts are confined to portability parsing and immediately normalized by validation helpers."
+    },
+    {
+      "path": "electron/backend/runtime/services/promptLayers/shared.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "eb3c498015f2d2ba",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: cast is at a validated prompt-layer boundary."
+    },
+    {
+      "path": "electron/backend/runtime/services/registry/discovery.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "ab13fb9f4d793520",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Any remaining casts are confined to the thin compatibility layer that forwards into validated registry lifecycle helpers."
+    },
+    {
+      "path": "electron/backend/runtime/services/workflows/service.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "43d389d0d1d79476",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Workflow-service cast is a local object guard at file-backed JSON parse boundaries."
+    },
+    {
+      "path": "electron/backend/runtime/services/workspace/preferences.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "26b1cd2f331e40b0",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Workspace preference casts are enum checks and persisted-record validation at a settings boundary."
+    },
+    {
+      "path": "electron/shared/desktopBridgeContract.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "666fc12ac586fd9d",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Single local record cast supports a narrow contract validator at the preload boundary."
+    },
+    {
+      "path": "src/components/conversation/messages/tanstackTranscriptState.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "0c61df98a3abab3b",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Transcript state uses guarded record readers before narrowing and remains a valid parser-style boundary."
+    },
+    {
+      "path": "src/components/runtime/profileWarmData.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "aaee53e76bc83975",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-25",
+      "note": "Unknown-to-record casts are guarded locally and used as narrow payload validators."
+    },
+    {
+      "path": "electron/backend/persistence/stores/runtime/checkpointChangesetStore.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "73bf7f817b3174d7",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throw guards impossible post-write reload failure after successful changeset persistence."
+    },
+    {
+      "path": "electron/backend/persistence/stores/runtime/checkpointSnapshotStore.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "981177b2658a7069",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throws guard corruption and impossible readback states in snapshot storage paths."
+    },
+    {
+      "path": "electron/backend/providers/adapters/moonshot/runtime.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "2fb97ad09c78e36b",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-25",
+      "note": "Throw guards an impossible missing base URL after fallback endpoint resolution for Moonshot."
+    },
+    {
+      "path": "electron/backend/providers/adapters/openaiCompatible/realtimeWebsocket.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "26eb596c01799d4e",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throws are internal validation and unsupported-input guards caught and normalized at the websocket boundary."
+    },
+    {
+      "path": "electron/backend/providers/adapters/zai/runtime.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "dae996480ac45fa6",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-25",
+      "note": "Throw guards an impossible missing base URL after fallback endpoint resolution for Z.AI."
+    },
+    {
+      "path": "electron/backend/runtime/services/memory/projection.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "e031e697979504ca",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throws remain parser-style invariant enforcement for malformed projected memory files and canonical-value mismatch checks."
+    },
+    {
+      "path": "electron/backend/runtime/services/promptLayers/customModePortability.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "4725d5fbb632e6eb",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: throw sites are parser-normalization invariants and portability validation failures."
+    },
+    {
+      "path": "electron/backend/runtime/services/runExecution/executeRun.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "5443cc4ab7606615",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throws are explicit abort and invariant guards in the run execution pipeline."
+    },
+    {
+      "path": "electron/backend/runtime/services/workflows/execution.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "a6fe6a2d5e109e9c",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throw is a seeded-configuration invariant for missing shell-tool registration."
+    },
+    {
+      "path": "electron/main/preload/buildConfig.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "0fa52e05bafe4382",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throws guard build-time preload entry invariants and missing emitted bundles."
+    },
+    {
+      "path": "src/components/runtime/workspaceSurfaceControllerContext.tsx",
+      "category": "manual-non-parser-throws",
+      "contentHash": "d60d1113f1fee9d1",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throw enforces the required React provider invariant for the controller context."
+    },
+    {
+      "path": "src/routes/index.tsx",
+      "category": "manual-non-parser-throws",
+      "contentHash": "6999824f2b88edf3",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-25",
+      "note": "Throw is TanStack Router redirect control flow rather than an application failure path."
+    }
+  ]
 }

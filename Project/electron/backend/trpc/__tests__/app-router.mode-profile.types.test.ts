@@ -1,9 +1,8 @@
-import { expect, expectTypeOf, test } from 'vitest';
+import { expectTypeOf, test } from 'vitest';
 
 import type { AppRouterInputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
 
 test('AppRouter exposes mode and profile procedure contracts to clients', () => {
-    expect.hasAssertions();
     expectTypeOf<AppRouterInputs['mode']['list']>().toExtend<{
         profileId: string;
         topLevelTab: 'chat' | 'agent' | 'orchestrator';

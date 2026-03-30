@@ -1,11 +1,10 @@
-import { expect, expectTypeOf, test } from 'vitest';
+import { expectTypeOf, test } from 'vitest';
 
 import type { AppRouterInputs, AppRouterOutputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
 import type { BootStatusSnapshot } from '@/app/shared/splashContract';
 
 
 test('AppRouter exposes system, runtime, tooling, and registry procedure contracts to clients', () => {
-    expect.hasAssertions();
     expectTypeOf<AppRouterInputs['permission']['request']>().toExtend<{
         policy: 'ask' | 'allow' | 'deny';
         resource: string;
