@@ -10,7 +10,7 @@ import type {
     ProviderNativeRuntimeSpecialization,
     ProviderNativeStreamEventResult,
     ProviderNativeStreamState,
-} from '@/app/backend/providers/adapters/providerNative';
+} from '@/app/backend/providers/adapters/providerNative.types';
 import {
     parseChatCompletionsPayload,
     parseStructuredToolCall,

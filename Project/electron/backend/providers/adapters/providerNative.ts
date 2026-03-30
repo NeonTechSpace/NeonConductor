@@ -1,171 +1,36 @@
-import { providerCatalogStore } from '@/app/backend/persistence/stores';
-import {
-    errProviderAdapter,
-    okProviderAdapter,
-    type ProviderAdapterResult,
-} from '@/app/backend/providers/adapters/errors';
-import { executeHttpFallback, type HttpRuntimeRequest } from '@/app/backend/providers/adapters/httpFallback';
-import { miniMaxOpenAICompatibilitySpecialization } from '@/app/backend/providers/adapters/providerNative/minimax';
-import {
-    emitRuntimeLifecycleSelection,
-    failRuntimeAdapter,
-    mapHttpFallbackFailureStage,
-} from '@/app/backend/providers/adapters/runtimeLifecycle';
-import type { RuntimeParsedCompletion } from '@/app/backend/providers/adapters/runtimePayload';
-import { emitParsedCompletion } from '@/app/backend/providers/adapters/streaming';
-import {
-    consumeStrictServerSentEvents,
-    type StrictServerSentEventFrame,
-} from '@/app/backend/providers/adapters/strictServerSentEvents';
 import type { FirstPartyProviderId } from '@/app/backend/providers/registry';
-import { resolveProviderRuntimePathContext } from '@/app/backend/providers/runtimePathContext';
-import type {
-    ProviderApiFamily,
-    ProviderRuntimePart,
-    ProviderRuntimeHandlers,
-    ProviderRuntimeInput,
-    ProviderRuntimeTransportSelection,
-    ProviderRuntimeUsage,
-} from '@/app/backend/providers/types';
+import { resolveProviderNativeCompatibilityContext } from '@/app/backend/providers/adapters/providerNativeCompatibilityContextResolver';
+import { executeProviderNativeRuntime } from '@/app/backend/providers/adapters/providerNativeRuntimeExecutor';
+import {
+    resolveProviderNativeRuntimeSpecializationForContext,
+} from '@/app/backend/providers/adapters/providerNativeSpecializationRegistry';
+import { errProviderAdapter, type ProviderAdapterResult } from '@/app/backend/providers/adapters/errors';
+import type { ProviderRuntimeHandlers, ProviderRuntimeInput } from '@/app/backend/providers/types';
 
-export interface ProviderNativeCompatibilityContext {
-    providerId: FirstPartyProviderId;
-    modelId: string;
-    optionProfileId: string;
-    resolvedBaseUrl: string | null;
-    sourceProvider?: string;
-    apiFamily?: ProviderApiFamily;
-    providerNativeId: string;
-}
+import type { ProviderNativeRuntimeSpecialization } from '@/app/backend/providers/adapters/providerNative.types';
 
-export interface ProviderNativeHttpRequest {
-    url: string;
-    headers: Record<string, string>;
-    body: Record<string, unknown>;
-    fallbackBody?: Record<string, unknown>;
-}
+export type {
+    ProviderNativeCompatibilityContext,
+    ProviderNativeHttpRequest,
+    ProviderNativeRuntimeExecutionInput,
+    ProviderNativeRuntimeMatchStrength,
+    ProviderNativeRuntimeSpecialization,
+    ProviderNativeServerSentEventFrame,
+    ProviderNativeStreamEventResult,
+    ProviderNativeStreamState,
+} from '@/app/backend/providers/adapters/providerNative.types';
 
-export interface ProviderNativeServerSentEventFrame {
-    eventName?: string;
-    data: string;
-}
-
-export interface ProviderNativeStreamState {
-    [key: string]: unknown;
-}
-
-export interface ProviderNativeStreamEventResult {
-    parts: ProviderRuntimePart[];
-    usage?: ProviderRuntimeUsage;
-    stop?: boolean;
-}
-
-export type ProviderNativeRuntimeMatchStrength = 'trusted';
-
-export interface ProviderNativeRuntimeSpecialization {
-    id: string;
-    providerId: FirstPartyProviderId;
-    matchContext(context: ProviderNativeCompatibilityContext): ProviderNativeRuntimeMatchStrength | null;
-    transportSelection: ProviderRuntimeTransportSelection['selected'];
-    buildRequest(input: ProviderRuntimeInput): ProviderAdapterResult<ProviderNativeHttpRequest>;
-    createStreamState(): ProviderNativeStreamState;
-    parseStreamEvent(input: {
-        frame: ProviderNativeServerSentEventFrame;
-        state: ProviderNativeStreamState;
-    }): ProviderAdapterResult<ProviderNativeStreamEventResult>;
-    finalizeStream(state: ProviderNativeStreamState): ProviderAdapterResult<ProviderNativeStreamEventResult>;
-    parseNonStreamPayload(payload: unknown): ProviderAdapterResult<RuntimeParsedCompletion>;
-}
-
-const providerNativeRuntimeSpecializations: ProviderNativeRuntimeSpecialization[] = [
-    miniMaxOpenAICompatibilitySpecialization,
-];
-
-async function emitStreamEventResult(input: {
-    result: ProviderNativeStreamEventResult;
-    handlers: ProviderRuntimeHandlers;
-    startedAt: number;
-}): Promise<ProviderAdapterResult<void>> {
-    for (const part of input.result.parts) {
-        await input.handlers.onPart(part);
-    }
-
-    if (input.result.usage && input.handlers.onUsage) {
-        await input.handlers.onUsage({
-            ...input.result.usage,
-            latencyMs: Date.now() - input.startedAt,
-        });
-    }
-
-    return okProviderAdapter(undefined);
-}
-
-function failProviderNativeRuntime(
-    input: ProviderRuntimeInput,
-    specialization: ProviderNativeRuntimeSpecialization | null,
-    context: string,
-    code: string,
-    error: string
-): ProviderAdapterResult<never> {
-    return failRuntimeAdapter({
-        input,
-        logTag: `provider.${input.providerId}`,
-        runtimeLabel: 'Provider-native runtime',
-        context,
-        code,
-        error,
-        logFields: {
-            providerNativeSpecializationId: specialization?.id ?? null,
-        },
-    });
-}
-
-function resolveProviderNativeRuntimeSpecializationForContext(
-    context: ProviderNativeCompatibilityContext
-): ProviderNativeRuntimeSpecialization | null {
-    for (const specialization of providerNativeRuntimeSpecializations) {
-        if (specialization.providerId !== context.providerId) {
-            continue;
-        }
-
-        const matchStrength = specialization.matchContext(context);
-        if (matchStrength === 'trusted') {
-            return specialization;
-        }
-    }
-
-    return null;
-}
-
-export function supportsProviderNativeRuntimeContext(context: ProviderNativeCompatibilityContext): boolean {
-    return resolveProviderNativeRuntimeSpecializationForContext(context) !== null;
-}
+export { supportsProviderNativeRuntimeContext } from '@/app/backend/providers/adapters/providerNativeSpecializationRegistry';
 
 export async function resolveProviderNativeRuntimeSpecialization(
     providerId: FirstPartyProviderId,
     modelId: string,
     profileId: string
 ): Promise<ProviderNativeRuntimeSpecialization | null> {
-    const [runtimePathContextResult, modelRecord] = await Promise.all([
-        resolveProviderRuntimePathContext(profileId, providerId),
-        providerCatalogStore.getModel(profileId, providerId, modelId),
-    ]);
-    if (runtimePathContextResult.isErr() || !modelRecord) {
+    const compatibilityContext = await resolveProviderNativeCompatibilityContext(providerId, modelId, profileId);
+    if (!compatibilityContext) {
         return null;
     }
-    if (modelRecord.runtime.toolProtocol !== 'provider_native') {
-        return null;
-    }
-
-    const compatibilityContext: ProviderNativeCompatibilityContext = {
-        providerId,
-        modelId,
-        optionProfileId: runtimePathContextResult.value.optionProfileId,
-        resolvedBaseUrl: runtimePathContextResult.value.resolvedBaseUrl,
-        ...(modelRecord.sourceProvider ? { sourceProvider: modelRecord.sourceProvider } : {}),
-        ...(modelRecord.runtime.apiFamily ? { apiFamily: modelRecord.runtime.apiFamily } : {}),
-        providerNativeId: modelRecord.runtime.providerNativeId,
-    };
 
     return resolveProviderNativeRuntimeSpecializationForContext(compatibilityContext);
 }
@@ -183,108 +48,11 @@ export async function streamProviderNativeRuntime(
         return unsupportedProviderNativeRuntime(input);
     }
 
-    await emitRuntimeLifecycleSelection({
+    return executeProviderNativeRuntime({
+        runtimeInput: input,
         handlers,
-        transportSelection: {
-            selected: specialization.transportSelection,
-            requested: input.runtimeOptions.transport.family,
-            degraded: false,
-        },
-        cacheResult: input.cache,
+        specialization,
     });
-
-    const requestResult = specialization.buildRequest(input);
-    if (requestResult.isErr()) {
-        return failProviderNativeRuntime(
-            input,
-            specialization,
-            'request build',
-            requestResult.error.code,
-            requestResult.error.message
-        );
-    }
-
-    const request = requestResult.value;
-    const startedAt = Date.now();
-    const fallbackRequest: HttpRuntimeRequest | undefined = request.fallbackBody
-        ? {
-              url: request.url,
-              headers: request.headers,
-              body: request.fallbackBody,
-          }
-        : undefined;
-
-    const execution = await executeHttpFallback({
-        signal: input.signal,
-        streamRequest: {
-            url: request.url,
-            headers: request.headers,
-            body: request.body,
-        },
-        ...(fallbackRequest ? { fallbackRequest } : {}),
-        consumeStreamResponse: async (response) => {
-            const streamState = specialization.createStreamState();
-            const streamed = await consumeStrictServerSentEvents({
-                response,
-                sourceLabel: 'Provider-native stream',
-                onFrame: async (frame: StrictServerSentEventFrame) => {
-                    const parsedEvent = specialization.parseStreamEvent({
-                        frame,
-                        state: streamState,
-                    });
-                    if (parsedEvent.isErr()) {
-                        return errProviderAdapter(parsedEvent.error.code, parsedEvent.error.message);
-                    }
-
-                    const emitted = await emitStreamEventResult({
-                        result: parsedEvent.value,
-                        handlers,
-                        startedAt,
-                    });
-                    if (emitted.isErr()) {
-                        return errProviderAdapter(emitted.error.code, emitted.error.message);
-                    }
-
-                    return okProviderAdapter(parsedEvent.value.stop === true);
-                },
-            });
-            if (streamed.isErr()) {
-                return streamed;
-            }
-
-            const finalized = specialization.finalizeStream(streamState);
-            if (finalized.isErr()) {
-                return errProviderAdapter(finalized.error.code, finalized.error.message);
-            }
-
-            return emitStreamEventResult({
-                result: finalized.value,
-                handlers,
-                startedAt,
-            });
-        },
-        emitPayload: async (payload) => {
-            const parsedPayload = specialization.parseNonStreamPayload(payload);
-            if (parsedPayload.isErr()) {
-                return errProviderAdapter(parsedPayload.error.code, parsedPayload.error.message);
-            }
-
-            return emitParsedCompletion(parsedPayload.value, handlers, startedAt);
-        },
-        formatHttpFailure: ({ response }) =>
-            `Provider-native completion failed: ${String(response.status)} ${response.statusText}`,
-    });
-    if (execution.isErr()) {
-        return failProviderNativeRuntime(
-            input,
-            specialization,
-            mapHttpFallbackFailureStage(execution.error.stage),
-            execution.error.code,
-            execution.error.message
-        );
-    }
-
-    return okProviderAdapter(undefined);
 }
 
 export function unsupportedProviderNativeRuntime(
