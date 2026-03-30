@@ -1,17 +1,16 @@
-import { useDeferredValue, useState } from 'react';
+import { useState } from 'react';
 
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import { submitWorkspaceCreateRequest } from '@/web/components/workspaces/workspaceCreateDialogSubmit';
 import { WorkspaceEnvironmentPreviewCard } from '@/web/components/workspaces/workspaceEnvironmentSection';
+import { useWorkspaceEnvironmentPreview } from '@/web/components/workspaces/useWorkspaceEnvironmentPreview';
 import {
     buildWorkspaceModelOptions,
     resolveWorkspaceDefaultDraft,
     topLevelTabLabel,
 } from '@/web/components/workspaces/workspacesSurfaceSections';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
-import { trpc } from '@/web/trpc/client';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
@@ -69,19 +68,12 @@ function WorkspaceCreateDialogBody({
     >(initialDraft.providerId);
     const [workspaceDefaultModelIdDraft, setWorkspaceDefaultModelIdDraft] = useState(initialDraft.modelId);
     const [submitError, setSubmitError] = useState<string | undefined>(undefined);
-    const deferredWorkspacePathDraft = useDeferredValue(workspacePathDraft.trim());
     const desktopBridge = typeof window !== 'undefined' ? window.neonDesktop : undefined;
     const hasDesktopDirectoryPicker = Boolean(desktopBridge);
-    const environmentQuery = trpc.runtime.inspectWorkspaceEnvironment.useQuery(
-        {
-            profileId,
-            absolutePath: deferredWorkspacePathDraft.length > 0 ? deferredWorkspacePathDraft : '.',
-        },
-        {
-            enabled: deferredWorkspacePathDraft.length > 0,
-            ...PROGRESSIVE_QUERY_OPTIONS,
-        }
-    );
+    const environmentPreview = useWorkspaceEnvironmentPreview({
+        profileId,
+        absolutePath: workspacePathDraft,
+    });
     const createDefaultProvider = workspaceDefaultProviderIdDraft
         ? providers.find((provider) => provider.id === workspaceDefaultProviderIdDraft)
         : undefined;
@@ -196,9 +188,9 @@ function WorkspaceCreateDialogBody({
                 </div>
 
                 <WorkspaceEnvironmentPreviewCard
-                    isLoading={environmentQuery.isLoading}
-                    errorMessage={environmentQuery.error?.message}
-                    snapshot={environmentQuery.data?.snapshot}
+                    isLoading={environmentPreview.isLoading}
+                    errorMessage={environmentPreview.errorMessage}
+                    snapshot={environmentPreview.snapshot}
                     emptyMessage='Neon will use this folder for sessions, commands, rules, and skills tied to the workspace.'
                 />
 

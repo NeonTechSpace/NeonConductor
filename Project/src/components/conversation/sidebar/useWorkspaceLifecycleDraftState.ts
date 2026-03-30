@@ -1,10 +1,9 @@
-import { useDeferredValue, useState } from 'react';
+import { useState } from 'react';
 
 import type { WorkspaceLifecycleDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
 import { resolveThreadDraftDefaults } from '@/web/components/conversation/sidebar/threadDraftDefaults';
 import { buildModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import { trpc } from '@/web/trpc/client';
+import { useWorkspaceEnvironmentPreview } from '@/web/components/workspaces/useWorkspaceEnvironmentPreview';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
@@ -94,17 +93,10 @@ export function useWorkspaceLifecycleDraftState(input: UseWorkspaceLifecycleDraf
             defaults: input.defaults,
         })
     );
-    const deferredAbsolutePath = useDeferredValue(draft.absolutePath.trim());
-    const environmentQuery = trpc.runtime.inspectWorkspaceEnvironment.useQuery(
-        {
-            profileId: input.profileId,
-            absolutePath: deferredAbsolutePath.length > 0 ? deferredAbsolutePath : '.',
-        },
-        {
-            enabled: deferredAbsolutePath.length > 0,
-            ...PROGRESSIVE_QUERY_OPTIONS,
-        }
-    );
+    const environmentPreview = useWorkspaceEnvironmentPreview({
+        profileId: input.profileId,
+        absolutePath: draft.absolutePath,
+    });
 
     const selectedProvider = draft.defaultProviderId
         ? input.providers.find((provider) => provider.id === draft.defaultProviderId)
@@ -132,7 +124,7 @@ export function useWorkspaceLifecycleDraftState(input: UseWorkspaceLifecycleDraf
         draft,
         statusMessage,
         isPickingDirectory,
-        environmentQuery,
+        environmentPreview,
         modelOptions,
         selectedModelId,
         openDraft() {

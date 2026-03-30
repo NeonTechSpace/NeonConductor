@@ -14,9 +14,9 @@ import {
     runtimeSetWorkspacePreferenceInputSchema,
 } from '@/app/backend/runtime/contracts';
 import {
-    findRegisteredWorkspaceFingerprintByPath,
     workspaceEnvironmentService,
 } from '@/app/backend/runtime/services/environment/service';
+import { resolveWorkspaceEnvironmentInspectionTarget } from '@/app/backend/runtime/services/environment/workspaceEnvironmentInspectionResolver';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
 import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
 import { runtimeResetEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
@@ -25,7 +25,7 @@ import { runtimeFactoryResetService } from '@/app/backend/runtime/services/runti
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
-import { getWorkspacePreference, setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
+import { setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
@@ -85,53 +85,18 @@ function waitForNextNeonObservabilityEvent(
 
 async function inspectWorkspaceEnvironment(input: RuntimeInspectWorkspaceEnvironmentInput) {
     const workspaceRoots = await workspaceRootStore.listByProfile(input.profileId);
-    const resolvedFingerprint =
-        'workspaceFingerprint' in input
-            ? input.workspaceFingerprint
-            : findRegisteredWorkspaceFingerprintByPath({
-                  absolutePath: input.absolutePath,
-                  workspaceRoots,
-              });
-    const resolvedWorkspaceRoot = resolvedFingerprint
-        ? workspaceRoots.find((workspaceRoot) => workspaceRoot.fingerprint === resolvedFingerprint)
-        : undefined;
-
-    if ('workspaceFingerprint' in input && !resolvedWorkspaceRoot) {
-        throw toTrpcError(
-            {
-                code: 'not_found',
-                message: `Workspace "${input.workspaceFingerprint ?? 'unknown'}" was not found.`,
-            }
-        );
-    }
-
-    const workspacePreference = resolvedFingerprint
-        ? await getWorkspacePreference(input.profileId, resolvedFingerprint)
-        : undefined;
-    const workspaceRootPath =
-        resolvedWorkspaceRoot?.absolutePath ?? ('absolutePath' in input ? input.absolutePath : undefined);
-
-    if (!workspaceRootPath) {
-        throw toTrpcError(
-            {
-                code: 'not_found',
-                message: 'Workspace path could not be resolved for environment inspection.',
-            }
-        );
-    }
+    const inspectionTargetResult = await resolveWorkspaceEnvironmentInspectionTarget({
+        request: input,
+        workspaceRoots,
+    });
+    const inspectionTarget = inspectionTargetResult.match(
+        (value) => value,
+        (error) => raiseMappedTrpcError(error, toTrpcError)
+    );
 
     const inspectionResult = await workspaceEnvironmentService.inspectWorkspaceEnvironment({
-        workspaceRootPath,
-        ...(workspacePreference
-            ? {
-                  overrides: {
-                      ...(workspacePreference.preferredVcs ? { preferredVcs: workspacePreference.preferredVcs } : {}),
-                      ...(workspacePreference.preferredPackageManager
-                          ? { preferredPackageManager: workspacePreference.preferredPackageManager }
-                          : {}),
-                  },
-              }
-            : {}),
+        workspaceRootPath: inspectionTarget.workspaceRootPath,
+        ...(inspectionTarget.overrides ? { overrides: inspectionTarget.overrides } : {}),
     });
 
     return inspectionResult.match(

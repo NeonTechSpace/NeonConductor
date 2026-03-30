@@ -438,11 +438,7 @@ export function ConversationSidebar({
                 {...(workspaceLifecycleDraft.statusMessage
                     ? { statusMessage: workspaceLifecycleDraft.statusMessage }
                     : {})}
-                environmentPreview={{
-                    isLoading: workspaceLifecycleDraft.environmentQuery.isLoading,
-                    errorMessage: workspaceLifecycleDraft.environmentQuery.error?.message,
-                    snapshot: workspaceLifecycleDraft.environmentQuery.data?.snapshot,
-                }}
+                environmentPreview={workspaceLifecycleDraft.environmentPreview}
                 onClose={() => {
                     workspaceLifecycleDraft.closeDraft();
                 }}
