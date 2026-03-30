@@ -24,14 +24,55 @@ import {
     emitProviderUpsertEvent,
 } from '@/app/backend/trpc/routers/provider/events';
 import {
+    buildProviderApiKeySetEventPayload,
+    buildProviderAuthCancelledEventPayload,
+    buildProviderAuthClearedEventPayload,
+    buildProviderAuthCompletedEventPayload,
+    buildProviderAuthPolledEventPayload,
+    buildProviderAuthRefreshedEventPayload,
+    buildProviderAuthStartedEventPayload,
+    buildProviderConnectionProfileSetEventPayload,
+    buildProviderExecutionPreferenceSetEventPayload,
+    buildProviderKiloRoutingSetEventPayload,
+    buildProviderOrganizationSetEventPayload,
+    buildProviderSyncEventPayload,
+} from '@/app/backend/trpc/routers/provider/providerMutationEventProjector';
+import {
+    buildProviderConnectionProfileMutationReadback,
+    buildProviderExecutionPreferenceMutationReadback,
+    buildProviderModelRoutingPreferenceMutationReadback,
+    buildProviderOrganizationMutationReadback,
+    buildProviderSyncMutationReadback,
+    readProviderMutationReadback,
+} from '@/app/backend/trpc/routers/provider/providerMutationReadbackProjector';
+import {
     isProviderNotFoundCode,
     mapAuthErrorToOperationalCode,
     throwWithCode,
 } from '@/app/backend/trpc/routers/provider/shared';
 
-async function getProviderListItem(profileId: string, providerId: RuntimeProviderId) {
-    const providers = await providerManagementService.listProviders(profileId);
-    return providers.find((provider) => provider.id === providerId) ?? null;
+async function readProviderMutationState(input: {
+    profileId: string;
+    providerId: RuntimeProviderId;
+    includeAuthState?: boolean;
+    includeDefaults?: boolean;
+    includeModels?: boolean;
+    includeProvider?: boolean;
+}) {
+    const result = await readProviderMutationReadback(
+        {
+            listProviders: providerManagementService.listProviders.bind(providerManagementService),
+            getDefaults: providerManagementService.getDefaults.bind(providerManagementService),
+            listModels: providerManagementService.listModels.bind(providerManagementService),
+            getAuthState: providerManagementService.getAuthState.bind(providerManagementService),
+        },
+        input
+    );
+    if (result.isErr()) {
+        throwWithCode(result.error.code, result.error.message);
+    }
+
+    return result.value;
 }
 
 export const providerMutationProcedures = {
@@ -47,12 +88,12 @@ export const providerMutationProcedures = {
         await emitProviderStatusEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.started',
-            payload: {
+            payload: buildProviderAuthStartedEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 method: input.method,
                 flowId: result.value.flow.id,
-            },
+            }),
         });
 
         return result.value;
@@ -69,14 +110,14 @@ export const providerMutationProcedures = {
         await emitProviderStatusEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.polled',
-            payload: {
+            payload: buildProviderAuthPolledEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 flowId: input.flowId,
                 flowStatus: result.value.flow.status,
                 authState: result.value.state.authState,
                 state: result.value.state,
-            },
+            }),
         });
 
         return result.value;
@@ -93,14 +134,14 @@ export const providerMutationProcedures = {
         await emitProviderStatusEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.completed',
-            payload: {
+            payload: buildProviderAuthCompletedEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 flowId: input.flowId,
                 flowStatus: result.value.flow.status,
                 authState: result.value.state.authState,
                 state: result.value.state,
-            },
+            }),
         });
 
         return result.value;
@@ -117,12 +158,12 @@ export const providerMutationProcedures = {
         await emitProviderStatusEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.cancelled',
-            payload: {
+            payload: buildProviderAuthCancelledEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 flowId: input.flowId,
                 state: result.value.state,
-            },
+            }),
         });
 
         return result.value;
@@ -139,12 +180,12 @@ export const providerMutationProcedures = {
         await emitProviderStatusEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.refreshed',
-            payload: {
+            payload: buildProviderAuthRefreshedEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 authState: stateResult.value.authState,
                 state: stateResult.value,
-            },
+            }),
         });
 
         return { state: stateResult.value };
@@ -169,35 +210,31 @@ export const providerMutationProcedures = {
                 throwWithCode(connectionProfileResult.error.code, connectionProfileResult.error.message);
             }
 
-            const [provider, defaults, models] = await Promise.all([
-                getProviderListItem(input.profileId, input.providerId),
-                providerManagementService.getDefaults(input.profileId),
-                providerManagementService.listModels(input.profileId, input.providerId),
-            ]);
-            if (models.isErr()) {
-                throwWithCode(models.error.code, models.error.message);
-            }
+            const readback = await readProviderMutationState({
+                profileId: input.profileId,
+                providerId: input.providerId,
+            });
 
             await emitProviderUpsertEvent({
                 providerId: input.providerId,
                 eventType: 'provider.endpoint-profile.set',
-                payload: {
+                payload: buildProviderConnectionProfileSetEventPayload({
                     profileId: input.profileId,
                     providerId: input.providerId,
                     value: connectionProfileResult.value.optionProfileId,
                     connectionProfile: connectionProfileResult.value,
-                    defaults,
-                    models: models.value,
-                    ...(provider ? { provider } : {}),
-                },
+                    defaults: readback.defaults,
+                    models: readback.models,
+                    ...(readback.provider ? { provider: readback.provider } : {}),
+                }),
             });
 
-            return {
+            return buildProviderConnectionProfileMutationReadback({
                 connectionProfile: connectionProfileResult.value,
-                defaults,
-                models: models.value,
-                ...(provider ? { provider } : {}),
-            };
+                defaults: readback.defaults,
+                models: readback.models,
+                ...(readback.provider ? { provider: readback.provider } : {}),
+            });
         }),
     setExecutionPreference: publicProcedure
         .input(providerSetExecutionPreferenceInputSchema)
@@ -211,22 +248,27 @@ export const providerMutationProcedures = {
                 throwWithCode(executionPreferenceResult.error.code, executionPreferenceResult.error.message);
             }
 
-            const provider = await getProviderListItem(input.profileId, input.providerId);
+            const readback = await readProviderMutationState({
+                profileId: input.profileId,
+                providerId: input.providerId,
+                includeDefaults: false,
+                includeModels: false,
+            });
             await emitProviderUpsertEvent({
                 providerId: input.providerId,
                 eventType: 'provider.execution-preference.set',
-                payload: {
+                payload: buildProviderExecutionPreferenceSetEventPayload({
                     profileId: input.profileId,
                     providerId: input.providerId,
                     executionPreference: executionPreferenceResult.value,
-                    ...(provider ? { provider } : {}),
-                },
+                    ...(readback.provider ? { provider: readback.provider } : {}),
+                }),
             });
 
-            return {
+            return buildProviderExecutionPreferenceMutationReadback({
                 executionPreference: executionPreferenceResult.value,
-                ...(provider ? { provider } : {}),
-            };
+                ...(readback.provider ? { provider: readback.provider } : {}),
+            });
         }),
     setOrganization: publicProcedure.input(providerSetOrganizationInputSchema).mutation(async ({ input }) => {
         const result = await providerManagementService.setOrganization(
@@ -238,38 +280,34 @@ export const providerMutationProcedures = {
             throwWithCode(mapAuthErrorToOperationalCode(result.error.code), result.error.message);
         }
 
-        const [provider, defaults, models, authState] = await Promise.all([
-            getProviderListItem(input.profileId, input.providerId),
-            providerManagementService.getDefaults(input.profileId),
-            providerManagementService.listModels(input.profileId, input.providerId),
-            providerManagementService.getAuthState(input.profileId, input.providerId),
-        ]);
-        if (models.isErr()) {
-            throwWithCode(models.error.code, models.error.message);
-        }
+        const readback = await readProviderMutationState({
+            profileId: input.profileId,
+            providerId: input.providerId,
+            includeAuthState: true,
+        });
 
         await emitProviderUpsertEvent({
             providerId: input.providerId,
             eventType: 'provider.organization.set',
-            payload: {
+            payload: buildProviderOrganizationSetEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 organizationId: input.organizationId ?? null,
                 accountContext: result.value,
-                authState,
-                defaults,
-                models: models.value,
-                ...(provider ? { provider } : {}),
-            },
+                authState: readback.authState!,
+                defaults: readback.defaults,
+                models: readback.models,
+                ...(readback.provider ? { provider: readback.provider } : {}),
+            }),
         });
 
-        return {
-            ...result.value,
-            authState,
-            defaults,
-            models: models.value,
-            ...(provider ? { provider } : {}),
-        };
+        return buildProviderOrganizationMutationReadback({
+            accountContext: result.value,
+            authState: readback.authState!,
+            defaults: readback.defaults,
+            models: readback.models,
+            ...(readback.provider ? { provider: readback.provider } : {}),
+        });
     }),
     setModelRoutingPreference: publicProcedure
         .input(providerSetModelRoutingPreferenceInputSchema)
@@ -286,26 +324,23 @@ export const providerMutationProcedures = {
                 throwWithCode(providers.error.code, providers.error.message);
             }
 
-            await emitProviderUpsertEvent({
+        await emitProviderUpsertEvent({
+            providerId: input.providerId,
+            eventType: 'provider.kilo-routing.set',
+            payload: buildProviderKiloRoutingSetEventPayload({
+                profileId: input.profileId,
                 providerId: input.providerId,
-                eventType: 'provider.kilo-routing.set',
-                payload: {
-                    profileId: input.profileId,
-                    providerId: input.providerId,
-                    modelId: input.modelId,
-                    routingMode: preference.routingMode,
-                    sort: preference.sort ?? null,
-                    pinnedProviderId: preference.pinnedProviderId ?? null,
-                    preference,
-                    providers: providers.value,
-                },
-            });
-
-            return {
+                modelId: input.modelId,
                 preference,
                 providers: providers.value,
-            };
-        }),
+            }),
+        });
+
+        return buildProviderModelRoutingPreferenceMutationReadback({
+            preference,
+            providers: providers.value,
+        });
+    }),
     setApiKey: publicProcedure.input(providerSetApiKeyInputSchema).mutation(async ({ input, ctx }) => {
         const stateResult = await providerManagementService.setApiKey(input.profileId, input.providerId, input.apiKey, {
             requestId: ctx.requestId,
@@ -324,11 +359,11 @@ export const providerMutationProcedures = {
         await emitProviderUpsertEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.api-key-set',
-            payload: {
+            payload: buildProviderApiKeySetEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 state: stateResult.value,
-            },
+            }),
         });
 
         return {
@@ -355,11 +390,11 @@ export const providerMutationProcedures = {
         await emitProviderStatusEvent({
             providerId: input.providerId,
             eventType: 'provider.auth.cleared',
-            payload: {
+            payload: buildProviderAuthClearedEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
                 state: clearResult.value.authState,
-            },
+            }),
         });
 
         return {
@@ -386,41 +421,34 @@ export const providerMutationProcedures = {
             throwWithCode(result.error.code, result.error.message);
         }
 
-        const [provider, defaults, models] = await Promise.all([
-            getProviderListItem(input.profileId, input.providerId),
-            providerManagementService.getDefaults(input.profileId),
-            providerManagementService.listModels(input.profileId, input.providerId),
-        ]);
-        if (models.isErr()) {
-            throwWithCode(models.error.code, models.error.message);
-        }
+        const readback = await readProviderMutationState({
+            profileId: input.profileId,
+            providerId: input.providerId,
+        });
         const emptyCatalogState =
-            models.value.length === 0 ? await resolveEmptyCatalogState(input.profileId, input.providerId) : null;
+            readback.models.length === 0 ? await resolveEmptyCatalogState(input.profileId, input.providerId) : null;
 
         await emitProviderSyncEvent({
             providerId: input.providerId,
             eventType: 'provider.catalog.sync',
-            payload: {
+            payload: buildProviderSyncEventPayload({
                 profileId: input.profileId,
                 providerId: input.providerId,
-                ok: result.value.ok,
-                status: result.value.status,
-                reason: emptyCatalogState?.reason ?? result.value.reason ?? null,
-                detail: emptyCatalogState?.detail ?? result.value.detail ?? null,
-                modelCount: result.value.modelCount,
-                defaults,
-                models: models.value,
-                ...(provider ? { provider } : {}),
-            },
+                syncResult: result.value,
+                defaults: readback.defaults,
+                models: readback.models,
+                ...(readback.provider ? { provider: readback.provider } : {}),
+                ...(emptyCatalogState ? { emptyCatalogState } : {}),
+            }),
         });
 
-        return {
-            ...result.value,
-            ...(emptyCatalogState ? { reason: emptyCatalogState.reason, detail: emptyCatalogState.detail } : {}),
-            defaults,
-            models: models.value,
-            ...(provider ? { provider } : {}),
-        };
+        return buildProviderSyncMutationReadback({
+            syncResult: result.value,
+            defaults: readback.defaults,
+            models: readback.models,
+            ...(readback.provider ? { provider: readback.provider } : {}),
+            ...(emptyCatalogState ? { emptyCatalogState } : {}),
+        });
     }),
     setDefault: publicProcedure.input(providerSetDefaultInputSchema).mutation(async ({ input }) => {
         const result = await providerManagementService.setDefault(input.profileId, input.providerId, input.modelId);
