@@ -7,7 +7,7 @@ import type {
     RuntimeFamilyExecutionPath,
 } from '@/app/backend/providers/runtimeFamilyPolicy.types';
 import type { ProviderToolProtocol } from '@/app/backend/providers/types';
-import type { RunExecutionResult } from '@/app/backend/runtime/services/runExecution/errors';
+import { errRunExecution, type RunExecutionResult } from '@/app/backend/runtime/services/runExecution/errors';
 
 const runtimeFamilyDefinitions: Record<ProviderToolProtocol, RuntimeFamilyDefinition> = runtimeProtocolSelectionDefinitions;
 
@@ -36,6 +36,13 @@ export function supportsCatalogRuntimeFamily(input: RuntimeFamilyCatalogInput): 
 export async function resolveRuntimeFamilyProtocol(
     input: ResolveRuntimeFamilyInput
 ): Promise<RunExecutionResult<ResolvedRuntimeFamilyProtocol>> {
+    if (!input.modelCapabilities.runtime) {
+        return errRunExecution(
+            'runtime_option_invalid',
+            `Model "${input.modelId}" is missing runtime protocol metadata.`
+        );
+    }
+
     const toolProtocol = input.modelCapabilities.runtime.toolProtocol;
     const definition = runtimeFamilyDefinitions[toolProtocol];
     return definition.resolveProtocol(input);
