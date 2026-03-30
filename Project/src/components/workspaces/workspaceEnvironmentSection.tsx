@@ -1,7 +1,4 @@
-import { useState } from 'react';
-
-import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
-import { trpc } from '@/web/trpc/client';
+import { useWorkspaceEnvironmentPreferencesController } from '@/web/components/workspaces/useWorkspaceEnvironmentPreferencesController';
 
 import type {
     WorkspaceEnvironmentCommandAvailability,
@@ -162,56 +159,11 @@ export function WorkspaceEnvironmentSection(input: {
     workspaceFingerprint: string;
     workspacePreference?: WorkspacePreferenceRecord;
 }) {
-    const utils = trpc.useUtils();
-    const [preferredVcs, setPreferredVcs] = useState<WorkspacePreferredVcs>(
-        input.workspacePreference?.preferredVcs ?? 'auto'
-    );
-    const [preferredPackageManager, setPreferredPackageManager] = useState<WorkspacePreferredPackageManager>(
-        input.workspacePreference?.preferredPackageManager ?? 'auto'
-    );
-    const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>(undefined);
-    const environmentQuery = trpc.runtime.inspectWorkspaceEnvironment.useQuery(
-        {
-            profileId: input.profileId,
-            workspaceFingerprint: input.workspaceFingerprint,
-        },
-        PROGRESSIVE_QUERY_OPTIONS
-    );
-    const setWorkspacePreferenceMutation = trpc.runtime.setWorkspacePreference.useMutation({
-        onSuccess: ({ workspacePreference }) => {
-            utils.runtime.getShellBootstrap.setData({ profileId: input.profileId }, (current) =>
-                current
-                    ? {
-                          ...current,
-                          workspacePreferences: [
-                              workspacePreference,
-                              ...current.workspacePreferences.filter(
-                                  (record) => record.workspaceFingerprint !== workspacePreference.workspaceFingerprint
-                              ),
-                          ],
-                      }
-                    : current
-            );
-            setFeedbackMessage('Saved the tool preferences Neon should use for this workspace.');
-            void environmentQuery.refetch();
-        },
-        onError: () => {
-            setFeedbackMessage('Could not save workspace tool preferences.');
-        },
+    const controller = useWorkspaceEnvironmentPreferencesController({
+        profileId: input.profileId,
+        workspaceFingerprint: input.workspaceFingerprint,
+        ...(input.workspacePreference ? { workspacePreference: input.workspacePreference } : {}),
     });
-    const currentPreferredVcs = input.workspacePreference?.preferredVcs ?? 'auto';
-    const currentPreferredPackageManager = input.workspacePreference?.preferredPackageManager ?? 'auto';
-    const hasPendingChanges =
-        preferredVcs !== currentPreferredVcs || preferredPackageManager !== currentPreferredPackageManager;
-
-    async function handleSaveOverrides() {
-        await setWorkspacePreferenceMutation.mutateAsync({
-            profileId: input.profileId,
-            workspaceFingerprint: input.workspaceFingerprint,
-            preferredVcs,
-            preferredPackageManager,
-        });
-    }
 
     return (
         <article className='border-border/70 bg-card/55 rounded-[24px] border p-5'>
@@ -224,12 +176,12 @@ export function WorkspaceEnvironmentSection(input: {
             </div>
 
             <div className='mt-4'>
-                {environmentQuery.isLoading ? (
+                {controller.environmentIsLoading ? (
                     <p className='text-muted-foreground text-sm'>Inspecting the workspace environment…</p>
-                ) : environmentQuery.error ? (
-                    <p className='text-destructive text-sm'>{environmentQuery.error.message}</p>
-                ) : environmentQuery.data ? (
-                    <RuntimeEnvironmentSummary snapshot={environmentQuery.data.snapshot} />
+                ) : controller.environmentErrorMessage ? (
+                    <p className='text-destructive text-sm'>{controller.environmentErrorMessage}</p>
+                ) : controller.environmentSnapshot ? (
+                    <RuntimeEnvironmentSummary snapshot={controller.environmentSnapshot} />
                 ) : (
                     <p className='text-muted-foreground text-sm'>
                         Environment data is not available for this workspace yet.
@@ -244,12 +196,11 @@ export function WorkspaceEnvironmentSection(input: {
                     </span>
                     <select
                         className='border-border bg-card h-10 w-full rounded-2xl border px-3 text-sm'
-                        value={preferredVcs}
+                        value={controller.preferredVcs}
                         onChange={(event) => {
-                            setFeedbackMessage(undefined);
                             const nextValue = event.target.value;
                             if (nextValue === 'auto' || nextValue === 'jj' || nextValue === 'git') {
-                                setPreferredVcs(nextValue);
+                                controller.selectPreferredVcs(nextValue);
                             }
                         }}>
                         <option value='auto'>{formatOverrideLabel('auto')}</option>
@@ -267,9 +218,8 @@ export function WorkspaceEnvironmentSection(input: {
                     </span>
                     <select
                         className='border-border bg-card h-10 w-full rounded-2xl border px-3 text-sm'
-                        value={preferredPackageManager}
+                        value={controller.preferredPackageManager}
                         onChange={(event) => {
-                            setFeedbackMessage(undefined);
                             const nextValue = event.target.value;
                             if (
                                 nextValue === 'auto' ||
@@ -278,7 +228,7 @@ export function WorkspaceEnvironmentSection(input: {
                                 nextValue === 'yarn' ||
                                 nextValue === 'bun'
                             ) {
-                                setPreferredPackageManager(nextValue);
+                                controller.selectPreferredPackageManager(nextValue);
                             }
                         }}>
                         <option value='auto'>{formatOverrideLabel('auto')}</option>
@@ -294,15 +244,17 @@ export function WorkspaceEnvironmentSection(input: {
             </div>
 
             <div className='border-border/70 mt-4 flex items-center justify-end gap-2 border-t pt-4'>
-                {feedbackMessage ? <p className='text-muted-foreground mr-auto text-xs'>{feedbackMessage}</p> : null}
+                {controller.feedbackMessage ? (
+                    <p className='text-muted-foreground mr-auto text-xs'>{controller.feedbackMessage}</p>
+                ) : null}
                 <button
                     type='button'
                     className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60'
-                    disabled={!hasPendingChanges || setWorkspacePreferenceMutation.isPending}
+                    disabled={!controller.hasPendingChanges || controller.isSaving}
                     onClick={() => {
-                        void handleSaveOverrides();
+                        void controller.savePreferences();
                     }}>
-                    {setWorkspacePreferenceMutation.isPending ? 'Saving…' : 'Save tool preferences'}
+                    {controller.isSaving ? 'Saving…' : 'Save tool preferences'}
                 </button>
             </div>
         </article>

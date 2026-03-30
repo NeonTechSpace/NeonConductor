@@ -9,7 +9,7 @@ import {
     buildWorkspaceModelOptions,
     resolveWorkspaceDefaultDraft,
     topLevelTabLabel,
-} from '@/web/components/workspaces/workspacesSurfaceSections';
+} from '@/web/components/workspaces/workspacesSurfaceSectionHelpers';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';

@@ -1,5 +1,6 @@
 import { WorkspaceEnvironmentSection } from '@/web/components/workspaces/workspaceEnvironmentSection';
-import { WorkspaceDefaultsSection, formatTimestamp } from '@/web/components/workspaces/workspacesSurfaceSections';
+import { WorkspaceDefaultsSection } from '@/web/components/workspaces/workspacesSurfaceSections';
+import { formatTimestamp } from '@/web/components/workspaces/workspacesSurfaceSectionHelpers';
 
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
