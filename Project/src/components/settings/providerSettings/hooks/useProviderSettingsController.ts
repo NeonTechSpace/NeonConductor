@@ -15,6 +15,54 @@ interface ProviderSettingsControllerOptions {
     initialProviderId?: RuntimeProviderId;
 }
 
+function ignoreMutationResult<TInput, TResult>(mutateAsync: (input: TInput) => Promise<TResult>) {
+    return async (input: TInput): Promise<void> => {
+        await mutateAsync(input);
+    };
+}
+
+function wrapFailClosedAction<TArgs extends unknown[]>(action: (...args: TArgs) => Promise<void>) {
+    return createFailClosedAsyncAction(action);
+}
+
+function createLoadStoredCredential(input: {
+    profileId: string;
+    selectedProviderId: RuntimeProviderId | undefined;
+    fetchCredentialValue: ReturnType<typeof trpc.useUtils>['provider']['getCredentialValue']['fetch'];
+    setStatusMessage: (value: string | undefined) => void;
+}) {
+    return async (): Promise<string | undefined> => {
+        if (!input.selectedProviderId) {
+            return undefined;
+        }
+
+        const result = await input.fetchCredentialValue({
+            profileId: input.profileId,
+            providerId: input.selectedProviderId,
+        });
+        if (!result.credential) {
+            input.setStatusMessage('No stored credential is available for this provider.');
+            return undefined;
+        }
+
+        return result.credential.value;
+    };
+}
+
+function createRefreshOpenAICodexUsage(input: {
+    selectedProviderId: RuntimeProviderId | undefined;
+    refetchUsage: () => Promise<unknown>;
+    refetchRateLimits: () => Promise<unknown>;
+}) {
+    return async (): Promise<void> => {
+        if (input.selectedProviderId !== 'openai_codex') {
+            return;
+        }
+
+        await Promise.all([input.refetchUsage(), input.refetchRateLimits()]);
+    };
+}
+
 export interface ProviderSettingsControllerState {
     feedback: {
         message: string | undefined;
@@ -111,13 +159,6 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         setActiveAuthFlow: selectionState.setActiveAuthFlow,
     });
     const mutations = mutationModel.mutations;
-    const ignoreMutationResult = <TInput, TResult>(mutateAsync: (input: TInput) => Promise<TResult>) => {
-        return async (input: TInput): Promise<void> => {
-            await mutateAsync(input);
-        };
-    };
-    const wrapFailClosedAction = <TArgs extends unknown[]>(action: (...args: TArgs) => Promise<void>) =>
-        createFailClosedAsyncAction(action);
 
     useProviderSettingsAuthFlow({
         profileId,
@@ -138,22 +179,12 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         },
     });
 
-    const loadStoredCredential = async (): Promise<string | undefined> => {
-        if (!selectedProviderId) {
-            return undefined;
-        }
-
-        const result = await utils.provider.getCredentialValue.fetch({
-            profileId,
-            providerId: selectedProviderId,
-        });
-        if (!result.credential) {
-            selectionState.setStatusMessage('No stored credential is available for this provider.');
-            return undefined;
-        }
-
-        return result.credential.value;
-    };
+    const loadStoredCredential = createLoadStoredCredential({
+        profileId,
+        selectedProviderId,
+        fetchCredentialValue: utils.provider.getCredentialValue.fetch,
+        setStatusMessage: selectionState.setStatusMessage,
+    });
 
     const actions = createProviderSettingsActions({
         profileId,
@@ -209,16 +240,11 @@ export function useProviderSettingsController(profileId: string, options?: Provi
         },
     });
 
-    const refreshOpenAICodexUsage = async (): Promise<void> => {
-        if (selectedProviderId !== 'openai_codex') {
-            return;
-        }
-
-        await Promise.all([
-            queries.openAISubscriptionUsageQuery.refetch(),
-            queries.openAISubscriptionRateLimitsQuery.refetch(),
-        ]);
-    };
+    const refreshOpenAICodexUsage = createRefreshOpenAICodexUsage({
+        selectedProviderId,
+        refetchUsage: queries.openAISubscriptionUsageQuery.refetch,
+        refetchRateLimits: queries.openAISubscriptionRateLimitsQuery.refetch,
+    });
 
     return {
         feedback: {
