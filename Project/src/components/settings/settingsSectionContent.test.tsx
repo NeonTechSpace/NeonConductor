@@ -1,6 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+const { providerSettingsViewMock } = vi.hoisted(() => ({
+    providerSettingsViewMock: vi.fn(
+        (_props: {
+            profileId: string;
+            selectedProviderId?: string;
+            onOpenKiloSettings?: () => void;
+        }) => <div>provider section</div>
+    ),
+}));
+
 vi.mock('@/web/components/settings/kiloSettingsView', () => ({
     KiloSettingsView: () => <div>kilo section</div>,
 }));
@@ -10,7 +20,7 @@ vi.mock('@/web/components/settings/modesSettings/view', () => ({
 }));
 
 vi.mock('@/web/components/settings/providerSettingsView', () => ({
-    ProviderSettingsView: () => <div>provider section</div>,
+    ProviderSettingsView: providerSettingsViewMock,
 }));
 
 vi.mock('@/web/components/settings/profileSettingsView', () => ({
@@ -53,5 +63,38 @@ describe('settings section content', () => {
         );
 
         expect(html).toContain('provider section');
+    });
+
+    it('wires the Providers screen Kilo handoff back into the dedicated Kilo route', () => {
+        const onSelectionChange = vi.fn();
+
+        renderToStaticMarkup(
+            <SettingsSectionContent
+                profileId='profile_default'
+                selection={{ section: 'providers', subsection: 'kilo' }}
+                onSelectionChange={onSelectionChange}
+                onProfileActivated={vi.fn()}
+            />
+        );
+
+        const providerViewProps =
+            providerSettingsViewMock.mock.calls[providerSettingsViewMock.mock.calls.length - 1]?.[0];
+        expect(providerViewProps).toBeDefined();
+        if (!providerViewProps) {
+            throw new Error('Expected ProviderSettingsView to receive props.');
+        }
+
+        expect(providerViewProps).toMatchObject({
+            profileId: 'profile_default',
+            selectedProviderId: 'kilo',
+        });
+
+        expect(providerViewProps.onOpenKiloSettings).toBeDefined();
+        if (!providerViewProps.onOpenKiloSettings) {
+            throw new Error('Expected Kilo handoff callback.');
+        }
+
+        providerViewProps.onOpenKiloSettings();
+        expect(onSelectionChange).toHaveBeenCalledWith({ section: 'kilo', subsection: 'account' });
     });
 });

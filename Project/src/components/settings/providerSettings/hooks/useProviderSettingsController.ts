@@ -1,66 +1,17 @@
-import { createProviderSettingsActions } from '@/web/components/settings/providerSettings/hooks/providerSettingsActions';
-import { useKiloRoutingDraft } from '@/web/components/settings/providerSettings/hooks/useKiloRoutingDraft';
-import { useProviderSettingsAuthFlow } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsAuthFlow';
-import { useProviderSettingsMutationModel } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsMutationModel';
-import { useProviderSettingsQueries } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsQueries';
-import { useProviderSettingsSelectionState } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsSelectionState';
-import { prefetchProviderSettingsData } from '@/web/components/settings/providerSettings/providerSettingsPrefetch';
-import type { ActiveAuthFlow } from '@/web/components/settings/providerSettings/types';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
-import { trpc } from '@/web/trpc/client';
+
+import { prefetchProviderSettingsData } from '@/web/components/settings/providerSettings/providerSettingsPrefetch';
+import {
+    useProviderSettingsSurfaceState,
+    type ProviderSettingsControllerOptions,
+    type ProviderSettingsSurfaceState,
+} from '@/web/components/settings/providerSettings/hooks/useProviderSettingsSurfaceState';
+import type { ActiveAuthFlow } from '@/web/components/settings/providerSettings/types';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
 
-interface ProviderSettingsControllerOptions {
-    initialProviderId?: RuntimeProviderId;
-}
-
-function ignoreMutationResult<TInput, TResult>(mutateAsync: (input: TInput) => Promise<TResult>) {
-    return async (input: TInput): Promise<void> => {
-        await mutateAsync(input);
-    };
-}
-
 function wrapFailClosedAction<TArgs extends unknown[]>(action: (...args: TArgs) => Promise<void>) {
     return createFailClosedAsyncAction(action);
-}
-
-function createLoadStoredCredential(input: {
-    profileId: string;
-    selectedProviderId: RuntimeProviderId | undefined;
-    fetchCredentialValue: ReturnType<typeof trpc.useUtils>['provider']['getCredentialValue']['fetch'];
-    setStatusMessage: (value: string | undefined) => void;
-}) {
-    return async (): Promise<string | undefined> => {
-        if (!input.selectedProviderId) {
-            return undefined;
-        }
-
-        const result = await input.fetchCredentialValue({
-            profileId: input.profileId,
-            providerId: input.selectedProviderId,
-        });
-        if (!result.credential) {
-            input.setStatusMessage('No stored credential is available for this provider.');
-            return undefined;
-        }
-
-        return result.credential.value;
-    };
-}
-
-function createRefreshOpenAICodexUsage(input: {
-    selectedProviderId: RuntimeProviderId | undefined;
-    refetchUsage: () => Promise<unknown>;
-    refetchRateLimits: () => Promise<unknown>;
-}) {
-    return async (): Promise<void> => {
-        if (input.selectedProviderId !== 'openai_codex') {
-            return;
-        }
-
-        await Promise.all([input.refetchUsage(), input.refetchRateLimits()]);
-    };
 }
 
 export interface ProviderSettingsControllerState {
@@ -69,18 +20,18 @@ export interface ProviderSettingsControllerState {
         tone: 'error' | 'success' | 'info';
     };
     selection: {
-        providerItems: ReturnType<typeof useProviderSettingsQueries>['providerItems'];
-        selectedProviderId: ReturnType<typeof useProviderSettingsQueries>['selectedProviderId'];
-        selectedProvider: ReturnType<typeof useProviderSettingsQueries>['selectedProvider'];
+        providerItems: ProviderSettingsSurfaceState['queries']['providerItems'];
+        selectedProviderId: ProviderSettingsSurfaceState['queries']['selectedProviderId'];
+        selectedProvider: ProviderSettingsSurfaceState['queries']['selectedProvider'];
         selectProvider: (providerId: RuntimeProviderId) => void;
         prefetchProvider: (providerId: RuntimeProviderId) => void;
     };
     providerStatus: {
-        authState: ReturnType<typeof useProviderSettingsQueries>['selectedAuthState'];
-        accountContext: ReturnType<typeof useProviderSettingsQueries>['kiloAccountContext'];
-        usageSummary: ReturnType<typeof useProviderSettingsQueries>['selectedProviderUsageSummary'];
-        openAISubscriptionUsage: ReturnType<typeof useProviderSettingsQueries>['openAISubscriptionUsage'];
-        openAISubscriptionRateLimits: ReturnType<typeof useProviderSettingsQueries>['openAISubscriptionRateLimits'];
+        authState: ProviderSettingsSurfaceState['queries']['selectedAuthState'];
+        accountContext: ProviderSettingsSurfaceState['queries']['kiloAccountContext'];
+        usageSummary: ProviderSettingsSurfaceState['queries']['selectedProviderUsageSummary'];
+        openAISubscriptionUsage: ProviderSettingsSurfaceState['queries']['openAISubscriptionUsage'];
+        openAISubscriptionRateLimits: ProviderSettingsSurfaceState['queries']['openAISubscriptionRateLimits'];
         isLoadingAccountContext: boolean;
         isLoadingUsageSummary: boolean;
         isLoadingOpenAIUsage: boolean;
@@ -89,11 +40,9 @@ export interface ProviderSettingsControllerState {
         refreshOpenAICodexUsage: () => Promise<void>;
     };
     authentication: {
-        methods: NonNullable<ReturnType<typeof useProviderSettingsQueries>['selectedProvider']>['availableAuthMethods'];
-        credentialSummary: ReturnType<typeof useProviderSettingsQueries>['credentialSummary'];
-        executionPreference: NonNullable<
-            ReturnType<typeof useProviderSettingsQueries>['selectedProvider']
-        >['executionPreference'];
+        methods: NonNullable<ProviderSettingsSurfaceState['queries']['selectedProvider']>['availableAuthMethods'];
+        credentialSummary: ProviderSettingsSurfaceState['queries']['credentialSummary'];
+        executionPreference: NonNullable<ProviderSettingsSurfaceState['queries']['selectedProvider']>['executionPreference'];
         activeAuthFlow: ActiveAuthFlow | undefined;
         isSavingApiKey: boolean;
         isSavingConnectionProfile: boolean;
@@ -115,9 +64,9 @@ export interface ProviderSettingsControllerState {
     };
     models: {
         selectedModelId: string;
-        options: ReturnType<typeof useProviderSettingsQueries>['modelOptions'];
-        catalogStateReason: ReturnType<typeof useProviderSettingsQueries>['catalogStateReason'];
-        catalogStateDetail: ReturnType<typeof useProviderSettingsQueries>['catalogStateDetail'];
+        options: ProviderSettingsSurfaceState['queries']['modelOptions'];
+        catalogStateReason: ProviderSettingsSurfaceState['queries']['catalogStateReason'];
+        catalogStateDetail: ProviderSettingsSurfaceState['queries']['catalogStateDetail'];
         isDefaultModel: boolean;
         isSavingDefault: boolean;
         isSyncingCatalog: boolean;
@@ -126,9 +75,9 @@ export interface ProviderSettingsControllerState {
         syncCatalog: () => Promise<void>;
     };
     kilo: {
-        routingDraft: ReturnType<typeof useKiloRoutingDraft>['kiloRoutingDraft'];
-        modelProviders: ReturnType<typeof useProviderSettingsQueries>['kiloModelProviders'];
-        accountContext: ReturnType<typeof useProviderSettingsQueries>['kiloAccountContext'];
+        routingDraft: ProviderSettingsSurfaceState['kiloRoutingDraft'];
+        modelProviders: ProviderSettingsSurfaceState['queries']['kiloModelProviders'];
+        accountContext: ProviderSettingsSurfaceState['queries']['kiloAccountContext'];
         isLoadingRoutingPreference: boolean;
         isLoadingModelProviders: boolean;
         isSavingRoutingPreference: boolean;
@@ -140,192 +89,93 @@ export interface ProviderSettingsControllerState {
     };
 }
 
-export function useProviderSettingsController(profileId: string, options?: ProviderSettingsControllerOptions) {
-    const utils = trpc.useUtils();
-    const selectionState = useProviderSettingsSelectionState(options);
-
-    const queries = useProviderSettingsQueries({
-        profileId,
-        requestedProviderId: selectionState.requestedProviderId,
-        requestedModelId: selectionState.requestedModelId,
-    });
-    const selectedProviderId = queries.selectedProviderId;
-
-    const mutationModel = useProviderSettingsMutationModel({
-        profileId,
-        selectedProviderId,
-        statusMessage: selectionState.statusMessage,
-        setStatusMessage: selectionState.setStatusMessage,
-        setActiveAuthFlow: selectionState.setActiveAuthFlow,
-    });
-    const mutations = mutationModel.mutations;
-
-    useProviderSettingsAuthFlow({
-        profileId,
-        activeAuthFlow: selectionState.activeAuthFlow,
-        isPolling: mutations.pollAuthMutation.isPending,
-        pollAuth: ignoreMutationResult(mutations.pollAuthMutation.mutateAsync),
-    });
-
-    const { kiloRoutingDraft } = useKiloRoutingDraft({
-        profileId,
-        selectedProviderId,
-        selectedModelId: queries.selectedModelId,
-        preference: queries.kiloRoutingPreference,
-        providerOptions: queries.kiloModelProviders,
-        setStatusMessage: selectionState.setStatusMessage,
-        savePreference: async (saveInput) => {
-            await mutations.setModelRoutingPreferenceMutation.mutateAsync(saveInput);
-        },
-    });
-
-    const loadStoredCredential = createLoadStoredCredential({
-        profileId,
-        selectedProviderId,
-        fetchCredentialValue: utils.provider.getCredentialValue.fetch,
-        setStatusMessage: selectionState.setStatusMessage,
-    });
-
-    const actions = createProviderSettingsActions({
-        profileId,
-        selectedProviderId,
-        selectedModelId: queries.selectedModelId,
-        currentOptionProfileId: queries.selectedProvider?.connectionProfile.optionProfileId ?? 'default',
-        activeAuthFlow: selectionState.activeAuthFlow,
-        kiloModelProviderIds: queries.kiloModelProviders.map((provider) => provider.providerId),
-        kiloRoutingDraft,
-        setSelectedProviderId: selectionState.setRequestedProviderId,
-        setStatusMessage: selectionState.setStatusMessage,
-        mutations: {
-            setDefaultMutation: {
-                mutateAsync: ignoreMutationResult(mutations.setDefaultMutation.mutateAsync),
-            },
-            syncCatalogMutation: {
-                mutateAsync: ignoreMutationResult(mutations.syncCatalogMutation.mutateAsync),
-            },
-            setModelRoutingPreferenceMutation: {
-                mutateAsync: ignoreMutationResult(mutations.setModelRoutingPreferenceMutation.mutateAsync),
-            },
-            setConnectionProfileMutation: {
-                mutateAsync: ignoreMutationResult(mutations.setConnectionProfileMutation.mutateAsync),
-            },
-            setExecutionPreferenceMutation: {
-                mutateAsync: ignoreMutationResult(mutations.setExecutionPreferenceMutation.mutateAsync),
-            },
-            setOrganizationMutation: {
-                mutateAsync: ignoreMutationResult(mutations.setOrganizationMutation.mutateAsync),
-            },
-            setApiKeyMutation: {
-                mutateAsync: ignoreMutationResult(mutations.setApiKeyMutation.mutateAsync),
-            },
-            startAuthMutation: {
-                mutateAsync: ignoreMutationResult(mutations.startAuthMutation.mutateAsync),
-            },
-            pollAuthMutation: {
-                mutateAsync: ignoreMutationResult(mutations.pollAuthMutation.mutateAsync),
-            },
-            cancelAuthMutation: {
-                mutateAsync: ignoreMutationResult(mutations.cancelAuthMutation.mutateAsync),
-            },
-            openExternalUrlMutation: {
-                mutateAsync: ignoreMutationResult(mutations.openExternalUrlMutation.mutateAsync),
-            },
-        },
-        onPreviewProvider: (providerId) => {
-            prefetchProviderSettingsData({
-                profileId,
-                providerId,
-                trpcUtils: utils,
-            });
-        },
-    });
-
-    const refreshOpenAICodexUsage = createRefreshOpenAICodexUsage({
-        selectedProviderId,
-        refetchUsage: queries.openAISubscriptionUsageQuery.refetch,
-        refetchRateLimits: queries.openAISubscriptionRateLimitsQuery.refetch,
-    });
-
+export function buildProviderSettingsControllerState(
+    surfaceState: ProviderSettingsSurfaceState
+): ProviderSettingsControllerState {
     return {
         feedback: {
-            message: mutationModel.feedback.message,
-            tone: mutationModel.feedback.tone,
+            message: surfaceState.mutationModel.feedback.message,
+            tone: surfaceState.mutationModel.feedback.tone,
         },
         selection: {
-            providerItems: queries.providerItems,
-            selectedProviderId,
-            selectedProvider: queries.selectedProvider,
-            selectProvider: actions.selectProvider,
+            providerItems: surfaceState.queries.providerItems,
+            selectedProviderId: surfaceState.queries.selectedProviderId,
+            selectedProvider: surfaceState.queries.selectedProvider,
+            selectProvider: surfaceState.actions.selectProvider,
             prefetchProvider: (providerId: RuntimeProviderId) => {
                 prefetchProviderSettingsData({
-                    profileId,
+                    profileId: surfaceState.profileId,
                     providerId,
-                    trpcUtils: utils,
+                    trpcUtils: surfaceState.utils,
                 });
             },
         },
         providerStatus: {
-            authState: queries.selectedAuthState,
-            accountContext: queries.kiloAccountContext,
-            usageSummary: queries.selectedProviderUsageSummary,
-            openAISubscriptionUsage: queries.openAISubscriptionUsage,
-            openAISubscriptionRateLimits: queries.openAISubscriptionRateLimits,
-            isLoadingAccountContext: queries.accountContextQuery.isLoading,
-            isLoadingUsageSummary: queries.usageSummaryQuery.isLoading,
-            isLoadingOpenAIUsage: queries.openAISubscriptionUsageQuery.isLoading,
-            isLoadingOpenAIRateLimits: queries.openAISubscriptionRateLimitsQuery.isLoading,
+            authState: surfaceState.queries.selectedAuthState,
+            accountContext: surfaceState.queries.kiloAccountContext,
+            usageSummary: surfaceState.queries.selectedProviderUsageSummary,
+            openAISubscriptionUsage: surfaceState.queries.openAISubscriptionUsage,
+            openAISubscriptionRateLimits: surfaceState.queries.openAISubscriptionRateLimits,
+            isLoadingAccountContext: surfaceState.queries.accountContextQuery.isLoading,
+            isLoadingUsageSummary: surfaceState.queries.usageSummaryQuery.isLoading,
+            isLoadingOpenAIUsage: surfaceState.queries.openAISubscriptionUsageQuery.isLoading,
+            isLoadingOpenAIRateLimits: surfaceState.queries.openAISubscriptionRateLimitsQuery.isLoading,
             isRefreshingOpenAICodexUsage:
-                queries.openAISubscriptionUsageQuery.isRefetching ||
-                queries.openAISubscriptionRateLimitsQuery.isRefetching,
-            refreshOpenAICodexUsage: wrapFailClosedAction(refreshOpenAICodexUsage),
+                surfaceState.queries.openAISubscriptionUsageQuery.isRefetching ||
+                surfaceState.queries.openAISubscriptionRateLimitsQuery.isRefetching,
+            refreshOpenAICodexUsage: wrapFailClosedAction(surfaceState.refreshOpenAICodexUsage),
         },
         authentication: {
-            methods: queries.selectedProvider?.availableAuthMethods ?? [],
-            credentialSummary: queries.credentialSummary,
-            executionPreference: queries.selectedProvider?.executionPreference,
-            activeAuthFlow: selectionState.activeAuthFlow,
-            isSavingApiKey: mutations.setApiKeyMutation.isPending,
-            isSavingConnectionProfile: mutations.setConnectionProfileMutation.isPending,
-            isSavingExecutionPreference: mutations.setExecutionPreferenceMutation.isPending,
-            isStartingAuth: mutations.startAuthMutation.isPending,
-            isPollingAuth: mutations.pollAuthMutation.isPending,
-            isCancellingAuth: mutations.cancelAuthMutation.isPending,
-            isOpeningVerificationPage: mutations.openExternalUrlMutation.isPending,
-            changeConnectionProfile: wrapFailClosedAction(actions.changeConnectionProfile),
-            changeExecutionPreference: wrapFailClosedAction(actions.changeExecutionPreference),
-            saveApiKey: actions.saveApiKey,
-            saveBaseUrlOverride: actions.saveBaseUrlOverride,
-            loadStoredCredential,
-            startOAuthDevice: wrapFailClosedAction(actions.startOAuthDevice),
-            startDeviceCode: wrapFailClosedAction(actions.startDeviceCode),
-            pollNow: wrapFailClosedAction(actions.pollNow),
-            cancelFlow: wrapFailClosedAction(actions.cancelFlow),
-            openVerificationPage: wrapFailClosedAction(actions.openVerificationPage),
+            methods: surfaceState.queries.selectedProvider?.availableAuthMethods ?? [],
+            credentialSummary: surfaceState.queries.credentialSummary,
+            executionPreference: surfaceState.queries.selectedProvider?.executionPreference,
+            activeAuthFlow: surfaceState.selectionState.activeAuthFlow,
+            isSavingApiKey: surfaceState.mutations.setApiKeyMutation.isPending,
+            isSavingConnectionProfile: surfaceState.mutations.setConnectionProfileMutation.isPending,
+            isSavingExecutionPreference: surfaceState.mutations.setExecutionPreferenceMutation.isPending,
+            isStartingAuth: surfaceState.mutations.startAuthMutation.isPending,
+            isPollingAuth: surfaceState.mutations.pollAuthMutation.isPending,
+            isCancellingAuth: surfaceState.mutations.cancelAuthMutation.isPending,
+            isOpeningVerificationPage: surfaceState.mutations.openExternalUrlMutation.isPending,
+            changeConnectionProfile: wrapFailClosedAction(surfaceState.actions.changeConnectionProfile),
+            changeExecutionPreference: wrapFailClosedAction(surfaceState.actions.changeExecutionPreference),
+            saveApiKey: surfaceState.actions.saveApiKey,
+            saveBaseUrlOverride: surfaceState.actions.saveBaseUrlOverride,
+            loadStoredCredential: surfaceState.loadStoredCredential,
+            startOAuthDevice: wrapFailClosedAction(surfaceState.actions.startOAuthDevice),
+            startDeviceCode: wrapFailClosedAction(surfaceState.actions.startDeviceCode),
+            pollNow: wrapFailClosedAction(surfaceState.actions.pollNow),
+            cancelFlow: wrapFailClosedAction(surfaceState.actions.cancelFlow),
+            openVerificationPage: wrapFailClosedAction(surfaceState.actions.openVerificationPage),
         },
         models: {
-            selectedModelId: queries.selectedModelId,
-            options: queries.modelOptions,
-            catalogStateReason: queries.catalogStateReason,
-            catalogStateDetail: queries.catalogStateDetail,
-            isDefaultModel: queries.selectedIsDefaultModel,
-            isSavingDefault: mutations.setDefaultMutation.isPending,
-            isSyncingCatalog: mutations.syncCatalogMutation.isPending,
-            setSelectedModelId: selectionState.setRequestedModelId,
-            setDefaultModel: wrapFailClosedAction(actions.setDefaultModel),
-            syncCatalog: wrapFailClosedAction(actions.syncCatalog),
+            selectedModelId: surfaceState.queries.selectedModelId,
+            options: surfaceState.queries.modelOptions,
+            catalogStateReason: surfaceState.queries.catalogStateReason,
+            catalogStateDetail: surfaceState.queries.catalogStateDetail,
+            isDefaultModel: surfaceState.queries.selectedIsDefaultModel,
+            isSavingDefault: surfaceState.mutations.setDefaultMutation.isPending,
+            isSyncingCatalog: surfaceState.mutations.syncCatalogMutation.isPending,
+            setSelectedModelId: surfaceState.selectionState.setRequestedModelId,
+            setDefaultModel: wrapFailClosedAction(surfaceState.actions.setDefaultModel),
+            syncCatalog: wrapFailClosedAction(surfaceState.actions.syncCatalog),
         },
         kilo: {
-            routingDraft: kiloRoutingDraft,
-            modelProviders: queries.kiloModelProviders,
-            accountContext: queries.kiloAccountContext,
-            isLoadingRoutingPreference: queries.kiloRoutingPreferenceQuery.isLoading,
-            isLoadingModelProviders: queries.kiloModelProvidersQuery.isLoading,
-            isSavingRoutingPreference: mutations.setModelRoutingPreferenceMutation.isPending,
-            isSavingOrganization: mutations.setOrganizationMutation.isPending,
-            changeRoutingMode: wrapFailClosedAction(actions.changeRoutingMode),
-            changeRoutingSort: wrapFailClosedAction(actions.changeRoutingSort),
-            changePinnedProvider: wrapFailClosedAction(actions.changePinnedProvider),
-            changeOrganization: wrapFailClosedAction(actions.changeOrganization),
+            routingDraft: surfaceState.kiloRoutingDraft,
+            modelProviders: surfaceState.queries.kiloModelProviders,
+            accountContext: surfaceState.queries.kiloAccountContext,
+            isLoadingRoutingPreference: surfaceState.queries.kiloRoutingPreferenceQuery.isLoading,
+            isLoadingModelProviders: surfaceState.queries.kiloModelProvidersQuery.isLoading,
+            isSavingRoutingPreference: surfaceState.mutations.setModelRoutingPreferenceMutation.isPending,
+            isSavingOrganization: surfaceState.mutations.setOrganizationMutation.isPending,
+            changeRoutingMode: wrapFailClosedAction(surfaceState.actions.changeRoutingMode),
+            changeRoutingSort: wrapFailClosedAction(surfaceState.actions.changeRoutingSort),
+            changePinnedProvider: wrapFailClosedAction(surfaceState.actions.changePinnedProvider),
+            changeOrganization: wrapFailClosedAction(surfaceState.actions.changeOrganization),
         },
-    } satisfies ProviderSettingsControllerState;
+    };
+}
+
+export function useProviderSettingsController(profileId: string, options?: ProviderSettingsControllerOptions) {
+    return buildProviderSettingsControllerState(useProviderSettingsSurfaceState(profileId, options));
 }

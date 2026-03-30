@@ -4,7 +4,7 @@ import { addSidebarTagToThread } from '@/web/components/conversation/sidebar/use
 
 import type { TagRecord, ThreadTagRecord } from '@/app/backend/persistence/types';
 
-import { createSidebarMutationUtils } from './sidebarMutationController.testUtils';
+import { createSidebarMutationUtils } from './__tests__/sidebarMutationController.testUtils';
 
 describe('useSidebarTagMutationController', () => {
     it('rolls back tag and shell-bootstrap caches when the tag write fails', async () => {

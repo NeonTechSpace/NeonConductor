@@ -62,9 +62,6 @@ export function ProviderSidebar({
     onSelectProvider,
     onPreviewProvider,
 }: ProviderSidebarProps) {
-    const kiloProvider = providers.find((provider) => provider.id === 'kilo');
-    const directProviders = providers.filter((provider) => provider.id !== 'kilo');
-
     return (
         <aside className='border-border bg-background/50 h-full min-h-0 min-w-0 overflow-y-auto border-r p-3'>
             <p className='text-muted-foreground mb-2 text-xs font-semibold tracking-[0.16em] uppercase'>
@@ -72,27 +69,13 @@ export function ProviderSidebar({
             </p>
 
             <div aria-label='Provider list' className='space-y-2'>
-                {kiloProvider ? (
-                    <div className='space-y-2'>
-                        <p className='text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.14em] uppercase'>
-                            Kilo Gateway
-                        </p>
-                        {renderProviderButton({
-                            provider: kiloProvider,
-                            selectedProviderId,
-                            onSelectProvider,
-                            onPreviewProvider,
-                        })}
-                    </div>
-                ) : null}
-
-                <div className='border-border/80 border-t pt-3'>
+                <div className='space-y-2'>
                     <p className='text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.14em] uppercase'>
                         Direct Providers
                     </p>
                     <div className='mt-2 space-y-2'>
-                        {directProviders.length > 0 ? (
-                            directProviders.map((provider) =>
+                        {providers.length > 0 ? (
+                            providers.map((provider) =>
                                 renderProviderButton({
                                     provider,
                                     selectedProviderId,

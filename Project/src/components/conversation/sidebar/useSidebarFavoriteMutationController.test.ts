@@ -4,7 +4,7 @@ import { toggleSidebarThreadFavorite } from '@/web/components/conversation/sideb
 
 import type { ThreadListRecord } from '@/app/backend/persistence/types';
 
-import { createSidebarMutationUtils } from './sidebarMutationController.testUtils';
+import { createSidebarMutationUtils } from './__tests__/sidebarMutationController.testUtils';
 
 function createThreadListRecord(overrides: Partial<ThreadListRecord> = {}): ThreadListRecord {
     return {

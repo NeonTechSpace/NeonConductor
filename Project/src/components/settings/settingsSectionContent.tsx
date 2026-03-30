@@ -66,6 +66,9 @@ export function SettingsSectionContent({
                     onProviderChange={(providerId) => {
                         onSelectionChange({ section: 'providers', subsection: providerId });
                     }}
+                    onOpenKiloSettings={() => {
+                        onSelectionChange({ section: 'kilo', subsection: 'account' });
+                    }}
                 />
             );
         case 'profiles':

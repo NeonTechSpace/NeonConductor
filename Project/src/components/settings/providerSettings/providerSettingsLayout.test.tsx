@@ -1,35 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-const { useProviderSettingsControllerMock } = vi.hoisted(() => {
-    return {
-        useProviderSettingsControllerMock: vi.fn(() => ({
+const { createDirectProviderControllerState, useDirectProviderSettingsControllerMock } = vi.hoisted(() => {
+    function createDirectProviderControllerState() {
+        return {
             selection: {
                 providerItems: [
-                    {
-                        id: 'kilo',
-                        label: 'Kilo',
-                        authState: 'authenticated',
-                        authMethod: 'device_code',
-                        connectionProfile: {
-                            providerId: 'kilo',
-                            optionProfileId: 'gateway',
-                            label: 'Gateway',
-                            options: [{ value: 'gateway', label: 'Gateway' }],
-                            resolvedBaseUrl: null,
-                        },
-                        apiKeyCta: { label: 'Create key', url: 'https://example.com' },
-                        isDefault: true,
-                        availableAuthMethods: ['device_code', 'api_key'],
-                        features: {
-                            supportsKiloRouting: true,
-                            catalogStrategy: 'dynamic',
-                            supportsModelProviderListing: true,
-                            supportsConnectionOptions: false,
-                            supportsCustomBaseUrl: false,
-                            supportsOrganizationScope: true,
-                        },
-                    },
                     {
                         id: 'openai',
                         label: 'OpenAI',
@@ -129,29 +105,22 @@ const { useProviderSettingsControllerMock } = vi.hoisted(() => {
                 setDefaultModel: vi.fn(),
                 syncCatalog: vi.fn(),
             },
-            kilo: {
-                routingDraft: undefined,
-                modelProviders: [],
-                accountContext: undefined,
-                isLoadingRoutingPreference: false,
-                isLoadingModelProviders: false,
-                isSavingRoutingPreference: false,
-                isSavingOrganization: false,
-                changeRoutingMode: vi.fn(),
-                changeRoutingSort: vi.fn(),
-                changePinnedProvider: vi.fn(),
-                changeOrganization: vi.fn(),
-            },
             feedback: {
                 message: undefined,
                 tone: 'info',
             },
-        })),
+            isKiloSelected: false,
+        };
+    }
+
+    return {
+        createDirectProviderControllerState,
+        useDirectProviderSettingsControllerMock: vi.fn(() => createDirectProviderControllerState()),
     };
 });
 
-vi.mock('@/web/components/settings/providerSettings/hooks/useProviderSettingsController', () => ({
-    useProviderSettingsController: useProviderSettingsControllerMock,
+vi.mock('@/web/components/settings/providerSettings/hooks/useDirectProviderSettingsController', () => ({
+    useDirectProviderSettingsController: useDirectProviderSettingsControllerMock,
 }));
 
 vi.mock('@/web/components/settings/providerSettings/providerSidebar', () => ({
@@ -174,10 +143,6 @@ vi.mock('@/web/components/settings/providerSettings/specialistDefaultsSection', 
     ProviderSpecialistDefaultsSection: () => <section>specialist defaults</section>,
 }));
 
-vi.mock('@/web/components/settings/providerSettings/kiloRoutingSection', () => ({
-    KiloRoutingSection: () => <section>routing</section>,
-}));
-
 vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
     SettingsFeedbackBanner: () => null,
 }));
@@ -185,20 +150,46 @@ vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 
 describe('provider settings layout', () => {
-    it('passes the selected provider into a fresh controller boundary', () => {
+    it('passes the selected provider into a fresh direct-provider controller boundary', () => {
         renderToStaticMarkup(<ProviderSettingsView profileId='profile_default' selectedProviderId='openai' />);
 
-        expect(useProviderSettingsControllerMock).toHaveBeenCalledWith('profile_default', {
+        expect(useDirectProviderSettingsControllerMock).toHaveBeenCalledWith('profile_default', {
             initialProviderId: 'openai',
         });
     });
 
     it('keeps the split pane height-constrained and the detail column scrollable', () => {
-        const html = renderToStaticMarkup(<ProviderSettingsView profileId='profile_default' />);
+        const html = renderToStaticMarkup(<ProviderSettingsView profileId='profile_default' selectedProviderId='openai' />);
 
         expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[264px_minmax(0,1fr)]');
         expect(html).toContain('min-h-0 min-w-0 overflow-y-auto p-4 md:p-5');
         expect(html).toContain('Providers &amp; Models');
         expect(html).toContain('Connect direct providers and adjust their settings here.');
+    });
+
+    it('renders the Kilo handoff panel instead of duplicated Kilo controls', () => {
+        const handoffState = createDirectProviderControllerState();
+        useDirectProviderSettingsControllerMock.mockReturnValueOnce({
+            ...handoffState,
+            selection: {
+                ...handoffState.selection,
+                selectedProviderId: 'kilo',
+                selectedProvider: undefined as never,
+            },
+            isKiloSelected: true,
+        });
+
+        const html = renderToStaticMarkup(
+            <ProviderSettingsView
+                profileId='profile_default'
+                selectedProviderId='kilo'
+                onOpenKiloSettings={vi.fn()}
+            />
+        );
+
+        expect(html).toContain('Kilo settings live in the dedicated Kilo route');
+        expect(html).toContain('Open Kilo settings');
+        expect(html).not.toContain('auth</section>');
+        expect(html).not.toContain('model</section>');
     });
 });

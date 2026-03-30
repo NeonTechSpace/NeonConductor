@@ -10,7 +10,7 @@ import type {
     ThreadTagRecord,
 } from '@/app/backend/persistence/types';
 
-import { createSidebarMutationUtils } from './sidebarMutationController.testUtils';
+import { createSidebarMutationUtils } from './__tests__/sidebarMutationController.testUtils';
 
 function createWorkspaceThread(overrides: Partial<ThreadListRecord>): ThreadListRecord {
     return {

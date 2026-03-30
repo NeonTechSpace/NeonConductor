@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     shouldAttemptKiloInitialCatalogBootstrap,
     shouldResetKiloInitialCatalogBootstrapAttempt,
-} from '@/web/components/settings/kiloSettingsView';
+} from '@/web/components/settings/providerSettings/hooks/useKiloInitialCatalogBootstrap';
 
 describe('Kilo initial catalog bootstrap contract', () => {
     it('attempts one automatic sync for an authenticated empty catalog and does not retry for the same mounted identity', () => {
