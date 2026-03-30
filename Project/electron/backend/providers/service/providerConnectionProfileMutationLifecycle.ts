@@ -83,11 +83,14 @@ export function createProviderConnectionProfileMutationLifecycle(input = {
             await input.defaultModelRepairService.repairDefaultModelIfMissing(profileId, providerId);
 
             const authState = await input.getAuthState(profileId, providerId);
+            const connectionProfile: ProviderConnectionProfileResult = authState.organizationId
+                ? {
+                      ...stateResult.value,
+                      organizationId: authState.organizationId,
+                  }
+                : stateResult.value;
             return okProviderService({
-                connectionProfile: {
-                    ...stateResult.value,
-                    ...(authState.organizationId ? { organizationId: authState.organizationId } : {}),
-                } as ProviderConnectionProfileResult,
+                connectionProfile,
             });
         },
     };

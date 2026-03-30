@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { createProfileSettingsActions } from '@/web/components/settings/profileSettings/actions';
+import { createProfilePreferencesActions } from '@/web/components/settings/profileSettings/actions';
 import type { ProfileSelectionState } from '@/web/components/settings/profileSettings/useProfileSelectionState';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -183,39 +183,9 @@ export function useProfilePreferencesController(input: ProfilePreferencesControl
             ? threadTitleAiModelDraft.value
             : (threadTitlePreferenceQuery.data?.aiModel ?? '');
 
-    const actions = createProfileSettingsActions({
-        activeProfileId: '',
+    const actions = createProfilePreferencesActions({
         selectedProfile: input.selection.selectedProfile,
-        newProfileName: '',
-        renameValue: '',
         threadTitleAiModelInput,
-        updateProfileList: () => [],
-        setActiveProfileCache: () => undefined,
-        createMutation: {
-            mutateAsync: async () => {
-                throw new Error('create mutation is not available in profile preferences');
-            },
-        },
-        renameMutation: {
-            mutateAsync: async () => {
-                throw new Error('rename mutation is not available in profile preferences');
-            },
-        },
-        duplicateMutation: {
-            mutateAsync: async () => {
-                throw new Error('duplicate mutation is not available in profile preferences');
-            },
-        },
-        deleteMutation: {
-            mutateAsync: async () => {
-                throw new Error('delete mutation is not available in profile preferences');
-            },
-        },
-        setActiveMutation: {
-            mutateAsync: async () => {
-                throw new Error('set active mutation is not available in profile preferences');
-            },
-        },
         setEditPreferenceMutation: {
             mutateAsync: async (preferenceInput) => {
                 await setEditPreferenceMutation.mutateAsync(preferenceInput);
@@ -226,12 +196,7 @@ export function useProfilePreferencesController(input: ProfilePreferencesControl
                 await setThreadTitlePreferenceMutation.mutateAsync(preferenceInput);
             },
         },
-        setNewProfileName: () => undefined,
-        setRenameDraft: () => undefined,
-        setSelectedProfileId: () => undefined,
         setStatusMessage: input.setStatusMessage,
-        setConfirmDeleteOpen: () => undefined,
-        onProfileActivated: () => undefined,
     });
     const wrapFailClosedAction = <TArgs extends unknown[]>(action: (...args: TArgs) => Promise<void>) =>
         createFailClosedAsyncAction(action);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { createProfileSettingsActions } from '@/web/components/settings/profileSettings/actions';
+import { createProfileLibraryActions } from '@/web/components/settings/profileSettings/actions';
 import { resolveProfileRenameValue, type ProfileRenameDraft } from '@/web/components/settings/profileSettings/drafts';
 import type { ProfileSelectionState } from '@/web/components/settings/profileSettings/useProfileSelectionState';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
@@ -69,12 +69,11 @@ export function useProfileLibraryController(input: ProfileLibraryControllerInput
         renameDraft,
     });
 
-    const actions = createProfileSettingsActions({
+    const actions = createProfileLibraryActions({
         activeProfileId: input.activeProfileId,
         selectedProfile: input.selection.selectedProfile,
         newProfileName,
         renameValue,
-        threadTitleAiModelInput: '',
         updateProfileList: (updater) => {
             updateProfileList(utils, updater);
         },
@@ -90,12 +89,6 @@ export function useProfileLibraryController(input: ProfileLibraryControllerInput
         duplicateMutation,
         deleteMutation,
         setActiveMutation,
-        setEditPreferenceMutation: {
-            mutateAsync: async () => undefined,
-        },
-        setThreadTitlePreferenceMutation: {
-            mutateAsync: async () => undefined,
-        },
         setNewProfileName,
         setRenameDraft,
         setSelectedProfileId: input.selection.setSelectedProfileId,

@@ -5,7 +5,7 @@ import type { StartRunInput, StartRunResult } from '@/app/backend/runtime/servic
 import type { RunStartRejectionAction } from '@/shared/contracts';
 
 function isRuntimeProviderId(value: string): value is RuntimeProviderId {
-    return providerIds.includes(value as RuntimeProviderId);
+    return providerIds.some((providerId) => providerId === value);
 }
 
 function inferRequestedProviderId(input: Pick<StartRunInput, 'providerId' | 'modelId'>): RuntimeProviderId | undefined {

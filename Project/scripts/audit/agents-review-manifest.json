@@ -441,6 +441,22 @@
       "note": "Unknown-to-record casts are guarded locally and used as narrow payload validators."
     },
     {
+      "path": "electron/backend/providers/runtimeProtocolSelectionPolicy.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "02fee2b9def2d3cf",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: runtime protocol selection remains a validated descriptor and transport-gating boundary; the reported cast concern does not expose an unsafe call-site boundary."
+    },
+    {
+      "path": "electron/backend/runtime/services/observability/service.ts",
+      "category": "manual-broad-casts",
+      "contentHash": "9ba23c4760afa43b",
+      "status": "reviewed-clean",
+      "reviewedAt": "2026-03-30",
+      "note": "Manual review: the observability publish cast is confined to a service-local event builder that only appends sequence and timestamp to an already-shaped event payload."
+    },
+    {
       "path": "electron/backend/persistence/stores/runtime/checkpointChangesetStore.ts",
       "category": "manual-non-parser-throws",
       "contentHash": "73bf7f817b3174d7",
@@ -535,6 +551,54 @@
       "status": "accepted-risk",
       "reviewedAt": "2026-03-25",
       "note": "Throw is TanStack Router redirect control flow rather than an application failure path."
+    },
+    {
+      "path": "electron/backend/providers/metadata/staticCatalog/registry.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "58458deb1f8aeb90",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throw guards a seeded static-catalog invariant when a model definition is missing a supported runtime descriptor."
+    },
+    {
+      "path": "electron/backend/runtime/services/memory/memoryProjectionContextResolver.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "599ed3bcc11e2eb5",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throw guards an impossible workspace projection request when no workspace memory root is available."
+    },
+    {
+      "path": "electron/backend/runtime/services/memory/memoryProjectionFileCodec.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "eeecafa6a63e4d56",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throws are file-format parsing and canonical projection invariants for projected memory edits."
+    },
+    {
+      "path": "electron/backend/runtime/services/runtimeShellBootstrap.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "0a387e3f2a936dcf",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Throw normalizes provider-control failure into a fatal shell-bootstrap contract failure at startup."
+    },
+    {
+      "path": "electron/backend/trpc/routers/runtime/index.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "46dab486f2991f29",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "Subscription catch blocks normalize unknown thrown values into Error instances for TRPC stream failure propagation."
+    },
+    {
+      "path": "electron/backend/trpc/routers/system/index.ts",
+      "category": "manual-non-parser-throws",
+      "contentHash": "1eab1a445d881b07",
+      "status": "accepted-risk",
+      "reviewedAt": "2026-03-30",
+      "note": "The window-state subscription catch block only normalizes unknown thrown values into Error instances for TRPC streaming."
     }
   ]
 }

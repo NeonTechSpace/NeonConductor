@@ -33,9 +33,11 @@ function readTopLevelTab(value: unknown): TopLevelTab | undefined {
 }
 
 function readRuleActivationMode(value: unknown): RuleActivationMode | undefined {
-    return typeof value === 'string' && ruleActivationModes.includes(value as RuleActivationMode)
-        ? (value as RuleActivationMode)
-        : undefined;
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+
+    return ruleActivationModes.find((mode) => mode === value);
 }
 
 function readTags(value: unknown): string[] | undefined {
@@ -66,7 +68,7 @@ function readToolCapabilities(value: unknown): ToolCapability[] | undefined {
 
     const capabilities = value.filter(
         (capability): capability is ToolCapability =>
-            typeof capability === 'string' && knownToolCapabilities.includes(capability as ToolCapability)
+            typeof capability === 'string' && knownToolCapabilities.some((knownCapability) => knownCapability === capability)
     );
     return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
 }

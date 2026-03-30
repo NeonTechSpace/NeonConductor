@@ -8,12 +8,23 @@ import {
 
 import type { ProfileRecord } from '@/app/backend/persistence/types';
 
-export function createProfileSettingsActions(input: {
+type EditPreferenceMutation = {
+    mutateAsync: (input: { profileId: string; value: 'ask' | 'truncate' | 'branch' }) => Promise<void>;
+};
+
+type ThreadTitlePreferenceMutation = {
+    mutateAsync: (input: {
+        profileId: string;
+        mode: 'template' | 'ai_optional';
+        aiModel?: string;
+    }) => Promise<void>;
+};
+
+export function createProfileLibraryActions(input: {
     activeProfileId: string;
     selectedProfile: ProfileRecord | undefined;
     newProfileName: string;
     renameValue: string;
-    threadTitleAiModelInput: string;
     updateProfileList: (updater: (profiles: ProfileRecord[]) => ProfileRecord[]) => void;
     setActiveProfileCache: (profileId: string) => void;
     createMutation: { mutateAsync: (input: { name?: string }) => Promise<{ profile: ProfileRecord }> };
@@ -41,16 +52,6 @@ export function createProfileSettingsActions(input: {
         mutateAsync: (input: {
             profileId: string;
         }) => Promise<{ updated: false; reason: 'profile_not_found' } | { updated: true; profile: ProfileRecord }>;
-    };
-    setEditPreferenceMutation: {
-        mutateAsync: (input: { profileId: string; value: 'ask' | 'truncate' | 'branch' }) => Promise<void>;
-    };
-    setThreadTitlePreferenceMutation: {
-        mutateAsync: (input: {
-            profileId: string;
-            mode: 'template' | 'ai_optional';
-            aiModel?: string;
-        }) => Promise<void>;
     };
     setNewProfileName: (value: string) => void;
     setRenameDraft: (value: ProfileRenameDraft | undefined) => void;
@@ -144,6 +145,47 @@ export function createProfileSettingsActions(input: {
             input.onProfileActivated(result.profile.id);
             input.setActiveProfileCache(result.profile.id);
         },
+        deleteProfile: async () => {
+            if (!input.selectedProfile) {
+                input.setConfirmDeleteOpen(false);
+                return;
+            }
+
+            const result = await input.deleteMutation.mutateAsync({
+                profileId: input.selectedProfile.id,
+            });
+            input.setConfirmDeleteOpen(false);
+            input.setStatusMessage(
+                getDeleteProfileStatusMessage({
+                    deleted: result.deleted,
+                    reason: result.reason,
+                })
+            );
+            if (!result.deleted) {
+                return;
+            }
+
+            if (result.activeProfileId) {
+                input.onProfileActivated(result.activeProfileId);
+                input.setActiveProfileCache(result.activeProfileId);
+            }
+            input.setRenameDraft(undefined);
+            input.setSelectedProfileId(undefined);
+            input.updateProfileList((profiles) =>
+                profiles.filter((profile) => profile.id !== input.selectedProfile?.id)
+            );
+        },
+    };
+}
+
+export function createProfilePreferencesActions(input: {
+    selectedProfile: ProfileRecord | undefined;
+    threadTitleAiModelInput: string;
+    setEditPreferenceMutation: EditPreferenceMutation;
+    setThreadTitlePreferenceMutation: ThreadTitlePreferenceMutation;
+    setStatusMessage: (value: string | undefined) => void;
+}) {
+    return {
         updateEditPreference: async (value: 'ask' | 'truncate' | 'branch') => {
             if (!input.selectedProfile) {
                 return;
@@ -185,36 +227,6 @@ export function createProfileSettingsActions(input: {
                 aiModel: input.threadTitleAiModelInput.trim(),
             });
             input.setStatusMessage('Updated title AI model.');
-        },
-        deleteProfile: async () => {
-            if (!input.selectedProfile) {
-                input.setConfirmDeleteOpen(false);
-                return;
-            }
-
-            const result = await input.deleteMutation.mutateAsync({
-                profileId: input.selectedProfile.id,
-            });
-            input.setConfirmDeleteOpen(false);
-            input.setStatusMessage(
-                getDeleteProfileStatusMessage({
-                    deleted: result.deleted,
-                    reason: result.reason,
-                })
-            );
-            if (!result.deleted) {
-                return;
-            }
-
-            if (result.activeProfileId) {
-                input.onProfileActivated(result.activeProfileId);
-                input.setActiveProfileCache(result.activeProfileId);
-            }
-            input.setRenameDraft(undefined);
-            input.setSelectedProfileId(undefined);
-            input.updateProfileList((profiles) =>
-                profiles.filter((profile) => profile.id !== input.selectedProfile?.id)
-            );
         },
     };
 }
