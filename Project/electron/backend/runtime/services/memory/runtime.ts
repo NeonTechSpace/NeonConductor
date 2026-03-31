@@ -14,6 +14,7 @@ import {
     resolveAutomaticRunMemoryDecision,
     type AutomaticRunMemoryAction,
 } from '@/app/backend/runtime/services/memory/automaticRunMemoryLifecycle';
+import { memoryConsolidationService } from '@/app/backend/runtime/services/memory/memoryConsolidationService';
 import { memoryService } from '@/app/backend/runtime/services/memory/service';
 import { appLog } from '@/app/main/logging';
 
@@ -171,6 +172,13 @@ export class MemoryRuntimeService {
             memoryId: result.value.memory?.id ?? null,
             previousMemoryId: result.value.previousMemory?.id ?? null,
         });
+
+        if (result.value.memory?.id) {
+            await memoryConsolidationService.consolidateFromRunMemorySafely({
+                profileId: input.profileId,
+                memoryId: result.value.memory.id,
+            });
+        }
     }
 }
 

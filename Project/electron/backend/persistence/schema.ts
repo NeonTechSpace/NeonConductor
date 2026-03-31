@@ -94,6 +94,24 @@ export interface MemoryRevisionRecordsTable {
     created_at: string;
 }
 
+export interface MemoryConsolidationRecordsTable {
+    id: string;
+    profile_id: string;
+    subject_key: string;
+    target_memory_type: string;
+    scope_kind: string;
+    source_consolidation: string;
+    state: string;
+    candidate_title: string;
+    candidate_summary_text: string | null;
+    candidate_body_markdown: string;
+    evidence_memory_ids_json: string;
+    materialized_memory_id: string | null;
+    source_digest: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface MemoryEvidenceRecordsTable {
     id: string;
     profile_id: string;
@@ -151,6 +169,25 @@ export interface MemoryCausalLinksTable {
     source_memory_id: string;
     source_run_id: string | null;
     created_at: string;
+    updated_at: string;
+}
+
+export interface MemoryGraphEdgesTable {
+    id: string;
+    profile_id: string;
+    source_memory_id: string;
+    target_memory_id: string;
+    edge_kind: string;
+    weight: number;
+    derivation_version: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface MemoryRetrievalUsageRecordsTable {
+    profile_id: string;
+    memory_id: string;
+    reuse_count: number;
     updated_at: string;
 }
 
@@ -873,10 +910,13 @@ export interface DatabaseSchema {
     session_attached_rules: SessionAttachedRulesTable;
     memory_records: MemoryRecordsTable;
     memory_revision_records: MemoryRevisionRecordsTable;
+    memory_consolidation_records: MemoryConsolidationRecordsTable;
     memory_evidence_records: MemoryEvidenceRecordsTable;
     memory_embedding_records: MemoryEmbeddingRecordsTable;
     memory_temporal_facts: MemoryTemporalFactsTable;
     memory_causal_links: MemoryCausalLinksTable;
+    memory_graph_edges: MemoryGraphEdgesTable;
+    memory_retrieval_usage_records: MemoryRetrievalUsageRecordsTable;
     runs: RunsTable;
     messages: MessagesTable;
     message_parts: MessagePartsTable;

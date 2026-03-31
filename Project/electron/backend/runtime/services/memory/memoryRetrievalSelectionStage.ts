@@ -40,6 +40,13 @@ function wouldExceedFamilyCap(
         const hasStrongerContextualSelection = selectedDecisions.some(isContextualNonBroadFamily);
         return hasStrongerContextualSelection && selectedSemanticCount >= 1;
     }
+    if (candidate.family === 'graph_expanded') {
+        const selectedGraphCount = selectedDecisions.filter(
+            (decision) =>
+                decision.family === 'graph_expanded' && decision.selectionExemptionReason !== 'history'
+        ).length;
+        return candidate.selectionExemptionReason !== 'history' && selectedGraphCount >= 1;
+    }
 
     return false;
 }

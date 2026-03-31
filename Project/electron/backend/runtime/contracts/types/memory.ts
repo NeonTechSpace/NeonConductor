@@ -40,6 +40,30 @@ export interface MemoryRevisionRecord {
     createdAt: string;
 }
 
+export const memoryConsolidationSources = ['episodic_pattern', 'manual_seed'] as const;
+export type MemoryConsolidationSource = (typeof memoryConsolidationSources)[number];
+
+export const memoryConsolidationStates = ['candidate', 'materialized', 'superseded', 'rejected'] as const;
+export type MemoryConsolidationState = (typeof memoryConsolidationStates)[number];
+
+export interface MemoryConsolidationRecord {
+    id: EntityId<'mcon'>;
+    profileId: string;
+    subjectKey: string;
+    targetMemoryType: Extract<MemoryType, 'semantic' | 'procedural'>;
+    scopeKind: MemoryScopeKind;
+    sourceConsolidation: MemoryConsolidationSource;
+    state: MemoryConsolidationState;
+    candidateTitle: string;
+    candidateBodyMarkdown: string;
+    candidateSummaryText?: string;
+    evidenceMemoryIds: EntityId<'mem'>[];
+    materializedMemoryId?: EntityId<'mem'>;
+    sourceDigest: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export const memoryEvidenceKinds = ['run', 'message', 'message_part', 'tool_result_artifact'] as const;
 export type MemoryEvidenceKind = (typeof memoryEvidenceKinds)[number];
 
@@ -145,6 +169,37 @@ export interface MemoryCausalLinkRecord {
     updatedAt: string;
 }
 
+export const memoryGraphEdgeKinds = [
+    'same_subject',
+    'same_run',
+    'same_thread',
+    'same_workspace',
+    'revision_predecessor',
+    'revision_successor',
+    'evidence_overlap',
+] as const;
+export type MemoryGraphEdgeKind = (typeof memoryGraphEdgeKinds)[number];
+
+export interface MemoryGraphEdgeRecord {
+    id: EntityId<'medge'>;
+    profileId: string;
+    sourceMemoryId: EntityId<'mem'>;
+    targetMemoryId: EntityId<'mem'>;
+    edgeKind: MemoryGraphEdgeKind;
+    weight: number;
+    derivationVersion: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface MemoryStrengthSummary {
+    recencyScore: number;
+    evidenceCount: number;
+    reuseCount: number;
+    importanceScore: number;
+    confidenceScore: number;
+}
+
 export interface MemoryDerivedSummary {
     temporalStatus?: MemoryTemporalFactStatus;
     temporalSubjectKey?: string;
@@ -155,6 +210,8 @@ export interface MemoryDerivedSummary {
     successorMemoryId?: EntityId<'mem'>;
     incomingRevisionReason?: MemoryRevisionReason;
     outgoingRevisionReason?: MemoryRevisionReason;
+    strength?: MemoryStrengthSummary;
+    graphNeighborCount: number;
     linkedRunIds: EntityId<'run'>[];
     linkedThreadIds: EntityId<'thr'>[];
     linkedWorkspaceFingerprints: string[];
@@ -168,6 +225,7 @@ export type RetrievedMemoryMatchReason =
     | 'structured'
     | 'derived_temporal'
     | 'derived_causal'
+    | 'graph_expanded'
     | 'semantic'
     | 'prompt';
 

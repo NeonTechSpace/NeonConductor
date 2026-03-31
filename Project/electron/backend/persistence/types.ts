@@ -7,9 +7,11 @@ import type {
     ComposerMediaSettings,
     ContextCompactionSource,
     MemoryCausalLinkRecord as RuntimeMemoryCausalLinkRecord,
+    MemoryConsolidationRecord as RuntimeMemoryConsolidationRecord,
     MemoryDerivedSummary as RuntimeMemoryDerivedSummary,
     MemoryEmbeddingIndexRecord as RuntimeMemoryEmbeddingIndexRecord,
     MemoryEvidenceRecord as RuntimeMemoryEvidenceRecord,
+    MemoryGraphEdgeRecord as RuntimeMemoryGraphEdgeRecord,
     MemoryRevisionRecord as RuntimeMemoryRevisionRecord,
     MemoryCreatedByKind,
     MemoryTemporalFactRecord as RuntimeMemoryTemporalFactRecord,
@@ -102,6 +104,7 @@ export interface MemoryRecord {
 }
 
 export type MemoryRevisionRecord = RuntimeMemoryRevisionRecord;
+export type MemoryConsolidationRecord = RuntimeMemoryConsolidationRecord;
 
 export type MemoryEvidenceRecord = RuntimeMemoryEvidenceRecord;
 
@@ -110,6 +113,7 @@ export type MemoryEmbeddingIndexRecord = RuntimeMemoryEmbeddingIndexRecord;
 export type MemoryTemporalFactRecord = RuntimeMemoryTemporalFactRecord;
 
 export type MemoryCausalLinkRecord = RuntimeMemoryCausalLinkRecord;
+export type MemoryGraphEdgeRecord = RuntimeMemoryGraphEdgeRecord;
 
 export type MemoryDerivedSummary = RuntimeMemoryDerivedSummary;
 

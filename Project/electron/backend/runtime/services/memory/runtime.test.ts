@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
     messageStore,
@@ -9,7 +9,10 @@ import {
     sessionStore,
     toolResultArtifactStore,
 } from '@/app/backend/persistence/stores';
+import { okOp } from '@/app/backend/runtime/services/common/operationalError';
+import * as plainTextGeneration from '@/app/backend/runtime/services/common/plainTextGeneration';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
+import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
 import {
     createCaller,
     createSessionInScope,
@@ -275,5 +278,89 @@ describe('memoryRuntimeService', () => {
         expect(memories).toHaveLength(1);
         expect(memories[0]?.id).toBe(userMemory.memory.id);
         expect(memories[0]?.createdByKind).toBe('user');
+    });
+
+    it('materializes a consolidated memory from repeated episodic run memories after safe capture', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_runtime_consolidation',
+            title: 'Memory runtime consolidation',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected consolidation thread id.');
+        const utilitySpy = vi.spyOn(utilityModelService, 'getUtilityModelPreference').mockResolvedValue({
+            selection: {
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+            },
+        });
+        const generationSpy = vi.spyOn(plainTextGeneration, 'generatePlainTextFromMessages');
+        generationSpy.mockResolvedValue(
+            okOp(
+                JSON.stringify({
+                    targetMemoryType: 'procedural',
+                    title: 'Preferred deployment workflow',
+                    summaryText: 'Repeated run outcomes converge on one workflow.',
+                    bodyMarkdown: 'Always validate the deployment workflow before publishing.',
+                    temporalSubjectKey: 'subject::preferred-deployment-workflow',
+                    confidenceLabel: 'high',
+                })
+            )
+        );
+
+        try {
+            for (const runIndex of [1, 2]) {
+                const run = await runStore.create({
+                    profileId,
+                    sessionId: created.session.id,
+                    prompt: 'Capture the deployment workflow outcome.',
+                    providerId: 'openai',
+                    modelId: 'openai/gpt-5',
+                    authMethod: 'api_key',
+                    runtimeOptions: defaultRuntimeOptions,
+                    cache: { applied: false },
+                    transport: {},
+                });
+                await runStore.finalize(run.id, {
+                    status: 'completed',
+                });
+                await sessionStore.markRunTerminal(profileId, created.session.id, 'completed');
+                const assistantMessage = await messageStore.createMessage({
+                    profileId,
+                    sessionId: created.session.id,
+                    runId: run.id,
+                    role: 'assistant',
+                });
+                await messageStore.createPart({
+                    messageId: assistantMessage.id,
+                    partType: 'text',
+                    payload: {
+                        text: `Workflow capture ${String(runIndex)} completed successfully.`,
+                    },
+                });
+
+                await memoryRuntimeService.captureFinishedRunMemorySafely({
+                    profileId,
+                    runId: run.id,
+                });
+            }
+
+            const consolidatedMemories = (await memoryStore.listByProfile({
+                profileId,
+                memoryType: 'procedural',
+                scopeKind: 'thread',
+            })).filter((memory) => memory.metadata['source'] === 'memory_consolidation');
+            expect(consolidatedMemories).toHaveLength(1);
+            expect(consolidatedMemories[0]?.createdByKind).toBe('system');
+            expect(consolidatedMemories[0]?.threadId).toBe(threadId);
+            expect(consolidatedMemories[0]?.temporalSubjectKey).toBe('subject::preferred-deployment-workflow');
+            const evidence = await memoryEvidenceStore.listByMemoryId(profileId, consolidatedMemories[0]!.id);
+            expect(evidence.length).toBeGreaterThanOrEqual(2);
+        } finally {
+            generationSpy.mockRestore();
+            utilitySpy.mockRestore();
+        }
     });
 });

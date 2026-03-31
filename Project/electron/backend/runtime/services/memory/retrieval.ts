@@ -4,6 +4,7 @@ import { collectMemoryRetrievalCandidates } from '@/app/backend/runtime/services
 import { resolveMemoryRetrievalContext } from '@/app/backend/runtime/services/memory/memoryRetrievalContextResolver';
 import { loadMemoryRetrievalEvidence } from '@/app/backend/runtime/services/memory/memoryRetrievalEvidenceStage';
 import { expandMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalExpansionStage';
+import { collectGraphExpandedMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalGraphExpansionStage';
 import type { MemoryRetrievalStageInput } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
 import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 import { collectSemanticMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSemanticStage';
@@ -38,16 +39,17 @@ export class MemoryRetrievalService {
                 ...expanded.derivedCandidates.map((candidate) => candidate.memory.id),
             ]),
         });
-        const orderedCandidates = rankRetrievedMemoryCandidates({
+        const baseOrderedCandidates = rankRetrievedMemoryCandidates({
             baseCandidates: expanded.baseCandidates,
             activeMemories: context.activeMemories,
             promptTerms: context.promptTerms,
             derivedCandidates: expanded.derivedCandidates,
+            graphCandidates: [],
             semanticCandidates: semantic.semanticCandidates,
         });
         const initialDerivedSummaryResult = await advancedMemoryDerivationService.getDerivedSummaries(
             input.profileId,
-            orderedCandidates.map((candidate) => candidate.memory.id)
+            baseOrderedCandidates.map((candidate) => candidate.memory.id)
         );
         const initialDerivedSummaryByMemoryId = initialDerivedSummaryResult.isOk()
             ? initialDerivedSummaryResult.value
@@ -64,12 +66,34 @@ export class MemoryRetrievalService {
         const temporallyResolvedCandidates = resolveTemporalMemoryCandidates({
             prompt: input.prompt,
             activeMemories: context.activeMemories,
+            decisions: baseOrderedCandidates,
+            derivedSummaryByMemoryId: initialDerivedSummaryByMemoryId,
+        });
+        const graphExpanded = await collectGraphExpandedMemoryRetrievalCandidates({
+            profileId: input.profileId,
+            prompt: input.prompt,
+            activeMemories: context.activeMemories,
+            decisions: temporallyResolvedCandidates.decisions,
+            derivedSummaryByMemoryId: initialDerivedSummaryByMemoryId,
+            temporalIntent: temporallyResolvedCandidates.temporalIntent,
+        });
+        const orderedCandidates = rankRetrievedMemoryCandidates({
+            baseCandidates: expanded.baseCandidates,
+            activeMemories: context.activeMemories,
+            promptTerms: context.promptTerms,
+            derivedCandidates: expanded.derivedCandidates,
+            graphCandidates: graphExpanded.graphCandidates,
+            semanticCandidates: semantic.semanticCandidates,
+        });
+        const resolvedCandidates = resolveTemporalMemoryCandidates({
+            prompt: input.prompt,
+            activeMemories: context.activeMemories,
             decisions: orderedCandidates,
             derivedSummaryByMemoryId: initialDerivedSummaryByMemoryId,
         });
         const finalDerivedSummaryResult = await advancedMemoryDerivationService.getDerivedSummaries(
             input.profileId,
-            temporallyResolvedCandidates.decisions.map((candidate) => candidate.memory.id)
+            resolvedCandidates.decisions.map((candidate) => candidate.memory.id)
         );
         const derivedSummaryByMemoryId = finalDerivedSummaryResult.isOk()
             ? finalDerivedSummaryResult.value
@@ -84,9 +108,9 @@ export class MemoryRetrievalService {
             });
         }
         const selectedCandidates = selectRetrievedMemoryCandidates({
-            decisions: temporallyResolvedCandidates.decisions,
+            decisions: resolvedCandidates.decisions,
             derivedSummaryByMemoryId,
-            temporalIntent: temporallyResolvedCandidates.temporalIntent,
+            temporalIntent: resolvedCandidates.temporalIntent,
         }).decisions;
         const evidence = await loadMemoryRetrievalEvidence({
             profileId: input.profileId,

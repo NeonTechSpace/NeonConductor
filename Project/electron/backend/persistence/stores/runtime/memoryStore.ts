@@ -146,6 +146,24 @@ export class MemoryStore {
         return row ? mapMemoryRecord(row) : null;
     }
 
+    async listByIds(profileId: string, memoryIds: EntityId<'mem'>[]): Promise<MemoryRecord[]> {
+        const uniqueMemoryIds = Array.from(new Set(memoryIds));
+        if (uniqueMemoryIds.length === 0) {
+            return [];
+        }
+
+        const rows = await this.getDb()
+            .selectFrom('memory_records')
+            .selectAll()
+            .where('profile_id', '=', profileId)
+            .where('id', 'in', uniqueMemoryIds)
+            .orderBy('updated_at', 'desc')
+            .orderBy('id', 'desc')
+            .execute();
+
+        return rows.map(mapMemoryRecord);
+    }
+
     async listByProfile(input: {
         profileId: string;
         memoryType?: MemoryType;

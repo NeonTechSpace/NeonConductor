@@ -51,15 +51,17 @@ function createRankedDecision(
                 ? 3
                 : family === 'structured'
                   ? 4
-                  : family === 'derived_temporal'
+                    : family === 'derived_temporal'
                     ? 5
                     : family === 'derived_causal'
                       ? 6
-                      : family === 'semantic'
+                      : family === 'graph_expanded'
                         ? 7
-                        : family === 'exact_global'
+                        : family === 'semantic'
                           ? 8
-                          : 9;
+                          : family === 'exact_global'
+                            ? 9
+                            : 10;
 
     return {
         ...overrides,
@@ -70,6 +72,8 @@ function createRankedDecision(
         familyRank,
         structuredHitCount: 0,
         promptMatchCount: 0,
+        graphExpansionScore: 0,
+        graphHopCount: 0,
         semanticSimilarity: 0,
         sourceDecisionRank: Number.MAX_SAFE_INTEGER,
         recencyKey: overrides.memory.updatedAt,
@@ -161,6 +165,7 @@ describe('memory retrieval stages', () => {
                             hasTemporalHistory: true,
                             conflictingCurrentMemoryIds: [],
                             predecessorMemoryIds: [],
+                            graphNeighborCount: 0,
                             linkedRunIds: [],
                             linkedThreadIds: [],
                             linkedWorkspaceFingerprints: [],
@@ -234,6 +239,7 @@ describe('memory retrieval stages', () => {
             activeMemories: [exactOlder, exactNewer],
             promptTerms: [],
             derivedCandidates: [],
+            graphCandidates: [],
             semanticCandidates: [],
         });
 

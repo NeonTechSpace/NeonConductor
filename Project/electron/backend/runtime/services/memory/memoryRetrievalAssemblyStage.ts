@@ -1,8 +1,10 @@
+import { memoryRetrievalUsageStore } from '@/app/backend/persistence/stores';
 import { formatRetrievedMemoryMessage } from '@/app/backend/runtime/services/memory/memoryRetrievalMessageFormatter';
 import type {
     MemoryRetrievalAssemblyInput,
     MemoryRetrievalAssemblyResult,
 } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
+import { appLog } from '@/app/main/logging';
 
 export async function assembleMemoryRetrievalResult(
     input: MemoryRetrievalAssemblyInput
@@ -13,6 +15,20 @@ export async function assembleMemoryRetrievalResult(
             messages: [],
         };
     }
+
+    await memoryRetrievalUsageStore
+        .incrementMany({
+            profileId: input.profileId,
+            memoryIds: input.decisions.map((candidate) => candidate.memory.id),
+        })
+        .catch((error: unknown) => {
+            appLog.warn({
+                tag: 'memory.retrieval.usage',
+                message: 'Memory retrieval usage tracking failed softly.',
+                profileId: input.profileId,
+                detail: error instanceof Error ? error.message : 'Unknown error.',
+            });
+        });
 
     const records = input.decisions.map((candidate, index) => {
         const derivedSummary = input.derivedSummaryByMemoryId.get(candidate.memory.id);

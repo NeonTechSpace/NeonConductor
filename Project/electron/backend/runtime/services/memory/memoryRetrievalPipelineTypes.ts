@@ -21,7 +21,7 @@ export interface MemoryRetrievalStageInput {
     runId?: EntityId<'run'>;
 }
 
-export type MemoryRetrievalTier = 'exact' | 'structured' | 'derived' | 'semantic' | 'prompt';
+export type MemoryRetrievalTier = 'exact' | 'structured' | 'derived' | 'graph' | 'semantic' | 'prompt';
 export type MemoryRetrievalDecisionFamily =
     | 'exact_run'
     | 'exact_thread'
@@ -29,6 +29,7 @@ export type MemoryRetrievalDecisionFamily =
     | 'structured'
     | 'derived_temporal'
     | 'derived_causal'
+    | 'graph_expanded'
     | 'semantic'
     | 'exact_global'
     | 'prompt';
@@ -71,6 +72,17 @@ export interface MemoryRetrievalSemanticCandidate {
     similarity: number;
 }
 
+export interface MemoryRetrievalGraphCandidate {
+    memory: MemoryRecord;
+    matchReason: Extract<RetrievedMemoryMatchReason, 'graph_expanded'>;
+    tier: 'graph';
+    sourceMemoryId: EntityId<'mem'>;
+    graphScore: number;
+    hopCount: number;
+    annotations?: string[];
+    selectionExemptionReason?: 'history' | 'conflict';
+}
+
 export interface MemoryRetrievalExpansionResult {
     baseCandidates: MemoryRetrievalCandidate[];
     derivedCandidates: MemoryRetrievalExpansionCandidate[];
@@ -82,6 +94,8 @@ export interface RankedMemoryRetrievalDecision extends RetrievedMemoryDecision {
     familyRank: number;
     structuredHitCount: number;
     promptMatchCount: number;
+    graphExpansionScore: number;
+    graphHopCount: number;
     semanticSimilarity: number;
     sourceDecisionRank: number;
     recencyKey: string;
@@ -142,4 +156,17 @@ export interface MemoryRetrievalTemporalResolutionStageInput {
 
 export interface MemoryRetrievalTemporalResolutionStageResult {
     decisions: RankedMemoryRetrievalDecision[];
+}
+
+export interface MemoryRetrievalGraphStageInput {
+    profileId: string;
+    prompt: string;
+    activeMemories: MemoryRecord[];
+    decisions: RankedMemoryRetrievalDecision[];
+    derivedSummaryByMemoryId: Map<string, MemoryDerivedSummary>;
+    temporalIntent: 'current' | 'history' | 'conflict';
+}
+
+export interface MemoryRetrievalGraphStageResult {
+    graphCandidates: MemoryRetrievalGraphCandidate[];
 }

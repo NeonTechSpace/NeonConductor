@@ -41,3 +41,12 @@ export function parseJsonRecord(value: string): Record<string, unknown> {
         return {};
     }
 }
+
+export function parseJsonArray(value: string): unknown[] {
+    try {
+        const parsed = JSON.parse(value) as unknown;
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}

@@ -29,6 +29,7 @@ export function buildRetrievedMemoryExplanation(input: {
         structured: 'Structured context',
         derived_temporal: 'Derived temporal',
         derived_causal: 'Derived causal',
+        graph_expanded: 'Graph expansion',
         semantic: 'Semantic match',
         prompt: 'Prompt match',
     };
@@ -50,6 +51,8 @@ export function buildRetrievedMemoryExplanation(input: {
                           ? 'Temporal history expanded the selected memory set.'
                           : input.matchReason === 'derived_causal'
                             ? 'A causally linked run memory expanded the selected memory set.'
+                            : input.matchReason === 'graph_expanded'
+                              ? 'Derived graph expansion found this memory from a strong contextual anchor.'
                             : input.matchReason === 'semantic'
                               ? 'Semantic retrieval found this memory through embedding similarity.'
                             : `Prompt terms matched ${String(input.promptMatchCount ?? 0)} searchable terms.`,
@@ -60,7 +63,7 @@ export function buildRetrievedMemoryExplanation(input: {
                   ? 'Exact scope outranks broader matches.'
                   : input.matchReason === 'exact_global'
                     ? 'Global exact matches stay below contextual, derived, and semantic results.'
-                    : input.familyRank < 9
+                    : input.familyRank < 10
                     ? 'Structured, derived, and semantic matches outrank prompt-only matches.'
                     : 'Prompt match ranking was used as the fallback tier.',
     };

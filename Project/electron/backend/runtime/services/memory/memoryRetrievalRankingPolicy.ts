@@ -5,13 +5,12 @@ import {
     normalizeSearchText,
     scopePriority,
 } from '@/app/backend/runtime/services/memory/memoryRetrievalHelpers';
-import {
-    buildRetrievedMemoryExplanation,
-} from '@/app/backend/runtime/services/memory/retrievedMemoryExplanationBuilder';
+import { buildRetrievedMemoryExplanation } from '@/app/backend/runtime/services/memory/retrievedMemoryExplanationBuilder';
 import type {
     MemoryRetrievalCandidate,
     MemoryRetrievalDecisionFamily,
     MemoryRetrievalExpansionCandidate,
+    MemoryRetrievalGraphCandidate,
     MemoryRetrievalSemanticCandidate,
     RankedMemoryRetrievalDecision,
 } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
@@ -21,6 +20,7 @@ export interface MemoryRetrievalRankingInput {
     activeMemories: MemoryRecord[];
     promptTerms: string[];
     derivedCandidates: MemoryRetrievalExpansionCandidate[];
+    graphCandidates: MemoryRetrievalGraphCandidate[];
     semanticCandidates: MemoryRetrievalSemanticCandidate[];
 }
 
@@ -38,12 +38,14 @@ function getFamilyRank(matchReason: RetrievedMemoryMatchReason): number {
             return 5;
         case 'derived_causal':
             return 6;
-        case 'semantic':
+        case 'graph_expanded':
             return 7;
-        case 'exact_global':
+        case 'semantic':
             return 8;
-        case 'prompt':
+        case 'exact_global':
             return 9;
+        case 'prompt':
+            return 10;
     }
 }
 
@@ -82,6 +84,17 @@ function compareDecisions(left: RankedMemoryRetrievalDecision, right: RankedMemo
                 return left.sourceDecisionRank - right.sourceDecisionRank;
             }
             break;
+        case 'graph_expanded':
+            if (left.sourceDecisionRank !== right.sourceDecisionRank) {
+                return left.sourceDecisionRank - right.sourceDecisionRank;
+            }
+            if (left.graphExpansionScore !== right.graphExpansionScore) {
+                return right.graphExpansionScore - left.graphExpansionScore;
+            }
+            if (left.graphHopCount !== right.graphHopCount) {
+                return left.graphHopCount - right.graphHopCount;
+            }
+            break;
         case 'semantic':
             if (left.semanticSimilarity !== right.semanticSimilarity) {
                 return right.semanticSimilarity - left.semanticSimilarity;
@@ -110,16 +123,26 @@ function computeDecisionScore(input: {
     familyRank: number;
     structuredHitCount: number;
     promptMatchCount: number;
+    graphExpansionScore: number;
     semanticSimilarity: number;
     sourceDecisionRank: number;
     recencyValue: number;
 }): number {
-    const familyComponent = (10 - input.familyRank) * 1_000_000_000;
+    const familyComponent = (11 - input.familyRank) * 1_000_000_000;
     const structuredComponent = input.structuredHitCount * 1_000_000;
     const promptComponent = input.promptMatchCount * 100_000;
+    const graphComponent = Math.round(input.graphExpansionScore * 10_000) * 1_000;
     const semanticComponent = Math.round(input.semanticSimilarity * 10_000) * 100;
     const sourceComponent = Math.max(0, 10_000 - input.sourceDecisionRank) * 10;
-    return familyComponent + structuredComponent + promptComponent + semanticComponent + sourceComponent + input.recencyValue;
+    return (
+        familyComponent +
+        structuredComponent +
+        promptComponent +
+        graphComponent +
+        semanticComponent +
+        sourceComponent +
+        input.recencyValue
+    );
 }
 
 export function buildRankedRetrievedMemoryDecision(
@@ -131,6 +154,8 @@ export function buildRankedRetrievedMemoryDecision(
         annotations?: string[];
         structuredHitCount?: number;
         promptMatchCount?: number;
+        graphExpansionScore?: number;
+        graphHopCount?: number;
         semanticSimilarity?: number;
         sourceDecisionRank?: number;
         selectionExemptionReason?: RankedMemoryRetrievalDecision['selectionExemptionReason'];
@@ -140,6 +165,8 @@ export function buildRankedRetrievedMemoryDecision(
     const familyRank = getFamilyRank(matchReason);
     const structuredHitCount = input?.structuredHitCount ?? 0;
     const promptMatchCount = input?.promptMatchCount ?? 0;
+    const graphExpansionScore = input?.graphExpansionScore ?? 0;
+    const graphHopCount = input?.graphHopCount ?? 0;
     const semanticSimilarity = input?.semanticSimilarity ?? 0;
     const sourceDecisionRank = input?.sourceDecisionRank ?? Number.MAX_SAFE_INTEGER;
     const recencyKey = memory.updatedAt;
@@ -147,10 +174,12 @@ export function buildRankedRetrievedMemoryDecision(
         familyRank,
         structuredHitCount,
         promptMatchCount,
+        graphExpansionScore,
         semanticSimilarity,
         sourceDecisionRank,
         recencyValue: getRecencyValue(memory.updatedAt),
     });
+
     return {
         memory,
         matchReason,
@@ -159,6 +188,8 @@ export function buildRankedRetrievedMemoryDecision(
         familyRank,
         structuredHitCount,
         promptMatchCount,
+        graphExpansionScore,
+        graphHopCount,
         semanticSimilarity,
         sourceDecisionRank,
         recencyKey,
@@ -178,20 +209,13 @@ export function buildRankedRetrievedMemoryDecision(
 
 export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput): RankedMemoryRetrievalDecision[] {
     const candidateMemoryIds = new Set(input.baseCandidates.map((candidate) => candidate.memory.id));
-    const combinedCandidates: RankedMemoryRetrievalDecision[] = [
-        ...input.baseCandidates.map((candidate) =>
-            buildRankedRetrievedMemoryDecision(
-                candidate.memory,
-                candidate.matchReason,
-                candidate.tier,
-                {
-                    ...(candidate.sourceMemoryId ? { sourceMemoryId: candidate.sourceMemoryId } : {}),
-                    ...(candidate.annotations ? { annotations: candidate.annotations } : {}),
-                    ...(candidate.structuredHitCount ? { structuredHitCount: candidate.structuredHitCount } : {}),
-                }
-            )
-        ),
-    ];
+    const combinedCandidates: RankedMemoryRetrievalDecision[] = input.baseCandidates.map((candidate) =>
+        buildRankedRetrievedMemoryDecision(candidate.memory, candidate.matchReason, candidate.tier, {
+            ...(candidate.sourceMemoryId ? { sourceMemoryId: candidate.sourceMemoryId } : {}),
+            ...(candidate.annotations ? { annotations: candidate.annotations } : {}),
+            ...(candidate.structuredHitCount ? { structuredHitCount: candidate.structuredHitCount } : {}),
+        })
+    );
     const baseDecisionRankByMemoryId = new Map(
         [...combinedCandidates]
             .sort(compareDecisions)
@@ -221,6 +245,38 @@ export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput
         candidateMemoryIds.add(derivedCandidate.memory.id);
     }
 
+    const rankedAnchorDecisionRankByMemoryId = new Map(
+        [...combinedCandidates]
+            .sort(compareDecisions)
+            .map((decision, index) => [decision.memory.id, index + 1] as const)
+    );
+
+    for (const graphCandidate of input.graphCandidates) {
+        if (candidateMemoryIds.has(graphCandidate.memory.id)) {
+            continue;
+        }
+
+        combinedCandidates.push(
+            buildRankedRetrievedMemoryDecision(
+                graphCandidate.memory,
+                graphCandidate.matchReason,
+                graphCandidate.tier,
+                {
+                    sourceMemoryId: graphCandidate.sourceMemoryId,
+                    graphExpansionScore: graphCandidate.graphScore,
+                    graphHopCount: graphCandidate.hopCount,
+                    sourceDecisionRank:
+                        rankedAnchorDecisionRankByMemoryId.get(graphCandidate.sourceMemoryId) ?? Number.MAX_SAFE_INTEGER,
+                    ...(graphCandidate.annotations ? { annotations: graphCandidate.annotations } : {}),
+                    ...(graphCandidate.selectionExemptionReason
+                        ? { selectionExemptionReason: graphCandidate.selectionExemptionReason }
+                        : {}),
+                }
+            )
+        );
+        candidateMemoryIds.add(graphCandidate.memory.id);
+    }
+
     for (const memory of input.activeMemories) {
         if (candidateMemoryIds.has(memory.id)) {
             continue;
@@ -248,14 +304,9 @@ export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput
         }
 
         combinedCandidates.push(
-            buildRankedRetrievedMemoryDecision(
-                memory,
-                'prompt',
-                'prompt',
-                {
-                    promptMatchCount,
-                }
-            )
+            buildRankedRetrievedMemoryDecision(memory, 'prompt', 'prompt', {
+                promptMatchCount,
+            })
         );
     }
 

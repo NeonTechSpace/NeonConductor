@@ -36,12 +36,14 @@ function familyRank(matchReason: RankedMemoryRetrievalDecision['matchReason']): 
             return 5;
         case 'derived_causal':
             return 6;
-        case 'semantic':
+        case 'graph_expanded':
             return 7;
-        case 'exact_global':
+        case 'semantic':
             return 8;
-        case 'prompt':
+        case 'exact_global':
             return 9;
+        case 'prompt':
+            return 10;
     }
 }
 
@@ -57,6 +59,8 @@ function createDecision(
         familyRank: familyRank(overrides.matchReason),
         structuredHitCount: overrides.structuredHitCount ?? 0,
         promptMatchCount: overrides.promptMatchCount ?? 0,
+        graphExpansionScore: overrides.graphExpansionScore ?? 0,
+        graphHopCount: overrides.graphHopCount ?? 0,
         semanticSimilarity: overrides.semanticSimilarity ?? 0,
         sourceDecisionRank: overrides.sourceDecisionRank ?? Number.MAX_SAFE_INTEGER,
         recencyKey: overrides.memory.updatedAt,
@@ -241,6 +245,7 @@ describe('selectRetrievedMemoryCandidates', () => {
                         hasTemporalHistory: true,
                         conflictingCurrentMemoryIds: [],
                         predecessorMemoryIds: [],
+                        graphNeighborCount: 0,
                         successorMemoryId: 'mem_successor',
                         linkedRunIds: [],
                         linkedThreadIds: [],

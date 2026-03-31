@@ -51,7 +51,9 @@ function DerivedSummaryBadges({
             {derivedSummary.linkedRunIds.length > 0 ? <ScopeBadge label='linked run' /> : null}
             {derivedSummary.linkedThreadIds.length > 0 ? <ScopeBadge label='linked thread' /> : null}
             {derivedSummary.linkedWorkspaceFingerprints.length > 0 ? <ScopeBadge label='linked workspace' /> : null}
+            {derivedSummary.graphNeighborCount > 0 ? <ScopeBadge label={`${String(derivedSummary.graphNeighborCount)} neighbors`} /> : null}
             {derivedSummary.temporalStatus ? <ScopeBadge label={derivedSummary.temporalStatus} /> : null}
+            {derivedSummary.strength ? <ScopeBadge label={`confidence ${derivedSummary.strength.confidenceScore.toFixed(2)}`} /> : null}
         </>
     );
 }
@@ -81,6 +83,7 @@ function RetrievedMemoryCard({ record }: { record: RetrievedMemoryRecord }) {
         : false;
     const showsDifferentCurrentTruth =
         record.derivedSummary?.currentTruthMemoryId && record.derivedSummary.currentTruthMemoryId !== record.memoryId;
+    const isGraphExpanded = record.matchReason === 'graph_expanded';
 
     return (
         <div className='border-border bg-background/70 rounded-xl border px-3 py-3'>
@@ -103,6 +106,19 @@ function RetrievedMemoryCard({ record }: { record: RetrievedMemoryRecord }) {
             {showsDifferentCurrentTruth ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>
                     Current truth resolves to {record.derivedSummary?.currentTruthMemoryId}.
+                </p>
+            ) : null}
+            {isGraphExpanded ? (
+                <p className='text-muted-foreground mt-1 text-[11px]'>
+                    Added through derived graph expansion from a stronger contextual anchor.
+                </p>
+            ) : null}
+            {record.derivedSummary?.strength ? (
+                <p className='text-muted-foreground mt-1 text-[11px]'>
+                    Strength: recency {record.derivedSummary.strength.recencyScore.toFixed(2)}, evidence{' '}
+                    {String(record.derivedSummary.strength.evidenceCount)}, reuse{' '}
+                    {String(record.derivedSummary.strength.reuseCount)}, importance{' '}
+                    {record.derivedSummary.strength.importanceScore.toFixed(2)}.
                 </p>
             ) : null}
             {record.supportingEvidence.length > 0 ? (
@@ -145,6 +161,15 @@ function ProjectedMemoryCard({
             runId,
         } as const;
     })();
+    const consolidationMetadata =
+        projectedMemory.memory.metadata['source'] === 'memory_consolidation'
+            ? {
+                  sourceConsolidationId:
+                      typeof projectedMemory.memory.metadata['sourceConsolidationId'] === 'string'
+                          ? projectedMemory.memory.metadata['sourceConsolidationId']
+                          : null,
+              }
+            : null;
 
     return (
         <div className='border-border bg-background/70 rounded-xl border px-3 py-3'>
@@ -162,12 +187,21 @@ function ProjectedMemoryCard({
                 {runtimeMetadata ? (
                     <ScopeBadge label={runtimeMetadata.runStatus === 'completed' ? 'completed run' : 'failed run'} />
                 ) : null}
+                {consolidationMetadata ? <ScopeBadge label='consolidated' /> : null}
             </div>
             <p className='text-muted-foreground mt-1 text-xs'>{projectedMemory.memory.summaryText ?? projectedMemory.memory.id}</p>
             {runtimeMetadata ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>
                     Automatic memory from {runtimeMetadata.runStatus === 'completed' ? 'completed' : 'failed'} run{' '}
                     {runtimeMetadata.runId}
+                </p>
+            ) : null}
+            {consolidationMetadata ? (
+                <p className='text-muted-foreground mt-1 text-[11px]'>
+                    Consolidated system memory
+                    {consolidationMetadata.sourceConsolidationId
+                        ? ` from consolidation ${consolidationMetadata.sourceConsolidationId}`
+                        : ''}.
                 </p>
             ) : null}
             <p className='text-muted-foreground mt-2 text-[11px] break-all'>{projectedMemory.absolutePath}</p>
@@ -182,6 +216,15 @@ function ProjectedMemoryCard({
             {hasConflictingCurrentTruth ? (
                 <p className='text-muted-foreground mt-2 text-[11px]'>
                     Conflicting current truth detected for this temporal subject.
+                </p>
+            ) : null}
+            {projectedMemory.derivedSummary?.strength ? (
+                <p className='text-muted-foreground mt-2 text-[11px]'>
+                    Strength: recency {projectedMemory.derivedSummary.strength.recencyScore.toFixed(2)}, evidence{' '}
+                    {String(projectedMemory.derivedSummary.strength.evidenceCount)}, reuse{' '}
+                    {String(projectedMemory.derivedSummary.strength.reuseCount)}, importance{' '}
+                    {projectedMemory.derivedSummary.strength.importanceScore.toFixed(2)}, confidence{' '}
+                    {projectedMemory.derivedSummary.strength.confidenceScore.toFixed(2)}.
                 </p>
             ) : null}
         </div>

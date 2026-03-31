@@ -736,6 +736,24 @@ CREATE TABLE memory_revision_records (
     UNIQUE (replacement_memory_id)
 );
 
+CREATE TABLE memory_consolidation_records (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    subject_key TEXT NOT NULL,
+    target_memory_type TEXT NOT NULL CHECK (target_memory_type IN ('semantic', 'procedural')),
+    scope_kind TEXT NOT NULL CHECK (scope_kind IN ('global', 'workspace', 'thread', 'run')),
+    source_consolidation TEXT NOT NULL CHECK (source_consolidation IN ('episodic_pattern', 'manual_seed')),
+    state TEXT NOT NULL CHECK (state IN ('candidate', 'materialized', 'superseded', 'rejected')),
+    candidate_title TEXT NOT NULL,
+    candidate_summary_text TEXT NULL,
+    candidate_body_markdown TEXT NOT NULL,
+    evidence_memory_ids_json TEXT NOT NULL,
+    materialized_memory_id TEXT NULL REFERENCES memory_records(id) ON DELETE SET NULL,
+    source_digest TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE memory_evidence_records (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -813,6 +831,36 @@ CREATE TABLE memory_causal_links (
     source_run_id TEXT NULL REFERENCES runs(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+);
+
+CREATE TABLE memory_graph_edges (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    source_memory_id TEXT NOT NULL REFERENCES memory_records(id) ON DELETE CASCADE,
+    target_memory_id TEXT NOT NULL REFERENCES memory_records(id) ON DELETE CASCADE,
+    edge_kind TEXT NOT NULL CHECK (
+        edge_kind IN (
+            'same_subject',
+            'same_run',
+            'same_thread',
+            'same_workspace',
+            'revision_predecessor',
+            'revision_successor',
+            'evidence_overlap'
+        )
+    ),
+    weight REAL NOT NULL CHECK (weight > 0 AND weight <= 1),
+    derivation_version INTEGER NOT NULL CHECK (derivation_version > 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE memory_retrieval_usage_records (
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    memory_id TEXT NOT NULL REFERENCES memory_records(id) ON DELETE CASCADE,
+    reuse_count INTEGER NOT NULL CHECK (reuse_count >= 0),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (profile_id, memory_id)
 );
 
 -- Planning and orchestration.
@@ -1237,6 +1285,12 @@ CREATE INDEX idx_memory_revision_records_profile_previous
 CREATE INDEX idx_memory_revision_records_profile_replacement
     ON memory_revision_records(profile_id, replacement_memory_id);
 
+CREATE INDEX idx_memory_consolidation_records_profile_subject_state
+    ON memory_consolidation_records(profile_id, subject_key, state);
+
+CREATE INDEX idx_memory_consolidation_records_profile_materialized_memory
+    ON memory_consolidation_records(profile_id, materialized_memory_id);
+
 CREATE INDEX idx_memory_embedding_records_profile_model
     ON memory_embedding_records(profile_id, provider_id, model_id);
 
@@ -1268,6 +1322,15 @@ CREATE INDEX idx_memory_causal_links_profile_target_relation
 
 CREATE INDEX idx_memory_causal_links_profile_source_run
     ON memory_causal_links(profile_id, source_run_id, relation_type);
+
+CREATE UNIQUE INDEX idx_memory_graph_edges_profile_unique_edge
+    ON memory_graph_edges(profile_id, source_memory_id, target_memory_id, edge_kind);
+
+CREATE INDEX idx_memory_graph_edges_profile_source
+    ON memory_graph_edges(profile_id, source_memory_id);
+
+CREATE INDEX idx_memory_graph_edges_profile_target
+    ON memory_graph_edges(profile_id, target_memory_id);
 
 CREATE INDEX idx_plan_records_profile_session
     ON plan_records(profile_id, session_id, created_at DESC);

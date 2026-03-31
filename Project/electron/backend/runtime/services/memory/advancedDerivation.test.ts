@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { memoryDerivedStore, runStore } from '@/app/backend/persistence/stores';
+import { memoryDerivedStore, memoryRetrievalUsageStore, runStore } from '@/app/backend/persistence/stores';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import {
@@ -278,5 +278,126 @@ describe('advancedMemoryDerivationService', () => {
         expect(correctedSummary?.temporalStatus).toBe('conflicted');
         expect(correctedSummary?.conflictingCurrentMemoryIds.length).toBe(2);
         expect(correctedSummary?.currentTruthMemoryId).toBeUndefined();
+    });
+
+    it('builds graph edges and strength summaries for related memories', async () => {
+        const caller = createCaller();
+        const current = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_advanced_graph',
+            title: 'Advanced graph thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const other = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_advanced_graph_other',
+            title: 'Advanced graph other thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const currentThreadId = requireEntityId(current.thread.id, 'thr', 'Expected current graph thread id.');
+        const otherThreadId = requireEntityId(other.thread.id, 'thr', 'Expected other graph thread id.');
+        const currentRun = await runStore.create({
+            profileId,
+            sessionId: current.session.id,
+            prompt: 'Current graph run.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const otherRun = await runStore.create({
+            profileId,
+            sessionId: other.session.id,
+            prompt: 'Other graph run.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+
+        const original = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId: currentThreadId,
+            temporalSubjectKey: 'subject::graph-strategy',
+            title: 'Graph strategy',
+            bodyMarkdown: 'Use strategy A.',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Source evidence',
+                    sourceRunId: currentRun.id,
+                },
+            ],
+        });
+        const replacement = await caller.memory.supersede({
+            profileId,
+            memoryId: original.memory.id,
+            createdByKind: 'user',
+            title: 'Graph strategy',
+            bodyMarkdown: 'Use strategy B.',
+            revisionReason: 'correction',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Replacement evidence',
+                    sourceRunId: currentRun.id,
+                },
+            ],
+        });
+        const related = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'thread',
+            createdByKind: 'system',
+            threadId: otherThreadId,
+            temporalSubjectKey: 'subject::graph-strategy',
+            title: 'Secondary graph strategy',
+            bodyMarkdown: 'Use strategy C.',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Related evidence',
+                    sourceRunId: otherRun.id,
+                },
+            ],
+        });
+        await memoryRetrievalUsageStore.incrementMany({
+            profileId,
+            memoryIds: [replacement.replacement.id, replacement.replacement.id],
+        });
+
+        const graphEdges = await memoryDerivedStore.listGraphEdgesBySourceMemoryIds(profileId, [
+            replacement.replacement.id,
+        ]);
+        expect(graphEdges.some((edge) => edge.edgeKind === 'same_subject' && edge.targetMemoryId === related.memory.id)).toBe(
+            true
+        );
+        expect(graphEdges.some((edge) => edge.edgeKind === 'revision_predecessor' && edge.targetMemoryId === original.memory.id)).toBe(
+            true
+        );
+
+        const summariesResult = await advancedMemoryDerivationService.getDerivedSummaries(profileId, [
+            replacement.replacement.id,
+            related.memory.id,
+        ]);
+        expect(summariesResult.isOk()).toBe(true);
+        if (summariesResult.isErr()) {
+            throw new Error(summariesResult.error.message);
+        }
+
+        const replacementSummary = summariesResult.value.get(replacement.replacement.id);
+        expect(replacementSummary?.graphNeighborCount).toBeGreaterThan(0);
+        expect(replacementSummary?.strength?.evidenceCount).toBeGreaterThan(0);
+        expect(replacementSummary?.strength?.reuseCount).toBeGreaterThan(0);
+        expect(replacementSummary?.strength?.confidenceScore).toBeGreaterThan(0);
     });
 });

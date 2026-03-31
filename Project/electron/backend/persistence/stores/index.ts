@@ -16,8 +16,10 @@ export { toolResultArtifactStore } from '@/app/backend/persistence/stores/conver
 export { mcpStore } from '@/app/backend/persistence/stores/runtime/mcpStore';
 export { memoryDerivedStore } from '@/app/backend/persistence/stores/runtime/memoryDerivedStore';
 export { memoryEmbeddingStore } from '@/app/backend/persistence/stores/runtime/memoryEmbeddingStore';
+export { memoryConsolidationStore } from '@/app/backend/persistence/stores/runtime/memoryConsolidationStore';
 export { memoryEvidenceStore } from '@/app/backend/persistence/stores/runtime/memoryEvidenceStore';
 export { memoryRevisionStore } from '@/app/backend/persistence/stores/runtime/memoryRevisionStore';
+export { memoryRetrievalUsageStore } from '@/app/backend/persistence/stores/runtime/memoryRetrievalUsageStore';
 export { memoryStore } from '@/app/backend/persistence/stores/runtime/memoryStore';
 export { modelLimitOverrideStore } from '@/app/backend/persistence/stores/runtime/modelLimitOverrideStore';
 export { modeStore } from '@/app/backend/persistence/stores/registry/modeStore';

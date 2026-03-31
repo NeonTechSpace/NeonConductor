@@ -65,6 +65,7 @@ describe('rankRetrievedMemoryCandidates', () => {
                     annotations: ['Current fact has temporal history.'],
                 },
             ],
+            graphCandidates: [],
             semanticCandidates: [],
         });
 
@@ -108,6 +109,7 @@ describe('rankRetrievedMemoryCandidates', () => {
             activeMemories: [exact, semantic, promptMatch],
             promptTerms: ['zebra'],
             derivedCandidates: [],
+            graphCandidates: [],
             semanticCandidates: [
                 {
                     memory: semantic,
@@ -163,6 +165,7 @@ describe('rankRetrievedMemoryCandidates', () => {
             activeMemories: [structured, semantic, global, prompt],
             promptTerms: ['zebra'],
             derivedCandidates: [],
+            graphCandidates: [],
             semanticCandidates: [
                 {
                     memory: semantic,

@@ -12,6 +12,7 @@ import { buildRunContext } from '@/app/backend/runtime/services/runExecution/con
 import {
     createCaller,
     createSessionInScope,
+    defaultRuntimeOptions,
     registerRuntimeContractHooks,
     requireEntityId,
     runtimeContractProfileId,
@@ -601,5 +602,95 @@ describe('memoryRetrievalService', () => {
                 (record) => record.derivedSummary?.temporalStatus === 'conflicted'
             ).length
         ).toBeGreaterThanOrEqual(2);
+    });
+
+    it('surfaces graph-expanded neighbors from strong anchors before broad fallback', async () => {
+        const caller = createCaller();
+        const current = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_retrieval_graph',
+            title: 'Graph retrieval thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const currentThreadId = requireEntityId(current.thread.id, 'thr', 'Expected graph retrieval thread id.');
+        const unrelated = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_retrieval_graph_other',
+            title: 'Graph retrieval unrelated thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const unrelatedThreadId = requireEntityId(unrelated.thread.id, 'thr', 'Expected unrelated graph thread id.');
+        const supportingRun = await runStore.create({
+            profileId,
+            sessionId: current.session.id,
+            prompt: 'Graph retrieval shared evidence run.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+
+        await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'thread',
+            createdByKind: 'user',
+            threadId: currentThreadId,
+            title: 'Primary graph anchor',
+            bodyMarkdown: 'Graph anchor memory for deployment.',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Shared evidence run',
+                    sourceRunId: supportingRun.id,
+                },
+            ],
+        });
+        const graphNeighbor = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'thread',
+            createdByKind: 'system',
+            threadId: unrelatedThreadId,
+            title: 'Release follow-up note',
+            bodyMarkdown: 'Use the secondary rollout checklist before publishing.',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Shared evidence run',
+                    sourceRunId: supportingRun.id,
+                },
+            ],
+        });
+        await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'global',
+            createdByKind: 'user',
+            title: 'Deployment prompt fallback',
+            bodyMarkdown: 'Use the deployment fallback when the task says deployment.',
+        });
+
+        const retrieved = await memoryRetrievalService.retrieveRelevantMemory({
+            profileId,
+            sessionId: current.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: 'wsf_memory_retrieval_graph',
+            prompt: 'Use the primary graph anchor for this deployment task.',
+        });
+
+        const graphExpandedRecord = retrieved.summary?.records.find((record) => record.memoryId === graphNeighbor.memory.id);
+        const graphExpandedIndex =
+            retrieved.summary?.records.findIndex((record) => record.matchReason === 'graph_expanded') ?? -1;
+        const promptIndex = retrieved.summary?.records.findIndex((record) => record.matchReason === 'prompt') ?? -1;
+        expect(graphExpandedRecord?.matchReason).toBe('graph_expanded');
+        expect(retrieved.summary?.records.some((record) => record.matchReason === 'graph_expanded')).toBe(true);
+        expect(graphExpandedIndex).toBeGreaterThanOrEqual(0);
+        expect(promptIndex === -1 || graphExpandedIndex < promptIndex).toBe(true);
     });
 });
