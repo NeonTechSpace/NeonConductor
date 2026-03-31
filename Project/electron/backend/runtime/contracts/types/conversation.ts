@@ -77,5 +77,4 @@ export type ConversationGetThreadTitlePreferenceInput = ProfileInput;
 
 export interface ConversationSetThreadTitlePreferenceInput extends ProfileInput {
     mode: ThreadTitleGenerationMode;
-    aiModel?: string;
 }

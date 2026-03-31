@@ -435,6 +435,20 @@ CREATE TABLE session_context_compactions (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE session_context_compaction_preparations (
+    session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    cutoff_message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    source_digest TEXT NOT NULL,
+    summary_text TEXT NOT NULL,
+    summarizer_provider_id TEXT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    summarizer_model_id TEXT NOT NULL,
+    threshold_tokens INTEGER NOT NULL,
+    estimated_input_tokens INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE diffs (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -1029,6 +1043,9 @@ CREATE INDEX idx_message_media_part_id
 
 CREATE INDEX idx_session_context_compactions_profile_session
     ON session_context_compactions(profile_id, session_id);
+
+CREATE INDEX idx_session_context_compaction_preparations_profile_session
+    ON session_context_compaction_preparations(profile_id, session_id);
 
 CREATE INDEX idx_diffs_profile_session_created_at
     ON diffs(profile_id, session_id, created_at DESC);

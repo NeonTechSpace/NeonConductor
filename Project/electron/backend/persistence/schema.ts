@@ -253,6 +253,20 @@ export interface SessionContextCompactionsTable {
     updated_at: string;
 }
 
+export interface SessionContextCompactionPreparationsTable {
+    session_id: string;
+    profile_id: string;
+    cutoff_message_id: string;
+    source_digest: string;
+    summary_text: string;
+    summarizer_provider_id: string;
+    summarizer_model_id: string;
+    threshold_tokens: number;
+    estimated_input_tokens: number;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface ModelLimitOverridesTable {
     provider_id: string;
     model_id: string;
@@ -801,6 +815,7 @@ export interface DatabaseSchema {
     app_composer_media_settings: AppComposerMediaSettingsTable;
     profile_context_settings: ProfileContextSettingsTable;
     session_context_compactions: SessionContextCompactionsTable;
+    session_context_compaction_preparations: SessionContextCompactionPreparationsTable;
     model_limit_overrides: ModelLimitOverridesTable;
     runtime_events: RuntimeEventsTable;
     tools_catalog: ToolsCatalogTable;

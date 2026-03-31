@@ -73,7 +73,6 @@ describe('profile settings actions', () => {
         };
         const actions = createProfilePreferencesActions({
             selectedProfile,
-            threadTitleAiModelInput: '',
             setEditPreferenceMutation,
             setThreadTitlePreferenceMutation: {
                 mutateAsync: vi.fn(),
@@ -90,14 +89,13 @@ describe('profile settings actions', () => {
         expect(setStatusMessage).toHaveBeenCalledWith('Updated conversation edit behavior.');
     });
 
-    it('blocks AI optional title mode until a title AI model is configured', async () => {
+    it('updates the thread title mode without a separate AI model field', async () => {
         const setStatusMessage = vi.fn();
         const setThreadTitlePreferenceMutation = {
-            mutateAsync: vi.fn(),
+            mutateAsync: vi.fn().mockResolvedValue(undefined),
         };
         const actions = createProfilePreferencesActions({
             selectedProfile,
-            threadTitleAiModelInput: '   ',
             setEditPreferenceMutation: {
                 mutateAsync: vi.fn(),
             },
@@ -107,34 +105,10 @@ describe('profile settings actions', () => {
 
         await actions.updateThreadTitleMode('ai_optional');
 
-        expect(setThreadTitlePreferenceMutation.mutateAsync).not.toHaveBeenCalled();
-        expect(setStatusMessage).toHaveBeenCalledWith(
-            'Set a title AI model (for example "openai/gpt-5-mini") before enabling AI optional mode.'
-        );
-    });
-
-    it('saves the title AI model through the preferences action surface', async () => {
-        const setStatusMessage = vi.fn();
-        const setThreadTitlePreferenceMutation = {
-            mutateAsync: vi.fn().mockResolvedValue(undefined),
-        };
-        const actions = createProfilePreferencesActions({
-            selectedProfile,
-            threadTitleAiModelInput: 'openai/gpt-5-mini',
-            setEditPreferenceMutation: {
-                mutateAsync: vi.fn(),
-            },
-            setThreadTitlePreferenceMutation,
-            setStatusMessage,
-        });
-
-        await actions.saveThreadTitleAiModel();
-
         expect(setThreadTitlePreferenceMutation.mutateAsync).toHaveBeenCalledWith({
             profileId: 'profile_default',
             mode: 'ai_optional',
-            aiModel: 'openai/gpt-5-mini',
         });
-        expect(setStatusMessage).toHaveBeenCalledWith('Updated title AI model.');
+        expect(setStatusMessage).toHaveBeenCalledWith('Updated thread title generation settings.');
     });
 });

@@ -25,6 +25,7 @@ describe('recordTransportSelectionIfChanged', () => {
 
     it('does nothing when the selection does not change', async () => {
         const currentSelection = {
+            requested: 'openai_chat_completions' as const,
             selected: 'openai_chat_completions' as const,
             degraded: false,
         };
@@ -54,10 +55,12 @@ describe('recordTransportSelectionIfChanged', () => {
             sessionId: 'sess_alpha',
             runId: 'run_alpha',
             currentSelection: {
+                requested: 'openai_chat_completions',
                 selected: 'openai_chat_completions',
                 degraded: false,
             },
             nextSelection: {
+                requested: 'openai_responses',
                 selected: 'openai_responses',
                 degraded: true,
                 degradedReason: 'fallback',
@@ -65,6 +68,7 @@ describe('recordTransportSelectionIfChanged', () => {
         });
 
         expect(result).toEqual({
+            requested: 'openai_responses',
             selected: 'openai_responses',
             degraded: true,
             degradedReason: 'fallback',

@@ -1,3 +1,4 @@
+import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { ProfileCreateSection } from '@/web/components/settings/profileSettings/profileCreateSection';
 import { useProfileSettingsController } from '@/web/components/settings/profileSettings/useProfileSettingsController';
 import {
@@ -5,7 +6,6 @@ import {
     type ProfileSettingsSubsectionId,
 } from '@/web/components/settings/settingsNavigation';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
-import { SettingsPlannedSection } from '@/web/components/settings/shared/settingsPlannedSection';
 import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import { Button } from '@/web/components/ui/button';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
@@ -268,7 +268,7 @@ function ProfileConversationNamingScreen({
             <ProfileSectionHeader
                 eyebrow='Profiles'
                 title='Conversation Naming'
-                description='Control how new conversation names are generated. The future utility-model surface will replace the raw model override below.'
+                description='Control how new conversation names are generated. AI refinement now uses the shared Utility AI model and falls back to the active conversation model when Utility AI is unset or unavailable.'
                 selectedProfileId={controller.selection.selectedProfileId}
                 profiles={controller.selection.profiles}
                 onSelectProfile={(profileId) => {
@@ -282,8 +282,8 @@ function ProfileConversationNamingScreen({
                 <div className='space-y-1'>
                     <p className='text-sm font-semibold'>Conversation naming mode</p>
                     <p className='text-muted-foreground text-xs leading-5'>
-                        Template naming is the baseline path. AI refinement remains an interim per-profile override
-                        until Utility AI lands in its own subsection.
+                        Template naming is the baseline path. Optional AI refinement uses the shared Utility AI
+                        selection from the adjacent profile subsection.
                     </p>
                 </div>
                 <select
@@ -302,35 +302,125 @@ function ProfileConversationNamingScreen({
                     <option value='template'>Template only</option>
                     <option value='ai_optional'>Template + optional AI refine</option>
                 </select>
+            </section>
+        </div>
+    );
+}
 
-                <label className='space-y-1'>
-                    <span className='text-muted-foreground text-xs'>Interim AI model override</span>
-                    <input
-                        id='thread-title-model-input'
-                        name='threadTitleAiModel'
-                        type='text'
-                        value={controller.preferences.threadTitleAiModelInput}
-                        onChange={(event) => {
-                            controller.preferences.setThreadTitleAiModelInput(event.target.value);
-                        }}
-                        className='border-border bg-background h-10 w-full max-w-sm rounded-xl border px-3 text-sm'
-                        autoComplete='off'
-                        placeholder='Title AI model id (for example openai/gpt-5-mini)…'
-                    />
-                </label>
-                <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
-                    disabled={
-                        controller.preferences.setThreadTitlePreferenceMutation.isPending ||
-                        controller.preferences.threadTitleAiModelInput.trim().length === 0
-                    }
-                    onClick={() => {
-                        void controller.preferences.saveThreadTitleAiModel();
-                    }}>
-                    Save AI Model
-                </Button>
+function ProfileUtilityAiScreen({
+    controller,
+}: {
+    controller: ReturnType<typeof useProfileSettingsController>;
+}) {
+    return (
+        <div className='space-y-5'>
+            <ProfileSectionHeader
+                eyebrow='Profiles'
+                title='Utility AI'
+                description='Choose the shared small utility model used for conversation naming, context compaction, and future lightweight utility tasks.'
+                selectedProfileId={controller.selection.selectedProfileId}
+                profiles={controller.selection.profiles}
+                onSelectProfile={(profileId) => {
+                    controller.selection.setSelectedProfileId(profileId);
+                }}
+            />
+
+            <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
+
+            <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
+                <div className='space-y-1'>
+                    <p className='text-sm font-semibold'>Shared utility model</p>
+                    <p className='text-muted-foreground text-xs leading-5'>
+                        Neon uses this model for context compaction, conversation naming, and similar low-stakes
+                        background work. If it is unset or unavailable, Neon falls back to the active conversation
+                        model.
+                    </p>
+                </div>
+
+                <div className='grid gap-4 md:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]'>
+                    <label className='space-y-2'>
+                        <span className='text-sm font-medium'>Provider</span>
+                        <select
+                            aria-label='Utility AI provider'
+                            className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                            value={controller.preferences.selectedUtilityProviderId ?? ''}
+                            disabled={controller.preferences.setUtilityModelMutation.isPending}
+                            onChange={(event) => {
+                                const nextProviderId = controller.preferences.utilityProviderItems.find(
+                                    (provider) => provider.id === event.target.value
+                                )?.id;
+                                controller.preferences.setUtilityProviderId(nextProviderId);
+                            }}>
+                            {controller.preferences.utilityProviderItems.map((provider) => (
+                                <option key={provider.id} value={provider.id}>
+                                    {provider.label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className='space-y-2'>
+                        <span className='text-sm font-medium'>Model</span>
+                        <ModelPicker
+                            providerId={controller.preferences.selectedUtilityProviderId}
+                            selectedModelId={controller.preferences.selectedUtilityModelId}
+                            models={controller.preferences.utilityModelOptions}
+                            ariaLabel='Utility AI model'
+                            placeholder='Select a utility model'
+                            disabled={controller.preferences.setUtilityModelMutation.isPending}
+                            onSelectModel={controller.preferences.setUtilityModelId}
+                            onSelectOption={(option) => {
+                                if (
+                                    option.providerId &&
+                                    option.providerId !== controller.preferences.selectedUtilityProviderId
+                                ) {
+                                    controller.preferences.setUtilityProviderId(option.providerId);
+                                }
+                                controller.preferences.setUtilityModelId(option.id);
+                            }}
+                        />
+                        {controller.preferences.selectedUtilityModelOption?.compatibilityReason ? (
+                            <p className='text-muted-foreground text-xs'>
+                                {controller.preferences.selectedUtilityModelOption.compatibilityReason}
+                            </p>
+                        ) : null}
+                    </label>
+                </div>
+
+                <div className='flex flex-wrap items-center gap-2'>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        disabled={
+                            controller.preferences.setUtilityModelMutation.isPending ||
+                            !controller.preferences.selectedUtilityProviderId ||
+                            controller.preferences.selectedUtilityModelId.length === 0
+                        }
+                        onClick={() => {
+                            void controller.preferences.saveUtilityModel();
+                        }}>
+                        Save Utility AI
+                    </Button>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        disabled={
+                            controller.preferences.setUtilityModelMutation.isPending ||
+                            !controller.preferences.utilityModelSelection
+                        }
+                        onClick={() => {
+                            void controller.preferences.clearUtilityModel();
+                        }}>
+                        Clear
+                    </Button>
+                    <span className='text-muted-foreground text-xs'>
+                        {controller.preferences.utilityModelSelection
+                            ? `Saved model: ${controller.preferences.utilityModelSelection.providerId}/${controller.preferences.utilityModelSelection.modelId}`
+                            : 'No Utility AI saved. Neon currently falls back to the active conversation model.'}
+                    </span>
+                </div>
             </section>
         </div>
     );
@@ -375,13 +465,7 @@ export function ProfileSettingsView({
                 ) : null}
                 {subsection === 'execution' ? <ProfileExecutionScreen controller={controller} /> : null}
                 {subsection === 'naming' ? <ProfileConversationNamingScreen controller={controller} /> : null}
-                {subsection === 'utility' ? (
-                    <SettingsPlannedSection
-                        eyebrow='Profiles'
-                        title='Utility AI'
-                        description='The shared utility model will live here once conversation naming and future utility tasks move off dedicated raw model settings.'
-                    />
-                ) : null}
+                {subsection === 'utility' ? <ProfileUtilityAiScreen controller={controller} /> : null}
             </div>
 
             <ConfirmDialog

@@ -10,6 +10,7 @@ import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contrac
 import type { EntityId } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { contextPolicyService } from '@/app/backend/runtime/services/context/policyService';
+import { contextCompactionPreparationCoordinator } from '@/app/backend/runtime/services/context/contextCompactionPreparationCoordinator';
 import { applyPersistedCompaction, loadSessionReplaySnapshot } from '@/app/backend/runtime/services/context/sessionReplayLoader';
 import {
     buildPreparedContextDigest,
@@ -175,6 +176,25 @@ class SessionContextService {
         });
         let compaction = replaySnapshot.compaction;
         let finalMessages = preparedMessages;
+
+        if (
+            policy.enabled &&
+            policy.limits.modelLimitsKnown &&
+            policy.thresholdTokens &&
+            preparedEstimate.estimate &&
+            contextCompactionPreparationCoordinator.shouldPrepare({
+                thresholdTokens: policy.thresholdTokens,
+                totalTokens: preparedEstimate.estimate.totalTokens,
+            })
+        ) {
+            void contextCompactionPreparationCoordinator.schedulePreparation({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                policy,
+                replayMessages: replaySnapshot.replayMessages,
+                existingCompaction: replaySnapshot.compaction,
+            });
+        }
 
         if (
             policy.enabled &&

@@ -16,7 +16,6 @@ type ThreadTitlePreferenceMutation = {
     mutateAsync: (input: {
         profileId: string;
         mode: 'template' | 'ai_optional';
-        aiModel?: string;
     }) => Promise<void>;
 };
 
@@ -180,7 +179,6 @@ export function createProfileLibraryActions(input: {
 
 export function createProfilePreferencesActions(input: {
     selectedProfile: ProfileRecord | undefined;
-    threadTitleAiModelInput: string;
     setEditPreferenceMutation: EditPreferenceMutation;
     setThreadTitlePreferenceMutation: ThreadTitlePreferenceMutation;
     setStatusMessage: (value: string | undefined) => void;
@@ -202,31 +200,11 @@ export function createProfilePreferencesActions(input: {
                 return;
             }
 
-            if (mode === 'ai_optional' && input.threadTitleAiModelInput.trim().length === 0) {
-                input.setStatusMessage(
-                    'Set a title AI model (for example "openai/gpt-5-mini") before enabling AI optional mode.'
-                );
-                return;
-            }
-
             await input.setThreadTitlePreferenceMutation.mutateAsync({
                 profileId: input.selectedProfile.id,
                 mode,
-                ...(mode === 'ai_optional' ? { aiModel: input.threadTitleAiModelInput.trim() } : {}),
             });
             input.setStatusMessage('Updated thread title generation settings.');
-        },
-        saveThreadTitleAiModel: async () => {
-            if (!input.selectedProfile || input.threadTitleAiModelInput.trim().length === 0) {
-                return;
-            }
-
-            await input.setThreadTitlePreferenceMutation.mutateAsync({
-                profileId: input.selectedProfile.id,
-                mode: 'ai_optional',
-                aiModel: input.threadTitleAiModelInput.trim(),
-            });
-            input.setStatusMessage('Updated title AI model.');
         },
     };
 }

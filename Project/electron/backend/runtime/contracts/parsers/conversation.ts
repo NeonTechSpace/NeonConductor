@@ -225,19 +225,10 @@ export function parseConversationSetThreadTitlePreferenceInput(
 ): ConversationSetThreadTitlePreferenceInput {
     const source = readObject(input, 'input');
     const mode = readEnumValue(source.mode, 'mode', threadTitleGenerationModes);
-    const aiModel = readOptionalString(source.aiModel, 'aiModel');
-
-    if (mode === 'template' && aiModel) {
-        throw new Error('Invalid "aiModel": allowed only when mode is "ai_optional".');
-    }
-    if (mode === 'ai_optional' && !aiModel) {
-        throw new Error('Invalid "aiModel": required when mode is "ai_optional".');
-    }
 
     return {
         profileId: readProfileId(source),
         mode,
-        ...(aiModel ? { aiModel } : {}),
     };
 }
 

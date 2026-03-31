@@ -6,10 +6,11 @@ import {
     readParsedState,
     renderProjectedMemoryFile,
 } from '@/app/backend/runtime/services/memory/memoryProjectionFileCodec';
+import { requireEntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
-    return {
-        id: 'mem_test' as MemoryRecord['id'],
+    const baseMemory: MemoryRecord = {
+        id: requireEntityId('mem_test', 'mem', 'Expected memory id.'),
         profileId: 'profile_test',
         memoryType: 'procedural',
         scopeKind: 'thread',
@@ -19,12 +20,34 @@ function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
         bodyMarkdown: 'Original body.',
         metadata: { source: 'manual' },
         workspaceFingerprint: 'ws_test',
-        threadId: 'thr_test' as MemoryRecord['threadId'],
-        runId: 'run_test' as MemoryRecord['runId'],
+        threadId: requireEntityId('thr_test', 'thr', 'Expected thread id.'),
+        runId: requireEntityId('run_test', 'run', 'Expected run id.'),
         createdAt: '2026-03-27T10:00:00.000Z',
         updatedAt: '2026-03-27T10:00:00.000Z',
+    };
+
+    const memory: MemoryRecord = {
+        ...baseMemory,
         ...overrides,
     };
+
+    if (overrides && 'threadId' in overrides && overrides.threadId === undefined) {
+        delete memory.threadId;
+    }
+    if (overrides && 'runId' in overrides && overrides.runId === undefined) {
+        delete memory.runId;
+    }
+    if (overrides && 'workspaceFingerprint' in overrides && overrides.workspaceFingerprint === undefined) {
+        delete memory.workspaceFingerprint;
+    }
+    if (overrides && 'summaryText' in overrides && overrides.summaryText === undefined) {
+        delete memory.summaryText;
+    }
+    if (overrides && 'supersededByMemoryId' in overrides && overrides.supersededByMemoryId === undefined) {
+        delete memory.supersededByMemoryId;
+    }
+
+    return memory;
 }
 
 describe('memoryProjectionFileCodec', () => {

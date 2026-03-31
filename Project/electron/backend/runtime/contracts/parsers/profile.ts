@@ -12,11 +12,14 @@ import type {
     ProfileDeleteInput,
     ProfileDuplicateInput,
     ProfileGetExecutionPresetInput,
+    ProfileGetUtilityModelInput,
     ProfileInput,
     ProfileRenameInput,
     ProfileSetActiveInput,
     ProfileSetExecutionPresetInput,
+    ProfileSetUtilityModelInput,
 } from '@/app/backend/runtime/contracts/types';
+import { providerIds } from '@/shared/contracts';
 
 export function parseProfileInput(input: unknown): ProfileInput {
     const source = readObject(input, 'input');
@@ -74,6 +77,27 @@ export function parseProfileSetExecutionPresetInput(input: unknown): ProfileSetE
     };
 }
 
+export function parseProfileGetUtilityModelInput(input: unknown): ProfileGetUtilityModelInput {
+    return parseProfileInput(input);
+}
+
+export function parseProfileSetUtilityModelInput(input: unknown): ProfileSetUtilityModelInput {
+    const source = readObject(input, 'input');
+    const providerId =
+        source.providerId !== undefined ? readEnumValue(source.providerId, 'providerId', providerIds) : undefined;
+    const modelId = readOptionalString(source.modelId, 'modelId');
+
+    if ((providerId && !modelId) || (!providerId && modelId)) {
+        throw new Error('Invalid Utility AI selection: providerId and modelId must be set together or both omitted.');
+    }
+
+    return {
+        profileId: readProfileId(source),
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
+    };
+}
+
 export const profileInputSchema = createParser(parseProfileInput);
 export const profileCreateInputSchema = createParser(parseProfileCreateInput);
 export const profileRenameInputSchema = createParser(parseProfileRenameInput);
@@ -82,3 +106,5 @@ export const profileDeleteInputSchema = createParser(parseProfileDeleteInput);
 export const profileSetActiveInputSchema = createParser(parseProfileSetActiveInput);
 export const profileGetExecutionPresetInputSchema = createParser(parseProfileGetExecutionPresetInput);
 export const profileSetExecutionPresetInputSchema = createParser(parseProfileSetExecutionPresetInput);
+export const profileGetUtilityModelInputSchema = createParser(parseProfileGetUtilityModelInput);
+export const profileSetUtilityModelInputSchema = createParser(parseProfileSetUtilityModelInput);

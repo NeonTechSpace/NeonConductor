@@ -87,6 +87,7 @@ function createUtilsMock(calls: InvalidationCall[]) {
         },
         profile: {
             getExecutionPreset: createInvalidateLeaf(calls, 'profile.getExecutionPreset'),
+            getUtilityModel: createInvalidateLeaf(calls, 'profile.getUtilityModel'),
             list: createInvalidateLeaf(calls, 'profile.list'),
             getActive: createInvalidateLeaf(calls, 'profile.getActive'),
         },

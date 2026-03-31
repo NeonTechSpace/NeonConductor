@@ -1,14 +1,13 @@
 import { providerStore, runStore, settingsStore, threadStore } from '@/app/backend/persistence/stores';
 import { getProviderAdapter } from '@/app/backend/providers/adapters';
-import { isSupportedProviderId } from '@/app/backend/providers/registry';
 import type { ProviderRuntimeInput, ProviderRuntimePart } from '@/app/backend/providers/types';
 import type { RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
 import { resolveRuntimeProtocol } from '@/app/backend/runtime/services/runExecution/protocol';
 import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/resolveRunAuth';
 import { appLog } from '@/app/main/logging';
 
 const TITLE_GENERATION_MODE_KEY = 'thread_title_generation_mode';
-const TITLE_AI_MODEL_KEY = 'thread_title_ai_model';
 const TITLE_AI_MODE = 'ai_optional';
 const DEFAULT_TITLE_MODE = 'template';
 
@@ -53,16 +52,6 @@ function parseRuntimeTextPart(part: ProviderRuntimePart): string | undefined {
     }
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function inferProviderIdFromModel(modelId: string): RuntimeProviderId | null {
-    const normalized = modelId.trim().toLowerCase();
-    const providerPrefix = normalized.split('/')[0];
-    if (providerPrefix && isSupportedProviderId(providerPrefix)) {
-        return providerPrefix;
-    }
-
-    return null;
 }
 
 function shouldRetitleThread(input: { title: string; runCount: number; parentThreadId?: string }): boolean {
@@ -112,36 +101,33 @@ async function buildTemplateTitle(input: {
 
 async function generateAiTitle(input: {
     profileId: string;
-    aiModel: string;
+    providerId: RuntimeProviderId;
+    modelId: string;
     prompt: string;
     templateTitle: string;
 }): Promise<string | undefined> {
-    const providerId = inferProviderIdFromModel(input.aiModel);
-    if (!providerId) {
-        return undefined;
-    }
-    const modelExists = await providerStore.modelExists(input.profileId, providerId, input.aiModel);
+    const modelExists = await providerStore.modelExists(input.profileId, input.providerId, input.modelId);
     if (!modelExists) {
         return undefined;
     }
 
     const auth = await resolveRunAuth({
         profileId: input.profileId,
-        providerId,
+        providerId: input.providerId,
     });
     if (auth.isErr()) {
         return undefined;
     }
 
-    const modelCapabilities = await providerStore.getModelCapabilities(input.profileId, providerId, input.aiModel);
+    const modelCapabilities = await providerStore.getModelCapabilities(input.profileId, input.providerId, input.modelId);
     if (!modelCapabilities) {
         return undefined;
     }
 
     const runtimeProtocol = await resolveRuntimeProtocol({
         profileId: input.profileId,
-        providerId,
-        modelId: input.aiModel,
+        providerId: input.providerId,
+        modelId: input.modelId,
         modelCapabilities,
         authMethod: auth.value.authMethod,
         runtimeOptions: {
@@ -162,7 +148,7 @@ async function generateAiTitle(input: {
         return undefined;
     }
 
-    const adapter = getProviderAdapter(providerId);
+    const adapter = getProviderAdapter(input.providerId);
     const controller = new AbortController();
     const timeout = setTimeout(() => {
         controller.abort();
@@ -174,8 +160,8 @@ async function generateAiTitle(input: {
             profileId: input.profileId,
             sessionId: 'sess_title_generation',
             runId: 'run_title_generation',
-            providerId,
-            modelId: input.aiModel,
+            providerId: input.providerId,
+            modelId: input.modelId,
             runtime: runtimeProtocol.value.runtime,
             promptText:
                 'Return a concise thread title (max 70 chars) based on the user request. Return title text only.',
@@ -237,11 +223,10 @@ async function generateAiTitle(input: {
 class ThreadTitleService {
     async maybeApply(input: ApplyThreadTitleInput): Promise<void> {
         try {
-            const [sessionThread, modelExists, modeRaw, aiModelRaw] = await Promise.all([
+            const [sessionThread, modelExists, modeRaw] = await Promise.all([
                 threadStore.getBySessionId(input.profileId, input.sessionId),
                 providerStore.modelExists(input.profileId, input.providerId, input.modelId),
                 settingsStore.getStringOptional(input.profileId, TITLE_GENERATION_MODE_KEY),
-                settingsStore.getStringOptional(input.profileId, TITLE_AI_MODEL_KEY),
             ]);
             if (!sessionThread) {
                 return;
@@ -276,13 +261,18 @@ class ThreadTitleService {
             }
 
             const mode = modeRaw === TITLE_AI_MODE ? TITLE_AI_MODE : DEFAULT_TITLE_MODE;
-            const aiModel = aiModelRaw?.trim();
-            if (mode !== TITLE_AI_MODE || !aiModel) {
+            if (mode !== TITLE_AI_MODE) {
                 return;
             }
+            const titleTarget = await utilityModelService.resolveUtilityModelTarget({
+                profileId: input.profileId,
+                fallbackProviderId: input.providerId,
+                fallbackModelId: input.modelId,
+            });
             const aiTitle = await generateAiTitle({
                 profileId: input.profileId,
-                aiModel,
+                providerId: titleTarget.providerId,
+                modelId: titleTarget.modelId,
                 prompt: input.prompt,
                 templateTitle,
             });

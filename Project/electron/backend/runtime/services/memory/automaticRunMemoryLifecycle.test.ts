@@ -42,7 +42,7 @@ function createMessagePartRecord(overrides: Partial<MessagePartRecord>): Message
 }
 
 function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
-    return {
+    const record: MemoryRecord = {
         id: requireEntityId(overrides.id ?? 'mem_memory_auto_1', 'mem', 'Expected memory id.'),
         profileId: overrides.profileId ?? 'profile_memory_auto',
         memoryType: overrides.memoryType ?? 'episodic',
@@ -72,10 +72,15 @@ function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
         workspaceFingerprint: overrides.workspaceFingerprint ?? 'wsf_memory_auto',
         threadId: overrides.threadId ?? requireEntityId('thr_memory_auto_1', 'thr', 'Expected thread id.'),
         runId: overrides.runId ?? requireEntityId('run_memory_auto_1', 'run', 'Expected run id.'),
-        supersededByMemoryId: overrides.supersededByMemoryId,
         createdAt: overrides.createdAt ?? '2026-03-27T00:00:00.000Z',
         updatedAt: overrides.updatedAt ?? '2026-03-27T00:00:00.000Z',
     };
+
+    if (overrides.supersededByMemoryId) {
+        record.supersededByMemoryId = overrides.supersededByMemoryId;
+    }
+
+    return record;
 }
 
 describe('automaticRunMemoryLifecycle', () => {
@@ -90,7 +95,6 @@ describe('automaticRunMemoryLifecycle', () => {
         status: 'completed' as const,
         providerId: 'openai' as const,
         modelId: 'openai/gpt-5',
-        errorMessage: undefined,
     };
 
     const baseUsage: RunUsageRecord = {

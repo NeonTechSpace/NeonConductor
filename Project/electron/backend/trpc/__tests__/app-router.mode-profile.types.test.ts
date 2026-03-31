@@ -35,5 +35,11 @@ test('AppRouter exposes mode and profile procedure contracts to clients', () => 
     expectTypeOf<AppRouterInputs['profile']['delete']>().toExtend<{
         profileId: string;
     }>();
+    expectTypeOf<AppRouterInputs['profile']['getUtilityModel']>().toExtend<{ profileId: string }>();
+    expectTypeOf<AppRouterInputs['profile']['setUtilityModel']>().toExtend<{
+        profileId: string;
+        providerId?: string;
+        modelId?: string;
+    }>();
 });
 

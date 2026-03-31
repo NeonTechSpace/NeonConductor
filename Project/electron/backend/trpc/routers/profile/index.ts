@@ -4,11 +4,14 @@ import {
     profileDeleteInputSchema,
     profileDuplicateInputSchema,
     profileGetExecutionPresetInputSchema,
+    profileGetUtilityModelInputSchema,
     profileRenameInputSchema,
     profileSetActiveInputSchema,
     profileSetExecutionPresetInputSchema,
+    profileSetUtilityModelInputSchema,
 } from '@/app/backend/runtime/contracts';
 import { getExecutionPreset, setExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
+import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
 import {
     runtimeRemoveEvent,
     runtimeStatusEvent,
@@ -37,6 +40,9 @@ export const profileRouter = router({
             preset: await getExecutionPreset(input.profileId),
         };
     }),
+    getUtilityModel: publicProcedure.input(profileGetUtilityModelInputSchema).query(async ({ input }) => {
+        return utilityModelService.getUtilityModelPreference(input.profileId);
+    }),
     setExecutionPreset: publicProcedure.input(profileSetExecutionPresetInputSchema).mutation(async ({ input }) => {
         const preset = await setExecutionPreset(input.profileId, input.preset);
         await runtimeEventLogService.append(
@@ -53,6 +59,27 @@ export const profileRouter = router({
         );
 
         return { preset };
+    }),
+    setUtilityModel: publicProcedure.input(profileSetUtilityModelInputSchema).mutation(async ({ input }) => {
+        const result = await utilityModelService.setUtilityModelPreference(input);
+        if (result.isErr()) {
+            throwWithCode(result.error.code, result.error.message);
+        }
+
+        await runtimeEventLogService.append(
+            runtimeStatusEvent({
+                entityType: 'profile',
+                domain: 'profile',
+                entityId: input.profileId,
+                eventType: 'profile.utility-model.updated',
+                payload: {
+                    profileId: input.profileId,
+                    selection: result.value.selection,
+                },
+            })
+        );
+
+        return result.value;
     }),
     setActive: publicProcedure.input(profileSetActiveInputSchema).mutation(async ({ input }) => {
         const result = await profileStore.setActive(input.profileId);

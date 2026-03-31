@@ -36,6 +36,7 @@ export { sessionHistoryStore } from '@/app/backend/persistence/stores/conversati
 export { sessionAttachedRuleStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionAttachedRuleStore';
 export { sessionAttachedSkillStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionAttachedSkillStore';
 export { sessionContextCompactionStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionContextCompactionStore';
+export { sessionContextCompactionPreparationStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionContextCompactionPreparationStore';
 export { sessionStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionStore';
 export { settingsStore } from '@/app/backend/persistence/stores/profile/settingsStore';
 export { skillfileStore } from '@/app/backend/persistence/stores/registry/skillfileStore';

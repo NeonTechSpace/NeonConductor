@@ -12,6 +12,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         builtInModePromptOverrides,
         profileContextSettings,
         sessionContextCompactions,
+        sessionContextCompactionPreparations,
         modelLimitOverrides,
         runtimeEvents,
         sessions,
@@ -68,6 +69,10 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
             .executeTakeFirst(),
         db
             .selectFrom('session_context_compactions')
+            .select((eb) => eb.fn.count<number>('session_id').as('count'))
+            .executeTakeFirst(),
+        db
+            .selectFrom('session_context_compaction_preparations')
             .select((eb) => eb.fn.count<number>('session_id').as('count'))
             .executeTakeFirst(),
         db
@@ -211,6 +216,7 @@ async function resolveFullCounts(db: RuntimeResetDatabase): Promise<RuntimeReset
         builtInModePromptOverrides: builtInModePromptOverrides?.count ?? 0,
         profileContextSettings: profileContextSettings?.count ?? 0,
         sessionContextCompactions: sessionContextCompactions?.count ?? 0,
+        sessionContextCompactionPreparations: sessionContextCompactionPreparations?.count ?? 0,
         modelLimitOverrides: modelLimitOverrides?.count ?? 0,
         runtimeEvents: runtimeEvents?.count ?? 0,
         sessions: sessions?.count ?? 0,
@@ -257,6 +263,7 @@ async function applyFullReset(db: RuntimeResetDatabase): Promise<void> {
     await db.deleteFrom('settings').execute();
     await db.deleteFrom('profile_context_settings').execute();
     await db.deleteFrom('session_context_compactions').execute();
+    await db.deleteFrom('session_context_compaction_preparations').execute();
     await db.deleteFrom('app_context_settings').execute();
     await db.deleteFrom('app_prompt_layer_settings').execute();
     await db.deleteFrom('built_in_mode_prompt_overrides').execute();

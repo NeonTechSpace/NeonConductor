@@ -37,7 +37,6 @@ const EDIT_RESOLUTION_SETTING_KEY = 'conversation_edit_resolution';
 const DEFAULT_EDIT_RESOLUTION = 'ask' as const;
 const THREAD_TITLE_GENERATION_MODE_SETTING_KEY = 'thread_title_generation_mode';
 const DEFAULT_THREAD_TITLE_GENERATION_MODE = 'template' as const;
-const THREAD_TITLE_AI_MODEL_SETTING_KEY = 'thread_title_ai_model';
 
 function isThreadSort(value: string | undefined): value is 'latest' | 'alphabetical' {
     return value === 'latest' || value === 'alphabetical';
@@ -374,38 +373,19 @@ export const conversationRouter = router({
     getThreadTitlePreference: publicProcedure
         .input(conversationGetThreadTitlePreferenceInputSchema)
         .query(async ({ input }) => {
-            const [modeRaw, aiModelRaw] = await Promise.all([
-                settingsStore.getStringOptional(input.profileId, THREAD_TITLE_GENERATION_MODE_SETTING_KEY),
-                settingsStore.getStringOptional(input.profileId, THREAD_TITLE_AI_MODEL_SETTING_KEY),
-            ]);
+            const modeRaw = await settingsStore.getStringOptional(input.profileId, THREAD_TITLE_GENERATION_MODE_SETTING_KEY);
             const mode = modeRaw === 'ai_optional' ? 'ai_optional' : DEFAULT_THREAD_TITLE_GENERATION_MODE;
-            const aiModel = aiModelRaw?.trim();
 
-            return {
-                mode,
-                ...(mode === 'ai_optional' && aiModel ? { aiModel } : {}),
-            };
+            return { mode };
         }),
     setThreadTitlePreference: publicProcedure
         .input(conversationSetThreadTitlePreferenceInputSchema)
         .mutation(async ({ input }) => {
-            await settingsStore.setString(input.profileId, THREAD_TITLE_GENERATION_MODE_SETTING_KEY, input.mode);
-            if (input.mode === 'ai_optional') {
-                if (!input.aiModel) {
-                    raiseTrpcError({
-                        code: 'invalid_input',
-                        message: 'Invalid "aiModel": required when mode is "ai_optional".',
-                    });
-                }
-                const aiModel = input.aiModel.trim();
-                await settingsStore.setString(input.profileId, THREAD_TITLE_AI_MODEL_SETTING_KEY, aiModel);
-            } else {
-                await settingsStore.setString(input.profileId, THREAD_TITLE_AI_MODEL_SETTING_KEY, '');
-            }
+            await Promise.all([
+                settingsStore.setString(input.profileId, THREAD_TITLE_GENERATION_MODE_SETTING_KEY, input.mode),
+                settingsStore.delete(input.profileId, 'thread_title_ai_model'),
+            ]);
 
-            return {
-                mode: input.mode,
-                ...(input.aiModel ? { aiModel: input.aiModel } : {}),
-            };
+            return { mode: input.mode };
         }),
 });

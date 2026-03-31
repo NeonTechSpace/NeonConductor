@@ -6,6 +6,9 @@ const {
     resolveRunAuthMock,
     resolveRuntimeProtocolMock,
     upsertCompactionMock,
+    getPreparationMock,
+    deletePreparationBySessionMock,
+    resolveUtilityModelTargetMock,
     estimatePreparedContextMessagesMock,
 } = vi.hoisted(() => ({
     getModelCapabilitiesMock: vi.fn(),
@@ -13,6 +16,9 @@ const {
     resolveRunAuthMock: vi.fn(),
     resolveRuntimeProtocolMock: vi.fn(),
     upsertCompactionMock: vi.fn(),
+    getPreparationMock: vi.fn(),
+    deletePreparationBySessionMock: vi.fn(),
+    resolveUtilityModelTargetMock: vi.fn(),
     estimatePreparedContextMessagesMock: vi.fn(),
 }));
 
@@ -22,6 +28,10 @@ vi.mock('@/app/backend/persistence/stores', () => ({
     },
     sessionContextCompactionStore: {
         upsert: upsertCompactionMock,
+    },
+    sessionContextCompactionPreparationStore: {
+        get: getPreparationMock,
+        deleteBySession: deletePreparationBySessionMock,
     },
 }));
 
@@ -41,6 +51,12 @@ vi.mock('@/app/backend/runtime/services/context/sessionContextBudgetEvaluator', 
     estimatePreparedContextMessages: estimatePreparedContextMessagesMock,
 }));
 
+vi.mock('@/app/backend/runtime/services/profile/utilityModel', () => ({
+    utilityModelService: {
+        resolveUtilityModelTarget: resolveUtilityModelTargetMock,
+    },
+}));
+
 import { compactLoadedSessionContext, selectMessagesToKeep } from '@/app/backend/runtime/services/context/contextCompactionLifecycle';
 
 describe('contextCompactionLifecycle', () => {
@@ -50,6 +66,9 @@ describe('contextCompactionLifecycle', () => {
         resolveRunAuthMock.mockReset();
         resolveRuntimeProtocolMock.mockReset();
         upsertCompactionMock.mockReset();
+        getPreparationMock.mockReset();
+        deletePreparationBySessionMock.mockReset();
+        resolveUtilityModelTargetMock.mockReset();
         estimatePreparedContextMessagesMock.mockReset();
     });
 
@@ -97,9 +116,18 @@ describe('contextCompactionLifecycle', () => {
                 };
             }),
         });
+        getPreparationMock.mockResolvedValue(null);
+        deletePreparationBySessionMock.mockResolvedValue(undefined);
+        resolveUtilityModelTargetMock.mockResolvedValue({
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            source: 'fallback',
+        });
         estimatePreparedContextMessagesMock.mockResolvedValueOnce({
             messages: [],
             estimate: {
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
                 mode: 'estimated',
                 totalTokens: 3_000,
                 parts: Array.from({ length: 6 }, () => ({ tokenCount: 500 })),
@@ -108,6 +136,8 @@ describe('contextCompactionLifecycle', () => {
         estimatePreparedContextMessagesMock.mockResolvedValueOnce({
             messages: [],
             estimate: {
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
                 mode: 'estimated',
                 totalTokens: 1_200,
                 parts: Array.from({ length: 4 }, () => ({ tokenCount: 300 })),
@@ -137,17 +167,22 @@ describe('contextCompactionLifecycle', () => {
                 providerId: 'openai',
                 modelId: 'openai/gpt-5',
                 limits: {
+                    profileId: 'profile_test',
+                    providerId: 'openai',
+                    modelId: 'openai/gpt-5',
                     modelLimitsKnown: true,
                     contextLength: 10_000,
                     maxOutputTokens: 2_000,
-                    source: 'test',
+                    contextLengthSource: 'static',
+                    maxOutputTokensSource: 'static',
+                    source: 'static',
                 },
                 mode: 'percent',
                 thresholdTokens: 1_000,
                 usableInputBudgetTokens: 2_000,
                 percent: 10,
                 safetyBufferTokens: 1_000,
-            } as never,
+            },
             replayMessages: Array.from({ length: 6 }, (_, index) => ({
                 messageId: `msg_${index + 1}`,
                 role: 'user' as const,

@@ -276,6 +276,20 @@ export interface SessionContextCompactionRecord {
     updatedAt: string;
 }
 
+export interface SessionContextCompactionPreparationRecord {
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    cutoffMessageId: EntityId<'msg'>;
+    sourceDigest: string;
+    summaryText: string;
+    summarizerProviderId: RuntimeProviderId;
+    summarizerModelId: string;
+    thresholdTokens: number;
+    estimatedInputTokens: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface ToolRecord {
     id: string;
     label: string;

@@ -10,6 +10,7 @@ async function resolveProfileSettingsCounts(db: RuntimeResetDatabase, profileId:
         settings,
         profileContextSettings,
         sessionContextCompactions,
+        sessionContextCompactionPreparations,
         builtInModePromptOverrides,
         modeDefinitions,
         rulesets,
@@ -35,6 +36,11 @@ async function resolveProfileSettingsCounts(db: RuntimeResetDatabase, profileId:
             .executeTakeFirst(),
         db
             .selectFrom('session_context_compactions')
+            .select((eb) => eb.fn.count<number>('session_id').as('count'))
+            .where('profile_id', '=', profileId)
+            .executeTakeFirst(),
+        db
+            .selectFrom('session_context_compaction_preparations')
             .select((eb) => eb.fn.count<number>('session_id').as('count'))
             .where('profile_id', '=', profileId)
             .executeTakeFirst(),
@@ -105,6 +111,7 @@ async function resolveProfileSettingsCounts(db: RuntimeResetDatabase, profileId:
         settings: settings?.count ?? 0,
         profileContextSettings: profileContextSettings?.count ?? 0,
         sessionContextCompactions: sessionContextCompactions?.count ?? 0,
+        sessionContextCompactionPreparations: sessionContextCompactionPreparations?.count ?? 0,
         builtInModePromptOverrides: builtInModePromptOverrides?.count ?? 0,
         modeDefinitions: modeDefinitions?.count ?? 0,
         rulesets: rulesets?.count ?? 0,
@@ -124,6 +131,7 @@ async function applyProfileSettingsDelete(db: RuntimeResetDatabase, profileId: s
     await db.deleteFrom('settings').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('profile_context_settings').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('session_context_compactions').where('profile_id', '=', profileId).execute();
+    await db.deleteFrom('session_context_compaction_preparations').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('built_in_mode_prompt_overrides').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('mode_definitions').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('rulesets').where('profile_id', '=', profileId).execute();
