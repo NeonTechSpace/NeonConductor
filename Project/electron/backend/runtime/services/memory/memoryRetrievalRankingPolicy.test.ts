@@ -50,6 +50,7 @@ describe('rankRetrievedMemoryCandidates', () => {
                 {
                     memory: exact,
                     matchReason: 'exact_thread',
+                    tier: 'exact',
                     priority: 1,
                 },
             ],
@@ -59,6 +60,7 @@ describe('rankRetrievedMemoryCandidates', () => {
                 {
                     memory: derived,
                     matchReason: 'derived_temporal',
+                    tier: 'derived',
                     sourceMemoryId: exact.id,
                     annotations: ['Current fact has temporal history.'],
                 },
@@ -66,10 +68,10 @@ describe('rankRetrievedMemoryCandidates', () => {
         });
 
         expect(decisions.map((decision) => decision.memory.id)).toEqual(['mem_exact', 'mem_derived', 'mem_prompt']);
+        expect(decisions.map((decision) => decision.tier)).toEqual(['exact', 'derived', 'prompt']);
         expect(decisions[0]?.explanation.selectedSourceLabel).toBe('Exact thread');
         expect(decisions[0]?.explanation.selectionReason).toContain('matched this memory directly');
         expect(decisions[1]?.explanation.selectedSourceLabel).toBe('Derived temporal');
         expect(decisions[2]?.explanation.rankingReason).toContain('Prompt matches');
     });
 });
-

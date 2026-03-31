@@ -6,16 +6,12 @@ import {
 } from '@/app/backend/runtime/services/memory/memoryRetrievalHelpers';
 import {
     buildRetrievedMemoryExplanation,
-    type RetrievedMemoryDecision,
 } from '@/app/backend/runtime/services/memory/retrievedMemoryExplanationBuilder';
-import type { MemoryRetrievalCandidate } from '@/app/backend/runtime/services/memory/memoryRetrievalCandidateCollector';
-
-export interface MemoryRetrievalExpansionCandidate {
-    memory: MemoryRecord;
-    matchReason: Extract<RetrievedMemoryMatchReason, 'derived_temporal' | 'derived_causal'>;
-    sourceMemoryId?: EntityId<'mem'>;
-    annotations?: string[];
-}
+import type {
+    MemoryRetrievalCandidate,
+    MemoryRetrievalExpansionCandidate,
+    RankedMemoryRetrievalDecision,
+} from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
 
 export interface MemoryRetrievalRankingInput {
     baseCandidates: MemoryRetrievalCandidate[];
@@ -27,14 +23,17 @@ export interface MemoryRetrievalRankingInput {
 function withPriority(
     memory: MemoryRecord,
     matchReason: RetrievedMemoryMatchReason,
+    tier: RankedMemoryRetrievalDecision['tier'],
     priority: number,
     sourceMemoryId?: EntityId<'mem'>,
     annotations?: string[],
     promptMatchCount?: number
-): RetrievedMemoryDecision {
+): RankedMemoryRetrievalDecision {
     return {
         memory,
         matchReason,
+        tier,
+        score: -priority,
         priority,
         ...(sourceMemoryId ? { sourceMemoryId } : {}),
         ...(annotations && annotations.length > 0 ? { annotations } : {}),
@@ -46,13 +45,14 @@ function withPriority(
     };
 }
 
-export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput): RetrievedMemoryDecision[] {
+export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput): RankedMemoryRetrievalDecision[] {
     const candidateMemoryIds = new Set(input.baseCandidates.map((candidate) => candidate.memory.id));
-    const combinedCandidates: RetrievedMemoryDecision[] = [
+    const combinedCandidates: RankedMemoryRetrievalDecision[] = [
         ...input.baseCandidates.map((candidate) =>
             withPriority(
                 candidate.memory,
                 candidate.matchReason,
+                candidate.tier,
                 candidate.priority,
                 candidate.sourceMemoryId,
                 candidate.annotations
@@ -69,6 +69,7 @@ export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput
             withPriority(
                 derivedCandidate.memory,
                 derivedCandidate.matchReason,
+                derivedCandidate.tier,
                 derivedCandidate.matchReason === 'derived_temporal' ? 15 : 16,
                 derivedCandidate.sourceMemoryId,
                 derivedCandidate.annotations
@@ -90,6 +91,7 @@ export function rankRetrievedMemoryCandidates(input: MemoryRetrievalRankingInput
         combinedCandidates.push(
             withPriority(
                 memory,
+                'prompt',
                 'prompt',
                 20 + scopePriority(memory.scopeKind) * 10 - promptMatchCount,
                 undefined,
