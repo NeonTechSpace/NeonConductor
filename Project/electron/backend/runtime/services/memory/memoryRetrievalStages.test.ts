@@ -10,6 +10,7 @@ import { resolveMemoryRetrievalContext } from '@/app/backend/runtime/services/me
 import { loadMemoryRetrievalEvidence } from '@/app/backend/runtime/services/memory/memoryRetrievalEvidenceStage';
 import { expandMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalExpansionStage';
 import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
+import type { RankedMemoryRetrievalDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
 import {
     createCaller,
     createSessionInScope,
@@ -34,6 +35,52 @@ function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
         createdAt: '2026-03-31T10:00:00.000Z',
         updatedAt: '2026-03-31T10:00:00.000Z',
         ...overrides,
+    };
+}
+
+function createRankedDecision(
+    overrides: Partial<RankedMemoryRetrievalDecision> & Pick<RankedMemoryRetrievalDecision, 'memory' | 'matchReason' | 'tier'>
+): RankedMemoryRetrievalDecision {
+    const family = overrides.matchReason;
+    const familyRank =
+        family === 'exact_run'
+            ? 1
+            : family === 'exact_thread'
+              ? 2
+              : family === 'exact_workspace'
+                ? 3
+                : family === 'structured'
+                  ? 4
+                  : family === 'derived_temporal'
+                    ? 5
+                    : family === 'derived_causal'
+                      ? 6
+                      : family === 'semantic'
+                        ? 7
+                        : family === 'exact_global'
+                          ? 8
+                          : 9;
+
+    return {
+        ...overrides,
+        memory: overrides.memory,
+        matchReason: overrides.matchReason,
+        tier: overrides.tier,
+        family,
+        familyRank,
+        structuredHitCount: 0,
+        promptMatchCount: 0,
+        semanticSimilarity: 0,
+        sourceDecisionRank: Number.MAX_SAFE_INTEGER,
+        recencyKey: overrides.memory.updatedAt,
+        redundancyKey: `${overrides.memory.title}::${overrides.memory.bodyMarkdown}`.toLowerCase(),
+        score: 1,
+        priority: familyRank,
+        explanation: {
+            selectedSourceLabel: 'Exact global',
+            selectionReason: 'Global scope matched this memory directly.',
+            rankingReason: 'Exact scope outranks broader matches.',
+        },
     };
 }
 
@@ -180,11 +227,11 @@ describe('memory retrieval stages', () => {
 
         expect(decisions.map((decision) => decision.memory.id)).toEqual(['mem_exact_newer', 'mem_exact_older']);
         expect(decisions[0]?.tier).toBe('exact');
-        expect(decisions[0]?.score).toBe(-1);
+        expect(decisions[0]?.familyRank).toBe(2);
     });
 
     it('assembles final records and messages from ranked decisions', async () => {
-        const rankedDecision = {
+        const rankedDecision = createRankedDecision({
             memory: createMemoryRecord({
                 id: requireEntityId('mem_assembled', 'mem', 'Expected assembled memory id.'),
                 title: 'Assembled memory',
@@ -193,17 +240,7 @@ describe('memory retrieval stages', () => {
             }),
             matchReason: 'exact_global' as const,
             tier: 'exact' as const,
-            score: -3,
-            priority: 3,
-            explanation: {
-                selectedSourceLabel: 'Exact global',
-                selectionReason: 'Global scope matched this memory directly.',
-                rankingReason: 'Exact scope outranks broader matches.',
-            },
-        };
-        const summariesSpy = vi
-            .spyOn(advancedMemoryDerivationService, 'getDerivedSummaries')
-            .mockResolvedValue(okOp(new Map()));
+        });
 
         try {
             const evidence = await loadMemoryRetrievalEvidence({
@@ -214,6 +251,7 @@ describe('memory retrieval stages', () => {
                 profileId,
                 decisions: [rankedDecision],
                 evidenceByMemoryId: evidence.evidenceByMemoryId,
+                derivedSummaryByMemoryId: new Map(),
             });
 
             expect(assembled.records.map((record) => record.title)).toEqual(['Assembled memory']);
@@ -221,7 +259,7 @@ describe('memory retrieval stages', () => {
             expect(assembled.summary?.records[0]?.supportingEvidence).toEqual([]);
             expect(assembled.messages).toHaveLength(1);
         } finally {
-            summariesSpy.mockRestore();
+            // no-op
         }
     });
 
@@ -234,20 +272,13 @@ describe('memory retrieval stages', () => {
             const result = await loadMemoryRetrievalEvidence({
                 profileId,
                 decisions: [
-                    {
+                    createRankedDecision({
                         memory: createMemoryRecord({
                             id: requireEntityId('mem_evidence_stage', 'mem', 'Expected evidence stage memory id.'),
                         }),
                         matchReason: 'exact_global',
                         tier: 'exact',
-                        score: -1,
-                        priority: 1,
-                        explanation: {
-                            selectedSourceLabel: 'Exact global',
-                            selectionReason: 'Global scope matched this memory directly.',
-                            rankingReason: 'Exact scope outranks broader matches.',
-                        },
-                    },
+                    }),
                 ],
             });
 

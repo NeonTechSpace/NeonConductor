@@ -122,4 +122,62 @@ describe('rankRetrievedMemoryCandidates', () => {
         expect(decisions.map((decision) => decision.tier)).toEqual(['exact', 'semantic', 'prompt']);
         expect(decisions[1]?.matchReason).toBe('semantic');
     });
+
+    it('ranks structured matches ahead of semantic, exact_global, and prompt candidates', () => {
+        const structured = createMemory({
+            id: 'mem_structured',
+            title: 'Structured memory',
+        });
+        const semantic = createMemory({
+            id: 'mem_semantic',
+            title: 'Semantic memory',
+        });
+        const global = createMemory({
+            id: 'mem_global',
+            scopeKind: 'global',
+            title: 'Global memory',
+        });
+        const prompt = createMemory({
+            id: 'mem_prompt',
+            scopeKind: 'global',
+            title: 'Prompt memory',
+            bodyMarkdown: 'Contains zebra keyword.',
+        });
+
+        const decisions = rankRetrievedMemoryCandidates({
+            baseCandidates: [
+                {
+                    memory: global,
+                    matchReason: 'exact_global',
+                    tier: 'exact',
+                    priority: 3,
+                },
+                {
+                    memory: structured,
+                    matchReason: 'structured',
+                    tier: 'structured',
+                    priority: 12,
+                    structuredHitCount: 3,
+                },
+            ],
+            activeMemories: [structured, semantic, global, prompt],
+            promptTerms: ['zebra'],
+            derivedCandidates: [],
+            semanticCandidates: [
+                {
+                    memory: semantic,
+                    matchReason: 'semantic',
+                    tier: 'semantic',
+                    similarity: 0.91,
+                },
+            ],
+        });
+
+        expect(decisions.map((decision) => decision.memory.id)).toEqual([
+            'mem_structured',
+            'mem_semantic',
+            'mem_global',
+            'mem_prompt',
+        ]);
+    });
 });

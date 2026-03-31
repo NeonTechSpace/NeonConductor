@@ -1,6 +1,6 @@
 import {
+    countStructuredContextHits,
     isExactScopeMatch,
-    matchesStructuredContext,
     scopePriority,
 } from '@/app/backend/runtime/services/memory/memoryRetrievalHelpers';
 import type {
@@ -33,21 +33,21 @@ export async function collectMemoryRetrievalCandidates(
             continue;
         }
 
-        if (
-            matchesStructuredContext({
-                memory,
-                topLevelTab: input.topLevelTab,
-                modeKey: input.modeKey,
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                ...(input.threadIds.length > 0 ? { threadIds: input.threadIds } : {}),
-                ...(input.runId ? { runId: input.runId } : {}),
-            })
-        ) {
+        const structuredHitCount = countStructuredContextHits({
+            memory,
+            topLevelTab: input.topLevelTab,
+            modeKey: input.modeKey,
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+            ...(input.threadIds.length > 0 ? { threadIds: input.threadIds } : {}),
+            ...(input.runId ? { runId: input.runId } : {}),
+        });
+        if (structuredHitCount > 0) {
             baseCandidates.push({
                 memory,
                 matchReason: 'structured',
                 tier: 'structured',
                 priority: 10 + scopePriority(memory.scopeKind),
+                structuredHitCount,
             });
         }
     }

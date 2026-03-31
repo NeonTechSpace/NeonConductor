@@ -125,6 +125,17 @@ export function matchesStructuredContext(input: {
     threadIds?: EntityId<'thr'>[];
     runId?: EntityId<'run'>;
 }): boolean {
+    return countStructuredContextHits(input) > 0;
+}
+
+export function countStructuredContextHits(input: {
+    memory: MemoryRecord;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    workspaceFingerprint?: string;
+    threadIds?: EntityId<'thr'>[];
+    runId?: EntityId<'run'>;
+}): number {
     const contextualNeedles = [
         input.topLevelTab,
         input.modeKey,
@@ -135,17 +146,17 @@ export function matchesStructuredContext(input: {
         .filter((value): value is string => typeof value === 'string' && value.length > 0)
         .map((value) => normalizeSearchText(value));
     if (contextualNeedles.length === 0) {
-        return false;
+        return 0;
     }
 
     const title = normalizeSearchText(input.memory.title);
     const summary = normalizeSearchText(input.memory.summaryText ?? '');
     const metadataStrings = collectMetadataStrings(input.memory.metadata);
 
-    return contextualNeedles.some(
+    return contextualNeedles.filter(
         (needle) =>
             title.includes(needle) || summary.includes(needle) || metadataStrings.some((value) => value === needle)
-    );
+    ).length;
 }
 
 export function countPromptTermMatches(memory: MemoryRecord, promptTerms: string[]): number {
@@ -161,4 +172,3 @@ export function countPromptTermMatches(memory: MemoryRecord, promptTerms: string
 
     return promptTerms.filter((term) => haystacks.some((haystack) => haystack.includes(term))).length;
 }
-

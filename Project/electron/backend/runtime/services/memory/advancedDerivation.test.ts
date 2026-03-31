@@ -105,11 +105,9 @@ describe('advancedMemoryDerivationService', () => {
             workspaceFingerprint: 'wsf_memory_advanced_retrieval',
             prompt: 'What changed before on the deployment endpoint?',
         });
-        expect(threadHistory.summary?.records.map((record) => record.title)).toEqual([
-            'Deployment endpoint',
-            'Deployment endpoint',
-        ]);
-        expect(threadHistory.summary?.records[1]?.matchReason).toBe('derived_temporal');
+        expect(threadHistory.summary?.records.map((record) => record.title)).toEqual(['Deployment endpoint']);
+        expect(threadHistory.summary?.records[0]?.matchReason).toBe('exact_thread');
+        expect(threadHistory.summary?.records[0]?.derivedSummary?.hasTemporalHistory).toBe(true);
 
         const originSession = await createSessionInScope(caller, profileId, {
             scope: 'workspace',

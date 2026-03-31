@@ -1,3 +1,4 @@
+import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { assembleMemoryRetrievalResult } from '@/app/backend/runtime/services/memory/memoryRetrievalAssemblyStage';
 import { collectMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalCandidateCollector';
 import { resolveMemoryRetrievalContext } from '@/app/backend/runtime/services/memory/memoryRetrievalContextResolver';
@@ -6,6 +7,8 @@ import { expandMemoryRetrievalCandidates } from '@/app/backend/runtime/services/
 import type { MemoryRetrievalStageInput } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
 import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 import { collectSemanticMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSemanticStage';
+import { selectRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSelectionStage';
+import { appLog } from '@/app/main/logging';
 
 import type { RetrievedMemorySummary } from '@/app/backend/runtime/contracts';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
@@ -40,16 +43,37 @@ export class MemoryRetrievalService {
             promptTerms: context.promptTerms,
             derivedCandidates: expanded.derivedCandidates,
             semanticCandidates: semantic.semanticCandidates,
-        }).slice(0, 6);
+        });
+        const derivedSummaryResult = await advancedMemoryDerivationService.getDerivedSummaries(
+            input.profileId,
+            orderedCandidates.map((candidate) => candidate.memory.id)
+        );
+        const derivedSummaryByMemoryId = derivedSummaryResult.isOk()
+            ? derivedSummaryResult.value
+            : new Map();
+        if (derivedSummaryResult.isErr()) {
+            appLog.warn({
+                tag: 'memory.retrieval.selection',
+                message: 'Derived summaries failed softly before memory selection.',
+                profileId: input.profileId,
+                errorCode: derivedSummaryResult.error.code,
+                detail: derivedSummaryResult.error.message,
+            });
+        }
+        const selectedCandidates = selectRetrievedMemoryCandidates({
+            decisions: orderedCandidates,
+            derivedSummaryByMemoryId,
+        }).decisions;
         const evidence = await loadMemoryRetrievalEvidence({
             profileId: input.profileId,
-            decisions: orderedCandidates,
+            decisions: selectedCandidates,
         });
 
         const assembled = await assembleMemoryRetrievalResult({
             profileId: input.profileId,
-            decisions: orderedCandidates,
+            decisions: selectedCandidates,
             evidenceByMemoryId: evidence.evidenceByMemoryId,
+            derivedSummaryByMemoryId,
         });
 
         return {

@@ -1,6 +1,7 @@
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import type {
     EntityId,
+    MemoryDerivedSummary,
     MemoryEvidenceSummary,
     RetrievedMemoryMatchReason,
     RetrievedMemoryRecord,
@@ -21,6 +22,16 @@ export interface MemoryRetrievalStageInput {
 }
 
 export type MemoryRetrievalTier = 'exact' | 'structured' | 'derived' | 'semantic' | 'prompt';
+export type MemoryRetrievalDecisionFamily =
+    | 'exact_run'
+    | 'exact_thread'
+    | 'exact_workspace'
+    | 'structured'
+    | 'derived_temporal'
+    | 'derived_causal'
+    | 'semantic'
+    | 'exact_global'
+    | 'prompt';
 
 export interface ResolvedMemoryRetrievalContext {
     profileId: string;
@@ -40,6 +51,7 @@ export interface MemoryRetrievalCandidate {
     matchReason: RetrievedMemoryMatchReason;
     tier: MemoryRetrievalTier;
     priority: number;
+    structuredHitCount?: number;
     sourceMemoryId?: EntityId<'mem'>;
     annotations?: string[];
 }
@@ -66,6 +78,14 @@ export interface MemoryRetrievalExpansionResult {
 
 export interface RankedMemoryRetrievalDecision extends RetrievedMemoryDecision {
     tier: MemoryRetrievalTier;
+    family: MemoryRetrievalDecisionFamily;
+    familyRank: number;
+    structuredHitCount: number;
+    promptMatchCount: number;
+    semanticSimilarity: number;
+    sourceDecisionRank: number;
+    recencyKey: string;
+    redundancyKey: string;
     score: number;
 }
 
@@ -73,6 +93,7 @@ export interface MemoryRetrievalAssemblyInput {
     profileId: string;
     decisions: RankedMemoryRetrievalDecision[];
     evidenceByMemoryId: Map<EntityId<'mem'>, MemoryEvidenceSummary[]>;
+    derivedSummaryByMemoryId: Map<string, MemoryDerivedSummary>;
 }
 
 export interface MemoryRetrievalSemanticStageInput {
@@ -99,4 +120,13 @@ export interface MemoryRetrievalEvidenceStageInput {
 
 export interface MemoryRetrievalEvidenceStageResult {
     evidenceByMemoryId: Map<EntityId<'mem'>, MemoryEvidenceSummary[]>;
+}
+
+export interface MemoryRetrievalSelectionStageInput {
+    decisions: RankedMemoryRetrievalDecision[];
+    derivedSummaryByMemoryId: Map<string, MemoryDerivedSummary>;
+}
+
+export interface MemoryRetrievalSelectionStageResult {
+    decisions: RankedMemoryRetrievalDecision[];
 }

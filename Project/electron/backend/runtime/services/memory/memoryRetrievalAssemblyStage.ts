@@ -1,4 +1,3 @@
-import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { formatRetrievedMemoryMessage } from '@/app/backend/runtime/services/memory/memoryRetrievalMessageFormatter';
 import type {
     MemoryRetrievalAssemblyInput,
@@ -15,14 +14,8 @@ export async function assembleMemoryRetrievalResult(
         };
     }
 
-    const finalDerivedSummaries = await advancedMemoryDerivationService.getDerivedSummaries(
-        input.profileId,
-        input.decisions.map((candidate) => candidate.memory.id)
-    );
-    const finalDerivedSummaryById = finalDerivedSummaries.isOk() ? finalDerivedSummaries.value : undefined;
-
     const records = input.decisions.map((candidate, index) => {
-        const derivedSummary = finalDerivedSummaryById?.get(candidate.memory.id);
+        const derivedSummary = input.derivedSummaryByMemoryId.get(candidate.memory.id);
         const supportingEvidence = input.evidenceByMemoryId.get(candidate.memory.id) ?? [];
         return {
             memoryId: candidate.memory.id,
@@ -53,10 +46,10 @@ export async function assembleMemoryRetrievalResult(
           }
         : {
               summary: {
-                  records,
-                  injectedTextLength: 0,
-              },
               records,
-              messages: [],
+              injectedTextLength: 0,
+          },
+          records,
+          messages: [],
           };
 }

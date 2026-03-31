@@ -18,7 +18,7 @@ export interface RetrievedMemoryDecision {
 
 export function buildRetrievedMemoryExplanation(input: {
     matchReason: RetrievedMemoryMatchReason;
-    priority: number;
+    familyRank: number;
     promptMatchCount?: number;
 }): RetrievedMemoryExplanation {
     const selectedSourceLabel: Record<RetrievedMemoryMatchReason, string> = {
@@ -56,9 +56,11 @@ export function buildRetrievedMemoryExplanation(input: {
         rankingReason:
             input.matchReason === 'prompt'
                 ? 'Prompt matches are ranked after explicit scope and structured matches.'
-                : input.priority <= 3
+                : input.familyRank <= 3
                   ? 'Exact scope outranks broader matches.'
-                  : input.priority < 20
+                  : input.matchReason === 'exact_global'
+                    ? 'Global exact matches stay below contextual, derived, and semantic results.'
+                    : input.familyRank < 9
                     ? 'Structured, derived, and semantic matches outrank prompt-only matches.'
                     : 'Prompt match ranking was used as the fallback tier.',
     };
