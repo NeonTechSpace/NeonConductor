@@ -26,6 +26,7 @@ describe('executionTargetContextPreviewService', () => {
     });
 
     it('resolves execution-target preview state through the prepared context seam', async () => {
+        const prepareSessionContextMock = vi.fn(async () => okOp(preparedContextState));
         const preparedContextState: PreparedContextStateProjection = {
             policy: {
                 enabled: true,
@@ -99,7 +100,7 @@ describe('executionTargetContextPreviewService', () => {
             topLevelTab: 'agent',
             modeKey: 'code',
             prompt: 'Preview the current context.',
-            prepareSessionContext: vi.fn(async () => okOp(preparedContextState)),
+            prepareSessionContext: prepareSessionContextMock,
         });
 
         expect(result.isOk()).toBe(true);
@@ -111,5 +112,10 @@ describe('executionTargetContextPreviewService', () => {
         expect(result.value.estimate?.totalTokens).toBe(123);
         expect(result.value.compaction?.summaryText).toBe('Summary');
         expect(result.value.retrievedMemory?.records).toEqual([]);
+        expect(prepareSessionContextMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sideEffectMode: 'preview',
+            })
+        );
     });
 });

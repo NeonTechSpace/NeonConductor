@@ -36,6 +36,15 @@
 - LOC-style thresholds are inspection conditions, not automatic pass/fail proof.
 - Every file still has to be judged for cohesion, clarity, and single-responsibility even when it is below the preferred size thresholds.
 
+### 3.5) Do Not Cut Corners Against The Approved Plan
+- Once a plan, checklist, or explicit acceptance criteria is approved, implement that plan exactly unless the user approves a change.
+- Do not silently collapse "fully implemented" into "mostly works", "typechecks", or "passes the main path".
+- If the approved work includes side-effect boundaries, architectural seams, cleanup, or named tests, those are part of the implementation, not optional polish.
+- Do not omit a requested refactor seam just because the duplicated code currently works.
+- Do not leave known plan mismatches, missing branches, or missing checklist items unreported.
+- If time or complexity pressure creates a tradeoff, stop and surface the tradeoff explicitly instead of choosing a narrower implementation on your own.
+- Before declaring completion, verify behavior against the original approved plan item-by-item and call out any deviation explicitly.
+
 ### 4) Keep Files, Modules, and Folders Focused
 - Do not create god files; split by responsibility as soon as a file carries multiple concerns.
 - LOC is only a rough heuristic, not the conformance rule.
@@ -182,4 +191,5 @@
 
 ## Practical Rule
 - Every PR must leave the touched area clearer than it was.
+- "Done" means the implementation matches the approved scope, behavior, refactor boundaries, and verification requirements, not merely that the happy path works.
 - Before assuming the git worktree is dirty or in a standard branch-based state, check whether `jj` is managing the workspace and whether Git is detached because of that workflow.

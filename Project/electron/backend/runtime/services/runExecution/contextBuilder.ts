@@ -70,6 +70,7 @@ export async function buildRunContext(input: {
         prompt: input.prompt,
         topLevelTab: input.topLevelTab,
         modeKey: input.resolvedMode.mode.modeKey,
+        sideEffectMode: 'execution',
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.attachments ? { attachments: input.attachments } : {}),
     });

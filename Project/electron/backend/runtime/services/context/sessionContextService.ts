@@ -34,6 +34,8 @@ export interface PreparedSessionContext {
     retrievedMemory?: RetrievedMemorySummary;
 }
 
+type ContextPreparationSideEffectMode = 'execution' | 'preview';
+
 class SessionContextService {
     async getResolvedState(input: {
         profileId: string;
@@ -138,6 +140,7 @@ class SessionContextService {
         modeKey: string;
         workspaceFingerprint?: string;
         runId?: EntityId<'run'>;
+        sideEffectMode?: ContextPreparationSideEffectMode;
     }): Promise<OperationalResult<PreparedSessionContext>> {
         const replaySnapshot = await loadSessionReplaySnapshot({
             profileId: input.profileId,
@@ -178,6 +181,7 @@ class SessionContextService {
         let finalMessages = preparedMessages;
 
         if (
+            (input.sideEffectMode ?? 'execution') === 'execution' &&
             policy.enabled &&
             policy.limits.modelLimitsKnown &&
             policy.thresholdTokens &&

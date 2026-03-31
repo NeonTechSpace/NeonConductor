@@ -42,6 +42,7 @@ export async function resolveExecutionTargetContextPreview(input: {
         modeKey: string;
         workspaceFingerprint?: string;
         runId?: EntityId<'run'>;
+        sideEffectMode?: 'execution' | 'preview';
     }) => Promise<OperationalResult<PreparedContextStateProjection>>;
 }): Promise<OperationalResult<ResolvedContextState>> {
     const resolvedModeResult = await resolveModeExecution({
@@ -75,6 +76,7 @@ export async function resolveExecutionTargetContextPreview(input: {
         prompt: input.prompt ?? '',
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
+        sideEffectMode: 'preview',
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.runId ? { runId: input.runId } : {}),
     });

@@ -1,8 +1,8 @@
-import { sessionContextCompactionPreparationStore, sessionContextCompactionStore } from '@/app/backend/persistence/stores';
 import type { SessionContextCompactionRecord } from '@/app/backend/persistence/types';
 import type { CompactSessionResult, ResolvedContextPolicy } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { contextCompactionPreparationCoordinator } from '@/app/backend/runtime/services/context/contextCompactionPreparationCoordinator';
+import { persistAppliedCompaction } from '@/app/backend/runtime/services/context/contextCompactionPersistence';
 import {
     deriveCompactionCandidate,
     generateCompactionSummary,
@@ -109,7 +109,7 @@ export async function compactLoadedSessionContext(input: {
             });
         }
 
-        compaction = await sessionContextCompactionStore.upsert({
+        compaction = await persistAppliedCompaction({
             profileId: input.profileId,
             sessionId: input.sessionId,
             cutoffMessageId: candidateResult.candidate.latestSummarizedMessage.messageId,
@@ -118,7 +118,6 @@ export async function compactLoadedSessionContext(input: {
             thresholdTokens: input.policy.thresholdTokens,
             estimatedInputTokens: candidateResult.candidate.replayEstimate?.totalTokens ?? 0,
         });
-        await sessionContextCompactionPreparationStore.deleteBySession(input.profileId, input.sessionId);
     }
 
     const compactedReplay = applyPersistedCompaction(input.replayMessages, compaction);

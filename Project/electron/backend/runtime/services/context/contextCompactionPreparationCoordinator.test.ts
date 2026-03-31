@@ -7,7 +7,7 @@ const {
     getPreparationMock,
     upsertPreparationMock,
     deletePreparationBySessionMock,
-    upsertCompactionMock,
+    persistAppliedCompactionMock,
     deriveCompactionCandidateMock,
     resolveCompactionSummarizerTargetMock,
     generateCompactionSummaryMock,
@@ -16,7 +16,7 @@ const {
     getPreparationMock: vi.fn(),
     upsertPreparationMock: vi.fn(),
     deletePreparationBySessionMock: vi.fn(),
-    upsertCompactionMock: vi.fn(),
+    persistAppliedCompactionMock: vi.fn(),
     deriveCompactionCandidateMock: vi.fn(),
     resolveCompactionSummarizerTargetMock: vi.fn(),
     generateCompactionSummaryMock: vi.fn(),
@@ -28,9 +28,6 @@ vi.mock('@/app/backend/persistence/stores', () => ({
         get: getPreparationMock,
         upsert: upsertPreparationMock,
         deleteBySession: deletePreparationBySessionMock,
-    },
-    sessionContextCompactionStore: {
-        upsert: upsertCompactionMock,
     },
 }));
 
@@ -46,6 +43,10 @@ vi.mock('@/app/main/logging', () => ({
     },
 }));
 
+vi.mock('@/app/backend/runtime/services/context/contextCompactionPersistence', () => ({
+    persistAppliedCompaction: persistAppliedCompactionMock,
+}));
+
 import { contextCompactionPreparationCoordinator } from '@/app/backend/runtime/services/context/contextCompactionPreparationCoordinator';
 
 describe('contextCompactionPreparationCoordinator', () => {
@@ -53,7 +54,7 @@ describe('contextCompactionPreparationCoordinator', () => {
         getPreparationMock.mockReset();
         upsertPreparationMock.mockReset();
         deletePreparationBySessionMock.mockReset();
-        upsertCompactionMock.mockReset();
+        persistAppliedCompactionMock.mockReset();
         deriveCompactionCandidateMock.mockReset();
         resolveCompactionSummarizerTargetMock.mockReset();
         generateCompactionSummaryMock.mockReset();
@@ -178,7 +179,7 @@ describe('contextCompactionPreparationCoordinator', () => {
             createdAt: '2026-03-31T00:00:00.000Z',
             updatedAt: '2026-03-31T00:00:00.000Z',
         });
-        upsertCompactionMock.mockResolvedValue({
+        persistAppliedCompactionMock.mockResolvedValue({
             profileId: 'profile_test',
             sessionId: 'sess_test',
             cutoffMessageId: 'msg_4',
@@ -202,8 +203,7 @@ describe('contextCompactionPreparationCoordinator', () => {
         });
 
         expect(result?.summaryText).toBe('Prepared summary');
-        expect(upsertCompactionMock).toHaveBeenCalledTimes(1);
-        expect(deletePreparationBySessionMock).toHaveBeenCalledTimes(1);
+        expect(persistAppliedCompactionMock).toHaveBeenCalledTimes(1);
     });
 
     it('drops stale prepared candidates before synchronous fallback', async () => {
@@ -234,6 +234,6 @@ describe('contextCompactionPreparationCoordinator', () => {
 
         expect(result).toBeNull();
         expect(deletePreparationBySessionMock).toHaveBeenCalledTimes(1);
-        expect(upsertCompactionMock).not.toHaveBeenCalled();
+        expect(persistAppliedCompactionMock).not.toHaveBeenCalled();
     });
 });

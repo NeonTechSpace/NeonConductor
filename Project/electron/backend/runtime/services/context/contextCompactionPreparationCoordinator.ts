@@ -1,12 +1,12 @@
 import {
     sessionContextCompactionPreparationStore,
-    sessionContextCompactionStore,
 } from '@/app/backend/persistence/stores';
 import type {
     SessionContextCompactionPreparationRecord,
     SessionContextCompactionRecord,
 } from '@/app/backend/persistence/types';
 import type { ResolvedContextPolicy } from '@/app/backend/runtime/contracts';
+import { persistAppliedCompaction } from '@/app/backend/runtime/services/context/contextCompactionPersistence';
 import {
     deriveCompactionCandidate,
     generateCompactionSummary,
@@ -156,7 +156,7 @@ class ContextCompactionPreparationCoordinator {
             return null;
         }
 
-        const compaction = await sessionContextCompactionStore.upsert({
+        const compaction = await persistAppliedCompaction({
             profileId: input.profileId,
             sessionId: input.sessionId,
             cutoffMessageId: input.cutoffMessageId,
@@ -165,7 +165,6 @@ class ContextCompactionPreparationCoordinator {
             thresholdTokens: input.thresholdTokens,
             estimatedInputTokens: input.estimatedInputTokens,
         });
-        await sessionContextCompactionPreparationStore.deleteBySession(input.profileId, input.sessionId);
         return compaction;
     }
 }
