@@ -52,6 +52,36 @@ export type PermissionResolution = (typeof permissionResolutions)[number];
 export const toolCapabilities = ['filesystem_read', 'filesystem_write', 'shell', 'git', 'mcp'] as const;
 export type ToolCapability = (typeof toolCapabilities)[number];
 
+export const workflowCapabilities = [
+    'planning',
+    'orchestration',
+    'recovery',
+    'review',
+    'artifact_view',
+    'flow_execution',
+] as const;
+export type WorkflowCapability = (typeof workflowCapabilities)[number];
+
+export const behaviorFlags = [
+    'approval_gated',
+    'checkpoint_eligible',
+    'workspace_mutating',
+    'artifact_producing',
+    'child_worker_capable',
+    'read_only_execution',
+] as const;
+export type BehaviorFlag = (typeof behaviorFlags)[number];
+
+export const runtimeRequirementProfiles = [
+    'general',
+    'read_only_agent',
+    'mutating_agent',
+    'planner',
+    'orchestrator',
+    'reviewer',
+] as const;
+export type RuntimeRequirementProfile = (typeof runtimeRequirementProfiles)[number];
+
 export const toolMutabilities = ['read_only', 'mutating'] as const;
 export type ToolMutability = (typeof toolMutabilities)[number];
 

@@ -1,14 +1,14 @@
 import {
-    listStaticModelDefinitions,
-    toStaticProviderCatalogModel,
-} from '@/app/backend/providers/metadata/staticCatalog/registry';
-import {
     listStaticEmbeddingModelDefinitions,
     toStaticProviderEmbeddingCatalogModel,
 } from '@/app/backend/providers/embeddingCatalog/staticCatalog/registry';
+import {
+    listStaticModelDefinitions,
+    toStaticProviderCatalogModel,
+} from '@/app/backend/providers/metadata/staticCatalog/registry';
 import { getDefaultEndpointProfile } from '@/app/backend/providers/registry';
-import { builtInNativeToolDefinitions } from '@/app/backend/runtime/services/toolExecution/builtInNativeTools';
 import type { ProviderRoutedApiFamily } from '@/app/backend/providers/types';
+import { builtInNativeToolDefinitions } from '@/app/backend/runtime/services/toolExecution/builtInNativeTools';
 
 import { kiloBalancedModelId, kiloFreeModelId, kiloFrontierModelId, kiloSmallModelId } from '@/shared/kiloModels';
 
@@ -105,6 +105,9 @@ const MODE_SEED = [
         prompt: {},
         executionPolicy: {
             toolCapabilities: [],
+            workflowCapabilities: [],
+            behaviorFlags: [],
+            runtimeProfile: 'general',
         },
     },
     {
@@ -115,6 +118,9 @@ const MODE_SEED = [
         executionPolicy: {
             planningOnly: true,
             toolCapabilities: ['filesystem_read', 'mcp'],
+            workflowCapabilities: ['planning', 'artifact_view', 'recovery'],
+            behaviorFlags: ['approval_gated', 'artifact_producing', 'read_only_execution'],
+            runtimeProfile: 'planner',
         },
     },
     {
@@ -124,6 +130,9 @@ const MODE_SEED = [
         prompt: {},
         executionPolicy: {
             toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            workflowCapabilities: ['artifact_view'],
+            behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
+            runtimeProfile: 'mutating_agent',
         },
     },
     {
@@ -133,6 +142,9 @@ const MODE_SEED = [
         prompt: {},
         executionPolicy: {
             toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            workflowCapabilities: ['artifact_view'],
+            behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
+            runtimeProfile: 'mutating_agent',
         },
     },
     {
@@ -142,6 +154,9 @@ const MODE_SEED = [
         prompt: {},
         executionPolicy: {
             toolCapabilities: ['filesystem_read'],
+            workflowCapabilities: [],
+            behaviorFlags: ['read_only_execution'],
+            runtimeProfile: 'read_only_agent',
         },
     },
     {
@@ -152,6 +167,9 @@ const MODE_SEED = [
         executionPolicy: {
             planningOnly: true,
             toolCapabilities: ['filesystem_read', 'mcp'],
+            workflowCapabilities: ['planning', 'orchestration', 'artifact_view', 'recovery'],
+            behaviorFlags: ['approval_gated', 'artifact_producing', 'read_only_execution'],
+            runtimeProfile: 'planner',
         },
     },
     {
@@ -161,6 +179,9 @@ const MODE_SEED = [
         prompt: {},
         executionPolicy: {
             toolCapabilities: ['filesystem_read'],
+            workflowCapabilities: ['orchestration', 'artifact_view'],
+            behaviorFlags: ['checkpoint_eligible', 'artifact_producing', 'child_worker_capable'],
+            runtimeProfile: 'orchestrator',
         },
     },
     {
@@ -170,6 +191,9 @@ const MODE_SEED = [
         prompt: {},
         executionPolicy: {
             toolCapabilities: ['filesystem_read'],
+            workflowCapabilities: ['orchestration', 'artifact_view'],
+            behaviorFlags: ['checkpoint_eligible', 'artifact_producing', 'child_worker_capable'],
+            runtimeProfile: 'orchestrator',
         },
     },
 ] as const;

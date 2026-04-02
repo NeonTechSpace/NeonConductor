@@ -2,9 +2,9 @@ import path from 'node:path';
 
 import type {
     PromptLayerCustomModePayload,
+    PromptLayerEditableCustomModePayload,
     PromptLayerExportCustomModeResult,
     PromptLayerSettings,
-    ToolCapability,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
@@ -118,15 +118,7 @@ export async function updateCustomMode(input: {
     modeKey: string;
     scope: 'global' | 'workspace';
     workspaceFingerprint?: string;
-    mode: {
-        name: string;
-        description?: string;
-        roleDefinition?: string;
-        customInstructions?: string;
-        whenToUse?: string;
-        tags?: string[];
-        toolCapabilities?: ToolCapability[];
-    };
+    mode: PromptLayerEditableCustomModePayload;
 }): Promise<OperationalResult<PromptLayerSettings>> {
     const existingMode = await findFileBackedCustomMode(input);
     if (!existingMode) {
@@ -148,6 +140,9 @@ export async function updateCustomMode(input: {
         ...(input.mode.whenToUse ? { whenToUse: input.mode.whenToUse } : {}),
         ...(input.mode.tags ? { tags: input.mode.tags } : {}),
         ...(input.mode.toolCapabilities ? { toolCapabilities: input.mode.toolCapabilities } : {}),
+        ...(input.mode.workflowCapabilities ? { workflowCapabilities: input.mode.workflowCapabilities } : {}),
+        ...(input.mode.behaviorFlags ? { behaviorFlags: input.mode.behaviorFlags } : {}),
+        ...(input.mode.runtimeProfile ? { runtimeProfile: input.mode.runtimeProfile } : {}),
     });
     const { fileContent } = renderCanonicalModeMarkdown({
         topLevelTab: existingMode.topLevelTab,

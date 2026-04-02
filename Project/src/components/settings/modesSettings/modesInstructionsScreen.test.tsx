@@ -63,6 +63,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                                     whenToUse: 'Use when a conversation needs a strict review pass.',
                                     tags: ['quality', 'review'],
                                     toolCapabilities: ['filesystem_read', 'shell'],
+                                    workflowCapabilities: ['review', 'artifact_view'],
+                                    behaviorFlags: ['approval_gated', 'artifact_producing'],
+                                    runtimeProfile: 'reviewer',
                                 },
                             ],
                             agent: [],
@@ -79,6 +82,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                                     description: 'Workspace orchestrator mode',
                                     whenToUse: 'Use when a workspace needs coordination.',
                                     toolCapabilities: ['filesystem_read', 'filesystem_write'],
+                                    workflowCapabilities: ['orchestration', 'artifact_view'],
+                                    behaviorFlags: ['checkpoint_eligible', 'child_worker_capable'],
+                                    runtimeProfile: 'orchestrator',
                                 },
                             ],
                         },
@@ -145,6 +151,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             warning: 'Editing the built-in chat prompt can make the app behave unexpectedly. Reset restores the shipped behavior.',
                             roleDefinition: '',
                             customInstructions: '',
+                            workflowCapabilities: ['planning', 'artifact_view'],
+                            behaviorFlags: ['approval_gated', 'artifact_producing'],
+                            runtimeProfile: 'planner',
                             hasOverride: false,
                         },
                     ],
@@ -162,6 +171,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             warning: 'Editing the built-in agent code prompt can make the app behave unexpectedly. Reset restores the shipped behavior.',
                             roleDefinition: '',
                             customInstructions: '',
+                            workflowCapabilities: ['orchestration', 'artifact_view'],
+                            behaviorFlags: ['checkpoint_eligible', 'child_worker_capable'],
+                            runtimeProfile: 'orchestrator',
                             hasOverride: false,
                         },
                     ],
@@ -179,6 +191,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             warning: 'Editing the built-in orchestrator orchestrate prompt can make the app behave unexpectedly. Reset restores the shipped behavior.',
                             roleDefinition: '',
                             customInstructions: '',
+                            workflowCapabilities: ['orchestration', 'artifact_view'],
+                            behaviorFlags: ['checkpoint_eligible', 'child_worker_capable'],
+                            runtimeProfile: 'orchestrator',
                             hasOverride: false,
                         },
                     ],
@@ -211,6 +226,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             whenToUse: 'Use when a conversation needs a strict review pass.',
                             tags: ['quality', 'review'],
                             toolCapabilities: ['filesystem_read', 'shell'],
+                            workflowCapabilities: ['review', 'artifact_view'],
+                            behaviorFlags: ['approval_gated', 'artifact_producing'],
+                            runtimeProfile: 'reviewer',
                         },
                     ],
                     agent: [],
@@ -227,6 +245,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             description: 'Workspace orchestrator mode',
                             whenToUse: 'Use when a workspace needs coordination.',
                             toolCapabilities: ['filesystem_read', 'filesystem_write'],
+                            workflowCapabilities: ['orchestration', 'artifact_view'],
+                            behaviorFlags: ['checkpoint_eligible', 'child_worker_capable'],
+                            runtimeProfile: 'orchestrator',
                         },
                     ],
                 },
@@ -359,6 +380,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                     whenToUse: 'Use when a conversation needs a strict review pass.',
                     tagsText: 'quality, review',
                     selectedToolCapabilities: ['filesystem_read', 'shell'],
+                    selectedWorkflowCapabilities: ['review', 'artifact_view'],
+                    selectedBehaviorFlags: ['approval_gated', 'artifact_producing'],
+                    selectedRuntimeProfile: 'reviewer',
                     deleteConfirmed: false,
                 },
                 isLoading: false,
@@ -373,6 +397,9 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                 setTopLevelTab: vi.fn(),
                 setField: vi.fn(),
                 toggleToolCapability: vi.fn(),
+                toggleWorkflowCapability: vi.fn(),
+                toggleBehaviorFlag: vi.fn(),
+                setRuntimeProfile: vi.fn(),
                 setDeleteConfirmed: vi.fn(),
                 save: vi.fn(),
                 deleteMode: vi.fn(),
@@ -433,6 +460,12 @@ describe('modes instructions screen', () => {
         expect(html).toContain('quality');
         expect(html).toContain('Filesystem Read');
         expect(html).toContain('Shell');
+        expect(html).toContain('Workflow Capabilities');
+        expect(html).toContain('Behavior Flags');
+        expect(html).toContain('Runtime Profile');
+        expect(html).toContain('Artifact View');
+        expect(html).toContain('Approval Gated');
+        expect(html).toContain('Reviewer');
         expect(html).toContain('Delete This Mode');
         expect(html).toContain('Edit');
         expect(html).toContain('Delete');

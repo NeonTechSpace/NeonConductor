@@ -1,10 +1,20 @@
 import { useState } from 'react';
 
 import type { CustomModeEditorDraft, CustomModeScope } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
-import { createEmptyCustomModeEditorDraft, toggleToolCapability } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import {
+    createEmptyCustomModeEditorDraft,
+    toggleListValue,
+    toggleToolCapability,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { trpc } from '@/web/trpc/client';
 
-import type { ToolCapability, TopLevelTab } from '@/shared/contracts';
+import type {
+    BehaviorFlag,
+    RuntimeRequirementProfile,
+    ToolCapability,
+    TopLevelTab,
+    WorkflowCapability,
+} from '@/shared/contracts';
 
 interface UseModesInstructionsCustomModeEditorStateInput {
     profileId: string;
@@ -48,6 +58,9 @@ export function useModesInstructionsCustomModeEditorState(input: UseModesInstruc
                 whenToUse: result.mode.whenToUse ?? '',
                 tagsText: result.mode.tags?.join(', ') ?? '',
                 selectedToolCapabilities: result.mode.toolCapabilities ?? [],
+                selectedWorkflowCapabilities: result.mode.workflowCapabilities ?? [],
+                selectedBehaviorFlags: result.mode.behaviorFlags ?? [],
+                selectedRuntimeProfile: result.mode.runtimeProfile ?? 'general',
                 deleteConfirmed: false,
             });
         } catch (error) {
@@ -127,6 +140,42 @@ export function useModesInstructionsCustomModeEditorState(input: UseModesInstruc
                               currentDraft.selectedToolCapabilities,
                               capability
                           ),
+                      }
+                    : currentDraft
+            );
+            input.clearFeedback();
+        },
+        toggleWorkflowCapability: (capability: WorkflowCapability) => {
+            setDraft((currentDraft) =>
+                currentDraft
+                    ? {
+                          ...currentDraft,
+                          selectedWorkflowCapabilities: toggleListValue(
+                              currentDraft.selectedWorkflowCapabilities,
+                              capability
+                          ),
+                      }
+                    : currentDraft
+            );
+            input.clearFeedback();
+        },
+        toggleBehaviorFlag: (behaviorFlag: BehaviorFlag) => {
+            setDraft((currentDraft) =>
+                currentDraft
+                    ? {
+                          ...currentDraft,
+                          selectedBehaviorFlags: toggleListValue(currentDraft.selectedBehaviorFlags, behaviorFlag),
+                      }
+                    : currentDraft
+            );
+            input.clearFeedback();
+        },
+        setRuntimeProfile: (runtimeProfile: RuntimeRequirementProfile) => {
+            setDraft((currentDraft) =>
+                currentDraft
+                    ? {
+                          ...currentDraft,
+                          selectedRuntimeProfile: runtimeProfile,
                       }
                     : currentDraft
             );

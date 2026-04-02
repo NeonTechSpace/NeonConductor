@@ -140,6 +140,9 @@ export function useModesInstructionsCustomModesController(input: {
                 setTopLevelTab: editorState.setTopLevelTab,
                 setField: editorState.setField,
                 toggleToolCapability: editorState.toggleToolCapability,
+                toggleWorkflowCapability: editorState.toggleWorkflowCapability,
+                toggleBehaviorFlag: editorState.toggleBehaviorFlag,
+                setRuntimeProfile: editorState.setRuntimeProfile,
                 setDeleteConfirmed: editorState.setDeleteConfirmed,
                 save: wrapFailClosedAction(async () => {
                     const customModeEditorDraft = editorState.draft;
@@ -155,6 +158,18 @@ export function useModesInstructionsCustomModesController(input: {
                     const toolCapabilities =
                         customModeEditorDraft.selectedToolCapabilities.length > 0
                             ? customModeEditorDraft.selectedToolCapabilities
+                            : undefined;
+                    const workflowCapabilities =
+                        customModeEditorDraft.selectedWorkflowCapabilities.length > 0
+                            ? customModeEditorDraft.selectedWorkflowCapabilities
+                            : undefined;
+                    const behaviorFlags =
+                        customModeEditorDraft.selectedBehaviorFlags.length > 0
+                            ? customModeEditorDraft.selectedBehaviorFlags
+                            : undefined;
+                    const runtimeProfile =
+                        customModeEditorDraft.selectedRuntimeProfile !== 'general'
+                            ? customModeEditorDraft.selectedRuntimeProfile
                             : undefined;
                     if (customModeEditorDraft.kind === 'create') {
                         await createCustomModeMutation.mutateAsync({
@@ -173,6 +188,9 @@ export function useModesInstructionsCustomModesController(input: {
                                 ...(whenToUse ? { whenToUse } : {}),
                                 ...(tags ? { tags } : {}),
                                 ...(toolCapabilities ? { toolCapabilities } : {}),
+                                ...(workflowCapabilities ? { workflowCapabilities } : {}),
+                                ...(behaviorFlags ? { behaviorFlags } : {}),
+                                ...(runtimeProfile ? { runtimeProfile } : {}),
                             },
                         });
                         return;
@@ -194,6 +212,9 @@ export function useModesInstructionsCustomModesController(input: {
                             ...(whenToUse ? { whenToUse } : {}),
                             ...(tags ? { tags } : {}),
                             ...(toolCapabilities ? { toolCapabilities } : {}),
+                            ...(workflowCapabilities ? { workflowCapabilities } : {}),
+                            ...(behaviorFlags ? { behaviorFlags } : {}),
+                            ...(runtimeProfile ? { runtimeProfile } : {}),
                         },
                     });
                 }),

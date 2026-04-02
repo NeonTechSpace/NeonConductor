@@ -2,7 +2,10 @@ import type {
     BuiltInToolMetadataEntry,
     BuiltInModePromptSettingsItem,
     FileBackedCustomModeSettingsItem,
+    BehaviorFlag,
+    RuntimeRequirementProfile,
     ToolCapability,
+    WorkflowCapability,
     TopLevelTab,
 } from '@/shared/contracts';
 
@@ -33,6 +36,9 @@ export interface CustomModeEditorDraftBase {
     whenToUse: string;
     tagsText: string;
     selectedToolCapabilities: ToolCapability[];
+    selectedWorkflowCapabilities: WorkflowCapability[];
+    selectedBehaviorFlags: BehaviorFlag[];
+    selectedRuntimeProfile: RuntimeRequirementProfile;
     deleteConfirmed: boolean;
 }
 
@@ -99,6 +105,37 @@ export function toggleToolCapability(value: ToolCapability[], capability: ToolCa
     return value.includes(capability) ? value.filter((candidate) => candidate !== capability) : [...value, capability];
 }
 
+export function toggleListValue<TValue extends string>(value: TValue[], candidate: TValue): TValue[] {
+    return value.includes(candidate) ? value.filter((item) => item !== candidate) : [...value, candidate];
+}
+
+export function formatDelimitedLabel(value: string): string {
+    return value
+        .split(/[_-]+/g)
+        .filter((part) => part.length > 0)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
+
+export function formatRuntimeProfileLabel(value: RuntimeRequirementProfile): string {
+    switch (value) {
+        case 'general':
+            return 'General';
+        case 'read_only_agent':
+            return 'Read-Only Agent';
+        case 'mutating_agent':
+            return 'Mutating Agent';
+        case 'planner':
+            return 'Planner';
+        case 'orchestrator':
+            return 'Orchestrator';
+        case 'reviewer':
+            return 'Reviewer';
+        default:
+            return formatDelimitedLabel(value);
+    }
+}
+
 export function createEmptyCustomModeEditorDraft(scope: CustomModeScope): CreateCustomModeEditorDraft {
     return {
         kind: 'create',
@@ -112,6 +149,9 @@ export function createEmptyCustomModeEditorDraft(scope: CustomModeScope): Create
         whenToUse: '',
         tagsText: '',
         selectedToolCapabilities: [],
+        selectedWorkflowCapabilities: [],
+        selectedBehaviorFlags: [],
+        selectedRuntimeProfile: 'general',
         deleteConfirmed: false,
     };
 }

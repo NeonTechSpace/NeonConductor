@@ -8,7 +8,22 @@ import type {
 import { Button } from '@/web/components/ui/button';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
-import { toolCapabilities, topLevelTabs, type ToolCapability, type TopLevelTab } from '@/shared/contracts';
+import {
+    behaviorFlags,
+    runtimeRequirementProfiles,
+    toolCapabilities,
+    topLevelTabs,
+    workflowCapabilities,
+    type BehaviorFlag,
+    type RuntimeRequirementProfile,
+    type ToolCapability,
+    type TopLevelTab,
+    type WorkflowCapability,
+} from '@/shared/contracts';
+import {
+    formatDelimitedLabel,
+    formatRuntimeProfileLabel,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 
 function isTopLevelTab(value: string): value is TopLevelTab {
     return isOneOf(value, topLevelTabs);
@@ -272,10 +287,15 @@ export function formatBuiltInModeDescription(topLevelTab: TopLevelTab, label: st
 }
 
 export function formatToolCapabilityLabel(toolCapability: ToolCapability): string {
-    return toolCapability
-        .split('_')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
+    return formatDelimitedLabel(toolCapability);
+}
+
+function formatWorkflowCapabilityLabel(workflowCapability: WorkflowCapability): string {
+    return formatDelimitedLabel(workflowCapability);
+}
+
+function formatBehaviorFlagLabel(behaviorFlag: BehaviorFlag): string {
+    return formatDelimitedLabel(behaviorFlag);
 }
 
 export function CustomModeEditorSection(input: {
@@ -293,6 +313,9 @@ export function CustomModeEditorSection(input: {
             whenToUse: string;
             tagsText: string;
             selectedToolCapabilities: ToolCapability[];
+            selectedWorkflowCapabilities: WorkflowCapability[];
+            selectedBehaviorFlags: BehaviorFlag[];
+            selectedRuntimeProfile: RuntimeRequirementProfile;
             deleteConfirmed: boolean;
         } | undefined;
         isLoading: boolean;
@@ -317,6 +340,9 @@ export function CustomModeEditorSection(input: {
             value: string
         ) => void;
         toggleToolCapability: (toolCapability: ToolCapability) => void;
+        toggleWorkflowCapability: (workflowCapability: WorkflowCapability) => void;
+        toggleBehaviorFlag: (behaviorFlag: BehaviorFlag) => void;
+        setRuntimeProfile: (runtimeProfile: RuntimeRequirementProfile) => void;
         setDeleteConfirmed: (value: boolean) => void;
         save: () => Promise<void>;
         deleteMode: () => Promise<void>;
@@ -512,6 +538,9 @@ export function CustomModeEditorSection(input: {
                 <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
                     Tool Capabilities
                 </span>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Low-level tool authority for this mode, such as filesystem access or shell execution.
+                </p>
                 <div className='grid gap-3 md:grid-cols-2'>
                     {toolCapabilities.map((toolCapability) => (
                         <label
@@ -530,6 +559,83 @@ export function CustomModeEditorSection(input: {
                     ))}
                 </div>
             </div>
+
+            <div className='space-y-2'>
+                <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
+                    Workflow Capabilities
+                </span>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Higher-level product behaviors this mode is intended to participate in.
+                </p>
+                <div className='grid gap-3 md:grid-cols-2'>
+                    {workflowCapabilities.map((workflowCapability) => (
+                        <label
+                            key={workflowCapability}
+                            className='border-border bg-background flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm'>
+                            <input
+                                type='checkbox'
+                                className='mt-1'
+                                checked={draft.selectedWorkflowCapabilities.includes(workflowCapability)}
+                                onChange={() => {
+                                    input.editor.toggleWorkflowCapability(workflowCapability);
+                                }}
+                            />
+                            <span className='leading-6'>{formatWorkflowCapabilityLabel(workflowCapability)}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            <div className='space-y-2'>
+                <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
+                    Behavior Flags
+                </span>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Operational traits such as approval gating, artifact production, or worker delegation intent.
+                </p>
+                <div className='grid gap-3 md:grid-cols-2'>
+                    {behaviorFlags.map((behaviorFlag) => (
+                        <label
+                            key={behaviorFlag}
+                            className='border-border bg-background flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm'>
+                            <input
+                                type='checkbox'
+                                className='mt-1'
+                                checked={draft.selectedBehaviorFlags.includes(behaviorFlag)}
+                                onChange={() => {
+                                    input.editor.toggleBehaviorFlag(behaviorFlag);
+                                }}
+                            />
+                            <span className='leading-6'>{formatBehaviorFlagLabel(behaviorFlag)}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            <label className='space-y-2'>
+                <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
+                    Runtime Profile
+                </span>
+                <select
+                    className='border-border bg-background h-11 w-full rounded-2xl border px-3 text-sm'
+                    value={draft.selectedRuntimeProfile}
+                    onChange={(event) => {
+                        if (!runtimeRequirementProfiles.includes(event.target.value as RuntimeRequirementProfile)) {
+                            return;
+                        }
+                        input.editor.setRuntimeProfile(event.target.value as RuntimeRequirementProfile);
+                    }}>
+                    {runtimeRequirementProfiles.map((runtimeProfile) => (
+                        <option key={runtimeProfile} value={runtimeProfile}>
+                            {formatRuntimeProfileLabel(runtimeProfile)}
+                        </option>
+                    ))}
+                </select>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Routing and compatibility intent for this mode. Slice A records the profile now; runtime behavior
+                    still migrates in later slices.
+                </p>
+            </label>
 
             <div className='grid gap-4 xl:grid-cols-2'>
                 <label className='space-y-2'>
@@ -688,11 +794,38 @@ export function FileBackedModeInventorySection(input: {
                                                     <span
                                                         key={`${mode.modeKey}:tool:${toolCapability}`}
                                                         className='border-border/70 bg-background/80 rounded-full border px-3 py-1 text-[11px] font-medium'>
-                                                        {formatToolCapabilityLabel(toolCapability)}
+                                                            {formatToolCapabilityLabel(toolCapability)}
+                                                        </span>
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                        {mode.workflowCapabilities && mode.workflowCapabilities.length > 0 ? (
+                                            <div className='flex flex-wrap gap-2 pt-1'>
+                                                {mode.workflowCapabilities.map((workflowCapability) => (
+                                                    <span
+                                                        key={`${mode.modeKey}:workflow:${workflowCapability}`}
+                                                        className='border-border/70 bg-background/80 rounded-full border px-3 py-1 text-[11px] font-medium'>
+                                                        {formatWorkflowCapabilityLabel(workflowCapability)}
                                                     </span>
                                                 ))}
                                             </div>
                                         ) : null}
+                                        {mode.behaviorFlags && mode.behaviorFlags.length > 0 ? (
+                                            <div className='flex flex-wrap gap-2 pt-1'>
+                                                {mode.behaviorFlags.map((behaviorFlag) => (
+                                                    <span
+                                                        key={`${mode.modeKey}:behavior:${behaviorFlag}`}
+                                                        className='border-border/70 bg-background/80 rounded-full border px-3 py-1 text-[11px] font-medium'>
+                                                        {formatBehaviorFlagLabel(behaviorFlag)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                        <div className='flex flex-wrap gap-2 pt-1'>
+                                            <span className='border-border/70 bg-background/80 rounded-full border px-3 py-1 text-[11px] font-medium'>
+                                                Runtime Profile: {formatRuntimeProfileLabel(mode.runtimeProfile ?? 'general')}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div className='flex flex-wrap gap-2'>

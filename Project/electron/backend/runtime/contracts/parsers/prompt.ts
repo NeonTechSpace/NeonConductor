@@ -1,7 +1,11 @@
 import {
+    behaviorFlags as knownBehaviorFlags,
     toolCapabilities as knownToolCapabilities,
+    runtimeRequirementProfiles as knownRuntimeRequirementProfiles,
+    workflowCapabilities as knownWorkflowCapabilities,
     topLevelTabs,
     type ToolCapability,
+    type RuntimeRequirementProfile,
 } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
@@ -107,6 +111,35 @@ function readOptionalToolCapabilities(value: unknown, field: string): ToolCapabi
     return capabilities.length > 0 ? Array.from(new Set(capabilities as ToolCapability[])) : undefined;
 }
 
+function readOptionalEnumList<const T extends readonly string[]>(
+    value: unknown,
+    field: string,
+    allowedValues: T
+): T[number][] | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    const entries = readStringArray(value, field).map((entry) => entry.trim());
+    const invalidEntry = entries.find((entry) => !allowedValues.includes(entry as T[number]));
+    if (invalidEntry) {
+        throw new Error(`Invalid "${field}": expected only ${allowedValues.join(', ')}.`);
+    }
+
+    return entries.length > 0 ? Array.from(new Set(entries as T[number][])) : undefined;
+}
+
+function readOptionalRuntimeRequirementProfile(
+    value: unknown,
+    field: string
+): RuntimeRequirementProfile | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    return readEnumValue(value, field, knownRuntimeRequirementProfiles);
+}
+
 function parsePromptLayerCustomModePayload(value: unknown, field: string): PromptLayerCustomModePayload {
     const source = readObject(value, field);
     const description = readOptionalInstructionText(source.description, `${field}.description`);
@@ -115,6 +148,17 @@ function parsePromptLayerCustomModePayload(value: unknown, field: string): Promp
     const whenToUse = readOptionalInstructionText(source.whenToUse, `${field}.whenToUse`);
     const tags = readOptionalStringList(source.tags, `${field}.tags`);
     const toolCapabilities = readOptionalToolCapabilities(source.toolCapabilities, `${field}.toolCapabilities`);
+    const workflowCapabilities = readOptionalEnumList(
+        source.workflowCapabilities,
+        `${field}.workflowCapabilities`,
+        knownWorkflowCapabilities
+    );
+    const behaviorFlags = readOptionalEnumList(
+        source.behaviorFlags,
+        `${field}.behaviorFlags`,
+        knownBehaviorFlags
+    );
+    const runtimeProfile = readOptionalRuntimeRequirementProfile(source.runtimeProfile, `${field}.runtimeProfile`);
 
     return {
         slug: readString(source.slug, `${field}.slug`),
@@ -125,6 +169,9 @@ function parsePromptLayerCustomModePayload(value: unknown, field: string): Promp
         ...(whenToUse ? { whenToUse } : {}),
         ...(tags ? { tags } : {}),
         ...(toolCapabilities ? { toolCapabilities } : {}),
+        ...(workflowCapabilities ? { workflowCapabilities } : {}),
+        ...(behaviorFlags ? { behaviorFlags } : {}),
+        ...(runtimeProfile ? { runtimeProfile } : {}),
     };
 }
 
@@ -139,6 +186,17 @@ function parsePromptLayerEditableCustomModePayload(
     const whenToUse = readOptionalInstructionText(source.whenToUse, `${field}.whenToUse`);
     const tags = readOptionalStringList(source.tags, `${field}.tags`);
     const toolCapabilities = readOptionalToolCapabilities(source.toolCapabilities, `${field}.toolCapabilities`);
+    const workflowCapabilities = readOptionalEnumList(
+        source.workflowCapabilities,
+        `${field}.workflowCapabilities`,
+        knownWorkflowCapabilities
+    );
+    const behaviorFlags = readOptionalEnumList(
+        source.behaviorFlags,
+        `${field}.behaviorFlags`,
+        knownBehaviorFlags
+    );
+    const runtimeProfile = readOptionalRuntimeRequirementProfile(source.runtimeProfile, `${field}.runtimeProfile`);
 
     return {
         name: readString(source.name, `${field}.name`),
@@ -148,6 +206,9 @@ function parsePromptLayerEditableCustomModePayload(
         ...(whenToUse ? { whenToUse } : {}),
         ...(tags ? { tags } : {}),
         ...(toolCapabilities ? { toolCapabilities } : {}),
+        ...(workflowCapabilities ? { workflowCapabilities } : {}),
+        ...(behaviorFlags ? { behaviorFlags } : {}),
+        ...(runtimeProfile ? { runtimeProfile } : {}),
     };
 }
 

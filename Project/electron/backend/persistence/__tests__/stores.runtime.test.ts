@@ -644,6 +644,24 @@ describe('persistence stores: runtime domain', () => {
 
         expect(modes.some((mode) => mode.topLevelTab === 'chat' && mode.modeKey === 'chat')).toBe(true);
         expect(modes.some((mode) => mode.topLevelTab === 'agent' && mode.modeKey === 'ask')).toBe(true);
+        expect(
+            modes.find((mode) => mode.topLevelTab === 'agent' && mode.modeKey === 'plan')?.executionPolicy
+        ).toEqual({
+            planningOnly: true,
+            toolCapabilities: ['filesystem_read', 'mcp'],
+            workflowCapabilities: ['planning', 'artifact_view', 'recovery'],
+            behaviorFlags: ['approval_gated', 'artifact_producing', 'read_only_execution'],
+            runtimeProfile: 'planner',
+        });
+        expect(
+            modes.find((mode) => mode.topLevelTab === 'orchestrator' && mode.modeKey === 'orchestrate')
+                ?.executionPolicy
+        ).toEqual({
+            toolCapabilities: ['filesystem_read'],
+            workflowCapabilities: ['orchestration', 'artifact_view'],
+            behaviorFlags: ['checkpoint_eligible', 'artifact_producing', 'child_worker_capable'],
+            runtimeProfile: 'orchestrator',
+        });
         expect(skillfiles).toEqual([]);
         expect(account.authState).toBe('logged_out');
         expect(account.profileId).toBe(profileId);

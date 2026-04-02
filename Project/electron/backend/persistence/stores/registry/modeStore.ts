@@ -7,17 +7,15 @@ import {
     parseJsonValue,
 } from '@/app/backend/persistence/stores/shared/utils';
 import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
+import { normalizeModeMetadata, normalizeModePromptDefinition, registryScopes, registrySourceKinds, topLevelTabs } from '@/app/backend/runtime/contracts';
+import type { ModeExecutionPolicy, ToolCapability, RuntimeRequirementProfile, TopLevelTab } from '@/app/backend/runtime/contracts';
+
 import {
-    normalizeModeMetadata,
-    normalizeModePromptDefinition,
-    registryScopes,
-    registrySourceKinds,
+    behaviorFlags as knownBehaviorFlags,
+    runtimeRequirementProfiles as knownRuntimeRequirementProfiles,
     toolCapabilities as knownToolCapabilities,
-    topLevelTabs,
-    type ModeExecutionPolicy,
-    type ToolCapability,
-    type TopLevelTab,
-} from '@/app/backend/runtime/contracts';
+    workflowCapabilities as knownWorkflowCapabilities,
+} from '@/shared/contracts/enums';
 
 function parseToolCapabilities(value: unknown): ToolCapability[] | undefined {
     if (!Array.isArray(value)) {
@@ -28,6 +26,21 @@ function parseToolCapabilities(value: unknown): ToolCapability[] | undefined {
         (capability): capability is ToolCapability =>
             typeof capability === 'string' && knownToolCapabilities.includes(capability as ToolCapability)
     );
+    return Array.from(new Set(capabilities));
+}
+
+function parseEnumArray<const T extends readonly string[]>(
+    value: unknown,
+    allowedValues: T
+): T[number][] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const capabilities = value.filter(
+        (capability): capability is T[number] =>
+            typeof capability === 'string' && allowedValues.includes(capability as T[number])
+    );
     return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
 }
 
@@ -36,11 +49,21 @@ function parseExecutionPolicy(value: string): ModeExecutionPolicy {
     const planningOnly = parsed['planningOnly'];
     const readOnly = parsed['readOnly'];
     const toolCapabilities = parseToolCapabilities(parsed['toolCapabilities']);
+    const workflowCapabilities = parseEnumArray(parsed['workflowCapabilities'], knownWorkflowCapabilities);
+    const behaviorFlags = parseEnumArray(parsed['behaviorFlags'], knownBehaviorFlags);
+    const runtimeProfile =
+        typeof parsed['runtimeProfile'] === 'string' &&
+        knownRuntimeRequirementProfiles.includes(parsed['runtimeProfile'] as RuntimeRequirementProfile)
+            ? (parsed['runtimeProfile'] as RuntimeRequirementProfile)
+            : undefined;
     const normalizedToolCapabilities = toolCapabilities ?? (readOnly === true ? ['filesystem_read'] : undefined);
 
     return {
         ...(typeof planningOnly === 'boolean' ? { planningOnly } : {}),
         ...(normalizedToolCapabilities ? { toolCapabilities: normalizedToolCapabilities } : {}),
+        ...(workflowCapabilities ? { workflowCapabilities } : {}),
+        ...(behaviorFlags ? { behaviorFlags } : {}),
+        ...(runtimeProfile ? { runtimeProfile } : {}),
     };
 }
 

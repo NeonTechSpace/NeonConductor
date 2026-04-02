@@ -31,6 +31,9 @@ describe('registryAssetParser', () => {
                         planningOnly: true,
                         readOnly: true,
                         toolCapabilities: ['filesystem_write', 'filesystem_read', 'filesystem_read'],
+                        workflowCapabilities: ['planning', 'artifact_view', 'planning'],
+                        behaviorFlags: ['approval_gated', 'artifact_producing', 'approval_gated'],
+                        runtimeProfile: 'planner',
                         tags: ['alpha', 'beta'],
                         groups: ['legacy', 'beta'],
                         enabled: false,
@@ -56,6 +59,9 @@ describe('registryAssetParser', () => {
             executionPolicy: {
                 planningOnly: true,
                 toolCapabilities: ['filesystem_write', 'filesystem_read'],
+                workflowCapabilities: ['planning', 'artifact_view'],
+                behaviorFlags: ['approval_gated', 'artifact_producing'],
+                runtimeProfile: 'planner',
             },
             source: 'global_file',
             sourceKind: 'global_file',
@@ -95,6 +101,21 @@ describe('registryAssetParser', () => {
                     },
                 }),
                 createRegistryAssetParserContext({ scope: 'workspace', workspaceFingerprint: 'ws_123' })
+            )
+        ).toBeNull();
+
+        expect(
+            parseRegistryModeAsset(
+                buildAssetFile({
+                    parsed: {
+                        attributes: {
+                            modeKey: 'agent-tools',
+                            workflowCapabilities: ['invalid_capability'],
+                        },
+                        bodyMarkdown: '# Broken',
+                    },
+                }),
+                createRegistryAssetParserContext({ scope: 'global' })
             )
         ).toBeNull();
     });
@@ -169,11 +190,20 @@ describe('registryAssetParser', () => {
         expect(buildModeExecutionPolicy({ readOnly: true })).toEqual({
             toolCapabilities: ['filesystem_read'],
         });
-        expect(buildModeExecutionPolicy({ planningOnly: false, toolCapabilities: ['shell', 'shell'] })).toEqual(
-            {
+        expect(
+            buildModeExecutionPolicy({
                 planningOnly: false,
-                toolCapabilities: ['shell'],
-            }
-        );
+                toolCapabilities: ['shell', 'shell'],
+                workflowCapabilities: ['planning', 'planning'],
+                behaviorFlags: ['approval_gated', 'approval_gated'],
+                runtimeProfile: 'planner',
+            })
+        ).toEqual({
+            planningOnly: false,
+            toolCapabilities: ['shell'],
+            workflowCapabilities: ['planning'],
+            behaviorFlags: ['approval_gated'],
+            runtimeProfile: 'planner',
+        });
     });
 });

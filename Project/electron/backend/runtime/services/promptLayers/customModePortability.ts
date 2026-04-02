@@ -3,8 +3,14 @@ import path from 'node:path';
 
 import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
 import {
+    behaviorFlags as knownBehaviorFlags,
+    runtimeRequirementProfiles as knownRuntimeRequirementProfiles,
     toolCapabilities as knownToolCapabilities,
+    workflowCapabilities as knownWorkflowCapabilities,
     type ToolCapability,
+    type BehaviorFlag,
+    type RuntimeRequirementProfile,
+    type WorkflowCapability,
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import { slugifyAssetKey, resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
@@ -19,6 +25,9 @@ export interface CanonicalCustomModePayload {
     whenToUse?: string;
     tags?: string[];
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface PortableCustomModePayload {
@@ -107,6 +116,37 @@ function readOptionalToolCapabilities(value: unknown, field: 'toolCapabilities')
     return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
 }
 
+function readOptionalEnumArray<const T extends readonly string[]>(
+    value: unknown,
+    field: string,
+    allowedValues: T
+): T[number][] | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (!Array.isArray(value)) {
+        throw new Error(`Invalid "${field}": expected string array.`);
+    }
+
+    const values = value.map((item, index) => {
+        if (typeof item !== 'string') {
+            throw new Error(`Invalid "${field}[${String(index)}]": expected string.`);
+        }
+
+        const normalized = item.trim();
+        if (!normalized) {
+            throw new Error(`Invalid "${field}[${String(index)}]": expected non-empty string.`);
+        }
+        if (!allowedValues.includes(normalized as T[number])) {
+            throw new Error(`Invalid "${field}": expected only ${allowedValues.join(', ')}.`);
+        }
+
+        return normalized as T[number];
+    });
+
+    return values.length > 0 ? Array.from(new Set(values)) : undefined;
+}
+
 function normalizeCanonicalCustomModePayload(input: CanonicalCustomModePayload): CanonicalCustomModePayload {
     const slug = readOptionalPortableString(input.slug, 'slug');
     if (!slug) {
@@ -123,6 +163,16 @@ function normalizeCanonicalCustomModePayload(input: CanonicalCustomModePayload):
     const whenToUse = readOptionalPortableString(input.whenToUse, 'whenToUse');
     const tags = readOptionalPortableStringArray(input.tags, 'tags');
     const toolCapabilities = readOptionalToolCapabilities(input.toolCapabilities, 'toolCapabilities');
+    const workflowCapabilities = readOptionalEnumArray(
+        input.workflowCapabilities,
+        'workflowCapabilities',
+        knownWorkflowCapabilities
+    );
+    const behaviorFlags = readOptionalEnumArray(input.behaviorFlags, 'behaviorFlags', knownBehaviorFlags);
+    const runtimeProfile =
+        input.runtimeProfile && knownRuntimeRequirementProfiles.includes(input.runtimeProfile)
+            ? input.runtimeProfile
+            : undefined;
 
     return {
         slug,
@@ -133,6 +183,9 @@ function normalizeCanonicalCustomModePayload(input: CanonicalCustomModePayload):
         ...(whenToUse ? { whenToUse } : {}),
         ...(tags ? { tags } : {}),
         ...(toolCapabilities ? { toolCapabilities } : {}),
+        ...(workflowCapabilities ? { workflowCapabilities } : {}),
+        ...(behaviorFlags ? { behaviorFlags } : {}),
+        ...(runtimeProfile ? { runtimeProfile } : {}),
     };
 }
 
@@ -217,6 +270,24 @@ function convertToolCapabilitiesToPortableGroups(toolCapabilities: ToolCapabilit
     return groups.length > 0 ? groups : undefined;
 }
 
+function assertPortableMetadataCompatibility(mode: ModeDefinitionRecord): void {
+    if ((mode.executionPolicy.workflowCapabilities?.length ?? 0) > 0) {
+        throw new Error(
+            'Portable export does not support workflow capabilities in this slice. Re-export from a portable-only mode.'
+        );
+    }
+    if ((mode.executionPolicy.behaviorFlags?.length ?? 0) > 0) {
+        throw new Error(
+            'Portable export does not support behavior flags in this slice. Re-export from a portable-only mode.'
+        );
+    }
+    if (mode.executionPolicy.runtimeProfile) {
+        throw new Error(
+            'Portable export does not support runtime profiles in this slice. Re-export from a portable-only mode.'
+        );
+    }
+}
+
 export function parsePortableCustomModeJson(jsonText: string): PortableCustomModePayload {
     let parsed: unknown;
     try {
@@ -268,6 +339,7 @@ export function toCanonicalCustomModePayload(input: PortableCustomModePayload): 
 }
 
 export function toPortableModePayload(mode: ModeDefinitionRecord): PortableCustomModePayload {
+    assertPortableMetadataCompatibility(mode);
     const groups = convertToolCapabilitiesToPortableGroups(mode.executionPolicy.toolCapabilities);
 
     return normalizePortableCustomModePayload({
@@ -310,6 +382,13 @@ export function renderCanonicalModeMarkdown(input: { topLevelTab: TopLevelTab; p
         ...(payload.toolCapabilities
             ? ['toolCapabilities:', ...payload.toolCapabilities.map((capability) => `  - ${capability}`)]
             : []),
+        ...(payload.workflowCapabilities
+            ? ['workflowCapabilities:', ...payload.workflowCapabilities.map((capability) => `  - ${capability}`)]
+            : []),
+        ...(payload.behaviorFlags
+            ? ['behaviorFlags:', ...payload.behaviorFlags.map((flag) => `  - ${flag}`)]
+            : []),
+        ...(payload.runtimeProfile ? [`runtimeProfile: ${payload.runtimeProfile}`] : []),
         ...(payload.roleDefinition ? [`roleDefinition: ${stringifyFrontmatterValue(payload.roleDefinition)}`] : []),
         '---',
     ];

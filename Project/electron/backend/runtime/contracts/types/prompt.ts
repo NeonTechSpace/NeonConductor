@@ -2,7 +2,12 @@ import type { TopLevelTab } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 import type { ModePromptDefinition } from '@/app/backend/runtime/contracts/types/mode';
 
-import type { ToolCapability } from '@/shared/contracts';
+import type {
+    BehaviorFlag,
+    RuntimeRequirementProfile,
+    ToolCapability,
+    WorkflowCapability,
+} from '@/shared/contracts';
 
 export interface FileBackedCustomModeSettingsItem {
     topLevelTab: TopLevelTab;
@@ -12,6 +17,9 @@ export interface FileBackedCustomModeSettingsItem {
     whenToUse?: string;
     tags?: string[];
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface FileBackedCustomModeSettingsByScope {
@@ -25,6 +33,10 @@ export interface BuiltInModePromptSettingsItem {
     label: string;
     prompt: ModePromptDefinition;
     hasOverride: boolean;
+    toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface PromptLayerSettings {
@@ -88,6 +100,9 @@ export interface PromptLayerCustomModePayload {
     whenToUse?: string;
     tags?: string[];
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface PromptLayerEditableCustomModePayload {
@@ -98,6 +113,9 @@ export interface PromptLayerEditableCustomModePayload {
     whenToUse?: string;
     tags?: string[];
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface PromptLayerCustomModeRecord {
@@ -112,6 +130,9 @@ export interface PromptLayerCustomModeRecord {
     whenToUse?: string;
     tags?: string[];
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface PromptLayerGetCustomModeInput extends ProfileInput {

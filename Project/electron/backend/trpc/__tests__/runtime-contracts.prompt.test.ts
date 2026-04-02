@@ -43,6 +43,8 @@ describe('runtime contracts: prompt layers', () => {
                 label: 'Chat',
                 prompt: {},
                 hasOverride: false,
+                toolCapabilities: [],
+                runtimeProfile: 'general',
             },
         ]);
         expect(initialSettings.settings.builtInModes.agent.map((mode) => mode.modeKey)).toEqual([
@@ -98,6 +100,10 @@ describe('runtime contracts: prompt layers', () => {
                 customInstructions: 'Always explain the change plan before editing.',
             },
             hasOverride: true,
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            workflowCapabilities: ['artifact_view'],
+            behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
+            runtimeProfile: 'mutating_agent',
         });
 
         const resetBuiltInModeSettings = await caller.prompt.resetBuiltInModePrompt({
@@ -111,6 +117,10 @@ describe('runtime contracts: prompt layers', () => {
             label: 'Agent Code',
             prompt: {},
             hasOverride: false,
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            workflowCapabilities: ['artifact_view'],
+            behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
+            runtimeProfile: 'mutating_agent',
         });
 
         const resetProfileSettings = await caller.prompt.resetProfileGlobalInstructions({ profileId });
@@ -118,6 +128,18 @@ describe('runtime contracts: prompt layers', () => {
 
         const resetAppSettings = await caller.prompt.resetAppGlobalInstructions({ profileId });
         expect(resetAppSettings.settings.appGlobalInstructions).toBe('');
+
+        const seededModes = await caller.mode.list({
+            profileId,
+            topLevelTab: 'agent',
+        });
+        expect(seededModes.modes.find((mode) => mode.modeKey === 'plan')?.executionPolicy).toEqual({
+            planningOnly: true,
+            toolCapabilities: ['filesystem_read', 'mcp'],
+            workflowCapabilities: ['planning', 'artifact_view', 'recovery'],
+            behaviorFlags: ['approval_gated', 'artifact_producing', 'read_only_execution'],
+            runtimeProfile: 'planner',
+        });
     });
 
     it('fails closed on malformed persisted prompt-layer records', async () => {
@@ -175,6 +197,10 @@ describe('runtime contracts: prompt layers', () => {
             label: 'Agent Code',
             prompt: {},
             hasOverride: true,
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            workflowCapabilities: ['artifact_view'],
+            behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
+            runtimeProfile: 'mutating_agent',
         });
     });
 
@@ -424,6 +450,88 @@ describe('runtime contracts: prompt layers', () => {
         expect(workspaceModes.modes.find((mode) => mode.modeKey === 'workspace-orchestrator')?.label).toBe(
             'Workspace Orchestrator'
         );
+    });
+
+    it('round-trips canonical workflow metadata for file-backed custom modes and fails closed on portable export', async () => {
+        const caller = createCaller();
+        const globalRegistry = await caller.registry.listResolved({ profileId });
+        const globalModesRoot = path.join(globalRegistry.paths.globalAssetsRoot, 'modes');
+        rmSync(globalModesRoot, { recursive: true, force: true });
+        mkdirSync(globalModesRoot, { recursive: true });
+
+        const created = await caller.prompt.createCustomMode({
+            profileId,
+            topLevelTab: 'agent',
+            scope: 'global',
+            mode: {
+                slug: 'workflow-review',
+                name: 'Workflow Review',
+                description: 'Workflow-aware review mode',
+                roleDefinition: 'Act as a workflow review specialist.',
+                customInstructions: 'Review workflow boundaries carefully.',
+                whenToUse: 'Use when the plan needs a recovery-aware review.',
+                tags: ['workflow', 'review'],
+                toolCapabilities: ['filesystem_read'],
+                workflowCapabilities: ['review', 'artifact_view'],
+                behaviorFlags: ['approval_gated', 'artifact_producing'],
+                runtimeProfile: 'reviewer',
+            },
+        });
+
+        expect(created.settings.fileBackedCustomModes.global.agent).toEqual([
+            {
+                topLevelTab: 'agent',
+                modeKey: 'workflow-review',
+                label: 'Workflow Review',
+                description: 'Workflow-aware review mode',
+                whenToUse: 'Use when the plan needs a recovery-aware review.',
+                tags: ['workflow', 'review'],
+                toolCapabilities: ['filesystem_read'],
+                workflowCapabilities: ['review', 'artifact_view'],
+                behaviorFlags: ['approval_gated', 'artifact_producing'],
+                runtimeProfile: 'reviewer',
+            },
+        ]);
+
+        const loaded = await caller.prompt.getCustomMode({
+            profileId,
+            topLevelTab: 'agent',
+            modeKey: 'workflow-review',
+            scope: 'global',
+        });
+        expect(loaded.mode).toEqual({
+            scope: 'global',
+            topLevelTab: 'agent',
+            modeKey: 'workflow-review',
+            slug: 'workflow-review',
+            name: 'Workflow Review',
+            description: 'Workflow-aware review mode',
+            roleDefinition: 'Act as a workflow review specialist.',
+            customInstructions: 'Review workflow boundaries carefully.',
+            whenToUse: 'Use when the plan needs a recovery-aware review.',
+            tags: ['workflow', 'review'],
+            toolCapabilities: ['filesystem_read'],
+            workflowCapabilities: ['review', 'artifact_view'],
+            behaviorFlags: ['approval_gated', 'artifact_producing'],
+            runtimeProfile: 'reviewer',
+        });
+
+        const modeFile = path.join(globalModesRoot, 'agent-workflow-review.md');
+        const modeMarkdown = readFileSync(modeFile, 'utf8');
+        expect(modeMarkdown).toContain('workflowCapabilities:');
+        expect(modeMarkdown).toContain('- review');
+        expect(modeMarkdown).toContain('behaviorFlags:');
+        expect(modeMarkdown).toContain('- approval_gated');
+        expect(modeMarkdown).toContain('runtimeProfile: reviewer');
+
+        await expect(
+            caller.prompt.exportCustomMode({
+                profileId,
+                topLevelTab: 'agent',
+                modeKey: 'workflow-review',
+                scope: 'global',
+            })
+        ).rejects.toThrow('Portable export does not support workflow capabilities');
     });
 
     it('creates, edits, and deletes file-backed custom modes without mutating unrelated state', async () => {

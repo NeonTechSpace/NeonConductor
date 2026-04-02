@@ -2,15 +2,21 @@ import type {
     RegistryScope,
     RegistrySourceKind,
     RuleActivationMode,
+    BehaviorFlag,
     ToolCapability,
+    WorkflowCapability,
     TopLevelTab,
     RegistryPresetKey,
+    RuntimeRequirementProfile,
 } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 
 export interface ModeExecutionPolicy {
     planningOnly?: boolean;
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }
 
 export interface ModePromptDefinition {

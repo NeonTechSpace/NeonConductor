@@ -2,12 +2,15 @@ import type {
     RegistryScope,
     RegistrySourceKind,
     RuleActivationMode,
+    BehaviorFlag,
     ToolCapability,
+    WorkflowCapability,
+    RuntimeRequirementProfile,
     TopLevelTab,
     ModeExecutionPolicy,
     ModePromptDefinition,
 } from '@/app/backend/runtime/contracts';
-import { ruleActivationModes, toolCapabilities as knownToolCapabilities } from '@/app/backend/runtime/contracts';
+import { ruleActivationModes } from '@/app/backend/runtime/contracts';
 import type { RegistryAssetFile } from '@/app/backend/runtime/services/registry/filesystem';
 import { slugifyAssetKey, titleCaseFromKey, toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
 import type {
@@ -15,6 +18,13 @@ import type {
     ParsedRegistryRulesetAsset,
     ParsedRegistrySkillAsset,
 } from '@/app/backend/runtime/services/registry/registryLifecycle.types';
+
+import {
+    behaviorFlags as knownBehaviorFlags,
+    runtimeRequirementProfiles as knownRuntimeRequirementProfiles,
+    toolCapabilities as knownToolCapabilities,
+    workflowCapabilities as knownWorkflowCapabilities,
+} from '@/shared/contracts/enums';
 
 function readString(value: unknown): string | undefined {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -61,16 +71,49 @@ function readOptionalStringList(value: unknown): string[] | null | undefined {
     return items.length > 0 ? Array.from(new Set(items)) : undefined;
 }
 
-function readToolCapabilities(value: unknown): ToolCapability[] | undefined {
+function readToolCapabilities(value: unknown): ToolCapability[] | null | undefined {
     if (!Array.isArray(value)) {
         return undefined;
     }
 
-    const capabilities = value.filter(
-        (capability): capability is ToolCapability =>
-            typeof capability === 'string' && knownToolCapabilities.some((knownCapability) => knownCapability === capability)
-    );
-    return capabilities.length > 0 ? Array.from(new Set(capabilities)) : undefined;
+    const capabilities: ToolCapability[] = [];
+    for (const capability of value) {
+        if (typeof capability !== 'string' || !knownToolCapabilities.includes(capability as ToolCapability)) {
+            return null;
+        }
+        capabilities.push(capability as ToolCapability);
+    }
+    return Array.from(new Set(capabilities));
+}
+
+function readEnumList<const T extends readonly string[]>(value: unknown, allowedValues: T): T[number][] | null | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (!Array.isArray(value)) {
+        return null;
+    }
+
+    const capabilities: T[number][] = [];
+    for (const capability of value) {
+        if (typeof capability !== 'string' || !allowedValues.includes(capability as T[number])) {
+            return null;
+        }
+        capabilities.push(capability as T[number]);
+    }
+    return Array.from(new Set(capabilities));
+}
+
+function readRuntimeRequirementProfile(value: unknown): RuntimeRequirementProfile | null | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (typeof value !== 'string') {
+        return null;
+    }
+    return (knownRuntimeRequirementProfiles as readonly string[]).includes(value)
+        ? (value as RuntimeRequirementProfile)
+        : null;
 }
 
 function mapModePrompt(input: { bodyMarkdown: string; attributes: Record<string, unknown> }): ModePromptDefinition {
@@ -93,6 +136,9 @@ export function buildModeExecutionPolicy(input: {
     planningOnly?: boolean;
     readOnly?: boolean;
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: WorkflowCapability[];
+    behaviorFlags?: BehaviorFlag[];
+    runtimeProfile?: RuntimeRequirementProfile;
 }): ModeExecutionPolicy {
     const normalizedToolCapabilities: ToolCapability[] | undefined =
         input.toolCapabilities && input.toolCapabilities.length > 0
@@ -104,6 +150,13 @@ export function buildModeExecutionPolicy(input: {
     return {
         ...(input.planningOnly !== undefined ? { planningOnly: input.planningOnly } : {}),
         ...(normalizedToolCapabilities ? { toolCapabilities: normalizedToolCapabilities } : {}),
+        ...(input.workflowCapabilities && input.workflowCapabilities.length > 0
+            ? { workflowCapabilities: Array.from(new Set(input.workflowCapabilities)) }
+            : {}),
+        ...(input.behaviorFlags && input.behaviorFlags.length > 0
+            ? { behaviorFlags: Array.from(new Set(input.behaviorFlags)) }
+            : {}),
+        ...(input.runtimeProfile ? { runtimeProfile: input.runtimeProfile } : {}),
     };
 }
 
@@ -161,6 +214,21 @@ export function parseRegistryModeAsset(
     const planningOnly = readBoolean(file.parsed.attributes['planningOnly']);
     const readOnly = readBoolean(file.parsed.attributes['readOnly']);
     const toolCapabilities = readToolCapabilities(file.parsed.attributes['toolCapabilities']);
+    if (toolCapabilities === null) {
+        return null;
+    }
+    const workflowCapabilities = readEnumList(file.parsed.attributes['workflowCapabilities'], knownWorkflowCapabilities);
+    if (workflowCapabilities === null) {
+        return null;
+    }
+    const behaviorFlags = readEnumList(file.parsed.attributes['behaviorFlags'], knownBehaviorFlags);
+    if (behaviorFlags === null) {
+        return null;
+    }
+    const runtimeProfile = readRuntimeRequirementProfile(file.parsed.attributes['runtimeProfile']);
+    if (runtimeProfile === null) {
+        return null;
+    }
     const topLevelTab = parsedTopLevelTab ?? 'agent';
 
     return {
@@ -183,6 +251,9 @@ export function parseRegistryModeAsset(
             ...(planningOnly !== undefined ? { planningOnly } : {}),
             ...(readOnly !== undefined ? { readOnly } : {}),
             ...(toolCapabilities !== undefined ? { toolCapabilities } : {}),
+            ...(workflowCapabilities !== undefined ? { workflowCapabilities } : {}),
+            ...(behaviorFlags !== undefined ? { behaviorFlags } : {}),
+            ...(runtimeProfile !== undefined ? { runtimeProfile } : {}),
         }),
         source: context.source,
         sourceKind: context.sourceKind,

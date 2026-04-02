@@ -10,6 +10,7 @@ import {
     topLevelTabs,
     type BuiltInModePromptSettingsItem,
     type ModeDefinition,
+    type ModeExecutionPolicy,
     type PromptLayerCustomModePayload,
     type PromptLayerCustomModeRecord,
     type PromptLayerSettings,
@@ -17,6 +18,11 @@ import {
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import {
+    getModeBehaviorFlags,
+    getModeRuntimeProfile,
+    getModeWorkflowCapabilities,
+} from '@/app/backend/runtime/services/mode/metadata';
 import { buildCanonicalCustomModePayload } from '@/app/backend/runtime/services/promptLayers/customModePortability';
 import { buildDiscoveredAssets, replaceDiscoveredModes } from '@/app/backend/runtime/services/registry/discovery';
 import { resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
@@ -81,6 +87,9 @@ async function readFileBackedCustomModes(input: {
             continue;
         }
 
+        const workflowCapabilities = getModeWorkflowCapabilities(mode.executionPolicy);
+        const behaviorFlags = getModeBehaviorFlags(mode.executionPolicy);
+        const runtimeProfile = getModeRuntimeProfile(mode.executionPolicy);
         const item: FileBackedCustomModeSettingsItem = {
             topLevelTab: mode.topLevelTab,
             modeKey: mode.modeKey,
@@ -90,6 +99,15 @@ async function readFileBackedCustomModes(input: {
             ...(mode.tags ? { tags: mode.tags } : {}),
             ...(mode.executionPolicy.toolCapabilities
                 ? { toolCapabilities: mode.executionPolicy.toolCapabilities }
+                : {}),
+            ...(workflowCapabilities.length > 0
+                ? { workflowCapabilities }
+                : {}),
+            ...(behaviorFlags.length > 0
+                ? { behaviorFlags }
+                : {}),
+            ...(runtimeProfile
+                ? { runtimeProfile }
                 : {}),
         };
         if (mode.scope === 'workspace') {
@@ -124,12 +142,19 @@ export async function readBuiltInModes(
 
     const builtInModes = storedModes.filter(isBuiltInMode).map((mode) => {
         const override = overrideByKey.get(`${mode.topLevelTab}:${mode.modeKey}`);
+        const workflowCapabilities = getModeWorkflowCapabilities(mode.executionPolicy);
+        const behaviorFlags = getModeBehaviorFlags(mode.executionPolicy);
+        const runtimeProfile = getModeRuntimeProfile(mode.executionPolicy);
         return {
             topLevelTab: mode.topLevelTab,
             modeKey: mode.modeKey,
             label: mode.label,
             prompt: override ? normalizeModePromptDefinition({ ...mode.prompt, ...override.prompt }) : mode.prompt,
             hasOverride: override !== undefined,
+            ...(mode.executionPolicy.toolCapabilities ? { toolCapabilities: mode.executionPolicy.toolCapabilities } : {}),
+            ...(workflowCapabilities.length > 0 ? { workflowCapabilities } : {}),
+            ...(behaviorFlags.length > 0 ? { behaviorFlags } : {}),
+            ...(runtimeProfile ? { runtimeProfile } : {}),
         } satisfies BuiltInModePromptSettingsItem;
     });
 
@@ -210,6 +235,9 @@ export async function findFileBackedCustomMode(input: {
 }
 
 export function toPromptLayerCustomModeRecord(mode: ModeDefinition): PromptLayerCustomModeRecord {
+    const workflowCapabilities = getModeWorkflowCapabilities(mode.executionPolicy);
+    const behaviorFlags = getModeBehaviorFlags(mode.executionPolicy);
+    const runtimeProfile = getModeRuntimeProfile(mode.executionPolicy);
     return {
         scope: mode.scope === 'workspace' ? 'workspace' : 'global',
         topLevelTab: mode.topLevelTab,
@@ -222,6 +250,15 @@ export function toPromptLayerCustomModeRecord(mode: ModeDefinition): PromptLayer
         ...(mode.whenToUse ? { whenToUse: mode.whenToUse } : {}),
         ...(mode.tags ? { tags: mode.tags } : {}),
         ...(mode.executionPolicy.toolCapabilities ? { toolCapabilities: mode.executionPolicy.toolCapabilities } : {}),
+        ...(workflowCapabilities.length > 0
+            ? { workflowCapabilities }
+            : {}),
+        ...(behaviorFlags.length > 0
+            ? { behaviorFlags }
+            : {}),
+        ...(runtimeProfile
+            ? { runtimeProfile }
+            : {}),
     };
 }
 
@@ -234,6 +271,9 @@ export function buildEditableCustomModePayload(input: {
     whenToUse?: string;
     tags?: string[];
     toolCapabilities?: ToolCapability[];
+    workflowCapabilities?: ModeExecutionPolicy['workflowCapabilities'];
+    behaviorFlags?: ModeExecutionPolicy['behaviorFlags'];
+    runtimeProfile?: ModeExecutionPolicy['runtimeProfile'];
 }): PromptLayerCustomModePayload {
     return buildCanonicalCustomModePayload({
         slug: input.slug,
@@ -244,6 +284,9 @@ export function buildEditableCustomModePayload(input: {
         ...(input.whenToUse ? { whenToUse: input.whenToUse } : {}),
         ...(input.tags ? { tags: input.tags } : {}),
         ...(input.toolCapabilities ? { toolCapabilities: input.toolCapabilities } : {}),
+        ...(input.workflowCapabilities ? { workflowCapabilities: input.workflowCapabilities } : {}),
+        ...(input.behaviorFlags ? { behaviorFlags: input.behaviorFlags } : {}),
+        ...(input.runtimeProfile ? { runtimeProfile: input.runtimeProfile } : {}),
     });
 }
 
