@@ -4,6 +4,7 @@
  */
 
 import { router } from '@/app/backend/trpc/init';
+import { branchWorkflowRouter } from '@/app/backend/trpc/routers/branchWorkflow';
 import { checkpointRouter } from '@/app/backend/trpc/routers/checkpoint';
 import { composerRouter } from '@/app/backend/trpc/routers/composer';
 import { contextRouter } from '@/app/backend/trpc/routers/context';
@@ -25,7 +26,6 @@ import { sessionRouter } from '@/app/backend/trpc/routers/session';
 import { systemRouter } from '@/app/backend/trpc/routers/system';
 import { toolRouter } from '@/app/backend/trpc/routers/tool';
 import { updatesRouter } from '@/app/backend/trpc/routers/updates';
-import { workflowRouter } from '@/app/backend/trpc/routers/workflow';
 
 export const appRouter = router({
     runtime: runtimeRouter,
@@ -48,7 +48,7 @@ export const appRouter = router({
     profile: profileRouter,
     system: systemRouter,
     sandbox: sandboxRouter,
-    workflow: workflowRouter,
+    branchWorkflow: branchWorkflowRouter,
     updates: updatesRouter,
 });
 

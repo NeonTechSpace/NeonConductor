@@ -4,20 +4,20 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/web/trpc/client', () => ({
     trpc: {
         useUtils: () => ({
-            workflow: {
+            branchWorkflow: {
                 list: {
                     invalidate: vi.fn(),
                 },
             },
         }),
-        workflow: {
+        branchWorkflow: {
             list: {
                 useQuery: () => ({
                     isLoading: false,
                     data: {
-                        workflows: [
+                        branchWorkflows: [
                             {
-                                id: 'workflow_install',
+                                id: 'branch_workflow_install',
                                 label: 'Install deps',
                                 command: 'pnpm install',
                                 enabled: true,
@@ -25,7 +25,7 @@ vi.mock('@/web/trpc/client', () => ({
                                 updatedAt: new Date().toISOString(),
                             },
                             {
-                                id: 'workflow_disabled',
+                                id: 'branch_workflow_disabled',
                                 label: 'Disabled bootstrap',
                                 command: 'pnpm bootstrap',
                                 enabled: false,
@@ -60,14 +60,14 @@ vi.mock('@/web/trpc/client', () => ({
 
 import {
     BranchWorkflowDialog,
-    createEmptyWorkflowDraftState,
+    createEmptyBranchWorkflowDraftState,
 } from '@/web/components/conversation/panels/branchWorkflowDialog';
 
 describe('BranchWorkflowDialog', () => {
     it('starts with an empty create-state draft', () => {
-        expect(createEmptyWorkflowDraftState()).toEqual({
+        expect(createEmptyBranchWorkflowDraftState()).toEqual({
             formMode: 'create',
-            editingWorkflowId: undefined,
+            editingBranchWorkflowId: undefined,
             label: '',
             command: '',
             enabled: true,
@@ -90,8 +90,8 @@ describe('BranchWorkflowDialog', () => {
         );
 
         expect(html).toContain('Branch workflow');
-        expect(html).toContain('Branch with no workflow');
-        expect(html).toContain('Create workflow');
+        expect(html).toContain('Branch with no branch workflow');
+        expect(html).toContain('Create branch workflow');
         expect(html).toContain('Install deps');
         expect(html).toContain('pnpm install');
         expect(html).toContain('Disabled bootstrap');

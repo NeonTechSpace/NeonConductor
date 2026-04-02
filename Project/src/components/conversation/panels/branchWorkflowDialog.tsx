@@ -1,12 +1,11 @@
+import {
+    createEmptyBranchWorkflowDraftState,
+    useBranchWorkflowLibraryController,
+    type BranchWorkflowLibraryController,
+} from '@/web/components/conversation/panels/useBranchWorkflowLibraryController';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 
-import type { ProjectWorkflowRecord } from '@/shared/contracts';
-
-import {
-    createEmptyWorkflowDraftState,
-    useWorkflowLibraryController,
-    type WorkflowLibraryController,
-} from '@/web/components/conversation/panels/useWorkflowLibraryController';
+import type { ProjectBranchWorkflowRecord } from '@/shared/contracts';
 
 export interface BranchWorkflowDialogProps {
     open: boolean;
@@ -14,11 +13,11 @@ export interface BranchWorkflowDialogProps {
     workspaceFingerprint: string;
     busy: boolean;
     onClose: () => void;
-    onBranch: (workflowId?: string) => Promise<void>;
+    onBranch: (branchWorkflowId?: string) => Promise<void>;
 }
 
-function WorkflowRow({
-    workflow,
+function BranchWorkflowRow({
+    branchWorkflow,
     isDeleting,
     onBranch,
     onEdit,
@@ -26,12 +25,12 @@ function WorkflowRow({
     onConfirmDelete,
     onCancelDelete,
 }: {
-    workflow: ProjectWorkflowRecord;
+    branchWorkflow: ProjectBranchWorkflowRecord;
     isDeleting: boolean;
-    onBranch: (workflowId?: string) => void;
-    onEdit: (workflow: ProjectWorkflowRecord) => void;
-    onDelete: (workflowId: string) => void;
-    onConfirmDelete: (workflowId: string) => void;
+    onBranch: (branchWorkflowId?: string) => void;
+    onEdit: (branchWorkflow: ProjectBranchWorkflowRecord) => void;
+    onDelete: (branchWorkflowId: string) => void;
+    onConfirmDelete: (branchWorkflowId: string) => void;
     onCancelDelete: () => void;
 }) {
     return (
@@ -39,28 +38,28 @@ function WorkflowRow({
             <div className='flex flex-wrap items-start justify-between gap-3'>
                 <div className='space-y-1'>
                     <div className='flex flex-wrap items-center gap-2'>
-                        <p className='text-sm font-medium'>{workflow.label}</p>
+                        <p className='text-sm font-medium'>{branchWorkflow.label}</p>
                         <span className='text-muted-foreground border-border/70 rounded-full border px-2 py-0.5 text-[11px]'>
-                            {workflow.enabled ? 'Enabled' : 'Disabled'}
+                            {branchWorkflow.enabled ? 'Enabled' : 'Disabled'}
                         </span>
                     </div>
-                    <p className='text-muted-foreground text-xs leading-5 break-all'>{workflow.command}</p>
+                    <p className='text-muted-foreground text-xs leading-5 break-all'>{branchWorkflow.command}</p>
                 </div>
                 <div className='flex flex-wrap items-center gap-2'>
                     <button
                         type='button'
                         className='border-primary/40 bg-primary/10 text-primary rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-60'
-                        disabled={!workflow.enabled}
+                        disabled={!branchWorkflow.enabled}
                         onClick={() => {
-                            onBranch(workflow.id);
+                            onBranch(branchWorkflow.id);
                         }}>
-                        Branch with workflow
+                        Branch with branch workflow
                     </button>
                     <button
                         type='button'
                         className='border-border bg-card hover:bg-accent rounded-full border px-3 py-1.5 text-xs font-medium'
                         onClick={() => {
-                            onEdit(workflow);
+                            onEdit(branchWorkflow);
                         }}>
                         Edit
                     </button>
@@ -70,7 +69,7 @@ function WorkflowRow({
                                 type='button'
                                 className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-3 py-1.5 text-xs font-medium'
                                 onClick={() => {
-                                    onConfirmDelete(workflow.id);
+                                    onConfirmDelete(branchWorkflow.id);
                                 }}>
                                 Confirm delete
                             </button>
@@ -86,7 +85,7 @@ function WorkflowRow({
                             type='button'
                             className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-3 py-1.5 text-xs font-medium'
                             onClick={() => {
-                                onDelete(workflow.id);
+                                onDelete(branchWorkflow.id);
                             }}>
                             Delete
                         </button>
@@ -97,7 +96,7 @@ function WorkflowRow({
     );
 }
 
-function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibraryController }) {
+function BranchWorkflowDialogContent({ controller }: { controller: BranchWorkflowLibraryController }) {
     const { draftState } = controller;
 
     return (
@@ -107,7 +106,7 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
                     Branch workflow
                 </h2>
                 <p id='branch-workflow-description' className='text-muted-foreground text-sm'>
-                    Branch into a fresh sandbox target, optionally running one saved project workflow command.
+                    Branch into a fresh sandbox target, optionally running one saved branch workflow command.
                 </p>
             </div>
 
@@ -117,13 +116,13 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
                     className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
                     disabled={controller.isBranchDisabled}
                     onClick={controller.branchWithoutWorkflow}>
-                    Branch with no workflow
+                    Branch with no branch workflow
                 </button>
                 <button
                     type='button'
                     className='border-border bg-card hover:bg-accent rounded-full border px-4 py-2 text-sm font-medium'
-                    onClick={controller.startCreateWorkflowDraft}>
-                    Create workflow
+                    onClick={controller.startCreateBranchWorkflowDraft}>
+                    Create branch workflow
                 </button>
             </div>
 
@@ -131,11 +130,11 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
                 <div className='border-border/70 bg-card/40 mt-4 rounded-2xl border p-4'>
                     <div className='space-y-1'>
                         <p className='text-sm font-medium'>
-                            {draftState.formMode === 'edit' ? 'Edit workflow' : 'New workflow'}
+                            {draftState.formMode === 'edit' ? 'Edit branch workflow' : 'New branch workflow'}
                         </p>
                         <p className='text-muted-foreground text-xs'>
-                            One workflow is one reusable shell command stored under{' '}
-                            <code>.neonconductor/workflows</code>.
+                            One branch workflow is one reusable shell command stored under{' '}
+                            <code>.neonconductor/branch-workflows</code>.
                         </p>
                     </div>
 
@@ -183,7 +182,7 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
                         <button
                             type='button'
                             className='border-border bg-card hover:bg-accent rounded-full border px-4 py-2 text-sm font-medium'
-                            onClick={controller.cancelWorkflowDraft}>
+                            onClick={controller.cancelBranchWorkflowDraft}>
                             Cancel
                         </button>
                         <button
@@ -191,13 +190,13 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
                             className='border-border bg-card hover:bg-accent rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
                             disabled={controller.isBranchDisabled || controller.busyForm}
                             onClick={() => {
-                                controller.saveWorkflow(false);
+                                controller.saveBranchWorkflow(false);
                             }}>
                             {controller.busyForm
                                 ? 'Saving…'
                                 : draftState.formMode === 'edit'
                                   ? 'Save changes'
-                                  : 'Save workflow'}
+                                  : 'Save branch workflow'}
                         </button>
                         {draftState.formMode === 'create' ? (
                             <button
@@ -205,7 +204,7 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
                                 className='border-primary/40 bg-primary/10 text-primary rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-60'
                                 disabled={controller.isBranchDisabled || controller.busyForm}
                                 onClick={() => {
-                                    controller.saveWorkflow(true);
+                                    controller.saveBranchWorkflow(true);
                                 }}>
                                 Save and branch
                             </button>
@@ -217,27 +216,27 @@ function BranchWorkflowDialogContent({ controller }: { controller: WorkflowLibra
             <div className='mt-4 space-y-3'>
                 {controller.isLoading ? (
                     <div className='text-muted-foreground border-border/70 bg-card/30 rounded-2xl border px-4 py-5 text-sm'>
-                        Loading workflows…
+                        Loading branch workflows…
                     </div>
-                ) : controller.workflows.length === 0 ? (
+                ) : controller.branchWorkflows.length === 0 ? (
                     <div className='text-muted-foreground border-border/70 bg-card/30 rounded-2xl border px-4 py-5 text-sm'>
-                        No project workflows yet.
+                        No branch workflows yet.
                     </div>
                 ) : (
-                    controller.workflows.map((workflow) => (
-                        <WorkflowRow
-                            key={workflow.id}
-                            workflow={workflow}
-                            isDeleting={draftState.deleteCandidateId === workflow.id}
-                            onBranch={(workflowId) => {
-                                if (workflowId) {
-                                    controller.branchWithWorkflow(workflowId);
+                    controller.branchWorkflows.map((branchWorkflow) => (
+                        <BranchWorkflowRow
+                            key={branchWorkflow.id}
+                            branchWorkflow={branchWorkflow}
+                            isDeleting={draftState.deleteCandidateId === branchWorkflow.id}
+                            onBranch={(branchWorkflowId) => {
+                                if (branchWorkflowId) {
+                                    controller.branchWithWorkflow(branchWorkflowId);
                                 }
                             }}
-                            onEdit={controller.startEditWorkflowDraft}
-                            onDelete={controller.requestDeleteWorkflow}
-                            onConfirmDelete={controller.confirmDeleteWorkflow}
-                            onCancelDelete={controller.cancelDeleteWorkflow}
+                            onEdit={controller.startEditBranchWorkflowDraft}
+                            onDelete={controller.requestDeleteBranchWorkflow}
+                            onConfirmDelete={controller.confirmDeleteBranchWorkflow}
+                            onCancelDelete={controller.cancelDeleteBranchWorkflow}
                         />
                     ))
                 )}
@@ -258,7 +257,7 @@ function BranchWorkflowDialogBody({
     busy,
     onBranch,
 }: Omit<BranchWorkflowDialogProps, 'open' | 'onClose'>) {
-    const controller = useWorkflowLibraryController({
+    const controller = useBranchWorkflowLibraryController({
         profileId,
         workspaceFingerprint,
         busy,
@@ -268,7 +267,7 @@ function BranchWorkflowDialogBody({
     return <BranchWorkflowDialogContent controller={controller} />;
 }
 
-export { createEmptyWorkflowDraftState };
+export { createEmptyBranchWorkflowDraftState };
 
 export function BranchWorkflowDialog({
     open,

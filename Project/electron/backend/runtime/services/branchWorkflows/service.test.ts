@@ -2,7 +2,7 @@ import os from 'node:os';
 import { describe, expect, it } from 'vitest';
 
 import { getPersistence } from '@/app/backend/persistence/db';
-import { workflowService } from '@/app/backend/runtime/services/workflows/service';
+import { branchWorkflowService } from '@/app/backend/runtime/services/branchWorkflows/service';
 import {
     mkdirSync,
     mkdtempSync,
@@ -37,14 +37,14 @@ function insertWorkspaceRoot(profileId: string, workspaceFingerprint: string, wo
         );
 }
 
-describe('workflowService', () => {
+describe('branchWorkflowService', () => {
     const profileId = runtimeContractProfileId;
 
-    it('creates, lists, updates, and deletes project workflows from .neonconductor/workflows', async () => {
-        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neon-workflows-'));
+    it('creates, lists, updates, and deletes branch workflows from .neonconductor/branch-workflows', async () => {
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neon-branch-workflows-'));
         insertWorkspaceRoot(profileId, 'ws_workflows_crud', workspacePath);
 
-        const created = await workflowService.createProjectWorkflow({
+        const created = await branchWorkflowService.createProjectBranchWorkflow({
             profileId,
             workspaceFingerprint: 'ws_workflows_crud',
             label: 'Install deps',
@@ -57,7 +57,7 @@ describe('workflowService', () => {
         }
         expect(created.value.id).toMatch(/^workflow_/);
 
-        const listed = await workflowService.listProjectWorkflows({
+        const listed = await branchWorkflowService.listProjectBranchWorkflows({
             profileId,
             workspaceFingerprint: 'ws_workflows_crud',
         });
@@ -65,12 +65,12 @@ describe('workflowService', () => {
         if (listed.isErr()) {
             throw new Error(listed.error.message);
         }
-        expect(listed.value.map((workflow) => workflow.label)).toEqual(['Install deps']);
+        expect(listed.value.map((branchWorkflow) => branchWorkflow.label)).toEqual(['Install deps']);
 
-        const updated = await workflowService.updateProjectWorkflow({
+        const updated = await branchWorkflowService.updateProjectBranchWorkflow({
             profileId,
             workspaceFingerprint: 'ws_workflows_crud',
-            workflowId: created.value.id,
+            branchWorkflowId: created.value.id,
             label: 'Bootstrap',
             command: 'pnpm install --frozen-lockfile',
             enabled: false,
@@ -82,10 +82,10 @@ describe('workflowService', () => {
         expect(updated.value?.label).toBe('Bootstrap');
         expect(updated.value?.enabled).toBe(false);
 
-        const deleted = await workflowService.deleteProjectWorkflow({
+        const deleted = await branchWorkflowService.deleteProjectBranchWorkflow({
             profileId,
             workspaceFingerprint: 'ws_workflows_crud',
-            workflowId: created.value.id,
+            branchWorkflowId: created.value.id,
             confirm: true,
         });
         expect(deleted.isOk()).toBe(true);
@@ -94,7 +94,7 @@ describe('workflowService', () => {
         }
         expect(deleted.value).toBe(true);
 
-        const afterDelete = await workflowService.listProjectWorkflows({
+        const afterDelete = await branchWorkflowService.listProjectBranchWorkflows({
             profileId,
             workspaceFingerprint: 'ws_workflows_crud',
         });
@@ -107,26 +107,26 @@ describe('workflowService', () => {
         rmSync(workspacePath, { recursive: true, force: true });
     });
 
-    it('fails closed on malformed workflow files without damaging valid workflows', async () => {
-        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neon-workflows-invalid-'));
+    it('fails closed on malformed branch workflow files without damaging valid branch workflows', async () => {
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neon-branch-workflows-invalid-'));
         insertWorkspaceRoot(profileId, 'ws_workflows_invalid', workspacePath);
-        const workflowsRoot = path.join(workspacePath, '.neonconductor', 'workflows');
-        mkdirSync(workflowsRoot, { recursive: true });
+        const branchWorkflowsRoot = path.join(workspacePath, '.neonconductor', 'branch-workflows');
+        mkdirSync(branchWorkflowsRoot, { recursive: true });
 
-        const validWorkflow = await workflowService.createProjectWorkflow({
+        const validBranchWorkflow = await branchWorkflowService.createProjectBranchWorkflow({
             profileId,
             workspaceFingerprint: 'ws_workflows_invalid',
             label: 'Format',
             command: 'pnpm format',
             enabled: true,
         });
-        expect(validWorkflow.isOk()).toBe(true);
-        if (validWorkflow.isErr()) {
-            throw new Error(validWorkflow.error.message);
+        expect(validBranchWorkflow.isOk()).toBe(true);
+        if (validBranchWorkflow.isErr()) {
+            throw new Error(validBranchWorkflow.error.message);
         }
-        writeFileSync(path.join(workflowsRoot, 'broken.json'), '{"label":42', 'utf8');
+        writeFileSync(path.join(branchWorkflowsRoot, 'broken.json'), '{"label":42', 'utf8');
         writeFileSync(
-            path.join(workflowsRoot, 'wrong-shape.json'),
+            path.join(branchWorkflowsRoot, 'wrong-shape.json'),
             JSON.stringify({
                 id: 'workflow_wrong_shape',
                 label: '',
@@ -135,29 +135,29 @@ describe('workflowService', () => {
             'utf8'
         );
 
-        const workflows = await workflowService.listProjectWorkflows({
+        const branchWorkflows = await branchWorkflowService.listProjectBranchWorkflows({
             profileId,
             workspaceFingerprint: 'ws_workflows_invalid',
         });
-        expect(workflows.isOk()).toBe(true);
-        if (workflows.isErr()) {
-            throw new Error(workflows.error.message);
+        expect(branchWorkflows.isOk()).toBe(true);
+        if (branchWorkflows.isErr()) {
+            throw new Error(branchWorkflows.error.message);
         }
-        expect(workflows.value).toHaveLength(1);
-        expect(workflows.value[0]?.id).toBe(validWorkflow.value.id);
+        expect(branchWorkflows.value).toHaveLength(1);
+        expect(branchWorkflows.value[0]?.id).toBe(validBranchWorkflow.value.id);
 
         rmSync(workspacePath, { recursive: true, force: true });
     });
 
-    it('does not read workflow files from unrelated roots outside the registered workspace root', async () => {
-        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neon-workflows-root-'));
-        const unrelatedPath = mkdtempSync(path.join(os.tmpdir(), 'neon-workflows-unrelated-'));
+    it('does not read branch workflow files from unrelated roots outside the registered workspace root', async () => {
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neon-branch-workflows-root-'));
+        const unrelatedPath = mkdtempSync(path.join(os.tmpdir(), 'neon-branch-workflows-unrelated-'));
         insertWorkspaceRoot(profileId, 'ws_workflows_root_boundary', workspacePath);
 
-        const unrelatedWorkflowsRoot = path.join(unrelatedPath, '.neonconductor', 'workflows');
-        mkdirSync(unrelatedWorkflowsRoot, { recursive: true });
+        const unrelatedBranchWorkflowsRoot = path.join(unrelatedPath, '.neonconductor', 'branch-workflows');
+        mkdirSync(unrelatedBranchWorkflowsRoot, { recursive: true });
         writeFileSync(
-            path.join(unrelatedWorkflowsRoot, 'workflow_foreign.json'),
+            path.join(unrelatedBranchWorkflowsRoot, 'workflow_foreign.json'),
             JSON.stringify({
                 id: 'workflow_foreign',
                 label: 'Foreign workflow',
@@ -169,15 +169,15 @@ describe('workflowService', () => {
             'utf8'
         );
 
-        const workflows = await workflowService.listProjectWorkflows({
+        const branchWorkflows = await branchWorkflowService.listProjectBranchWorkflows({
             profileId,
             workspaceFingerprint: 'ws_workflows_root_boundary',
         });
-        expect(workflows.isOk()).toBe(true);
-        if (workflows.isErr()) {
-            throw new Error(workflows.error.message);
+        expect(branchWorkflows.isOk()).toBe(true);
+        if (branchWorkflows.isErr()) {
+            throw new Error(branchWorkflows.error.message);
         }
-        expect(workflows.value).toEqual([]);
+        expect(branchWorkflows.value).toEqual([]);
 
         rmSync(workspacePath, { recursive: true, force: true });
         rmSync(unrelatedPath, { recursive: true, force: true });

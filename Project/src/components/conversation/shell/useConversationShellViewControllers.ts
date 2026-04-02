@@ -124,7 +124,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         selectedThread: shellViewModel.selectedThread,
         uiState,
         branchFromMessage: mutations.branchFromMessageMutation.mutateAsync,
-        branchFromMessageWithWorkflow: mutations.branchFromMessageWithWorkflowMutation.mutateAsync,
+        branchFromMessageWithBranchWorkflow: mutations.branchFromMessageWithBranchWorkflowMutation.mutateAsync,
         onTopLevelTabChange,
         onClearError: composer.clearRunSubmitError,
         onError: composer.setRunSubmitError,
@@ -408,7 +408,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
             },
             branchWorkflowDialogProps: {
                 ...branchWorkflowFlow.dialogProps,
-                busy: mutations.branchFromMessageWithWorkflowMutation.isPending,
+                busy: mutations.branchFromMessageWithBranchWorkflowMutation.isPending,
             },
             toolArtifactViewerDialogProps: toolArtifactViewer.dialogProps,
         }),

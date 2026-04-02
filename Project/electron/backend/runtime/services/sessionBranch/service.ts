@@ -3,15 +3,16 @@ import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persi
 import type {
     EntityId,
     SessionBranchFromMessageInput,
-    SessionBranchFromMessageWithWorkflowInput,
+    SessionBranchFromMessageWithBranchWorkflowInput,
 } from '@/app/backend/runtime/contracts';
+import {
+    branchWorkflowExecutionService,
+    type BranchWorkflowExecutionResult,
+} from '@/app/backend/runtime/services/branchWorkflows/execution';
+import { branchWorkflowService } from '@/app/backend/runtime/services/branchWorkflows/service';
+import { adaptBranchWorkflowToFlowDefinition } from '@/app/backend/runtime/services/flows/branchWorkflowAdapter';
 import { sandboxService } from '@/app/backend/runtime/services/sandbox/service';
 import { sessionHistoryService } from '@/app/backend/runtime/services/sessionHistory/service';
-import {
-    workflowExecutionService,
-    type BranchWorkflowExecutionResult,
-} from '@/app/backend/runtime/services/workflows/execution';
-import { workflowService } from '@/app/backend/runtime/services/workflows/service';
 
 export type SessionBranchFromMessageResult =
     | {
@@ -29,7 +30,7 @@ export type SessionBranchFromMessageResult =
           topLevelTab: 'chat' | 'agent' | 'orchestrator';
       };
 
-export type SessionBranchFromMessageWithWorkflowResult =
+export type SessionBranchFromMessageWithBranchWorkflowResult =
     | {
           branched: false;
           reason:
@@ -38,8 +39,8 @@ export type SessionBranchFromMessageWithWorkflowResult =
               | 'session_not_found'
               | 'thread_tab_mismatch'
               | 'workspace_required'
-              | 'workflow_not_found'
-              | 'workflow_disabled';
+              | 'branch_workflow_not_found'
+              | 'branch_workflow_disabled';
       }
     | {
           branched: true;
@@ -50,7 +51,7 @@ export type SessionBranchFromMessageWithWorkflowResult =
           threadId: string;
           thread: ThreadListRecord;
           topLevelTab: 'chat' | 'agent' | 'orchestrator';
-          workflowExecution: BranchWorkflowExecutionResult;
+          branchWorkflowExecution: BranchWorkflowExecutionResult;
       };
 
 export class SessionBranchService {
@@ -113,9 +114,9 @@ export class SessionBranchService {
         };
     }
 
-    async branchFromMessageWithWorkflow(
-        input: SessionBranchFromMessageWithWorkflowInput
-    ): Promise<SessionBranchFromMessageWithWorkflowResult> {
+    async branchFromMessageWithBranchWorkflow(
+        input: SessionBranchFromMessageWithBranchWorkflowInput
+    ): Promise<SessionBranchFromMessageWithBranchWorkflowResult> {
         const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
         if (!sessionThread) {
             return {
@@ -148,24 +149,27 @@ export class SessionBranchService {
             };
         }
 
-        const selectedWorkflow = input.workflowId
-            ? await workflowService.getProjectWorkflow({
+        const selectedBranchWorkflow = input.branchWorkflowId
+            ? await branchWorkflowService.getProjectBranchWorkflow({
                   profileId: input.profileId,
                   workspaceFingerprint: sessionThread.workspaceFingerprint,
-                  workflowId: input.workflowId,
+                  branchWorkflowId: input.branchWorkflowId,
               })
             : null;
-        const resolvedWorkflow = selectedWorkflow?.isOk() ? selectedWorkflow.value : null;
-        if (input.workflowId && (!selectedWorkflow || selectedWorkflow.isErr() || !resolvedWorkflow)) {
+        const resolvedBranchWorkflow = selectedBranchWorkflow?.isOk() ? selectedBranchWorkflow.value : null;
+        if (
+            input.branchWorkflowId &&
+            (!selectedBranchWorkflow || selectedBranchWorkflow.isErr() || !resolvedBranchWorkflow)
+        ) {
             return {
                 branched: false,
-                reason: 'workflow_not_found',
+                reason: 'branch_workflow_not_found',
             };
         }
-        if (resolvedWorkflow && !resolvedWorkflow.enabled) {
+        if (resolvedBranchWorkflow && !resolvedBranchWorkflow.enabled) {
             return {
                 branched: false,
-                reason: 'workflow_disabled',
+                reason: 'branch_workflow_disabled',
             };
         }
 
@@ -213,13 +217,13 @@ export class SessionBranchService {
             };
         }
 
-        const workflowExecution =
-            resolvedWorkflow && thread.workspaceFingerprint
-                ? await workflowExecutionService.executeBranchWorkflow({
+        const branchWorkflowExecution =
+            resolvedBranchWorkflow && thread.workspaceFingerprint
+                ? await branchWorkflowExecutionService.executeBranchWorkflow({
                       profileId: input.profileId,
                       workspaceFingerprint: thread.workspaceFingerprint,
                       ...(thread.sandboxId ? { sandboxId: thread.sandboxId } : {}),
-                      command: resolvedWorkflow.command,
+                      flowDefinition: adaptBranchWorkflowToFlowDefinition(resolvedBranchWorkflow),
                   })
                 : { status: 'not_requested' as const };
 
@@ -232,7 +236,7 @@ export class SessionBranchService {
             threadId: branched.thread.id,
             thread,
             topLevelTab: branched.thread.topLevelTab,
-            workflowExecution,
+            branchWorkflowExecution,
         };
     }
 }

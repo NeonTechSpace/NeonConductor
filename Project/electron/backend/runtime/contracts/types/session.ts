@@ -90,9 +90,9 @@ export interface SessionBranchFromMessageInput extends SessionByIdInput {
     messageId: EntityId<'msg'>;
 }
 
-export interface SessionBranchFromMessageWithWorkflowInput extends SessionBranchFromMessageInput {
+export interface SessionBranchFromMessageWithBranchWorkflowInput extends SessionBranchFromMessageInput {
     modeKey: string;
-    workflowId?: string;
+    branchWorkflowId?: string;
 }
 
 export type SessionListRunsInput = SessionByIdInput;

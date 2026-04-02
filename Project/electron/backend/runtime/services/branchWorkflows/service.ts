@@ -4,14 +4,14 @@ import path from 'node:path';
 
 import { workspaceRootStore } from '@/app/backend/persistence/stores';
 import type {
-    ProjectWorkflowCreateInput,
-    ProjectWorkflowDeleteInput,
-    ProjectWorkflowRecord,
-    ProjectWorkflowUpdateInput,
+    ProjectBranchWorkflowCreateInput,
+    ProjectBranchWorkflowDeleteInput,
+    ProjectBranchWorkflowRecord,
+    ProjectBranchWorkflowUpdateInput,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 
-interface PersistedWorkflowRecord {
+interface PersistedBranchWorkflowRecord {
     id: string;
     label: string;
     command: string;
@@ -48,7 +48,7 @@ async function fileExists(absolutePath: string): Promise<boolean> {
     }
 }
 
-async function writeWorkflowFile(input: { absolutePath: string; fileContent: string }): Promise<void> {
+async function writeBranchWorkflowFile(input: { absolutePath: string; fileContent: string }): Promise<void> {
     const directory = path.dirname(input.absolutePath);
     await mkdir(directory, { recursive: true });
     const tempPath = `${input.absolutePath}.tmp`;
@@ -56,7 +56,7 @@ async function writeWorkflowFile(input: { absolutePath: string; fileContent: str
     await rename(tempPath, input.absolutePath);
 }
 
-function isPersistedWorkflowRecord(value: unknown): value is PersistedWorkflowRecord {
+function isPersistedBranchWorkflowRecord(value: unknown): value is PersistedBranchWorkflowRecord {
     if (!value || typeof value !== 'object') {
         return false;
     }
@@ -81,16 +81,16 @@ async function resolveWorkflowDirectory(input: {
         return errOp('not_found', `Workspace "${input.workspaceFingerprint}" is not registered.`);
     }
 
-    const directory = path.join(workspaceRoot.absolutePath, '.neonconductor', 'workflows');
+    const directory = path.join(workspaceRoot.absolutePath, '.neonconductor', 'branch-workflows');
     await mkdir(directory, { recursive: true });
     return okOp(directory);
 }
 
-async function readWorkflowFile(absolutePath: string): Promise<ProjectWorkflowRecord | null> {
+async function readBranchWorkflowFile(absolutePath: string): Promise<ProjectBranchWorkflowRecord | null> {
     try {
         const content = await readFile(absolutePath, 'utf8');
         const parsed = JSON.parse(content) as unknown;
-        if (!isPersistedWorkflowRecord(parsed)) {
+        if (!isPersistedBranchWorkflowRecord(parsed)) {
             return null;
         }
 
@@ -115,15 +115,15 @@ async function readWorkflowFile(absolutePath: string): Promise<ProjectWorkflowRe
     }
 }
 
-function toWorkflowFileName(workflowId: string): string {
-    return `${workflowId}.json`;
+function toBranchWorkflowFileName(branchWorkflowId: string): string {
+    return `${branchWorkflowId}.json`;
 }
 
-export class WorkflowService {
-    async listProjectWorkflows(input: {
+export class BranchWorkflowService {
+    async listProjectBranchWorkflows(input: {
         profileId: string;
         workspaceFingerprint: string;
-    }): Promise<OperationalResult<ProjectWorkflowRecord[]>> {
+    }): Promise<OperationalResult<ProjectBranchWorkflowRecord[]>> {
         const directory = await resolveWorkflowDirectory(input);
         if (directory.isErr()) {
             return errOp(directory.error.code, directory.error.message);
@@ -134,29 +134,29 @@ export class WorkflowService {
             .map((dirent) => dirent.name)
             .sort((left, right) => left.localeCompare(right));
         const workflows = await Promise.all(
-            jsonFiles.map((fileName) => readWorkflowFile(path.join(directory.value, fileName)))
+            jsonFiles.map((fileName) => readBranchWorkflowFile(path.join(directory.value, fileName)))
         );
 
         return okOp(
             workflows
-                .filter((workflow): workflow is ProjectWorkflowRecord => workflow !== null)
+                .filter((workflow): workflow is ProjectBranchWorkflowRecord => workflow !== null)
                 .sort((left, right) => left.label.localeCompare(right.label) || left.id.localeCompare(right.id))
         );
     }
 
-    async getProjectWorkflow(input: {
+    async getProjectBranchWorkflow(input: {
         profileId: string;
         workspaceFingerprint: string;
-        workflowId: string;
-    }): Promise<OperationalResult<ProjectWorkflowRecord | null>> {
+        branchWorkflowId: string;
+    }): Promise<OperationalResult<ProjectBranchWorkflowRecord | null>> {
         const directory = await resolveWorkflowDirectory(input);
         if (directory.isErr()) {
             return errOp(directory.error.code, directory.error.message);
         }
-        return okOp(await readWorkflowFile(path.join(directory.value, toWorkflowFileName(input.workflowId))));
+        return okOp(await readBranchWorkflowFile(path.join(directory.value, toBranchWorkflowFileName(input.branchWorkflowId))));
     }
 
-    async createProjectWorkflow(input: ProjectWorkflowCreateInput): Promise<OperationalResult<ProjectWorkflowRecord>> {
+    async createProjectBranchWorkflow(input: ProjectBranchWorkflowCreateInput): Promise<OperationalResult<ProjectBranchWorkflowRecord>> {
         const directory = await resolveWorkflowDirectory(input);
         if (directory.isErr()) {
             return errOp(directory.error.code, directory.error.message);
@@ -169,7 +169,7 @@ export class WorkflowService {
             return errOp(sanitized.error.code, sanitized.error.message);
         }
         const now = new Date().toISOString();
-        const workflow: ProjectWorkflowRecord = {
+        const branchWorkflow: ProjectBranchWorkflowRecord = {
             id: `workflow_${randomUUID()}`,
             label: sanitized.value.label,
             command: sanitized.value.command,
@@ -178,23 +178,23 @@ export class WorkflowService {
             updatedAt: now,
         };
 
-        await writeWorkflowFile({
-            absolutePath: path.join(directory.value, toWorkflowFileName(workflow.id)),
-            fileContent: JSON.stringify(workflow, null, 2),
+        await writeBranchWorkflowFile({
+            absolutePath: path.join(directory.value, toBranchWorkflowFileName(branchWorkflow.id)),
+            fileContent: JSON.stringify(branchWorkflow, null, 2),
         });
 
-        return okOp(workflow);
+        return okOp(branchWorkflow);
     }
 
-    async updateProjectWorkflow(
-        input: ProjectWorkflowUpdateInput
-    ): Promise<OperationalResult<ProjectWorkflowRecord | null>> {
+    async updateProjectBranchWorkflow(
+        input: ProjectBranchWorkflowUpdateInput
+    ): Promise<OperationalResult<ProjectBranchWorkflowRecord | null>> {
         const directory = await resolveWorkflowDirectory(input);
         if (directory.isErr()) {
             return errOp(directory.error.code, directory.error.message);
         }
-        const absolutePath = path.join(directory.value, toWorkflowFileName(input.workflowId));
-        const existing = await readWorkflowFile(absolutePath);
+        const absolutePath = path.join(directory.value, toBranchWorkflowFileName(input.branchWorkflowId));
+        const existing = await readBranchWorkflowFile(absolutePath);
         if (!existing) {
             return okOp(null);
         }
@@ -206,7 +206,7 @@ export class WorkflowService {
         if (sanitized.isErr()) {
             return errOp(sanitized.error.code, sanitized.error.message);
         }
-        const updated: ProjectWorkflowRecord = {
+        const updated: ProjectBranchWorkflowRecord = {
             ...existing,
             label: sanitized.value.label,
             command: sanitized.value.command,
@@ -214,7 +214,7 @@ export class WorkflowService {
             updatedAt: new Date().toISOString(),
         };
 
-        await writeWorkflowFile({
+        await writeBranchWorkflowFile({
             absolutePath,
             fileContent: JSON.stringify(updated, null, 2),
         });
@@ -222,16 +222,16 @@ export class WorkflowService {
         return okOp(updated);
     }
 
-    async deleteProjectWorkflow(input: ProjectWorkflowDeleteInput): Promise<OperationalResult<boolean>> {
+    async deleteProjectBranchWorkflow(input: ProjectBranchWorkflowDeleteInput): Promise<OperationalResult<boolean>> {
         if (!input.confirm) {
-            return errOp('invalid_input', 'Deleting a workflow requires explicit confirmation.');
+            return errOp('invalid_input', 'Deleting a branch workflow requires explicit confirmation.');
         }
 
         const directory = await resolveWorkflowDirectory(input);
         if (directory.isErr()) {
             return errOp(directory.error.code, directory.error.message);
         }
-        const absolutePath = path.join(directory.value, toWorkflowFileName(input.workflowId));
+        const absolutePath = path.join(directory.value, toBranchWorkflowFileName(input.branchWorkflowId));
         if (!(await fileExists(absolutePath))) {
             return okOp(false);
         }
@@ -241,4 +241,4 @@ export class WorkflowService {
     }
 }
 
-export const workflowService = new WorkflowService();
+export const branchWorkflowService = new BranchWorkflowService();

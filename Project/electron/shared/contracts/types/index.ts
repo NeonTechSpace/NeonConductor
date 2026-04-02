@@ -20,4 +20,5 @@ export type * from '@/shared/contracts/types/registry';
 export type * from '@/shared/contracts/types/sandbox';
 export * from '@/shared/contracts/types/memory';
 export type * from '@/shared/contracts/types/prompt';
-export type * from '@/shared/contracts/types/workflow';
+export type * from '@/shared/contracts/types/branchWorkflow';
+export type * from '@/shared/contracts/types/flow';

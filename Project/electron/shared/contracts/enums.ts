@@ -82,6 +82,22 @@ export const runtimeRequirementProfiles = [
 ] as const;
 export type RuntimeRequirementProfile = (typeof runtimeRequirementProfiles)[number];
 
+export const flowTriggerKinds = ['manual'] as const;
+export type FlowTriggerKind = (typeof flowTriggerKinds)[number];
+
+export const flowStepKinds = ['legacy_command', 'mode_run', 'workflow', 'approval_gate'] as const;
+export type FlowStepKind = (typeof flowStepKinds)[number];
+
+export const flowInstanceStatuses = [
+    'queued',
+    'running',
+    'approval_required',
+    'failed',
+    'completed',
+    'cancelled',
+] as const;
+export type FlowInstanceStatus = (typeof flowInstanceStatuses)[number];
+
 export const toolMutabilities = ['read_only', 'mutating'] as const;
 export type ToolMutability = (typeof toolMutabilities)[number];
 

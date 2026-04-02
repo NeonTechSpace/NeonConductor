@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    interpretWorkflowExecutionStatus,
-    shouldUseWorkflowBranchChooser,
+    interpretBranchWorkflowExecutionStatus,
+    shouldUseBranchWorkflowChooser,
 } from '@/web/components/conversation/hooks/useConversationShellBranchWorkflowFlow';
 
-describe('shouldUseWorkflowBranchChooser', () => {
+describe('shouldUseBranchWorkflowChooser', () => {
     it('only enables the chooser for workspace-bound agent and orchestrator threads', () => {
         expect(
-            shouldUseWorkflowBranchChooser({
+            shouldUseBranchWorkflowChooser({
                 topLevelTab: 'agent',
                 selectedThread: {
                     id: 'thr_agent' as `thr_${string}`,
@@ -31,7 +31,7 @@ describe('shouldUseWorkflowBranchChooser', () => {
         ).toBe(true);
 
         expect(
-            shouldUseWorkflowBranchChooser({
+            shouldUseBranchWorkflowChooser({
                 topLevelTab: 'chat',
                 selectedThread: {
                     id: 'thr_chat' as `thr_${string}`,
@@ -54,7 +54,7 @@ describe('shouldUseWorkflowBranchChooser', () => {
         ).toBe(false);
 
         expect(
-            shouldUseWorkflowBranchChooser({
+            shouldUseBranchWorkflowChooser({
                 topLevelTab: 'agent',
                 selectedThread: {
                     id: 'thr_detached' as `thr_${string}`,
@@ -75,19 +75,19 @@ describe('shouldUseWorkflowBranchChooser', () => {
         ).toBe(false);
     });
 
-    it('turns workflow execution results into explicit branch feedback', () => {
-        expect(interpretWorkflowExecutionStatus({ status: 'not_requested' })).toEqual({
+    it('turns branch workflow execution results into explicit branch feedback', () => {
+        expect(interpretBranchWorkflowExecutionStatus({ status: 'not_requested' })).toEqual({
             message: undefined,
             shouldInvalidatePendingPermissions: false,
         });
 
-        expect(interpretWorkflowExecutionStatus({ status: 'succeeded' })).toEqual({
+        expect(interpretBranchWorkflowExecutionStatus({ status: 'succeeded' })).toEqual({
             message: undefined,
             shouldInvalidatePendingPermissions: false,
         });
 
         expect(
-            interpretWorkflowExecutionStatus({
+            interpretBranchWorkflowExecutionStatus({
                 status: 'approval_required',
                 requestId: 'perm_123',
                 message: 'Approval required for npm publish.',
@@ -98,12 +98,12 @@ describe('shouldUseWorkflowBranchChooser', () => {
         });
 
         expect(
-            interpretWorkflowExecutionStatus({
+            interpretBranchWorkflowExecutionStatus({
                 status: 'failed',
                 message: 'pnpm install exited with 1',
             })
         ).toEqual({
-            message: 'Branch created, but the workflow failed: pnpm install exited with 1',
+            message: 'Branch created, but the branch workflow failed: pnpm install exited with 1',
             shouldInvalidatePendingPermissions: false,
         });
     });

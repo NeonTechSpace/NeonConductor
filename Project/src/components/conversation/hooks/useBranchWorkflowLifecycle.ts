@@ -11,7 +11,7 @@ import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persi
 
 import type {
     SessionBranchFromMessageInput,
-    SessionBranchFromMessageWithWorkflowInput,
+    SessionBranchFromMessageWithBranchWorkflowInput,
     TopLevelTab,
 } from '@/shared/contracts';
 import type { EntityId } from '@/shared/contracts';
@@ -26,7 +26,7 @@ export interface BranchWorkflowDialogState {
     profileId: string;
     workspaceFingerprint: string;
     onClose: () => void;
-    onBranch: (workflowId?: string) => Promise<void>;
+    onBranch: (branchWorkflowId?: string) => Promise<void>;
 }
 
 interface UseBranchWorkflowLifecycleInput {
@@ -49,7 +49,7 @@ interface UseBranchWorkflowLifecycleInput {
               topLevelTab: TopLevelTab;
           }
     >;
-    branchFromMessageWithWorkflow: (input: SessionBranchFromMessageWithWorkflowInput) => Promise<
+    branchFromMessageWithBranchWorkflow: (input: SessionBranchFromMessageWithBranchWorkflowInput) => Promise<
         | { branched: false; reason: string }
         | {
               branched: true;
@@ -60,7 +60,7 @@ interface UseBranchWorkflowLifecycleInput {
               threadId: string;
               thread: ThreadListRecord;
               topLevelTab: TopLevelTab;
-              workflowExecution:
+              branchWorkflowExecution:
                   | { status: 'not_requested' }
                   | { status: 'succeeded' }
                   | { status: 'approval_required'; requestId: string; message: string }
@@ -75,13 +75,13 @@ interface UseBranchWorkflowLifecycleInput {
     onSessionEdited: (input: { sessionId: string; session: SessionSummaryRecord; thread?: ThreadListRecord }) => void;
 }
 
-type WorkflowExecutionStatus =
+type BranchWorkflowExecutionStatus =
     | { status: 'not_requested' }
     | { status: 'succeeded' }
     | { status: 'approval_required'; requestId: string; message: string }
     | { status: 'failed'; message: string };
 
-export function shouldUseWorkflowBranchChooser(input: {
+export function shouldUseBranchWorkflowChooser(input: {
     topLevelTab: TopLevelTab;
     selectedThread: ThreadListRecord | undefined;
 }): input is {
@@ -99,19 +99,19 @@ export function shouldUseWorkflowBranchChooser(input: {
     );
 }
 
-export function interpretWorkflowExecutionStatus(workflowExecution: WorkflowExecutionStatus): {
+export function interpretBranchWorkflowExecutionStatus(branchWorkflowExecution: BranchWorkflowExecutionStatus): {
     message: string | undefined;
     shouldInvalidatePendingPermissions: boolean;
 } {
-    if (workflowExecution.status === 'approval_required') {
+    if (branchWorkflowExecution.status === 'approval_required') {
         return {
-            message: `Branch created. ${workflowExecution.message}`,
+            message: `Branch created. ${branchWorkflowExecution.message}`,
             shouldInvalidatePendingPermissions: true,
         };
     }
-    if (workflowExecution.status === 'failed') {
+    if (branchWorkflowExecution.status === 'failed') {
         return {
-            message: `Branch created, but the workflow failed: ${workflowExecution.message}`,
+            message: `Branch created, but the branch workflow failed: ${branchWorkflowExecution.message}`,
             shouldInvalidatePendingPermissions: false,
         };
     }
@@ -193,9 +193,11 @@ export function useBranchWorkflowLifecycle(input: UseBranchWorkflowLifecycleInpu
         }
     };
 
-    const selectedWorkflowSessionId = isEntityId(input.selectedSessionId, 'sess') ? input.selectedSessionId : undefined;
+    const selectedBranchWorkflowSessionId = isEntityId(input.selectedSessionId, 'sess')
+        ? input.selectedSessionId
+        : undefined;
     const dialogProps =
-        pendingBranchSelection && selectedWorkflowSessionId
+        pendingBranchSelection && selectedBranchWorkflowSessionId
             ? {
                   open: true,
                   profileId: input.profileId,
@@ -203,15 +205,15 @@ export function useBranchWorkflowLifecycle(input: UseBranchWorkflowLifecycleInpu
                   onClose: () => {
                       setPendingBranchSelection(undefined);
                   },
-                  onBranch: async (workflowId?: string) => {
+                  onBranch: async (branchWorkflowId?: string) => {
                       input.onClearError();
-                      const result = await input.branchFromMessageWithWorkflow({
+                      const result = await input.branchFromMessageWithBranchWorkflow({
                           profileId: input.profileId,
-                          sessionId: selectedWorkflowSessionId,
+                          sessionId: selectedBranchWorkflowSessionId,
                           topLevelTab: input.topLevelTab,
                           messageId: pendingBranchSelection.messageId,
                           modeKey: input.modeKey,
-                          ...(workflowId ? { workflowId } : {}),
+                          ...(branchWorkflowId ? { branchWorkflowId } : {}),
                       });
                       if (!result.branched) {
                           input.onError(toBranchFailureMessage(result.reason));
@@ -220,12 +222,14 @@ export function useBranchWorkflowLifecycle(input: UseBranchWorkflowLifecycleInpu
 
                       setPendingBranchSelection(undefined);
                       applyBranchSelection(result);
-                      const workflowOutcome = interpretWorkflowExecutionStatus(result.workflowExecution);
-                      if (workflowOutcome.shouldInvalidatePendingPermissions) {
+                      const branchWorkflowOutcome = interpretBranchWorkflowExecutionStatus(
+                          result.branchWorkflowExecution
+                      );
+                      if (branchWorkflowOutcome.shouldInvalidatePendingPermissions) {
                           await utils.permission.listPending.invalidate();
                       }
-                      if (workflowOutcome.message) {
-                          input.onError(workflowOutcome.message);
+                      if (branchWorkflowOutcome.message) {
+                          input.onError(branchWorkflowOutcome.message);
                           return;
                       }
                       input.onClearError();
@@ -248,14 +252,14 @@ export function useBranchWorkflowLifecycle(input: UseBranchWorkflowLifecycleInpu
             const selectedThread = input.selectedThread;
             if (
                 selectedThread &&
-                shouldUseWorkflowBranchChooser({
+                shouldUseBranchWorkflowChooser({
                     topLevelTab: input.topLevelTab,
                     selectedThread,
                 })
             ) {
                 const workspaceFingerprint = selectedThread.workspaceFingerprint;
                 if (typeof workspaceFingerprint !== 'string' || workspaceFingerprint.length === 0) {
-                    input.onError('Select a workspace-backed thread before creating a workflow branch.');
+                    input.onError('Select a workspace-backed thread before branching with a branch workflow.');
                     return;
                 }
                 setPendingBranchSelection({

@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { trpc } from '@/web/trpc/client';
 
 import { launchBackgroundTask } from '@/shared/async/launchBackgroundTask';
-import type { ProjectWorkflowRecord } from '@/shared/contracts';
+import type { ProjectBranchWorkflowRecord } from '@/shared/contracts';
 
-export type WorkflowFormMode = 'create' | 'edit';
+export type BranchWorkflowFormMode = 'create' | 'edit';
 
-export interface WorkflowDraftState {
-    formMode: WorkflowFormMode;
-    editingWorkflowId: string | undefined;
+export interface BranchWorkflowDraftState {
+    formMode: BranchWorkflowFormMode;
+    editingBranchWorkflowId: string | undefined;
     label: string;
     command: string;
     enabled: boolean;
@@ -18,38 +18,38 @@ export interface WorkflowDraftState {
     deleteCandidateId: string | undefined;
 }
 
-interface UseWorkflowLibraryControllerInput {
+interface UseBranchWorkflowLibraryControllerInput {
     profileId: string;
     workspaceFingerprint: string;
     busy: boolean;
-    onBranch: (workflowId?: string) => Promise<void>;
+    onBranch: (branchWorkflowId?: string) => Promise<void>;
 }
 
-export interface WorkflowLibraryController {
-    workflows: ProjectWorkflowRecord[];
+export interface BranchWorkflowLibraryController {
+    branchWorkflows: ProjectBranchWorkflowRecord[];
     isLoading: boolean;
     busyForm: boolean;
     isBranchDisabled: boolean;
-    draftState: WorkflowDraftState;
+    draftState: BranchWorkflowDraftState;
     queryErrorMessage: string | undefined;
     branchWithoutWorkflow: () => void;
-    branchWithWorkflow: (workflowId: string) => void;
-    startCreateWorkflowDraft: () => void;
-    startEditWorkflowDraft: (workflow: ProjectWorkflowRecord) => void;
+    branchWithWorkflow: (branchWorkflowId: string) => void;
+    startCreateBranchWorkflowDraft: () => void;
+    startEditBranchWorkflowDraft: (branchWorkflow: ProjectBranchWorkflowRecord) => void;
     updateLabel: (label: string) => void;
     updateCommand: (command: string) => void;
     updateEnabled: (enabled: boolean) => void;
-    cancelWorkflowDraft: () => void;
-    saveWorkflow: (branchAfterSave: boolean) => void;
-    requestDeleteWorkflow: (workflowId: string) => void;
-    confirmDeleteWorkflow: (workflowId: string) => void;
-    cancelDeleteWorkflow: () => void;
+    cancelBranchWorkflowDraft: () => void;
+    saveBranchWorkflow: (branchAfterSave: boolean) => void;
+    requestDeleteBranchWorkflow: (branchWorkflowId: string) => void;
+    confirmDeleteBranchWorkflow: (branchWorkflowId: string) => void;
+    cancelDeleteBranchWorkflow: () => void;
 }
 
-export function createEmptyWorkflowDraftState(): WorkflowDraftState {
+export function createEmptyBranchWorkflowDraftState(): BranchWorkflowDraftState {
     return {
         formMode: 'create',
-        editingWorkflowId: undefined,
+        editingBranchWorkflowId: undefined,
         label: '',
         command: '',
         enabled: true,
@@ -59,22 +59,24 @@ export function createEmptyWorkflowDraftState(): WorkflowDraftState {
     };
 }
 
-function createEditWorkflowDraftState(workflow: ProjectWorkflowRecord): WorkflowDraftState {
+function createEditBranchWorkflowDraftState(branchWorkflow: ProjectBranchWorkflowRecord): BranchWorkflowDraftState {
     return {
         formMode: 'edit',
-        editingWorkflowId: workflow.id,
-        label: workflow.label,
-        command: workflow.command,
-        enabled: workflow.enabled,
+        editingBranchWorkflowId: branchWorkflow.id,
+        label: branchWorkflow.label,
+        command: branchWorkflow.command,
+        enabled: branchWorkflow.enabled,
         isFormVisible: true,
         statusMessage: undefined,
         deleteCandidateId: undefined,
     };
 }
 
-export function useWorkflowLibraryController(input: UseWorkflowLibraryControllerInput): WorkflowLibraryController {
+export function useBranchWorkflowLibraryController(
+    input: UseBranchWorkflowLibraryControllerInput
+): BranchWorkflowLibraryController {
     const utils = trpc.useUtils();
-    const workflowsQuery = trpc.workflow.list.useQuery(
+    const branchWorkflowsQuery = trpc.branchWorkflow.list.useQuery(
         {
             profileId: input.profileId,
             workspaceFingerprint: input.workspaceFingerprint,
@@ -83,40 +85,42 @@ export function useWorkflowLibraryController(input: UseWorkflowLibraryController
             enabled: true,
         }
     );
-    const createWorkflowMutation = trpc.workflow.create.useMutation();
-    const updateWorkflowMutation = trpc.workflow.update.useMutation();
-    const deleteWorkflowMutation = trpc.workflow.delete.useMutation();
-    const [draftState, setDraftState] = useState(() => createEmptyWorkflowDraftState());
+    const createBranchWorkflowMutation = trpc.branchWorkflow.create.useMutation();
+    const updateBranchWorkflowMutation = trpc.branchWorkflow.update.useMutation();
+    const deleteBranchWorkflowMutation = trpc.branchWorkflow.delete.useMutation();
+    const [draftState, setDraftState] = useState(() => createEmptyBranchWorkflowDraftState());
 
     const busyForm =
-        createWorkflowMutation.isPending || updateWorkflowMutation.isPending || deleteWorkflowMutation.isPending;
+        createBranchWorkflowMutation.isPending ||
+        updateBranchWorkflowMutation.isPending ||
+        deleteBranchWorkflowMutation.isPending;
 
-    const resetWorkflowDraft = () => {
+    const resetBranchWorkflowDraft = () => {
         setDraftState((current) => ({
-            ...createEmptyWorkflowDraftState(),
+            ...createEmptyBranchWorkflowDraftState(),
             statusMessage: current.statusMessage,
         }));
     };
 
     const refreshList = async () => {
-        await utils.workflow.list.invalidate({
+        await utils.branchWorkflow.list.invalidate({
             profileId: input.profileId,
             workspaceFingerprint: input.workspaceFingerprint,
         });
     };
 
-    const saveWorkflow = (branchAfterSave: boolean): void => {
+    const saveBranchWorkflow = (branchAfterSave: boolean): void => {
         launchBackgroundTask(async () => {
             try {
                 setDraftState((current) => ({
                     ...current,
                     statusMessage: undefined,
                 }));
-                if (draftState.formMode === 'edit' && draftState.editingWorkflowId) {
-                    const result = await updateWorkflowMutation.mutateAsync({
+                if (draftState.formMode === 'edit' && draftState.editingBranchWorkflowId) {
+                    const result = await updateBranchWorkflowMutation.mutateAsync({
                         profileId: input.profileId,
                         workspaceFingerprint: input.workspaceFingerprint,
-                        workflowId: draftState.editingWorkflowId,
+                        branchWorkflowId: draftState.editingBranchWorkflowId,
                         label: draftState.label,
                         command: draftState.command,
                         enabled: draftState.enabled,
@@ -124,19 +128,19 @@ export function useWorkflowLibraryController(input: UseWorkflowLibraryController
                     if (!result.updated) {
                         setDraftState((current) => ({
                             ...current,
-                            statusMessage: 'The workflow no longer exists.',
+                            statusMessage: 'The branch workflow no longer exists.',
                         }));
                         return;
                     }
                     await refreshList();
-                    resetWorkflowDraft();
+                    resetBranchWorkflowDraft();
                     if (branchAfterSave) {
-                        await input.onBranch(result.workflow.id);
+                        await input.onBranch(result.branchWorkflow.id);
                     }
                     return;
                 }
 
-                const created = await createWorkflowMutation.mutateAsync({
+                const created = await createBranchWorkflowMutation.mutateAsync({
                     profileId: input.profileId,
                     workspaceFingerprint: input.workspaceFingerprint,
                     label: draftState.label,
@@ -144,70 +148,70 @@ export function useWorkflowLibraryController(input: UseWorkflowLibraryController
                     enabled: draftState.enabled,
                 });
                 await refreshList();
-                resetWorkflowDraft();
+                resetBranchWorkflowDraft();
                 if (branchAfterSave) {
-                    await input.onBranch(created.workflow.id);
+                    await input.onBranch(created.branchWorkflow.id);
                 }
             } catch (error) {
                 setDraftState((current) => ({
                     ...current,
-                    statusMessage: error instanceof Error ? error.message : 'Workflow save failed.',
+                    statusMessage: error instanceof Error ? error.message : 'Branch workflow save failed.',
                 }));
             }
         });
     };
 
-    const confirmDeleteWorkflow = (workflowId: string): void => {
+    const confirmDeleteBranchWorkflow = (branchWorkflowId: string): void => {
         launchBackgroundTask(async () => {
             try {
-                await deleteWorkflowMutation.mutateAsync({
+                await deleteBranchWorkflowMutation.mutateAsync({
                     profileId: input.profileId,
                     workspaceFingerprint: input.workspaceFingerprint,
-                    workflowId,
+                    branchWorkflowId,
                     confirm: true,
                 });
                 setDraftState((current) => ({
                     ...current,
                     deleteCandidateId: undefined,
                 }));
-                if (draftState.editingWorkflowId === workflowId) {
-                    resetWorkflowDraft();
+                if (draftState.editingBranchWorkflowId === branchWorkflowId) {
+                    resetBranchWorkflowDraft();
                 }
                 await refreshList();
             } catch (error: unknown) {
                 setDraftState((current) => ({
                     ...current,
-                    statusMessage: error instanceof Error ? error.message : 'Workflow delete failed.',
+                    statusMessage: error instanceof Error ? error.message : 'Branch workflow delete failed.',
                 }));
             }
         });
     };
 
     return {
-        workflows: workflowsQuery.data?.workflows ?? [],
-        isLoading: workflowsQuery.isLoading,
+        branchWorkflows: branchWorkflowsQuery.data?.branchWorkflows ?? [],
+        isLoading: branchWorkflowsQuery.isLoading,
         busyForm,
         isBranchDisabled: input.busy,
         draftState,
-        queryErrorMessage: workflowsQuery.error?.message,
+        queryErrorMessage: branchWorkflowsQuery.error?.message,
         branchWithoutWorkflow: () => {
             launchBackgroundTask(async () => {
                 await input.onBranch(undefined);
             });
         },
-        branchWithWorkflow: (workflowId: string) => {
+        branchWithWorkflow: (branchWorkflowId: string) => {
             launchBackgroundTask(async () => {
-                await input.onBranch(workflowId);
+                await input.onBranch(branchWorkflowId);
             });
         },
-        startCreateWorkflowDraft: () => {
+        startCreateBranchWorkflowDraft: () => {
             setDraftState({
-                ...createEmptyWorkflowDraftState(),
+                ...createEmptyBranchWorkflowDraftState(),
                 isFormVisible: true,
             });
         },
-        startEditWorkflowDraft: (workflow: ProjectWorkflowRecord) => {
-            setDraftState(createEditWorkflowDraftState(workflow));
+        startEditBranchWorkflowDraft: (branchWorkflow: ProjectBranchWorkflowRecord) => {
+            setDraftState(createEditBranchWorkflowDraftState(branchWorkflow));
         },
         updateLabel: (label: string) => {
             setDraftState((current) => ({
@@ -227,17 +231,17 @@ export function useWorkflowLibraryController(input: UseWorkflowLibraryController
                 enabled,
             }));
         },
-        cancelWorkflowDraft: resetWorkflowDraft,
-        saveWorkflow,
-        requestDeleteWorkflow: (workflowId: string) => {
+        cancelBranchWorkflowDraft: resetBranchWorkflowDraft,
+        saveBranchWorkflow,
+        requestDeleteBranchWorkflow: (branchWorkflowId: string) => {
             setDraftState((current) => ({
                 ...current,
-                deleteCandidateId: workflowId,
+                deleteCandidateId: branchWorkflowId,
                 statusMessage: undefined,
             }));
         },
-        confirmDeleteWorkflow,
-        cancelDeleteWorkflow: () => {
+        confirmDeleteBranchWorkflow: confirmDeleteBranchWorkflow,
+        cancelDeleteBranchWorkflow: () => {
             setDraftState((current) => ({
                 ...current,
                 deleteCandidateId: undefined,

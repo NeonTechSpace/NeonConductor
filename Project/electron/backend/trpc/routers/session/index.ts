@@ -2,7 +2,7 @@ import { messageMediaStore, messageStore, runStore, sessionStore, threadStore } 
 import {
     profileInputSchema,
     sessionBranchFromMessageInputSchema,
-    sessionBranchFromMessageWithWorkflowInputSchema,
+    sessionBranchFromMessageWithBranchWorkflowInputSchema,
     sessionByIdInputSchema,
     sessionCreateInputSchema,
     sessionEditInputSchema,
@@ -329,10 +329,10 @@ export const sessionRouter = router({
 
         return result;
     }),
-    branchFromMessageWithWorkflow: publicProcedure
-        .input(sessionBranchFromMessageWithWorkflowInputSchema)
+    branchFromMessageWithBranchWorkflow: publicProcedure
+        .input(sessionBranchFromMessageWithBranchWorkflowInputSchema)
         .mutation(async ({ input, ctx }) => {
-            const result = await sessionBranchService.branchFromMessageWithWorkflow(input);
+            const result = await sessionBranchService.branchFromMessageWithBranchWorkflow(input);
             if (result.branched) {
                 await runtimeEventLogService.append(
                     runtimeUpsertEvent({
@@ -347,13 +347,13 @@ export const sessionRouter = router({
                             sourceThreadId: result.sourceThreadId,
                             threadId: result.threadId,
                             messageId: input.messageId,
-                            workflowId: input.workflowId ?? null,
-                            workflowExecution: result.workflowExecution,
+                            branchWorkflowId: input.branchWorkflowId ?? null,
+                            branchWorkflowExecution: result.branchWorkflowExecution,
                         },
                         ...eventMetadata({
                             requestId: ctx.requestId,
                             correlationId: ctx.correlationId,
-                            origin: 'trpc.session.branchFromMessageWithWorkflow',
+                            origin: 'trpc.session.branchFromMessageWithBranchWorkflow',
                         }),
                     })
                 );

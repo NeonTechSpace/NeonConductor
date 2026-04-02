@@ -6,13 +6,13 @@ import {
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
-    ProjectWorkflowCreateInput,
-    ProjectWorkflowDeleteInput,
-    ProjectWorkflowListInput,
-    ProjectWorkflowUpdateInput,
-} from '@/app/backend/runtime/contracts/types/workflow';
+    ProjectBranchWorkflowCreateInput,
+    ProjectBranchWorkflowDeleteInput,
+    ProjectBranchWorkflowListInput,
+    ProjectBranchWorkflowUpdateInput,
+} from '@/app/backend/runtime/contracts/types/branchWorkflow';
 
-export function parseProjectWorkflowListInput(input: unknown): ProjectWorkflowListInput {
+export function parseProjectBranchWorkflowListInput(input: unknown): ProjectBranchWorkflowListInput {
     const source = readObject(input, 'input');
 
     return {
@@ -21,7 +21,7 @@ export function parseProjectWorkflowListInput(input: unknown): ProjectWorkflowLi
     };
 }
 
-export function parseProjectWorkflowCreateInput(input: unknown): ProjectWorkflowCreateInput {
+export function parseProjectBranchWorkflowCreateInput(input: unknown): ProjectBranchWorkflowCreateInput {
     const source = readObject(input, 'input');
 
     return {
@@ -33,31 +33,31 @@ export function parseProjectWorkflowCreateInput(input: unknown): ProjectWorkflow
     };
 }
 
-export function parseProjectWorkflowUpdateInput(input: unknown): ProjectWorkflowUpdateInput {
+export function parseProjectBranchWorkflowUpdateInput(input: unknown): ProjectBranchWorkflowUpdateInput {
     const source = readObject(input, 'input');
 
     return {
         profileId: readProfileId(source),
         workspaceFingerprint: readString(source.workspaceFingerprint, 'workspaceFingerprint'),
-        workflowId: readString(source.workflowId, 'workflowId'),
+        branchWorkflowId: readString(source.branchWorkflowId, 'branchWorkflowId'),
         label: readString(source.label, 'label'),
         command: readString(source.command, 'command'),
         enabled: readBoolean(source.enabled, 'enabled'),
     };
 }
 
-export function parseProjectWorkflowDeleteInput(input: unknown): ProjectWorkflowDeleteInput {
+export function parseProjectBranchWorkflowDeleteInput(input: unknown): ProjectBranchWorkflowDeleteInput {
     const source = readObject(input, 'input');
 
     return {
         profileId: readProfileId(source),
         workspaceFingerprint: readString(source.workspaceFingerprint, 'workspaceFingerprint'),
-        workflowId: readString(source.workflowId, 'workflowId'),
+        branchWorkflowId: readString(source.branchWorkflowId, 'branchWorkflowId'),
         confirm: readBoolean(source.confirm, 'confirm'),
     };
 }
 
-export const projectWorkflowListInputSchema = createParser(parseProjectWorkflowListInput);
-export const projectWorkflowCreateInputSchema = createParser(parseProjectWorkflowCreateInput);
-export const projectWorkflowUpdateInputSchema = createParser(parseProjectWorkflowUpdateInput);
-export const projectWorkflowDeleteInputSchema = createParser(parseProjectWorkflowDeleteInput);
+export const projectBranchWorkflowListInputSchema = createParser(parseProjectBranchWorkflowListInput);
+export const projectBranchWorkflowCreateInputSchema = createParser(parseProjectBranchWorkflowCreateInput);
+export const projectBranchWorkflowUpdateInputSchema = createParser(parseProjectBranchWorkflowUpdateInput);
+export const projectBranchWorkflowDeleteInputSchema = createParser(parseProjectBranchWorkflowDeleteInput);

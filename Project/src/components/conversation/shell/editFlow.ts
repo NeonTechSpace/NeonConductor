@@ -48,12 +48,12 @@ export function toBranchFailureMessage(reason: string): string {
         return 'Branch is not allowed from this tab because the thread belongs to another mode.';
     }
     if (reason === 'workspace_required') {
-        return 'Workflow branching is only available for workspace-bound agent and orchestrator sessions.';
+        return 'Branch workflows are only available for workspace-bound agent and orchestrator sessions.';
     }
-    if (reason === 'workflow_not_found') {
+    if (reason === 'branch_workflow_not_found') {
         return 'The selected branch workflow no longer exists in this workspace.';
     }
-    if (reason === 'workflow_disabled') {
+    if (reason === 'branch_workflow_disabled') {
         return 'The selected branch workflow is disabled.';
     }
 

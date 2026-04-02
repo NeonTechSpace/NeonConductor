@@ -112,19 +112,19 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         messageId: string;
     }>();
-    expectTypeOf<AppRouterInputs['session']['branchFromMessageWithWorkflow']>().toExtend<{
+    expectTypeOf<AppRouterInputs['session']['branchFromMessageWithBranchWorkflow']>().toExtend<{
         profileId: string;
         sessionId: string;
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         messageId: string;
-        workflowId?: string;
+        branchWorkflowId?: string;
     }>();
-    expectTypeOf<AppRouterInputs['workflow']['list']>().toExtend<{
+    expectTypeOf<AppRouterInputs['branchWorkflow']['list']>().toExtend<{
         profileId: string;
         workspaceFingerprint: string;
     }>();
-    expectTypeOf<AppRouterInputs['workflow']['create']>().toExtend<{
+    expectTypeOf<AppRouterInputs['branchWorkflow']['create']>().toExtend<{
         profileId: string;
         workspaceFingerprint: string;
         label: string;

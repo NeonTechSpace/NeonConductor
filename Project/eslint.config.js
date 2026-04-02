@@ -48,7 +48,7 @@ const strictPromiseGlobs = [
     'src/components/settings/providerSettings/hooks/useProviderSettingsMutationCoordinator.ts',
     'src/components/conversation/sidebar/sections/sidebarThreadBrowser.tsx',
     'src/components/conversation/shell/useConversationShellViewControllers.ts',
-    'src/components/conversation/panels/useWorkflowLibraryController.ts',
+    'src/components/conversation/panels/useBranchWorkflowLibraryController.ts',
     'src/components/conversation/hooks/composerImageCompressionClient.ts',
     'src/components/conversation/hooks/useConversationShellEditFlow.ts',
     'src/lib/runtime/invalidation/queryInvalidation.ts',
@@ -76,7 +76,7 @@ const validatedFsAuthorityGlobs = [
     'electron/backend/runtime/services/sandbox/filesystem.ts',
     'electron/backend/runtime/services/toolExecution/handlers/listFiles.ts',
     'electron/backend/runtime/services/toolExecution/handlers/readFile.ts',
-    'electron/backend/runtime/services/workflows/service.ts',
+    'electron/backend/runtime/services/branchWorkflows/service.ts',
     'electron/main/preload/buildConfig.ts',
     'electron/main/logging/fileDrain.ts',
 ];

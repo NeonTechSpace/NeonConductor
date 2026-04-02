@@ -85,7 +85,7 @@ describe('runtime contracts: conversation and runs', () => {
             throw new Error('Expected assistant message for branch target.');
         }
 
-        const branched = await caller.session.branchFromMessageWithWorkflow({
+        const branched = await caller.session.branchFromMessageWithBranchWorkflow({
             profileId,
             sessionId: created.session.id,
             topLevelTab: 'agent',
@@ -96,7 +96,7 @@ describe('runtime contracts: conversation and runs', () => {
         if (!branched.branched) {
             throw new Error(`Expected workflow branch to succeed, received "${branched.reason}".`);
         }
-        expect(branched.workflowExecution.status).toBe('not_requested');
+        expect(branched.branchWorkflowExecution.status).toBe('not_requested');
         expect(branched.thread.sandboxId).toBeDefined();
         expect(branched.thread.sandboxId).not.toBe(sourceThreadRecord?.thread.sandboxId);
     });
@@ -160,7 +160,7 @@ describe('runtime contracts: conversation and runs', () => {
         }
         await waitForRunStatus(caller, profileId, created.session.id, 'completed');
 
-        const workflow = await caller.workflow.create({
+        const branchWorkflow = await caller.branchWorkflow.create({
             profileId,
             workspaceFingerprint,
             label: 'Install deps',
@@ -176,23 +176,23 @@ describe('runtime contracts: conversation and runs', () => {
             throw new Error('Expected assistant message for branch target.');
         }
 
-        const branched = await caller.session.branchFromMessageWithWorkflow({
+        const branched = await caller.session.branchFromMessageWithBranchWorkflow({
             profileId,
             sessionId: created.session.id,
             topLevelTab: 'agent',
             modeKey: 'code',
             messageId: branchMessage.id,
-            workflowId: workflow.workflow.id,
+            branchWorkflowId: branchWorkflow.branchWorkflow.id,
         });
         expect(branched.branched).toBe(true);
         if (!branched.branched) {
             throw new Error(`Expected workflow branch to succeed, received "${branched.reason}".`);
         }
-        expect(branched.workflowExecution.status).toBe('approval_required');
-        if (branched.workflowExecution.status !== 'approval_required') {
+        expect(branched.branchWorkflowExecution.status).toBe('approval_required');
+        if (branched.branchWorkflowExecution.status !== 'approval_required') {
             throw new Error('Expected workflow approval requirement.');
         }
-        const permissionRequestId = branched.workflowExecution.requestId;
+        const permissionRequestId = branched.branchWorkflowExecution.requestId;
         const pendingPermissions = await caller.permission.listPending();
         expect(pendingPermissions.requests.some((request) => request.id === permissionRequestId)).toBe(true);
 
@@ -281,7 +281,7 @@ describe('runtime contracts: conversation and runs', () => {
             policy: 'allow',
         });
 
-        const workflow = await caller.workflow.create({
+        const branchWorkflow = await caller.branchWorkflow.create({
             profileId,
             workspaceFingerprint,
             label: 'Broken workflow',
@@ -297,19 +297,19 @@ describe('runtime contracts: conversation and runs', () => {
             throw new Error('Expected assistant message for branch target.');
         }
 
-        const branched = await caller.session.branchFromMessageWithWorkflow({
+        const branched = await caller.session.branchFromMessageWithBranchWorkflow({
             profileId,
             sessionId: created.session.id,
             topLevelTab: 'agent',
             modeKey: 'code',
             messageId: branchMessage.id,
-            workflowId: workflow.workflow.id,
+            branchWorkflowId: branchWorkflow.branchWorkflow.id,
         });
         expect(branched.branched).toBe(true);
         if (!branched.branched) {
             throw new Error(`Expected workflow branch to succeed, received "${branched.reason}".`);
         }
-        expect(branched.workflowExecution.status).toBe('failed');
+        expect(branched.branchWorkflowExecution.status).toBe('failed');
         expect(branched.sessionId).not.toBe(created.session.id);
 
         const sourceRunsAfterBranch = await caller.session.listRuns({
