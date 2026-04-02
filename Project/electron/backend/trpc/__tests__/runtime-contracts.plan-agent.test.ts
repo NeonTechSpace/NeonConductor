@@ -66,6 +66,245 @@ describe('runtime contracts: planning and orchestrator', () => {
         expect(active.activeMode.modeKey).toBe('debug');
     });
 
+    it('returns richer agent intake questions with required and optional metadata', async () => {
+        const caller = createCaller();
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_agent_rich_intake',
+            title: 'Agent richer intake thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            prompt: 'Fix a regression in the agent planner.',
+            workspaceFingerprint: 'wsf_agent_rich_intake',
+        });
+
+        const deliverableQuestion = started.plan.questions.find((question) => question.id === 'scope');
+        const constraintsQuestion = started.plan.questions.find((question) => question.id === 'constraints');
+        const validationQuestion = started.plan.questions.find((question) => question.id === 'validation');
+
+        expect(deliverableQuestion).toMatchObject({
+            category: 'deliverable',
+            required: true,
+        });
+        expect(deliverableQuestion?.placeholderText).toContain('artifact');
+        expect(deliverableQuestion?.helpText).toContain('concrete first outcome');
+        expect(constraintsQuestion).toMatchObject({
+            category: 'constraints',
+            required: true,
+        });
+        expect(validationQuestion).toMatchObject({
+            category: 'validation',
+            required: false,
+        });
+
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Ship the richer plan intake flow.',
+        });
+        const answeredConstraints = await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Keep approval and execution contracts exact.',
+        });
+
+        expect(answeredConstraints.found).toBe(true);
+        if (!answeredConstraints.found) {
+            throw new Error('Expected richer intake question answers to update the plan.');
+        }
+        expect(answeredConstraints.plan.status).toBe('draft');
+    });
+
+    it('generates a deterministic fallback draft after required intake answers are complete', async () => {
+        const caller = createCaller();
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_agent_generate_draft',
+            title: 'Agent generate draft thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            prompt: 'Help me improve this',
+            workspaceFingerprint: 'wsf_agent_generate_draft',
+        });
+
+        const missingContextQuestion = started.plan.questions.find((question) => question.id === 'missing_context');
+        expect(missingContextQuestion).toMatchObject({
+            category: 'missing_context',
+            required: true,
+        });
+        expect(started.plan.summaryMarkdown).toContain('provisional');
+
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Improve the basic plan intake experience.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Stay deterministic when no model target is available.',
+        });
+        const answeredMissingContext = await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'missing_context',
+            answer: 'This work targets plan mode intake, panel state, and controller wiring.',
+        });
+        expect(answeredMissingContext.found).toBe(true);
+        if (!answeredMissingContext.found) {
+            throw new Error('Expected missing-context answer update.');
+        }
+        expect(answeredMissingContext.plan.status).toBe('draft');
+
+        const generated = await caller.plan.generateDraft({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            workspaceFingerprint: 'wsf_agent_generate_draft',
+        });
+        expect(generated.found).toBe(true);
+        if (!generated.found) {
+            throw new Error('Expected deterministic draft generation.');
+        }
+        expect(generated.plan.currentRevisionNumber).toBe(2);
+        expect(generated.plan.summaryMarkdown).toContain('## Goal');
+        expect(generated.plan.summaryMarkdown).toContain('## Clarified Context');
+        expect(generated.plan.items.length).toBeGreaterThanOrEqual(2);
+        expect(generated.plan.items[0]?.description).toContain('Inspect');
+
+        const runtimeEvents = await runtimeEventStore.list(null, 200);
+        const draftStartedEvent = runtimeEvents.find(
+            (event) => event.eventType === 'plan.draft_generation.started' && event.entityId === started.plan.id
+        );
+        const draftGeneratedEvent = runtimeEvents.find(
+            (event) => event.eventType === 'plan.draft_generated' && event.entityId === started.plan.id
+        );
+        expect(draftStartedEvent?.payload.generationMode).toBe('deterministic_fallback');
+        expect(draftGeneratedEvent?.payload.generationMode).toBe('deterministic_fallback');
+        expect(draftGeneratedEvent?.payload.priorRevisionId).toBe(started.plan.currentRevisionId);
+        expect(draftGeneratedEvent?.payload.revisionId).toBe(generated.plan.currentRevisionId);
+        expect(draftGeneratedEvent?.payload.revisionNumber).toBe(2);
+    });
+
+    it('accepts provider and model inputs when generating a draft revision', async () => {
+        const caller = createCaller();
+        const draftFetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                output: [
+                    {
+                        type: 'message',
+                        content: [
+                            {
+                                type: 'output_text',
+                                text: JSON.stringify({
+                                    summaryMarkdown: '# Model Draft\n\n## Goal\n\nShip the richer intake flow.',
+                                    items: [
+                                        'Inspect the current plan intake controller.',
+                                        'Implement the richer intake and draft-generation path.',
+                                        'Verify the plan UI and runtime contracts.',
+                                    ],
+                                }),
+                            },
+                        ],
+                    },
+                ],
+                usage: {
+                    input_tokens: 18,
+                    output_tokens: 24,
+                    total_tokens: 42,
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', draftFetchMock);
+
+        await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-plan-draft-key',
+        });
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_agent_model_draft',
+            title: 'Agent model draft thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            prompt: 'Draft a revision-aware implementation plan.',
+            workspaceFingerprint: 'wsf_agent_model_draft',
+        });
+
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Ship the richer intake flow.',
+        });
+        const answeredConstraints = await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Keep immutable revisions and exact approval semantics intact.',
+        });
+        expect(answeredConstraints.found).toBe(true);
+        if (!answeredConstraints.found) {
+            throw new Error('Expected model-draft intake answers to update the plan.');
+        }
+        expect(answeredConstraints.plan.status).toBe('draft');
+
+        const generated = await caller.plan.generateDraft({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            workspaceFingerprint: 'wsf_agent_model_draft',
+        });
+        expect(generated.found).toBe(true);
+        if (!generated.found) {
+            throw new Error('Expected model-assisted draft generation.');
+        }
+        expect(generated.plan.currentRevisionNumber).toBe(2);
+        expect(generated.plan.summaryMarkdown.length).toBeGreaterThan(0);
+        expect(generated.plan.items.length).toBeGreaterThan(0);
+        expect(draftFetchMock).toHaveBeenCalled();
+
+        const runtimeEvents = await runtimeEventStore.list(null, 300);
+        const draftGeneratedEvent = runtimeEvents.find(
+            (event) => event.eventType === 'plan.draft_generated' && event.entityId === started.plan.id
+        );
+        expect(draftGeneratedEvent?.payload.revisionId).toBe(generated.plan.currentRevisionId);
+    });
+
     it('supports agent planning lifecycle with explicit approve then implement transition', async () => {
         const caller = createCaller();
         const completionFetchMock = vi.fn().mockResolvedValue({
@@ -494,8 +733,7 @@ describe('runtime contracts: planning and orchestrator', () => {
         });
 
         await getPersistence()
-            .db
-            .updateTable('plan_records')
+            .db.updateTable('plan_records')
             .set({
                 approved_revision_id: 'prev_missing_approved_revision',
             })

@@ -1,6 +1,7 @@
 import {
     planAnswerQuestionInputSchema,
     planApproveInputSchema,
+    planGenerateDraftInputSchema,
     planGetActiveInputSchema,
     planGetInputSchema,
     planImplementInputSchema,
@@ -28,6 +29,10 @@ export const planRouter = router({
     }),
     revise: publicProcedure.input(planReviseInputSchema).mutation(async ({ input }) => {
         return planService.revise(input);
+    }),
+    generateDraft: publicProcedure.input(planGenerateDraftInputSchema).mutation(async ({ input }) => {
+        const result = await planService.generateDraft(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
     }),
     approve: publicProcedure.input(planApproveInputSchema).mutation(async ({ input }) => {
         const result = await planService.approve(input);

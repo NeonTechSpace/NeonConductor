@@ -677,6 +677,10 @@ export interface RunUsageRecord {
 export interface PlanQuestionRecord {
     id: string;
     question: string;
+    category: 'goal' | 'deliverable' | 'constraints' | 'environment' | 'validation' | 'missing_context';
+    required: boolean;
+    placeholderText?: string;
+    helpText?: string;
 }
 
 export interface PlanRecord {

@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
 import {
+    canGenerateDraft,
+    hasUnansweredRequiredPlanQuestions,
     resolveModeExecutionDraftState,
     resolveModeExecutionOrchestratorPanelState,
     type ModeExecutionDraftState,
@@ -15,6 +17,22 @@ import type { EntityId, OrchestratorExecutionStrategy, TopLevelTab } from '@/sha
 type PlanView = ModeExecutionPlanView;
 
 type OrchestratorView = Parameters<typeof resolveModeExecutionOrchestratorPanelState>[0]['orchestratorView'];
+
+function formatQuestionCategory(category: PlanView['questions'][number]['category']): string {
+    return category.replace('_', ' ');
+}
+
+function readPlanSummaryEmptyState(plan: PlanView): string {
+    return hasUnansweredRequiredPlanQuestions(plan)
+        ? 'Answer the required intake questions to unlock a stronger first draft.'
+        : 'Generate a draft or write the plan summary manually. The preview will render here.';
+}
+
+function readPlanItemEmptyState(plan: PlanView): string {
+    return hasUnansweredRequiredPlanQuestions(plan)
+        ? 'Draft items stay conservative until the required intake details are answered.'
+        : 'Generate a draft or list the plan items manually, one line per item.';
+}
 
 export interface ModeExecutionPanelProps {
     topLevelTab: TopLevelTab;
@@ -57,6 +75,7 @@ export function ModeExecutionPanel({
         isOrchestratorMutating,
         onAnswerQuestion,
         onRevisePlan,
+        onGenerateDraft,
         onApprovePlan,
         onImplementPlan,
         onAbortOrchestrator,
@@ -69,6 +88,8 @@ export function ModeExecutionPanel({
     const summaryDraft = resolvedDraftState?.summaryDraft ?? '';
     const itemsDraft = resolvedDraftState?.itemsDraft ?? '';
     const answerByQuestionId = resolvedDraftState?.answerByQuestionId ?? {};
+    const hasRequiredQuestionsPending = activePlan ? hasUnansweredRequiredPlanQuestions(activePlan) : false;
+    const canGeneratePlanDraft = activePlan ? canGenerateDraft(activePlan) : false;
     const itemPreviewMarkdown = itemsDraft
         .split('\n')
         .map((item) => item.trim())
@@ -93,20 +114,39 @@ export function ModeExecutionPanel({
                             <p className='text-xs'>
                                 Status: <span className='font-medium'>{activePlan.status}</span>
                                 {' · '}
-                                Revision: <span className='font-medium'>{String(activePlan.currentRevisionNumber)}</span>
+                                Revision:{' '}
+                                <span className='font-medium'>{String(activePlan.currentRevisionNumber)}</span>
                             </p>
+                            {hasRequiredQuestionsPending ? (
+                                <p className='text-muted-foreground text-xs'>
+                                    Required intake answers are still missing, so this draft should stay provisional.
+                                </p>
+                            ) : null}
                             {activePlan.questions.map((question) => (
-                                <div key={question.id} className='space-y-1'>
+                                <div key={question.id} className='space-y-1 rounded-xl border p-3'>
+                                    <div className='flex flex-wrap items-center gap-2'>
+                                        <span className='text-muted-foreground text-[11px] tracking-wide uppercase'>
+                                            {formatQuestionCategory(question.category)}
+                                        </span>
+                                        <span className='border-border/70 rounded-full border px-2 py-0.5 text-[11px]'>
+                                            {question.required ? 'Required' : 'Optional'}
+                                        </span>
+                                    </div>
                                     <p className='text-xs font-medium'>{question.question}</p>
+                                    {question.helpText ? (
+                                        <p className='text-muted-foreground text-[11px]'>{question.helpText}</p>
+                                    ) : null}
                                     <div className='flex gap-2'>
                                         <input
                                             className='border-border bg-background h-8 flex-1 rounded-md border px-2 text-xs'
                                             value={answerByQuestionId[question.id] ?? ''}
+                                            placeholder={question.placeholderText}
                                             onChange={(event) => {
                                                 const next = event.target.value;
                                                 setDraftState((current) => {
                                                     const nextState =
-                                                        current?.planId === activePlan.id
+                                                        current?.planId === activePlan.id &&
+                                                        current.revisionId === activePlan.currentRevisionId
                                                             ? current
                                                             : resolvedDraftState;
                                                     return nextState
@@ -152,7 +192,10 @@ export function ModeExecutionPanel({
                                         const next = event.target.value;
                                         setDraftState((current) => {
                                             const nextState =
-                                                current?.planId === activePlan.id ? current : resolvedDraftState;
+                                                current?.planId === activePlan.id &&
+                                                current.revisionId === activePlan.currentRevisionId
+                                                    ? current
+                                                    : resolvedDraftState;
                                             return nextState
                                                 ? {
                                                       ...nextState,
@@ -167,7 +210,7 @@ export function ModeExecutionPanel({
                                         <MarkdownContent markdown={summaryDraft} />
                                     ) : (
                                         <p className='text-muted-foreground text-xs'>
-                                            Summary preview will render here.
+                                            {readPlanSummaryEmptyState(activePlan)}
                                         </p>
                                     )}
                                 </div>
@@ -182,7 +225,10 @@ export function ModeExecutionPanel({
                                         const next = event.target.value;
                                         setDraftState((current) => {
                                             const nextState =
-                                                current?.planId === activePlan.id ? current : resolvedDraftState;
+                                                current?.planId === activePlan.id &&
+                                                current.revisionId === activePlan.currentRevisionId
+                                                    ? current
+                                                    : resolvedDraftState;
                                             return nextState
                                                 ? {
                                                       ...nextState,
@@ -196,7 +242,9 @@ export function ModeExecutionPanel({
                                     {itemPreviewMarkdown.length > 0 ? (
                                         <MarkdownContent markdown={itemPreviewMarkdown} />
                                     ) : (
-                                        <p className='text-muted-foreground text-xs'>Item preview will render here.</p>
+                                        <p className='text-muted-foreground text-xs'>
+                                            {readPlanItemEmptyState(activePlan)}
+                                        </p>
                                     )}
                                 </div>
                             </div>
@@ -227,6 +275,16 @@ export function ModeExecutionPanel({
                                         </Button>
                                     </div>
                                 ) : null}
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={isPlanMutating || !canGeneratePlanDraft}
+                                    onClick={() => {
+                                        onGenerateDraft(activePlan.id);
+                                    }}>
+                                    Generate Draft
+                                </Button>
                                 <Button
                                     type='button'
                                     size='sm'
@@ -281,9 +339,7 @@ export function ModeExecutionPanel({
                             type='button'
                             size='sm'
                             variant='outline'
-                            disabled={
-                                isOrchestratorMutating || !orchestratorPanelState.canAbortOrchestrator
-                            }
+                            disabled={isOrchestratorMutating || !orchestratorPanelState.canAbortOrchestrator}
                             onClick={() => {
                                 onAbortOrchestrator(orchestratorPanelState.runId);
                             }}>

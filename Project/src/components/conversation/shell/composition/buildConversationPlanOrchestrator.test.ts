@@ -140,6 +140,10 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planGenerateDraftMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
             planApproveMutation,
             planImplementMutation: {
                 isPending: false,
@@ -158,6 +162,68 @@ describe('runConversationPlanMutation', () => {
             profileId: 'profile_default',
             planId: 'plan_1',
             revisionId: 'prev_1',
+        });
+    });
+
+    it('routes draft generation through the dedicated action controller with the resolved run target', async () => {
+        const planGenerateDraftMutation = {
+            isPending: false,
+            mutateAsync: vi.fn().mockResolvedValue({
+                found: true as const,
+                plan: createPlanRecord(),
+            }),
+        };
+
+        const orchestrator = buildConversationPlanOrchestrator({
+            profileId: 'profile_default',
+            applyPlanWorkspaceUpdate: vi.fn(),
+            applyOrchestratorWorkspaceUpdate: vi.fn(),
+            onError: vi.fn(),
+            resolvedRunTarget: {
+                providerId: 'openai',
+                modelId: 'gpt-5',
+            },
+            runtimeOptions: createRuntimeOptions(),
+            workspaceFingerprint: 'ws_1',
+            activePlan: createPlanRecord(),
+            orchestratorView: undefined,
+            planStartMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planAnswerMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planReviseMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planGenerateDraftMutation,
+            planApproveMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planImplementMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            orchestratorAbortMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+        });
+
+        orchestrator.actionController.onGenerateDraft('plan_1');
+        await flushAsyncActions();
+
+        expect(planGenerateDraftMutation.mutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            planId: 'plan_1',
+            runtimeOptions: createRuntimeOptions(),
+            providerId: 'openai',
+            modelId: 'gpt-5',
+            workspaceFingerprint: 'ws_1',
         });
     });
 
@@ -216,6 +282,10 @@ describe('buildConversationPlanOrchestrator', () => {
                 mutateAsync: vi.fn(),
             },
             planReviseMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
@@ -288,6 +358,10 @@ describe('buildConversationPlanOrchestrator', () => {
                 mutateAsync: vi.fn(),
             },
             planReviseMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },

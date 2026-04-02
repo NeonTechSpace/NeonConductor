@@ -235,11 +235,12 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
     const startAuthMutation = trpc.provider.startAuth.useMutation({
         onSuccess: (result, variables) => {
             input.setStatusMessage(getAuthFlowStartedStatusMessage(methodLabel(variables.method)));
+            const verificationUri = result.verificationUri;
             input.setActiveAuthFlow({
                 providerId: variables.providerId,
                 flowId: result.flow.id,
                 ...(result.userCode ? { userCode: result.userCode } : {}),
-                ...(result.verificationUri ? { verificationUri: result.verificationUri } : {}),
+                ...(verificationUri ? { verificationUri } : {}),
                 pollAfterSeconds: result.pollAfterSeconds ?? 5,
             });
             setAuthStateCache(variables.providerId, {
@@ -249,9 +250,9 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
                 authState: 'pending',
                 updatedAt: new Date().toISOString(),
             });
-            if (variables.providerId === 'kilo' && result.verificationUri) {
+            if (variables.providerId === 'kilo' && verificationUri) {
                 launchBackgroundTask(async () => {
-                    await openExternalUrlMutation.mutateAsync({ url: result.verificationUri });
+                    await openExternalUrlMutation.mutateAsync({ url: verificationUri });
                 });
             }
             if (variables.providerId === 'openai_codex') {

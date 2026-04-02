@@ -12,6 +12,7 @@ export function toPlanTrpcError(error: PlanServiceError): TRPCError {
         case 'not_approved':
         case 'revision_conflict':
             return new TRPCError({ code: 'CONFLICT', message: error.message, cause: error });
+        case 'draft_generation_failed':
         case 'run_start_failed':
             return new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message, cause: error });
     }

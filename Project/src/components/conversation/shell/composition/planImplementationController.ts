@@ -2,6 +2,7 @@ import type { RunTargetSelection } from '@/web/components/conversation/shell/wor
 
 import type { OrchestratorRunRecord, OrchestratorStepRecord } from '@/app/backend/persistence/types';
 
+import { launchBackgroundTask } from '@/shared/async/launchBackgroundTask';
 import type {
     EntityId,
     OrchestratorExecutionStrategy,
@@ -54,6 +55,17 @@ export interface CreatePlanImplementationControllerInput {
         },
         { found: false } | { found: true; plan: PlanRecordView }
     >;
+    planGenerateDraftMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            runtimeOptions: RuntimeRunOptions;
+            providerId?: RuntimeProviderId;
+            modelId?: string;
+            workspaceFingerprint?: string;
+        },
+        { found: false } | { found: true; plan: PlanRecordView }
+    >;
     planApproveMutation: MutationLike<
         {
             profileId: string;
@@ -95,6 +107,7 @@ export interface ConversationPlanActionController {
     isOrchestratorMutating: boolean;
     onAnswerQuestion: (planId: EntityId<'plan'>, questionId: string, answer: string) => void;
     onRevisePlan: (planId: EntityId<'plan'>, summaryMarkdown: string, items: string[]) => void;
+    onGenerateDraft: (planId: EntityId<'plan'>) => void;
     onApprovePlan: (planId: EntityId<'plan'>, revisionId: EntityId<'prev'>) => void;
     onImplementPlan: (planId: EntityId<'plan'>, executionStrategy: OrchestratorExecutionStrategy) => void;
     onAbortOrchestrator: (orchestratorRunId: EntityId<'orch'>) => void;
@@ -129,106 +142,139 @@ export function createPlanImplementationController(
             input.planStartMutation.isPending ||
             input.planAnswerMutation.isPending ||
             input.planReviseMutation.isPending ||
+            input.planGenerateDraftMutation.isPending ||
             input.planApproveMutation.isPending ||
             input.planImplementMutation.isPending,
         isOrchestratorMutating: input.orchestratorAbortMutation.isPending,
         onAnswerQuestion: (planId, questionId, answer) => {
-            void runConversationPlanMutation({
-                mutation: {
-                    mutateAsync: () =>
-                        input.planAnswerMutation.mutateAsync({
-                            profileId: input.profileId,
-                            planId,
-                            questionId,
-                            answer,
-                        }),
-                },
-                applyResult: (result) => {
-                    input.applyPlanWorkspaceUpdate(result);
-                },
-                onError: input.onError,
-                errorPrefix: 'Plan answer failed',
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planAnswerMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                questionId,
+                                answer,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan answer failed',
+                });
             });
         },
         onRevisePlan: (planId, summaryMarkdown, items) => {
-            void runConversationPlanMutation({
-                mutation: {
-                    mutateAsync: () =>
-                        input.planReviseMutation.mutateAsync({
-                            profileId: input.profileId,
-                            planId,
-                            summaryMarkdown,
-                            items: items.map((description) => ({ description })),
-                        }),
-                },
-                applyResult: (result) => {
-                    input.applyPlanWorkspaceUpdate(result);
-                },
-                onError: input.onError,
-                errorPrefix: 'Plan revision failed',
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planReviseMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                summaryMarkdown,
+                                items: items.map((description) => ({ description })),
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan revision failed',
+                });
+            });
+        },
+        onGenerateDraft: (planId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planGenerateDraftMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                runtimeOptions: input.runtimeOptions,
+                                ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
+                                ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
+                                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan draft generation failed',
+                });
             });
         },
         onApprovePlan: (planId, revisionId) => {
-            void runConversationPlanMutation({
-                mutation: {
-                    mutateAsync: () =>
-                        input.planApproveMutation.mutateAsync({
-                            profileId: input.profileId,
-                            planId,
-                            revisionId,
-                        }),
-                },
-                applyResult: (result) => {
-                    input.applyPlanWorkspaceUpdate(result);
-                },
-                onError: input.onError,
-                errorPrefix: 'Plan approval failed',
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planApproveMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                revisionId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan approval failed',
+                });
             });
         },
         onImplementPlan: (planId, executionStrategy) => {
-            void runConversationPlanMutation({
-                mutation: {
-                    mutateAsync: () =>
-                        input.planImplementMutation.mutateAsync({
-                            profileId: input.profileId,
-                            planId,
-                            runtimeOptions: input.runtimeOptions,
-                            ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
-                            ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
-                            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                            executionStrategy,
-                        }),
-                },
-                applyResult: (result) => {
-                    input.applyPlanWorkspaceUpdate(
-                        result.found
-                            ? {
-                                  found: true,
-                                  plan: result.plan,
-                              }
-                            : { found: false }
-                    );
-                },
-                onError: input.onError,
-                errorPrefix: 'Plan implementation failed',
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planImplementMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                runtimeOptions: input.runtimeOptions,
+                                ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
+                                ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
+                                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                                executionStrategy,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(
+                            result.found
+                                ? {
+                                      found: true,
+                                      plan: result.plan,
+                                  }
+                                : { found: false }
+                        );
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan implementation failed',
+                });
             });
         },
         onAbortOrchestrator: (orchestratorRunId) => {
-            void runConversationPlanMutation({
-                mutation: {
-                    mutateAsync: () =>
-                        input.orchestratorAbortMutation.mutateAsync({
-                            profileId: input.profileId,
-                            orchestratorRunId,
-                        }),
-                },
-                applyResult: (result) => {
-                    if (result.aborted) {
-                        input.applyOrchestratorWorkspaceUpdate(result.latest);
-                    }
-                },
-                onError: input.onError,
-                errorPrefix: 'Orchestrator abort failed',
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.orchestratorAbortMutation.mutateAsync({
+                                profileId: input.profileId,
+                                orchestratorRunId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        if (result.aborted) {
+                            input.applyOrchestratorWorkspaceUpdate(result.latest);
+                        }
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Orchestrator abort failed',
+                });
             });
         },
     };

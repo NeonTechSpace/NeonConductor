@@ -1,25 +1,6 @@
 import { planStore } from '@/app/backend/persistence/stores';
-import type { PlanQuestionRecord } from '@/app/backend/persistence/types';
 import type { PlanRecordView } from '@/app/backend/runtime/contracts';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
-
-export function createDefaultQuestions(prompt: string): PlanQuestionRecord[] {
-    const normalized = prompt.trim();
-    if (normalized.length === 0) {
-        return [];
-    }
-
-    return [
-        {
-            id: 'scope',
-            question: 'What exact output should this plan produce first?',
-        },
-        {
-            id: 'constraints',
-            question: 'Which constraints are non-negotiable for implementation?',
-        },
-    ];
-}
 
 export function toPlanView(
     plan: Awaited<ReturnType<typeof planStore.getById>>,
@@ -45,6 +26,10 @@ export function toPlanView(
         questions: plan.questions.map((question) => ({
             id: question.id,
             question: question.question,
+            category: question.category,
+            required: question.required,
+            ...(question.placeholderText ? { placeholderText: question.placeholderText } : {}),
+            ...(question.helpText ? { helpText: question.helpText } : {}),
             ...(plan.answers[question.id] ? { answer: plan.answers[question.id] } : {}),
         })),
         items: items.map((item) => ({

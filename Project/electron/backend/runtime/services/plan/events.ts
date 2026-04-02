@@ -92,6 +92,58 @@ export async function appendPlanRevisedEvent(input: {
     );
 }
 
+export async function appendPlanDraftGenerationStartedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    priorRevisionId: EntityId<'prev'>;
+    priorRevisionNumber: number;
+    generationMode: 'model' | 'deterministic_fallback';
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.draft_generation.started',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                priorRevisionId: input.priorRevisionId,
+                priorRevisionNumber: input.priorRevisionNumber,
+                generationMode: input.generationMode,
+            },
+        })
+    );
+}
+
+export async function appendPlanDraftGeneratedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    priorRevisionId: EntityId<'prev'>;
+    priorRevisionNumber: number;
+    revisionId: EntityId<'prev'>;
+    revisionNumber: number;
+    generationMode: 'model' | 'deterministic_fallback';
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.draft_generated',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                priorRevisionId: input.priorRevisionId,
+                priorRevisionNumber: input.priorRevisionNumber,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
+                generationMode: input.generationMode,
+            },
+        })
+    );
+}
+
 export async function appendPlanApprovedEvent(input: {
     profileId: string;
     planId: EntityId<'plan'>;

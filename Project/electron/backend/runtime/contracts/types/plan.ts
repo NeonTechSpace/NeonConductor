@@ -8,9 +8,21 @@ import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts/types/session';
 
+export type PlanQuestionCategory =
+    | 'goal'
+    | 'deliverable'
+    | 'constraints'
+    | 'environment'
+    | 'validation'
+    | 'missing_context';
+
 export interface PlanQuestion {
     id: string;
     question: string;
+    category: PlanQuestionCategory;
+    required: boolean;
+    placeholderText?: string;
+    helpText?: string;
     answer?: string;
 }
 
@@ -47,6 +59,13 @@ export interface PlanReviseInput extends PlanGetInput {
 
 export interface PlanApproveInput extends PlanGetInput {
     revisionId: EntityId<'prev'>;
+}
+
+export interface PlanGenerateDraftInput extends PlanGetInput {
+    runtimeOptions: RuntimeRunOptions;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
+    workspaceFingerprint?: string;
 }
 
 export interface PlanImplementInput extends PlanGetInput {

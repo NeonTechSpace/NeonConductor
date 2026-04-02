@@ -17,6 +17,7 @@ import type {
 import { planItemStatuses, planStatuses, topLevelTabs } from '@/app/backend/runtime/contracts';
 import type { EntityId, TopLevelTab } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
+import { hasUnansweredRequiredQuestions } from '@/app/backend/runtime/services/plan/intake';
 
 import type { Kysely, Transaction } from 'kysely';
 
@@ -33,7 +34,23 @@ function isPlanQuestionRecord(value: unknown): value is PlanQuestionRecord {
     }
     const id = record['id'];
     const question = record['question'];
-    return typeof id === 'string' && typeof question === 'string';
+    const category = record['category'];
+    const required = record['required'];
+    const placeholderText = record['placeholderText'];
+    const helpText = record['helpText'];
+    return (
+        typeof id === 'string' &&
+        typeof question === 'string' &&
+        (category === 'goal' ||
+            category === 'deliverable' ||
+            category === 'constraints' ||
+            category === 'environment' ||
+            category === 'validation' ||
+            category === 'missing_context') &&
+        typeof required === 'boolean' &&
+        (placeholderText === undefined || typeof placeholderText === 'string') &&
+        (helpText === undefined || typeof helpText === 'string')
+    );
 }
 
 type PlanRecordRow = {
@@ -462,9 +479,9 @@ export class PlanStore {
             }
         }
         answers[questionId] = answer;
-        const hasUnanswered = questions.some((question) => {
-            const response = answers[question.id];
-            return typeof response !== 'string' || response.trim().length === 0;
+        const hasUnanswered = hasUnansweredRequiredQuestions({
+            questions,
+            answers,
         });
 
         const updated = await db

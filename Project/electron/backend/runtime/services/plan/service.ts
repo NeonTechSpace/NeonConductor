@@ -2,12 +2,14 @@ import { planStore } from '@/app/backend/persistence/stores';
 import type {
     EntityId,
     PlanAnswerQuestionInput,
+    PlanGenerateDraftInput,
     PlanImplementInput,
     PlanRecordView,
     PlanReviseInput,
     PlanStartInput,
 } from '@/app/backend/runtime/contracts';
 import { approvePlan } from '@/app/backend/runtime/services/plan/approval';
+import { generatePlanDraft } from '@/app/backend/runtime/services/plan/draftGeneration';
 import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { implementApprovedPlan } from '@/app/backend/runtime/services/plan/implementation';
 import { answerPlanQuestion, revisePlan } from '@/app/backend/runtime/services/plan/lifecycle';
@@ -63,6 +65,25 @@ export class PlanService {
 
     async revise(input: PlanReviseInput): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
         return revisePlan(input);
+    }
+
+    async generateDraft(
+        input: PlanGenerateDraftInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await generatePlanDraft(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.generateDraft request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
     }
 
     async approve(input: {

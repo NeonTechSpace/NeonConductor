@@ -13,6 +13,7 @@ import {
 import type {
     PlanAnswerQuestionInput,
     PlanApproveInput,
+    PlanGenerateDraftInput,
     PlanGetActiveInput,
     PlanGetInput,
     PlanImplementInput,
@@ -115,10 +116,27 @@ export function parsePlanImplementInput(input: unknown): PlanImplementInput {
     };
 }
 
+export function parsePlanGenerateDraftInput(input: unknown): PlanGenerateDraftInput {
+    const source = readObject(input, 'input');
+    const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
+    const modelId = readOptionalString(source.modelId, 'modelId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+
+    return {
+        profileId: readProfileId(source),
+        planId: readEntityId(source.planId, 'planId', 'plan'),
+        runtimeOptions: parseRuntimeRunOptions(source.runtimeOptions),
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+    };
+}
+
 export const planStartInputSchema = createParser(parsePlanStartInput);
 export const planGetInputSchema = createParser(parsePlanGetInput);
 export const planGetActiveInputSchema = createParser(parsePlanGetActiveInput);
 export const planAnswerQuestionInputSchema = createParser(parsePlanAnswerQuestionInput);
 export const planReviseInputSchema = createParser(parsePlanReviseInput);
 export const planApproveInputSchema = createParser(parsePlanApproveInput);
+export const planGenerateDraftInputSchema = createParser(parsePlanGenerateDraftInput);
 export const planImplementInputSchema = createParser(parsePlanImplementInput);

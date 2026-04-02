@@ -100,19 +100,20 @@ export function useConversationShellEditFlow(input: UseConversationShellEditFlow
                 rememberChoice: boolean;
             }): Promise<void> => {
                 if (!pendingMessageEdit) {
-                    return;
+                    return Promise.resolve();
                 }
                 if (!isEntityId(input.selectedSessionId, 'sess')) {
                     input.onError('Select a session before editing a message.');
-                    return;
+                    return Promise.resolve();
                 }
 
+                const selectedSessionId = input.selectedSessionId;
                 input.onClearError();
                 launchBackgroundTask(
                     async () => {
                         const result = await input.editSession({
                             profileId: input.profileId,
-                            sessionId: input.selectedSessionId,
+                            sessionId: selectedSessionId,
                             topLevelTab: input.topLevelTab,
                             modeKey: input.modeKey,
                             messageId: pendingMessageEdit.messageId,
@@ -175,6 +176,7 @@ export function useConversationShellEditFlow(input: UseConversationShellEditFlow
                         input.onError(`Edit failed: ${message}`);
                     }
                 );
+                return Promise.resolve();
             },
         },
     };

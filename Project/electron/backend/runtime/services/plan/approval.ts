@@ -2,6 +2,7 @@ import { planStore } from '@/app/backend/persistence/stores';
 import type { EntityId, PlanRecordView } from '@/app/backend/runtime/contracts';
 import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanApprovedEvent } from '@/app/backend/runtime/services/plan/events';
+import { hasUnansweredRequiredQuestions } from '@/app/backend/runtime/services/plan/intake';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { appLog } from '@/app/main/logging';
 
@@ -17,9 +18,9 @@ export async function approvePlan(
         return okPlan({ found: false });
     }
 
-    const hasUnanswered = existing.questions.some((question) => {
-        const answer = existing.answers[question.id];
-        return typeof answer !== 'string' || answer.trim().length === 0;
+    const hasUnanswered = hasUnansweredRequiredQuestions({
+        questions: existing.questions,
+        answers: existing.answers,
     });
     if (hasUnanswered) {
         return errPlan('unanswered_questions', 'Cannot approve plan before answering all clarifying questions.');

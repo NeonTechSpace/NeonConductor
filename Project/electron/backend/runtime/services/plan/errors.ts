@@ -8,6 +8,7 @@ export type PlanServiceErrorCode =
     | 'unanswered_questions'
     | 'not_approved'
     | 'revision_conflict'
+    | 'draft_generation_failed'
     | 'run_start_failed'
     | 'unsupported_tab';
 

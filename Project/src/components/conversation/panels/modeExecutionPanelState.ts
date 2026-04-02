@@ -1,8 +1,12 @@
-import type { EntityId, OrchestratorExecutionStrategy, TopLevelTab } from '@/shared/contracts';
+import type { EntityId, OrchestratorExecutionStrategy, PlanQuestionCategory, TopLevelTab } from '@/shared/contracts';
 
 interface PlanQuestionView {
     id: string;
     question: string;
+    category: PlanQuestionCategory;
+    required: boolean;
+    placeholderText?: string;
+    helpText?: string;
     answer?: string;
 }
 
@@ -27,6 +31,7 @@ export interface ModeExecutionPlanView {
 
 export interface ModeExecutionDraftState {
     planId: EntityId<'plan'>;
+    revisionId: EntityId<'prev'>;
     summaryDraft: string;
     itemsDraft: string;
     answerByQuestionId: Record<string, string>;
@@ -112,16 +117,32 @@ export function resolveModeExecutionDraftState(input: {
         return undefined;
     }
 
-    if (input.draftState?.planId === input.activePlan.id) {
+    if (
+        input.draftState?.planId === input.activePlan.id &&
+        input.draftState.revisionId === input.activePlan.currentRevisionId
+    ) {
         return input.draftState;
     }
 
     return {
         planId: input.activePlan.id,
+        revisionId: input.activePlan.currentRevisionId,
         summaryDraft: input.activePlan.summaryMarkdown,
         itemsDraft: input.activePlan.items.map((item) => item.description).join('\n'),
         answerByQuestionId: Object.fromEntries(
             input.activePlan.questions.map((question) => [question.id, question.answer ?? ''])
         ),
     };
+}
+
+export function hasUnansweredRequiredPlanQuestions(plan: ModeExecutionPlanView): boolean {
+    return plan.questions.some((question) => question.required && (question.answer?.trim().length ?? 0) === 0);
+}
+
+export function canGenerateDraft(plan: ModeExecutionPlanView): boolean {
+    if (hasUnansweredRequiredPlanQuestions(plan)) {
+        return false;
+    }
+
+    return plan.status === 'awaiting_answers' || plan.status === 'draft' || plan.status === 'failed';
 }

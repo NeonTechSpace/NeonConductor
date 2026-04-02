@@ -7,7 +7,8 @@ import {
     validatePlanStartInput,
 } from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanQuestionRequestedEvents, appendPlanStartedEvent } from '@/app/backend/runtime/services/plan/events';
-import { createDefaultQuestions, requirePlanView } from '@/app/backend/runtime/services/plan/views';
+import { createInitialPlanSummary, createPlanIntakeQuestions } from '@/app/backend/runtime/services/plan/intake';
+import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { appLog } from '@/app/main/logging';
 
 import type { Result } from 'neverthrow';
@@ -20,14 +21,21 @@ export async function startPlanFlow(
         return errPlan(validation.error.code, validation.error.message);
     }
 
-    const questions = createDefaultQuestions(input.prompt);
+    const questions = createPlanIntakeQuestions({
+        prompt: input.prompt,
+        topLevelTab: input.topLevelTab,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+    });
     const plan = await planStore.create({
         profileId: input.profileId,
         sessionId: input.sessionId,
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
         sourcePrompt: input.prompt.trim(),
-        summaryMarkdown: `# Plan\n\n${input.prompt.trim()}`,
+        summaryMarkdown: createInitialPlanSummary({
+            prompt: input.prompt,
+            questions,
+        }),
         questions,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
     });

@@ -14,6 +14,45 @@ registerRuntimeContractHooks();
 
 describe('runtime contracts: planning and orchestrator', () => {
     const profileId = runtimeContractProfileId;
+    it('returns richer orchestrator intake questions with tab-aware wording', async () => {
+        const caller = createCaller();
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_orchestrator_rich_intake',
+            title: 'Orchestrator richer intake thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'plan',
+            prompt: 'Review orchestrator worker failures.',
+            workspaceFingerprint: 'wsf_orchestrator_rich_intake',
+        });
+
+        const deliverableQuestion = started.plan.questions.find((question) => question.id === 'scope');
+        const constraintsQuestion = started.plan.questions.find((question) => question.id === 'constraints');
+        const validationQuestion = started.plan.questions.find((question) => question.id === 'validation');
+
+        expect(deliverableQuestion?.question).toContain('orchestrated outcome');
+        expect(deliverableQuestion).toMatchObject({
+            category: 'deliverable',
+            required: true,
+        });
+        expect(constraintsQuestion).toMatchObject({
+            category: 'constraints',
+            required: true,
+        });
+        expect(validationQuestion).toMatchObject({
+            category: 'validation',
+            required: false,
+        });
+    });
+
     it('supports orchestrator sequential execution from approved plan steps', async () => {
         const caller = createCaller();
         const completionFetchMock = vi.fn().mockResolvedValue({
