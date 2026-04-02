@@ -119,12 +119,16 @@ export async function appendPlanImplementationStartedEvent(
         | {
               profileId: string;
               planId: EntityId<'plan'>;
+              revisionId: EntityId<'prev'>;
+              revisionNumber: number;
               mode: 'agent.code';
               runId: EntityId<'run'>;
           }
         | {
               profileId: string;
               planId: EntityId<'plan'>;
+              revisionId: EntityId<'prev'>;
+              revisionNumber: number;
               mode: 'orchestrator.orchestrate';
               orchestratorRunId: EntityId<'orch'>;
           }
@@ -138,6 +142,8 @@ export async function appendPlanImplementationStartedEvent(
             payload: {
                 planId: input.planId,
                 profileId: input.profileId,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
                 mode: input.mode,
                 ...('runId' in input ? { runId: input.runId } : { orchestratorRunId: input.orchestratorRunId }),
             },

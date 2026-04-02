@@ -6,6 +6,8 @@ export async function appendOrchestratorStartedEvent(input: {
     profileId: string;
     sessionId: EntityId<'sess'>;
     planId: EntityId<'plan'>;
+    revisionId: EntityId<'prev'>;
+    revisionNumber: number;
     orchestratorRunId: EntityId<'orch'>;
     stepCount: number;
 }): Promise<void> {
@@ -19,6 +21,8 @@ export async function appendOrchestratorStartedEvent(input: {
                 profileId: input.profileId,
                 sessionId: input.sessionId,
                 planId: input.planId,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
                 orchestratorRunId: input.orchestratorRunId,
                 stepCount: input.stepCount,
             },

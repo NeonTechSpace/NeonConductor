@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { planStore } from '@/app/backend/persistence/stores';
+import { getPersistence } from '@/app/backend/persistence/db';
+import { planStore, runStore, runtimeEventStore } from '@/app/backend/persistence/stores';
 import {
     createCaller,
     createSessionInScope,
@@ -183,6 +184,25 @@ describe('runtime contracts: planning and orchestrator', () => {
             throw new Error('Expected agent.code implementation mode.');
         }
 
+        const startedRun = await runStore.getById(implemented.runId);
+        expect(startedRun?.planId).toBe(started.plan.id);
+        expect(startedRun?.planRevisionId).toBe(revised.plan.currentRevisionId);
+        expect(startedRun?.prompt).toContain('# Agent Plan');
+        expect(startedRun?.prompt).toContain('Implement backend contracts first.');
+
+        const runtimeEvents = await runtimeEventStore.list(null, 200);
+        const implementationStartedEvent = runtimeEvents.find(
+            (event) => event.eventType === 'plan.implementation.started' && event.entityId === started.plan.id
+        );
+        expect(implementationStartedEvent?.payload.revisionId).toBe(revised.plan.currentRevisionId);
+        expect(implementationStartedEvent?.payload.revisionNumber).toBe(2);
+
+        const runModeContextEvent = runtimeEvents.find(
+            (event) => event.eventType === 'run.mode.context' && event.entityId === implemented.runId
+        );
+        expect(runModeContextEvent?.payload.planId).toBe(started.plan.id);
+        expect(runModeContextEvent?.payload.planRevisionId).toBe(revised.plan.currentRevisionId);
+
         await waitForRunStatus(caller, profileId, created.session.id, 'completed');
 
         const planState = await caller.plan.get({
@@ -286,5 +306,210 @@ describe('runtime contracts: planning and orchestrator', () => {
         expect(approvedSnapshot?.revision.id).toBe(firstRevision.plan.currentRevisionId);
         expect(approvedSnapshot?.revision.revisionNumber).toBe(2);
         expect(approvedSnapshot?.items.map((item) => item.description)).toEqual(['Initial item']);
+    });
+
+    it('anchors each agent implementation run to the approved revision that started it', async () => {
+        const caller = createCaller();
+        const completionFetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            content: 'Anchored implementation completed',
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 12,
+                    completion_tokens: 16,
+                    total_tokens: 28,
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', completionFetchMock);
+
+        await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-plan-anchor-key',
+        });
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_agent_plan_anchor',
+            title: 'Agent plan execution anchoring thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            prompt: 'Implement from exactly the approved revision.',
+        });
+
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Implement the first approved revision, then revise and re-approve.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Historical runs must stay anchored to the revision that launched them.',
+        });
+
+        const firstRevision = await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Approved Revision One',
+            items: [{ description: 'Implement revision one only' }],
+        });
+        expect(firstRevision.found).toBe(true);
+        if (!firstRevision.found) {
+            throw new Error('Expected first anchored revision.');
+        }
+
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+            revisionId: firstRevision.plan.currentRevisionId,
+        });
+
+        const firstImplementation = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(firstImplementation.found).toBe(true);
+        if (!firstImplementation.found || firstImplementation.mode !== 'agent.code') {
+            throw new Error('Expected first anchored agent implementation start.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const firstRun = await runStore.getById(firstImplementation.runId);
+        expect(firstRun?.planId).toBe(started.plan.id);
+        expect(firstRun?.planRevisionId).toBe(firstRevision.plan.currentRevisionId);
+        expect(firstRun?.prompt).toContain('# Approved Revision One');
+        expect(firstRun?.prompt).toContain('Implement revision one only');
+
+        const secondRevision = await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Approved Revision Two',
+            items: [{ description: 'Implement revision two instead' }],
+        });
+        expect(secondRevision.found).toBe(true);
+        if (!secondRevision.found) {
+            throw new Error('Expected second anchored revision.');
+        }
+
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+            revisionId: secondRevision.plan.currentRevisionId,
+        });
+
+        const secondImplementation = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(secondImplementation.found).toBe(true);
+        if (!secondImplementation.found || secondImplementation.mode !== 'agent.code') {
+            throw new Error('Expected second anchored agent implementation start.');
+        }
+
+        await waitForRunStatus(caller, profileId, created.session.id, 'completed');
+
+        const secondRun = await runStore.getById(secondImplementation.runId);
+        expect(secondRun?.planId).toBe(started.plan.id);
+        expect(secondRun?.planRevisionId).toBe(secondRevision.plan.currentRevisionId);
+        expect(secondRun?.prompt).toContain('# Approved Revision Two');
+        expect(secondRun?.prompt).toContain('Implement revision two instead');
+        expect(firstRun?.planRevisionId).toBe(firstRevision.plan.currentRevisionId);
+        expect(firstRun?.prompt).toContain('# Approved Revision One');
+        expect(firstRun?.prompt).not.toContain('# Approved Revision Two');
+    });
+
+    it('fails closed when the approved revision snapshot can no longer be resolved', async () => {
+        const caller = createCaller();
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_agent_plan_missing_snapshot',
+            title: 'Missing approved snapshot thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            prompt: 'This plan should fail closed if its approved snapshot disappears.',
+        });
+
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Approve one revision and then remove its snapshot.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Do not fall back to mutable live plan state.',
+        });
+
+        const revised = await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Missing Snapshot Revision',
+            items: [{ description: 'This should never execute from live state.' }],
+        });
+        expect(revised.found).toBe(true);
+        if (!revised.found) {
+            throw new Error('Expected revision before missing snapshot test.');
+        }
+
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+            revisionId: revised.plan.currentRevisionId,
+        });
+
+        await getPersistence()
+            .db
+            .updateTable('plan_records')
+            .set({
+                approved_revision_id: 'prev_missing_approved_revision',
+            })
+            .where('id', '=', started.plan.id)
+            .execute();
+
+        await expect(
+            caller.plan.implement({
+                profileId,
+                planId: started.plan.id,
+                runtimeOptions: defaultRuntimeOptions,
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+            })
+        ).rejects.toThrow(/approved revision content could not be resolved/i);
     });
 });

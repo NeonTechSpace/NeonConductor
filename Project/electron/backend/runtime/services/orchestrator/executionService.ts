@@ -20,12 +20,15 @@ import {
     getLatestOrchestratorBySession,
     getOrchestratorStatus,
 } from '@/app/backend/runtime/services/orchestrator/status';
+import type { ApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 
 export class OrchestratorExecutionService {
     private readonly activeRuns = new ActiveOrchestratorRunRegistry();
 
     async start(
-        input: OrchestratorStartInput
+        input: OrchestratorStartInput & {
+            approvedArtifact?: ApprovedPlanExecutionArtifact;
+        }
     ): Promise<
         Result<
             { started: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] },
@@ -37,12 +40,14 @@ export class OrchestratorExecutionService {
             logRejectedOrchestratorStart(input, prepared.error);
             return err(prepared.error);
         }
-        const { plan, planItems, run, steps } = prepared.value;
+        const { plan, approvedArtifact, planItems, run, steps } = prepared.value;
 
         await appendAndLogOrchestratorStarted({
             profileId: input.profileId,
             sessionId: plan.sessionId,
             planId: plan.id,
+            revisionId: approvedArtifact.approvedRevisionId,
+            revisionNumber: approvedArtifact.approvedRevisionNumber,
             runId: run.id,
             stepCount: steps.length,
         });
@@ -54,6 +59,7 @@ export class OrchestratorExecutionService {
 
         void this.execute({
             plan,
+            approvedArtifact,
             planItems,
             orchestratorRunId: run.id,
             steps,
@@ -112,6 +118,7 @@ export class OrchestratorExecutionService {
 
     private async execute(input: {
         plan: PlanRecord;
+        approvedArtifact: ApprovedPlanExecutionArtifact;
         planItems: PlanItemRecord[];
         orchestratorRunId: EntityId<'orch'>;
         steps: OrchestratorStepRecord[];

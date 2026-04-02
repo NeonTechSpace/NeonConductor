@@ -1,6 +1,7 @@
 import { planStore } from '@/app/backend/persistence/stores';
 import type { EntityId, PlanImplementInput, PlanRecordView } from '@/app/backend/runtime/contracts';
 import { orchestratorExecutionService } from '@/app/backend/runtime/services/orchestrator/executionService';
+import { resolveApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 import type { PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanImplementationStartedEvent } from '@/app/backend/runtime/services/plan/events';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
@@ -31,16 +32,26 @@ export async function implementApprovedPlan(input: {
     plan: StoredPlan;
     implementationInput: PlanImplementInput;
 }): Promise<PlanImplementationResult | PlanServiceError> {
+    const approvedArtifact = await resolveApprovedPlanExecutionArtifact(input.plan);
+    if (!approvedArtifact) {
+        return {
+            code: 'run_start_failed',
+            message: `Plan implementation failed to start: approved revision content could not be resolved for plan "${input.plan.id}".`,
+        };
+    }
+
     if (input.plan.topLevelTab === 'agent') {
         const items = await planStore.listItems(input.plan.id);
         const implementationPrompt = buildAgentImplementationPrompt({
-            summaryMarkdown: input.plan.summaryMarkdown,
-            itemDescriptions: items.map((item) => item.description),
+            summaryMarkdown: approvedArtifact.summaryMarkdown,
+            itemDescriptions: approvedArtifact.items.map((item) => item.description),
         });
 
         const result = await runExecutionService.startRun({
             profileId: input.profileId,
             sessionId: input.plan.sessionId,
+            planId: approvedArtifact.planId,
+            planRevisionId: approvedArtifact.approvedRevisionId,
             prompt: implementationPrompt,
             topLevelTab: 'agent',
             modeKey: 'code',
@@ -73,6 +84,8 @@ export async function implementApprovedPlan(input: {
         await appendPlanImplementationStartedEvent({
             profileId: input.profileId,
             planId: input.plan.id,
+            revisionId: approvedArtifact.approvedRevisionId,
+            revisionNumber: approvedArtifact.approvedRevisionNumber,
             mode: 'agent.code',
             runId: result.runId,
         });
@@ -97,6 +110,7 @@ export async function implementApprovedPlan(input: {
         const startedResult = await orchestratorExecutionService.start({
             profileId: input.profileId,
             planId: input.plan.id,
+            approvedArtifact,
             runtimeOptions: input.implementationInput.runtimeOptions,
             ...(input.implementationInput.executionStrategy
                 ? { executionStrategy: input.implementationInput.executionStrategy }
@@ -120,6 +134,8 @@ export async function implementApprovedPlan(input: {
         await appendPlanImplementationStartedEvent({
             profileId: input.profileId,
             planId: input.plan.id,
+            revisionId: approvedArtifact.approvedRevisionId,
+            revisionNumber: approvedArtifact.approvedRevisionNumber,
             mode: 'orchestrator.orchestrate',
             orchestratorRunId: started.run.id,
         });

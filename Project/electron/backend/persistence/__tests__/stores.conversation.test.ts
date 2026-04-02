@@ -12,6 +12,7 @@ import {
     tagStore,
     threadStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
+import { orchestratorStore, planStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 
 registerPersistenceStoreHooks();
@@ -102,6 +103,112 @@ describe('persistence stores: conversation domain', () => {
             throw new Error('Expected missing session refresh to fail.');
         }
         expect(missingRefresh.error.code).toBe('not_found');
+    });
+
+    it('persists plan execution provenance on runs and orchestrator runs', async () => {
+        const profileId = getDefaultProfileId();
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_plan_execution_provenance',
+            title: 'Execution Provenance Workspace',
+        });
+        if (conversation.isErr()) {
+            throw new Error(conversation.error.message);
+        }
+
+        const agentThread = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Agent plan thread',
+            topLevelTab: 'agent',
+        });
+        if (agentThread.isErr()) {
+            throw new Error(agentThread.error.message);
+        }
+        const agentSession = await sessionStore.create(profileId, agentThread.value.id, 'local');
+        if (!agentSession.created) {
+            throw new Error(`Expected agent session creation to succeed, received "${agentSession.reason}".`);
+        }
+
+        const agentPlan = await planStore.create({
+            profileId,
+            sessionId: agentSession.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            sourcePrompt: 'Anchor this execution to an approved revision.',
+            summaryMarkdown: '# Agent Revision One',
+            questions: [],
+            workspaceFingerprint: 'wsf_plan_execution_provenance',
+        });
+        const agentRun = await runStore.create({
+            profileId,
+            sessionId: agentSession.session.id,
+            planId: agentPlan.id,
+            planRevisionId: agentPlan.currentRevisionId,
+            prompt: 'Implement the approved plan.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: {
+                reasoning: {
+                    effort: 'none',
+                    summary: 'none',
+                    includeEncrypted: false,
+                },
+                cache: {
+                    strategy: 'auto',
+                },
+                transport: {
+                    family: 'auto',
+                },
+            },
+            cache: {
+                applied: false,
+            },
+            transport: {},
+        });
+        const storedAgentRun = await runStore.getById(agentRun.id);
+        expect(storedAgentRun?.planId).toBe(agentPlan.id);
+        expect(storedAgentRun?.planRevisionId).toBe(agentPlan.currentRevisionId);
+
+        const orchestratorThread = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Orchestrator plan thread',
+            topLevelTab: 'orchestrator',
+        });
+        if (orchestratorThread.isErr()) {
+            throw new Error(orchestratorThread.error.message);
+        }
+        const orchestratorSession = await sessionStore.create(profileId, orchestratorThread.value.id, 'local');
+        if (!orchestratorSession.created) {
+            throw new Error(
+                `Expected orchestrator session creation to succeed, received "${orchestratorSession.reason}".`
+            );
+        }
+
+        const orchestratorPlan = await planStore.create({
+            profileId,
+            sessionId: orchestratorSession.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'plan',
+            sourcePrompt: 'Delegate work from the approved revision.',
+            summaryMarkdown: '# Orchestrator Revision One',
+            questions: [],
+            workspaceFingerprint: 'wsf_plan_execution_provenance',
+        });
+        const orchestratorRun = await orchestratorStore.createRun({
+            profileId,
+            sessionId: orchestratorSession.session.id,
+            planId: orchestratorPlan.id,
+            planRevisionId: orchestratorPlan.currentRevisionId,
+            executionStrategy: 'delegate',
+            stepDescriptions: ['Delegated step'],
+        });
+        const storedOrchestratorRun = await orchestratorStore.getRunById(profileId, orchestratorRun.run.id);
+        expect(storedOrchestratorRun?.planId).toBe(orchestratorPlan.id);
+        expect(storedOrchestratorRun?.planRevisionId).toBe(orchestratorPlan.currentRevisionId);
     });
 
     it('supports conversations, threads, tags, diffs, and checkpoints', async () => {

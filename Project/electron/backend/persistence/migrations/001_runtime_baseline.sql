@@ -346,6 +346,8 @@ CREATE TABLE runs (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    plan_id TEXT NULL REFERENCES plan_records(id) ON DELETE SET NULL,
+    plan_revision_id TEXT NULL REFERENCES plan_revisions(id) ON DELETE SET NULL,
     prompt TEXT NOT NULL,
     status TEXT NOT NULL,
     provider_id TEXT NULL REFERENCES providers(id) ON DELETE SET NULL,
@@ -928,6 +930,7 @@ CREATE TABLE orchestrator_runs (
     profile_id TEXT NOT NULL,
     session_id TEXT NOT NULL,
     plan_id TEXT NOT NULL,
+    plan_revision_id TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'aborted', 'failed')),
     execution_strategy TEXT NOT NULL CHECK (execution_strategy IN ('delegate', 'parallel')),
     active_step_index INTEGER NULL,
@@ -938,7 +941,8 @@ CREATE TABLE orchestrator_runs (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-    FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE
+    FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_revision_id) REFERENCES plan_revisions(id) ON DELETE CASCADE
 );
 
 CREATE TABLE orchestrator_steps (

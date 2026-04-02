@@ -43,6 +43,7 @@ export interface OrchestratorRunView {
     profileId: string;
     sessionId: EntityId<'sess'>;
     planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
     status: OrchestratorRunStatus;
     executionStrategy: OrchestratorExecutionStrategy;
     activeStepIndex?: number;

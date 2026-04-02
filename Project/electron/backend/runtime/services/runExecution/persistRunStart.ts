@@ -23,6 +23,8 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
     const run = await runStore.create({
         profileId: input.input.profileId,
         sessionId: input.input.sessionId,
+        ...(input.input.planId ? { planId: input.input.planId } : {}),
+        ...(input.input.planRevisionId ? { planRevisionId: input.input.planRevisionId } : {}),
         prompt: input.input.prompt,
         providerId: input.prepared.activeTarget.providerId,
         modelId: input.prepared.activeTarget.modelId,
@@ -142,6 +144,8 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
                 topLevelTab: input.input.topLevelTab,
                 modeKey: input.input.modeKey,
                 workspaceFingerprint: input.input.workspaceFingerprint ?? null,
+                planId: input.input.planId ?? null,
+                planRevisionId: input.input.planRevisionId ?? null,
                 mode: {
                     id: input.prepared.resolvedMode.mode.id,
                     label: input.prepared.resolvedMode.mode.label,
@@ -166,6 +170,8 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
                 run,
                 sessionId: input.input.sessionId,
                 profileId: input.input.profileId,
+                planId: input.input.planId ?? null,
+                planRevisionId: input.input.planRevisionId ?? null,
             },
             ...eventMetadata({
                 requestId: input.input.requestId,

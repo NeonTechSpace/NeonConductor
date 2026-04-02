@@ -4,6 +4,7 @@ import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { RunRecord } from '@/app/backend/persistence/types';
 import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/types';
 import type {
+    EntityId,
     ProviderAuthMethod,
     RunStatus,
     RuntimeProviderId,
@@ -14,6 +15,8 @@ import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 export interface CreateRunInput {
     profileId: string;
     sessionId: string;
+    planId?: EntityId<'plan'>;
+    planRevisionId?: EntityId<'prev'>;
     prompt: string;
     providerId: RuntimeProviderId;
     modelId: string;
@@ -55,6 +58,8 @@ export class RunStore {
                 id: runId,
                 session_id: input.sessionId,
                 profile_id: input.profileId,
+                plan_id: input.planId ?? null,
+                plan_revision_id: input.planRevisionId ?? null,
                 prompt: input.prompt,
                 status: 'running',
                 provider_id: input.providerId,

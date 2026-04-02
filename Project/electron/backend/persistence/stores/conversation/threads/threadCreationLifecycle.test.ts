@@ -8,8 +8,7 @@ import {
     threadStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
 import { orchestratorStore, planStore } from '@/app/backend/persistence/stores';
-
-import { createThreadRecord } from './threadCreationLifecycle';
+import { createThreadRecord } from '@/app/backend/persistence/stores/conversation/threads/threadCreationLifecycle';
 
 registerPersistenceStoreHooks();
 
@@ -117,6 +116,7 @@ describe('threadCreationLifecycle', () => {
             profileId,
             sessionId: parentSession.session.id,
             planId: plan.id,
+            planRevisionId: plan.currentRevisionId,
             executionStrategy: 'delegate',
             stepDescriptions: ['Delegate'],
         });
@@ -139,6 +139,7 @@ describe('threadCreationLifecycle', () => {
         expect(created.value.delegatedFromOrchestratorRunId).toBe(orchestratorRun.run.id);
         expect(created.value.executionEnvironmentMode).toBe('new_sandbox');
         expect(created.value.sandboxId).toBeUndefined();
+        expect(orchestratorRun.run.planRevisionId).toBe(plan.currentRevisionId);
     });
 
     it('defaults non-chat workspace threads to new_sandbox when no environment is provided', async () => {

@@ -195,6 +195,8 @@ export interface RunsTable {
     id: string;
     session_id: string;
     profile_id: string;
+    plan_id: string | null;
+    plan_revision_id: string | null;
     prompt: string;
     status: string;
     provider_id: string | null;
@@ -887,6 +889,7 @@ export interface OrchestratorRunsTable {
     profile_id: string;
     session_id: string;
     plan_id: string;
+    plan_revision_id: string;
     status: string;
     execution_strategy: string;
     active_step_index: number | null;

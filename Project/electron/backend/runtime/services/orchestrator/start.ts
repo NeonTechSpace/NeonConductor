@@ -13,19 +13,24 @@ import {
     validateOrchestratorStart,
 } from '@/app/backend/runtime/services/orchestrator/errors';
 import { appendOrchestratorStartedEvent } from '@/app/backend/runtime/services/orchestrator/events';
+import type { ApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
+import { resolveApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 import { appLog } from '@/app/main/logging';
 
 import type { Result } from 'neverthrow';
 
 export interface PreparedOrchestratorStart {
     plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
     planItems: PlanItemRecord[];
     run: OrchestratorRunRecord;
     steps: OrchestratorStepRecord[];
 }
 
 export async function prepareOrchestratorStart(
-    input: OrchestratorStartInput
+    input: OrchestratorStartInput & {
+        approvedArtifact?: ApprovedPlanExecutionArtifact;
+    }
 ): Promise<Result<PreparedOrchestratorStart, OrchestratorExecutionError>> {
     const validation = validateOrchestratorStart(await planStore.getById(input.profileId, input.planId), input.planId);
     if (validation.isErr()) {
@@ -33,6 +38,14 @@ export async function prepareOrchestratorStart(
     }
 
     const plan = validation.value;
+    const approvedArtifact = input.approvedArtifact ?? (await resolveApprovedPlanExecutionArtifact(plan));
+    if (!approvedArtifact) {
+        return errOrchestrator(
+            'approved_revision_unavailable',
+            `Approved revision content could not be resolved for plan "${plan.id}".`
+        );
+    }
+
     const sessionThread = await threadStore.getBySessionId(input.profileId, plan.sessionId);
     if (!sessionThread) {
         return errOrchestrator('session_not_found', `Session "${plan.sessionId}" was not found for orchestration.`);
@@ -52,17 +65,21 @@ export async function prepareOrchestratorStart(
 
     const planItems = await planStore.listItems(plan.id);
     const stepDescriptions =
-        planItems.length > 0 ? planItems.map((item) => item.description) : [plan.summaryMarkdown || plan.sourcePrompt];
+        approvedArtifact.items.length > 0
+            ? approvedArtifact.items.map((item) => item.description)
+            : [approvedArtifact.summaryMarkdown];
     const created = await orchestratorStore.createRun({
         profileId: input.profileId,
         sessionId: plan.sessionId,
         planId: plan.id,
+        planRevisionId: approvedArtifact.approvedRevisionId,
         executionStrategy: input.executionStrategy ?? 'delegate',
         stepDescriptions,
     });
 
     return okOrchestrator({
         plan,
+        approvedArtifact,
         planItems,
         run: created.run,
         steps: created.steps,
@@ -84,6 +101,8 @@ export async function appendAndLogOrchestratorStarted(input: {
     profileId: string;
     sessionId: PlanRecord['sessionId'];
     planId: PlanRecord['id'];
+    revisionId: ApprovedPlanExecutionArtifact['approvedRevisionId'];
+    revisionNumber: ApprovedPlanExecutionArtifact['approvedRevisionNumber'];
     runId: OrchestratorRunRecord['id'];
     stepCount: number;
 }): Promise<void> {
@@ -91,6 +110,8 @@ export async function appendAndLogOrchestratorStarted(input: {
         profileId: input.profileId,
         sessionId: input.sessionId,
         planId: input.planId,
+        revisionId: input.revisionId,
+        revisionNumber: input.revisionNumber,
         orchestratorRunId: input.runId,
         stepCount: input.stepCount,
     });
@@ -101,6 +122,8 @@ export async function appendAndLogOrchestratorStarted(input: {
         profileId: input.profileId,
         sessionId: input.sessionId,
         planId: input.planId,
+        revisionId: input.revisionId,
+        revisionNumber: input.revisionNumber,
         orchestratorRunId: input.runId,
         stepCount: input.stepCount,
     });

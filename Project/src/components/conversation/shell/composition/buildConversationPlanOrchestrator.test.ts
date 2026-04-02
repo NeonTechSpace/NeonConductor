@@ -64,6 +64,7 @@ function createLatestOrchestratorState(): {
             profileId: 'profile_default',
             sessionId: 'sess_1',
             planId: 'plan_1',
+            planRevisionId: 'prev_1',
             status: 'aborted',
             executionStrategy: 'parallel',
             startedAt: '2026-03-27T10:00:00.000Z',

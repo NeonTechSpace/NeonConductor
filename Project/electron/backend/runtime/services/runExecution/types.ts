@@ -34,6 +34,8 @@ import type { KiloModeHeader } from '@/shared/kiloModels';
 export interface StartRunInput {
     profileId: string;
     sessionId: EntityId<'sess'>;
+    planId?: EntityId<'plan'>;
+    planRevisionId?: EntityId<'prev'>;
     prompt: string;
     attachments?: ComposerImageAttachmentInput[];
     topLevelTab: TopLevelTab;

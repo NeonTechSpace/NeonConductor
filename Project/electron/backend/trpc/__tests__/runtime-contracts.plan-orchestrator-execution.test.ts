@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { runStore, runtimeEventStore } from '@/app/backend/persistence/stores';
 import {
     createCaller,
     createSessionInScope,
@@ -119,9 +120,35 @@ describe('runtime contracts: planning and orchestrator', () => {
             throw new Error('Expected orchestrator status to be found.');
         }
         expect(status.run.executionStrategy).toBe('delegate');
+        expect(status.run.planRevisionId).toBe(revised.plan.currentRevisionId);
         expect(status.steps.length).toBe(2);
         expect(status.steps.every((step) => step.status === 'completed')).toBe(true);
         expect(status.steps.every((step) => step.childThreadId && step.childSessionId && step.runId)).toBe(true);
+
+        const childRuns = await Promise.all(
+            status.steps.map(async (step) => {
+                if (!step.childSessionId) {
+                    throw new Error('Expected child session for delegated step.');
+                }
+                const runs = await runStore.listBySession(profileId, step.childSessionId);
+                return runs[0];
+            })
+        );
+        expect(childRuns.every((run) => run?.planId === started.plan.id)).toBe(true);
+        expect(childRuns.every((run) => run?.planRevisionId === revised.plan.currentRevisionId)).toBe(true);
+
+        const runtimeEvents = await runtimeEventStore.list(null, 400);
+        const implementationStartedEvent = runtimeEvents.find(
+            (event) => event.eventType === 'plan.implementation.started' && event.entityId === started.plan.id
+        );
+        expect(implementationStartedEvent?.payload.revisionId).toBe(revised.plan.currentRevisionId);
+        expect(implementationStartedEvent?.payload.revisionNumber).toBe(2);
+
+        const orchestratorStartedEvent = runtimeEvents.find(
+            (event) => event.eventType === 'orchestrator.started' && event.entityId === implemented.orchestratorRunId
+        );
+        expect(orchestratorStartedEvent?.payload.revisionId).toBe(revised.plan.currentRevisionId);
+        expect(orchestratorStartedEvent?.payload.revisionNumber).toBe(2);
 
         const threadList = await caller.conversation.listThreads({
             profileId,
@@ -581,4 +608,176 @@ describe('runtime contracts: planning and orchestrator', () => {
         expect(finalPlan.plan.status).toBe('implemented');
         expect(finalPlan.plan.items.every((item) => item.status === 'completed')).toBe(true);
     }, 20000);
+
+    it('keeps historical orchestrator runs anchored to the revision that launched them after re-approval', async () => {
+        const caller = createCaller();
+        const completionFetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            content: 'Anchored orchestrator child completed',
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 10,
+                    completion_tokens: 12,
+                    total_tokens: 22,
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', completionFetchMock);
+
+        await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-orchestrator-anchor-key',
+        });
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_orchestrator_plan_anchor',
+            title: 'Orchestrator execution anchoring thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'plan',
+            prompt: 'Implement from the exact approved orchestrator revision.',
+        });
+
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Approve one revision, implement it, then revise and approve a different one.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Historical orchestrator runs and delegated children must keep their original revision anchor.',
+        });
+
+        const firstRevision = await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Orchestrator Revision One',
+            items: [{ description: 'First delegated task' }],
+        });
+        expect(firstRevision.found).toBe(true);
+        if (!firstRevision.found) {
+            throw new Error('Expected first orchestrator revision.');
+        }
+
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+            revisionId: firstRevision.plan.currentRevisionId,
+        });
+
+        const firstImplementation = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(firstImplementation.found).toBe(true);
+        if (!firstImplementation.found || firstImplementation.mode !== 'orchestrator.orchestrate') {
+            throw new Error('Expected first anchored orchestrator start.');
+        }
+
+        await waitForOrchestratorStatus(caller, profileId, firstImplementation.orchestratorRunId, 'completed');
+
+        const firstStatus = await caller.orchestrator.status({
+            profileId,
+            orchestratorRunId: firstImplementation.orchestratorRunId,
+        });
+        expect(firstStatus.found).toBe(true);
+        if (!firstStatus.found) {
+            throw new Error('Expected first anchored orchestrator status.');
+        }
+        expect(firstStatus.run.planRevisionId).toBe(firstRevision.plan.currentRevisionId);
+        expect(firstStatus.steps.map((step) => step.description)).toEqual(['First delegated task']);
+
+        const firstChildRuns = await Promise.all(
+            firstStatus.steps.map(async (step) => {
+                if (!step.childSessionId) {
+                    throw new Error('Expected first child session.');
+                }
+                const runs = await runStore.listBySession(profileId, step.childSessionId);
+                return runs[0];
+            })
+        );
+        expect(firstChildRuns.every((run) => run?.planRevisionId === firstRevision.plan.currentRevisionId)).toBe(true);
+
+        const secondRevision = await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Orchestrator Revision Two',
+            items: [{ description: 'Second delegated task' }, { description: 'Extra delegated task' }],
+        });
+        expect(secondRevision.found).toBe(true);
+        if (!secondRevision.found) {
+            throw new Error('Expected second orchestrator revision.');
+        }
+
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+            revisionId: secondRevision.plan.currentRevisionId,
+        });
+
+        const secondImplementation = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(secondImplementation.found).toBe(true);
+        if (!secondImplementation.found || secondImplementation.mode !== 'orchestrator.orchestrate') {
+            throw new Error('Expected second anchored orchestrator start.');
+        }
+
+        await waitForOrchestratorStatus(caller, profileId, secondImplementation.orchestratorRunId, 'completed');
+
+        const secondStatus = await caller.orchestrator.status({
+            profileId,
+            orchestratorRunId: secondImplementation.orchestratorRunId,
+        });
+        expect(secondStatus.found).toBe(true);
+        if (!secondStatus.found) {
+            throw new Error('Expected second anchored orchestrator status.');
+        }
+        expect(secondStatus.run.planRevisionId).toBe(secondRevision.plan.currentRevisionId);
+        expect(secondStatus.steps.map((step) => step.description)).toEqual([
+            'Second delegated task',
+            'Extra delegated task',
+        ]);
+
+        const secondChildRuns = await Promise.all(
+            secondStatus.steps.map(async (step) => {
+                if (!step.childSessionId) {
+                    throw new Error('Expected second child session.');
+                }
+                const runs = await runStore.listBySession(profileId, step.childSessionId);
+                return runs[0];
+            })
+        );
+        expect(secondChildRuns.every((run) => run?.planRevisionId === secondRevision.plan.currentRevisionId)).toBe(
+            true
+        );
+        expect(firstStatus.run.planRevisionId).toBe(firstRevision.plan.currentRevisionId);
+        expect(firstStatus.steps.map((step) => step.description)).toEqual(['First delegated task']);
+    });
 });

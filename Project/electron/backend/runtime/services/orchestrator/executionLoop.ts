@@ -16,6 +16,7 @@ import {
     startDelegatedChildRun,
     waitForRunTerminal,
 } from '@/app/backend/runtime/services/orchestrator/stepRun';
+import type { ApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 
 interface StartedChildStep {
     step: OrchestratorStepRecord;
@@ -48,6 +49,7 @@ async function abortSiblingChildren(input: {
 
 async function startStepChild(input: {
     plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
     planItems: PlanItemRecord[];
     orchestratorRunId: EntityId<'orch'>;
     step: OrchestratorStepRecord;
@@ -75,6 +77,7 @@ async function startStepChild(input: {
         orchestratorRunId: input.orchestratorRunId,
         rootContext,
         plan: input.plan,
+        approvedArtifact: input.approvedArtifact,
         step: input.step,
         startInput: input.startInput,
     });
@@ -108,6 +111,7 @@ async function startStepChild(input: {
 
 async function executeDelegateStrategy(input: {
     plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
     planItems: PlanItemRecord[];
     orchestratorRunId: EntityId<'orch'>;
     steps: OrchestratorStepRecord[];
@@ -185,6 +189,7 @@ async function executeDelegateStrategy(input: {
 
 async function executeParallelStrategy(input: {
     plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
     planItems: PlanItemRecord[];
     orchestratorRunId: EntityId<'orch'>;
     steps: OrchestratorStepRecord[];
@@ -306,6 +311,7 @@ async function executeParallelStrategy(input: {
 
 export async function executeOrchestratorSteps(input: {
     plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
     planItems: PlanItemRecord[];
     orchestratorRunId: EntityId<'orch'>;
     steps: OrchestratorStepRecord[];

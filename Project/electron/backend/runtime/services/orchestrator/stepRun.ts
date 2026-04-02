@@ -16,6 +16,7 @@ import type {
 } from '@/app/backend/persistence/types';
 import type { EntityId, OrchestratorStartInput, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
+import type { ApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
@@ -50,12 +51,15 @@ function buildChildThreadTitle(step: OrchestratorStepRecord): string {
     return title.length <= 88 ? title : `${title.slice(0, 85).trimEnd()}...`;
 }
 
-export function buildStepPrompt(plan: PlanRecord, step: OrchestratorStepRecord): string {
+export function buildStepPrompt(
+    approvedArtifact: ApprovedPlanExecutionArtifact,
+    step: OrchestratorStepRecord
+): string {
     return [
         `Execute step ${String(step.sequence)} from approved orchestrator plan.`,
         '',
         'Plan summary:',
-        plan.summaryMarkdown,
+        approvedArtifact.summaryMarkdown,
         '',
         'Step task:',
         step.description,
@@ -188,6 +192,7 @@ export async function startDelegatedChildRun(input: {
     orchestratorRunId: EntityId<'orch'>;
     rootContext: OrchestratorRootExecutionContext;
     plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
     step: OrchestratorStepRecord;
     startInput: OrchestratorStartInput;
 }): Promise<{ accepted: true; started: OrchestratorChildRunStart } | { accepted: false; reason: string }> {
@@ -239,7 +244,9 @@ export async function startDelegatedChildRun(input: {
     const startedRun = await runExecutionService.startRun({
         profileId: input.startInput.profileId,
         sessionId: createdSession.session.id,
-        prompt: buildStepPrompt(input.plan, input.step),
+        planId: input.approvedArtifact.planId,
+        planRevisionId: input.approvedArtifact.approvedRevisionId,
+        prompt: buildStepPrompt(input.approvedArtifact, input.step),
         topLevelTab: 'agent',
         modeKey: 'code',
         runtimeOptions: input.startInput.runtimeOptions,

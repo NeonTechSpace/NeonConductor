@@ -137,6 +137,8 @@ export interface RunRow {
     id: string;
     session_id: string;
     profile_id: string;
+    plan_id: string | null;
+    plan_revision_id: string | null;
     prompt: string;
     status: string;
     provider_id: string | null;
@@ -176,6 +178,10 @@ export function mapRunRecord(row: RunRow): RunRecord {
         id: parseEntityId(row.id, 'runs.id', 'run'),
         sessionId: parseEntityId(row.session_id, 'runs.session_id', 'sess'),
         profileId: row.profile_id,
+        ...(row.plan_id ? { planId: parseEntityId(row.plan_id, 'runs.plan_id', 'plan') } : {}),
+        ...(row.plan_revision_id
+            ? { planRevisionId: parseEntityId(row.plan_revision_id, 'runs.plan_revision_id', 'prev') }
+            : {}),
         prompt: row.prompt,
         status: parseRunStatus(row.status),
         ...(providerId ? { providerId } : {}),

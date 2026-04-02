@@ -7,6 +7,7 @@ export type OrchestratorExecutionErrorCode =
     | 'plan_not_found'
     | 'invalid_tab'
     | 'plan_not_approved'
+    | 'approved_revision_unavailable'
     | 'delegation_not_allowed'
     | 'session_not_found';
 

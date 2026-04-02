@@ -577,6 +577,8 @@ export interface RunRecord {
     id: EntityId<'run'>;
     sessionId: EntityId<'sess'>;
     profileId: string;
+    planId?: EntityId<'plan'>;
+    planRevisionId?: EntityId<'prev'>;
     prompt: string;
     status: RunStatus;
     providerId?: RuntimeProviderId;
@@ -736,6 +738,7 @@ export interface OrchestratorRunRecord {
     profileId: string;
     sessionId: EntityId<'sess'>;
     planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
     status: 'running' | 'completed' | 'aborted' | 'failed';
     executionStrategy: 'delegate' | 'parallel';
     activeStepIndex?: number;
