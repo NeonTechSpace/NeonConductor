@@ -844,7 +844,9 @@ export interface PlanRecordsTable {
     questions_json: string;
     answers_json: string;
     current_revision_id: string;
+    current_variant_id: string;
     approved_revision_id: string | null;
+    approved_variant_id: string | null;
     workspace_fingerprint: string | null;
     implementation_run_id: string | null;
     orchestrator_run_id: string | null;
@@ -857,10 +859,12 @@ export interface PlanRecordsTable {
 export interface PlanRevisionsTable {
     id: string;
     plan_id: string;
+    variant_id: string;
     revision_number: number;
     summary_markdown: string;
     created_by_kind: string;
     created_at: string;
+    previous_revision_id: string | null;
     superseded_at: string | null;
 }
 
@@ -870,6 +874,30 @@ export interface PlanRevisionItemsTable {
     sequence: number;
     description: string;
     created_at: string;
+}
+
+export interface PlanVariantsTable {
+    id: string;
+    plan_id: string;
+    name: string;
+    created_from_revision_id: string | null;
+    created_at: string;
+    archived_at: string | null;
+}
+
+export interface PlanFollowUpsTable {
+    id: string;
+    plan_id: string;
+    variant_id: string;
+    source_revision_id: string | null;
+    kind: string;
+    status: string;
+    prompt_markdown: string;
+    response_markdown: string | null;
+    created_by_kind: string;
+    created_at: string;
+    resolved_at: string | null;
+    dismissed_at: string | null;
 }
 
 export interface PlanItemsTable {
@@ -995,6 +1023,8 @@ export interface DatabaseSchema {
     plan_records: PlanRecordsTable;
     plan_revisions: PlanRevisionsTable;
     plan_revision_items: PlanRevisionItemsTable;
+    plan_variants: PlanVariantsTable;
+    plan_follow_ups: PlanFollowUpsTable;
     plan_items: PlanItemsTable;
     orchestrator_runs: OrchestratorRunsTable;
     orchestrator_steps: OrchestratorStepsTable;

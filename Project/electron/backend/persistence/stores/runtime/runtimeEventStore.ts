@@ -105,6 +105,56 @@ export class RuntimeEventStore {
         });
     }
 
+    async listByEntity(input: {
+        entityType: RuntimeEntityType;
+        entityId: string;
+        afterSequence?: number | null;
+        limit?: number;
+    }): Promise<RuntimeEventRecordV1[]> {
+        const { db } = getPersistence();
+
+        let query = db
+            .selectFrom('runtime_events')
+            .select([
+                'sequence',
+                'event_id',
+                'entity_type',
+                'domain',
+                'operation',
+                'entity_id',
+                'event_type',
+                'payload_json',
+                'created_at',
+            ])
+            .where('entity_type', '=', input.entityType)
+            .where('entity_id', '=', input.entityId)
+            .orderBy('sequence', 'asc');
+
+        if (typeof input.afterSequence === 'number') {
+            query = query.where('sequence', '>', input.afterSequence);
+        }
+        if (typeof input.limit === 'number') {
+            query = query.limit(input.limit);
+        }
+
+        const rows = await query.execute();
+        return rows.map((row) => {
+            const entityType = parseEnumValue(row.entity_type, 'runtime_events.entity_type', runtimeEntityTypes);
+
+            return {
+                sequence: row.sequence,
+                eventId: parseEntityId(row.event_id, 'runtime_events.event_id', 'evt'),
+                entityType,
+                domain: parseEnumValue(row.domain, 'runtime_events.domain', runtimeEventDomains),
+                operation: parseEnumValue(row.operation, 'runtime_events.operation', runtimeEventOperations),
+                entityId: row.entity_id,
+                eventType: row.event_type,
+                payload: parseJsonRecord(row.payload_json),
+                createdAt: row.created_at,
+            };
+        });
+    }
+
     async getLastSequence(): Promise<number> {
         const { db } = getPersistence();
 

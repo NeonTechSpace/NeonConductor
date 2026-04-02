@@ -47,6 +47,7 @@ export async function startPlanFlow(
         planId: plan.id,
         revisionId: plan.currentRevisionId,
         revisionNumber: plan.currentRevisionNumber,
+        variantId: plan.currentVariantId,
     });
     await appendPlanQuestionRequestedEvents({
         planId: plan.id,
@@ -62,7 +63,8 @@ export async function startPlanFlow(
         topLevelTab: input.topLevelTab,
     });
 
+    const projection = await planStore.getProjectionById(input.profileId, plan.id);
     return okPlan({
-        plan: requirePlanView(plan, [], 'plan.start'),
+        plan: requirePlanView(projection, 'plan.start'),
     });
 }

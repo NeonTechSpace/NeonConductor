@@ -195,6 +195,7 @@ export async function generatePlanDraft(
         priorRevisionId,
         priorRevisionNumber,
         generationMode: attemptedModelGeneration ? 'model' : 'deterministic_fallback',
+        variantId: plan.currentVariantId,
     });
 
     const generatedDraft =
@@ -230,6 +231,7 @@ export async function generatePlanDraft(
         revisionId: revised.currentRevisionId,
         revisionNumber: revised.currentRevisionNumber,
         generationMode,
+        variantId: revised.currentVariantId,
     });
 
     appLog.info({
@@ -242,9 +244,9 @@ export async function generatePlanDraft(
         generationMode,
     });
 
-    const items = await planStore.listItems(input.planId);
+    const projection = await planStore.getProjectionById(input.profileId, input.planId);
     return okPlan({
         found: true,
-        plan: requirePlanView(revised, items, 'plan.generateDraft'),
+        plan: requirePlanView(projection, 'plan.generateDraft'),
     });
 }

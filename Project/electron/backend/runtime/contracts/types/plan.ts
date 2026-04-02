@@ -30,6 +30,31 @@ export interface PlanDraftItemInput {
     description: string;
 }
 
+export interface PlanCreateVariantInput extends PlanGetInput {
+    sourceRevisionId: EntityId<'prev'>;
+}
+
+export interface PlanActivateVariantInput extends PlanGetInput {
+    variantId: EntityId<'pvar'>;
+}
+
+export interface PlanResumeFromRevisionInput extends PlanGetInput {
+    sourceRevisionId: EntityId<'prev'>;
+    variantId?: EntityId<'pvar'>;
+}
+
+export interface PlanRaiseFollowUpInput extends PlanGetInput {
+    kind: 'missing_context' | 'missing_file';
+    promptMarkdown: string;
+    sourceRevisionId?: EntityId<'prev'>;
+}
+
+export interface PlanResolveFollowUpInput extends PlanGetInput {
+    followUpId: EntityId<'pfu'>;
+    status: 'resolved' | 'dismissed';
+    responseMarkdown?: string;
+}
+
 export interface PlanStartInput extends ProfileInput {
     sessionId: EntityId<'sess'>;
     topLevelTab: TopLevelTab;
@@ -70,6 +95,83 @@ export interface PlanGenerateDraftInput extends PlanGetInput {
 
 export type PlanCancelInput = PlanGetInput;
 
+export interface PlanVariantView {
+    id: EntityId<'pvar'>;
+    name: string;
+    createdFromRevisionId?: EntityId<'prev'>;
+    currentRevisionId: EntityId<'prev'>;
+    currentRevisionNumber: number;
+    isCurrent: boolean;
+    isApproved: boolean;
+    createdAt: string;
+    archivedAt?: string;
+}
+
+export interface PlanFollowUpView {
+    id: EntityId<'pfu'>;
+    planId: EntityId<'plan'>;
+    variantId: EntityId<'pvar'>;
+    sourceRevisionId?: EntityId<'prev'>;
+    kind: 'missing_context' | 'missing_file';
+    status: 'open' | 'resolved' | 'dismissed';
+    promptMarkdown: string;
+    responseMarkdown?: string;
+    createdByKind: 'user' | 'system';
+    createdAt: string;
+    resolvedAt?: string;
+    dismissedAt?: string;
+}
+
+export interface PlanHistoryEntryAction {
+    kind: 'resume_from_here' | 'branch_from_here' | 'view_follow_up';
+    label: string;
+    revisionId?: EntityId<'prev'> | undefined;
+    variantId?: EntityId<'pvar'> | undefined;
+    followUpId?: EntityId<'pfu'> | undefined;
+}
+
+export interface PlanHistoryEntry {
+    id: string;
+    kind:
+        | 'plan_started'
+        | 'revision_created'
+        | 'revision_approved'
+        | 'implementation_started'
+        | 'implementation_completed'
+        | 'implementation_failed'
+        | 'plan_cancelled'
+        | 'variant_created'
+        | 'variant_activated'
+        | 'plan_resumed'
+        | 'follow_up_raised'
+        | 'follow_up_resolved';
+    title: string;
+    detail?: string;
+    createdAt: string;
+    revisionId?: EntityId<'prev'> | undefined;
+    revisionNumber?: number | undefined;
+    variantId?: EntityId<'pvar'> | undefined;
+    variantName?: string | undefined;
+    followUpId?: EntityId<'pfu'> | undefined;
+    followUpKind?: 'missing_context' | 'missing_file' | undefined;
+    actions?: PlanHistoryEntryAction[] | undefined;
+}
+
+export interface PlanRecoveryBannerAction {
+    kind: 'resume_editing' | 'resolve_follow_up' | 'switch_to_approved_variant';
+    label: string;
+    revisionId?: EntityId<'prev'> | undefined;
+    variantId?: EntityId<'pvar'> | undefined;
+    followUpId?: EntityId<'pfu'> | undefined;
+}
+
+export interface PlanRecoveryBanner {
+    tone: 'info' | 'warning' | 'destructive';
+    title: string;
+    message: string;
+    actions: PlanRecoveryBannerAction[];
+}
+
 export interface PlanImplementInput extends PlanGetInput {
     runtimeOptions: RuntimeRunOptions;
     executionStrategy?: OrchestratorExecutionStrategy;
@@ -89,9 +191,17 @@ export interface PlanRecordView {
     summaryMarkdown: string;
     currentRevisionId: EntityId<'prev'>;
     currentRevisionNumber: number;
+    currentVariantId: EntityId<'pvar'>;
+    currentVariantName: string;
     approvedRevisionId?: EntityId<'prev'>;
     approvedRevisionNumber?: number;
+    approvedVariantId?: EntityId<'pvar'>;
+    approvedVariantName?: string;
     questions: PlanQuestion[];
+    variants: PlanVariantView[];
+    followUps: PlanFollowUpView[];
+    history: PlanHistoryEntry[];
+    recoveryBanner?: PlanRecoveryBanner;
     items: Array<{
         id: EntityId<'step'>;
         sequence: number;

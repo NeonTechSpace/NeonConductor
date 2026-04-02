@@ -21,6 +21,8 @@ export type EntityIdPrefix =
     | 'ckpt'
     | 'cpr'
     | 'plan'
+    | 'pvar'
+    | 'pfu'
     | 'prev'
     | 'orch'
     | 'step'

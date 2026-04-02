@@ -41,7 +41,6 @@ export async function implementApprovedPlan(input: {
     }
 
     if (input.plan.topLevelTab === 'agent') {
-        const items = await planStore.listItems(input.plan.id);
         const implementationPrompt = buildAgentImplementationPrompt({
             summaryMarkdown: approvedArtifact.summaryMarkdown,
             itemDescriptions: approvedArtifact.items.map((item) => item.description),
@@ -80,12 +79,13 @@ export async function implementApprovedPlan(input: {
             return failure;
         }
 
-        const implementing = await planStore.markImplementing(input.plan.id, result.runId);
+        await planStore.markImplementing(input.plan.id, result.runId);
         await appendPlanImplementationStartedEvent({
             profileId: input.profileId,
             planId: input.plan.id,
             revisionId: approvedArtifact.approvedRevisionId,
             revisionNumber: approvedArtifact.approvedRevisionNumber,
+            variantId: input.plan.approvedVariantId ?? input.plan.currentVariantId,
             mode: 'agent.code',
             runId: result.runId,
         });
@@ -98,11 +98,12 @@ export async function implementApprovedPlan(input: {
             runId: result.runId,
         });
 
+        const projection = await planStore.getProjectionById(input.profileId, input.plan.id);
         return {
             started: true,
             mode: 'agent.code',
             runId: result.runId,
-            plan: requirePlanView(implementing, items, 'plan.implement.agent'),
+            plan: requirePlanView(projection, 'plan.implement.agent'),
         };
     }
 
@@ -128,14 +129,14 @@ export async function implementApprovedPlan(input: {
             };
         }
         const started = startedResult.value;
-        const implementing = await planStore.markImplementing(input.plan.id, undefined, started.run.id);
-        const items = await planStore.listItems(input.plan.id);
+        await planStore.markImplementing(input.plan.id, undefined, started.run.id);
 
         await appendPlanImplementationStartedEvent({
             profileId: input.profileId,
             planId: input.plan.id,
             revisionId: approvedArtifact.approvedRevisionId,
             revisionNumber: approvedArtifact.approvedRevisionNumber,
+            variantId: input.plan.approvedVariantId ?? input.plan.currentVariantId,
             mode: 'orchestrator.orchestrate',
             orchestratorRunId: started.run.id,
         });
@@ -148,11 +149,12 @@ export async function implementApprovedPlan(input: {
             orchestratorRunId: started.run.id,
         });
 
+        const projection = await planStore.getProjectionById(input.profileId, input.plan.id);
         return {
             started: true,
             mode: 'orchestrator.orchestrate',
             orchestratorRunId: started.run.id,
-            plan: requirePlanView(implementing, items, 'plan.implement.orchestrator'),
+            plan: requirePlanView(projection, 'plan.implement.orchestrator'),
         };
     }
 

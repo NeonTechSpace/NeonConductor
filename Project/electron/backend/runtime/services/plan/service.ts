@@ -1,12 +1,17 @@
 import { planStore } from '@/app/backend/persistence/stores';
 import type {
     EntityId,
+    PlanActivateVariantInput,
     PlanAnswerQuestionInput,
     PlanCancelInput,
+    PlanCreateVariantInput,
     PlanGenerateDraftInput,
     PlanImplementInput,
     PlanRecordView,
+    PlanRaiseFollowUpInput,
     PlanReviseInput,
+    PlanResolveFollowUpInput,
+    PlanResumeFromRevisionInput,
     PlanStartInput,
 } from '@/app/backend/runtime/contracts';
 import { approvePlan } from '@/app/backend/runtime/services/plan/approval';
@@ -14,6 +19,13 @@ import { generatePlanDraft } from '@/app/backend/runtime/services/plan/draftGene
 import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { implementApprovedPlan } from '@/app/backend/runtime/services/plan/implementation';
 import { answerPlanQuestion, cancelPlan, revisePlan } from '@/app/backend/runtime/services/plan/lifecycle';
+import {
+    activatePlanVariant,
+    createPlanVariant,
+    raisePlanFollowUp,
+    resolvePlanFollowUp,
+    resumePlanFromRevision,
+} from '@/app/backend/runtime/services/plan/recovery';
 import { startPlanFlow } from '@/app/backend/runtime/services/plan/start';
 import { refreshActivePlanView, refreshPlanViewById } from '@/app/backend/runtime/services/plan/status';
 import { appLog } from '@/app/main/logging';
@@ -66,6 +78,107 @@ export class PlanService {
 
     async revise(input: PlanReviseInput): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
         return revisePlan(input);
+    }
+
+    async createVariant(
+        input: PlanCreateVariantInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await createPlanVariant(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.createVariant request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                sourceRevisionId: input.sourceRevisionId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async activateVariant(
+        input: PlanActivateVariantInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await activatePlanVariant(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.activateVariant request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                variantId: input.variantId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async resumeFromRevision(
+        input: PlanResumeFromRevisionInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await resumePlanFromRevision(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.resumeFromRevision request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                sourceRevisionId: input.sourceRevisionId,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async raiseFollowUp(
+        input: PlanRaiseFollowUpInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await raisePlanFollowUp(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.raiseFollowUp request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                kind: input.kind,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async resolveFollowUp(
+        input: PlanResolveFollowUpInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await resolvePlanFollowUp(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.resolveFollowUp request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                followUpId: input.followUpId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
     }
 
     async cancel(

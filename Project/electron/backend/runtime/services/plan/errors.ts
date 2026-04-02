@@ -8,6 +8,7 @@ export type PlanServiceErrorCode =
     | 'unanswered_questions'
     | 'not_approved'
     | 'not_cancellable'
+    | 'follow_up_conflict'
     | 'revision_conflict'
     | 'draft_generation_failed'
     | 'run_start_failed'

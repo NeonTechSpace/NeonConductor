@@ -1,11 +1,16 @@
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
+import {
+    PlanHistorySection,
+    PlanRecoveryBannerSection,
+    PlanVariantSwitcherSection,
+} from '@/web/components/conversation/panels/modeExecutionPanelRecoverySections';
 import type {
     ModeExecutionPlanArtifactState,
     ModeExecutionPlanView,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
 import { Button } from '@/web/components/ui/button';
 
-import type { OrchestratorExecutionStrategy } from '@/shared/contracts';
+import type { EntityId, OrchestratorExecutionStrategy } from '@/shared/contracts';
 
 const STATUS_TONE_CLASSES: Record<ModeExecutionPlanArtifactState['statusTone'], string> = {
     neutral: 'border-border bg-background text-foreground',
@@ -63,8 +68,19 @@ function PlanArtifactStatusSection({ artifactState }: PlanArtifactStatusProps) {
                     Current revision: <span className='font-medium'>{artifactState.revisionLabel}</span>
                 </span>
             </div>
+            <div className='flex flex-wrap gap-2 text-xs'>
+                <span className='border-border/70 bg-background rounded-full border px-2 py-0.5'>
+                    Current variant: <span className='font-medium'>{artifactState.currentVariantLabel}</span>
+                </span>
+                {artifactState.approvedVariantLabel ? (
+                    <span className='border-border/70 bg-background rounded-full border px-2 py-0.5'>
+                        Approved variant: <span className='font-medium'>{artifactState.approvedVariantLabel}</span>
+                    </span>
+                ) : null}
+            </div>
             <p className='text-muted-foreground text-xs'>{artifactState.statusDescription}</p>
             <p className='text-muted-foreground text-xs'>{artifactState.revisionComparisonLabel}</p>
+            <p className='text-muted-foreground text-xs'>{artifactState.variantComparisonLabel}</p>
             {artifactState.approvedRevisionLabel ? (
                 <p className='text-xs'>
                     Last approved revision: <span className='font-medium'>{artifactState.approvedRevisionLabel}</span>
@@ -473,6 +489,11 @@ interface PlanArtifactViewProps {
     onCancelPlan: () => void;
     onApprovePlan: () => void;
     onImplementPlan: () => void;
+    onCreateVariant?: (planId: ModeExecutionPlanView['id'], revisionId: EntityId<'prev'>) => void;
+    onActivateVariant?: (planId: ModeExecutionPlanView['id'], variantId: EntityId<'pvar'>) => void;
+    onResumeFromRevision?: (planId: ModeExecutionPlanView['id'], revisionId: EntityId<'prev'>) => void;
+    onViewFollowUp?: (planId: ModeExecutionPlanView['id'], followUpId: EntityId<'pfu'>) => void;
+    onResolveFollowUp?: (planId: ModeExecutionPlanView['id'], followUpId: EntityId<'pfu'>) => void;
 }
 
 export function PlanArtifactView({
@@ -490,10 +511,30 @@ export function PlanArtifactView({
     onCancelPlan,
     onApprovePlan,
     onImplementPlan,
+    onCreateVariant,
+    onActivateVariant,
+    onResumeFromRevision,
+    onViewFollowUp,
+    onResolveFollowUp,
 }: PlanArtifactViewProps) {
     return (
         <div className='space-y-3'>
             <PlanArtifactStatusSection artifactState={artifactState} />
+            <PlanRecoveryBannerSection
+                plan={plan}
+                artifactState={artifactState}
+                isPlanMutating={isPlanMutating}
+                onEnterEditMode={onEnterEditMode}
+                {...(onActivateVariant ? { onActivateVariant } : {})}
+                {...(onResolveFollowUp ? { onResolveFollowUp } : {})}
+            />
+            <PlanVariantSwitcherSection
+                plan={plan}
+                artifactState={artifactState}
+                isPlanMutating={isPlanMutating}
+                {...(onCreateVariant ? { onCreateVariant } : {})}
+                {...(onActivateVariant ? { onActivateVariant } : {})}
+            />
             <PlanArtifactSummarySection plan={plan} />
             <PlanArtifactQuestionsSection
                 plan={plan}
@@ -505,6 +546,16 @@ export function PlanArtifactView({
             />
             <PlanArtifactEvidenceSection artifactState={artifactState} />
             <PlanArtifactItemsSection plan={plan} />
+            <PlanHistorySection
+                plan={plan}
+                artifactState={artifactState}
+                isPlanMutating={isPlanMutating}
+                {...(onCreateVariant ? { onCreateVariant } : {})}
+                {...(onActivateVariant ? { onActivateVariant } : {})}
+                {...(onResumeFromRevision ? { onResumeFromRevision } : {})}
+                {...(onViewFollowUp ? { onViewFollowUp } : {})}
+                {...(onResolveFollowUp ? { onResolveFollowUp } : {})}
+            />
             <PlanArtifactActionBar
                 artifactState={artifactState}
                 isPlanMutating={isPlanMutating}

@@ -2,11 +2,16 @@ import {
     planAnswerQuestionInputSchema,
     planApproveInputSchema,
     planCancelInputSchema,
+    planActivateVariantInputSchema,
+    planCreateVariantInputSchema,
     planGenerateDraftInputSchema,
     planGetActiveInputSchema,
     planGetInputSchema,
     planImplementInputSchema,
+    planRaiseFollowUpInputSchema,
     planReviseInputSchema,
+    planResolveFollowUpInputSchema,
+    planResumeFromRevisionInputSchema,
     planStartInputSchema,
 } from '@/app/backend/runtime/contracts';
 import { planService } from '@/app/backend/runtime/services/plan/service';
@@ -30,6 +35,26 @@ export const planRouter = router({
     }),
     revise: publicProcedure.input(planReviseInputSchema).mutation(async ({ input }) => {
         return planService.revise(input);
+    }),
+    createVariant: publicProcedure.input(planCreateVariantInputSchema).mutation(async ({ input }) => {
+        const result = await planService.createVariant(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    activateVariant: publicProcedure.input(planActivateVariantInputSchema).mutation(async ({ input }) => {
+        const result = await planService.activateVariant(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    resumeFromRevision: publicProcedure.input(planResumeFromRevisionInputSchema).mutation(async ({ input }) => {
+        const result = await planService.resumeFromRevision(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    raiseFollowUp: publicProcedure.input(planRaiseFollowUpInputSchema).mutation(async ({ input }) => {
+        const result = await planService.raiseFollowUp(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    resolveFollowUp: publicProcedure.input(planResolveFollowUpInputSchema).mutation(async ({ input }) => {
+        const result = await planService.resolveFollowUp(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
     }),
     cancel: publicProcedure.input(planCancelInputSchema).mutation(async ({ input }) => {
         const result = await planService.cancel(input);

@@ -11,6 +11,7 @@ export function toPlanTrpcError(error: PlanServiceError): TRPCError {
         case 'unanswered_questions':
         case 'not_approved':
         case 'not_cancellable':
+        case 'follow_up_conflict':
         case 'revision_conflict':
             return new TRPCError({ code: 'CONFLICT', message: error.message, cause: error });
         case 'draft_generation_failed':

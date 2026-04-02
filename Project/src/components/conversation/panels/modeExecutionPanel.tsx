@@ -32,6 +32,11 @@ export interface ModeExecutionPanelProps {
     canConfigureExecutionStrategy: boolean;
     onExecutionStrategyChange: (executionStrategy: OrchestratorExecutionStrategy) => void;
     onSelectChildThread?: (threadId: EntityId<'thr'>) => void;
+    onCreateVariant?: (planId: EntityId<'plan'>, revisionId: EntityId<'prev'>) => void;
+    onActivateVariant?: (planId: EntityId<'plan'>, variantId: EntityId<'pvar'>) => void;
+    onResumeFromRevision?: (planId: EntityId<'plan'>, revisionId: EntityId<'prev'>) => void;
+    onViewFollowUp?: (planId: EntityId<'plan'>, followUpId: EntityId<'pfu'>) => void;
+    onResolveFollowUp?: (planId: EntityId<'plan'>, followUpId: EntityId<'pfu'>) => void;
 }
 
 function renderOrchestratorPanel(
@@ -131,6 +136,11 @@ export function ModeExecutionPanel({
     canConfigureExecutionStrategy,
     onExecutionStrategyChange,
     onSelectChildThread,
+    onCreateVariant,
+    onActivateVariant,
+    onResumeFromRevision,
+    onViewFollowUp,
+    onResolveFollowUp,
 }: ModeExecutionPanelProps) {
     const [draftState, setDraftState] = useState<ModeExecutionDraftState | undefined>(undefined);
     const [panelModeState, setPanelModeState] = useState<ModeExecutionPlanPanelModeState | undefined>(undefined);
@@ -277,6 +287,11 @@ export function ModeExecutionPanel({
                                 onImplementPlan={() => {
                                     onImplementPlan(activePlan.id, selectedExecutionStrategy);
                                 }}
+                                {...(onCreateVariant ? { onCreateVariant } : {})}
+                                {...(onActivateVariant ? { onActivateVariant } : {})}
+                                {...(onResumeFromRevision ? { onResumeFromRevision } : {})}
+                                {...(onViewFollowUp ? { onViewFollowUp } : {})}
+                                {...(onResolveFollowUp ? { onResolveFollowUp } : {})}
                             />
                         )
                     ) : (

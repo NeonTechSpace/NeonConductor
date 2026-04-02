@@ -25,10 +25,10 @@ export async function answerPlanQuestion(
         questionId: input.questionId,
     });
 
-    const items = await planStore.listItems(input.planId);
+    const projection = await planStore.getProjectionById(input.profileId, input.planId);
     return {
         found: true,
-        plan: requirePlanView(updated, items, 'plan.answerQuestion'),
+        plan: requirePlanView(projection, 'plan.answerQuestion'),
     };
 }
 
@@ -48,13 +48,14 @@ export async function revisePlan(
         planId: input.planId,
         revisionId: revised.currentRevisionId,
         revisionNumber: revised.currentRevisionNumber,
+        variantId: revised.currentVariantId,
     });
 
-    const items = await planStore.listItems(input.planId);
+    const projection = await planStore.getProjectionById(input.profileId, input.planId);
 
     return {
         found: true,
-        plan: requirePlanView(revised, items, 'plan.revise'),
+        plan: requirePlanView(projection, 'plan.revise'),
     };
 }
 
@@ -86,15 +87,16 @@ export async function cancelPlan(
         previousStatus: existing.status,
         revisionId: cancelled.currentRevisionId,
         revisionNumber: cancelled.currentRevisionNumber,
+        variantId: cancelled.currentVariantId,
         ...(cancelled.approvedRevisionId ? { approvedRevisionId: cancelled.approvedRevisionId } : {}),
         ...(cancelled.approvedRevisionNumber !== undefined
             ? { approvedRevisionNumber: cancelled.approvedRevisionNumber }
             : {}),
     });
 
-    const items = await planStore.listItems(input.planId);
+    const projection = await planStore.getProjectionById(input.profileId, input.planId);
     return {
         found: true,
-        plan: requirePlanView(cancelled, items, 'plan.cancel'),
+        plan: requirePlanView(projection, 'plan.cancel'),
     };
 }

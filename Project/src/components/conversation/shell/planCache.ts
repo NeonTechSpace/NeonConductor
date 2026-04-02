@@ -1,8 +1,9 @@
 import { trpc } from '@/web/trpc/client';
 
-import type { EntityId, PlanRecordView, TopLevelTab } from '@/shared/contracts';
+import type { EntityId, TopLevelTab } from '@/shared/contracts';
 
 type TrpcUtils = ReturnType<typeof trpc.useUtils>;
+type ActivePlanData = Awaited<ReturnType<TrpcUtils['plan']['getActive']['fetch']>>;
 type OrchestratorLatestData = Awaited<ReturnType<TrpcUtils['orchestrator']['latestBySession']['fetch']>>;
 
 export function setActivePlanCache(input: {
@@ -10,7 +11,7 @@ export function setActivePlanCache(input: {
     profileId: string;
     sessionId: EntityId<'sess'>;
     topLevelTab: TopLevelTab;
-    planResult: { found: false } | { found: true; plan: PlanRecordView };
+    planResult: ActivePlanData;
 }) {
     input.utils.plan.getActive.setData(
         {

@@ -27,9 +27,8 @@ export async function refreshPlanViewById(input: {
         }
     }
 
-    const refreshed = await planStore.getById(input.profileId, input.planId);
-    const items = await planStore.listItems(input.planId);
-    const view = toPlanView(refreshed, items);
+    const projection = await planStore.getProjectionById(input.profileId, input.planId);
+    const view = toPlanView(projection);
     if (!view) {
         return { found: false };
     }

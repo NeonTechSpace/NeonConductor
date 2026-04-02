@@ -35,9 +35,26 @@ function createPlanRecord(): PlanRecordView {
         summaryMarkdown: 'Approved summary',
         currentRevisionId: 'prev_1',
         currentRevisionNumber: 2,
+        currentVariantId: 'pvar_main',
+        currentVariantName: 'main',
         approvedRevisionId: 'prev_1',
         approvedRevisionNumber: 2,
+        approvedVariantId: 'pvar_main',
+        approvedVariantName: 'main',
         questions: [],
+        variants: [
+            {
+                id: 'pvar_main',
+                name: 'main',
+                currentRevisionId: 'prev_1',
+                currentRevisionNumber: 2,
+                isCurrent: true,
+                isApproved: true,
+                createdAt: '2026-03-27T10:00:00.000Z',
+            },
+        ],
+        followUps: [],
+        history: [],
         items: [
             {
                 id: 'step_1',
@@ -49,6 +66,13 @@ function createPlanRecord(): PlanRecordView {
         workspaceFingerprint: 'ws_1',
         createdAt: '2026-03-27T10:00:00.000Z',
         updatedAt: '2026-03-27T10:00:00.000Z',
+    };
+}
+
+function createPlanViewMutationMock() {
+    return {
+        isPending: false,
+        mutateAsync: vi.fn(),
     };
 }
 
@@ -140,6 +164,10 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planCreateVariantMutation: createPlanViewMutationMock(),
+            planActivateVariantMutation: createPlanViewMutationMock(),
+            planResumeFromRevisionMutation: createPlanViewMutationMock(),
+            planResolveFollowUpMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -203,6 +231,10 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planCreateVariantMutation: createPlanViewMutationMock(),
+            planActivateVariantMutation: createPlanViewMutationMock(),
+            planResumeFromRevisionMutation: createPlanViewMutationMock(),
+            planResolveFollowUpMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation,
             planCancelMutation: {
                 isPending: false,
@@ -271,6 +303,10 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planCreateVariantMutation: createPlanViewMutationMock(),
+            planActivateVariantMutation: createPlanViewMutationMock(),
+            planResumeFromRevisionMutation: createPlanViewMutationMock(),
+            planResolveFollowUpMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -304,6 +340,103 @@ describe('runConversationPlanMutation', () => {
                 status: 'cancelled',
             },
         });
+    });
+
+    it('routes recovery variant and resume actions through the dedicated action controller', async () => {
+        const applyPlanWorkspaceUpdate = vi.fn();
+        const planCreateVariantMutation = {
+            isPending: false,
+            mutateAsync: vi.fn().mockResolvedValue({
+                found: true as const,
+                plan: createPlanRecord(),
+            }),
+        };
+        const planResumeFromRevisionMutation = {
+            isPending: false,
+            mutateAsync: vi.fn().mockResolvedValue({
+                found: true as const,
+                plan: createPlanRecord(),
+            }),
+        };
+        const planResolveFollowUpMutation = {
+            isPending: false,
+            mutateAsync: vi.fn().mockResolvedValue({
+                found: true as const,
+                plan: createPlanRecord(),
+            }),
+        };
+
+        const orchestrator = buildConversationPlanOrchestrator({
+            profileId: 'profile_default',
+            applyPlanWorkspaceUpdate,
+            applyOrchestratorWorkspaceUpdate: vi.fn(),
+            onError: vi.fn(),
+            resolvedRunTarget: undefined,
+            runtimeOptions: createRuntimeOptions(),
+            workspaceFingerprint: 'ws_1',
+            activePlan: createPlanRecord(),
+            orchestratorView: undefined,
+            planStartMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planAnswerMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planReviseMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planCreateVariantMutation,
+            planActivateVariantMutation: createPlanViewMutationMock(),
+            planResumeFromRevisionMutation,
+            planResolveFollowUpMutation,
+            planGenerateDraftMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planCancelMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planApproveMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planImplementMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            orchestratorAbortMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+        });
+
+        orchestrator.actionController.onCreateVariant('plan_1', 'prev_1');
+        orchestrator.actionController.onResumeFromRevision('plan_1', 'prev_1');
+        orchestrator.actionController.onResolveFollowUp('plan_1', 'pfu_1');
+        await flushAsyncActions();
+        await flushAsyncActions();
+
+        expect(planCreateVariantMutation.mutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            planId: 'plan_1',
+            sourceRevisionId: 'prev_1',
+        });
+        expect(planResumeFromRevisionMutation.mutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            planId: 'plan_1',
+            sourceRevisionId: 'prev_1',
+        });
+        expect(planResolveFollowUpMutation.mutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            planId: 'plan_1',
+            followUpId: 'pfu_1',
+            status: 'resolved',
+        });
+        expect(applyPlanWorkspaceUpdate).toHaveBeenCalledTimes(3);
     });
 
     it('routes rejected mutation errors through the provided error handler', async () => {
@@ -364,6 +497,10 @@ describe('buildConversationPlanOrchestrator', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planCreateVariantMutation: createPlanViewMutationMock(),
+            planActivateVariantMutation: createPlanViewMutationMock(),
+            planResumeFromRevisionMutation: createPlanViewMutationMock(),
+            planResolveFollowUpMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -444,6 +581,10 @@ describe('buildConversationPlanOrchestrator', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planCreateVariantMutation: createPlanViewMutationMock(),
+            planActivateVariantMutation: createPlanViewMutationMock(),
+            planResumeFromRevisionMutation: createPlanViewMutationMock(),
+            planResolveFollowUpMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),

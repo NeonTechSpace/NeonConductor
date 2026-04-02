@@ -878,7 +878,9 @@ CREATE TABLE plan_records (
     questions_json TEXT NOT NULL DEFAULT '[]',
     answers_json TEXT NOT NULL DEFAULT '{}',
     current_revision_id TEXT NOT NULL,
+    current_variant_id TEXT NOT NULL,
     approved_revision_id TEXT NULL,
+    approved_variant_id TEXT NULL,
     workspace_fingerprint TEXT NULL,
     implementation_run_id TEXT NULL,
     orchestrator_run_id TEXT NULL,
@@ -893,10 +895,12 @@ CREATE TABLE plan_records (
 CREATE TABLE plan_revisions (
     id TEXT PRIMARY KEY,
     plan_id TEXT NOT NULL,
+    variant_id TEXT NOT NULL,
     revision_number INTEGER NOT NULL CHECK (revision_number > 0),
     summary_markdown TEXT NOT NULL,
     created_by_kind TEXT NOT NULL CHECK (created_by_kind IN ('start', 'revise')),
     created_at TEXT NOT NULL,
+    previous_revision_id TEXT NULL,
     superseded_at TEXT NULL,
     FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE,
     UNIQUE (plan_id, revision_number)
@@ -909,6 +913,33 @@ CREATE TABLE plan_revision_items (
     description TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (plan_revision_id) REFERENCES plan_revisions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE plan_variants (
+    id TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_from_revision_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    archived_at TEXT NULL,
+    FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE,
+    UNIQUE (plan_id, name)
+);
+
+CREATE TABLE plan_follow_ups (
+    id TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    variant_id TEXT NOT NULL,
+    source_revision_id TEXT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('missing_context', 'missing_file')),
+    status TEXT NOT NULL CHECK (status IN ('open', 'resolved', 'dismissed')),
+    prompt_markdown TEXT NOT NULL,
+    response_markdown TEXT NULL,
+    created_by_kind TEXT NOT NULL CHECK (created_by_kind IN ('user', 'system')),
+    created_at TEXT NOT NULL,
+    resolved_at TEXT NULL,
+    dismissed_at TEXT NULL,
+    FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE
 );
 
 CREATE TABLE plan_items (
@@ -1365,6 +1396,21 @@ CREATE INDEX idx_plan_records_profile_session
 
 CREATE UNIQUE INDEX idx_plan_items_plan_sequence
     ON plan_items(plan_id, sequence);
+
+CREATE UNIQUE INDEX idx_plan_variants_plan_name
+    ON plan_variants(plan_id, name);
+
+CREATE INDEX idx_plan_variants_plan_created_at
+    ON plan_variants(plan_id, created_at DESC);
+
+CREATE INDEX idx_plan_revisions_plan_variant_revision
+    ON plan_revisions(plan_id, variant_id, revision_number DESC);
+
+CREATE INDEX idx_plan_follow_ups_plan_status_created_at
+    ON plan_follow_ups(plan_id, status, created_at DESC);
+
+CREATE INDEX idx_plan_follow_ups_plan_variant_created_at
+    ON plan_follow_ups(plan_id, variant_id, created_at DESC);
 
 CREATE INDEX idx_orchestrator_runs_profile_session
     ON orchestrator_runs(profile_id, session_id, created_at DESC);

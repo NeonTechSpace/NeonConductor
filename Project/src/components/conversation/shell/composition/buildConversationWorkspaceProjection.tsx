@@ -1,3 +1,7 @@
+import type { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
+import type { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
+import type { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
+import type { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import { ContextAssetsPanel } from '@/web/components/conversation/panels/contextAssetsPanel';
 import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
 import { ExecutionEnvironmentPanel } from '@/web/components/conversation/panels/executionEnvironmentPanel';
@@ -7,10 +11,6 @@ import {
     buildWorkspaceShellProjection,
     type SessionWorkspacePanelProps,
 } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
-import type { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
-import type { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
-import type { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
-import type { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
 import type { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { buildConversationPlanOrchestrator } from '@/web/components/conversation/shell/composition/buildConversationPlanOrchestrator';
 import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
@@ -150,6 +150,10 @@ export function buildConversationWorkspaceProjection(
                     : {})}
                 onExecutionStrategyChange={input.onExecutionStrategyChange}
                 onSelectChildThread={input.onSelectChildThread}
+                onCreateVariant={input.planOrchestrator.actionController.onCreateVariant}
+                onActivateVariant={input.planOrchestrator.actionController.onActivateVariant}
+                onResumeFromRevision={input.planOrchestrator.actionController.onResumeFromRevision}
+                onResolveFollowUp={input.planOrchestrator.actionController.onResolveFollowUp}
             />
         ) : undefined;
 

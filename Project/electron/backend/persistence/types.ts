@@ -6,6 +6,10 @@ import type {
 import type {
     ComposerMediaSettings,
     ContextCompactionSource,
+    PlanFollowUpView,
+    PlanHistoryEntry,
+    PlanRecoveryBanner,
+    PlanVariantView,
     MemoryCausalLinkRecord as RuntimeMemoryCausalLinkRecord,
     MemoryConsolidationRecord as RuntimeMemoryConsolidationRecord,
     MemoryDerivedSummary as RuntimeMemoryDerivedSummary,
@@ -696,8 +700,11 @@ export interface PlanRecord {
     answers: Record<string, string>;
     currentRevisionId: EntityId<'prev'>;
     currentRevisionNumber: number;
+    currentVariantId: EntityId<'pvar'>;
     approvedRevisionId?: EntityId<'prev'>;
     approvedRevisionNumber?: number;
+    approvedVariantId?: EntityId<'pvar'>;
+    approvedVariantNumber?: number;
     workspaceFingerprint?: string;
     implementationRunId?: EntityId<'run'>;
     orchestratorRunId?: EntityId<'orch'>;
@@ -722,10 +729,12 @@ export interface PlanItemRecord {
 export interface PlanRevisionRecord {
     id: EntityId<'prev'>;
     planId: EntityId<'plan'>;
+    variantId: EntityId<'pvar'>;
     revisionNumber: number;
     summaryMarkdown: string;
     createdByKind: 'start' | 'revise';
     createdAt: string;
+    previousRevisionId?: EntityId<'prev'>;
     supersededAt?: string;
 }
 
@@ -735,6 +744,39 @@ export interface PlanRevisionItemRecord {
     sequence: number;
     description: string;
     createdAt: string;
+}
+
+export interface PlanVariantRecord {
+    id: EntityId<'pvar'>;
+    planId: EntityId<'plan'>;
+    name: string;
+    createdFromRevisionId?: EntityId<'prev'>;
+    createdAt: string;
+    archivedAt?: string;
+}
+
+export interface PlanFollowUpRecord {
+    id: EntityId<'pfu'>;
+    planId: EntityId<'plan'>;
+    variantId: EntityId<'pvar'>;
+    sourceRevisionId?: EntityId<'prev'>;
+    kind: 'missing_context' | 'missing_file';
+    status: 'open' | 'resolved' | 'dismissed';
+    promptMarkdown: string;
+    responseMarkdown?: string;
+    createdByKind: 'user' | 'system';
+    createdAt: string;
+    resolvedAt?: string;
+    dismissedAt?: string;
+}
+
+export interface PlanViewProjection {
+    plan: PlanRecord;
+    items: PlanItemRecord[];
+    variants: Array<PlanVariantView>;
+    followUps: Array<PlanFollowUpView>;
+    history: Array<PlanHistoryEntry>;
+    recoveryBanner?: PlanRecoveryBanner;
 }
 
 export interface OrchestratorRunRecord {

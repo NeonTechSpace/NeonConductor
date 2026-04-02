@@ -1,3 +1,4 @@
+import type { ConversationActivePlanData } from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
 import type { RunTargetSelection } from '@/web/components/conversation/shell/workspace/helpers';
 
 import type { OrchestratorRunRecord, OrchestratorStepRecord } from '@/app/backend/persistence/types';
@@ -16,9 +17,11 @@ interface MutationLike<TInput, TResult> {
     mutateAsync: (input: TInput) => Promise<TResult>;
 }
 
+type ConversationActivePlanRecord = Extract<ConversationActivePlanData, { found: true }>['plan'];
+
 export interface CreatePlanImplementationControllerInput {
     profileId: string;
-    applyPlanWorkspaceUpdate: (result: { found: false } | { found: true; plan: PlanRecordView }) => void;
+    applyPlanWorkspaceUpdate: (result: ConversationActivePlanData) => void;
     applyOrchestratorWorkspaceUpdate: (
         result: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }
     ) => void;
@@ -44,7 +47,7 @@ export interface CreatePlanImplementationControllerInput {
             questionId: string;
             answer: string;
         },
-        { found: false } | { found: true; plan: PlanRecordView }
+        ConversationActivePlanData
     >;
     planReviseMutation: MutationLike<
         {
@@ -53,7 +56,41 @@ export interface CreatePlanImplementationControllerInput {
             summaryMarkdown: string;
             items: Array<{ description: string }>;
         },
-        { found: false } | { found: true; plan: PlanRecordView }
+        ConversationActivePlanData
+    >;
+    planCreateVariantMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            sourceRevisionId: EntityId<'prev'>;
+        },
+        ConversationActivePlanData
+    >;
+    planActivateVariantMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            variantId: EntityId<'pvar'>;
+        },
+        ConversationActivePlanData
+    >;
+    planResumeFromRevisionMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            sourceRevisionId: EntityId<'prev'>;
+        },
+        ConversationActivePlanData
+    >;
+    planResolveFollowUpMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            followUpId: EntityId<'pfu'>;
+            status: 'resolved' | 'dismissed';
+            responseMarkdown?: string;
+        },
+        ConversationActivePlanData
     >;
     planGenerateDraftMutation: MutationLike<
         {
@@ -64,14 +101,14 @@ export interface CreatePlanImplementationControllerInput {
             modelId?: string;
             workspaceFingerprint?: string;
         },
-        { found: false } | { found: true; plan: PlanRecordView }
+        ConversationActivePlanData
     >;
     planCancelMutation: MutationLike<
         {
             profileId: string;
             planId: EntityId<'plan'>;
         },
-        { found: false } | { found: true; plan: PlanRecordView }
+        ConversationActivePlanData
     >;
     planApproveMutation: MutationLike<
         {
@@ -79,7 +116,7 @@ export interface CreatePlanImplementationControllerInput {
             planId: EntityId<'plan'>;
             revisionId: EntityId<'prev'>;
         },
-        { found: false } | { found: true; plan: PlanRecordView }
+        ConversationActivePlanData
     >;
     planImplementMutation: MutationLike<
         {
@@ -92,8 +129,13 @@ export interface CreatePlanImplementationControllerInput {
             executionStrategy?: OrchestratorExecutionStrategy;
         },
         | { found: false }
-        | { found: true; plan: PlanRecordView }
-        | { found: true; plan: PlanRecordView; started: true; mode: 'agent.code' | 'orchestrator.orchestrate' }
+        | { found: true; plan: ConversationActivePlanRecord }
+        | {
+              found: true;
+              plan: ConversationActivePlanRecord;
+              started: true;
+              mode: 'agent.code' | 'orchestrator.orchestrate';
+          }
     >;
     orchestratorAbortMutation: MutationLike<
         {
@@ -114,6 +156,10 @@ export interface ConversationPlanActionController {
     isOrchestratorMutating: boolean;
     onAnswerQuestion: (planId: EntityId<'plan'>, questionId: string, answer: string) => void;
     onRevisePlan: (planId: EntityId<'plan'>, summaryMarkdown: string, items: string[]) => void;
+    onCreateVariant: (planId: EntityId<'plan'>, sourceRevisionId: EntityId<'prev'>) => void;
+    onActivateVariant: (planId: EntityId<'plan'>, variantId: EntityId<'pvar'>) => void;
+    onResumeFromRevision: (planId: EntityId<'plan'>, sourceRevisionId: EntityId<'prev'>) => void;
+    onResolveFollowUp: (planId: EntityId<'plan'>, followUpId: EntityId<'pfu'>) => void;
     onGenerateDraft: (planId: EntityId<'plan'>) => void;
     onCancelPlan: (planId: EntityId<'plan'>) => void;
     onApprovePlan: (planId: EntityId<'plan'>, revisionId: EntityId<'prev'>) => void;
@@ -150,6 +196,10 @@ export function createPlanImplementationController(
             input.planStartMutation.isPending ||
             input.planAnswerMutation.isPending ||
             input.planReviseMutation.isPending ||
+            input.planCreateVariantMutation.isPending ||
+            input.planActivateVariantMutation.isPending ||
+            input.planResumeFromRevisionMutation.isPending ||
+            input.planResolveFollowUpMutation.isPending ||
             input.planGenerateDraftMutation.isPending ||
             input.planCancelMutation.isPending ||
             input.planApproveMutation.isPending ||
@@ -192,6 +242,83 @@ export function createPlanImplementationController(
                     },
                     onError: input.onError,
                     errorPrefix: 'Plan revision failed',
+                });
+            });
+        },
+        onCreateVariant: (planId, sourceRevisionId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planCreateVariantMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                sourceRevisionId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan branching failed',
+                });
+            });
+        },
+        onActivateVariant: (planId, variantId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planActivateVariantMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                variantId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan variant activation failed',
+                });
+            });
+        },
+        onResumeFromRevision: (planId, sourceRevisionId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planResumeFromRevisionMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                sourceRevisionId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan resume failed',
+                });
+            });
+        },
+        onResolveFollowUp: (planId, followUpId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planResolveFollowUpMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                followUpId,
+                                status: 'resolved',
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan follow-up resolution failed',
                 });
             });
         },

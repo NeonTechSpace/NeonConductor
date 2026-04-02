@@ -9,6 +9,7 @@ export async function appendPlanStartedEvent(input: {
     planId: EntityId<'plan'>;
     revisionId: EntityId<'prev'>;
     revisionNumber: number;
+    variantId?: EntityId<'pvar'> | undefined;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -23,6 +24,7 @@ export async function appendPlanStartedEvent(input: {
                 planId: input.planId,
                 revisionId: input.revisionId,
                 revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
             },
         })
     );
@@ -75,6 +77,7 @@ export async function appendPlanRevisedEvent(input: {
     planId: EntityId<'plan'>;
     revisionId: EntityId<'prev'>;
     revisionNumber: number;
+    variantId?: EntityId<'pvar'> | undefined;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -87,6 +90,7 @@ export async function appendPlanRevisedEvent(input: {
                 profileId: input.profileId,
                 revisionId: input.revisionId,
                 revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
             },
         })
     );
@@ -98,8 +102,9 @@ export async function appendPlanCancelledEvent(input: {
     previousStatus: 'awaiting_answers' | 'draft' | 'approved' | 'failed';
     revisionId: EntityId<'prev'>;
     revisionNumber: number;
-    approvedRevisionId?: EntityId<'prev'>;
-    approvedRevisionNumber?: number;
+    variantId?: EntityId<'pvar'> | undefined;
+    approvedRevisionId?: EntityId<'prev'> | undefined;
+    approvedRevisionNumber?: number | undefined;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -113,6 +118,7 @@ export async function appendPlanCancelledEvent(input: {
                 previousStatus: input.previousStatus,
                 revisionId: input.revisionId,
                 revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
                 ...(input.approvedRevisionId ? { approvedRevisionId: input.approvedRevisionId } : {}),
                 ...(input.approvedRevisionNumber !== undefined
                     ? { approvedRevisionNumber: input.approvedRevisionNumber }
@@ -128,6 +134,7 @@ export async function appendPlanDraftGenerationStartedEvent(input: {
     priorRevisionId: EntityId<'prev'>;
     priorRevisionNumber: number;
     generationMode: 'model' | 'deterministic_fallback';
+    variantId?: EntityId<'pvar'> | undefined;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -141,6 +148,7 @@ export async function appendPlanDraftGenerationStartedEvent(input: {
                 priorRevisionId: input.priorRevisionId,
                 priorRevisionNumber: input.priorRevisionNumber,
                 generationMode: input.generationMode,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
             },
         })
     );
@@ -154,6 +162,7 @@ export async function appendPlanDraftGeneratedEvent(input: {
     revisionId: EntityId<'prev'>;
     revisionNumber: number;
     generationMode: 'model' | 'deterministic_fallback';
+    variantId?: EntityId<'pvar'> | undefined;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -169,6 +178,7 @@ export async function appendPlanDraftGeneratedEvent(input: {
                 revisionId: input.revisionId,
                 revisionNumber: input.revisionNumber,
                 generationMode: input.generationMode,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
             },
         })
     );
@@ -179,6 +189,7 @@ export async function appendPlanApprovedEvent(input: {
     planId: EntityId<'plan'>;
     revisionId: EntityId<'prev'>;
     revisionNumber: number;
+    variantId?: EntityId<'pvar'> | undefined;
 }): Promise<void> {
     await runtimeEventLogService.append(
         runtimeStatusEvent({
@@ -191,6 +202,7 @@ export async function appendPlanApprovedEvent(input: {
                 profileId: input.profileId,
                 revisionId: input.revisionId,
                 revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
             },
         })
     );
@@ -203,6 +215,7 @@ export async function appendPlanImplementationStartedEvent(
               planId: EntityId<'plan'>;
               revisionId: EntityId<'prev'>;
               revisionNumber: number;
+              variantId?: EntityId<'pvar'> | undefined;
               mode: 'agent.code';
               runId: EntityId<'run'>;
           }
@@ -211,6 +224,7 @@ export async function appendPlanImplementationStartedEvent(
               planId: EntityId<'plan'>;
               revisionId: EntityId<'prev'>;
               revisionNumber: number;
+              variantId?: EntityId<'pvar'> | undefined;
               mode: 'orchestrator.orchestrate';
               orchestratorRunId: EntityId<'orch'>;
           }
@@ -226,8 +240,155 @@ export async function appendPlanImplementationStartedEvent(
                 profileId: input.profileId,
                 revisionId: input.revisionId,
                 revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
                 mode: input.mode,
                 ...('runId' in input ? { runId: input.runId } : { orchestratorRunId: input.orchestratorRunId }),
+            },
+        })
+    );
+}
+
+export async function appendPlanVariantCreatedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    sourceRevisionId: EntityId<'prev'>;
+    sourceRevisionNumber: number;
+    variantId: EntityId<'pvar'>;
+    variantName: string;
+    revisionId: EntityId<'prev'>;
+    revisionNumber: number;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.variant_created',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                sourceRevisionId: input.sourceRevisionId,
+                sourceRevisionNumber: input.sourceRevisionNumber,
+                variantId: input.variantId,
+                variantName: input.variantName,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
+            },
+        })
+    );
+}
+
+export async function appendPlanVariantActivatedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    variantId: EntityId<'pvar'>;
+    variantName: string;
+    revisionId: EntityId<'prev'>;
+    revisionNumber: number;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.variant_activated',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                variantId: input.variantId,
+                variantName: input.variantName,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
+            },
+        })
+    );
+}
+
+export async function appendPlanResumedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    sourceRevisionId: EntityId<'prev'>;
+    sourceRevisionNumber: number;
+    variantId: EntityId<'pvar'>;
+    variantName: string;
+    revisionId: EntityId<'prev'>;
+    revisionNumber: number;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.resumed',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                sourceRevisionId: input.sourceRevisionId,
+                sourceRevisionNumber: input.sourceRevisionNumber,
+                variantId: input.variantId,
+                variantName: input.variantName,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
+            },
+        })
+    );
+}
+
+export async function appendPlanFollowUpRaisedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    followUpId: EntityId<'pfu'>;
+    kind: 'missing_context' | 'missing_file';
+    variantId: EntityId<'pvar'>;
+    variantName: string;
+    sourceRevisionId?: EntityId<'prev'> | undefined;
+    promptMarkdown: string;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.follow_up_raised',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                followUpId: input.followUpId,
+                kind: input.kind,
+                variantId: input.variantId,
+                variantName: input.variantName,
+                ...(input.sourceRevisionId ? { sourceRevisionId: input.sourceRevisionId } : {}),
+                promptMarkdown: input.promptMarkdown,
+            },
+        })
+    );
+}
+
+export async function appendPlanFollowUpResolvedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    followUpId: EntityId<'pfu'>;
+    status: 'resolved' | 'dismissed';
+    kind: 'missing_context' | 'missing_file';
+    variantId: EntityId<'pvar'>;
+    variantName: string;
+    responseMarkdown?: string;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.follow_up_resolved',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                followUpId: input.followUpId,
+                status: input.status,
+                kind: input.kind,
+                variantId: input.variantId,
+                variantName: input.variantName,
+                ...(input.responseMarkdown ? { responseMarkdown: input.responseMarkdown } : {}),
             },
         })
     );

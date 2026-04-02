@@ -3,10 +3,10 @@ import { skipToken } from '@tanstack/react-query';
 import { useConversationShellComposer } from '@/web/components/conversation/hooks/useConversationShellComposer';
 import { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
 import { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
+import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import type { BranchWorkflowDialogProps } from '@/web/components/conversation/panels/branchWorkflowDialog';
 import type { MessageEditDialogProps } from '@/web/components/conversation/panels/messageEditDialog';
 import type { ToolArtifactViewerDialogProps } from '@/web/components/conversation/panels/toolArtifactViewerDialog';
-import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import type { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
@@ -19,7 +19,6 @@ import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/ba
 
 import type {
     OrchestratorExecutionStrategy,
-    PlanRecordView,
     RuntimeProviderId,
     RuntimeReasoningEffort,
     TopLevelTab,
@@ -37,11 +36,12 @@ export type ConversationRunTargetState = ReturnType<typeof useConversationRunTar
 export type ConversationSessionActions = ReturnType<typeof useConversationShellSessionActions>;
 export type ConversationComposer = ReturnType<typeof useConversationShellComposer>;
 export type TrpcUtils = ReturnType<typeof trpc.useUtils>;
+export type ConversationActivePlanData = Awaited<ReturnType<TrpcUtils['plan']['getActive']['fetch']>>;
 export type AcceptedRunStartResult = Extract<
     Awaited<ReturnType<ConversationMutations['startRunMutation']['mutateAsync']>>,
     { accepted: true }
 >;
-export type ConversationPlanWorkspaceUpdateResult = { found: false } | { found: true; plan: PlanRecordView };
+export type ConversationPlanWorkspaceUpdateResult = ConversationActivePlanData;
 export interface ConversationSessionWorkspaceUpdate {
     session: SessionSummaryRecord;
     run?: RunRecord | undefined;

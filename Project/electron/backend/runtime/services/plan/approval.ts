@@ -25,6 +25,13 @@ export async function approvePlan(
     if (hasUnanswered) {
         return errPlan('unanswered_questions', 'Cannot approve plan before answering all clarifying questions.');
     }
+    const openFollowUps = await planStore.listOpenFollowUps(planId);
+    if (openFollowUps.length > 0) {
+        return errPlan(
+            'follow_up_conflict',
+            'Cannot approve plan while follow-up items remain open. Resolve or dismiss them first.'
+        );
+    }
     if (existing.currentRevisionId !== revisionId) {
         return errPlan(
             'revision_conflict',
@@ -40,15 +47,16 @@ export async function approvePlan(
     if (!approved) {
         return errPlan('revision_conflict', 'Cannot approve a revision that does not belong to this plan.');
     }
-    const items = shouldResetImplementationState
-        ? await planStore.resetItemsForFreshImplementation(planId)
-        : await planStore.listItems(planId);
+    if (shouldResetImplementationState) {
+        await planStore.resetItemsForFreshImplementation(planId);
+    }
 
     await appendPlanApprovedEvent({
         profileId,
         planId,
         revisionId,
         revisionNumber: approved.currentRevisionNumber,
+        variantId: approved.approvedVariantId,
     });
 
     appLog.info({
@@ -59,8 +67,9 @@ export async function approvePlan(
         revisionId,
     });
 
+    const projection = await planStore.getProjectionById(profileId, planId);
     return okPlan({
         found: true,
-        plan: requirePlanView(approved, items, 'plan.approve'),
+        plan: requirePlanView(projection, 'plan.approve'),
     });
 }
