@@ -68,6 +68,8 @@ export interface PlanGenerateDraftInput extends PlanGetInput {
     workspaceFingerprint?: string;
 }
 
+export type PlanCancelInput = PlanGetInput;
+
 export interface PlanImplementInput extends PlanGetInput {
     runtimeOptions: RuntimeRunOptions;
     executionStrategy?: OrchestratorExecutionStrategy;

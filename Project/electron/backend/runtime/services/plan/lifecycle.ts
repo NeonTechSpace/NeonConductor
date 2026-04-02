@@ -1,6 +1,15 @@
 import { planStore } from '@/app/backend/persistence/stores';
-import type { PlanAnswerQuestionInput, PlanRecordView, PlanReviseInput } from '@/app/backend/runtime/contracts';
-import { appendPlanQuestionAnsweredEvent, appendPlanRevisedEvent } from '@/app/backend/runtime/services/plan/events';
+import type {
+    PlanAnswerQuestionInput,
+    PlanCancelInput,
+    PlanRecordView,
+    PlanReviseInput,
+} from '@/app/backend/runtime/contracts';
+import {
+    appendPlanCancelledEvent,
+    appendPlanQuestionAnsweredEvent,
+    appendPlanRevisedEvent,
+} from '@/app/backend/runtime/services/plan/events';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 
 export async function answerPlanQuestion(
@@ -46,5 +55,46 @@ export async function revisePlan(
     return {
         found: true,
         plan: requirePlanView(revised, items, 'plan.revise'),
+    };
+}
+
+export async function cancelPlan(
+    input: PlanCancelInput
+): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
+    const existing = await planStore.getById(input.profileId, input.planId);
+    if (!existing) {
+        return { found: false };
+    }
+
+    if (
+        existing.status !== 'awaiting_answers' &&
+        existing.status !== 'draft' &&
+        existing.status !== 'approved' &&
+        existing.status !== 'failed'
+    ) {
+        return { found: false };
+    }
+
+    const cancelled = await planStore.cancel(input.planId);
+    if (!cancelled || cancelled.profileId !== input.profileId) {
+        return { found: false };
+    }
+
+    await appendPlanCancelledEvent({
+        profileId: input.profileId,
+        planId: input.planId,
+        previousStatus: existing.status,
+        revisionId: cancelled.currentRevisionId,
+        revisionNumber: cancelled.currentRevisionNumber,
+        ...(cancelled.approvedRevisionId ? { approvedRevisionId: cancelled.approvedRevisionId } : {}),
+        ...(cancelled.approvedRevisionNumber !== undefined
+            ? { approvedRevisionNumber: cancelled.approvedRevisionNumber }
+            : {}),
+    });
+
+    const items = await planStore.listItems(input.planId);
+    return {
+        found: true,
+        plan: requirePlanView(cancelled, items, 'plan.cancel'),
     };
 }

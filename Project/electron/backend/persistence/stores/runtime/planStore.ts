@@ -153,15 +153,15 @@ function mapPlanItemRecord(row: {
     };
 }
 
+const cancellablePlanStatuses = new Set<PlanRecord['status']>(['awaiting_answers', 'draft', 'approved', 'failed']);
+
 export class PlanStore {
     private getDb(): Kysely<DatabaseSchema> {
         return getPersistence().db;
     }
 
     private async getPlanRecordRowById(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRecordRow | null> {
-        return (
-            (await db.selectFrom('plan_records').selectAll().where('id', '=', planId).executeTakeFirst()) ?? null
-        );
+        return (await db.selectFrom('plan_records').selectAll().where('id', '=', planId).executeTakeFirst()) ?? null;
     }
 
     private async getPlanRevisionRowById(
@@ -169,8 +169,7 @@ export class PlanStore {
         revisionId: EntityId<'prev'>
     ): Promise<PlanRevisionRow | null> {
         return (
-            (await db.selectFrom('plan_revisions').selectAll().where('id', '=', revisionId).executeTakeFirst()) ??
-            null
+            (await db.selectFrom('plan_revisions').selectAll().where('id', '=', revisionId).executeTakeFirst()) ?? null
         );
     }
 
@@ -224,7 +223,13 @@ export class PlanStore {
                   }
                 : {}),
             ...(row.orchestrator_run_id
-                ? { orchestratorRunId: parseEntityId(row.orchestrator_run_id, 'plan_records.orchestrator_run_id', 'orch') }
+                ? {
+                      orchestratorRunId: parseEntityId(
+                          row.orchestrator_run_id,
+                          'plan_records.orchestrator_run_id',
+                          'orch'
+                      ),
+                  }
                 : {}),
             ...(row.approved_at ? { approvedAt: row.approved_at } : {}),
             ...(row.implemented_at ? { implementedAt: row.implemented_at } : {}),
@@ -447,7 +452,9 @@ export class PlanStore {
             return null;
         }
 
-        return this.getRevisionById(parseEntityId(row.approved_revision_id, 'plan_records.approved_revision_id', 'prev'));
+        return this.getRevisionById(
+            parseEntityId(row.approved_revision_id, 'plan_records.approved_revision_id', 'prev')
+        );
     }
 
     async resolveApprovedRevisionSnapshot(input: {
@@ -504,7 +511,9 @@ export class PlanStore {
         descriptions: string[]
     ): Promise<PlanRecord | null> {
         const db = this.getDb();
-        const normalizedDescriptions = descriptions.map((description) => description.trim()).filter((description) => description.length > 0);
+        const normalizedDescriptions = descriptions
+            .map((description) => description.trim())
+            .filter((description) => description.length > 0);
 
         const revisedPlanId = await db.transaction().execute(async (transaction) => {
             const existing = await this.getPlanRecordRowById(transaction, planId);
@@ -607,6 +616,38 @@ export class PlanStore {
         }
 
         return this.getByIdFromDb(db, parseEntityId(approvedPlanId, 'plan_records.id', 'plan'));
+    }
+
+    async cancel(planId: EntityId<'plan'>): Promise<PlanRecord | null> {
+        const db = this.getDb();
+        const cancelledPlanId = await db.transaction().execute(async (transaction) => {
+            const existing = await this.getPlanRecordRowById(transaction, planId);
+            if (
+                !existing ||
+                !cancellablePlanStatuses.has(parseEnumValue(existing.status, 'plan_records.status', planStatuses))
+            ) {
+                return null;
+            }
+
+            const now = nowIso();
+            const updated = await transaction
+                .updateTable('plan_records')
+                .set({
+                    status: 'cancelled',
+                    updated_at: now,
+                })
+                .where('id', '=', planId)
+                .returning('id')
+                .executeTakeFirst();
+
+            return updated?.id ?? null;
+        });
+
+        if (!cancelledPlanId) {
+            return null;
+        }
+
+        return this.getByIdFromDb(db, parseEntityId(cancelledPlanId, 'plan_records.id', 'plan'));
     }
 
     async resetItemsForFreshImplementation(planId: EntityId<'plan'>): Promise<PlanItemRecord[]> {

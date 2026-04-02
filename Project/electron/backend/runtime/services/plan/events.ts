@@ -92,6 +92,36 @@ export async function appendPlanRevisedEvent(input: {
     );
 }
 
+export async function appendPlanCancelledEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    previousStatus: 'awaiting_answers' | 'draft' | 'approved' | 'failed';
+    revisionId: EntityId<'prev'>;
+    revisionNumber: number;
+    approvedRevisionId?: EntityId<'prev'>;
+    approvedRevisionNumber?: number;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.cancelled',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                previousStatus: input.previousStatus,
+                revisionId: input.revisionId,
+                revisionNumber: input.revisionNumber,
+                ...(input.approvedRevisionId ? { approvedRevisionId: input.approvedRevisionId } : {}),
+                ...(input.approvedRevisionNumber !== undefined
+                    ? { approvedRevisionNumber: input.approvedRevisionNumber }
+                    : {}),
+            },
+        })
+    );
+}
+
 export async function appendPlanDraftGenerationStartedEvent(input: {
     profileId: string;
     planId: EntityId<'plan'>;

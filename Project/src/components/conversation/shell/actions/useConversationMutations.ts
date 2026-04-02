@@ -17,6 +17,7 @@ export function useConversationMutations() {
         planAnswerMutation: trpc.plan.answerQuestion.useMutation(),
         planReviseMutation: trpc.plan.revise.useMutation(),
         planGenerateDraftMutation: trpc.plan.generateDraft.useMutation(),
+        planCancelMutation: trpc.plan.cancel.useMutation(),
         planApproveMutation: trpc.plan.approve.useMutation(),
         planImplementMutation: trpc.plan.implement.useMutation(),
         orchestratorAbortMutation: trpc.orchestrator.abort.useMutation(),

@@ -10,6 +10,7 @@ export function toPlanTrpcError(error: PlanServiceError): TRPCError {
             return new TRPCError({ code: 'BAD_REQUEST', message: error.message, cause: error });
         case 'unanswered_questions':
         case 'not_approved':
+        case 'not_cancellable':
         case 'revision_conflict':
             return new TRPCError({ code: 'CONFLICT', message: error.message, cause: error });
         case 'draft_generation_failed':

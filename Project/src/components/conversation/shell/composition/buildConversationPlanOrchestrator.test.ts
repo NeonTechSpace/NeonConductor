@@ -144,6 +144,10 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planCancelMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
             planApproveMutation,
             planImplementMutation: {
                 isPending: false,
@@ -200,6 +204,10 @@ describe('runConversationPlanMutation', () => {
                 mutateAsync: vi.fn(),
             },
             planGenerateDraftMutation,
+            planCancelMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
             planApproveMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -224,6 +232,77 @@ describe('runConversationPlanMutation', () => {
             providerId: 'openai',
             modelId: 'gpt-5',
             workspaceFingerprint: 'ws_1',
+        });
+    });
+
+    it('routes plan cancellation through the dedicated action controller', async () => {
+        const planCancelMutation = {
+            isPending: false,
+            mutateAsync: vi.fn().mockResolvedValue({
+                found: true as const,
+                plan: {
+                    ...createPlanRecord(),
+                    status: 'cancelled' as const,
+                },
+            }),
+        };
+
+        const applyPlanWorkspaceUpdate = vi.fn();
+
+        const orchestrator = buildConversationPlanOrchestrator({
+            profileId: 'profile_default',
+            applyPlanWorkspaceUpdate,
+            applyOrchestratorWorkspaceUpdate: vi.fn(),
+            onError: vi.fn(),
+            resolvedRunTarget: undefined,
+            runtimeOptions: createRuntimeOptions(),
+            workspaceFingerprint: 'ws_1',
+            activePlan: createPlanRecord(),
+            orchestratorView: undefined,
+            planStartMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planAnswerMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planReviseMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planGenerateDraftMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planCancelMutation,
+            planApproveMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planImplementMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            orchestratorAbortMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+        });
+
+        orchestrator.actionController.onCancelPlan('plan_1');
+        await flushAsyncActions();
+
+        expect(planCancelMutation.mutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            planId: 'plan_1',
+        });
+        expect(applyPlanWorkspaceUpdate).toHaveBeenCalledWith({
+            found: true,
+            plan: {
+                ...createPlanRecord(),
+                status: 'cancelled',
+            },
         });
     });
 
@@ -286,6 +365,10 @@ describe('buildConversationPlanOrchestrator', () => {
                 mutateAsync: vi.fn(),
             },
             planGenerateDraftMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planCancelMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
@@ -362,6 +445,10 @@ describe('buildConversationPlanOrchestrator', () => {
                 mutateAsync: vi.fn(),
             },
             planGenerateDraftMutation: {
+                isPending: false,
+                mutateAsync: vi.fn(),
+            },
+            planCancelMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },

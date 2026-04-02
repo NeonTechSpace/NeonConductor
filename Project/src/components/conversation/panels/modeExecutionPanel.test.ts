@@ -7,6 +7,8 @@ import {
     canGenerateDraft,
     hasUnansweredRequiredPlanQuestions,
     resolveModeExecutionDraftState,
+    resolveModeExecutionPlanArtifactState,
+    resolveModeExecutionPlanPanelMode,
     resolveModeExecutionOrchestratorPanelState,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
 
@@ -15,6 +17,7 @@ describe('resolveModeExecutionDraftState', () => {
         const activePlan = {
             id: 'plan_1',
             status: 'draft',
+            sourcePrompt: 'Ship the first revision.',
             summaryMarkdown: 'Server Summary',
             currentRevisionId: 'prev_1',
             currentRevisionNumber: 1,
@@ -58,6 +61,7 @@ describe('resolveModeExecutionDraftState', () => {
         const activePlan = {
             id: 'plan_1',
             status: 'draft',
+            sourcePrompt: 'Ship the refreshed revision.',
             summaryMarkdown: 'Server Summary v2',
             currentRevisionId: 'prev_2',
             currentRevisionNumber: 2,
@@ -101,6 +105,7 @@ describe('resolveModeExecutionDraftState', () => {
         const plan = {
             id: 'plan_1',
             status: 'draft',
+            sourcePrompt: 'Ship richer intake.',
             summaryMarkdown: 'Summary',
             currentRevisionId: 'prev_1',
             currentRevisionNumber: 1,
@@ -126,6 +131,67 @@ describe('resolveModeExecutionDraftState', () => {
         expect(canGenerateDraft(plan as never)).toBe(true);
     });
 
+    it('defaults the plan panel to artifact mode when a revision is visible', () => {
+        const plan = {
+            id: 'plan_1',
+            status: 'approved',
+            summaryMarkdown: 'Summary',
+            currentRevisionId: 'prev_2',
+            currentRevisionNumber: 2,
+            approvedRevisionId: 'prev_1',
+            approvedRevisionNumber: 1,
+            sourcePrompt: 'Ship the plan artifact UX.',
+            questions: [],
+            items: [],
+        } as const;
+
+        expect(
+            resolveModeExecutionPlanPanelMode({
+                activePlan: plan as never,
+                panelModeState: {
+                    planId: 'plan_1',
+                    revisionId: 'prev_1',
+                    mode: 'edit',
+                },
+            })
+        ).toBe('artifact');
+    });
+
+    it('projects current vs approved revision state for the structured artifact view', () => {
+        const plan = {
+            id: 'plan_1',
+            status: 'approved',
+            summaryMarkdown: 'Summary',
+            currentRevisionId: 'prev_2',
+            currentRevisionNumber: 2,
+            approvedRevisionId: 'prev_1',
+            approvedRevisionNumber: 1,
+            sourcePrompt: 'Ship the plan artifact UX.',
+            questions: [
+                {
+                    id: 'scope',
+                    question: 'What should ship?',
+                    category: 'deliverable',
+                    required: true,
+                    answer: 'Ship the artifact view.',
+                },
+            ],
+            items: [],
+        } as const;
+
+        expect(resolveModeExecutionPlanArtifactState({ activePlan: plan as never })).toEqual(
+            expect.objectContaining({
+                statusLabel: 'Ready to implement',
+                readyToImplement: true,
+                revisionLabel: 'Revision 2 (prev_2)',
+                approvedRevisionLabel: 'Revision 1 (prev_1)',
+                revisionComparisonLabel: 'The current revision is ahead of the last approved revision.',
+                canImplement: true,
+                canCancel: true,
+            })
+        );
+    });
+
     it('renders orchestrator strategy and delegated worker lane status', () => {
         const html = renderToStaticMarkup(
             createElement(ModeExecutionPanel, {
@@ -138,6 +204,7 @@ describe('resolveModeExecutionDraftState', () => {
                     onAnswerQuestion: vi.fn(),
                     onRevisePlan: vi.fn(),
                     onGenerateDraft: vi.fn(),
+                    onCancelPlan: vi.fn(),
                     onApprovePlan: vi.fn(),
                     onImplementPlan: vi.fn(),
                     onAbortOrchestrator: vi.fn(),
@@ -148,6 +215,7 @@ describe('resolveModeExecutionDraftState', () => {
                     id: 'plan_1',
                     status: 'approved',
                     summaryMarkdown: 'Approved summary',
+                    sourcePrompt: 'Ship the artifact UX',
                     currentRevisionId: 'prev_1',
                     currentRevisionNumber: 2,
                     questions: [
@@ -190,11 +258,15 @@ describe('resolveModeExecutionDraftState', () => {
         expect(html).toContain('Parallel');
         expect(html).toContain('Open worker lane');
         expect(html).toContain('Active run run_1');
-        expect(html).toContain('Revision');
-        expect(html).toContain('2');
-        expect(html).toContain('Required');
-        expect(html).toContain('deliverable');
-        expect(html).toContain('Generate Draft');
+        expect(html).toContain('Current revision');
+        expect(html).toContain('Revision 2 (prev_1)');
+        expect(html).toContain('Questions');
+        expect(html).toContain('Summary');
+        expect(html).toContain('Evidence');
+        expect(html).toContain('Ordered Items');
+        expect(html).toContain('Revise');
+        expect(html).toContain('Implement');
+        expect(html).toContain('Cancel');
     });
 
     it('resolves an explicit orchestrator-facing panel model from the raw inputs', () => {

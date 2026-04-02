@@ -13,6 +13,7 @@ import {
 import type {
     PlanAnswerQuestionInput,
     PlanApproveInput,
+    PlanCancelInput,
     PlanGenerateDraftInput,
     PlanGetActiveInput,
     PlanGetInput,
@@ -132,6 +133,15 @@ export function parsePlanGenerateDraftInput(input: unknown): PlanGenerateDraftIn
     };
 }
 
+export function parsePlanCancelInput(input: unknown): PlanCancelInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        planId: readEntityId(source.planId, 'planId', 'plan'),
+    };
+}
+
 export const planStartInputSchema = createParser(parsePlanStartInput);
 export const planGetInputSchema = createParser(parsePlanGetInput);
 export const planGetActiveInputSchema = createParser(parsePlanGetActiveInput);
@@ -139,4 +149,5 @@ export const planAnswerQuestionInputSchema = createParser(parsePlanAnswerQuestio
 export const planReviseInputSchema = createParser(parsePlanReviseInput);
 export const planApproveInputSchema = createParser(parsePlanApproveInput);
 export const planGenerateDraftInputSchema = createParser(parsePlanGenerateDraftInput);
+export const planCancelInputSchema = createParser(parsePlanCancelInput);
 export const planImplementInputSchema = createParser(parsePlanImplementInput);

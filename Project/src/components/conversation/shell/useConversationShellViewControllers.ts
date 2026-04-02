@@ -193,6 +193,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         planAnswerMutation: mutations.planAnswerMutation,
         planReviseMutation: mutations.planReviseMutation,
         planGenerateDraftMutation: mutations.planGenerateDraftMutation,
+        planCancelMutation: mutations.planCancelMutation,
         planApproveMutation: mutations.planApproveMutation,
         planImplementMutation: mutations.planImplementMutation,
         orchestratorAbortMutation: mutations.orchestratorAbortMutation,

@@ -66,6 +66,13 @@ export interface CreatePlanImplementationControllerInput {
         },
         { found: false } | { found: true; plan: PlanRecordView }
     >;
+    planCancelMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+        },
+        { found: false } | { found: true; plan: PlanRecordView }
+    >;
     planApproveMutation: MutationLike<
         {
             profileId: string;
@@ -108,6 +115,7 @@ export interface ConversationPlanActionController {
     onAnswerQuestion: (planId: EntityId<'plan'>, questionId: string, answer: string) => void;
     onRevisePlan: (planId: EntityId<'plan'>, summaryMarkdown: string, items: string[]) => void;
     onGenerateDraft: (planId: EntityId<'plan'>) => void;
+    onCancelPlan: (planId: EntityId<'plan'>) => void;
     onApprovePlan: (planId: EntityId<'plan'>, revisionId: EntityId<'prev'>) => void;
     onImplementPlan: (planId: EntityId<'plan'>, executionStrategy: OrchestratorExecutionStrategy) => void;
     onAbortOrchestrator: (orchestratorRunId: EntityId<'orch'>) => void;
@@ -143,6 +151,7 @@ export function createPlanImplementationController(
             input.planAnswerMutation.isPending ||
             input.planReviseMutation.isPending ||
             input.planGenerateDraftMutation.isPending ||
+            input.planCancelMutation.isPending ||
             input.planApproveMutation.isPending ||
             input.planImplementMutation.isPending,
         isOrchestratorMutating: input.orchestratorAbortMutation.isPending,
@@ -197,7 +206,9 @@ export function createPlanImplementationController(
                                 runtimeOptions: input.runtimeOptions,
                                 ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
                                 ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
-                                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                                ...(input.workspaceFingerprint
+                                    ? { workspaceFingerprint: input.workspaceFingerprint }
+                                    : {}),
                             }),
                     },
                     applyResult: (result) => {
@@ -205,6 +216,24 @@ export function createPlanImplementationController(
                     },
                     onError: input.onError,
                     errorPrefix: 'Plan draft generation failed',
+                });
+            });
+        },
+        onCancelPlan: (planId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planCancelMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Plan cancel failed',
                 });
             });
         },
@@ -238,7 +267,9 @@ export function createPlanImplementationController(
                                 runtimeOptions: input.runtimeOptions,
                                 ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
                                 ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
-                                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                                ...(input.workspaceFingerprint
+                                    ? { workspaceFingerprint: input.workspaceFingerprint }
+                                    : {}),
                                 executionStrategy,
                             }),
                     },

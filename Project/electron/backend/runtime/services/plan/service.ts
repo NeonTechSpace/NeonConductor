@@ -2,6 +2,7 @@ import { planStore } from '@/app/backend/persistence/stores';
 import type {
     EntityId,
     PlanAnswerQuestionInput,
+    PlanCancelInput,
     PlanGenerateDraftInput,
     PlanImplementInput,
     PlanRecordView,
@@ -12,7 +13,7 @@ import { approvePlan } from '@/app/backend/runtime/services/plan/approval';
 import { generatePlanDraft } from '@/app/backend/runtime/services/plan/draftGeneration';
 import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { implementApprovedPlan } from '@/app/backend/runtime/services/plan/implementation';
-import { answerPlanQuestion, revisePlan } from '@/app/backend/runtime/services/plan/lifecycle';
+import { answerPlanQuestion, cancelPlan, revisePlan } from '@/app/backend/runtime/services/plan/lifecycle';
 import { startPlanFlow } from '@/app/backend/runtime/services/plan/start';
 import { refreshActivePlanView, refreshPlanViewById } from '@/app/backend/runtime/services/plan/status';
 import { appLog } from '@/app/main/logging';
@@ -65,6 +66,40 @@ export class PlanService {
 
     async revise(input: PlanReviseInput): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
         return revisePlan(input);
+    }
+
+    async cancel(
+        input: PlanCancelInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await cancelPlan(input);
+        if (result.found) {
+            return okPlan(result);
+        }
+
+        const existing = await planStore.getById(input.profileId, input.planId);
+        if (!existing) {
+            return okPlan(result);
+        }
+
+        const validation: PlanServiceError = {
+            code: 'not_cancellable',
+            message:
+                existing.status === 'implementing' || existing.status === 'implemented'
+                    ? 'Plan cannot be cancelled while implementation is active or after it has completed.'
+                    : existing.status === 'cancelled'
+                      ? 'Plan is already cancelled.'
+                      : 'Plan cannot be cancelled in its current state.',
+        };
+        appLog.warn({
+            tag: 'plan',
+            message: 'Rejected plan.cancel request.',
+            profileId: input.profileId,
+            planId: input.planId,
+            code: validation.code,
+            error: validation.message,
+            status: existing.status,
+        });
+        return errPlan(validation.code, validation.message);
     }
 
     async generateDraft(
