@@ -1,5 +1,6 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import type { DatabaseSchema } from '@/app/backend/persistence/schema';
+import { planPhaseStore } from '@/app/backend/persistence/stores/runtime/planPhaseStore';
 import { runtimeEventStore } from '@/app/backend/persistence/stores/runtime/runtimeEventStore';
 import { parseEntityId, parseEnumValue, parseJsonRecord } from '@/app/backend/persistence/stores/shared/rowParsers';
 import {
@@ -11,6 +12,9 @@ import {
 import type {
     PlanItemRecord,
     PlanFollowUpRecord,
+    PlanPhaseRecord,
+    PlanPhaseRevisionItemRecord,
+    PlanPhaseRevisionRecord,
     PlanEvidenceAttachmentRecord,
     PlanResearchBatchRecord,
     PlanResearchWorkerRecord,
@@ -852,6 +856,303 @@ function buildPlanHistoryEntries(input: {
                             : undefined,
                 });
                 break;
+            case 'plan.phase.expanded':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_expanded',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase expanded: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase expanded: ${event.payload['title']}`
+                            : 'Phase expanded',
+                    detail:
+                        typeof event.payload['phaseSequence'] === 'number'
+                            ? `Opened detailed work for roadmap phase ${String(event.payload['phaseSequence'])}.`
+                            : 'Opened a detailed phase lane.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                    revisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'prev'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : undefined,
+                    variantId:
+                        typeof event.payload['variantId'] === 'string'
+                            ? (event.payload['variantId'] as EntityId<'pvar'>)
+                            : undefined,
+                    variantName:
+                        typeof event.payload['variantId'] === 'string'
+                            ? resolveVariantName(event.payload['variantId'] as EntityId<'pvar'>)
+                            : undefined,
+                });
+                break;
+            case 'plan.phase.revised':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_revision_created',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase revised: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase revised: ${event.payload['title']}`
+                            : 'Phase revised',
+                    detail:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? `Saved phase revision ${String(event.payload['revisionNumber'])}.`
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                              ? `Saved phase revision ${String(event.payload['phaseRevisionNumber'])}.`
+                            : 'Saved a new phase revision.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                            ? event.payload['phaseRevisionNumber']
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                    variantId:
+                        typeof event.payload['variantId'] === 'string'
+                            ? (event.payload['variantId'] as EntityId<'pvar'>)
+                            : undefined,
+                    variantName:
+                        typeof event.payload['variantId'] === 'string'
+                            ? resolveVariantName(event.payload['variantId'] as EntityId<'pvar'>)
+                            : undefined,
+                });
+                break;
+            case 'plan.phase.approved':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_approved',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase approved: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase approved: ${event.payload['title']}`
+                            : 'Phase approved',
+                    detail: 'Approved the current detailed phase for execution.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                            ? event.payload['phaseRevisionNumber']
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                    variantId:
+                        typeof event.payload['variantId'] === 'string'
+                            ? (event.payload['variantId'] as EntityId<'pvar'>)
+                            : undefined,
+                    variantName:
+                        typeof event.payload['variantId'] === 'string'
+                            ? resolveVariantName(event.payload['variantId'] as EntityId<'pvar'>)
+                            : undefined,
+                });
+                break;
+            case 'plan.phase.implementation.started':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_implementation_started',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase implementation started: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase implementation started: ${event.payload['title']}`
+                            : 'Phase implementation started',
+                    detail:
+                        typeof event.payload['mode'] === 'string'
+                            ? `Started via ${event.payload['mode']}.`
+                            : 'Started phase execution.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                            ? event.payload['phaseRevisionNumber']
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                });
+                break;
+            case 'plan.phase.implementation.completed':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_implementation_completed',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase implementation completed: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase implementation completed: ${event.payload['title']}`
+                            : 'Phase implementation completed',
+                    detail: 'The detailed phase completed successfully.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                            ? event.payload['phaseRevisionNumber']
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                });
+                break;
+            case 'plan.phase.implementation.failed':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_implementation_failed',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase implementation failed: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase implementation failed: ${event.payload['title']}`
+                            : 'Phase implementation failed',
+                    detail:
+                        typeof event.payload['errorMessage'] === 'string'
+                            ? event.payload['errorMessage']
+                            : typeof event.payload['failureKind'] === 'string'
+                              ? `Execution stopped with ${event.payload['failureKind']}.`
+                            : 'Execution stopped before completion.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                            ? event.payload['phaseRevisionNumber']
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                });
+                break;
+            case 'plan.phase.cancelled':
+                entries.push({
+                    id: event.eventId,
+                    kind: 'phase_cancelled',
+                    title:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? `Phase cancelled: ${event.payload['phaseTitle']}`
+                            : typeof event.payload['title'] === 'string'
+                              ? `Phase cancelled: ${event.payload['title']}`
+                            : 'Phase cancelled',
+                    detail:
+                        typeof event.payload['previousStatus'] === 'string'
+                            ? `Cancelled from ${event.payload['previousStatus']}.`
+                            : 'Cancelled the detailed phase lane.',
+                    createdAt: event.createdAt,
+                    phaseId:
+                        typeof event.payload['phaseId'] === 'string'
+                            ? (event.payload['phaseId'] as EntityId<'pph'>)
+                            : undefined,
+                    phaseRevisionId:
+                        typeof event.payload['phaseRevisionId'] === 'string'
+                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
+                            : undefined,
+                    revisionNumber:
+                        typeof event.payload['revisionNumber'] === 'number'
+                            ? event.payload['revisionNumber']
+                            : typeof event.payload['phaseRevisionNumber'] === 'number'
+                            ? event.payload['phaseRevisionNumber']
+                            : undefined,
+                    phaseSequence:
+                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
+                    phaseTitle:
+                        typeof event.payload['phaseTitle'] === 'string'
+                            ? event.payload['phaseTitle']
+                            : typeof event.payload['title'] === 'string'
+                              ? event.payload['title']
+                              : undefined,
+                });
+                break;
             default:
                 break;
         }
@@ -976,6 +1277,9 @@ function buildPlanViewProjection(input: {
     revisions: PlanRevisionRecord[];
     variants: PlanVariantRecord[];
     followUps: PlanFollowUpRecord[];
+    phases: PlanPhaseRecord[];
+    phaseRevisions: PlanPhaseRevisionRecord[];
+    phaseRevisionItems: PlanPhaseRevisionItemRecord[];
     researchBatches: PlanResearchBatchRecord[];
     researchWorkers: PlanResearchWorkerRecord[];
     evidenceAttachments: PlanEvidenceAttachmentRecord[];
@@ -1023,6 +1327,9 @@ function buildPlanViewProjection(input: {
             ...(followUp.resolvedAt ? { resolvedAt: followUp.resolvedAt } : {}),
             ...(followUp.dismissedAt ? { dismissedAt: followUp.dismissedAt } : {}),
         })),
+        phases: input.phases,
+        phaseRevisions: input.phaseRevisions,
+        phaseRevisionItems: input.phaseRevisionItems,
         researchBatches: input.researchBatches,
         researchWorkers: input.researchWorkers,
         evidenceAttachments: input.evidenceAttachments,
@@ -2727,12 +3034,14 @@ export class PlanStore {
             return null;
         }
 
-        const [items, revisions, variants, followUps, researchBatches, evidenceAttachments, events] = await Promise.all(
+        const [items, revisions, variants, followUps, phaseProjection, researchBatches, evidenceAttachments, events] =
+            await Promise.all(
             [
                 this.listItems(planId),
                 this.listRevisions(planId),
                 this.listVariants(planId),
                 this.listFollowUps(planId),
+                planPhaseStore.listProjectionData(planId),
                 this.listResearchBatchesInDb(db, planId),
                 this.listEvidenceAttachmentsInDb(db, plan.currentRevisionId),
                 runtimeEventStore.listByEntity({
@@ -2766,6 +3075,9 @@ export class PlanStore {
             revisions,
             variants,
             followUps,
+            phases: phaseProjection.phases,
+            phaseRevisions: phaseProjection.phaseRevisions,
+            phaseRevisionItems: phaseProjection.phaseRevisionItems,
             researchBatches,
             researchWorkers,
             evidenceAttachments,

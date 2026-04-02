@@ -1,10 +1,16 @@
 import type {
     PlanEvidenceAttachmentView,
+    PlanAdvancedSnapshotView,
+    PlanPhaseRecordView,
+    PlanPhaseRevisionView,
     PlanRecordView,
     PlanResearchBatchView,
 } from '@/app/backend/runtime/contracts';
 import type {
     PlanEvidenceAttachmentRecord,
+    PlanPhaseRecord,
+    PlanPhaseRevisionItemRecord,
+    PlanPhaseRevisionRecord,
     PlanResearchBatchRecord,
     PlanResearchWorkerRecord,
     PlanViewProjection,
@@ -83,6 +89,102 @@ function toPlanEvidenceAttachmentView(record: PlanEvidenceAttachmentRecord): Pla
     };
 }
 
+function toPlanPhaseRevisionView(input: {
+    revision: PlanPhaseRevisionRecord;
+    items: PlanPhaseRevisionItemRecord[];
+}): PlanPhaseRevisionView {
+    return {
+        id: input.revision.id,
+        planPhaseId: input.revision.planPhaseId,
+        revisionNumber: input.revision.revisionNumber,
+        summaryMarkdown: input.revision.summaryMarkdown,
+        items: input.items.map((item) => ({
+            id: item.id,
+            sequence: item.sequence,
+            description: item.description,
+            status: 'pending',
+            createdAt: item.createdAt,
+        })),
+        createdByKind: input.revision.createdByKind,
+        createdAt: input.revision.createdAt,
+        ...(input.revision.previousRevisionId ? { previousRevisionId: input.revision.previousRevisionId } : {}),
+        ...(input.revision.supersededAt ? { supersededAt: input.revision.supersededAt } : {}),
+    };
+}
+
+function toPlanPhaseView(input: {
+    phase: PlanPhaseRecord;
+    revisions: PlanPhaseRevisionRecord[];
+    revisionItems: PlanPhaseRevisionItemRecord[];
+    advancedSnapshot: PlanAdvancedSnapshotView | undefined;
+}): PlanPhaseRecordView {
+    const itemsByRevisionId = new Map<string, PlanPhaseRevisionItemRecord[]>();
+    for (const item of input.revisionItems) {
+        const items = itemsByRevisionId.get(item.planPhaseRevisionId) ?? [];
+        items.push(item);
+        itemsByRevisionId.set(item.planPhaseRevisionId, items);
+    }
+
+    const outline = input.advancedSnapshot?.phases.find((phase) => phase.id === input.phase.phaseOutlineId);
+
+    return {
+        id: input.phase.id,
+        planId: input.phase.planId,
+        planRevisionId: input.phase.planRevisionId,
+        variantId: input.phase.variantId,
+        phaseOutlineId: input.phase.phaseOutlineId,
+        phaseSequence: input.phase.phaseSequence,
+        title: input.phase.title,
+        goalMarkdown: outline?.goalMarkdown ?? input.phase.goalMarkdown,
+        exitCriteriaMarkdown: outline?.exitCriteriaMarkdown ?? input.phase.exitCriteriaMarkdown,
+        status: input.phase.status,
+        currentRevisionId: input.phase.currentRevisionId,
+        currentRevisionNumber: input.phase.currentRevisionNumber,
+        ...(input.phase.approvedRevisionId ? { approvedRevisionId: input.phase.approvedRevisionId } : {}),
+        ...(input.phase.approvedRevisionNumber !== undefined
+            ? { approvedRevisionNumber: input.phase.approvedRevisionNumber }
+            : {}),
+        summaryMarkdown: input.phase.summaryMarkdown,
+        items: input.phase.items,
+        createdAt: input.phase.createdAt,
+        updatedAt: input.phase.updatedAt,
+        ...(input.phase.approvedAt ? { approvedAt: input.phase.approvedAt } : {}),
+        ...(input.phase.implementedAt ? { implementedAt: input.phase.implementedAt } : {}),
+        ...(input.phase.implementationRunId ? { implementationRunId: input.phase.implementationRunId } : {}),
+        ...(input.phase.orchestratorRunId ? { orchestratorRunId: input.phase.orchestratorRunId } : {}),
+        revisions: input.revisions.map((revision) =>
+            toPlanPhaseRevisionView({
+                revision,
+                items: itemsByRevisionId.get(revision.id) ?? [],
+            })
+        ),
+    };
+}
+
+function resolveNextExpandablePhaseOutlineId(input: {
+    plan: PlanViewProjection['plan'];
+    phaseViews: PlanPhaseRecordView[];
+}): string | undefined {
+    const roadmapPhases = input.plan.advancedSnapshot?.phases ?? [];
+    if (roadmapPhases.length === 0) {
+        return undefined;
+    }
+
+    const phaseByOutlineId = new Map(input.phaseViews.map((phase) => [phase.phaseOutlineId, phase]));
+    for (const roadmapPhase of roadmapPhases) {
+        const phase = phaseByOutlineId.get(roadmapPhase.id);
+        if (!phase) {
+            return roadmapPhase.id;
+        }
+
+        if (phase.status === 'cancelled' || phase.status === 'draft' || phase.status === 'approved' || phase.status === 'implementing') {
+            return undefined;
+        }
+    }
+
+    return undefined;
+}
+
 function toPlanViewFromProjection(projection: PlanViewProjection | null): PlanRecordView | null {
     if (!projection) {
         return null;
@@ -104,6 +206,36 @@ function toPlanViewFromProjection(projection: PlanViewProjection | null): PlanRe
         ...(plan.advancedSnapshot ? { advancedSnapshot: plan.advancedSnapshot } : {}),
     });
     const workersByBatchId = groupWorkersByBatchId(researchWorkers);
+    const phaseRevisionsByPhaseId = new Map<string, PlanPhaseRevisionRecord[]>();
+    for (const revision of projection.phaseRevisions) {
+        const revisions = phaseRevisionsByPhaseId.get(revision.planPhaseId) ?? [];
+        revisions.push(revision);
+        phaseRevisionsByPhaseId.set(revision.planPhaseId, revisions);
+    }
+    const phaseItemRevisionIds = new Set(projection.phaseRevisions.map((revision) => revision.id));
+    const phaseRevisionItems = projection.phaseRevisionItems.filter((item) => phaseItemRevisionIds.has(item.planPhaseRevisionId));
+    const phaseViews = projection.phases
+        .slice()
+        .sort((left, right) => left.phaseSequence - right.phaseSequence)
+        .map((phase) =>
+            toPlanPhaseView({
+                phase,
+                revisions: phaseRevisionsByPhaseId.get(phase.id) ?? [],
+                revisionItems: phaseRevisionItems.filter((item) =>
+                    (phaseRevisionsByPhaseId.get(phase.id) ?? []).some((revision) => revision.id === item.planPhaseRevisionId)
+                ),
+                advancedSnapshot: plan.advancedSnapshot,
+            })
+        );
+    const hasOpenPhaseDraft = phaseViews.some(
+        (phase) => phase.status === 'draft' || phase.status === 'approved' || phase.status === 'implementing'
+    );
+    const nextExpandablePhaseOutlineId = !hasOpenPhaseDraft
+        ? resolveNextExpandablePhaseOutlineId({
+              plan,
+              phaseViews,
+          })
+        : undefined;
 
     return {
         id: plan.id,
@@ -116,6 +248,9 @@ function toPlanViewFromProjection(projection: PlanViewProjection | null): PlanRe
         sourcePrompt: plan.sourcePrompt,
         summaryMarkdown: plan.summaryMarkdown,
         ...(plan.advancedSnapshot ? { advancedSnapshot: plan.advancedSnapshot } : {}),
+        phases: phaseViews,
+        ...(nextExpandablePhaseOutlineId ? { nextExpandablePhaseOutlineId } : {}),
+        hasOpenPhaseDraft,
         researchBatches: researchBatches.map((batch) => toPlanResearchBatchView(batch, workersByBatchId)),
         evidenceAttachments: evidenceAttachments.map((attachment) => toPlanEvidenceAttachmentView(attachment)),
         researchRecommendation,

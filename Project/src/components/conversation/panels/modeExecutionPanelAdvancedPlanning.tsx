@@ -105,10 +105,9 @@ export function AdvancedPlanningArtifactSections({ snapshot }: AdvancedPlanningA
             </section>
             <section className='space-y-2'>
                 <div>
-                    <p className='text-sm font-semibold'>Phase Outline</p>
+                    <p className='text-sm font-semibold'>Roadmap</p>
                     <p className='text-muted-foreground text-xs'>
-                        The outline stays broad in this slice so the plan can stay structured without becoming a worker
-                        workflow.
+                        Keep the approved high-level roadmap visible while phase detail expands underneath it.
                     </p>
                 </div>
                 <div className='space-y-2'>
@@ -281,9 +280,10 @@ export function AdvancedPlanningEditor({
             <section className='space-y-2'>
                 <div className='flex items-center justify-between gap-3'>
                     <div>
-                        <p className='text-sm font-semibold'>Phase Outline</p>
+                        <p className='text-sm font-semibold'>Roadmap</p>
                         <p className='text-muted-foreground text-xs'>
-                            Add, remove, and reorder broad phases without turning this into a worker workflow.
+                            Add, remove, and reorder the approved high-level phases without turning this into a
+                            worker workflow.
                         </p>
                     </div>
                     <Button type='button' size='sm' variant='outline' disabled={isPlanMutating} onClick={addPhase}>

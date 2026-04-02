@@ -25,6 +25,8 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
         sessionId: input.input.sessionId,
         ...(input.input.planId ? { planId: input.input.planId } : {}),
         ...(input.input.planRevisionId ? { planRevisionId: input.input.planRevisionId } : {}),
+        ...(input.input.planPhaseId ? { planPhaseId: input.input.planPhaseId } : {}),
+        ...(input.input.planPhaseRevisionId ? { planPhaseRevisionId: input.input.planPhaseRevisionId } : {}),
         prompt: input.input.prompt,
         providerId: input.prepared.activeTarget.providerId,
         modelId: input.prepared.activeTarget.modelId,
@@ -146,6 +148,8 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
                 workspaceFingerprint: input.input.workspaceFingerprint ?? null,
                 planId: input.input.planId ?? null,
                 planRevisionId: input.input.planRevisionId ?? null,
+                planPhaseId: input.input.planPhaseId ?? null,
+                planPhaseRevisionId: input.input.planPhaseRevisionId ?? null,
                 mode: {
                     id: input.prepared.resolvedMode.mode.id,
                     label: input.prepared.resolvedMode.mode.label,
@@ -172,6 +176,8 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
                 profileId: input.input.profileId,
                 planId: input.input.planId ?? null,
                 planRevisionId: input.input.planRevisionId ?? null,
+                planPhaseId: input.input.planPhaseId ?? null,
+                planPhaseRevisionId: input.input.planPhaseRevisionId ?? null,
             },
             ...eventMetadata({
                 requestId: input.input.requestId,

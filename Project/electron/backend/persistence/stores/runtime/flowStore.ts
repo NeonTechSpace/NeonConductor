@@ -57,7 +57,7 @@ type FlowInstanceJoinedRow = FlowInstanceRow & Pick<
 
 function parseJsonValue(input: { value: string; label: string }): unknown {
     try {
-        return JSON.parse(input.value) as T;
+        return JSON.parse(input.value);
     } catch {
         throw new DataCorruptionError(`Invalid "${input.label}" in persistence row: expected valid JSON.`);
     }

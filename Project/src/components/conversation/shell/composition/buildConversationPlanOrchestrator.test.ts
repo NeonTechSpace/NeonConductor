@@ -55,6 +55,7 @@ function createPlanRecord(): PlanRecordView {
         ],
         followUps: [],
         history: [],
+        hasOpenPhaseDraft: false,
         items: [
             {
                 id: 'step_1',
@@ -73,6 +74,16 @@ function createPlanViewMutationMock() {
     return {
         isPending: false,
         mutateAsync: vi.fn(),
+    };
+}
+
+function createPhaseMutationMocks() {
+    return {
+        planExpandNextPhaseMutation: createPlanViewMutationMock(),
+        planRevisePhaseMutation: createPlanViewMutationMock(),
+        planApprovePhaseMutation: createPlanViewMutationMock(),
+        planImplementPhaseMutation: createPlanViewMutationMock(),
+        planCancelPhaseMutation: createPlanViewMutationMock(),
     };
 }
 
@@ -165,6 +176,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            ...createPhaseMutationMocks(),
             planEnterAdvancedPlanningMutation: createPlanViewMutationMock(),
             planCreateVariantMutation: createPlanViewMutationMock(),
             planActivateVariantMutation: createPlanViewMutationMock(),
@@ -235,6 +247,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            ...createPhaseMutationMocks(),
             planEnterAdvancedPlanningMutation: createPlanViewMutationMock(),
             planCreateVariantMutation: createPlanViewMutationMock(),
             planActivateVariantMutation: createPlanViewMutationMock(),
@@ -310,6 +323,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            ...createPhaseMutationMocks(),
             planEnterAdvancedPlanningMutation: createPlanViewMutationMock(),
             planCreateVariantMutation: createPlanViewMutationMock(),
             planActivateVariantMutation: createPlanViewMutationMock(),
@@ -398,6 +412,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            ...createPhaseMutationMocks(),
             planEnterAdvancedPlanningMutation: createPlanViewMutationMock(),
             planCreateVariantMutation,
             planActivateVariantMutation: createPlanViewMutationMock(),
@@ -510,6 +525,7 @@ describe('buildConversationPlanOrchestrator', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            ...createPhaseMutationMocks(),
             planEnterAdvancedPlanningMutation: createPlanViewMutationMock(),
             planCreateVariantMutation: createPlanViewMutationMock(),
             planActivateVariantMutation: createPlanViewMutationMock(),
@@ -597,6 +613,7 @@ describe('buildConversationPlanOrchestrator', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            ...createPhaseMutationMocks(),
             planEnterAdvancedPlanningMutation: createPlanViewMutationMock(),
             planCreateVariantMutation: createPlanViewMutationMock(),
             planActivateVariantMutation: createPlanViewMutationMock(),

@@ -4,14 +4,19 @@ import type {
     PlanAbortResearchBatchInput,
     PlanActivateVariantInput,
     PlanAnswerQuestionInput,
+    PlanApprovePhaseInput,
     PlanCancelInput,
+    PlanCancelPhaseInput,
     PlanCreateVariantInput,
+    PlanExpandNextPhaseInput,
     PlanGenerateDraftInput,
     PlanImplementInput,
+    PlanImplementPhaseInput,
     PlanEnterAdvancedPlanningInput,
     PlanRecordView,
     PlanRaiseFollowUpInput,
     PlanReviseInput,
+    PlanRevisePhaseInput,
     PlanResolveFollowUpInput,
     PlanResumeFromRevisionInput,
     PlanStartResearchBatchInput,
@@ -23,6 +28,13 @@ import { enterAdvancedPlanning as enterAdvancedPlanningFlow } from '@/app/backen
 import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { implementApprovedPlan } from '@/app/backend/runtime/services/plan/implementation';
 import { answerPlanQuestion, cancelPlan, revisePlan } from '@/app/backend/runtime/services/plan/lifecycle';
+import {
+    approvePhase as approvePlanPhase,
+    cancelPhase as cancelPlanPhase,
+    expandNextPhase as expandNextPlanPhase,
+    implementPhase as implementApprovedPlanPhase,
+    revisePhase as revisePlanPhase,
+} from '@/app/backend/runtime/services/plan/phaseService';
 import {
     activatePlanVariant,
     createPlanVariant,
@@ -110,6 +122,118 @@ export class PlanService {
                 message: 'Rejected plan.revise request.',
                 profileId: input.profileId,
                 planId: input.planId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async expandNextPhase(
+        input: PlanExpandNextPhaseInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await expandNextPlanPhase(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.expandNextPhase request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async revisePhase(
+        input: PlanRevisePhaseInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await revisePlanPhase(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.revisePhase request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                phaseId: input.phaseId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async approvePhase(
+        input: PlanApprovePhaseInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await approvePlanPhase(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.approvePhase request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async implementPhase(input: PlanImplementPhaseInput): Promise<
+        Result<
+            | { found: false }
+            | { found: true; started: true; mode: 'agent.code'; runId: EntityId<'run'>; plan: PlanRecordView }
+            | {
+                  found: true;
+                  started: true;
+                  mode: 'orchestrator.orchestrate';
+                  orchestratorRunId: EntityId<'orch'>;
+                  plan: PlanRecordView;
+              },
+            PlanServiceError
+        >
+    > {
+        const result = await implementApprovedPlanPhase(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.implementPhase request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async cancelPhase(
+        input: PlanCancelPhaseInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await cancelPlanPhase(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.cancelPhase request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                phaseId: input.phaseId,
                 code: result.error.code,
                 error: result.error.message,
             });

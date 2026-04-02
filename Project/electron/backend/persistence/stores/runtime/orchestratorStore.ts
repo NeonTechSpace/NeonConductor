@@ -17,6 +17,8 @@ function mapOrchestratorRunRecord(row: {
     session_id: string;
     plan_id: string;
     plan_revision_id: string;
+    plan_phase_id: string | null;
+    plan_phase_revision_id: string | null;
     status: string;
     execution_strategy: string;
     active_step_index: number | null;
@@ -33,6 +35,8 @@ function mapOrchestratorRunRecord(row: {
         sessionId: parseEntityId(row.session_id, 'orchestrator_runs.session_id', 'sess'),
         planId: parseEntityId(row.plan_id, 'orchestrator_runs.plan_id', 'plan'),
         planRevisionId: parseEntityId(row.plan_revision_id, 'orchestrator_runs.plan_revision_id', 'prev'),
+        ...(row.plan_phase_id ? { planPhaseId: row.plan_phase_id } : {}),
+        ...(row.plan_phase_revision_id ? { planPhaseRevisionId: row.plan_phase_revision_id } : {}),
         status: parseEnumValue(row.status, 'orchestrator_runs.status', orchestratorRunStatuses),
         executionStrategy: parseEnumValue(
             row.execution_strategy,
@@ -91,6 +95,8 @@ export class OrchestratorStore {
         sessionId: EntityId<'sess'>;
         planId: EntityId<'plan'>;
         planRevisionId: EntityId<'prev'>;
+        planPhaseId?: string;
+        planPhaseRevisionId?: string;
         executionStrategy: OrchestratorExecutionStrategy;
         stepDescriptions: string[];
     }): Promise<{ run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }> {
@@ -106,6 +112,8 @@ export class OrchestratorStore {
                 session_id: input.sessionId,
                 plan_id: input.planId,
                 plan_revision_id: input.planRevisionId,
+                plan_phase_id: input.planPhaseId ?? null,
+                plan_phase_revision_id: input.planPhaseRevisionId ?? null,
                 status: 'running',
                 execution_strategy: input.executionStrategy,
                 active_step_index: null,

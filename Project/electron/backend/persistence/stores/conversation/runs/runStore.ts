@@ -17,6 +17,8 @@ export interface CreateRunInput {
     sessionId: string;
     planId?: EntityId<'plan'>;
     planRevisionId?: EntityId<'prev'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
     prompt: string;
     providerId: RuntimeProviderId;
     modelId: string;
@@ -60,6 +62,8 @@ export class RunStore {
                 profile_id: input.profileId,
                 plan_id: input.planId ?? null,
                 plan_revision_id: input.planRevisionId ?? null,
+                plan_phase_id: input.planPhaseId ?? null,
+                plan_phase_revision_id: input.planPhaseRevisionId ?? null,
                 prompt: input.prompt,
                 status: 'running',
                 provider_id: input.providerId,

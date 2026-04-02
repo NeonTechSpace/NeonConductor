@@ -36,6 +36,8 @@ export interface StartRunInput {
     sessionId: EntityId<'sess'>;
     planId?: EntityId<'plan'>;
     planRevisionId?: EntityId<'prev'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
     prompt: string;
     attachments?: ComposerImageAttachmentInput[];
     topLevelTab: TopLevelTab;

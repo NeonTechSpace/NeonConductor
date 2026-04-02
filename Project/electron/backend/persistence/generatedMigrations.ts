@@ -361,6 +361,8 @@ CREATE TABLE runs (
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     plan_id TEXT NULL REFERENCES plan_records(id) ON DELETE SET NULL,
     plan_revision_id TEXT NULL REFERENCES plan_revisions(id) ON DELETE SET NULL,
+    plan_phase_id TEXT NULL REFERENCES plan_phases(id) ON DELETE SET NULL,
+    plan_phase_revision_id TEXT NULL REFERENCES plan_phase_revisions(id) ON DELETE SET NULL,
     prompt TEXT NOT NULL,
     status TEXT NOT NULL,
     provider_id TEXT NULL REFERENCES providers(id) ON DELETE SET NULL,
@@ -920,6 +922,55 @@ CREATE TABLE plan_revisions (
     UNIQUE (plan_id, revision_number)
 );
 
+CREATE TABLE plan_phases (
+    id TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    plan_revision_id TEXT NOT NULL,
+    plan_variant_id TEXT NOT NULL,
+    phase_outline_id TEXT NOT NULL,
+    phase_sequence INTEGER NOT NULL CHECK (phase_sequence > 0),
+    title TEXT NOT NULL,
+    goal_markdown TEXT NOT NULL,
+    exit_criteria_markdown TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('not_started', 'draft', 'approved', 'implementing', 'implemented', 'cancelled')),
+    current_revision_id TEXT NOT NULL,
+    approved_revision_id TEXT NULL,
+    implementation_run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    orchestrator_run_id TEXT NULL REFERENCES orchestrator_runs(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    approved_at TEXT NULL,
+    implemented_at TEXT NULL,
+    FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_revision_id) REFERENCES plan_revisions(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_variant_id) REFERENCES plan_variants(id) ON DELETE CASCADE,
+    UNIQUE (plan_id, plan_revision_id, phase_outline_id),
+    UNIQUE (plan_id, plan_revision_id, phase_sequence)
+);
+
+CREATE TABLE plan_phase_revisions (
+    id TEXT PRIMARY KEY,
+    plan_phase_id TEXT NOT NULL,
+    revision_number INTEGER NOT NULL CHECK (revision_number > 0),
+    summary_markdown TEXT NOT NULL,
+    created_by_kind TEXT NOT NULL CHECK (created_by_kind IN ('expand', 'revise')),
+    created_at TEXT NOT NULL,
+    previous_revision_id TEXT NULL,
+    superseded_at TEXT NULL,
+    FOREIGN KEY (plan_phase_id) REFERENCES plan_phases(id) ON DELETE CASCADE,
+    UNIQUE (plan_phase_id, revision_number)
+);
+
+CREATE TABLE plan_phase_revision_items (
+    id TEXT PRIMARY KEY,
+    plan_phase_revision_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    description TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (plan_phase_revision_id) REFERENCES plan_phase_revisions(id) ON DELETE CASCADE,
+    UNIQUE (plan_phase_revision_id, sequence)
+);
+
 CREATE TABLE plan_revision_advanced_snapshots (
     plan_revision_id TEXT PRIMARY KEY,
     evidence_markdown TEXT NOT NULL,
@@ -1075,6 +1126,8 @@ CREATE TABLE orchestrator_runs (
     session_id TEXT NOT NULL,
     plan_id TEXT NOT NULL,
     plan_revision_id TEXT NOT NULL,
+    plan_phase_id TEXT NULL REFERENCES plan_phases(id) ON DELETE SET NULL,
+    plan_phase_revision_id TEXT NULL REFERENCES plan_phase_revisions(id) ON DELETE SET NULL,
     status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'aborted', 'failed')),
     execution_strategy TEXT NOT NULL CHECK (execution_strategy IN ('delegate', 'parallel')),
     active_step_index INTEGER NULL,
@@ -1512,6 +1565,18 @@ CREATE INDEX idx_memory_graph_edges_profile_target
 
 CREATE INDEX idx_plan_records_profile_session
     ON plan_records(profile_id, session_id, created_at DESC);
+
+CREATE INDEX idx_plan_phases_plan_revision_sequence
+    ON plan_phases(plan_id, plan_revision_id, phase_sequence);
+
+CREATE INDEX idx_plan_phases_plan_status_updated_at
+    ON plan_phases(plan_id, status, updated_at DESC);
+
+CREATE INDEX idx_plan_phase_revisions_phase_revision
+    ON plan_phase_revisions(plan_phase_id, revision_number DESC);
+
+CREATE INDEX idx_plan_phase_revision_items_revision_sequence
+    ON plan_phase_revision_items(plan_phase_revision_id, sequence);
 
 CREATE INDEX idx_plan_research_batches_plan_created_at
     ON plan_research_batches(plan_id, created_at DESC);

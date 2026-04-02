@@ -1,17 +1,22 @@
 import {
     planAnswerQuestionInputSchema,
     planApproveInputSchema,
+    planApprovePhaseInputSchema,
     planCancelInputSchema,
+    planCancelPhaseInputSchema,
     planActivateVariantInputSchema,
     planCreateVariantInputSchema,
     planAbortResearchBatchInputSchema,
+    planExpandNextPhaseInputSchema,
     planGenerateDraftInputSchema,
     planGetActiveInputSchema,
     planGetInputSchema,
     planImplementInputSchema,
+    planImplementPhaseInputSchema,
     planEnterAdvancedPlanningInputSchema,
     planRaiseFollowUpInputSchema,
     planReviseInputSchema,
+    planRevisePhaseInputSchema,
     planResolveFollowUpInputSchema,
     planResumeFromRevisionInputSchema,
     planStartResearchBatchInputSchema,
@@ -42,6 +47,26 @@ export const planRouter = router({
     }),
     revise: publicProcedure.input(planReviseInputSchema).mutation(async ({ input }) => {
         const result = await planService.revise(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    expandNextPhase: publicProcedure.input(planExpandNextPhaseInputSchema).mutation(async ({ input }) => {
+        const result = await planService.expandNextPhase(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    revisePhase: publicProcedure.input(planRevisePhaseInputSchema).mutation(async ({ input }) => {
+        const result = await planService.revisePhase(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    approvePhase: publicProcedure.input(planApprovePhaseInputSchema).mutation(async ({ input }) => {
+        const result = await planService.approvePhase(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    implementPhase: publicProcedure.input(planImplementPhaseInputSchema).mutation(async ({ input }) => {
+        const result = await planService.implementPhase(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    cancelPhase: publicProcedure.input(planCancelPhaseInputSchema).mutation(async ({ input }) => {
+        const result = await planService.cancelPhase(input);
         return unwrapResultOrThrow(result, toPlanTrpcError);
     }),
     enterAdvancedPlanning: publicProcedure.input(planEnterAdvancedPlanningInputSchema).mutation(async ({ input }) => {

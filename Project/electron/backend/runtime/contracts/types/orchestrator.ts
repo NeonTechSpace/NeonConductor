@@ -9,6 +9,8 @@ import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts/types/se
 
 export interface OrchestratorStartInput extends ProfileInput {
     planId: EntityId<'plan'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
     runtimeOptions: RuntimeRunOptions;
     executionStrategy?: OrchestratorExecutionStrategy;
     providerId?: RuntimeProviderId;
@@ -44,6 +46,8 @@ export interface OrchestratorRunView {
     sessionId: EntityId<'sess'>;
     planId: EntityId<'plan'>;
     planRevisionId: EntityId<'prev'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
     status: OrchestratorRunStatus;
     executionStrategy: OrchestratorExecutionStrategy;
     activeStepIndex?: number;

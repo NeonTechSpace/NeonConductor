@@ -73,6 +73,62 @@ export interface CreatePlanImplementationControllerInput {
         },
         ConversationActivePlanData
     >;
+    planExpandNextPhaseMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+        },
+        ConversationActivePlanData
+    >;
+    planRevisePhaseMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            phaseId: string;
+            phaseRevisionId: string;
+            summaryMarkdown: string;
+            items: Array<{ description: string }>;
+        },
+        ConversationActivePlanData
+    >;
+    planApprovePhaseMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            phaseId: string;
+            phaseRevisionId: string;
+        },
+        ConversationActivePlanData
+    >;
+    planImplementPhaseMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            phaseId: string;
+            phaseRevisionId: string;
+            runtimeOptions: RuntimeRunOptions;
+            providerId?: RuntimeProviderId;
+            modelId?: string;
+            workspaceFingerprint?: string;
+            executionStrategy?: OrchestratorExecutionStrategy;
+        },
+        | { found: false }
+        | { found: true; plan: ConversationActivePlanRecord }
+        | {
+              found: true;
+              plan: ConversationActivePlanRecord;
+              started: true;
+              mode: 'agent.code' | 'orchestrator.orchestrate';
+          }
+    >;
+    planCancelPhaseMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            phaseId: string;
+        },
+        ConversationActivePlanData
+    >;
     planEnterAdvancedPlanningMutation: MutationLike<
         {
             profileId: string;
@@ -192,6 +248,22 @@ export interface ConversationPlanActionController {
         items: string[],
         advancedSnapshot?: PlanAdvancedSnapshotInput
     ) => void;
+    onExpandNextPhase: (planId: EntityId<'plan'>) => void;
+    onRevisePhase: (
+        planId: EntityId<'plan'>,
+        phaseId: string,
+        phaseRevisionId: string,
+        summaryMarkdown: string,
+        items: string[]
+    ) => void;
+    onApprovePhase: (planId: EntityId<'plan'>, phaseId: string, phaseRevisionId: string) => void;
+    onImplementPhase: (
+        planId: EntityId<'plan'>,
+        phaseId: string,
+        phaseRevisionId: string,
+        executionStrategy: OrchestratorExecutionStrategy
+    ) => void;
+    onCancelPhase: (planId: EntityId<'plan'>, phaseId: string) => void;
     onEnterAdvancedPlanning: (planId: EntityId<'plan'>) => void;
     onCreateVariant: (planId: EntityId<'plan'>, sourceRevisionId: EntityId<'prev'>) => void;
     onActivateVariant: (planId: EntityId<'plan'>, variantId: EntityId<'pvar'>) => void;
@@ -235,6 +307,11 @@ export function createPlanImplementationController(
             input.planAnswerMutation.isPending ||
             input.planStartResearchBatchMutation.isPending ||
             input.planReviseMutation.isPending ||
+            input.planExpandNextPhaseMutation.isPending ||
+            input.planRevisePhaseMutation.isPending ||
+            input.planApprovePhaseMutation.isPending ||
+            input.planImplementPhaseMutation.isPending ||
+            input.planCancelPhaseMutation.isPending ||
             input.planEnterAdvancedPlanningMutation.isPending ||
             input.planCreateVariantMutation.isPending ||
             input.planActivateVariantMutation.isPending ||
@@ -310,6 +387,119 @@ export function createPlanImplementationController(
                     },
                     onError: input.onError,
                     errorPrefix: 'Plan revision failed',
+                });
+            });
+        },
+        onExpandNextPhase: (planId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planExpandNextPhaseMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Phase expansion failed',
+                });
+            });
+        },
+        onRevisePhase: (planId, phaseId, phaseRevisionId, summaryMarkdown, items) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planRevisePhaseMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                phaseId,
+                                phaseRevisionId,
+                                summaryMarkdown,
+                                items: items.map((description) => ({ description })),
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Phase revision failed',
+                });
+            });
+        },
+        onApprovePhase: (planId, phaseId, phaseRevisionId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planApprovePhaseMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                phaseId,
+                                phaseRevisionId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Phase approval failed',
+                });
+            });
+        },
+        onImplementPhase: (planId, phaseId, phaseRevisionId, executionStrategy) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planImplementPhaseMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                phaseId,
+                                phaseRevisionId,
+                                runtimeOptions: input.runtimeOptions,
+                                ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
+                                ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
+                                ...(input.workspaceFingerprint
+                                    ? { workspaceFingerprint: input.workspaceFingerprint }
+                                    : {}),
+                                executionStrategy,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(
+                            result.found
+                                ? {
+                                      found: true,
+                                      plan: result.plan,
+                                  }
+                                : { found: false }
+                        );
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Phase implementation failed',
+                });
+            });
+        },
+        onCancelPhase: (planId, phaseId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planCancelPhaseMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                phaseId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Phase cancel failed',
                 });
             });
         },

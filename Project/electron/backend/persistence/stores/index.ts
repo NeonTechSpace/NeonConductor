@@ -28,6 +28,7 @@ export { orchestratorStore } from '@/app/backend/persistence/stores/runtime/orch
 export { permissionStore } from '@/app/backend/persistence/stores/runtime/permissionStore';
 export { permissionPolicyOverrideStore } from '@/app/backend/persistence/stores/runtime/permissionPolicyOverrideStore';
 export { planStore } from '@/app/backend/persistence/stores/runtime/planStore';
+export { planPhaseStore } from '@/app/backend/persistence/stores/runtime/planPhaseStore';
 export { profileStore } from '@/app/backend/persistence/stores/profile/profileStore';
 export { profileContextSettingsStore } from '@/app/backend/persistence/stores/profile/profileContextSettingsStore';
 export { providerSecretStore } from '@/app/backend/persistence/stores/profile/providerSecretStore';

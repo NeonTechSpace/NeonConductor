@@ -242,6 +242,252 @@ export async function appendPlanApprovedEvent(input: {
     );
 }
 
+export async function appendPlanPhaseExpandedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.expanded',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
+export async function appendPlanPhaseRevisedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.revised',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
+export async function appendPlanPhaseApprovedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.approved',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
+export async function appendPlanPhaseImplementationStartedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    mode: 'agent.code' | 'orchestrator.orchestrate';
+    runId?: EntityId<'run'>;
+    orchestratorRunId?: EntityId<'orch'>;
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.implementation.started',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                mode: input.mode,
+                ...(input.runId ? { runId: input.runId } : {}),
+                ...(input.orchestratorRunId ? { orchestratorRunId: input.orchestratorRunId } : {}),
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
+export async function appendPlanPhaseImplementationCompletedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    mode?: 'agent.code' | 'orchestrator.orchestrate';
+    runId?: EntityId<'run'>;
+    orchestratorRunId?: EntityId<'orch'>;
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.implementation.completed',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                ...(input.mode ? { mode: input.mode } : {}),
+                ...(input.runId ? { runId: input.runId } : {}),
+                ...(input.orchestratorRunId ? { orchestratorRunId: input.orchestratorRunId } : {}),
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
+export async function appendPlanPhaseImplementationFailedEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    mode?: 'agent.code' | 'orchestrator.orchestrate';
+    errorMessage: string;
+    runId?: EntityId<'run'>;
+    orchestratorRunId?: EntityId<'orch'>;
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.implementation.failed',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                ...(input.mode ? { mode: input.mode } : {}),
+                errorMessage: input.errorMessage,
+                ...(input.runId ? { runId: input.runId } : {}),
+                ...(input.orchestratorRunId ? { orchestratorRunId: input.orchestratorRunId } : {}),
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
+export async function appendPlanPhaseCancelledEvent(input: {
+    profileId: string;
+    planId: EntityId<'plan'>;
+    phaseId: EntityId<'pph'>;
+    phaseRevisionId: EntityId<'pprv'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    phaseTitle: string;
+    revisionNumber: number;
+    previousStatus?: 'draft' | 'approved' | 'implementing';
+    variantId?: EntityId<'pvar'> | undefined;
+}): Promise<void> {
+    await runtimeEventLogService.append(
+        runtimeStatusEvent({
+            entityType: 'plan',
+            domain: 'plan',
+            entityId: input.planId,
+            eventType: 'plan.phase.cancelled',
+            payload: {
+                planId: input.planId,
+                profileId: input.profileId,
+                phaseId: input.phaseId,
+                phaseRevisionId: input.phaseRevisionId,
+                phaseOutlineId: input.phaseOutlineId,
+                phaseSequence: input.phaseSequence,
+                phaseTitle: input.phaseTitle,
+                revisionNumber: input.revisionNumber,
+                ...(input.previousStatus ? { previousStatus: input.previousStatus } : {}),
+                ...(input.variantId ? { variantId: input.variantId } : {}),
+            },
+        })
+    );
+}
+
 export async function appendPlanImplementationStartedEvent(
     input:
         | {

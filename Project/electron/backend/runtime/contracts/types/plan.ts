@@ -53,6 +53,60 @@ export interface PlanAdvancedSnapshotView extends PlanAdvancedSnapshotInput {
     createdAt: string;
 }
 
+export type PlanPhaseStatus = 'not_started' | 'draft' | 'approved' | 'implementing' | 'implemented' | 'cancelled';
+
+export interface PlanPhaseDraftItemInput {
+    description: string;
+}
+
+export interface PlanPhaseRevisionItemView {
+    id: string;
+    sequence: number;
+    description: string;
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted';
+    runId?: EntityId<'run'>;
+    errorMessage?: string;
+    createdAt: string;
+}
+
+export interface PlanPhaseRevisionView {
+    id: string;
+    planPhaseId: string;
+    revisionNumber: number;
+    summaryMarkdown: string;
+    items: PlanPhaseRevisionItemView[];
+    createdByKind: 'expand' | 'revise';
+    createdAt: string;
+    previousRevisionId?: string;
+    supersededAt?: string;
+}
+
+export interface PlanPhaseRecordView {
+    id: string;
+    planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
+    variantId: EntityId<'pvar'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    title: string;
+    goalMarkdown: string;
+    exitCriteriaMarkdown: string;
+    status: PlanPhaseStatus;
+    currentRevisionId: string;
+    currentRevisionNumber: number;
+    approvedRevisionId?: string;
+    approvedRevisionNumber?: number;
+    summaryMarkdown: string;
+    items: PlanPhaseRevisionItemView[];
+    createdAt: string;
+    updatedAt: string;
+    approvedAt?: string;
+    implementedAt?: string;
+    implementationRunId?: EntityId<'run'>;
+    orchestratorRunId?: EntityId<'orch'>;
+    revisions?: PlanPhaseRevisionView[];
+}
+
 export type PlanResearchBatchStatus = 'running' | 'completed' | 'failed' | 'aborted';
 
 export type PlanResearchWorkerStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted';
@@ -201,6 +255,34 @@ export interface PlanGenerateDraftInput extends PlanGetInput {
     workspaceFingerprint?: string;
 }
 
+export type PlanExpandNextPhaseInput = PlanGetInput;
+
+export interface PlanRevisePhaseInput extends PlanGetInput {
+    phaseId: string;
+    phaseRevisionId: string;
+    summaryMarkdown: string;
+    items: PlanPhaseDraftItemInput[];
+}
+
+export interface PlanApprovePhaseInput extends PlanGetInput {
+    phaseId: string;
+    phaseRevisionId: string;
+}
+
+export interface PlanImplementPhaseInput extends PlanGetInput {
+    phaseId: string;
+    phaseRevisionId: string;
+    runtimeOptions: RuntimeRunOptions;
+    executionStrategy?: OrchestratorExecutionStrategy;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
+    workspaceFingerprint?: string;
+}
+
+export interface PlanCancelPhaseInput extends PlanGetInput {
+    phaseId: string;
+}
+
 export type PlanCancelInput = PlanGetInput;
 
 export interface PlanVariantView {
@@ -252,10 +334,22 @@ export interface PlanHistoryEntry {
         | 'variant_activated'
         | 'plan_resumed'
         | 'follow_up_raised'
-        | 'follow_up_resolved';
+        | 'follow_up_resolved'
+        | 'phase_expanded'
+        | 'phase_revision_created'
+        | 'phase_approved'
+        | 'phase_implementation_started'
+        | 'phase_implementation_completed'
+        | 'phase_implementation_failed'
+        | 'phase_cancelled';
     title: string;
     detail?: string;
     createdAt: string;
+    phaseId?: string | undefined;
+    phaseRevisionId?: string | undefined;
+    phaseSequence?: number | undefined;
+    phaseTitle?: string | undefined;
+    phaseRevisionNumber?: number | undefined;
     revisionId?: EntityId<'prev'> | undefined;
     revisionNumber?: number | undefined;
     variantId?: EntityId<'pvar'> | undefined;
@@ -299,6 +393,9 @@ export interface PlanRecordView {
     sourcePrompt: string;
     summaryMarkdown: string;
     advancedSnapshot?: PlanAdvancedSnapshotView;
+    phases?: PlanPhaseRecordView[];
+    nextExpandablePhaseOutlineId?: string;
+    hasOpenPhaseDraft: boolean;
     researchBatches?: PlanResearchBatchView[];
     evidenceAttachments?: PlanEvidenceAttachmentView[];
     researchRecommendation?: PlanResearchRecommendationView;

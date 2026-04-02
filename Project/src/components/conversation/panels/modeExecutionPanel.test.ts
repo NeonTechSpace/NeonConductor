@@ -3,11 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ModeExecutionPanel } from '@/web/components/conversation/panels/modeExecutionPanel';
+import { PlanPhaseDetailSection } from '@/web/components/conversation/panels/modeExecutionPanelPhaseSections';
 import {
     canGenerateDraft,
     hasUnansweredRequiredPlanQuestions,
     resolveModeExecutionDraftState,
     resolveModeExecutionPlanArtifactState,
+    resolveModeExecutionPlanPhaseState,
     resolveModeExecutionPlanPanelMode,
     resolveModeExecutionOrchestratorPanelState,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
@@ -30,6 +32,11 @@ function createActionController() {
         onApprovePlan: vi.fn(),
         onImplementPlan: vi.fn(),
         onAbortOrchestrator: vi.fn(),
+        onExpandNextPhase: vi.fn(),
+        onRevisePhase: vi.fn(),
+        onApprovePhase: vi.fn(),
+        onImplementPhase: vi.fn(),
+        onCancelPhase: vi.fn(),
     };
 }
 
@@ -217,6 +224,82 @@ describe('resolveModeExecutionDraftState', () => {
         );
     });
 
+    it('projects the open phase detail from the approved advanced roadmap', () => {
+        const phaseState = resolveModeExecutionPlanPhaseState({
+            activePlan: {
+                id: 'plan_1',
+                status: 'approved',
+                planningDepth: 'advanced',
+                summaryMarkdown: 'Approved summary',
+                sourcePrompt: 'Ship the phase detail lane.',
+                currentRevisionId: 'prev_2',
+                currentRevisionNumber: 2,
+                approvedRevisionId: 'prev_1',
+                approvedRevisionNumber: 1,
+                advancedSnapshot: {
+                    evidenceMarkdown: '### Evidence\nReady for phase expansion.',
+                    observationsMarkdown: '- The roadmap is approved.',
+                    rootCauseMarkdown: 'The plan has settled on a stable approach.',
+                    phases: [
+                        {
+                            id: 'phase_1',
+                            sequence: 1,
+                            title: 'Frame the plan',
+                            goalMarkdown: 'Set the direction.',
+                            exitCriteriaMarkdown: 'The plan is ready to detail.',
+                        },
+                        {
+                            id: 'phase_2',
+                            sequence: 2,
+                            title: 'Detail the work',
+                            goalMarkdown: 'Expand the next phase.',
+                            exitCriteriaMarkdown: 'The next phase is ready for execution.',
+                        },
+                    ],
+                },
+                phases: [
+                    {
+                        id: 'phase_record_1',
+                        planId: 'plan_1',
+                        planRevisionId: 'prev_1',
+                        variantId: 'pvar_main',
+                        phaseOutlineId: 'phase_1',
+                        phaseSequence: 1,
+                        title: 'Frame the plan',
+                        goalMarkdown: 'Set the direction.',
+                        exitCriteriaMarkdown: 'The plan is ready to detail.',
+                        status: 'approved',
+                        currentRevisionId: 'phase_rev_1',
+                        currentRevisionNumber: 1,
+                        summaryMarkdown: 'Detailed phase summary',
+                        items: [
+                            {
+                                id: 'phase_item_1',
+                                sequence: 1,
+                                description: 'Detailed phase item',
+                                status: 'pending',
+                            },
+                        ],
+                        createdAt: '2026-04-02T10:00:00.000Z',
+                        updatedAt: '2026-04-02T10:05:00.000Z',
+                    },
+                ],
+            } as never,
+        });
+
+        expect(phaseState).toEqual(
+            expect.objectContaining({
+                hasOpenPhaseDetail: true,
+                canExpandNextPhase: false,
+                currentPhase: expect.objectContaining({
+                    title: 'Frame the plan',
+                    status: 'approved',
+                    summaryMarkdown: 'Detailed phase summary',
+                }),
+            })
+        );
+    });
+
     it('renders orchestrator strategy and delegated worker lane status', () => {
         const html = renderToStaticMarkup(
             createElement(ModeExecutionPanel, {
@@ -381,8 +464,216 @@ describe('resolveModeExecutionDraftState', () => {
         expect(html).toContain('Evidence');
         expect(html).toContain('Observations');
         expect(html).toContain('Root Cause');
-        expect(html).toContain('Phase Outline');
+        expect(html).toContain('Roadmap');
+        expect(html).toContain('Current Phase Detail');
+        expect(html).toContain('No detailed phase is open yet.');
         expect(html).toContain('Frame the plan');
+    });
+
+    it('renders the approved phase detail lane and its action affordances when a phase is open', () => {
+        const html = renderToStaticMarkup(
+            createElement(ModeExecutionPanel, {
+                topLevelTab: 'agent',
+                showPlanSurface: true,
+                showOrchestratorSurface: false,
+                planningDepthSelection: 'advanced',
+                isLoadingPlan: false,
+                actionController: createActionController(),
+                selectedExecutionStrategy: 'delegate',
+                canConfigureExecutionStrategy: false,
+                onPlanningDepthSelectionChange: vi.fn(),
+                onExecutionStrategyChange: vi.fn(),
+                activePlan: {
+                    id: 'plan_1',
+                    status: 'approved',
+                    planningDepth: 'advanced',
+                    summaryMarkdown: 'Approved summary',
+                    sourcePrompt: 'Ship the phase detail lane.',
+                    advancedSnapshot: {
+                        evidenceMarkdown: '### Evidence\nReady for phase expansion.',
+                        observationsMarkdown: '- The roadmap is approved.',
+                        rootCauseMarkdown: 'The plan has settled on a stable approach.',
+                        phases: [
+                            {
+                                id: 'phase_1',
+                                sequence: 1,
+                                title: 'Frame the plan',
+                                goalMarkdown: 'Set the direction.',
+                                exitCriteriaMarkdown: 'The plan is ready to detail.',
+                            },
+                        ],
+                    },
+                    currentRevisionId: 'prev_2',
+                    currentRevisionNumber: 2,
+                    approvedRevisionId: 'prev_1',
+                    approvedRevisionNumber: 1,
+                    questions: [],
+                    items: [],
+                    phases: [
+                        {
+                            id: 'phase_record_1',
+                            planId: 'plan_1',
+                            planRevisionId: 'prev_1',
+                            variantId: 'pvar_main',
+                            phaseOutlineId: 'phase_1',
+                            phaseSequence: 1,
+                            title: 'Frame the plan',
+                            goalMarkdown: 'Set the direction.',
+                            exitCriteriaMarkdown: 'The plan is ready to detail.',
+                            status: 'approved',
+                            currentRevisionId: 'phase_rev_1',
+                            currentRevisionNumber: 1,
+                            summaryMarkdown: 'Detailed phase summary',
+                            items: [
+                                {
+                                    id: 'phase_item_1',
+                                    sequence: 1,
+                                    description: 'Detailed phase item',
+                                    status: 'pending',
+                                },
+                            ],
+                            createdAt: '2026-04-02T10:00:00.000Z',
+                            updatedAt: '2026-04-02T10:05:00.000Z',
+                        },
+                    ],
+                } as never,
+            })
+        );
+
+        expect(html).toContain('Current Phase Detail');
+        expect(html).toContain('Approved');
+        expect(html).toContain('Detailed phase summary');
+        expect(html).toContain('Detailed phase item');
+        expect(html).toContain('Goal');
+        expect(html).toContain('Exit criteria');
+        expect(html).toContain('Revise');
+        expect(html).toContain('Approve');
+        expect(html).toContain('Implement Phase');
+        expect(html).toContain('Cancel');
+    });
+
+    it('offers an expand-next-phase affordance when the advanced roadmap has no open phase detail yet', () => {
+        const html = renderToStaticMarkup(
+            createElement(ModeExecutionPanel, {
+                topLevelTab: 'agent',
+                showPlanSurface: true,
+                showOrchestratorSurface: false,
+                planningDepthSelection: 'advanced',
+                isLoadingPlan: false,
+                actionController: createActionController(),
+                selectedExecutionStrategy: 'delegate',
+                canConfigureExecutionStrategy: false,
+                onPlanningDepthSelectionChange: vi.fn(),
+                onExecutionStrategyChange: vi.fn(),
+                activePlan: {
+                    id: 'plan_1',
+                    status: 'approved',
+                    planningDepth: 'advanced',
+                    summaryMarkdown: 'Approved summary',
+                    sourcePrompt: 'Ship the phase detail lane.',
+                    advancedSnapshot: {
+                        evidenceMarkdown: '### Evidence\nReady for phase expansion.',
+                        observationsMarkdown: '- The roadmap is approved.',
+                        rootCauseMarkdown: 'The plan has settled on a stable approach.',
+                        phases: [
+                            {
+                                id: 'phase_1',
+                                sequence: 1,
+                                title: 'Frame the plan',
+                                goalMarkdown: 'Set the direction.',
+                                exitCriteriaMarkdown: 'The plan is ready to detail.',
+                            },
+                            {
+                                id: 'phase_2',
+                                sequence: 2,
+                                title: 'Detail the work',
+                                goalMarkdown: 'Expand the next phase.',
+                                exitCriteriaMarkdown: 'The next phase is ready for execution.',
+                            },
+                        ],
+                    },
+                    currentRevisionId: 'prev_2',
+                    currentRevisionNumber: 2,
+                    approvedRevisionId: 'prev_1',
+                    approvedRevisionNumber: 1,
+                    questions: [],
+                    items: [],
+                } as never,
+            })
+        );
+
+        expect(html).toContain('Current Phase Detail');
+        expect(html).toContain('Expand Next Phase');
+        expect(html).toContain('No detailed phase is open yet.');
+        expect(html).toContain('Next eligible roadmap phase');
+        expect(html).toContain('Frame the plan');
+    });
+
+    it('renders the phase edit surface when the current phase is opened for revision', () => {
+        const html = renderToStaticMarkup(
+            createElement(PlanPhaseDetailSection, {
+                phaseState: {
+                    roadmapPhases: [
+                        {
+                            id: 'phase_1',
+                            sequence: 1,
+                            title: 'Frame the plan',
+                            goalMarkdown: 'Set the direction.',
+                            exitCriteriaMarkdown: 'The plan is ready to detail.',
+                        },
+                    ],
+                    nextExpandablePhaseOutlineId: undefined,
+                    currentPhase: {
+                        id: 'phase_record_1',
+                        planId: 'plan_1',
+                        planRevisionId: 'prev_1',
+                        variantId: 'pvar_main',
+                        phaseOutlineId: 'phase_1',
+                        phaseSequence: 1,
+                        title: 'Frame the plan',
+                        goalMarkdown: 'Set the direction.',
+                        exitCriteriaMarkdown: 'The plan is ready to detail.',
+                        status: 'draft',
+                        currentRevisionId: 'phase_rev_1',
+                        currentRevisionNumber: 1,
+                        summaryMarkdown: 'Detailed phase summary',
+                        items: [
+                            {
+                                id: 'phase_item_1',
+                                sequence: 1,
+                                description: 'Detailed phase item',
+                                status: 'pending',
+                            },
+                        ],
+                        createdAt: '2026-04-02T10:00:00.000Z',
+                        updatedAt: '2026-04-02T10:05:00.000Z',
+                    },
+                    canExpandNextPhase: false,
+                    hasOpenPhaseDetail: true,
+                },
+                phaseDraftState: {
+                    planId: 'plan_1',
+                    phaseId: 'phase_record_1',
+                    phaseRevisionId: 'phase_rev_1',
+                    summaryDraft: 'Draft phase summary',
+                    itemsDraft: 'Draft step 1\nDraft step 2',
+                },
+                phasePanelMode: 'edit',
+                isPlanMutating: false,
+                onEnterPhaseEditMode: vi.fn(),
+                onPhaseSummaryDraftChange: vi.fn(),
+                onPhaseItemsDraftChange: vi.fn(),
+                onSavePhaseDraft: vi.fn(),
+                onDiscardPhaseEdits: vi.fn(),
+            })
+        );
+
+        expect(html).toContain('Edit Phase Detail');
+        expect(html).toContain('Draft phase summary');
+        expect(html).toContain('Draft step 1');
+        expect(html).toContain('Draft step 2');
+        expect(html).toContain('Save Phase Draft');
+        expect(html).toContain('Discard Edits');
     });
 
     it('renders planner research guidance, worker cards, and evidence attachments for advanced plans', () => {

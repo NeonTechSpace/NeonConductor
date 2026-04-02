@@ -238,6 +238,8 @@ export async function startDelegatedChildLaneRun(input: {
     workspaceFingerprint?: string;
     planId?: EntityId<'plan'>;
     planRevisionId?: EntityId<'prev'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
 }): Promise<{ accepted: true; started: DelegatedChildLaneStart } | { accepted: false; reason: string }> {
     const childExecutionBinding = buildChildExecutionBinding(input.rootContext.executionTarget);
     const createdThread = await threadStore.create({
@@ -295,6 +297,8 @@ export async function startDelegatedChildLaneRun(input: {
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.planId ? { planId: input.planId } : {}),
         ...(input.planRevisionId ? { planRevisionId: input.planRevisionId } : {}),
+        ...(input.planPhaseId ? { planPhaseId: input.planPhaseId } : {}),
+        ...(input.planPhaseRevisionId ? { planPhaseRevisionId: input.planPhaseRevisionId } : {}),
     });
 
     if (!startedRun.accepted) {

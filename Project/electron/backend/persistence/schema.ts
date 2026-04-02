@@ -200,6 +200,8 @@ export interface RunsTable {
     profile_id: string;
     plan_id: string | null;
     plan_revision_id: string | null;
+    plan_phase_id: string | null;
+    plan_phase_revision_id: string | null;
     prompt: string;
     status: string;
     provider_id: string | null;
@@ -873,6 +875,46 @@ export interface PlanRevisionsTable {
     superseded_at: string | null;
 }
 
+export interface PlanPhasesTable {
+    id: string;
+    plan_id: string;
+    plan_revision_id: string;
+    plan_variant_id: string;
+    phase_outline_id: string;
+    phase_sequence: number;
+    title: string;
+    goal_markdown: string;
+    exit_criteria_markdown: string;
+    status: string;
+    current_revision_id: string;
+    approved_revision_id: string | null;
+    implementation_run_id: string | null;
+    orchestrator_run_id: string | null;
+    created_at: string;
+    updated_at: string;
+    approved_at: string | null;
+    implemented_at: string | null;
+}
+
+export interface PlanPhaseRevisionsTable {
+    id: string;
+    plan_phase_id: string;
+    revision_number: number;
+    summary_markdown: string;
+    created_by_kind: string;
+    created_at: string;
+    previous_revision_id: string | null;
+    superseded_at: string | null;
+}
+
+export interface PlanPhaseRevisionItemsTable {
+    id: string;
+    plan_phase_revision_id: string;
+    sequence: number;
+    description: string;
+    created_at: string;
+}
+
 export interface PlanRevisionAdvancedSnapshotsTable {
     plan_revision_id: string;
     evidence_markdown: string;
@@ -1008,6 +1050,8 @@ export interface OrchestratorRunsTable {
     session_id: string;
     plan_id: string;
     plan_revision_id: string;
+    plan_phase_id: string | null;
+    plan_phase_revision_id: string | null;
     status: string;
     execution_strategy: string;
     active_step_index: number | null;
@@ -1113,6 +1157,9 @@ export interface DatabaseSchema {
     plan_records: PlanRecordsTable;
     plan_revisions: PlanRevisionsTable;
     plan_revision_advanced_snapshots: PlanRevisionAdvancedSnapshotsTable;
+    plan_phases: PlanPhasesTable;
+    plan_phase_revisions: PlanPhaseRevisionsTable;
+    plan_phase_revision_items: PlanPhaseRevisionItemsTable;
     plan_research_batches: PlanResearchBatchesTable;
     plan_research_workers: PlanResearchWorkersTable;
     plan_revision_evidence_attachments: PlanRevisionEvidenceAttachmentsTable;

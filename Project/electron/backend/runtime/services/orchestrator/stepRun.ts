@@ -82,5 +82,9 @@ export async function startDelegatedChildRun(input: {
             : {}),
         planId: input.approvedArtifact.planId,
         planRevisionId: input.approvedArtifact.approvedRevisionId,
+        ...(input.startInput.planPhaseId ? { planPhaseId: input.startInput.planPhaseId } : {}),
+        ...(input.startInput.planPhaseRevisionId
+            ? { planPhaseRevisionId: input.startInput.planPhaseRevisionId }
+            : {}),
     });
 }

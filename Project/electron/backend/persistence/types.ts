@@ -12,6 +12,8 @@ import type {
     PlanFollowUpView,
     PlanHistoryEntry,
     PlanRecoveryBanner,
+    PlanPhaseRevisionItemView,
+    PlanPhaseStatus,
     PlanVariantView,
     MemoryCausalLinkRecord as RuntimeMemoryCausalLinkRecord,
     MemoryConsolidationRecord as RuntimeMemoryConsolidationRecord,
@@ -593,6 +595,8 @@ export interface RunRecord {
     profileId: string;
     planId?: EntityId<'plan'>;
     planRevisionId?: EntityId<'prev'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
     prompt: string;
     status: RunStatus;
     providerId?: RuntimeProviderId;
@@ -785,6 +789,51 @@ export interface PlanRevisionAdvancedSnapshotRecord {
     createdAt: string;
 }
 
+export interface PlanPhaseRevisionItemRecord {
+    id: string;
+    planPhaseRevisionId: string;
+    sequence: number;
+    description: string;
+    createdAt: string;
+}
+
+export interface PlanPhaseRevisionRecord {
+    id: string;
+    planPhaseId: string;
+    revisionNumber: number;
+    summaryMarkdown: string;
+    createdByKind: 'expand' | 'revise';
+    createdAt: string;
+    previousRevisionId?: string;
+    supersededAt?: string;
+    items?: PlanPhaseRevisionItemRecord[];
+}
+
+export interface PlanPhaseRecord {
+    id: string;
+    planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
+    variantId: EntityId<'pvar'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    title: string;
+    goalMarkdown: string;
+    exitCriteriaMarkdown: string;
+    status: PlanPhaseStatus;
+    currentRevisionId: string;
+    currentRevisionNumber: number;
+    approvedRevisionId?: string;
+    approvedRevisionNumber?: number;
+    summaryMarkdown: string;
+    items: PlanPhaseRevisionItemView[];
+    createdAt: string;
+    updatedAt: string;
+    approvedAt?: string;
+    implementedAt?: string;
+    implementationRunId?: EntityId<'run'>;
+    orchestratorRunId?: EntityId<'orch'>;
+}
+
 export interface PlanResearchBatchRecord {
     id: EntityId<'prb'>;
     planId: EntityId<'plan'>;
@@ -870,6 +919,9 @@ export interface PlanViewProjection {
     items: PlanItemRecord[];
     variants: Array<PlanVariantView>;
     followUps: Array<PlanFollowUpView>;
+    phases: PlanPhaseRecord[];
+    phaseRevisions: PlanPhaseRevisionRecord[];
+    phaseRevisionItems: PlanPhaseRevisionItemRecord[];
     researchBatches: PlanResearchBatchRecord[];
     researchWorkers: PlanResearchWorkerRecord[];
     evidenceAttachments: PlanEvidenceAttachmentRecord[];
@@ -883,6 +935,8 @@ export interface OrchestratorRunRecord {
     sessionId: EntityId<'sess'>;
     planId: EntityId<'plan'>;
     planRevisionId: EntityId<'prev'>;
+    planPhaseId?: string;
+    planPhaseRevisionId?: string;
     status: 'running' | 'completed' | 'aborted' | 'failed';
     executionStrategy: 'delegate' | 'parallel';
     activeStepIndex?: number;

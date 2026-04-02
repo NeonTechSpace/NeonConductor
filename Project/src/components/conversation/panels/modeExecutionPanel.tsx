@@ -7,11 +7,16 @@ import {
     resolveModeExecutionDraftState,
     resolveModeExecutionOrchestratorPanelState,
     resolveModeExecutionPlanArtifactState,
+    resolveModeExecutionPlanPhaseState,
     resolveModeExecutionPlanPanelMode,
     resolveModeExecutionPlanResearchArtifactState,
+    resolveModeExecutionPhaseDraftState,
+    resolveModeExecutionPhasePanelMode,
     resolveModeExecutionResearchComposerState,
     type ModeExecutionDraftState,
     type ModeExecutionOrchestratorPanelState,
+    type ModeExecutionPhaseDraftState,
+    type ModeExecutionPhasePanelModeState,
     type ModeExecutionPlanPanelModeState,
     type ModeExecutionPlanResearchComposerState,
     type ModeExecutionPlanView,
@@ -155,6 +160,10 @@ export function ModeExecutionPanel({
 }: ModeExecutionPanelProps) {
     const [draftState, setDraftState] = useState<ModeExecutionDraftState | undefined>(undefined);
     const [panelModeState, setPanelModeState] = useState<ModeExecutionPlanPanelModeState | undefined>(undefined);
+    const [phaseDraftState, setPhaseDraftState] = useState<ModeExecutionPhaseDraftState | undefined>(undefined);
+    const [phasePanelModeState, setPhasePanelModeState] = useState<ModeExecutionPhasePanelModeState | undefined>(
+        undefined
+    );
     const [researchComposerState, setResearchComposerState] = useState<ModeExecutionPlanResearchComposerState | undefined>(
         undefined
     );
@@ -168,6 +177,19 @@ export function ModeExecutionPanel({
     });
     const artifactState = resolveModeExecutionPlanArtifactState({
         activePlan,
+    });
+    const phaseState = resolveModeExecutionPlanPhaseState({
+        activePlan,
+    });
+    const resolvedPhaseDraftState = resolveModeExecutionPhaseDraftState({
+        activePlan,
+        phaseState,
+        draftState: phaseDraftState,
+    });
+    const resolvedPhasePanelMode = resolveModeExecutionPhasePanelMode({
+        activePlan,
+        phaseState,
+        panelModeState: phasePanelModeState,
     });
     const researchArtifactState = resolveModeExecutionPlanResearchArtifactState({
         activePlan,
@@ -188,6 +210,11 @@ export function ModeExecutionPanel({
         onAnswerQuestion,
         onStartResearchBatch,
         onRevisePlan,
+        onExpandNextPhase,
+        onRevisePhase,
+        onApprovePhase,
+        onImplementPhase,
+        onCancelPhase,
         onGenerateDraft,
         onCancelPlan,
         onApprovePlan,
@@ -219,6 +246,24 @@ export function ModeExecutionPanel({
                 current?.planId === plan.id && current.revisionId === plan.currentRevisionId
                     ? current
                     : resolvedDraftState;
+            return nextState ? updater(nextState) : nextState;
+        });
+    }
+
+    function updatePhaseDraftState(
+        plan: PlanView,
+        updater: (current: ModeExecutionPhaseDraftState) => ModeExecutionPhaseDraftState
+    ): void {
+        setPhaseDraftState((current) => {
+            const currentPhaseId = resolvedPhaseDraftState?.phaseId;
+            const currentPhaseRevisionId = resolvedPhaseDraftState?.phaseRevisionId;
+            const nextState =
+                current?.planId === plan.id &&
+                currentPhaseId !== undefined &&
+                current.phaseId === currentPhaseId &&
+                current.phaseRevisionId === currentPhaseRevisionId
+                    ? current
+                    : resolvedPhaseDraftState;
             return nextState ? updater(nextState) : nextState;
         });
     }
@@ -274,6 +319,24 @@ export function ModeExecutionPanel({
             revisionId: activePlan.currentRevisionId,
             mode: 'edit',
         });
+    }
+
+    function enterPhaseEditMode(): void {
+        if (!activePlan || !resolvedPhaseDraftState) {
+            return;
+        }
+
+        setPhasePanelModeState({
+            planId: activePlan.id,
+            phaseId: resolvedPhaseDraftState.phaseId,
+            phaseRevisionId: resolvedPhaseDraftState.phaseRevisionId,
+            mode: 'edit',
+        });
+    }
+
+    function discardPhaseEdits(): void {
+        setPhaseDraftState(undefined);
+        setPhasePanelModeState(undefined);
     }
 
     return (
@@ -337,6 +400,9 @@ export function ModeExecutionPanel({
                                 planningDepth={planningDepth}
                                 isPlanMutating={isPlanMutating}
                                 {...(advancedSnapshot ? { advancedSnapshot } : {})}
+                                phaseState={phaseState}
+                                phaseDraftState={resolvedPhaseDraftState}
+                                phasePanelMode={resolvedPhasePanelMode}
                                 {...(researchArtifactState ? { researchState: researchArtifactState } : {})}
                                 researchRequestDraft={researchRequestDraft}
                                 selectedResearchWorkerCount={selectedResearchWorkerCount}
@@ -378,6 +444,72 @@ export function ModeExecutionPanel({
                                         ...current,
                                         workerCount: Math.max(1, Math.min(next, hardMaxWorkerCount)),
                                     }));
+                                }}
+                                onExpandNextPhase={() => {
+                                    onExpandNextPhase(activePlan.id);
+                                }}
+                                onEnterPhaseEditMode={enterPhaseEditMode}
+                                onPhaseSummaryDraftChange={(next) => {
+                                    updatePhaseDraftState(activePlan, (current) => ({
+                                        ...current,
+                                        summaryDraft: next,
+                                    }));
+                                }}
+                                onPhaseItemsDraftChange={(next) => {
+                                    updatePhaseDraftState(activePlan, (current) => ({
+                                        ...current,
+                                        itemsDraft: next,
+                                    }));
+                                }}
+                                onDiscardPhaseEdits={discardPhaseEdits}
+                                onSavePhaseDraft={() => {
+                                    if (!resolvedPhaseDraftState) {
+                                        return;
+                                    }
+
+                                    const items = resolvedPhaseDraftState.itemsDraft
+                                        .split('\n')
+                                        .map((item) => item.trim())
+                                        .filter((item) => item.length > 0);
+                                    setPhasePanelModeState(undefined);
+                                    onRevisePhase(
+                                        activePlan.id,
+                                        resolvedPhaseDraftState.phaseId,
+                                        resolvedPhaseDraftState.phaseRevisionId,
+                                        resolvedPhaseDraftState.summaryDraft.trim(),
+                                        items
+                                    );
+                                }}
+                                onApprovePhase={() => {
+                                    if (!phaseState?.currentPhase) {
+                                        return;
+                                    }
+
+                                    onApprovePhase(
+                                        activePlan.id,
+                                        phaseState.currentPhase.id,
+                                        phaseState.currentPhase.currentRevisionId
+                                    );
+                                }}
+                                onImplementPhase={() => {
+                                    if (!phaseState?.currentPhase) {
+                                        return;
+                                    }
+
+                                    onImplementPhase(
+                                        activePlan.id,
+                                        phaseState.currentPhase.id,
+                                        phaseState.currentPhase.currentRevisionId,
+                                        selectedExecutionStrategy
+                                    );
+                                }}
+                                onCancelPhase={() => {
+                                    if (!phaseState?.currentPhase) {
+                                        return;
+                                    }
+
+                                    setPhasePanelModeState(undefined);
+                                    onCancelPhase(activePlan.id, phaseState.currentPhase.id);
                                 }}
                                 onStartResearchBatch={(promptMarkdown, workerCount) => {
                                     updateResearchComposerState(activePlan, (current) => ({

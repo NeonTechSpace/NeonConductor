@@ -9,6 +9,7 @@ import type {
     PlanRecordView,
     PlanRecoveryBanner,
     PlanRecoveryBannerAction,
+    PlanPhaseOutlineInput,
     PlanVariantView,
     TopLevelTab,
 } from '@/shared/contracts';
@@ -62,7 +63,14 @@ export interface ModeExecutionPlanHistoryEntryView {
         | 'follow_up_resolved'
         | 'follow_up_dismissed'
         | 'implementation'
-        | 'cancellation';
+        | 'cancellation'
+        | 'phase_expanded'
+        | 'phase_revision_created'
+        | 'phase_approved'
+        | 'phase_implementation_started'
+        | 'phase_implementation_completed'
+        | 'phase_implementation_failed'
+        | 'phase_cancelled';
     title: string;
     description: string;
     timestamp?: string;
@@ -286,6 +294,81 @@ export interface ModeExecutionPlanResearchArtifactState {
     canAbortActiveResearchBatch: boolean;
 }
 
+export type ModeExecutionPhasePanelMode = 'artifact' | 'edit';
+
+export type ModeExecutionPlanPhaseStatus = 'not_started' | 'draft' | 'approved' | 'implementing' | 'implemented' | 'cancelled';
+
+export type ModeExecutionPlanPhaseItemStatus = ModeExecutionPlanView['items'][number]['status'];
+
+export interface ModeExecutionPlanPhaseItemView {
+    id: string;
+    sequence: number;
+    description: string;
+    status: ModeExecutionPlanPhaseItemStatus;
+    runId?: EntityId<'run'>;
+    errorMessage?: string;
+}
+
+export interface ModeExecutionPlanPhaseRevisionView {
+    id: string;
+    revisionNumber: number;
+    summaryMarkdown: string;
+    items: ModeExecutionPlanPhaseItemView[];
+    createdByKind: 'expand' | 'revise';
+    createdAt: string;
+    previousRevisionId?: string;
+    supersededAt?: string;
+}
+
+export interface ModeExecutionPlanPhaseRecordView {
+    id: string;
+    planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
+    variantId: EntityId<'pvar'>;
+    phaseOutlineId: string;
+    phaseSequence: number;
+    title: string;
+    goalMarkdown: string;
+    exitCriteriaMarkdown: string;
+    status: ModeExecutionPlanPhaseStatus;
+    currentRevisionId: string;
+    currentRevisionNumber: number;
+    approvedRevisionId?: string;
+    approvedRevisionNumber?: number;
+    summaryMarkdown: string;
+    items: ModeExecutionPlanPhaseItemView[];
+    createdAt: string;
+    updatedAt: string;
+    approvedAt?: string;
+    implementedAt?: string;
+    implementationRunId?: string;
+    orchestratorRunId?: string;
+    revisions?: ModeExecutionPlanPhaseRevisionView[];
+}
+
+export interface ModeExecutionPlanPhaseState {
+    roadmapPhases: PlanPhaseOutlineInput[];
+    currentPhase: ModeExecutionPlanPhaseRecordView | undefined;
+    nextExpandablePhaseOutlineId: string | undefined;
+    hasOpenPhaseDetail: boolean;
+    canExpandNextPhase: boolean;
+}
+
+export interface ModeExecutionPhaseDraftState {
+    planId: EntityId<'plan'>;
+    phaseId: string;
+    phaseRevisionId: string;
+    summaryDraft: string;
+    itemsDraft: string;
+}
+
+export interface ModeExecutionPhasePanelModeState {
+    planId: EntityId<'plan'>;
+    phaseId: string;
+    phaseRevisionId: string;
+    mode: ModeExecutionPhasePanelMode;
+}
+
 export function resolveModeExecutionPlanPanelMode(input: {
     activePlan: ModeExecutionPlanView | undefined;
     panelModeState: ModeExecutionPlanPanelModeState | undefined;
@@ -297,6 +380,120 @@ export function resolveModeExecutionPlanPanelMode(input: {
     if (
         input.panelModeState?.planId === input.activePlan.id &&
         input.panelModeState.revisionId === input.activePlan.currentRevisionId
+    ) {
+        return input.panelModeState.mode;
+    }
+
+    return 'artifact';
+}
+
+function mapPlanPhaseRecord(
+    phase: ModeExecutionPlanPhaseRecordView,
+    roadmapPhase: PlanPhaseOutlineInput | undefined
+): ModeExecutionPlanPhaseRecordView {
+    return {
+        ...phase,
+        ...(roadmapPhase ? { goalMarkdown: roadmapPhase.goalMarkdown, exitCriteriaMarkdown: roadmapPhase.exitCriteriaMarkdown } : {}),
+        items: phase.items.map((item) => ({
+            ...item,
+        })),
+        ...(phase.revisions
+            ? {
+                  revisions: phase.revisions.map((revision) => ({
+                      ...revision,
+                      items: revision.items.map((item) => ({
+                          ...item,
+                      })),
+                  })),
+              }
+            : {}),
+    };
+}
+
+export function resolveModeExecutionPlanPhaseState(input: {
+    activePlan: ModeExecutionPlanView | undefined;
+}): ModeExecutionPlanPhaseState | undefined {
+    if (!input.activePlan) {
+        return undefined;
+    }
+
+    const plan = input.activePlan as ModeExecutionPlanView & {
+        phases?: ModeExecutionPlanPhaseRecordView[];
+        nextExpandablePhaseOutlineId?: string;
+        hasOpenPhaseDetail?: boolean;
+    };
+    const roadmapPhases = Array.isArray(plan.advancedSnapshot?.phases) ? plan.advancedSnapshot.phases : [];
+    const phaseRecords = Array.isArray(plan.phases) ? plan.phases : [];
+    const phaseByOutlineId = new Map(phaseRecords.map((phase) => [phase.phaseOutlineId, phase]));
+    const sortedPhases = [...phaseRecords].sort((left, right) => left.phaseSequence - right.phaseSequence);
+    const currentPhase =
+        [...sortedPhases].reverse().find((phase) => phase.status !== 'not_started') ?? undefined;
+    const nextExpandablePhaseOutlineId =
+        plan.nextExpandablePhaseOutlineId ??
+        (!plan.hasOpenPhaseDetail
+            ? roadmapPhases.find((phase) => !phaseByOutlineId.has(phase.id))?.id
+            : undefined);
+    const hasOpenPhaseDetail =
+        plan.hasOpenPhaseDetail ??
+        phaseRecords.some(
+            (phase) => phase.status === 'draft' || phase.status === 'approved' || phase.status === 'implementing'
+        );
+    const normalizedCurrentPhase = currentPhase
+        ? mapPlanPhaseRecord(currentPhase, roadmapPhases.find((phase) => phase.id === currentPhase.phaseOutlineId))
+        : undefined;
+
+    return {
+        roadmapPhases,
+        currentPhase: normalizedCurrentPhase,
+        nextExpandablePhaseOutlineId,
+        hasOpenPhaseDetail,
+        canExpandNextPhase:
+            plan.planningDepth === 'advanced' &&
+            plan.status === 'approved' &&
+            !hasOpenPhaseDetail &&
+            Boolean(nextExpandablePhaseOutlineId),
+    };
+}
+
+export function resolveModeExecutionPhaseDraftState(input: {
+    activePlan: ModeExecutionPlanView | undefined;
+    phaseState: ModeExecutionPlanPhaseState | undefined;
+    draftState: ModeExecutionPhaseDraftState | undefined;
+}): ModeExecutionPhaseDraftState | undefined {
+    if (!input.activePlan || !input.phaseState?.currentPhase) {
+        return undefined;
+    }
+
+    if (
+        input.draftState?.planId === input.activePlan.id &&
+        input.draftState.phaseId === input.phaseState.currentPhase.id &&
+        input.draftState.phaseRevisionId === input.phaseState.currentPhase.currentRevisionId
+    ) {
+        return input.draftState;
+    }
+
+    return {
+        planId: input.activePlan.id,
+        phaseId: input.phaseState.currentPhase.id,
+        phaseRevisionId: input.phaseState.currentPhase.currentRevisionId,
+        summaryDraft: input.phaseState.currentPhase.summaryMarkdown,
+        itemsDraft: input.phaseState.currentPhase.items.map((item) => item.description).join('\n'),
+    };
+}
+
+export function resolveModeExecutionPhasePanelMode(input: {
+    activePlan: ModeExecutionPlanView | undefined;
+    phaseState: ModeExecutionPlanPhaseState | undefined;
+    panelModeState: ModeExecutionPhasePanelModeState | undefined;
+}): ModeExecutionPhasePanelMode {
+    if (!input.activePlan || !input.phaseState?.currentPhase) {
+        return 'artifact';
+    }
+
+    if (
+        input.panelModeState?.planId === input.activePlan.id &&
+        input.panelModeState.phaseId === input.phaseState.currentPhase.id &&
+        input.panelModeState.phaseRevisionId === input.phaseState.currentPhase.currentRevisionId
     ) {
         return input.panelModeState.mode;
     }

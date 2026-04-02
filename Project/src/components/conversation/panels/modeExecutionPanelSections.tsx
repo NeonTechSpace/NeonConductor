@@ -4,17 +4,21 @@ import {
     AdvancedPlanningEditor,
     type ModeExecutionAdvancedPlanningSnapshotDraft,
 } from '@/web/components/conversation/panels/modeExecutionPanelAdvancedPlanning';
-import {
-    PlanEvidenceAttachmentsSection,
-    PlanResearchSection,
-} from '@/web/components/conversation/panels/modeExecutionPanelResearchSections';
+import { PlanPhaseDetailSection } from '@/web/components/conversation/panels/modeExecutionPanelPhaseSections';
 import {
     PlanHistorySection,
     PlanRecoveryBannerSection,
     PlanVariantSwitcherSection,
 } from '@/web/components/conversation/panels/modeExecutionPanelRecoverySections';
+import {
+    PlanEvidenceAttachmentsSection,
+    PlanResearchSection,
+} from '@/web/components/conversation/panels/modeExecutionPanelResearchSections';
 import type {
     ModeExecutionPlanArtifactState,
+    ModeExecutionPhaseDraftState,
+    ModeExecutionPhasePanelMode,
+    ModeExecutionPlanPhaseState,
     ModeExecutionPlanResearchArtifactState,
     ModeExecutionPlanView,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
@@ -518,6 +522,9 @@ interface PlanArtifactViewProps {
     answerByQuestionId: Record<string, string>;
     planningDepth: PlanningDepth;
     advancedSnapshot?: ModeExecutionAdvancedPlanningSnapshotDraft;
+    phaseState: ModeExecutionPlanPhaseState | undefined;
+    phaseDraftState: ModeExecutionPhaseDraftState | undefined;
+    phasePanelMode: ModeExecutionPhasePanelMode | undefined;
     isPlanMutating: boolean;
     canConfigureExecutionStrategy: boolean;
     selectedExecutionStrategy: OrchestratorExecutionStrategy;
@@ -533,6 +540,15 @@ interface PlanArtifactViewProps {
     onStartResearchBatch: (promptMarkdown: string, workerCount: number) => void;
     onAbortResearchBatch: (researchBatchId: EntityId<'prb'>) => void;
     onInsertEvidenceAttachmentToDraft: (attachmentId: EntityId<'pea'>) => void;
+    onExpandNextPhase?: () => void;
+    onEnterPhaseEditMode?: () => void;
+    onPhaseSummaryDraftChange?: (next: string) => void;
+    onPhaseItemsDraftChange?: (next: string) => void;
+    onSavePhaseDraft?: () => void;
+    onDiscardPhaseEdits?: () => void;
+    onApprovePhase?: () => void;
+    onImplementPhase?: () => void;
+    onCancelPhase?: () => void;
     onGenerateDraft: () => void;
     onEnterEditMode: () => void;
     onCancelPlan: () => void;
@@ -552,6 +568,9 @@ export function PlanArtifactView({
     answerByQuestionId,
     planningDepth,
     advancedSnapshot,
+    phaseState,
+    phaseDraftState,
+    phasePanelMode,
     isPlanMutating,
     canConfigureExecutionStrategy,
     selectedExecutionStrategy,
@@ -567,6 +586,15 @@ export function PlanArtifactView({
     onStartResearchBatch,
     onAbortResearchBatch,
     onInsertEvidenceAttachmentToDraft,
+    onExpandNextPhase,
+    onEnterPhaseEditMode,
+    onPhaseSummaryDraftChange,
+    onPhaseItemsDraftChange,
+    onSavePhaseDraft,
+    onDiscardPhaseEdits,
+    onApprovePhase,
+    onImplementPhase,
+    onCancelPhase,
     onGenerateDraft,
     onEnterEditMode,
     onCancelPlan,
@@ -612,6 +640,21 @@ export function PlanArtifactView({
                 <>
                     <PlanArtifactEvidenceSection advancedSnapshot={advancedSnapshot} />
                     <AdvancedPlanningArtifactSections snapshot={advancedSnapshot} />
+                    <PlanPhaseDetailSection
+                        phaseState={phaseState}
+                        phaseDraftState={phaseDraftState}
+                        phasePanelMode={phasePanelMode}
+                        isPlanMutating={isPlanMutating}
+                        {...(onExpandNextPhase ? { onExpandNextPhase } : {})}
+                        {...(onEnterPhaseEditMode ? { onEnterPhaseEditMode } : {})}
+                        {...(onPhaseSummaryDraftChange ? { onPhaseSummaryDraftChange } : {})}
+                        {...(onPhaseItemsDraftChange ? { onPhaseItemsDraftChange } : {})}
+                        {...(onSavePhaseDraft ? { onSavePhaseDraft } : {})}
+                        {...(onDiscardPhaseEdits ? { onDiscardPhaseEdits } : {})}
+                        {...(onApprovePhase ? { onApprovePhase } : {})}
+                        {...(onImplementPhase ? { onImplementPhase } : {})}
+                        {...(onCancelPhase ? { onCancelPhase } : {})}
+                    />
                     {researchState ? (
                         <>
                             <PlanResearchSection
