@@ -45,6 +45,7 @@ export interface SessionsTable {
     kind: string;
     sandbox_id: string | null;
     delegated_from_orchestrator_run_id: string | null;
+    delegated_from_plan_research_batch_id: string | null;
     run_status: string;
     pending_completion_run_id: string | null;
     created_at: string;
@@ -476,6 +477,7 @@ export interface ThreadsTable {
     parent_thread_id: string | null;
     root_thread_id: string;
     delegated_from_orchestrator_run_id: string | null;
+    delegated_from_plan_research_batch_id: string | null;
     is_favorite: 0 | 1;
     execution_environment_mode: string;
     sandbox_id: string | null;
@@ -878,6 +880,54 @@ export interface PlanRevisionAdvancedSnapshotsTable {
     created_at: string;
 }
 
+export interface PlanResearchBatchesTable {
+    id: string;
+    plan_id: string;
+    plan_revision_id: string;
+    variant_id: string;
+    prompt_markdown: string;
+    requested_worker_count: number;
+    recommended_worker_count: number;
+    hard_max_worker_count: number;
+    status: string;
+    created_at: string;
+    completed_at: string | null;
+    aborted_at: string | null;
+}
+
+export interface PlanResearchWorkersTable {
+    id: string;
+    batch_id: string;
+    sequence: number;
+    label: string;
+    prompt_markdown: string;
+    status: string;
+    child_thread_id: string | null;
+    child_session_id: string | null;
+    active_run_id: string | null;
+    run_id: string | null;
+    result_summary_markdown: string | null;
+    result_details_markdown: string | null;
+    error_message: string | null;
+    created_at: string;
+    completed_at: string | null;
+    aborted_at: string | null;
+}
+
+export interface PlanRevisionEvidenceAttachmentsTable {
+    id: string;
+    plan_revision_id: string;
+    source_kind: string;
+    research_batch_id: string;
+    research_worker_id: string;
+    label: string;
+    summary_markdown: string;
+    details_markdown: string;
+    child_thread_id: string | null;
+    child_session_id: string | null;
+    created_at: string;
+}
+
 export interface PlanRevisionItemsTable {
     id: string;
     plan_revision_id: string;
@@ -1033,6 +1083,9 @@ export interface DatabaseSchema {
     plan_records: PlanRecordsTable;
     plan_revisions: PlanRevisionsTable;
     plan_revision_advanced_snapshots: PlanRevisionAdvancedSnapshotsTable;
+    plan_research_batches: PlanResearchBatchesTable;
+    plan_research_workers: PlanResearchWorkersTable;
+    plan_revision_evidence_attachments: PlanRevisionEvidenceAttachmentsTable;
     plan_revision_items: PlanRevisionItemsTable;
     plan_variants: PlanVariantsTable;
     plan_follow_ups: PlanFollowUpsTable;

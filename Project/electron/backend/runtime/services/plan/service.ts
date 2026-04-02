@@ -1,6 +1,7 @@
 import { planStore } from '@/app/backend/persistence/stores';
 import type {
     EntityId,
+    PlanAbortResearchBatchInput,
     PlanActivateVariantInput,
     PlanAnswerQuestionInput,
     PlanCancelInput,
@@ -13,6 +14,7 @@ import type {
     PlanReviseInput,
     PlanResolveFollowUpInput,
     PlanResumeFromRevisionInput,
+    PlanStartResearchBatchInput,
     PlanStartInput,
 } from '@/app/backend/runtime/contracts';
 import { approvePlan } from '@/app/backend/runtime/services/plan/approval';
@@ -28,6 +30,7 @@ import {
     resolvePlanFollowUp,
     resumePlanFromRevision,
 } from '@/app/backend/runtime/services/plan/recovery';
+import { abortPlanResearchBatch, startPlanResearchBatch } from '@/app/backend/runtime/services/plan/researchLifecycle';
 import { startPlanFlow } from '@/app/backend/runtime/services/plan/start';
 import { refreshActivePlanView, refreshPlanViewById } from '@/app/backend/runtime/services/plan/status';
 import { appLog } from '@/app/main/logging';
@@ -45,6 +48,25 @@ export class PlanService {
                 sessionId: input.sessionId,
                 topLevelTab: input.topLevelTab,
                 modeKey: input.modeKey,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async startResearchBatch(
+        input: PlanStartResearchBatchInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await startPlanResearchBatch(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.startResearchBatch request.',
+                profileId: input.profileId,
+                planId: input.planId,
                 code: result.error.code,
                 error: result.error.message,
             });
@@ -78,8 +100,23 @@ export class PlanService {
         return answerPlanQuestion(input);
     }
 
-    async revise(input: PlanReviseInput): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
-        return revisePlan(input);
+    async revise(
+        input: PlanReviseInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await revisePlan(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.revise request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
     }
 
     async enterAdvancedPlanning(
@@ -92,6 +129,26 @@ export class PlanService {
                 message: 'Rejected plan.enterAdvancedPlanning request.',
                 profileId: input.profileId,
                 planId: input.planId,
+                code: result.error.code,
+                error: result.error.message,
+            });
+            return result;
+        }
+
+        return okPlan(result.value);
+    }
+
+    async abortResearchBatch(
+        input: PlanAbortResearchBatchInput
+    ): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+        const result = await abortPlanResearchBatch(input);
+        if (result.isErr()) {
+            appLog.warn({
+                tag: 'plan',
+                message: 'Rejected plan.abortResearchBatch request.',
+                profileId: input.profileId,
+                planId: input.planId,
+                researchBatchId: input.researchBatchId,
                 code: result.error.code,
                 error: result.error.message,
             });

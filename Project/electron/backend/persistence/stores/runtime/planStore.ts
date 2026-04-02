@@ -11,6 +11,9 @@ import {
 import type {
     PlanItemRecord,
     PlanFollowUpRecord,
+    PlanEvidenceAttachmentRecord,
+    PlanResearchBatchRecord,
+    PlanResearchWorkerRecord,
     PlanRevisionAdvancedSnapshotRecord,
     PlanQuestionRecord,
     PlanRecord,
@@ -112,6 +115,54 @@ type PlanRevisionAdvancedSnapshotRow = {
     observations_markdown: string;
     root_cause_markdown: string;
     phases_json: string;
+    created_at: string;
+};
+
+type PlanResearchBatchRow = {
+    id: string;
+    plan_id: string;
+    plan_revision_id: string;
+    variant_id: string;
+    prompt_markdown: string;
+    requested_worker_count: number;
+    recommended_worker_count: number;
+    hard_max_worker_count: number;
+    status: string;
+    created_at: string;
+    completed_at: string | null;
+    aborted_at: string | null;
+};
+
+type PlanResearchWorkerRow = {
+    id: string;
+    batch_id: string;
+    sequence: number;
+    label: string;
+    prompt_markdown: string;
+    status: string;
+    child_thread_id: string | null;
+    child_session_id: string | null;
+    active_run_id: string | null;
+    run_id: string | null;
+    result_summary_markdown: string | null;
+    result_details_markdown: string | null;
+    error_message: string | null;
+    created_at: string;
+    completed_at: string | null;
+    aborted_at: string | null;
+};
+
+type PlanEvidenceAttachmentRow = {
+    id: string;
+    plan_revision_id: string;
+    source_kind: string;
+    research_batch_id: string;
+    research_worker_id: string;
+    label: string;
+    summary_markdown: string;
+    details_markdown: string;
+    child_thread_id: string | null;
+    child_session_id: string | null;
     created_at: string;
 };
 
@@ -265,6 +316,68 @@ function mapPlanFollowUpRecord(row: PlanFollowUpRow): PlanFollowUpRecord {
         createdAt: row.created_at,
         ...(row.resolved_at ? { resolvedAt: row.resolved_at } : {}),
         ...(row.dismissed_at ? { dismissedAt: row.dismissed_at } : {}),
+    };
+}
+
+function mapPlanResearchBatchRecord(row: PlanResearchBatchRow): PlanResearchBatchRecord {
+    return {
+        id: parseEntityId(row.id, 'plan_research_batches.id', 'prb'),
+        planId: parseEntityId(row.plan_id, 'plan_research_batches.plan_id', 'plan'),
+        planRevisionId: parseEntityId(row.plan_revision_id, 'plan_research_batches.plan_revision_id', 'prev'),
+        variantId: parseEntityId(row.variant_id, 'plan_research_batches.variant_id', 'pvar'),
+        promptMarkdown: row.prompt_markdown,
+        requestedWorkerCount: row.requested_worker_count,
+        recommendedWorkerCount: row.recommended_worker_count,
+        hardMaxWorkerCount: row.hard_max_worker_count,
+        status: row.status === 'completed' ? 'completed' : row.status === 'failed' ? 'failed' : row.status === 'aborted' ? 'aborted' : 'running',
+        createdAt: row.created_at,
+        ...(row.completed_at ? { completedAt: row.completed_at } : {}),
+        ...(row.aborted_at ? { abortedAt: row.aborted_at } : {}),
+    };
+}
+
+function mapPlanResearchWorkerRecord(row: PlanResearchWorkerRow): PlanResearchWorkerRecord {
+    return {
+        id: parseEntityId(row.id, 'plan_research_workers.id', 'prw'),
+        batchId: parseEntityId(row.batch_id, 'plan_research_workers.batch_id', 'prb'),
+        sequence: row.sequence,
+        label: row.label,
+        promptMarkdown: row.prompt_markdown,
+        status: row.status === 'running'
+            ? 'running'
+            : row.status === 'completed'
+              ? 'completed'
+              : row.status === 'failed'
+                ? 'failed'
+                : row.status === 'aborted'
+                  ? 'aborted'
+                  : 'queued',
+        ...(row.child_thread_id ? { childThreadId: parseEntityId(row.child_thread_id, 'plan_research_workers.child_thread_id', 'thr') } : {}),
+        ...(row.child_session_id ? { childSessionId: parseEntityId(row.child_session_id, 'plan_research_workers.child_session_id', 'sess') } : {}),
+        ...(row.active_run_id ? { activeRunId: parseEntityId(row.active_run_id, 'plan_research_workers.active_run_id', 'run') } : {}),
+        ...(row.run_id ? { runId: parseEntityId(row.run_id, 'plan_research_workers.run_id', 'run') } : {}),
+        ...(row.result_summary_markdown ? { resultSummaryMarkdown: row.result_summary_markdown } : {}),
+        ...(row.result_details_markdown ? { resultDetailsMarkdown: row.result_details_markdown } : {}),
+        ...(row.error_message ? { errorMessage: row.error_message } : {}),
+        createdAt: row.created_at,
+        ...(row.completed_at ? { completedAt: row.completed_at } : {}),
+        ...(row.aborted_at ? { abortedAt: row.aborted_at } : {}),
+    };
+}
+
+function mapPlanEvidenceAttachmentRecord(row: PlanEvidenceAttachmentRow): PlanEvidenceAttachmentRecord {
+    return {
+        id: parseEntityId(row.id, 'plan_revision_evidence_attachments.id', 'pea'),
+        planRevisionId: parseEntityId(row.plan_revision_id, 'plan_revision_evidence_attachments.plan_revision_id', 'prev'),
+        sourceKind: row.source_kind === 'planner_worker' ? 'planner_worker' : 'planner_worker',
+        researchBatchId: parseEntityId(row.research_batch_id, 'plan_revision_evidence_attachments.research_batch_id', 'prb'),
+        researchWorkerId: parseEntityId(row.research_worker_id, 'plan_revision_evidence_attachments.research_worker_id', 'prw'),
+        label: row.label,
+        summaryMarkdown: row.summary_markdown,
+        detailsMarkdown: row.details_markdown,
+        ...(row.child_thread_id ? { childThreadId: parseEntityId(row.child_thread_id, 'plan_revision_evidence_attachments.child_thread_id', 'thr') } : {}),
+        ...(row.child_session_id ? { childSessionId: parseEntityId(row.child_session_id, 'plan_revision_evidence_attachments.child_session_id', 'sess') } : {}),
+        createdAt: row.created_at,
     };
 }
 
@@ -863,6 +976,9 @@ function buildPlanViewProjection(input: {
     revisions: PlanRevisionRecord[];
     variants: PlanVariantRecord[];
     followUps: PlanFollowUpRecord[];
+    researchBatches: PlanResearchBatchRecord[];
+    researchWorkers: PlanResearchWorkerRecord[];
+    evidenceAttachments: PlanEvidenceAttachmentRecord[];
     history: PlanHistoryEntry[];
     recoveryBanner?: PlanRecoveryBannerProjection;
 }): PlanViewProjection {
@@ -907,6 +1023,9 @@ function buildPlanViewProjection(input: {
             ...(followUp.resolvedAt ? { resolvedAt: followUp.resolvedAt } : {}),
             ...(followUp.dismissedAt ? { dismissedAt: followUp.dismissedAt } : {}),
         })),
+        researchBatches: input.researchBatches,
+        researchWorkers: input.researchWorkers,
+        evidenceAttachments: input.evidenceAttachments,
         history: input.history,
     };
 
@@ -1024,6 +1143,77 @@ export class PlanStore {
         return rows.map(mapPlanRevisionItemRecord);
     }
 
+    private async getPlanResearchBatchRowById(db: PlanStoreDb, batchId: EntityId<'prb'>): Promise<PlanResearchBatchRow | null> {
+        return (await db.selectFrom('plan_research_batches').selectAll().where('id', '=', batchId).executeTakeFirst()) ?? null;
+    }
+
+    private async getPlanResearchWorkerRowById(
+        db: PlanStoreDb,
+        workerId: EntityId<'prw'>
+    ): Promise<PlanResearchWorkerRow | null> {
+        return (
+            (await db.selectFrom('plan_research_workers').selectAll().where('id', '=', workerId).executeTakeFirst()) ?? null
+        );
+    }
+
+    private async listResearchBatchesInDb(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanResearchBatchRecord[]> {
+        const rows = await db
+            .selectFrom('plan_research_batches')
+            .selectAll()
+            .where('plan_id', '=', planId)
+            .orderBy('created_at', 'asc')
+            .execute();
+
+        return rows.map(mapPlanResearchBatchRecord);
+    }
+
+    private async listResearchWorkersInDb(
+        db: PlanStoreDb,
+        batchIds: string[]
+    ): Promise<PlanResearchWorkerRecord[]> {
+        if (batchIds.length === 0) {
+            return [];
+        }
+
+        const rows = await db
+            .selectFrom('plan_research_workers')
+            .selectAll()
+            .where('batch_id', 'in', batchIds)
+            .orderBy('sequence', 'asc')
+            .execute();
+
+        return rows.map(mapPlanResearchWorkerRecord);
+    }
+
+    private async listEvidenceAttachmentsInDb(
+        db: PlanStoreDb,
+        planRevisionId: EntityId<'prev'>
+    ): Promise<PlanEvidenceAttachmentRecord[]> {
+        const rows = await db
+            .selectFrom('plan_revision_evidence_attachments')
+            .selectAll()
+            .where('plan_revision_id', '=', planRevisionId)
+            .orderBy('created_at', 'asc')
+            .execute();
+
+        return rows.map(mapPlanEvidenceAttachmentRecord);
+    }
+
+    private async getActiveResearchBatchRowForRevision(
+        db: PlanStoreDb,
+        planRevisionId: EntityId<'prev'>
+    ): Promise<PlanResearchBatchRow | null> {
+        return (
+            (await db
+                .selectFrom('plan_research_batches')
+                .selectAll()
+                .where('plan_revision_id', '=', planRevisionId)
+                .where('status', '=', 'running')
+                .orderBy('created_at', 'desc')
+                .executeTakeFirst()) ?? null
+        );
+    }
+
     private async hydratePlanRecord(db: PlanStoreDb, row: PlanRecordRow): Promise<PlanRecord> {
         const currentRevisionRow = await this.getPlanRevisionRowById(
             db,
@@ -1121,6 +1311,7 @@ export class PlanStore {
             itemDescriptions: string[];
             timestamp: string;
             advancedSnapshot?: PlanAdvancedSnapshotInput;
+            copyResearchAttachmentsFromRevisionId?: EntityId<'prev'>;
         }
     ): Promise<void> {
         await db
@@ -1153,6 +1344,13 @@ export class PlanStore {
         }
 
         if (input.itemDescriptions.length === 0) {
+            if (input.copyResearchAttachmentsFromRevisionId) {
+                await this.copyResearchAttachmentsBetweenRevisionsInTransaction(db, {
+                    sourceRevisionId: input.copyResearchAttachmentsFromRevisionId,
+                    targetRevisionId: input.revisionId,
+                    timestamp: input.timestamp,
+                });
+            }
             return;
         }
 
@@ -1167,6 +1365,86 @@ export class PlanStore {
                     created_at: input.timestamp,
                 }))
             )
+            .execute();
+
+        if (input.copyResearchAttachmentsFromRevisionId) {
+            await this.copyResearchAttachmentsBetweenRevisionsInTransaction(db, {
+                sourceRevisionId: input.copyResearchAttachmentsFromRevisionId,
+                targetRevisionId: input.revisionId,
+                timestamp: input.timestamp,
+            });
+        }
+    }
+
+    private async copyResearchAttachmentsBetweenRevisionsInTransaction(
+        db: PlanStoreDb,
+        input: {
+            sourceRevisionId: EntityId<'prev'>;
+            targetRevisionId: EntityId<'prev'>;
+            timestamp: string;
+        }
+    ): Promise<void> {
+        const sourceAttachments = await this.listEvidenceAttachmentsInDb(db, input.sourceRevisionId);
+        if (sourceAttachments.length === 0) {
+            return;
+        }
+
+        await db
+            .insertInto('plan_revision_evidence_attachments')
+            .values(
+                sourceAttachments.map((attachment) => ({
+                    id: createEntityId('pea'),
+                    plan_revision_id: input.targetRevisionId,
+                    source_kind: attachment.sourceKind,
+                    research_batch_id: attachment.researchBatchId,
+                    research_worker_id: attachment.researchWorkerId,
+                    label: attachment.label,
+                    summary_markdown: attachment.summaryMarkdown,
+                    details_markdown: attachment.detailsMarkdown,
+                    child_thread_id: attachment.childThreadId ?? null,
+                    child_session_id: attachment.childSessionId ?? null,
+                    created_at: input.timestamp,
+                }))
+            )
+            .execute();
+    }
+
+    private async settleResearchBatchStatusInTransaction(
+        db: PlanStoreDb,
+        batchId: EntityId<'prb'>,
+        timestamp: string
+    ): Promise<void> {
+        const rows = await db
+            .selectFrom('plan_research_workers')
+            .select(['status'])
+            .where('batch_id', '=', batchId)
+            .execute();
+
+        if (rows.some((row) => row.status === 'queued' || row.status === 'running')) {
+            return;
+        }
+
+        const statuses = rows.map((row) => row.status);
+        const nextStatus = statuses.some((status) => status === 'failed')
+            ? 'failed'
+            : statuses.every((status) => status === 'aborted')
+              ? 'aborted'
+              : 'completed';
+
+        await db
+            .updateTable('plan_research_batches')
+            .set(
+                nextStatus === 'aborted'
+                    ? {
+                          status: nextStatus,
+                          aborted_at: timestamp,
+                      }
+                    : {
+                          status: nextStatus,
+                          completed_at: timestamp,
+                      }
+            )
+            .where('id', '=', batchId)
             .execute();
     }
 
@@ -1355,6 +1633,40 @@ export class PlanStore {
         return row ? mapPlanFollowUpRecord(row) : null;
     }
 
+    async listResearchBatches(planId: EntityId<'plan'>): Promise<PlanResearchBatchRecord[]> {
+        return this.listResearchBatchesInDb(this.getDb(), planId);
+    }
+
+    async listResearchWorkers(researchBatchId: EntityId<'prb'>): Promise<PlanResearchWorkerRecord[]> {
+        const rows = await this.getDb()
+            .selectFrom('plan_research_workers')
+            .selectAll()
+            .where('batch_id', '=', researchBatchId)
+            .orderBy('sequence', 'asc')
+            .execute();
+
+        return rows.map(mapPlanResearchWorkerRecord);
+    }
+
+    async listEvidenceAttachments(planRevisionId: EntityId<'prev'>): Promise<PlanEvidenceAttachmentRecord[]> {
+        return this.listEvidenceAttachmentsInDb(this.getDb(), planRevisionId);
+    }
+
+    async getResearchBatchById(researchBatchId: EntityId<'prb'>): Promise<PlanResearchBatchRecord | null> {
+        const row = await this.getPlanResearchBatchRowById(this.getDb(), researchBatchId);
+        return row ? mapPlanResearchBatchRecord(row) : null;
+    }
+
+    async getResearchWorkerById(researchWorkerId: EntityId<'prw'>): Promise<PlanResearchWorkerRecord | null> {
+        const row = await this.getPlanResearchWorkerRowById(this.getDb(), researchWorkerId);
+        return row ? mapPlanResearchWorkerRecord(row) : null;
+    }
+
+    async getActiveResearchBatchByRevision(planRevisionId: EntityId<'prev'>): Promise<PlanResearchBatchRecord | null> {
+        const row = await this.getActiveResearchBatchRowForRevision(this.getDb(), planRevisionId);
+        return row ? mapPlanResearchBatchRecord(row) : null;
+    }
+
     async listRevisions(planId: EntityId<'plan'>): Promise<PlanRevisionRecord[]> {
         const db = this.getDb();
         const rows = await db
@@ -1520,6 +1832,11 @@ export class PlanStore {
                 ),
                 itemDescriptions: normalizedDescriptions,
                 timestamp: now,
+                copyResearchAttachmentsFromRevisionId: parseEntityId(
+                    existing.current_revision_id,
+                    'plan_records.current_revision_id',
+                    'prev'
+                ),
                 ...(revisionAdvancedSnapshot ? { advancedSnapshot: revisionAdvancedSnapshot } : {}),
             });
 
@@ -1605,6 +1922,11 @@ export class PlanStore {
                 ),
                 itemDescriptions: currentRevisionItems.map((item) => item.description),
                 timestamp: now,
+                copyResearchAttachmentsFromRevisionId: parseEntityId(
+                    existing.current_revision_id,
+                    'plan_records.current_revision_id',
+                    'prev'
+                ),
                 advancedSnapshot: advancedSnapshot,
             });
 
@@ -1714,6 +2036,350 @@ export class PlanStore {
         return this.getByIdFromDb(db, parseEntityId(cancelledPlanId, 'plan_records.id', 'plan'));
     }
 
+    async startResearchBatch(input: {
+        planId: EntityId<'plan'>;
+        planRevisionId: EntityId<'prev'>;
+        variantId: EntityId<'pvar'>;
+        promptMarkdown: string;
+        requestedWorkerCount: number;
+        recommendedWorkerCount: number;
+        hardMaxWorkerCount: number;
+        workers: Array<{
+            sequence: number;
+            label: string;
+            promptMarkdown: string;
+        }>;
+    }): Promise<PlanResearchBatchRecord | null> {
+        const db = this.getDb();
+        const batchId = createEntityId('prb');
+        const now = nowIso();
+
+        const createdBatchId = await db.transaction().execute(async (transaction) => {
+            const existing = await this.getPlanRecordRowById(transaction, input.planId);
+            if (!existing) {
+                return null;
+            }
+
+            if (existing.current_revision_id !== input.planRevisionId) {
+                return null;
+            }
+
+            const activeBatch = await this.getActiveResearchBatchRowForRevision(transaction, input.planRevisionId);
+            if (activeBatch) {
+                return null;
+            }
+
+            await transaction
+                .insertInto('plan_research_batches')
+                .values({
+                    id: batchId,
+                    plan_id: input.planId,
+                    plan_revision_id: input.planRevisionId,
+                    variant_id: input.variantId,
+                    prompt_markdown: input.promptMarkdown,
+                    requested_worker_count: input.requestedWorkerCount,
+                    recommended_worker_count: input.recommendedWorkerCount,
+                    hard_max_worker_count: input.hardMaxWorkerCount,
+                    status: 'running',
+                    created_at: now,
+                    completed_at: null,
+                    aborted_at: null,
+                })
+                .execute();
+
+            await transaction
+                .insertInto('plan_research_workers')
+                .values(
+                    input.workers.map((worker) => ({
+                        id: createEntityId('prw'),
+                        batch_id: batchId,
+                        sequence: worker.sequence,
+                        label: worker.label,
+                        prompt_markdown: worker.promptMarkdown,
+                        status: 'queued',
+                        child_thread_id: null,
+                        child_session_id: null,
+                        active_run_id: null,
+                        run_id: null,
+                        result_summary_markdown: null,
+                        result_details_markdown: null,
+                        error_message: null,
+                        created_at: now,
+                        completed_at: null,
+                        aborted_at: null,
+                    }))
+                )
+                .execute();
+
+            await transaction
+                .updateTable('plan_records')
+                .set({
+                    updated_at: now,
+                })
+                .where('id', '=', input.planId)
+                .execute();
+
+            return batchId;
+        });
+
+        if (!createdBatchId) {
+            return null;
+        }
+
+        return this.getResearchBatchById(createdBatchId);
+    }
+
+    async abortResearchBatch(planId: EntityId<'plan'>, researchBatchId: EntityId<'prb'>): Promise<PlanResearchBatchRecord | null> {
+        const db = this.getDb();
+        const abortedBatchId = await db.transaction().execute(async (transaction) => {
+            const batchRow = await this.getPlanResearchBatchRowById(transaction, researchBatchId);
+            if (!batchRow || batchRow.plan_id !== planId || batchRow.status !== 'running') {
+                return null;
+            }
+
+            const now = nowIso();
+
+            await transaction
+                .updateTable('plan_research_workers')
+                .set({
+                    status: 'aborted',
+                    aborted_at: now,
+                })
+                .where('batch_id', '=', researchBatchId)
+                .where('status', 'in', ['queued', 'running'])
+                .execute();
+
+            await transaction
+                .updateTable('plan_research_batches')
+                .set({
+                    status: 'aborted',
+                    aborted_at: now,
+                })
+                .where('id', '=', researchBatchId)
+                .execute();
+
+            await transaction
+                .updateTable('plan_records')
+                .set({
+                    updated_at: now,
+                })
+                .where('id', '=', planId)
+                .execute();
+
+            return researchBatchId;
+        });
+
+        if (!abortedBatchId) {
+            return null;
+        }
+
+        return this.getResearchBatchById(abortedBatchId);
+    }
+
+    async markResearchWorkerRunning(input: {
+        researchBatchId: EntityId<'prb'>;
+        researchWorkerId: EntityId<'prw'>;
+        childThreadId: EntityId<'thr'>;
+        childSessionId: EntityId<'sess'>;
+        activeRunId: EntityId<'run'>;
+    }): Promise<PlanResearchWorkerRecord | null> {
+        const db = this.getDb();
+        const runningWorkerId = await db.transaction().execute(async (transaction) => {
+            const batchRow = await this.getPlanResearchBatchRowById(transaction, input.researchBatchId);
+            if (!batchRow || batchRow.status !== 'running') {
+                return null;
+            }
+
+            const workerRow = await this.getPlanResearchWorkerRowById(transaction, input.researchWorkerId);
+            if (!workerRow || workerRow.batch_id !== input.researchBatchId) {
+                return null;
+            }
+
+            const now = nowIso();
+            const updatedWorker = await transaction
+                .updateTable('plan_research_workers')
+                .set({
+                    status: 'running',
+                    child_thread_id: input.childThreadId,
+                    child_session_id: input.childSessionId,
+                    active_run_id: input.activeRunId,
+                    run_id: null,
+                    error_message: null,
+                    completed_at: null,
+                    aborted_at: null,
+                })
+                .where('id', '=', input.researchWorkerId)
+                .where('status', '=', 'queued')
+                .returning('id')
+                .executeTakeFirst();
+            if (!updatedWorker) {
+                return null;
+            }
+
+            await transaction
+                .updateTable('plan_records')
+                .set({
+                    updated_at: now,
+                })
+                .where('id', '=', batchRow.plan_id)
+                .execute();
+
+            return input.researchWorkerId;
+        });
+
+        if (!runningWorkerId) {
+            return null;
+        }
+
+        return this.getResearchWorkerById(runningWorkerId);
+    }
+
+    async recordResearchWorkerCompletion(input: {
+        researchBatchId: EntityId<'prb'>;
+        researchWorkerId: EntityId<'prw'>;
+        resultSummaryMarkdown: string;
+        resultDetailsMarkdown: string;
+        childThreadId?: EntityId<'thr'>;
+        childSessionId?: EntityId<'sess'>;
+        activeRunId?: EntityId<'run'>;
+        runId?: EntityId<'run'>;
+    }): Promise<PlanResearchWorkerRecord | null> {
+        const db = this.getDb();
+        const completedWorkerId = await db.transaction().execute(async (transaction) => {
+            const batchRow = await this.getPlanResearchBatchRowById(transaction, input.researchBatchId);
+            if (!batchRow || batchRow.status === 'aborted') {
+                return null;
+            }
+
+            const workerRow = await this.getPlanResearchWorkerRowById(transaction, input.researchWorkerId);
+            if (!workerRow || workerRow.batch_id !== input.researchBatchId) {
+                return null;
+            }
+
+            const now = nowIso();
+            const updatedWorker = await transaction
+                .updateTable('plan_research_workers')
+                .set({
+                    status: 'completed',
+                    ...(input.childThreadId ? { child_thread_id: input.childThreadId } : {}),
+                    ...(input.childSessionId ? { child_session_id: input.childSessionId } : {}),
+                    ...(input.activeRunId ? { active_run_id: input.activeRunId } : {}),
+                    ...(input.runId ? { run_id: input.runId } : {}),
+                    result_summary_markdown: input.resultSummaryMarkdown,
+                    result_details_markdown: input.resultDetailsMarkdown,
+                    error_message: null,
+                    completed_at: now,
+                    aborted_at: null,
+                })
+                .where('id', '=', input.researchWorkerId)
+                .where('status', 'in', ['queued', 'running'])
+                .returning('id')
+                .executeTakeFirst();
+            if (!updatedWorker) {
+                return null;
+            }
+
+            await transaction
+                .insertInto('plan_revision_evidence_attachments')
+                .values({
+                    id: createEntityId('pea'),
+                    plan_revision_id: parseEntityId(batchRow.plan_revision_id, 'plan_research_batches.plan_revision_id', 'prev'),
+                    source_kind: 'planner_worker',
+                    research_batch_id: input.researchBatchId,
+                    research_worker_id: input.researchWorkerId,
+                    label: workerRow.label,
+                    summary_markdown: input.resultSummaryMarkdown,
+                    details_markdown: input.resultDetailsMarkdown,
+                    ...(input.childThreadId ? { child_thread_id: input.childThreadId } : { child_thread_id: null }),
+                    ...(input.childSessionId ? { child_session_id: input.childSessionId } : { child_session_id: null }),
+                    created_at: now,
+                })
+                .execute();
+
+            await this.settleResearchBatchStatusInTransaction(transaction, input.researchBatchId, now);
+
+            await transaction
+                .updateTable('plan_records')
+                .set({
+                    updated_at: now,
+                })
+                .where('id', '=', batchRow.plan_id)
+                .execute();
+
+            return input.researchWorkerId;
+        });
+
+        if (!completedWorkerId) {
+            return null;
+        }
+
+        return this.getResearchWorkerById(completedWorkerId);
+    }
+
+    async recordResearchWorkerFailure(input: {
+        researchBatchId: EntityId<'prb'>;
+        researchWorkerId: EntityId<'prw'>;
+        errorMessage: string;
+        childThreadId?: EntityId<'thr'>;
+        childSessionId?: EntityId<'sess'>;
+        activeRunId?: EntityId<'run'>;
+        runId?: EntityId<'run'>;
+    }): Promise<PlanResearchWorkerRecord | null> {
+        const db = this.getDb();
+        const failedWorkerId = await db.transaction().execute(async (transaction) => {
+            const batchRow = await this.getPlanResearchBatchRowById(transaction, input.researchBatchId);
+            if (!batchRow || batchRow.status === 'aborted') {
+                return null;
+            }
+
+            const workerRow = await this.getPlanResearchWorkerRowById(transaction, input.researchWorkerId);
+            if (!workerRow || workerRow.batch_id !== input.researchBatchId) {
+                return null;
+            }
+
+            const now = nowIso();
+            const updatedWorker = await transaction
+                .updateTable('plan_research_workers')
+                .set({
+                    status: 'failed',
+                    ...(input.childThreadId ? { child_thread_id: input.childThreadId } : {}),
+                    ...(input.childSessionId ? { child_session_id: input.childSessionId } : {}),
+                    ...(input.activeRunId ? { active_run_id: input.activeRunId } : {}),
+                    ...(input.runId ? { run_id: input.runId } : {}),
+                    error_message: input.errorMessage,
+                    result_summary_markdown: null,
+                    result_details_markdown: null,
+                    completed_at: now,
+                    aborted_at: null,
+                })
+                .where('id', '=', input.researchWorkerId)
+                .where('status', 'in', ['queued', 'running'])
+                .returning('id')
+                .executeTakeFirst();
+            if (!updatedWorker) {
+                return null;
+            }
+
+            await this.settleResearchBatchStatusInTransaction(transaction, input.researchBatchId, now);
+
+            await transaction
+                .updateTable('plan_records')
+                .set({
+                    updated_at: now,
+                })
+                .where('id', '=', batchRow.plan_id)
+                .execute();
+
+            return input.researchWorkerId;
+        });
+
+        if (!failedWorkerId) {
+            return null;
+        }
+
+        return this.getResearchWorkerById(failedWorkerId);
+    }
+
     async createVariant(planId: EntityId<'plan'>, sourceRevisionId: EntityId<'prev'>): Promise<PlanRecord | null> {
         const db = this.getDb();
         const createdPlanId = await db.transaction().execute(async (transaction) => {
@@ -1767,6 +2433,7 @@ export class PlanStore {
                 previousRevisionId: sourceRevisionId,
                 itemDescriptions: sourceRevisionItems.map((item) => item.description),
                 timestamp: now,
+                copyResearchAttachmentsFromRevisionId: sourceRevisionId,
                 ...(sourceRevisionAdvancedSnapshot
                     ? { advancedSnapshot: mapPlanAdvancedSnapshotRecord(sourceRevisionAdvancedSnapshot) }
                     : {}),
@@ -1916,6 +2583,7 @@ export class PlanStore {
                 previousRevisionId: parseEntityId(targetVariantHead.id, 'plan_revisions.id', 'prev'),
                 itemDescriptions: sourceRevisionItems.map((item) => item.description),
                 timestamp: now,
+                copyResearchAttachmentsFromRevisionId: sourceRevisionId,
                 ...(sourceRevisionAdvancedSnapshot
                     ? { advancedSnapshot: mapPlanAdvancedSnapshotRecord(sourceRevisionAdvancedSnapshot) }
                     : {}),
@@ -2053,22 +2721,31 @@ export class PlanStore {
     }
 
     async getProjectionById(profileId: string, planId: EntityId<'plan'>): Promise<PlanViewProjection | null> {
+        const db = this.getDb();
         const plan = await this.getById(profileId, planId);
         if (!plan) {
             return null;
         }
 
-        const [items, revisions, variants, followUps, events] = await Promise.all([
-            this.listItems(planId),
-            this.listRevisions(planId),
-            this.listVariants(planId),
-            this.listFollowUps(planId),
-            runtimeEventStore.listByEntity({
-                entityType: 'plan',
-                entityId: planId,
-                limit: 1000,
-            }),
-        ]);
+        const [items, revisions, variants, followUps, researchBatches, evidenceAttachments, events] = await Promise.all(
+            [
+                this.listItems(planId),
+                this.listRevisions(planId),
+                this.listVariants(planId),
+                this.listFollowUps(planId),
+                this.listResearchBatchesInDb(db, planId),
+                this.listEvidenceAttachmentsInDb(db, plan.currentRevisionId),
+                runtimeEventStore.listByEntity({
+                    entityType: 'plan',
+                    entityId: planId,
+                    limit: 1000,
+                }),
+            ]
+        );
+
+        const researchWorkers = researchBatches.length
+            ? await this.listResearchWorkersInDb(db, researchBatches.map((batch) => batch.id))
+            : [];
 
         const history = buildPlanHistoryEntries({
             plan,
@@ -2089,6 +2766,9 @@ export class PlanStore {
             revisions,
             variants,
             followUps,
+            researchBatches,
+            researchWorkers,
+            evidenceAttachments,
             history,
             ...(recoveryBanner ? { recoveryBanner } : {}),
         });

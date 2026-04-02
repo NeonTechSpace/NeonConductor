@@ -17,12 +17,14 @@ function createActionController() {
         isPlanMutating: false,
         isOrchestratorMutating: false,
         onAnswerQuestion: vi.fn(),
+        onStartResearchBatch: vi.fn(),
         onRevisePlan: vi.fn(),
         onEnterAdvancedPlanning: vi.fn(),
         onCreateVariant: vi.fn(),
         onActivateVariant: vi.fn(),
         onResumeFromRevision: vi.fn(),
         onResolveFollowUp: vi.fn(),
+        onAbortResearchBatch: vi.fn(),
         onGenerateDraft: vi.fn(),
         onCancelPlan: vi.fn(),
         onApprovePlan: vi.fn(),
@@ -381,6 +383,129 @@ describe('resolveModeExecutionDraftState', () => {
         expect(html).toContain('Root Cause');
         expect(html).toContain('Phase Outline');
         expect(html).toContain('Frame the plan');
+    });
+
+    it('renders planner research guidance, worker cards, and evidence attachments for advanced plans', () => {
+        const html = renderToStaticMarkup(
+            createElement(ModeExecutionPanel, {
+                topLevelTab: 'agent',
+                showPlanSurface: true,
+                showOrchestratorSurface: false,
+                planningDepthSelection: 'advanced',
+                isLoadingPlan: false,
+                actionController: createActionController(),
+                selectedExecutionStrategy: 'delegate',
+                canConfigureExecutionStrategy: false,
+                onPlanningDepthSelectionChange: vi.fn(),
+                onExecutionStrategyChange: vi.fn(),
+                onSelectChildThread: vi.fn(),
+                activePlan: {
+                    id: 'plan_1',
+                    status: 'draft',
+                    planningDepth: 'advanced',
+                    summaryMarkdown: 'Summary',
+                    sourcePrompt: 'Ship the advanced research lane.',
+                    advancedSnapshot: {
+                        evidenceMarkdown: '### Source prompt\nShip the advanced research lane.',
+                        observationsMarkdown: '- Research is likely needed.',
+                        rootCauseMarkdown: 'Root cause is not established yet.',
+                        phases: [
+                            {
+                                id: 'phase_1',
+                                sequence: 1,
+                                title: 'Frame the plan',
+                                goalMarkdown: 'Set the plan direction.',
+                                exitCriteriaMarkdown: 'The plan has a structured scaffold.',
+                            },
+                        ],
+                    },
+                    currentRevisionId: 'prev_1',
+                    currentRevisionNumber: 1,
+                    questions: [],
+                    items: [
+                        {
+                            id: 'step_1',
+                            sequence: 1,
+                            description: 'Investigate the riskiest edge cases',
+                            status: 'pending',
+                        },
+                        {
+                            id: 'step_2',
+                            sequence: 2,
+                            description: 'Validate the rollout assumptions',
+                            status: 'pending',
+                        },
+                    ],
+                    researchRecommendation: {
+                        recommended: true,
+                        priority: 'medium',
+                        reasons: ['No evidence attachments exist for the current revision yet.'],
+                        suggestedWorkerCount: 2,
+                    },
+                    researchCapacity: {
+                        availableParallelism: 6,
+                        recommendedWorkerCount: 2,
+                        hardMaxWorkerCount: 5,
+                    },
+                    researchBatches: [
+                        {
+                            id: 'prb_1',
+                            planId: 'plan_1',
+                            planRevisionId: 'prev_1',
+                            variantId: 'pvar_main',
+                            promptMarkdown: 'Investigate the highest-risk assumptions.',
+                            requestedWorkerCount: 2,
+                            recommendedWorkerCount: 2,
+                            hardMaxWorkerCount: 5,
+                            status: 'running',
+                            workers: [
+                                {
+                                    id: 'prw_1',
+                                    batchId: 'prb_1',
+                                    sequence: 1,
+                                    label: 'Worker 1 of 2',
+                                    promptMarkdown: 'Investigate the data and state model.',
+                                    status: 'completed',
+                                    childThreadId: 'thr_worker_1',
+                                    childSessionId: 'sess_worker_1',
+                                    activeRunId: 'run_worker_1',
+                                    runId: 'run_worker_1',
+                                    resultSummaryMarkdown: 'Findings summary',
+                                    resultDetailsMarkdown: '## Findings\nDetailed findings',
+                                    createdAt: '2026-04-02T10:00:00.000Z',
+                                    completedAt: '2026-04-02T10:05:00.000Z',
+                                },
+                            ],
+                            createdAt: '2026-04-02T10:00:00.000Z',
+                        },
+                    ],
+                    evidenceAttachments: [
+                        {
+                            id: 'pea_1',
+                            planRevisionId: 'prev_1',
+                            sourceKind: 'planner_worker',
+                            researchBatchId: 'prb_1',
+                            researchWorkerId: 'prw_1',
+                            label: 'Planner worker evidence',
+                            summaryMarkdown: 'Evidence summary',
+                            detailsMarkdown: '## Findings\nDetailed findings',
+                            childThreadId: 'thr_worker_1',
+                            childSessionId: 'sess_worker_1',
+                            createdAt: '2026-04-02T10:05:00.000Z',
+                        },
+                    ],
+                } as never,
+            })
+        );
+
+        expect(html).toContain('Research recommended');
+        expect(html).toContain('Recommended: 2 workers on this machine');
+        expect(html).toContain('Batch prb_1');
+        expect(html).toContain('Worker 1 of 2');
+        expect(html).toContain('Open worker lane');
+        expect(html).toContain('Evidence Attachments');
+        expect(html).toContain('Planner worker evidence');
+        expect(html).toContain('Insert Into Evidence Draft');
     });
 
     it('resolves an explicit orchestrator-facing panel model from the raw inputs', () => {

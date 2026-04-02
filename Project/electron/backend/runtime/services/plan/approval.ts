@@ -3,6 +3,7 @@ import type { EntityId, PlanRecordView } from '@/app/backend/runtime/contracts';
 import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanApprovedEvent } from '@/app/backend/runtime/services/plan/events';
 import { hasUnansweredRequiredQuestions } from '@/app/backend/runtime/services/plan/intake';
+import { ensureNoRunningResearchBatch } from '@/app/backend/runtime/services/plan/researchLifecycle';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { appLog } from '@/app/main/logging';
 
@@ -37,6 +38,14 @@ export async function approvePlan(
             'revision_conflict',
             `Cannot approve stale plan revision "${revisionId}". Approve the current revision instead.`
         );
+    }
+
+    const researchValidation = await ensureNoRunningResearchBatch({
+        plan: existing,
+        actionLabel: 'approve the plan',
+    });
+    if (researchValidation.isErr()) {
+        return errPlan(researchValidation.error.code, researchValidation.error.message);
     }
 
     const shouldResetImplementationState =

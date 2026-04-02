@@ -1,30 +1,53 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-
 import type { DeleteDelegatedChildLaneInput } from '@/app/backend/persistence/stores/conversation/threads/threadLifecycle.types';
 
 export async function deleteDelegatedChildLane(input: DeleteDelegatedChildLaneInput): Promise<boolean> {
     const { db } = getPersistence();
 
     return db.transaction().execute(async (transaction) => {
-        const delegatedChildLane = input.sessionId
-            ? await transaction
-                  .selectFrom('threads')
-                  .innerJoin('sessions', 'sessions.thread_id', 'threads.id')
-                  .select(['threads.id as thread_id', 'sessions.id as session_id'])
-                  .where('threads.profile_id', '=', input.profileId)
-                  .where('sessions.profile_id', '=', input.profileId)
-                  .where('threads.id', '=', input.threadId)
-                  .where('sessions.id', '=', input.sessionId)
-                  .where('threads.delegated_from_orchestrator_run_id', '=', input.orchestratorRunId)
-                  .where('sessions.delegated_from_orchestrator_run_id', '=', input.orchestratorRunId)
-                  .executeTakeFirst()
-            : await transaction
-                  .selectFrom('threads')
-                  .select(['threads.id as thread_id'])
-                  .where('threads.profile_id', '=', input.profileId)
-                  .where('threads.id', '=', input.threadId)
-                  .where('threads.delegated_from_orchestrator_run_id', '=', input.orchestratorRunId)
-                  .executeTakeFirst();
+        const delegatedChildLane = await (async () => {
+            if ('orchestratorRunId' in input) {
+                return input.sessionId
+                    ? await transaction
+                          .selectFrom('threads')
+                          .innerJoin('sessions', 'sessions.thread_id', 'threads.id')
+                          .select(['threads.id as thread_id', 'sessions.id as session_id'])
+                          .where('threads.profile_id', '=', input.profileId)
+                          .where('sessions.profile_id', '=', input.profileId)
+                          .where('threads.id', '=', input.threadId)
+                          .where('sessions.id', '=', input.sessionId)
+                          .where('threads.delegated_from_orchestrator_run_id', '=', input.orchestratorRunId)
+                          .where('sessions.delegated_from_orchestrator_run_id', '=', input.orchestratorRunId)
+                          .executeTakeFirst()
+                    : await transaction
+                          .selectFrom('threads')
+                          .select(['threads.id as thread_id'])
+                          .where('threads.profile_id', '=', input.profileId)
+                          .where('threads.id', '=', input.threadId)
+                          .where('threads.delegated_from_orchestrator_run_id', '=', input.orchestratorRunId)
+                          .executeTakeFirst();
+            }
+
+            return input.sessionId
+                ? await transaction
+                      .selectFrom('threads')
+                      .innerJoin('sessions', 'sessions.thread_id', 'threads.id')
+                      .select(['threads.id as thread_id', 'sessions.id as session_id'])
+                      .where('threads.profile_id', '=', input.profileId)
+                      .where('sessions.profile_id', '=', input.profileId)
+                      .where('threads.id', '=', input.threadId)
+                      .where('sessions.id', '=', input.sessionId)
+                      .where('threads.delegated_from_plan_research_batch_id', '=', input.planResearchBatchId)
+                      .where('sessions.delegated_from_plan_research_batch_id', '=', input.planResearchBatchId)
+                      .executeTakeFirst()
+                : await transaction
+                      .selectFrom('threads')
+                      .select(['threads.id as thread_id'])
+                      .where('threads.profile_id', '=', input.profileId)
+                      .where('threads.id', '=', input.threadId)
+                      .where('threads.delegated_from_plan_research_batch_id', '=', input.planResearchBatchId)
+                      .executeTakeFirst();
+        })();
 
         if (!delegatedChildLane) {
             return false;

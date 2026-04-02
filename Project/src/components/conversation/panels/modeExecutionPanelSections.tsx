@@ -5,12 +5,17 @@ import {
     type ModeExecutionAdvancedPlanningSnapshotDraft,
 } from '@/web/components/conversation/panels/modeExecutionPanelAdvancedPlanning';
 import {
+    PlanEvidenceAttachmentsSection,
+    PlanResearchSection,
+} from '@/web/components/conversation/panels/modeExecutionPanelResearchSections';
+import {
     PlanHistorySection,
     PlanRecoveryBannerSection,
     PlanVariantSwitcherSection,
 } from '@/web/components/conversation/panels/modeExecutionPanelRecoverySections';
 import type {
     ModeExecutionPlanArtifactState,
+    ModeExecutionPlanResearchArtifactState,
     ModeExecutionPlanView,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
 import type { PlanningDepth } from '@/web/components/conversation/shell/planningDepth';
@@ -517,14 +522,23 @@ interface PlanArtifactViewProps {
     canConfigureExecutionStrategy: boolean;
     selectedExecutionStrategy: OrchestratorExecutionStrategy;
     onExecutionStrategyChange: (executionStrategy: OrchestratorExecutionStrategy) => void;
+    researchState?: ModeExecutionPlanResearchArtifactState;
+    researchRequestDraft: string;
+    selectedResearchWorkerCount: number;
     onUpgradeToAdvancedPlanning: () => void;
     onQuestionAnswerDraftChange: (planId: ModeExecutionPlanView['id'], questionId: string, answer: string) => void;
     onAnswerQuestion: (planId: ModeExecutionPlanView['id'], questionId: string, answer: string) => void;
+    onResearchRequestDraftChange: (next: string) => void;
+    onSelectedResearchWorkerCountChange: (next: number) => void;
+    onStartResearchBatch: (promptMarkdown: string, workerCount: number) => void;
+    onAbortResearchBatch: (researchBatchId: EntityId<'prb'>) => void;
+    onInsertEvidenceAttachmentToDraft: (attachmentId: EntityId<'pea'>) => void;
     onGenerateDraft: () => void;
     onEnterEditMode: () => void;
     onCancelPlan: () => void;
     onApprovePlan: () => void;
     onImplementPlan: () => void;
+    onSelectChildThread?: (threadId: EntityId<'thr'>) => void;
     onCreateVariant?: (planId: ModeExecutionPlanView['id'], revisionId: EntityId<'prev'>) => void;
     onActivateVariant?: (planId: ModeExecutionPlanView['id'], variantId: EntityId<'pvar'>) => void;
     onResumeFromRevision?: (planId: ModeExecutionPlanView['id'], revisionId: EntityId<'prev'>) => void;
@@ -542,27 +556,38 @@ export function PlanArtifactView({
     canConfigureExecutionStrategy,
     selectedExecutionStrategy,
     onExecutionStrategyChange,
+    researchState,
+    researchRequestDraft,
+    selectedResearchWorkerCount,
     onUpgradeToAdvancedPlanning,
     onQuestionAnswerDraftChange,
     onAnswerQuestion,
+    onResearchRequestDraftChange,
+    onSelectedResearchWorkerCountChange,
+    onStartResearchBatch,
+    onAbortResearchBatch,
+    onInsertEvidenceAttachmentToDraft,
     onGenerateDraft,
     onEnterEditMode,
     onCancelPlan,
     onApprovePlan,
     onImplementPlan,
+    onSelectChildThread,
     onCreateVariant,
     onActivateVariant,
     onResumeFromRevision,
     onViewFollowUp,
     onResolveFollowUp,
 }: PlanArtifactViewProps) {
+    const isInteractionLocked = isPlanMutating || artifactState.hasRunningResearchBatch;
+
     return (
         <div className='space-y-3'>
             <PlanArtifactStatusSection artifactState={artifactState} />
             <PlanRecoveryBannerSection
                 plan={plan}
                 artifactState={artifactState}
-                isPlanMutating={isPlanMutating}
+                isPlanMutating={isInteractionLocked}
                 onEnterEditMode={onEnterEditMode}
                 {...(onActivateVariant ? { onActivateVariant } : {})}
                 {...(onResolveFollowUp ? { onResolveFollowUp } : {})}
@@ -570,7 +595,7 @@ export function PlanArtifactView({
             <PlanVariantSwitcherSection
                 plan={plan}
                 artifactState={artifactState}
-                isPlanMutating={isPlanMutating}
+                isPlanMutating={isInteractionLocked}
                 {...(onCreateVariant ? { onCreateVariant } : {})}
                 {...(onActivateVariant ? { onActivateVariant } : {})}
             />
@@ -579,7 +604,7 @@ export function PlanArtifactView({
                 plan={plan}
                 isEditable={artifactState.questionsEditable}
                 answerByQuestionId={answerByQuestionId}
-                isPlanMutating={isPlanMutating}
+                isPlanMutating={isInteractionLocked}
                 onQuestionAnswerDraftChange={onQuestionAnswerDraftChange}
                 onAnswerQuestion={onAnswerQuestion}
             />
@@ -587,13 +612,35 @@ export function PlanArtifactView({
                 <>
                     <PlanArtifactEvidenceSection advancedSnapshot={advancedSnapshot} />
                     <AdvancedPlanningArtifactSections snapshot={advancedSnapshot} />
+                    {researchState ? (
+                        <>
+                            <PlanResearchSection
+                                researchState={researchState}
+                                researchRequestDraft={researchRequestDraft}
+                                selectedWorkerCount={selectedResearchWorkerCount}
+                                isPlanMutating={isPlanMutating}
+                                onResearchRequestDraftChange={onResearchRequestDraftChange}
+                                onSelectedWorkerCountChange={onSelectedResearchWorkerCountChange}
+                                onStartResearchBatch={onStartResearchBatch}
+                                onAbortResearchBatch={onAbortResearchBatch}
+                                {...(onSelectChildThread ? { onSelectChildThread } : {})}
+                            />
+                            <PlanEvidenceAttachmentsSection
+                                plan={plan}
+                                researchState={researchState}
+                                isPlanMutating={isPlanMutating}
+                                onInsertIntoEvidenceDraft={onInsertEvidenceAttachmentToDraft}
+                                {...(onSelectChildThread ? { onSelectChildThread } : {})}
+                            />
+                        </>
+                    ) : null}
                 </>
             ) : null}
             <PlanArtifactItemsSection plan={plan} />
             <PlanHistorySection
                 plan={plan}
                 artifactState={artifactState}
-                isPlanMutating={isPlanMutating}
+                isPlanMutating={isInteractionLocked}
                 {...(onCreateVariant ? { onCreateVariant } : {})}
                 {...(onActivateVariant ? { onActivateVariant } : {})}
                 {...(onResumeFromRevision ? { onResumeFromRevision } : {})}
@@ -602,7 +649,7 @@ export function PlanArtifactView({
             />
             <PlanArtifactActionBar
                 artifactState={artifactState}
-                isPlanMutating={isPlanMutating}
+                isPlanMutating={isInteractionLocked}
                 selectedExecutionStrategy={selectedExecutionStrategy}
                 canConfigureExecutionStrategy={canConfigureExecutionStrategy}
                 onExecutionStrategyChange={onExecutionStrategyChange}

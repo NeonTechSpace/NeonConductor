@@ -90,6 +90,13 @@ export interface ModeExecutionDraftState {
     advancedSnapshot?: ModeExecutionAdvancedPlanningSnapshotDraft;
 }
 
+export interface ModeExecutionPlanResearchComposerState {
+    planId: EntityId<'plan'>;
+    revisionId: EntityId<'prev'>;
+    requestMarkdown: string;
+    workerCount: number;
+}
+
 export interface ModeExecutionPlanPanelModeState {
     planId: EntityId<'plan'>;
     revisionId: EntityId<'prev'>;
@@ -196,6 +203,32 @@ export function resolveModeExecutionDraftState(input: {
     };
 }
 
+export function resolveModeExecutionResearchComposerState(input: {
+    activePlan: ModeExecutionPlanView | undefined;
+    composerState: ModeExecutionPlanResearchComposerState | undefined;
+}): ModeExecutionPlanResearchComposerState | undefined {
+    if (!input.activePlan) {
+        return undefined;
+    }
+
+    if (
+        input.composerState?.planId === input.activePlan.id &&
+        input.composerState.revisionId === input.activePlan.currentRevisionId
+    ) {
+        return input.composerState;
+    }
+
+    return {
+        planId: input.activePlan.id,
+        revisionId: input.activePlan.currentRevisionId,
+        requestMarkdown: '',
+        workerCount:
+            input.activePlan.researchRecommendation?.suggestedWorkerCount ??
+            input.activePlan.researchCapacity?.recommendedWorkerCount ??
+            1,
+    };
+}
+
 export function hasUnansweredRequiredPlanQuestions(plan: ModeExecutionPlanView): boolean {
     return plan.questions.some((question) => question.required && (question.answer?.trim().length ?? 0) === 0);
 }
@@ -230,6 +263,7 @@ export interface ModeExecutionPlanArtifactState {
     currentVariantId: EntityId<'pvar'> | undefined;
     approvedVariantId: EntityId<'pvar'> | undefined;
     hasOpenFollowUps: boolean;
+    hasRunningResearchBatch: boolean;
     questionsEditable: boolean;
     readyToImplement: boolean;
     canGenerateDraft: boolean;
@@ -238,6 +272,18 @@ export interface ModeExecutionPlanArtifactState {
     canImplement: boolean;
     canCancel: boolean;
     canEnterAdvancedPlanning: boolean;
+}
+
+export interface ModeExecutionPlanResearchArtifactState {
+    currentRevisionBatches: NonNullable<ModeExecutionPlanView['researchBatches']>;
+    historicalBatches: NonNullable<ModeExecutionPlanView['researchBatches']>;
+    evidenceAttachments: NonNullable<ModeExecutionPlanView['evidenceAttachments']>;
+    recommendation?: ModeExecutionPlanView['researchRecommendation'];
+    capacity?: ModeExecutionPlanView['researchCapacity'];
+    activeBatch?: NonNullable<ModeExecutionPlanView['researchBatches']>[number];
+    hasRunningResearchBatch: boolean;
+    canStartResearch: boolean;
+    canAbortActiveResearchBatch: boolean;
 }
 
 export function resolveModeExecutionPlanPanelMode(input: {
@@ -656,6 +702,11 @@ export function resolveModeExecutionPlanArtifactState(input: {
     const planVariants = Array.isArray(plan.variants) ? plan.variants : [];
     const planFollowUps = Array.isArray(plan.followUps) ? plan.followUps : [];
     const planHistory = Array.isArray(plan.history) ? plan.history : [];
+    const planResearchBatches = Array.isArray(plan.researchBatches) ? plan.researchBatches : [];
+    const currentRevisionResearchBatches = planResearchBatches.filter(
+        (batch) => batch.planRevisionId === plan.currentRevisionId
+    );
+    const hasRunningResearchBatch = currentRevisionResearchBatches.some((batch) => batch.status === 'running');
     const revisionLabelById = new Map<EntityId<'prev'>, string>();
     revisionLabelById.set(plan.currentRevisionId, readRevisionLabel(plan.currentRevisionNumber, plan.currentRevisionId));
     if (plan.approvedRevisionId && plan.approvedRevisionNumber !== undefined) {
@@ -752,24 +803,61 @@ export function resolveModeExecutionPlanArtifactState(input: {
         currentVariantId: plan.currentVariantId,
         approvedVariantId: plan.approvedVariantId,
         hasOpenFollowUps: openFollowUps.length > 0,
+        hasRunningResearchBatch,
         questionsEditable: plan.status === 'awaiting_answers',
         readyToImplement: plan.status === 'approved' && openFollowUps.length === 0,
-        canGenerateDraft: canGenerateDraft(plan),
+        canGenerateDraft: canGenerateDraft(plan) && !hasRunningResearchBatch,
         canRevise:
-            plan.status === 'draft' ||
-            plan.status === 'approved' ||
-            plan.status === 'implemented' ||
-            plan.status === 'failed' ||
-            plan.status === 'cancelled',
+            !hasRunningResearchBatch &&
+            (plan.status === 'draft' ||
+                plan.status === 'approved' ||
+                plan.status === 'implemented' ||
+                plan.status === 'failed' ||
+                plan.status === 'cancelled'),
         canApprove:
+            !hasRunningResearchBatch &&
             (plan.status === 'draft' || plan.status === 'failed' || plan.status === 'cancelled') &&
             openFollowUps.length === 0,
-        canImplement: plan.status === 'approved' && openFollowUps.length === 0,
+        canImplement: !hasRunningResearchBatch && plan.status === 'approved' && openFollowUps.length === 0,
         canCancel:
             plan.status === 'awaiting_answers' ||
             plan.status === 'draft' ||
             plan.status === 'approved' ||
             plan.status === 'failed',
-        canEnterAdvancedPlanning: planningDepth === 'simple' && plan.status !== 'implementing',
+        canEnterAdvancedPlanning:
+            !hasRunningResearchBatch && planningDepth === 'simple' && plan.status !== 'implementing',
+    };
+}
+
+export function resolveModeExecutionPlanResearchArtifactState(input: {
+    activePlan: ModeExecutionPlanView | undefined;
+}): ModeExecutionPlanResearchArtifactState | undefined {
+    if (!input.activePlan) {
+        return undefined;
+    }
+
+    const plan = input.activePlan;
+    const researchBatches = Array.isArray(plan.researchBatches) ? plan.researchBatches : [];
+    const currentRevisionBatches = researchBatches
+        .filter((batch) => batch.planRevisionId === plan.currentRevisionId)
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    const historicalBatches = researchBatches
+        .filter((batch) => batch.planRevisionId !== plan.currentRevisionId)
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    const activeBatch = currentRevisionBatches.find((batch) => batch.status === 'running');
+    const hasRunningResearchBatch = Boolean(activeBatch);
+    const isEditableAdvancedPlan =
+        plan.planningDepth === 'advanced' && (plan.status === 'awaiting_answers' || plan.status === 'draft');
+
+    return {
+        currentRevisionBatches,
+        historicalBatches,
+        evidenceAttachments: Array.isArray(plan.evidenceAttachments) ? plan.evidenceAttachments : [],
+        ...(plan.researchRecommendation ? { recommendation: plan.researchRecommendation } : {}),
+        ...(plan.researchCapacity ? { capacity: plan.researchCapacity } : {}),
+        ...(activeBatch ? { activeBatch } : {}),
+        hasRunningResearchBatch,
+        canStartResearch: isEditableAdvancedPlan && !hasRunningResearchBatch,
+        canAbortActiveResearchBatch: hasRunningResearchBatch,
     };
 }

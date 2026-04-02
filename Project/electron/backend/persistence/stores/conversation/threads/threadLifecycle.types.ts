@@ -9,6 +9,7 @@ export interface ResolvedThreadCreationInput {
     parentThreadId?: string;
     rootThreadId?: string;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
+    delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
     executionEnvironmentMode?: ExecutionEnvironmentMode;
     sandboxId?: EntityId<'sb'>;
 }
@@ -48,12 +49,19 @@ export interface ThreadActivityUpdate {
     atIso: string;
 }
 
-export interface DeleteDelegatedChildLaneInput {
-    profileId: string;
-    threadId: EntityId<'thr'>;
-    sessionId?: EntityId<'sess'>;
-    orchestratorRunId: EntityId<'orch'>;
-}
+export type DeleteDelegatedChildLaneInput =
+    | {
+          profileId: string;
+          threadId: EntityId<'thr'>;
+          sessionId?: EntityId<'sess'>;
+          orchestratorRunId: EntityId<'orch'>;
+      }
+    | {
+          profileId: string;
+          threadId: EntityId<'thr'>;
+          sessionId?: EntityId<'sess'>;
+          planResearchBatchId: EntityId<'prb'>;
+      };
 
 export interface DelegatedChildLaneDeletionResult {
     deleted: boolean;

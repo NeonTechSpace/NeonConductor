@@ -8,9 +8,12 @@ import {
     resolveModeExecutionOrchestratorPanelState,
     resolveModeExecutionPlanArtifactState,
     resolveModeExecutionPlanPanelMode,
+    resolveModeExecutionPlanResearchArtifactState,
+    resolveModeExecutionResearchComposerState,
     type ModeExecutionDraftState,
     type ModeExecutionOrchestratorPanelState,
     type ModeExecutionPlanPanelModeState,
+    type ModeExecutionPlanResearchComposerState,
     type ModeExecutionPlanView,
 } from '@/web/components/conversation/panels/modeExecutionPanelState';
 import type { ConversationPlanActionController } from '@/web/components/conversation/shell/composition/planImplementationController';
@@ -152,6 +155,9 @@ export function ModeExecutionPanel({
 }: ModeExecutionPanelProps) {
     const [draftState, setDraftState] = useState<ModeExecutionDraftState | undefined>(undefined);
     const [panelModeState, setPanelModeState] = useState<ModeExecutionPlanPanelModeState | undefined>(undefined);
+    const [researchComposerState, setResearchComposerState] = useState<ModeExecutionPlanResearchComposerState | undefined>(
+        undefined
+    );
     const resolvedDraftState = resolveModeExecutionDraftState({
         activePlan,
         draftState,
@@ -163,6 +169,13 @@ export function ModeExecutionPanel({
     const artifactState = resolveModeExecutionPlanArtifactState({
         activePlan,
     });
+    const researchArtifactState = resolveModeExecutionPlanResearchArtifactState({
+        activePlan,
+    });
+    const resolvedResearchComposerState = resolveModeExecutionResearchComposerState({
+        activePlan,
+        composerState: researchComposerState,
+    });
     const orchestratorPanelState = resolveModeExecutionOrchestratorPanelState({
         topLevelTab,
         selectedExecutionStrategy,
@@ -173,12 +186,14 @@ export function ModeExecutionPanel({
         isPlanMutating,
         isOrchestratorMutating,
         onAnswerQuestion,
+        onStartResearchBatch,
         onRevisePlan,
         onGenerateDraft,
         onCancelPlan,
         onApprovePlan,
         onImplementPlan,
         onEnterAdvancedPlanning,
+        onAbortResearchBatch,
         onAbortOrchestrator,
     } = actionController;
 
@@ -192,6 +207,8 @@ export function ModeExecutionPanel({
     const answerByQuestionId = resolvedDraftState?.answerByQuestionId ?? {};
     const planningDepth = resolvedDraftState?.planningDepth ?? planningDepthSelection;
     const advancedSnapshot = resolvedDraftState?.advancedSnapshot;
+    const researchRequestDraft = resolvedResearchComposerState?.requestMarkdown ?? '';
+    const selectedResearchWorkerCount = resolvedResearchComposerState?.workerCount ?? 1;
 
     function updateDraftState(
         plan: PlanView,
@@ -203,6 +220,59 @@ export function ModeExecutionPanel({
                     ? current
                     : resolvedDraftState;
             return nextState ? updater(nextState) : nextState;
+        });
+    }
+
+    function updateResearchComposerState(
+        plan: PlanView,
+        updater: (
+            current: NonNullable<typeof resolvedResearchComposerState>
+        ) => NonNullable<typeof resolvedResearchComposerState>
+    ): void {
+        setResearchComposerState((current) => {
+            const nextState =
+                current?.planId === plan.id && current.revisionId === plan.currentRevisionId
+                    ? current
+                    : resolvedResearchComposerState;
+            return nextState ? updater(nextState) : nextState;
+        });
+    }
+
+    function insertEvidenceAttachmentIntoDraft(attachmentId: EntityId<'pea'>): void {
+        if (!activePlan || !resolvedDraftState || !researchArtifactState) {
+            return;
+        }
+
+        const attachment = researchArtifactState.evidenceAttachments.find((candidate) => candidate.id === attachmentId);
+        if (!attachment || planningDepth !== 'advanced' || !advancedSnapshot) {
+            return;
+        }
+
+        const insertedMarkdown = [
+            attachment.label,
+            '',
+            attachment.detailsMarkdown,
+        ].join('\n');
+        const nextEvidenceMarkdown =
+            advancedSnapshot.evidenceMarkdown.trim().length > 0
+                ? `${advancedSnapshot.evidenceMarkdown.trim()}\n\n${insertedMarkdown}`
+                : insertedMarkdown;
+
+        updateDraftState(activePlan, (current) => ({
+            ...current,
+            ...(current.advancedSnapshot
+                ? {
+                      advancedSnapshot: {
+                          ...current.advancedSnapshot,
+                          evidenceMarkdown: nextEvidenceMarkdown,
+                      },
+                  }
+                : {}),
+        }));
+        setPanelModeState({
+            planId: activePlan.id,
+            revisionId: activePlan.currentRevisionId,
+            mode: 'edit',
         });
     }
 
@@ -267,6 +337,9 @@ export function ModeExecutionPanel({
                                 planningDepth={planningDepth}
                                 isPlanMutating={isPlanMutating}
                                 {...(advancedSnapshot ? { advancedSnapshot } : {})}
+                                {...(researchArtifactState ? { researchState: researchArtifactState } : {})}
+                                researchRequestDraft={researchRequestDraft}
+                                selectedResearchWorkerCount={selectedResearchWorkerCount}
                                 canConfigureExecutionStrategy={
                                     topLevelTab === 'orchestrator' && canConfigureExecutionStrategy
                                 }
@@ -293,6 +366,30 @@ export function ModeExecutionPanel({
                                 onAnswerQuestion={(planId, questionId, answer) => {
                                     onAnswerQuestion(planId, questionId, answer);
                                 }}
+                                onResearchRequestDraftChange={(next) => {
+                                    updateResearchComposerState(activePlan, (current) => ({
+                                        ...current,
+                                        requestMarkdown: next,
+                                    }));
+                                }}
+                                onSelectedResearchWorkerCountChange={(next) => {
+                                    const hardMaxWorkerCount = researchArtifactState?.capacity?.hardMaxWorkerCount ?? 1;
+                                    updateResearchComposerState(activePlan, (current) => ({
+                                        ...current,
+                                        workerCount: Math.max(1, Math.min(next, hardMaxWorkerCount)),
+                                    }));
+                                }}
+                                onStartResearchBatch={(promptMarkdown, workerCount) => {
+                                    updateResearchComposerState(activePlan, (current) => ({
+                                        ...current,
+                                        requestMarkdown: '',
+                                    }));
+                                    onStartResearchBatch(activePlan.id, promptMarkdown, workerCount);
+                                }}
+                                onAbortResearchBatch={(researchBatchId) => {
+                                    onAbortResearchBatch(activePlan.id, researchBatchId);
+                                }}
+                                onInsertEvidenceAttachmentToDraft={insertEvidenceAttachmentIntoDraft}
                                 onGenerateDraft={() => {
                                     onGenerateDraft(activePlan.id);
                                 }}
@@ -318,6 +415,7 @@ export function ModeExecutionPanel({
                                 {...(onResumeFromRevision ? { onResumeFromRevision } : {})}
                                 {...(onViewFollowUp ? { onViewFollowUp } : {})}
                                 {...(onResolveFollowUp ? { onResolveFollowUp } : {})}
+                                {...(onSelectChildThread ? { onSelectChildThread } : {})}
                             />
                         )
                     ) : (

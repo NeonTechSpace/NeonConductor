@@ -160,6 +160,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planStartResearchBatchMutation: createPlanViewMutationMock(),
             planReviseMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -169,6 +170,7 @@ describe('runConversationPlanMutation', () => {
             planActivateVariantMutation: createPlanViewMutationMock(),
             planResumeFromRevisionMutation: createPlanViewMutationMock(),
             planResolveFollowUpMutation: createPlanViewMutationMock(),
+            planAbortResearchBatchMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -228,6 +230,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planStartResearchBatchMutation: createPlanViewMutationMock(),
             planReviseMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -237,6 +240,7 @@ describe('runConversationPlanMutation', () => {
             planActivateVariantMutation: createPlanViewMutationMock(),
             planResumeFromRevisionMutation: createPlanViewMutationMock(),
             planResolveFollowUpMutation: createPlanViewMutationMock(),
+            planAbortResearchBatchMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation,
             planCancelMutation: {
                 isPending: false,
@@ -301,6 +305,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planStartResearchBatchMutation: createPlanViewMutationMock(),
             planReviseMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -310,6 +315,7 @@ describe('runConversationPlanMutation', () => {
             planActivateVariantMutation: createPlanViewMutationMock(),
             planResumeFromRevisionMutation: createPlanViewMutationMock(),
             planResolveFollowUpMutation: createPlanViewMutationMock(),
+            planAbortResearchBatchMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -387,6 +393,7 @@ describe('runConversationPlanMutation', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planStartResearchBatchMutation: createPlanViewMutationMock(),
             planReviseMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -396,6 +403,7 @@ describe('runConversationPlanMutation', () => {
             planActivateVariantMutation: createPlanViewMutationMock(),
             planResumeFromRevisionMutation,
             planResolveFollowUpMutation,
+            planAbortResearchBatchMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -497,6 +505,7 @@ describe('buildConversationPlanOrchestrator', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planStartResearchBatchMutation: createPlanViewMutationMock(),
             planReviseMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -506,6 +515,7 @@ describe('buildConversationPlanOrchestrator', () => {
             planActivateVariantMutation: createPlanViewMutationMock(),
             planResumeFromRevisionMutation: createPlanViewMutationMock(),
             planResolveFollowUpMutation: createPlanViewMutationMock(),
+            planAbortResearchBatchMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -582,6 +592,7 @@ describe('buildConversationPlanOrchestrator', () => {
                 isPending: false,
                 mutateAsync: vi.fn(),
             },
+            planStartResearchBatchMutation: createPlanViewMutationMock(),
             planReviseMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),
@@ -591,6 +602,7 @@ describe('buildConversationPlanOrchestrator', () => {
             planActivateVariantMutation: createPlanViewMutationMock(),
             planResumeFromRevisionMutation: createPlanViewMutationMock(),
             planResolveFollowUpMutation: createPlanViewMutationMock(),
+            planAbortResearchBatchMutation: createPlanViewMutationMock(),
             planGenerateDraftMutation: {
                 isPending: false,
                 mutateAsync: vi.fn(),

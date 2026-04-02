@@ -304,6 +304,7 @@ CREATE TABLE threads (
     parent_thread_id TEXT NULL REFERENCES threads(id) ON DELETE SET NULL,
     root_thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
     delegated_from_orchestrator_run_id TEXT NULL,
+    delegated_from_plan_research_batch_id TEXT NULL,
     last_assistant_at TEXT NULL,
     execution_environment_mode TEXT NOT NULL DEFAULT 'local',
     sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
@@ -336,6 +337,7 @@ CREATE TABLE sessions (
     kind TEXT NOT NULL CHECK (kind IN ('local', 'sandbox', 'cloud')),
     sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
     delegated_from_orchestrator_run_id TEXT NULL,
+    delegated_from_plan_research_batch_id TEXT NULL,
     run_status TEXT NOT NULL CHECK (run_status IN ('idle', 'running', 'completed', 'aborted', 'error')),
     pending_completion_run_id TEXT NULL,
     created_at TEXT NOT NULL,
@@ -917,6 +919,62 @@ CREATE TABLE plan_revision_advanced_snapshots (
     FOREIGN KEY (plan_revision_id) REFERENCES plan_revisions(id) ON DELETE CASCADE
 );
 
+CREATE TABLE plan_research_batches (
+    id TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    plan_revision_id TEXT NOT NULL,
+    variant_id TEXT NOT NULL,
+    prompt_markdown TEXT NOT NULL,
+    requested_worker_count INTEGER NOT NULL CHECK (requested_worker_count > 0),
+    recommended_worker_count INTEGER NOT NULL CHECK (recommended_worker_count > 0),
+    hard_max_worker_count INTEGER NOT NULL CHECK (hard_max_worker_count > 0),
+    status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed', 'aborted')),
+    created_at TEXT NOT NULL,
+    completed_at TEXT NULL,
+    aborted_at TEXT NULL,
+    FOREIGN KEY (plan_id) REFERENCES plan_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_revision_id) REFERENCES plan_revisions(id) ON DELETE CASCADE,
+    FOREIGN KEY (variant_id) REFERENCES plan_variants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE plan_research_workers (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    label TEXT NOT NULL,
+    prompt_markdown TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'aborted')),
+    child_thread_id TEXT NULL REFERENCES threads(id) ON DELETE SET NULL,
+    child_session_id TEXT NULL REFERENCES sessions(id) ON DELETE SET NULL,
+    active_run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    result_summary_markdown TEXT NULL,
+    result_details_markdown TEXT NULL,
+    error_message TEXT NULL,
+    created_at TEXT NOT NULL,
+    completed_at TEXT NULL,
+    aborted_at TEXT NULL,
+    FOREIGN KEY (batch_id) REFERENCES plan_research_batches(id) ON DELETE CASCADE,
+    UNIQUE (batch_id, sequence)
+);
+
+CREATE TABLE plan_revision_evidence_attachments (
+    id TEXT PRIMARY KEY,
+    plan_revision_id TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK (source_kind IN ('planner_worker')),
+    research_batch_id TEXT NOT NULL,
+    research_worker_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    summary_markdown TEXT NOT NULL,
+    details_markdown TEXT NOT NULL,
+    child_thread_id TEXT NULL REFERENCES threads(id) ON DELETE SET NULL,
+    child_session_id TEXT NULL REFERENCES sessions(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (plan_revision_id) REFERENCES plan_revisions(id) ON DELETE CASCADE,
+    FOREIGN KEY (research_batch_id) REFERENCES plan_research_batches(id) ON DELETE CASCADE,
+    FOREIGN KEY (research_worker_id) REFERENCES plan_research_workers(id) ON DELETE CASCADE
+);
+
 CREATE TABLE plan_revision_items (
     id TEXT PRIMARY KEY,
     plan_revision_id TEXT NOT NULL,
@@ -1184,6 +1242,9 @@ CREATE INDEX idx_threads_profile_mode_updated_at
 CREATE INDEX idx_threads_delegated_orchestrator_run_id
     ON threads(delegated_from_orchestrator_run_id);
 
+CREATE INDEX idx_threads_delegated_plan_research_batch_id
+    ON threads(delegated_from_plan_research_batch_id);
+
 CREATE INDEX idx_threads_profile_parent_updated_at
     ON threads(profile_id, parent_thread_id, updated_at DESC);
 
@@ -1210,6 +1271,9 @@ CREATE INDEX idx_sessions_profile_thread_updated_at
 
 CREATE INDEX idx_sessions_delegated_orchestrator_run_id
     ON sessions(delegated_from_orchestrator_run_id);
+
+CREATE INDEX idx_sessions_delegated_plan_research_batch_id
+    ON sessions(delegated_from_plan_research_batch_id);
 
 CREATE INDEX idx_sessions_profile_sandbox_updated_at
     ON sessions(profile_id, sandbox_id, updated_at DESC);
@@ -1404,6 +1468,24 @@ CREATE INDEX idx_memory_graph_edges_profile_target
 
 CREATE INDEX idx_plan_records_profile_session
     ON plan_records(profile_id, session_id, created_at DESC);
+
+CREATE INDEX idx_plan_research_batches_plan_created_at
+    ON plan_research_batches(plan_id, created_at DESC);
+
+CREATE INDEX idx_plan_research_batches_revision_status_created_at
+    ON plan_research_batches(plan_revision_id, status, created_at DESC);
+
+CREATE INDEX idx_plan_research_workers_batch_sequence
+    ON plan_research_workers(batch_id, sequence);
+
+CREATE INDEX idx_plan_research_workers_batch_status
+    ON plan_research_workers(batch_id, status);
+
+CREATE INDEX idx_plan_revision_evidence_attachments_revision_created_at
+    ON plan_revision_evidence_attachments(plan_revision_id, created_at ASC);
+
+CREATE INDEX idx_plan_revision_evidence_attachments_worker
+    ON plan_revision_evidence_attachments(research_worker_id);
 
 CREATE UNIQUE INDEX idx_plan_items_plan_sequence
     ON plan_items(plan_id, sequence);

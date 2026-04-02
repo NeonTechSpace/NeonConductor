@@ -5,12 +5,16 @@ import type {
     PlanRecordView,
     PlanReviseInput,
 } from '@/app/backend/runtime/contracts';
+import { errPlan, okPlan, type PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import {
     appendPlanCancelledEvent,
     appendPlanQuestionAnsweredEvent,
     appendPlanRevisedEvent,
 } from '@/app/backend/runtime/services/plan/events';
+import { abortRunningResearchWorkers, ensureNoRunningResearchBatch } from '@/app/backend/runtime/services/plan/researchLifecycle';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
+
+import type { Result } from 'neverthrow';
 
 export async function answerPlanQuestion(
     input: PlanAnswerQuestionInput
@@ -34,7 +38,20 @@ export async function answerPlanQuestion(
 
 export async function revisePlan(
     input: PlanReviseInput
-): Promise<{ found: false } | { found: true; plan: PlanRecordView }> {
+): Promise<Result<{ found: false } | { found: true; plan: PlanRecordView }, PlanServiceError>> {
+    const existing = await planStore.getById(input.profileId, input.planId);
+    if (!existing) {
+        return okPlan({ found: false });
+    }
+
+    const researchValidation = await ensureNoRunningResearchBatch({
+        plan: existing,
+        actionLabel: 'revise the plan',
+    });
+    if (researchValidation.isErr()) {
+        return errPlan(researchValidation.error.code, researchValidation.error.message);
+    }
+
     const descriptions = input.items
         .map((item) => item.description.trim())
         .filter((description) => description.length > 0);
@@ -42,7 +59,7 @@ export async function revisePlan(
         ...(input.advancedSnapshot ? { advancedSnapshot: input.advancedSnapshot } : {}),
     });
     if (!revised || revised.profileId !== input.profileId) {
-        return { found: false };
+        return errPlan('revision_conflict', 'Unable to persist the requested plan revision.');
     }
 
     await appendPlanRevisedEvent({
@@ -55,10 +72,10 @@ export async function revisePlan(
 
     const projection = await planStore.getProjectionById(input.profileId, input.planId);
 
-    return {
+    return okPlan({
         found: true,
         plan: requirePlanView(projection, 'plan.revise'),
-    };
+    });
 }
 
 export async function cancelPlan(
@@ -76,6 +93,18 @@ export async function cancelPlan(
         existing.status !== 'failed'
     ) {
         return { found: false };
+    }
+
+    const activeResearchBatch = await planStore.getActiveResearchBatchByRevision(existing.currentRevisionId);
+    if (activeResearchBatch) {
+        await abortRunningResearchWorkers({
+            profileId: input.profileId,
+            researchBatchId: activeResearchBatch.id,
+        });
+        const abortedResearchBatch = await planStore.abortResearchBatch(existing.id, activeResearchBatch.id);
+        if (!abortedResearchBatch) {
+            return { found: false };
+        }
     }
 
     const cancelled = await planStore.cancel(input.planId);

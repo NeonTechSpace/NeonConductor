@@ -50,6 +50,19 @@ export interface CreatePlanImplementationControllerInput {
         },
         ConversationActivePlanData
     >;
+    planStartResearchBatchMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            promptMarkdown: string;
+            workerCount: number;
+            runtimeOptions: RuntimeRunOptions;
+            providerId?: RuntimeProviderId;
+            modelId?: string;
+            workspaceFingerprint?: string;
+        },
+        ConversationActivePlanData
+    >;
     planReviseMutation: MutationLike<
         {
             profileId: string;
@@ -98,6 +111,14 @@ export interface CreatePlanImplementationControllerInput {
             followUpId: EntityId<'pfu'>;
             status: 'resolved' | 'dismissed';
             responseMarkdown?: string;
+        },
+        ConversationActivePlanData
+    >;
+    planAbortResearchBatchMutation: MutationLike<
+        {
+            profileId: string;
+            planId: EntityId<'plan'>;
+            researchBatchId: EntityId<'prb'>;
         },
         ConversationActivePlanData
     >;
@@ -164,6 +185,7 @@ export interface ConversationPlanActionController {
     isPlanMutating: boolean;
     isOrchestratorMutating: boolean;
     onAnswerQuestion: (planId: EntityId<'plan'>, questionId: string, answer: string) => void;
+    onStartResearchBatch: (planId: EntityId<'plan'>, promptMarkdown: string, workerCount: number) => void;
     onRevisePlan: (
         planId: EntityId<'plan'>,
         summaryMarkdown: string,
@@ -175,6 +197,7 @@ export interface ConversationPlanActionController {
     onActivateVariant: (planId: EntityId<'plan'>, variantId: EntityId<'pvar'>) => void;
     onResumeFromRevision: (planId: EntityId<'plan'>, sourceRevisionId: EntityId<'prev'>) => void;
     onResolveFollowUp: (planId: EntityId<'plan'>, followUpId: EntityId<'pfu'>) => void;
+    onAbortResearchBatch: (planId: EntityId<'plan'>, researchBatchId: EntityId<'prb'>) => void;
     onGenerateDraft: (planId: EntityId<'plan'>) => void;
     onCancelPlan: (planId: EntityId<'plan'>) => void;
     onApprovePlan: (planId: EntityId<'plan'>, revisionId: EntityId<'prev'>) => void;
@@ -210,12 +233,14 @@ export function createPlanImplementationController(
         isPlanMutating:
             input.planStartMutation.isPending ||
             input.planAnswerMutation.isPending ||
+            input.planStartResearchBatchMutation.isPending ||
             input.planReviseMutation.isPending ||
             input.planEnterAdvancedPlanningMutation.isPending ||
             input.planCreateVariantMutation.isPending ||
             input.planActivateVariantMutation.isPending ||
             input.planResumeFromRevisionMutation.isPending ||
             input.planResolveFollowUpMutation.isPending ||
+            input.planAbortResearchBatchMutation.isPending ||
             input.planGenerateDraftMutation.isPending ||
             input.planCancelMutation.isPending ||
             input.planApproveMutation.isPending ||
@@ -238,6 +263,32 @@ export function createPlanImplementationController(
                     },
                     onError: input.onError,
                     errorPrefix: 'Plan answer failed',
+                });
+            });
+        },
+        onStartResearchBatch: (planId, promptMarkdown, workerCount) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planStartResearchBatchMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                promptMarkdown,
+                                workerCount,
+                                runtimeOptions: input.runtimeOptions,
+                                ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
+                                ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
+                                ...(input.workspaceFingerprint
+                                    ? { workspaceFingerprint: input.workspaceFingerprint }
+                                    : {}),
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Planner research start failed',
                 });
             });
         },
@@ -354,6 +405,25 @@ export function createPlanImplementationController(
                     },
                     onError: input.onError,
                     errorPrefix: 'Plan follow-up resolution failed',
+                });
+            });
+        },
+        onAbortResearchBatch: (planId, researchBatchId) => {
+            launchBackgroundTask(async () => {
+                await runConversationPlanMutation({
+                    mutation: {
+                        mutateAsync: () =>
+                            input.planAbortResearchBatchMutation.mutateAsync({
+                                profileId: input.profileId,
+                                planId,
+                                researchBatchId,
+                            }),
+                    },
+                    applyResult: (result) => {
+                        input.applyPlanWorkspaceUpdate(result);
+                    },
+                    onError: input.onError,
+                    errorPrefix: 'Planner research abort failed',
                 });
             });
         },

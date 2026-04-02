@@ -53,6 +53,74 @@ export interface PlanAdvancedSnapshotView extends PlanAdvancedSnapshotInput {
     createdAt: string;
 }
 
+export type PlanResearchBatchStatus = 'running' | 'completed' | 'failed' | 'aborted';
+
+export type PlanResearchWorkerStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted';
+
+export interface PlanResearchCapacityView {
+    availableParallelism: number;
+    recommendedWorkerCount: number;
+    hardMaxWorkerCount: number;
+}
+
+export type PlanResearchRecommendationPriority = 'low' | 'medium' | 'high';
+
+export interface PlanResearchRecommendationView {
+    recommended: boolean;
+    priority: PlanResearchRecommendationPriority;
+    reasons: string[];
+    suggestedWorkerCount: number;
+}
+
+export interface PlanResearchWorkerView {
+    id: EntityId<'prw'>;
+    batchId: EntityId<'prb'>;
+    sequence: number;
+    label: string;
+    promptMarkdown: string;
+    status: PlanResearchWorkerStatus;
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    activeRunId?: EntityId<'run'>;
+    runId?: EntityId<'run'>;
+    resultSummaryMarkdown?: string;
+    resultDetailsMarkdown?: string;
+    errorMessage?: string;
+    createdAt: string;
+    completedAt?: string;
+    abortedAt?: string;
+}
+
+export interface PlanResearchBatchView {
+    id: EntityId<'prb'>;
+    planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
+    variantId: EntityId<'pvar'>;
+    promptMarkdown: string;
+    requestedWorkerCount: number;
+    recommendedWorkerCount: number;
+    hardMaxWorkerCount: number;
+    status: PlanResearchBatchStatus;
+    workers: PlanResearchWorkerView[];
+    createdAt: string;
+    completedAt?: string;
+    abortedAt?: string;
+}
+
+export interface PlanEvidenceAttachmentView {
+    id: EntityId<'pea'>;
+    planRevisionId: EntityId<'prev'>;
+    sourceKind: 'planner_worker';
+    researchBatchId: EntityId<'prb'>;
+    researchWorkerId: EntityId<'prw'>;
+    label: string;
+    summaryMarkdown: string;
+    detailsMarkdown: string;
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    createdAt: string;
+}
+
 export interface PlanCreateVariantInput extends PlanGetInput {
     sourceRevisionId: EntityId<'prev'>;
 }
@@ -85,6 +153,19 @@ export interface PlanStartInput extends ProfileInput {
     prompt: string;
     planningDepth?: PlanPlanningDepth;
     workspaceFingerprint?: string;
+}
+
+export interface PlanStartResearchBatchInput extends PlanGetInput {
+    promptMarkdown: string;
+    workerCount: number;
+    runtimeOptions: RuntimeRunOptions;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
+    workspaceFingerprint?: string;
+}
+
+export interface PlanAbortResearchBatchInput extends PlanGetInput {
+    researchBatchId: EntityId<'prb'>;
 }
 
 export interface PlanGetInput extends ProfileInput {
@@ -218,6 +299,10 @@ export interface PlanRecordView {
     sourcePrompt: string;
     summaryMarkdown: string;
     advancedSnapshot?: PlanAdvancedSnapshotView;
+    researchBatches?: PlanResearchBatchView[];
+    evidenceAttachments?: PlanEvidenceAttachmentView[];
+    researchRecommendation?: PlanResearchRecommendationView;
+    researchCapacity?: PlanResearchCapacityView;
     currentRevisionId: EntityId<'prev'>;
     currentRevisionNumber: number;
     currentVariantId: EntityId<'pvar'>;

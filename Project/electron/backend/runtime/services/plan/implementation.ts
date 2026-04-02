@@ -4,6 +4,7 @@ import { orchestratorExecutionService } from '@/app/backend/runtime/services/orc
 import { resolveApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 import type { PlanServiceError } from '@/app/backend/runtime/services/plan/errors';
 import { appendPlanImplementationStartedEvent } from '@/app/backend/runtime/services/plan/events';
+import { ensureNoRunningResearchBatch } from '@/app/backend/runtime/services/plan/researchLifecycle';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { appLog } from '@/app/main/logging';
@@ -37,6 +38,17 @@ export async function implementApprovedPlan(input: {
         return {
             code: 'run_start_failed',
             message: `Plan implementation failed to start: approved revision content could not be resolved for plan "${input.plan.id}".`,
+        };
+    }
+
+    const researchValidation = await ensureNoRunningResearchBatch({
+        plan: input.plan,
+        actionLabel: 'implement the plan',
+    });
+    if (researchValidation.isErr()) {
+        return {
+            code: researchValidation.error.code,
+            message: researchValidation.error.message,
         };
     }
 

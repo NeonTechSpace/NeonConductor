@@ -11,6 +11,7 @@ import {
     appendPlanRevisedEvent,
 } from '@/app/backend/runtime/services/plan/events';
 import { buildDeterministicDraft, hasUnansweredRequiredQuestions } from '@/app/backend/runtime/services/plan/intake';
+import { ensureNoRunningResearchBatch } from '@/app/backend/runtime/services/plan/researchLifecycle';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { appLog } from '@/app/main/logging';
 
@@ -185,6 +186,14 @@ export async function generatePlanDraft(
             'unanswered_questions',
             'Cannot generate a draft before answering all required intake questions.'
         );
+    }
+
+    const researchValidation = await ensureNoRunningResearchBatch({
+        plan,
+        actionLabel: 'generate a draft',
+    });
+    if (researchValidation.isErr()) {
+        return errPlan(researchValidation.error.code, researchValidation.error.message);
     }
 
     const priorRevisionId = plan.currentRevisionId;

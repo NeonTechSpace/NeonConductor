@@ -181,4 +181,39 @@ describe('buildConversationSidebarModel', () => {
         expect(populatedGroup?.rows.map((row) => row.thread.id)).toEqual(['thr_orchestrator_root', 'thr_worker_child']);
         expect(populatedGroup?.rows.map((row) => row.depth)).toEqual([0, 1]);
     });
+
+    it('keeps planner research child lanes nested in workspace view', () => {
+        const model = buildConversationSidebarModel({
+            buckets,
+            threads: [
+                {
+                    ...(threads[0] ?? (() => {
+                        throw new Error('Expected root planning thread.');
+                    })()),
+                    id: 'thr_plan_root',
+                    title: 'Root planning thread',
+                    topLevelTab: 'agent',
+                    rootThreadId: 'thr_plan_root',
+                },
+                {
+                    ...(threads[1] ?? (() => {
+                        throw new Error('Expected delegated research child thread.');
+                    })()),
+                    id: 'thr_research_child',
+                    title: 'Planner research child',
+                    topLevelTab: 'agent',
+                    parentThreadId: 'thr_plan_root',
+                    rootThreadId: 'thr_plan_root',
+                    delegatedFromPlanResearchBatchId: 'prb_runtime',
+                },
+            ],
+            tags,
+            workspaceRoots,
+            groupView: 'workspace',
+        });
+
+        const populatedGroup = model.workspaceGroups.find((group) => group.workspaceFingerprint === 'ws_b');
+        expect(populatedGroup?.rows.map((row) => row.thread.id)).toEqual(['thr_plan_root', 'thr_research_child']);
+        expect(populatedGroup?.rows.map((row) => row.depth)).toEqual([0, 1]);
+    });
 });

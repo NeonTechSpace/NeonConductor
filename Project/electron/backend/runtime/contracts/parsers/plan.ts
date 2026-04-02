@@ -13,6 +13,7 @@ import {
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
+    PlanAbortResearchBatchInput,
     PlanActivateVariantInput,
     PlanAnswerQuestionInput,
     PlanApproveInput,
@@ -29,6 +30,7 @@ import type {
     PlanResumeFromRevisionInput,
     PlanEnterAdvancedPlanningInput,
     PlanStartInput,
+    PlanStartResearchBatchInput,
 } from '@/app/backend/runtime/contracts/types';
 
 export function parsePlanStartInput(input: unknown): PlanStartInput {
@@ -47,6 +49,38 @@ export function parsePlanStartInput(input: unknown): PlanStartInput {
         prompt: readString(source.prompt, 'prompt'),
         ...(planningDepth ? { planningDepth } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+    };
+}
+
+export function parsePlanStartResearchBatchInput(input: unknown): PlanStartResearchBatchInput {
+    const source = readObject(input, 'input');
+    const workerCount = readOptionalNumber(source.workerCount, 'workerCount');
+    const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
+    const modelId = readOptionalString(source.modelId, 'modelId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    if (workerCount === undefined || !Number.isInteger(workerCount) || workerCount <= 0) {
+        throw new Error('Invalid "workerCount": expected positive integer.');
+    }
+
+    return {
+        profileId: readProfileId(source),
+        planId: readEntityId(source.planId, 'planId', 'plan'),
+        promptMarkdown: readString(source.promptMarkdown, 'promptMarkdown'),
+        workerCount,
+        runtimeOptions: parseRuntimeRunOptions(source.runtimeOptions),
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+    };
+}
+
+export function parsePlanAbortResearchBatchInput(input: unknown): PlanAbortResearchBatchInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        planId: readEntityId(source.planId, 'planId', 'plan'),
+        researchBatchId: readEntityId(source.researchBatchId, 'researchBatchId', 'prb'),
     };
 }
 
@@ -252,6 +286,8 @@ export function parsePlanCancelInput(input: unknown): PlanCancelInput {
 }
 
 export const planStartInputSchema = createParser(parsePlanStartInput);
+export const planStartResearchBatchInputSchema = createParser(parsePlanStartResearchBatchInput);
+export const planAbortResearchBatchInputSchema = createParser(parsePlanAbortResearchBatchInput);
 export const planGetInputSchema = createParser(parsePlanGetInput);
 export const planGetActiveInputSchema = createParser(parsePlanGetActiveInput);
 export const planAnswerQuestionInputSchema = createParser(parsePlanAnswerQuestionInput);

@@ -20,6 +20,7 @@ import {
     appendPlanVariantActivatedEvent,
     appendPlanVariantCreatedEvent,
 } from '@/app/backend/runtime/services/plan/events';
+import { ensureNoRunningResearchBatch } from '@/app/backend/runtime/services/plan/researchLifecycle';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
 import { appLog } from '@/app/main/logging';
 
@@ -36,6 +37,14 @@ export async function createPlanVariant(
     const sourceRevision = await planStore.getRevisionById(input.sourceRevisionId);
     if (!sourceRevision || sourceRevision.planId !== input.planId) {
         return errPlan('revision_conflict', 'Cannot branch from a revision that does not belong to this plan.');
+    }
+
+    const researchValidation = await ensureNoRunningResearchBatch({
+        plan: existing,
+        actionLabel: 'create a recovery variant',
+    });
+    if (researchValidation.isErr()) {
+        return errPlan(researchValidation.error.code, researchValidation.error.message);
     }
 
     const created = await planStore.createVariant(input.planId, input.sourceRevisionId);
@@ -145,6 +154,14 @@ export async function resumePlanFromRevision(
         if (!variant || variant.planId !== input.planId) {
             return errPlan('revision_conflict', 'Cannot resume into a variant that does not belong to this plan.');
         }
+    }
+
+    const researchValidation = await ensureNoRunningResearchBatch({
+        plan: existing,
+        actionLabel: 'resume from a historical revision',
+    });
+    if (researchValidation.isErr()) {
+        return errPlan(researchValidation.error.code, researchValidation.error.message);
     }
 
     const resumed = await planStore.resumeFromRevision(input.planId, input.sourceRevisionId, input.variantId);

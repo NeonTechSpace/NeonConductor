@@ -45,6 +45,15 @@ function mapSessionSummary(row: SessionRow, turnCount: number): SessionSummaryRe
                   ),
               }
             : {}),
+        ...(row.delegated_from_plan_research_batch_id
+            ? {
+                  delegatedFromPlanResearchBatchId: parseEntityId(
+                      row.delegated_from_plan_research_batch_id,
+                      'sessions.delegated_from_plan_research_batch_id',
+                      'prb'
+                  ),
+              }
+            : {}),
         runStatus: parseRunStatus(row.run_status),
         turnCount,
         createdAt: row.created_at,
@@ -152,6 +161,7 @@ export class SessionStore {
         kind: SessionKind,
         options?: {
             delegatedFromOrchestratorRunId?: EntityId<'orch'>;
+            delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
         }
     ): Promise<{ created: false; reason: 'thread_not_found' } | { created: true; session: SessionSummaryRecord }> {
         const { db } = getPersistence();
@@ -182,6 +192,7 @@ export class SessionStore {
                 kind: resolvedKind,
                 sandbox_id: thread.sandbox_id,
                 delegated_from_orchestrator_run_id: options?.delegatedFromOrchestratorRunId ?? null,
+                delegated_from_plan_research_batch_id: options?.delegatedFromPlanResearchBatchId ?? null,
                 run_status: 'idle',
                 pending_completion_run_id: null,
                 created_at: now,

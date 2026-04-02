@@ -48,6 +48,11 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
     let resolvedRootThreadId: string | undefined;
     let inheritedExecutionEnvironmentMode = input.executionEnvironmentMode;
     let inheritedSandboxId = input.sandboxId;
+    const hasDelegatedOwner =
+        input.delegatedFromOrchestratorRunId !== undefined || input.delegatedFromPlanResearchBatchId !== undefined;
+    if (input.delegatedFromOrchestratorRunId && input.delegatedFromPlanResearchBatchId) {
+        return errOp('thread_mode_mismatch', 'Delegated child lanes must have exactly one owner.');
+    }
 
     if (input.parentThreadId) {
         const parent = await db
@@ -74,9 +79,7 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
         }
         const parentTopLevelTab = parseEnumValue(parent.top_level_tab, 'threads.top_level_tab', topLevelTabs);
         const parentAllowsDelegatedWorker =
-            input.delegatedFromOrchestratorRunId &&
-            input.topLevelTab === 'agent' &&
-            parentTopLevelTab === 'orchestrator';
+            hasDelegatedOwner && input.topLevelTab === 'agent' && parentTopLevelTab === 'orchestrator';
         if (parentTopLevelTab !== input.topLevelTab && !parentAllowsDelegatedWorker) {
             return errOp('thread_mode_mismatch', 'Thread mode affinity mismatch with parent thread.');
         }
@@ -113,9 +116,7 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
         }
         const rootTopLevelTab = parseEnumValue(root.top_level_tab, 'threads.top_level_tab', topLevelTabs);
         const rootAllowsDelegatedWorker =
-            input.delegatedFromOrchestratorRunId &&
-            input.topLevelTab === 'agent' &&
-            rootTopLevelTab === 'orchestrator';
+            hasDelegatedOwner && input.topLevelTab === 'agent' && rootTopLevelTab === 'orchestrator';
         if (rootTopLevelTab !== input.topLevelTab && !rootAllowsDelegatedWorker) {
             return errOp('thread_mode_mismatch', 'Thread mode affinity mismatch with root thread.');
         }
@@ -143,6 +144,7 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
             parent_thread_id: resolvedParentThreadId ?? null,
             root_thread_id: resolvedRootThreadId ?? threadId,
             delegated_from_orchestrator_run_id: input.delegatedFromOrchestratorRunId ?? null,
+            delegated_from_plan_research_batch_id: input.delegatedFromPlanResearchBatchId ?? null,
             is_favorite: 0,
             execution_environment_mode: inheritedExecutionEnvironmentMode ?? 'local',
             sandbox_id: inheritedSandboxId ?? null,

@@ -1,17 +1,109 @@
-import type { PlanViewProjection } from '@/app/backend/persistence/types';
-import type { PlanRecordView } from '@/app/backend/runtime/contracts';
+import type {
+    PlanEvidenceAttachmentView,
+    PlanRecordView,
+    PlanResearchBatchView,
+} from '@/app/backend/runtime/contracts';
+import type {
+    PlanEvidenceAttachmentRecord,
+    PlanResearchBatchRecord,
+    PlanResearchWorkerRecord,
+    PlanViewProjection,
+} from '@/app/backend/persistence/types';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
+import { readPlannerResearchCapacity } from '@/app/backend/runtime/services/plan/capacity';
+import { buildPlanResearchRecommendation } from '@/app/backend/runtime/services/plan/recommendation';
+
+function groupWorkersByBatchId(workers: PlanResearchWorkerRecord[]): Map<string, PlanResearchWorkerRecord[]> {
+    const workersByBatchId = new Map<string, PlanResearchWorkerRecord[]>();
+    for (const worker of workers) {
+        const batchWorkers = workersByBatchId.get(worker.batchId) ?? [];
+        batchWorkers.push(worker);
+        workersByBatchId.set(worker.batchId, batchWorkers);
+    }
+
+    for (const batchWorkers of workersByBatchId.values()) {
+        batchWorkers.sort((left, right) => left.sequence - right.sequence);
+    }
+
+    return workersByBatchId;
+}
+
+function toPlanResearchBatchView(
+    batch: PlanResearchBatchRecord,
+    workersByBatchId: Map<string, PlanResearchWorkerRecord[]>
+): PlanResearchBatchView {
+    const workers = workersByBatchId.get(batch.id) ?? [];
+    return {
+        id: batch.id,
+        planId: batch.planId,
+        planRevisionId: batch.planRevisionId,
+        variantId: batch.variantId,
+        promptMarkdown: batch.promptMarkdown,
+        requestedWorkerCount: batch.requestedWorkerCount,
+        recommendedWorkerCount: batch.recommendedWorkerCount,
+        hardMaxWorkerCount: batch.hardMaxWorkerCount,
+        status: batch.status,
+        workers: workers.map((worker) => ({
+            id: worker.id,
+            batchId: worker.batchId,
+            sequence: worker.sequence,
+            label: worker.label,
+            promptMarkdown: worker.promptMarkdown,
+            status: worker.status,
+            ...(worker.childThreadId ? { childThreadId: worker.childThreadId } : {}),
+            ...(worker.childSessionId ? { childSessionId: worker.childSessionId } : {}),
+            ...(worker.activeRunId ? { activeRunId: worker.activeRunId } : {}),
+            ...(worker.runId ? { runId: worker.runId } : {}),
+            ...(worker.resultSummaryMarkdown ? { resultSummaryMarkdown: worker.resultSummaryMarkdown } : {}),
+            ...(worker.resultDetailsMarkdown ? { resultDetailsMarkdown: worker.resultDetailsMarkdown } : {}),
+            ...(worker.errorMessage ? { errorMessage: worker.errorMessage } : {}),
+            createdAt: worker.createdAt,
+            ...(worker.completedAt ? { completedAt: worker.completedAt } : {}),
+            ...(worker.abortedAt ? { abortedAt: worker.abortedAt } : {}),
+        })),
+        createdAt: batch.createdAt,
+        ...(batch.completedAt ? { completedAt: batch.completedAt } : {}),
+        ...(batch.abortedAt ? { abortedAt: batch.abortedAt } : {}),
+    };
+}
+
+function toPlanEvidenceAttachmentView(record: PlanEvidenceAttachmentRecord): PlanEvidenceAttachmentView {
+    return {
+        id: record.id,
+        planRevisionId: record.planRevisionId,
+        sourceKind: record.sourceKind,
+        researchBatchId: record.researchBatchId,
+        researchWorkerId: record.researchWorkerId,
+        label: record.label,
+        summaryMarkdown: record.summaryMarkdown,
+        detailsMarkdown: record.detailsMarkdown,
+        ...(record.childThreadId ? { childThreadId: record.childThreadId } : {}),
+        ...(record.childSessionId ? { childSessionId: record.childSessionId } : {}),
+        createdAt: record.createdAt,
+    };
+}
 
 function toPlanViewFromProjection(projection: PlanViewProjection | null): PlanRecordView | null {
     if (!projection) {
         return null;
     }
 
-    const { plan, items, variants, followUps, history, recoveryBanner } = projection;
+    const { plan, items, variants, followUps, researchBatches, researchWorkers, evidenceAttachments, history, recoveryBanner } =
+        projection;
     const currentVariant = variants.find((variant) => variant.id === plan.currentVariantId);
     const approvedVariant = plan.approvedVariantId
         ? variants.find((variant) => variant.id === plan.approvedVariantId)
         : undefined;
+    const capacity = readPlannerResearchCapacity();
+    const researchRecommendation = buildPlanResearchRecommendation({
+        plan,
+        items,
+        followUps,
+        evidenceAttachments,
+        capacity,
+        ...(plan.advancedSnapshot ? { advancedSnapshot: plan.advancedSnapshot } : {}),
+    });
+    const workersByBatchId = groupWorkersByBatchId(researchWorkers);
 
     return {
         id: plan.id,
@@ -24,6 +116,10 @@ function toPlanViewFromProjection(projection: PlanViewProjection | null): PlanRe
         sourcePrompt: plan.sourcePrompt,
         summaryMarkdown: plan.summaryMarkdown,
         ...(plan.advancedSnapshot ? { advancedSnapshot: plan.advancedSnapshot } : {}),
+        researchBatches: researchBatches.map((batch) => toPlanResearchBatchView(batch, workersByBatchId)),
+        evidenceAttachments: evidenceAttachments.map((attachment) => toPlanEvidenceAttachmentView(attachment)),
+        researchRecommendation,
+        researchCapacity: capacity,
         currentRevisionId: plan.currentRevisionId,
         currentRevisionNumber: plan.currentRevisionNumber,
         currentVariantId: plan.currentVariantId,

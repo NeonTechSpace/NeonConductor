@@ -54,6 +54,7 @@ export class ThreadStore {
                 'threads.parent_thread_id as parent_thread_id',
                 'threads.root_thread_id as root_thread_id',
                 'threads.delegated_from_orchestrator_run_id as delegated_from_orchestrator_run_id',
+                'threads.delegated_from_plan_research_batch_id as delegated_from_plan_research_batch_id',
                 'threads.is_favorite as is_favorite',
                 'threads.execution_environment_mode as execution_environment_mode',
                 'threads.sandbox_id as sandbox_id',
@@ -76,6 +77,7 @@ export class ThreadStore {
                 'threads.parent_thread_id',
                 'threads.root_thread_id',
                 'threads.delegated_from_orchestrator_run_id',
+                'threads.delegated_from_plan_research_batch_id',
                 'threads.is_favorite',
                 'threads.execution_environment_mode',
                 'threads.sandbox_id',
@@ -110,6 +112,7 @@ export class ThreadStore {
         parentThreadId?: string;
         rootThreadId?: string;
         delegatedFromOrchestratorRunId?: EntityId<'orch'>;
+        delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
         executionEnvironmentMode?: ExecutionEnvironmentMode;
         sandboxId?: EntityId<'sb'>;
     }): Promise<OperationalResult<ThreadRecord>> {

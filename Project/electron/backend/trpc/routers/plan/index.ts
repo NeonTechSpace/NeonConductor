@@ -4,6 +4,7 @@ import {
     planCancelInputSchema,
     planActivateVariantInputSchema,
     planCreateVariantInputSchema,
+    planAbortResearchBatchInputSchema,
     planGenerateDraftInputSchema,
     planGetActiveInputSchema,
     planGetInputSchema,
@@ -13,6 +14,7 @@ import {
     planReviseInputSchema,
     planResolveFollowUpInputSchema,
     planResumeFromRevisionInputSchema,
+    planStartResearchBatchInputSchema,
     planStartInputSchema,
 } from '@/app/backend/runtime/contracts';
 import { planService } from '@/app/backend/runtime/services/plan/service';
@@ -25,6 +27,10 @@ export const planRouter = router({
         const result = await planService.start(input);
         return unwrapResultOrThrow(result, toPlanTrpcError);
     }),
+    startResearchBatch: publicProcedure.input(planStartResearchBatchInputSchema).mutation(async ({ input }) => {
+        const result = await planService.startResearchBatch(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
     get: publicProcedure.input(planGetInputSchema).query(async ({ input }) => {
         return planService.getById(input.profileId, input.planId);
     }),
@@ -35,10 +41,15 @@ export const planRouter = router({
         return planService.answerQuestion(input);
     }),
     revise: publicProcedure.input(planReviseInputSchema).mutation(async ({ input }) => {
-        return planService.revise(input);
+        const result = await planService.revise(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
     }),
     enterAdvancedPlanning: publicProcedure.input(planEnterAdvancedPlanningInputSchema).mutation(async ({ input }) => {
         const result = await planService.enterAdvancedPlanning(input);
+        return unwrapResultOrThrow(result, toPlanTrpcError);
+    }),
+    abortResearchBatch: publicProcedure.input(planAbortResearchBatchInputSchema).mutation(async ({ input }) => {
+        const result = await planService.abortResearchBatch(input);
         return unwrapResultOrThrow(result, toPlanTrpcError);
     }),
     createVariant: publicProcedure.input(planCreateVariantInputSchema).mutation(async ({ input }) => {

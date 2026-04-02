@@ -21,7 +21,9 @@ function buildWorkspaceRows(threads: ThreadListRecord[]): ThreadRenderRow[] {
         const parentId = thread.parentThreadId;
         const parentThread = parentId ? byId.get(parentId) : undefined;
         const shouldNestUnderParent =
-            Boolean(thread.delegatedFromOrchestratorRunId) && Boolean(parentId) && Boolean(parentThread);
+            (Boolean(thread.delegatedFromOrchestratorRunId) || Boolean(thread.delegatedFromPlanResearchBatchId)) &&
+            Boolean(parentId) &&
+            Boolean(parentThread);
         if (!shouldNestUnderParent || !parentId) {
             rootRows.push(thread);
             continue;

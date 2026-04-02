@@ -70,6 +70,7 @@ export interface SessionSummaryRecord {
     kind: 'local' | 'sandbox' | 'cloud';
     sandboxId?: EntityId<'sb'>;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
+    delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
     runStatus: RunStatus;
     turnCount: number;
     createdAt: string;
@@ -420,6 +421,7 @@ export interface ThreadRecord {
     parentThreadId?: string;
     rootThreadId: string;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
+    delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
     isFavorite: boolean;
     executionEnvironmentMode: ExecutionEnvironmentMode;
     sandboxId?: EntityId<'sb'>;
@@ -752,6 +754,54 @@ export interface PlanRevisionAdvancedSnapshotRecord {
     createdAt: string;
 }
 
+export interface PlanResearchBatchRecord {
+    id: EntityId<'prb'>;
+    planId: EntityId<'plan'>;
+    planRevisionId: EntityId<'prev'>;
+    variantId: EntityId<'pvar'>;
+    promptMarkdown: string;
+    requestedWorkerCount: number;
+    recommendedWorkerCount: number;
+    hardMaxWorkerCount: number;
+    status: 'running' | 'completed' | 'failed' | 'aborted';
+    createdAt: string;
+    completedAt?: string;
+    abortedAt?: string;
+}
+
+export interface PlanResearchWorkerRecord {
+    id: EntityId<'prw'>;
+    batchId: EntityId<'prb'>;
+    sequence: number;
+    label: string;
+    promptMarkdown: string;
+    status: 'queued' | 'running' | 'completed' | 'failed' | 'aborted';
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    activeRunId?: EntityId<'run'>;
+    runId?: EntityId<'run'>;
+    resultSummaryMarkdown?: string;
+    resultDetailsMarkdown?: string;
+    errorMessage?: string;
+    createdAt: string;
+    completedAt?: string;
+    abortedAt?: string;
+}
+
+export interface PlanEvidenceAttachmentRecord {
+    id: EntityId<'pea'>;
+    planRevisionId: EntityId<'prev'>;
+    sourceKind: 'planner_worker';
+    researchBatchId: EntityId<'prb'>;
+    researchWorkerId: EntityId<'prw'>;
+    label: string;
+    summaryMarkdown: string;
+    detailsMarkdown: string;
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    createdAt: string;
+}
+
 export interface PlanRevisionItemRecord {
     id: EntityId<'step'>;
     planRevisionId: EntityId<'prev'>;
@@ -789,6 +839,9 @@ export interface PlanViewProjection {
     items: PlanItemRecord[];
     variants: Array<PlanVariantView>;
     followUps: Array<PlanFollowUpView>;
+    researchBatches: PlanResearchBatchRecord[];
+    researchWorkers: PlanResearchWorkerRecord[];
+    evidenceAttachments: PlanEvidenceAttachmentRecord[];
     history: Array<PlanHistoryEntry>;
     recoveryBanner?: PlanRecoveryBanner;
 }
