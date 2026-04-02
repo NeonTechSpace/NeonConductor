@@ -17,7 +17,13 @@ import type { useConversationQueries } from '@/web/components/conversation/shell
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 
-import type { EntityId, OrchestratorExecutionStrategy, ResolvedContextState, RuntimeReasoningEffort, TopLevelTab } from '@/shared/contracts';
+import type {
+    EntityId,
+    OrchestratorExecutionStrategy,
+    ResolvedContextState,
+    RuntimeReasoningEffort,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 interface BuildConversationWorkspaceProjectionInput {
     profileId: string;
@@ -27,6 +33,8 @@ interface BuildConversationWorkspaceProjectionInput {
     selectedRunId: string | undefined;
     topLevelTab: TopLevelTab;
     modeKey: string;
+    isPlanningComposerMode: boolean;
+    isOrchestrationWorkflowMode: boolean;
     modes: SessionWorkspacePanelProps['modes'];
     reasoningEffort: RuntimeReasoningEffort;
     selectedModelSupportsReasoning: boolean;
@@ -136,10 +144,11 @@ export function buildConversationWorkspaceProjection(
     );
 
     const modeExecutionPanel =
-        input.topLevelTab === 'orchestrator' || input.modeKey === 'plan' ? (
+        input.isPlanningComposerMode || input.isOrchestrationWorkflowMode ? (
             <ModeExecutionPanel
                 topLevelTab={input.topLevelTab}
-                modeKey={input.modeKey}
+                showPlanSurface={input.isPlanningComposerMode}
+                showOrchestratorSurface={input.isOrchestrationWorkflowMode}
                 isLoadingPlan={input.queries.activePlanQuery.isPending}
                 actionController={input.planOrchestrator.actionController}
                 selectedExecutionStrategy={input.executionStrategy}
@@ -199,9 +208,7 @@ export function buildConversationWorkspaceProjection(
             <DiffCheckpointPanel
                 profileId={input.profileId}
                 {...(isEntityId(input.selectedRunId, 'run') ? { selectedRunId: input.selectedRunId } : {})}
-                {...(isEntityId(input.selectedSessionId, 'sess')
-                    ? { selectedSessionId: input.selectedSessionId }
-                    : {})}
+                {...(isEntityId(input.selectedSessionId, 'sess') ? { selectedSessionId: input.selectedSessionId } : {})}
                 diffs={input.queries.runDiffsQuery.data?.diffs ?? []}
                 checkpoints={input.queries.checkpointsQuery.data?.checkpoints ?? []}
                 {...(input.queries.checkpointsQuery.data?.storage
@@ -294,7 +301,9 @@ export function buildConversationWorkspaceProjection(
                   },
               }
             : {}),
-        ...(input.queries.runDiffsQuery.data?.overview ? { runDiffOverview: input.queries.runDiffsQuery.data.overview } : {}),
+        ...(input.queries.runDiffsQuery.data?.overview
+            ? { runDiffOverview: input.queries.runDiffsQuery.data.overview }
+            : {}),
         modelOptions: input.composerModelOptions,
         runErrorMessage: input.composer.runSubmitError,
         ...(input.contextState ? { contextState: input.contextState } : {}),

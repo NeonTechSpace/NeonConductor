@@ -1,6 +1,7 @@
 import { toolStore } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeToolDefinition } from '@/app/backend/providers/types';
 import { mcpService } from '@/app/backend/runtime/services/mcp/service';
+import { modeUsesReadOnlyExecution } from '@/app/backend/runtime/services/mode/metadata';
 import {
     getModeToolCapabilities,
     modeAllowsToolCapabilities,
@@ -126,7 +127,7 @@ export async function resolveRuntimeToolsForMode(input: {
     const storedTools = await toolStore.list();
     const nativeTools = storedTools
         .filter((tool) => modeAllowsToolCapabilities(input.mode, tool.capabilities))
-        .filter((tool) => !input.mode.executionPolicy.planningOnly || tool.mutability === 'read_only')
+        .filter((tool) => !modeUsesReadOnlyExecution(input.mode) || tool.mutability === 'read_only')
         .sort((left, right) => {
             const leftIndex = builtInNativeToolOrder.indexOf(left.id as (typeof builtInNativeToolOrder)[number]);
             const rightIndex = builtInNativeToolOrder.indexOf(right.id as (typeof builtInNativeToolOrder)[number]);
@@ -154,9 +155,7 @@ export async function resolveRuntimeToolsForMode(input: {
         .filter((tool): tool is RuntimeExposedToolDefinition => tool !== null);
 
     const mcpTools = modeAllowsToolCapabilities(input.mode, ['mcp'])
-        ? (await mcpService.listRuntimeTools()).filter(
-              (tool) => !input.mode.executionPolicy.planningOnly || tool.mutability === 'read_only'
-          )
+        ? (await mcpService.listRuntimeTools()).filter((tool) => !modeUsesReadOnlyExecution(input.mode) || tool.mutability === 'read_only')
         : [];
     return [...nativeTools, ...mcpTools];
 }

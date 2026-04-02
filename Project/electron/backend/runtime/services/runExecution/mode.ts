@@ -1,3 +1,4 @@
+import { modeCanExecuteRuns } from '@/app/backend/runtime/services/mode/metadata';
 import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 import {
     errRunExecution,
@@ -37,10 +38,10 @@ export async function resolveModeExecution(
         );
     }
 
-    if (mode.executionPolicy.planningOnly) {
+    if (!modeCanExecuteRuns(mode)) {
         return errRunExecution(
             'mode_policy_invalid',
-            `Mode "${input.modeKey}" is planning-only and cannot execute runs.`
+            `Mode "${input.modeKey}" is planning-capable and cannot execute runs.`
         );
     }
 

@@ -12,6 +12,25 @@ import {
 } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { buildConversationComposerPresentationState } from '@/web/components/conversation/shell/useConversationShellComposerSetup';
 import { buildResolvedContextStateQueryInput } from '@/web/components/conversation/shell/useConversationShellController';
+import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
+
+function createMode(input: {
+    modeKey: string;
+    workflowCapabilities?: ConversationModeOption['executionPolicy']['workflowCapabilities'];
+    behaviorFlags?: ConversationModeOption['executionPolicy']['behaviorFlags'];
+    planningOnly?: boolean;
+}): ConversationModeOption {
+    return {
+        id: `mode_${input.modeKey}`,
+        modeKey: input.modeKey,
+        label: input.modeKey,
+        executionPolicy: {
+            ...(input.planningOnly !== undefined ? { planningOnly: input.planningOnly } : {}),
+            ...(input.workflowCapabilities ? { workflowCapabilities: input.workflowCapabilities } : {}),
+            ...(input.behaviorFlags ? { behaviorFlags: input.behaviorFlags } : {}),
+        },
+    };
+}
 
 describe('conversation query input builders', () => {
     it('returns skipToken for session-scoped queries until a real session id exists', () => {
@@ -68,6 +87,7 @@ describe('conversation query input builders', () => {
                 profileId: 'profile_default',
                 selectedSessionId: undefined,
                 topLevelTab: 'agent',
+                activeMode: createMode({ modeKey: 'custom_plan', workflowCapabilities: ['planning'] }),
             })
         ).toBe(skipToken);
         expect(
@@ -75,6 +95,7 @@ describe('conversation query input builders', () => {
                 profileId: 'profile_default',
                 selectedSessionId: 'sess_real',
                 topLevelTab: 'agent',
+                activeMode: createMode({ modeKey: 'custom_plan', workflowCapabilities: ['planning'] }),
             })
         ).toEqual({
             profileId: 'profile_default',
@@ -87,6 +108,7 @@ describe('conversation query input builders', () => {
                 profileId: 'profile_default',
                 selectedSessionId: 'sess_real',
                 topLevelTab: 'chat',
+                activeMode: createMode({ modeKey: 'custom_orchestrator', workflowCapabilities: ['orchestration'] }),
             })
         ).toBe(skipToken);
         expect(
@@ -94,10 +116,31 @@ describe('conversation query input builders', () => {
                 profileId: 'profile_default',
                 selectedSessionId: 'sess_real',
                 topLevelTab: 'orchestrator',
+                activeMode: createMode({ modeKey: 'custom_orchestrator', workflowCapabilities: ['orchestration'] }),
             })
         ).toEqual({
             profileId: 'profile_default',
             sessionId: 'sess_real',
+        });
+        expect(
+            buildConversationActivePlanQueryInput({
+                profileId: 'profile_default',
+                selectedSessionId: 'sess_real',
+                topLevelTab: 'orchestrator',
+                activeMode: createMode({ modeKey: 'custom_orchestrator', workflowCapabilities: ['orchestration'] }),
+            })
+        ).toBe(skipToken);
+        expect(
+            buildConversationActivePlanQueryInput({
+                profileId: 'profile_default',
+                selectedSessionId: 'sess_real',
+                topLevelTab: 'orchestrator',
+                activeMode: createMode({ modeKey: 'custom_plan', workflowCapabilities: ['planning'] }),
+            })
+        ).toEqual({
+            profileId: 'profile_default',
+            sessionId: 'sess_real',
+            topLevelTab: 'orchestrator',
         });
     });
 });

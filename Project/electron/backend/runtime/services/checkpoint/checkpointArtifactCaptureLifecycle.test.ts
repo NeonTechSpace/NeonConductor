@@ -1,3 +1,4 @@
+import { ok } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     resolveCheckpointExecutionTarget: vi.fn(),
     captureGitWorkspaceArtifact: vi.fn(),
     captureExecutionTargetSnapshot: vi.fn(),
+    resolveModesForTab: vi.fn(),
 }));
 
 vi.mock('@/app/backend/persistence/stores', () => ({
@@ -44,16 +46,44 @@ vi.mock('@/app/backend/runtime/services/checkpoint/nativeSnapshot', () => ({
     captureExecutionTargetSnapshot: mocks.captureExecutionTargetSnapshot,
 }));
 
-import { ok } from 'neverthrow';
+vi.mock('@/app/backend/runtime/services/registry/service', () => ({
+    resolveModesForTab: mocks.resolveModesForTab,
+}));
+
 import {
     captureCheckpointDiffForRunLifecycle,
     captureRunDiffArtifact,
 } from '@/app/backend/runtime/services/checkpoint/checkpointArtifactCaptureLifecycle';
 
 describe('checkpointArtifactCaptureLifecycle', () => {
+    function buildCheckpointMode(modeKey: string) {
+        return {
+            id: `mode_${modeKey}`,
+            profileId: 'profile_local_default',
+            topLevelTab: 'agent',
+            modeKey,
+            label: modeKey,
+            assetKey: `agent.${modeKey}`,
+            prompt: {},
+            executionPolicy: {
+                toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+                workflowCapabilities: ['artifact_view'],
+                behaviorFlags: ['checkpoint_eligible', 'workspace_mutating'],
+            },
+            source: 'test',
+            sourceKind: 'system_seed',
+            scope: 'system',
+            enabled: true,
+            precedence: 0,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+        };
+    }
+
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.compactCheckpointStorage.mockResolvedValue(undefined);
+        mocks.resolveModesForTab.mockResolvedValue([buildCheckpointMode('code')]);
     });
 
     it('records unsupported diff artifacts for detached workspaces', async () => {
@@ -63,10 +93,12 @@ describe('checkpointArtifactCaptureLifecycle', () => {
             checkpointKind: 'auto',
             summary: 'Before run',
         });
-        mocks.diffStore.create.mockImplementation(async (input) => ({
-            id: 'diff_1',
-            ...input,
-        }));
+        mocks.diffStore.create.mockImplementation((input) =>
+            Promise.resolve({
+                id: 'diff_1',
+                ...input,
+            })
+        );
         mocks.checkpointStore.attachDiff.mockResolvedValue({
             id: 'ckpt_1',
             diffId: 'diff_1',
@@ -114,10 +146,12 @@ describe('checkpointArtifactCaptureLifecycle', () => {
             fileCount: 2,
             entries: [],
         });
-        mocks.diffStore.create.mockImplementation(async (input) => ({
-            id: 'diff_1',
-            ...input,
-        }));
+        mocks.diffStore.create.mockImplementation((input) =>
+            Promise.resolve({
+                id: 'diff_1',
+                ...input,
+            })
+        );
         mocks.checkpointStore.attachDiff.mockResolvedValue({
             id: 'ckpt_1',
             diffId: 'diff_1',
@@ -130,12 +164,15 @@ describe('checkpointArtifactCaptureLifecycle', () => {
         mocks.checkpointSnapshotStore.listSnapshotEntries.mockResolvedValue([
             { relativePath: 'a.txt', bytes: new Uint8Array([1]) },
         ]);
-        mocks.captureExecutionTargetSnapshot.mockResolvedValue(
-            ok({
-                fileCount: 1,
-                files: [{ relativePath: 'a.txt', bytes: new Uint8Array([2]) }],
-            })
+        const snapshotResult = ok({
+            fileCount: 1,
+            files: [{ relativePath: 'a.txt', bytes: new Uint8Array([2]) }],
+        });
+        snapshotResult.match(
+            () => undefined,
+            () => undefined
         );
+        mocks.captureExecutionTargetSnapshot.mockResolvedValue(snapshotResult);
         mocks.checkpointChangesetStore.replaceForCheckpoint.mockResolvedValue({
             id: 'chg_1',
             checkpointId: 'ckpt_1',

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import type { RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
+
 import type { ModeDefinition } from '@/shared/contracts';
 
 const { toolStoreListMock, mcpListRuntimeToolsMock } = vi.hoisted(() => ({
@@ -24,6 +25,8 @@ vi.mock('@/app/backend/runtime/services/mcp/service', () => ({
 function buildMode(input: {
     toolCapabilities: NonNullable<ModeDefinition['executionPolicy']['toolCapabilities']>;
     planningOnly?: boolean;
+    workflowCapabilities?: NonNullable<ModeDefinition['executionPolicy']['workflowCapabilities']>;
+    behaviorFlags?: NonNullable<ModeDefinition['executionPolicy']['behaviorFlags']>;
 }): ModeDefinition {
     return {
         id: 'mode_test_agent_code',
@@ -36,6 +39,8 @@ function buildMode(input: {
         executionPolicy: {
             toolCapabilities: input.toolCapabilities,
             ...(input.planningOnly ? { planningOnly: true } : {}),
+            ...(input.workflowCapabilities ? { workflowCapabilities: input.workflowCapabilities } : {}),
+            ...(input.behaviorFlags ? { behaviorFlags: input.behaviorFlags } : {}),
         },
         source: 'test',
         sourceKind: 'system_seed',
@@ -191,6 +196,39 @@ describe('resolveRuntimeToolsForMode', () => {
 
         const tools = await resolveRuntimeToolsForMode({
             mode: buildMode({ toolCapabilities: ['filesystem_read', 'shell', 'mcp'], planningOnly: true }),
+        });
+
+        expect(tools.map((tool) => tool.id)).toEqual(['list_files', 'read_file', 'search_files', 'mcp__read_only']);
+    });
+
+    it('filters mutating tools out of capability-driven read-only planning modes while keeping read-only tools', async () => {
+        mcpListRuntimeToolsMock.mockResolvedValue([
+            {
+                id: 'mcp__read_only',
+                description: 'Read-only MCP tool.',
+                inputSchema: { type: 'object', properties: {} },
+                mutability: 'read_only',
+                serverId: 'mcp_alpha',
+                toolName: 'read_only_tool',
+                resource: 'mcp:mcp_alpha:read_only_tool',
+            },
+            {
+                id: 'mcp__mutating',
+                description: 'Mutating MCP tool.',
+                inputSchema: { type: 'object', properties: {} },
+                mutability: 'mutating',
+                serverId: 'mcp_alpha',
+                toolName: 'mutating_tool',
+                resource: 'mcp:mcp_alpha:mutating_tool',
+            },
+        ]);
+
+        const tools = await resolveRuntimeToolsForMode({
+            mode: buildMode({
+                toolCapabilities: ['filesystem_read', 'shell', 'mcp'],
+                workflowCapabilities: ['planning'],
+                behaviorFlags: ['read_only_execution'],
+            }),
         });
 
         expect(tools.map((tool) => tool.id)).toEqual(['list_files', 'read_file', 'search_files', 'mcp__read_only']);

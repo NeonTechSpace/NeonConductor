@@ -9,6 +9,7 @@ import {
 import { appendPlanQuestionRequestedEvents, appendPlanStartedEvent } from '@/app/backend/runtime/services/plan/events';
 import { createInitialPlanSummary, createPlanIntakeQuestions } from '@/app/backend/runtime/services/plan/intake';
 import { requirePlanView } from '@/app/backend/runtime/services/plan/views';
+import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 import { appLog } from '@/app/main/logging';
 
 import type { Result } from 'neverthrow';
@@ -16,7 +17,14 @@ import type { Result } from 'neverthrow';
 export async function startPlanFlow(
     input: PlanStartInput
 ): Promise<Result<{ plan: PlanRecordView }, PlanServiceError>> {
-    const validation = validatePlanStartInput(input);
+    const modes = await resolveModesForTab({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+    });
+    const mode = modes.find((candidate) => candidate.modeKey === input.modeKey) ?? null;
+
+    const validation = validatePlanStartInput(input, mode);
     if (validation.isErr()) {
         return errPlan(validation.error.code, validation.error.message);
     }

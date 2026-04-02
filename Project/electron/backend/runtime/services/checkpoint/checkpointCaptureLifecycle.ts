@@ -5,13 +5,18 @@ import {
     threadStore,
 } from '@/app/backend/persistence/stores';
 import type { CheckpointRecord, DiffRecord } from '@/app/backend/persistence/types';
-import type { CheckpointCreateInput, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
+import type { CheckpointCreateInput, ModeDefinition, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
 import { isEntityId } from '@/app/backend/runtime/contracts';
+import {
+    captureRunDiffArtifact,
+    resolveCheckpointCaptureMode,
+} from '@/app/backend/runtime/services/checkpoint/checkpointArtifactCaptureLifecycle';
 import { compactCheckpointStorage } from '@/app/backend/runtime/services/checkpoint/compaction';
 import { resolveCheckpointExecutionTarget } from '@/app/backend/runtime/services/checkpoint/executionTarget';
-import { captureRunDiffArtifact, isMutatingCheckpointMode } from '@/app/backend/runtime/services/checkpoint/checkpointArtifactCaptureLifecycle';
 import { captureExecutionTargetSnapshot } from '@/app/backend/runtime/services/checkpoint/nativeSnapshot';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import { modeIsCheckpointEligible, modeMutatesWorkspace } from '@/app/backend/runtime/services/mode/metadata';
+import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
 type CheckpointCreateResult = {
@@ -41,6 +46,41 @@ function summarizeCheckpoint(input: {
     return input.runId
         ? `Before ${input.topLevelTab}.${input.modeKey} run ${input.runId}`
         : `Automatic checkpoint for ${input.executionTargetLabel}`;
+}
+
+function isCheckpointCapableMode(mode: Pick<ModeDefinition, 'executionPolicy'>): boolean {
+    return modeIsCheckpointEligible(mode) && modeMutatesWorkspace(mode);
+}
+
+async function resolveCheckpointModeByKey(input: {
+    profileId: string;
+    topLevelTab: CheckpointRecord['topLevelTab'];
+    modeKey: string;
+    workspaceContext: ResolvedWorkspaceContext;
+}): Promise<ModeDefinition | null> {
+    return resolveCheckpointCaptureMode(input);
+}
+
+async function resolveHistoricalMutatingModeFallback(input: {
+    profileId: string;
+    topLevelTab: CheckpointRecord['topLevelTab'];
+    workspaceContext: ResolvedWorkspaceContext;
+}): Promise<ModeDefinition | null> {
+    if (input.topLevelTab === 'chat') {
+        return null;
+    }
+
+    const fallbackModeKey = input.topLevelTab === 'agent' ? 'code' : 'orchestrate';
+
+    const modes = await resolveModesForTab({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        ...(input.workspaceContext.kind === 'detached'
+            ? {}
+            : { workspaceFingerprint: input.workspaceContext.workspaceFingerprint }),
+    });
+    const fallbackMode = modes.find((candidate) => candidate.modeKey === fallbackModeKey) ?? null;
+    return fallbackMode && isCheckpointCapableMode(fallbackMode) ? fallbackMode : null;
 }
 
 export async function createNativeCheckpointForResolvedTarget(input: {
@@ -134,7 +174,8 @@ export async function ensureCheckpointForRunLifecycle(input: {
     modeKey: string;
     workspaceContext: ResolvedWorkspaceContext;
 }): Promise<OperationalResult<CheckpointRecord | null>> {
-    if (!isMutatingCheckpointMode(input.topLevelTab, input.modeKey)) {
+    const mode = await resolveCheckpointModeByKey(input);
+    if (!mode || !isCheckpointCapableMode(mode)) {
         return okOp(null);
     }
 
@@ -175,13 +216,12 @@ export async function createCheckpointLifecycle(input: CheckpointCreateInput): P
         };
     }
 
-    const modeKey =
-        sessionThread.thread.topLevelTab === 'agent'
-            ? 'code'
-            : sessionThread.thread.topLevelTab === 'orchestrator'
-              ? 'orchestrate'
-              : '';
-    if (!modeKey || !isMutatingCheckpointMode(sessionThread.thread.topLevelTab, modeKey)) {
+    const workspaceContext = await workspaceContextService.resolveForSession({
+        profileId: input.profileId,
+        sessionId: run.sessionId,
+        allowLazySandboxCreation: false,
+    });
+    if (!workspaceContext || !resolveCheckpointExecutionTarget(workspaceContext)) {
         return {
             created: false,
             reason: 'unsupported_run',
@@ -189,12 +229,29 @@ export async function createCheckpointLifecycle(input: CheckpointCreateInput): P
     }
 
     const existingCheckpoint = await checkpointStore.getByRunId(input.profileId, run.id);
+    const mode =
+        existingCheckpoint?.modeKey
+            ? await resolveCheckpointModeByKey({
+                  profileId: input.profileId,
+                  topLevelTab: existingCheckpoint.topLevelTab,
+                  modeKey: existingCheckpoint.modeKey,
+                  workspaceContext,
+              })
+            : await resolveHistoricalMutatingModeFallback({
+                  profileId: input.profileId,
+                  topLevelTab: sessionThread.thread.topLevelTab,
+                  workspaceContext,
+              });
+    if (!mode) {
+        return {
+            created: false,
+            reason: 'unsupported_run',
+        };
+    }
+
+    const modeKey = existingCheckpoint?.modeKey ?? mode.modeKey;
+    const topLevelTab = existingCheckpoint?.topLevelTab ?? sessionThread.thread.topLevelTab;
     if (existingCheckpoint) {
-        const workspaceContext = await workspaceContextService.resolveForSession({
-            profileId: input.profileId,
-            sessionId: run.sessionId,
-            allowLazySandboxCreation: false,
-        });
         const checkpoint =
             existingCheckpoint.checkpointKind === 'named'
                 ? await checkpointStore.renameMilestone({
@@ -211,9 +268,9 @@ export async function createCheckpointLifecycle(input: CheckpointCreateInput): P
             profileId: input.profileId,
             sessionId: run.sessionId,
             runId: run.id,
-            topLevelTab: sessionThread.thread.topLevelTab,
+            topLevelTab,
             modeKey,
-            workspaceContext: workspaceContext ?? { kind: 'detached' },
+            workspaceContext,
         });
 
         return {
@@ -223,17 +280,6 @@ export async function createCheckpointLifecycle(input: CheckpointCreateInput): P
         };
     }
 
-    const workspaceContext = await workspaceContextService.resolveForSession({
-        profileId: input.profileId,
-        sessionId: run.sessionId,
-        allowLazySandboxCreation: false,
-    });
-    if (!workspaceContext || !resolveCheckpointExecutionTarget(workspaceContext)) {
-        return {
-            created: false,
-            reason: 'unsupported_run',
-        };
-    }
     if (!isEntityId(sessionThread.thread.id, 'thr')) {
         return {
             created: false,
@@ -246,7 +292,7 @@ export async function createCheckpointLifecycle(input: CheckpointCreateInput): P
         sessionId: run.sessionId,
         threadId: sessionThread.thread.id,
         runId: run.id,
-        topLevelTab: sessionThread.thread.topLevelTab,
+        topLevelTab,
         modeKey,
         workspaceContext,
         createdByKind: 'user',
@@ -265,7 +311,7 @@ export async function createCheckpointLifecycle(input: CheckpointCreateInput): P
         profileId: input.profileId,
         sessionId: run.sessionId,
         runId: run.id,
-        topLevelTab: sessionThread.thread.topLevelTab,
+        topLevelTab,
         modeKey,
         workspaceContext,
     });

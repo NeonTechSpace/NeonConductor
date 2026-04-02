@@ -23,7 +23,8 @@ type OrchestratorView = Parameters<typeof resolveModeExecutionOrchestratorPanelS
 
 export interface ModeExecutionPanelProps {
     topLevelTab: TopLevelTab;
-    modeKey: string;
+    showPlanSurface: boolean;
+    showOrchestratorSurface: boolean;
     activePlan?: PlanView;
     isLoadingPlan: boolean;
     orchestratorView?: OrchestratorView;
@@ -127,7 +128,8 @@ function renderOrchestratorPanel(
 
 export function ModeExecutionPanel({
     topLevelTab,
-    modeKey,
+    showPlanSurface,
+    showOrchestratorSurface,
     activePlan,
     isLoadingPlan,
     orchestratorView,
@@ -173,7 +175,7 @@ export function ModeExecutionPanel({
         onAbortOrchestrator,
     } = actionController;
 
-    if (modeKey !== 'plan' && topLevelTab !== 'orchestrator') {
+    if (!showPlanSurface && !showOrchestratorSurface) {
         return null;
     }
 
@@ -197,10 +199,10 @@ export function ModeExecutionPanel({
 
     return (
         <section className='border-border bg-card rounded-2xl border p-3'>
-            {modeKey === 'plan' ? (
+            {showPlanSurface ? (
                 <div className='space-y-3'>
                     <div>
-                        <p className='text-sm font-semibold'>Plan Mode</p>
+                        <p className='text-sm font-semibold'>Planning Workflow</p>
                         <p className='text-muted-foreground text-xs'>
                             Review the structured plan artifact, then revise, approve, cancel, or implement
                             intentionally.
@@ -302,11 +304,13 @@ export function ModeExecutionPanel({
                 </div>
             ) : null}
 
-            {renderOrchestratorPanel(orchestratorPanelState, {
-                isOrchestratorMutating,
-                onAbortOrchestrator,
-                ...(onSelectChildThread ? { onSelectChildThread } : {}),
-            })}
+            {showOrchestratorSurface
+                ? renderOrchestratorPanel(orchestratorPanelState, {
+                      isOrchestratorMutating,
+                      onAbortOrchestrator,
+                      ...(onSelectChildThread ? { onSelectChildThread } : {}),
+                  })
+                : null}
         </section>
     );
 }

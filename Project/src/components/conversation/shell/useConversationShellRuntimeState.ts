@@ -20,14 +20,20 @@ import { useConversationQueries } from '@/web/components/conversation/shell/quer
 import { useConversationComposerTargetState } from '@/web/components/conversation/shell/useConversationComposerTargetState';
 import { useConversationShellCacheHandlers } from '@/web/components/conversation/shell/useConversationShellCacheHandlers';
 import { useConversationShellComposerSetup } from '@/web/components/conversation/shell/useConversationShellComposerSetup';
+import type { UseConversationShellControllerInput } from '@/web/components/conversation/shell/useConversationShellController';
 import { useConversationShellSelectionState } from '@/web/components/conversation/shell/useConversationShellSelectionState';
 import { useConversationShellSync } from '@/web/components/conversation/shell/useConversationShellSync';
-import type { UseConversationShellControllerInput } from '@/web/components/conversation/shell/useConversationShellController';
 import type {
     ConversationShellMainViewDraftTarget,
     ShellRuntimeControllerState,
 } from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
-import { isEntityId, modeRequiresNativeTools } from '@/web/components/conversation/shell/workspace/helpers';
+import {
+    isEntityId,
+    modeCanExecuteRuns,
+    modeRequiresNativeTools,
+    modeSupportsOrchestrationWorkflow,
+    modeSupportsPlanningWorkflow,
+} from '@/web/components/conversation/shell/workspace/helpers';
 import { useRuntimeEventStreamStore } from '@/web/lib/runtime/eventStream';
 import { trpc } from '@/web/trpc/client';
 
@@ -49,8 +55,12 @@ export function useConversationShellRuntimeState(
 
     const activeMode = modes.find((candidate) => candidate.modeKey === modeKey);
     const activeModeRequiresNativeTools = modeRequiresNativeTools(activeMode);
-    const isPlanningComposerMode = modeKey === 'plan' && (input.topLevelTab === 'agent' || input.topLevelTab === 'orchestrator');
-    const imageAttachmentsAllowed = input.topLevelTab !== 'orchestrator' && !isPlanningComposerMode;
+    const activeModeSupportsPlanningWorkflow = modeSupportsPlanningWorkflow(activeMode);
+    const activeModeSupportsOrchestrationWorkflow = modeSupportsOrchestrationWorkflow(activeMode);
+    const isPlanningComposerMode =
+        (input.topLevelTab === 'agent' || input.topLevelTab === 'orchestrator') && activeModeSupportsPlanningWorkflow;
+    const isOrchestrationWorkflowMode = input.topLevelTab === 'orchestrator' && activeModeSupportsOrchestrationWorkflow;
+    const imageAttachmentsAllowed = input.topLevelTab !== 'orchestrator' && modeCanExecuteRuns(activeMode);
 
     const [tabSwitchNotice, setTabSwitchNotice] = useState<string | undefined>(undefined);
     const [focusComposerRequestKey, setFocusComposerRequestKey] = useState(0);
@@ -70,6 +80,7 @@ export function useConversationShellRuntimeState(
         selectedRunId: uiState.selectedRunId,
         topLevelTab: input.topLevelTab,
         modeKey,
+        activeMode,
     });
     const mutations = useConversationMutations();
 
@@ -85,8 +96,7 @@ export function useConversationShellRuntimeState(
 
     let clearComposerRunSubmitError: () => void = () => undefined;
     let setComposerRunSubmitError: (message: string) => void = () => undefined;
-    let applySessionWorkspaceUpdate: ShellRuntimeControllerState['applySessionWorkspaceUpdate'] = () =>
-        undefined;
+    let applySessionWorkspaceUpdate: ShellRuntimeControllerState['applySessionWorkspaceUpdate'] = () => undefined;
 
     const sessionActions = useConversationShellSessionActions({
         profileId,
@@ -263,6 +273,8 @@ export function useConversationShellRuntimeState(
         topLevelTab: input.topLevelTab,
         modeKey,
         modes: input.modes,
+        isPlanningComposerMode,
+        isOrchestrationWorkflowMode,
         selectedWorkspaceFingerprint,
         isSidebarCollapsed: input.isSidebarCollapsed,
         onToggleSidebarCollapsed: input.onToggleSidebarCollapsed,

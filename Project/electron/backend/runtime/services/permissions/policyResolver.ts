@@ -6,6 +6,7 @@ import type {
     ToolMutability,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
+import { modeUsesReadOnlyExecution } from '@/app/backend/runtime/services/mode/metadata';
 import { modeAllowsToolCapabilities } from '@/app/backend/runtime/services/mode/toolCapabilities';
 import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 
@@ -61,12 +62,8 @@ async function resolveModePolicy(input: {
         return 'deny';
     }
 
-    if (mode.executionPolicy.planningOnly) {
+    if (modeUsesReadOnlyExecution(mode)) {
         return input.mutability === 'read_only' ? 'allow' : 'deny';
-    }
-
-    if (input.topLevelTab === 'agent' && input.modeKey === 'ask') {
-        return isReadOnlyCapabilitySet(input.capabilities) ? 'allow' : 'deny';
     }
 
     return null;

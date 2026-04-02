@@ -1,7 +1,12 @@
 import { skipToken } from '@tanstack/react-query';
 
 import type { ConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
+import {
+    isEntityId,
+    modeSupportsOrchestrationWorkflow,
+    modeSupportsPlanningWorkflow,
+    type ConversationModeOption,
+} from '@/web/components/conversation/shell/workspace/helpers';
 import { BOOT_CRITICAL_QUERY_OPTIONS } from '@/web/components/runtime/startupQueryOptions';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
@@ -15,6 +20,7 @@ interface UseConversationQueriesInput {
     selectedRunId: string | undefined;
     topLevelTab: TopLevelTab;
     modeKey: string;
+    activeMode: ConversationModeOption | undefined;
 }
 
 export function buildConversationSessionScopedQueryInput(profileId: string, selectedSessionId: string | undefined) {
@@ -55,9 +61,11 @@ export function buildConversationActivePlanQueryInput(input: {
     profileId: string;
     selectedSessionId: string | undefined;
     topLevelTab: TopLevelTab;
+    activeMode: ConversationModeOption | undefined;
 }) {
     return isEntityId(input.selectedSessionId, 'sess') &&
-        (input.topLevelTab === 'agent' || input.topLevelTab === 'orchestrator')
+        (input.topLevelTab === 'agent' || input.topLevelTab === 'orchestrator') &&
+        modeSupportsPlanningWorkflow(input.activeMode)
         ? {
               profileId: input.profileId,
               sessionId: input.selectedSessionId,
@@ -70,8 +78,11 @@ export function buildConversationOrchestratorLatestQueryInput(input: {
     profileId: string;
     selectedSessionId: string | undefined;
     topLevelTab: TopLevelTab;
+    activeMode: ConversationModeOption | undefined;
 }) {
-    return isEntityId(input.selectedSessionId, 'sess') && input.topLevelTab === 'orchestrator'
+    return isEntityId(input.selectedSessionId, 'sess') &&
+        input.topLevelTab === 'orchestrator' &&
+        modeSupportsOrchestrationWorkflow(input.activeMode)
         ? {
               profileId: input.profileId,
               sessionId: input.selectedSessionId,
@@ -118,11 +129,13 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
         profileId: input.profileId,
         selectedSessionId: input.selectedSessionId,
         topLevelTab: input.topLevelTab,
+        activeMode: input.activeMode,
     });
     const orchestratorLatestInput = buildConversationOrchestratorLatestQueryInput({
         profileId: input.profileId,
         selectedSessionId: input.selectedSessionId,
         topLevelTab: input.topLevelTab,
+        activeMode: input.activeMode,
     });
 
     const sessionsQuery = trpc.session.list.useQuery(sessionsInput, PROGRESSIVE_QUERY_OPTIONS);

@@ -10,7 +10,7 @@ import type {
     DiffArtifact,
     DiffRecord,
 } from '@/app/backend/persistence/types';
-import type { ResolvedWorkspaceContext, TopLevelTab } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition, ResolvedWorkspaceContext, TopLevelTab } from '@/app/backend/runtime/contracts';
 import {
     buildSnapshotIndexFromCapture,
     buildSnapshotIndexFromEntries,
@@ -20,9 +20,35 @@ import { compactCheckpointStorage } from '@/app/backend/runtime/services/checkpo
 import { resolveCheckpointExecutionTarget } from '@/app/backend/runtime/services/checkpoint/executionTarget';
 import { captureGitWorkspaceArtifact } from '@/app/backend/runtime/services/checkpoint/gitWorkspace';
 import { captureExecutionTargetSnapshot } from '@/app/backend/runtime/services/checkpoint/nativeSnapshot';
+import { resolveModesForTab } from '@/app/backend/runtime/services/registry/service';
 
-export function isMutatingCheckpointMode(topLevelTab: TopLevelTab, modeKey: string): boolean {
-    return (topLevelTab === 'agent' && modeKey === 'code') || topLevelTab === 'orchestrator';
+import { modeIsCheckpointEligible, modeMutatesWorkspace } from '@/shared/modeBehavior';
+
+function getWorkspaceFingerprint(workspaceContext: ResolvedWorkspaceContext): string | undefined {
+    return workspaceContext.kind === 'detached' ? undefined : workspaceContext.workspaceFingerprint;
+}
+
+export async function resolveCheckpointCaptureMode(input: {
+    profileId: string;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    workspaceContext: ResolvedWorkspaceContext;
+}): Promise<ModeDefinition | null> {
+    if (input.topLevelTab === 'chat') {
+        return null;
+    }
+
+    const workspaceFingerprint = getWorkspaceFingerprint(input.workspaceContext);
+    const modes = await resolveModesForTab({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+    });
+    return modes.find((candidate) => candidate.modeKey === input.modeKey) ?? null;
+}
+
+export function isMutatingCheckpointMode(mode: Pick<ModeDefinition, 'executionPolicy'>): boolean {
+    return modeIsCheckpointEligible(mode) && modeMutatesWorkspace(mode);
 }
 
 function summarizeDiff(diff: DiffRecord): string {
@@ -72,10 +98,6 @@ export async function captureRunDiffArtifact(input: {
     modeKey: string;
     workspaceContext: ResolvedWorkspaceContext;
 }): Promise<{ diff: DiffRecord; checkpoint?: CheckpointRecord } | null> {
-    if (!isMutatingCheckpointMode(input.topLevelTab, input.modeKey)) {
-        return null;
-    }
-
     const existingDiffs = await diffStore.listByRun(input.profileId, input.runId);
     const existingCheckpoint = await checkpointStore.getByRunId(input.profileId, input.runId);
     const firstDiff = existingDiffs[0];
@@ -84,6 +106,11 @@ export async function captureRunDiffArtifact(input: {
             diff: firstDiff,
             ...(existingCheckpoint ? { checkpoint: existingCheckpoint } : {}),
         };
+    }
+
+    const mode = await resolveCheckpointCaptureMode(input);
+    if (!mode || !isMutatingCheckpointMode(mode)) {
+        return null;
     }
 
     const artifact =
@@ -133,7 +160,13 @@ export async function captureRunChangeset(input: {
     modeKey: string;
     workspaceContext: ResolvedWorkspaceContext;
 }): Promise<CheckpointChangesetRecord | null> {
-    if (!isMutatingCheckpointMode(input.topLevelTab, input.modeKey)) {
+    const mode = await resolveCheckpointCaptureMode({
+        profileId: input.profileId,
+        topLevelTab: input.topLevelTab,
+        modeKey: input.modeKey,
+        workspaceContext: input.workspaceContext,
+    });
+    if (!mode || !isMutatingCheckpointMode(mode)) {
         return null;
     }
 
@@ -199,7 +232,8 @@ export async function captureCheckpointDiffForRunLifecycle(input: {
     checkpoint?: CheckpointRecord;
     changeset?: CheckpointChangesetRecord;
 } | null> {
-    if (!isMutatingCheckpointMode(input.topLevelTab, input.modeKey)) {
+    const mode = await resolveCheckpointCaptureMode(input);
+    if (!mode || !isMutatingCheckpointMode(mode)) {
         return null;
     }
 

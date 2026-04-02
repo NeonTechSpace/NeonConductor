@@ -62,6 +62,8 @@ export interface ShellRuntimeControllerState {
     topLevelTab: TopLevelTab;
     modeKey: string;
     modes: ConversationModeOption[];
+    isPlanningComposerMode: boolean;
+    isOrchestrationWorkflowMode: boolean;
     selectedWorkspaceFingerprint: string | undefined;
     onModeChange: (modeKey: string) => void;
     onTopLevelTabChange: (nextTab: TopLevelTab) => void;

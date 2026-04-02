@@ -10,6 +10,33 @@ import type {
     RuntimeRunOptions,
 } from '@/shared/contracts';
 import { providerIds } from '@/shared/contracts';
+import {
+    getModeBehaviorFlags as getModeBehaviorFlagsForPolicy,
+    getModeWorkflowCapabilities as getModeWorkflowCapabilitiesForPolicy,
+    modeCanExecuteRuns,
+    modeHasBehaviorFlag,
+    modeHasWorkflowCapability,
+    modeIsCheckpointEligible,
+    modeMutatesWorkspace,
+    modeRequiresNativeTools,
+    modeShowsPlanArtifactSurface,
+    modeSupportsOrchestrationWorkflow,
+    modeSupportsPlanningWorkflow,
+    modeUsesReadOnlyExecution,
+} from '@/shared/modeBehavior';
+
+export {
+    modeCanExecuteRuns,
+    modeHasBehaviorFlag,
+    modeHasWorkflowCapability,
+    modeIsCheckpointEligible,
+    modeMutatesWorkspace,
+    modeRequiresNativeTools,
+    modeShowsPlanArtifactSurface,
+    modeSupportsOrchestrationWorkflow,
+    modeSupportsPlanningWorkflow,
+    modeUsesReadOnlyExecution,
+};
 
 export const DEFAULT_REASONING_EFFORT: RuntimeReasoningEffort = 'medium';
 
@@ -51,12 +78,12 @@ export interface RunTargetSelection {
 
 export type ConversationModeOption = Pick<ModeDefinitionRecord, 'id' | 'modeKey' | 'label' | 'executionPolicy'>;
 
-export function modeRequiresNativeTools(mode: ConversationModeOption | undefined): boolean {
-    if (!mode || mode.executionPolicy.planningOnly) {
-        return false;
-    }
+export function getModeWorkflowCapabilities(mode: ConversationModeOption | undefined) {
+    return mode ? getModeWorkflowCapabilitiesForPolicy(mode.executionPolicy) : [];
+}
 
-    return (mode.executionPolicy.toolCapabilities?.length ?? 0) > 0;
+export function getModeBehaviorFlags(mode: ConversationModeOption | undefined) {
+    return mode ? getModeBehaviorFlagsForPolicy(mode.executionPolicy) : [];
 }
 
 export function isEntityId<P extends EntityIdPrefix>(value: string | undefined, prefix: P): value is EntityId<P> {

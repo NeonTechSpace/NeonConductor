@@ -1,6 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 
-import type { PlanStartInput } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition, PlanStartInput } from '@/app/backend/runtime/contracts';
+import { modeSupportsPlanningWorkflow } from '@/app/backend/runtime/services/mode/metadata';
 
 export type PlanServiceErrorCode =
     | 'invalid_mode'
@@ -44,12 +45,23 @@ export function toPlanException(error: PlanServiceError): Error {
     return new PlanServiceException(error);
 }
 
-export function validatePlanStartInput(input: PlanStartInput): Result<void, PlanServiceError> {
-    if (input.modeKey !== 'plan') {
-        return errPlan('invalid_mode', `Plan flow only supports "plan" mode, received "${input.modeKey}".`);
-    }
+export function validatePlanStartInput(
+    input: PlanStartInput,
+    mode: Pick<ModeDefinition, 'modeKey' | 'topLevelTab' | 'executionPolicy'> | null
+): Result<void, PlanServiceError> {
     if (input.topLevelTab === 'chat') {
         return errPlan('invalid_tab', 'Planning flow is only available in agent or orchestrator tabs.');
+    }
+
+    if (!mode) {
+        return errPlan('invalid_mode', `Plan flow could not resolve a planning-capable mode for "${input.modeKey}".`);
+    }
+
+    if (!modeSupportsPlanningWorkflow(mode)) {
+        return errPlan(
+            'invalid_mode',
+            `Mode "${input.modeKey}" is not planning-capable and cannot start plan flow.`
+        );
     }
 
     return okPlan(undefined);

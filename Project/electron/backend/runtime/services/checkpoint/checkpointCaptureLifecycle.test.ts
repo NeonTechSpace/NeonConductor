@@ -1,3 +1,4 @@
+import { err } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     workspaceContextService: {
         resolveForSession: vi.fn(),
     },
+    resolveModesForTab: vi.fn(),
 }));
 
 vi.mock('@/app/backend/persistence/stores', () => ({
@@ -57,21 +59,56 @@ vi.mock('@/app/backend/runtime/services/checkpoint/nativeSnapshot', () => ({
     captureExecutionTargetSnapshot: mocks.captureExecutionTargetSnapshot,
 }));
 
+vi.mock('@/app/backend/runtime/services/registry/service', () => ({
+    resolveModesForTab: mocks.resolveModesForTab,
+}));
+
 vi.mock('@/app/backend/runtime/services/workspaceContext/service', () => ({
     workspaceContextService: mocks.workspaceContextService,
 }));
 
-import { err } from 'neverthrow';
 import {
     createCheckpointLifecycle,
     ensureCheckpointForRunLifecycle,
 } from '@/app/backend/runtime/services/checkpoint/checkpointCaptureLifecycle';
 
 describe('checkpointCaptureLifecycle', () => {
+    function buildCheckpointMode(modeKey: string) {
+        return {
+            id: `mode_${modeKey}`,
+            profileId: 'profile_local_default',
+            topLevelTab: 'agent',
+            modeKey,
+            label: modeKey,
+            assetKey: `agent.${modeKey}`,
+            prompt: {},
+            executionPolicy: {
+                toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+                workflowCapabilities: ['artifact_view'],
+                behaviorFlags: ['checkpoint_eligible', 'workspace_mutating'],
+            },
+            source: 'test',
+            sourceKind: 'system_seed',
+            scope: 'system',
+            enabled: true,
+            precedence: 0,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+        };
+    }
+
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.checkpointStore.getByRunId.mockResolvedValue(null);
         mocks.compactCheckpointStorage.mockResolvedValue(undefined);
+        mocks.resolveCheckpointExecutionTarget.mockReturnValue({
+            absolutePath: 'C:/repo',
+            workspaceFingerprint: 'ws_1',
+            executionTargetKey: 'workspace:ws_1',
+            executionTargetKind: 'workspace',
+            executionTargetLabel: 'Workspace Root',
+        });
+        mocks.resolveModesForTab.mockResolvedValue([buildCheckpointMode('code')]);
     });
 
     it('returns ok(null) for non-mutating modes', async () => {
@@ -122,6 +159,8 @@ describe('checkpointCaptureLifecycle', () => {
             id: 'ckpt_1',
             checkpointKind: 'auto',
             summary: 'Before run',
+            topLevelTab: 'agent',
+            modeKey: 'code',
         });
         mocks.workspaceContextService.resolveForSession.mockResolvedValue({
             kind: 'workspace',

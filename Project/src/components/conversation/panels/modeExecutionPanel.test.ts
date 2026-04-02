@@ -196,7 +196,8 @@ describe('resolveModeExecutionDraftState', () => {
         const html = renderToStaticMarkup(
             createElement(ModeExecutionPanel, {
                 topLevelTab: 'orchestrator',
-                modeKey: 'plan',
+                showPlanSurface: true,
+                showOrchestratorSurface: true,
                 isLoadingPlan: false,
                 actionController: {
                     isPlanMutating: false,
@@ -458,7 +459,8 @@ describe('resolveModeExecutionDraftState', () => {
         const html = renderToStaticMarkup(
             createElement(ModeExecutionPanel, {
                 topLevelTab: 'agent',
-                modeKey: 'plan',
+                showPlanSurface: true,
+                showOrchestratorSurface: false,
                 isLoadingPlan: false,
                 actionController: {
                     isPlanMutating: false,
@@ -636,5 +638,38 @@ describe('resolveModeExecutionDraftState', () => {
         expect(html).toContain('Switch Variant');
         expect(html).toContain('Resolve Follow-Up');
         expect(html).toContain('Resume Editing');
+    });
+});
+
+describe('ModeExecutionPanel capability gating', () => {
+    it('hides the shell panel entirely when no capability-driven surface is available', () => {
+        const html = renderToStaticMarkup(
+            createElement(ModeExecutionPanel, {
+                topLevelTab: 'agent',
+                showPlanSurface: false,
+                showOrchestratorSurface: false,
+                isLoadingPlan: false,
+                actionController: {
+                    isPlanMutating: false,
+                    isOrchestratorMutating: false,
+                    onAnswerQuestion: vi.fn(),
+                    onRevisePlan: vi.fn(),
+                    onCreateVariant: vi.fn(),
+                    onActivateVariant: vi.fn(),
+                    onResumeFromRevision: vi.fn(),
+                    onResolveFollowUp: vi.fn(),
+                    onGenerateDraft: vi.fn(),
+                    onCancelPlan: vi.fn(),
+                    onApprovePlan: vi.fn(),
+                    onImplementPlan: vi.fn(),
+                    onAbortOrchestrator: vi.fn(),
+                },
+                selectedExecutionStrategy: 'delegate',
+                canConfigureExecutionStrategy: false,
+                onExecutionStrategyChange: vi.fn(),
+            })
+        );
+
+        expect(html).toBe('');
     });
 });
