@@ -8,8 +8,6 @@ import {
 } from '@/app/backend/persistence/__tests__/stores.shared';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 
-import { listThreadRecords } from './threadListReadModel';
-
 registerPersistenceStoreHooks();
 
 describe('threadListReadModel', () => {
@@ -47,7 +45,7 @@ describe('threadListReadModel', () => {
             throw new Error(delegatedWorker.error.message);
         }
 
-        const listed = await listThreadRecords({
+        const listed = await threadStore.list({
             profileId,
             activeTab: 'orchestrator',
             showAllModes: false,
@@ -58,6 +56,46 @@ describe('threadListReadModel', () => {
         });
 
         expect(listed.map((thread) => thread.id)).toEqual([delegatedWorker.value.id, orchestrator.value.id]);
+    });
+
+    it('surfaces flow-owned delegated threads in list projections', async () => {
+        const profileId = getDefaultProfileId();
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_list_flow_owner',
+            title: 'Workspace',
+        });
+        if (conversation.isErr()) {
+            throw new Error(conversation.error.message);
+        }
+
+        const flowInstanceId = 'flow_instance_list_projection';
+        const flowOwnedThread = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Flow-owned thread',
+            topLevelTab: 'orchestrator',
+            delegatedFromFlowInstanceId: flowInstanceId,
+        });
+        if (flowOwnedThread.isErr()) {
+            throw new Error(flowOwnedThread.error.message);
+        }
+
+        const listed = await threadStore.list({
+            profileId,
+            activeTab: 'orchestrator',
+            showAllModes: false,
+            groupView: 'workspace',
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_list_flow_owner',
+            sort: 'alphabetical',
+        });
+
+        expect(listed.map((thread) => thread.id)).toContain(flowOwnedThread.value.id);
+        expect(listed.find((thread) => thread.id === flowOwnedThread.value.id)?.delegatedFromFlowInstanceId).toBe(
+            flowInstanceId
+        );
     });
 
     it('flattens branch view in root-first order within a workspace anchor', async () => {
@@ -103,7 +141,7 @@ describe('threadListReadModel', () => {
             throw new Error(child.error.message);
         }
 
-        const listed = await listThreadRecords({
+        const listed = await threadStore.list({
             profileId,
             activeTab: 'chat',
             showAllModes: true,

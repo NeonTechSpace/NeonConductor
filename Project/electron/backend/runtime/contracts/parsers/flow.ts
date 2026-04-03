@@ -15,6 +15,7 @@ import {
     readProfileId,
     readEnumValue,
     readObject,
+    readOptionalBoolean,
     readOptionalString,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
@@ -38,6 +39,7 @@ import type {
     FlowStepDefinition,
 } from '@/app/backend/runtime/contracts/types/flow';
 
+import type { EntityId } from '@/shared/contracts';
 import {
     flowLifecycleEventKinds,
     type FlowApprovalRequiredLifecycleEventPayload,
@@ -72,25 +74,50 @@ function parseFlowStepDefinition(input: unknown, field: string): FlowStepDefinit
     }
 
     if (kind === 'mode_run') {
+        const modeKey = readString(source.modeKey, `${field}.modeKey`);
+        const promptMarkdown = readString(source.promptMarkdown, `${field}.promptMarkdown`);
+
         return {
             kind,
             id: readString(source.id, `${field}.id`),
             label: readString(source.label, `${field}.label`),
             topLevelTab: readEnumValue(source.topLevelTab, `${field}.topLevelTab`, topLevelTabs),
-            modeKey: readString(source.modeKey, `${field}.modeKey`),
+            modeKey: modeKey.trim(),
+            promptMarkdown: promptMarkdown.trim(),
         };
     }
 
     if (kind === 'workflow') {
+        const workflowCapability = readEnumValue(
+            source.workflowCapability,
+            `${field}.workflowCapability`,
+            workflowCapabilities
+        );
+        const promptMarkdown = readString(source.promptMarkdown, `${field}.promptMarkdown`);
+        const planningDepth =
+            source.planningDepth !== undefined
+                ? readEnumValue(source.planningDepth, `${field}.planningDepth`, ['simple', 'advanced'] as const)
+                : undefined;
+        const requireApprovedPlan = readOptionalBoolean(source.requireApprovedPlan, `${field}.requireApprovedPlan`);
+        const reuseExistingPlan = readOptionalBoolean(source.reuseExistingPlan, `${field}.reuseExistingPlan`);
+
         return {
             kind,
             id: readString(source.id, `${field}.id`),
             label: readString(source.label, `${field}.label`),
-            workflowCapability: readEnumValue(
-                source.workflowCapability,
-                `${field}.workflowCapability`,
-                workflowCapabilities
-            ),
+            workflowCapability,
+            promptMarkdown: promptMarkdown.trim(),
+            ...(planningDepth ? { planningDepth } : workflowCapability === 'planning' ? { planningDepth: 'simple' } : {}),
+            ...(requireApprovedPlan !== undefined
+                ? { requireApprovedPlan }
+                : workflowCapability === 'planning'
+                  ? { requireApprovedPlan: true }
+                  : {}),
+            ...(reuseExistingPlan !== undefined
+                ? { reuseExistingPlan }
+                : workflowCapability === 'planning'
+                  ? { reuseExistingPlan: true }
+                  : {}),
         };
     }
 
@@ -106,14 +133,41 @@ function parseFlowExecutionContext(input: unknown, field: string): FlowExecution
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, `${field}.workspaceFingerprint`);
     const sandboxId =
         source.sandboxId !== undefined ? readEntityId(source.sandboxId, `${field}.sandboxId`, 'sb') : undefined;
+    const sessionId =
+        source.sessionId !== undefined ? readEntityId(source.sessionId, `${field}.sessionId`, 'sess') : undefined;
 
     return {
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
         ...(sandboxId ? { sandboxId } : {}),
+        ...(sessionId ? { sessionId } : {}),
     };
 }
 
+function readOptionalEntityId<P extends 'run' | 'thr' | 'sess' | 'plan' | 'prev'>(
+    source: Record<string, unknown>,
+    field: string,
+    key: string,
+    prefix: P
+): EntityId<P> | undefined {
+    const value = source[key];
+    if (value === undefined) {
+        return undefined;
+    }
+
+    return readEntityId(value, `${field}.${key}`, prefix);
+}
+
+function readOptionalPhaseId(source: Record<string, unknown>, field: string, key: string): string | undefined {
+    const value = source[key];
+    if (value === undefined) {
+        return undefined;
+    }
+
+    return readOptionalString(value, `${field}.${key}`);
+}
+
 const awaitingApprovalPermissionRequestIdField = 'awaitingApproval.' + 'permissionRequestId';
+const currentPlanPhaseRevisionIdField = 'currentPlanPhaseRevisionId';
 
 export function parseFlowDefinitionRecord(input: unknown): FlowDefinitionRecord {
     const source = readObject(input, 'input');
@@ -137,11 +191,23 @@ export function parseFlowInstanceRecord(input: unknown): FlowInstanceRecord {
     const source = readObject(input, 'input');
     const startedAt = readOptionalString(source.startedAt, 'startedAt');
     const finishedAt = readOptionalString(source.finishedAt, 'finishedAt');
+    const currentRunId = readOptionalEntityId(source, 'input', 'currentRunId', 'run');
+    const currentChildThreadId = readOptionalEntityId(source, 'input', 'currentChildThreadId', 'thr');
+    const currentChildSessionId = readOptionalEntityId(source, 'input', 'currentChildSessionId', 'sess');
+    const currentPlanId = readOptionalEntityId(source, 'input', 'currentPlanId', 'plan');
+    const currentPlanRevisionId = readOptionalEntityId(source, 'input', 'currentPlanRevisionId', 'prev');
+    const currentPlanPhaseId = readOptionalPhaseId(source, 'input', 'currentPlanPhaseId');
+    const currentPlanPhaseRevisionId = readOptionalPhaseId(source, 'input', currentPlanPhaseRevisionIdField);
     const awaitingApprovalStepId = readOptionalString(source.awaitingApprovalStepId, 'awaitingApprovalStepId');
     const awaitingPermissionRequestId =
         source.awaitingPermissionRequestId !== undefined
             ? readEntityId(source.awaitingPermissionRequestId, 'awaitingPermissionRequestId', 'perm')
             : undefined;
+    const awaitingPlanId = readOptionalEntityId(source, 'input', 'awaitingPlanId', 'plan');
+    const awaitingPlanRevisionId = readOptionalEntityId(source, 'input', 'awaitingPlanRevisionId', 'prev');
+    const awaitingRequiredPlanStatus = source.awaitingRequiredPlanStatus
+        ? readEnumValue(source.awaitingRequiredPlanStatus, 'awaitingRequiredPlanStatus', ['draft', 'approved'] as const)
+        : undefined;
     const lastErrorMessage = readOptionalString(source.lastErrorMessage, 'lastErrorMessage');
     const retrySourceFlowInstanceId = readOptionalString(source.retrySourceFlowInstanceId, 'retrySourceFlowInstanceId');
 
@@ -153,6 +219,13 @@ export function parseFlowInstanceRecord(input: unknown): FlowInstanceRecord {
         ...(source.executionContext
             ? { executionContext: parseFlowExecutionContext(source.executionContext, 'executionContext') }
             : {}),
+        ...(currentRunId ? { currentRunId } : {}),
+        ...(currentChildThreadId ? { currentChildThreadId } : {}),
+        ...(currentChildSessionId ? { currentChildSessionId } : {}),
+        ...(currentPlanId ? { currentPlanId } : {}),
+        ...(currentPlanRevisionId ? { currentPlanRevisionId } : {}),
+        ...(currentPlanPhaseId ? { currentPlanPhaseId } : {}),
+        ...(currentPlanPhaseRevisionId ? { currentPlanPhaseRevisionId } : {}),
         ...(source.awaitingApprovalKind
             ? {
                   awaitingApprovalKind: readEnumValue(
@@ -172,6 +245,9 @@ export function parseFlowInstanceRecord(input: unknown): FlowInstanceRecord {
             : {}),
         ...(awaitingApprovalStepId ? { awaitingApprovalStepId } : {}),
         ...(awaitingPermissionRequestId ? { awaitingPermissionRequestId } : {}),
+        ...(awaitingPlanId ? { awaitingPlanId } : {}),
+        ...(awaitingPlanRevisionId ? { awaitingPlanRevisionId } : {}),
+        ...(awaitingRequiredPlanStatus ? { awaitingRequiredPlanStatus } : {}),
         ...(lastErrorMessage ? { lastErrorMessage } : {}),
         ...(retrySourceFlowInstanceId ? { retrySourceFlowInstanceId } : {}),
         ...(startedAt ? { startedAt } : {}),
@@ -269,6 +345,7 @@ export function parseFlowResumeInput(input: unknown): FlowResumeInput {
         flowInstanceId: readString(source.flowInstanceId, 'flowInstanceId'),
         expectedStepIndex: readNonNegativeInteger(source.expectedStepIndex, 'expectedStepIndex'),
         expectedStepId: readString(source.expectedStepId, 'expectedStepId'),
+        ...(source.expectedPlanId ? { expectedPlanId: readEntityId(source.expectedPlanId, 'expectedPlanId', 'plan') } : {}),
     };
 }
 
@@ -305,6 +382,13 @@ export function parseFlowInstanceView(input: unknown): FlowInstanceView {
     const source = readObject(input, 'input');
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
     const sourceBranchWorkflowId = readOptionalString(source.sourceBranchWorkflowId, 'sourceBranchWorkflowId');
+    const currentRunId = readOptionalEntityId(source, 'input', 'currentRunId', 'run');
+    const currentChildThreadId = readOptionalEntityId(source, 'input', 'currentChildThreadId', 'thr');
+    const currentChildSessionId = readOptionalEntityId(source, 'input', 'currentChildSessionId', 'sess');
+    const currentPlanId = readOptionalEntityId(source, 'input', 'currentPlanId', 'plan');
+    const currentPlanRevisionId = readOptionalEntityId(source, 'input', 'currentPlanRevisionId', 'prev');
+    const currentPlanPhaseId = readOptionalPhaseId(source, 'input', 'currentPlanPhaseId');
+    const currentPlanPhaseRevisionId = readOptionalPhaseId(source, 'input', currentPlanPhaseRevisionIdField);
     const lastErrorMessage = readOptionalString(source.lastErrorMessage, 'lastErrorMessage');
     const retrySourceFlowInstanceId = readOptionalString(source.retrySourceFlowInstanceId, 'retrySourceFlowInstanceId');
     const currentStepSource = source.currentStep ? readObject(source.currentStep, 'currentStep') : undefined;
@@ -326,6 +410,13 @@ export function parseFlowInstanceView(input: unknown): FlowInstanceView {
         ...(source.executionContext
             ? { executionContext: parseFlowExecutionContext(source.executionContext, 'executionContext') }
             : {}),
+        ...(currentRunId ? { currentRunId } : {}),
+        ...(currentChildThreadId ? { currentChildThreadId } : {}),
+        ...(currentChildSessionId ? { currentChildSessionId } : {}),
+        ...(currentPlanId ? { currentPlanId } : {}),
+        ...(currentPlanRevisionId ? { currentPlanRevisionId } : {}),
+        ...(currentPlanPhaseId ? { currentPlanPhaseId } : {}),
+        ...(currentPlanPhaseRevisionId ? { currentPlanPhaseRevisionId } : {}),
         ...(currentStepSource
             ? {
                   currentStep: {
@@ -346,6 +437,27 @@ export function parseFlowInstanceView(input: unknown): FlowInstanceView {
                       reason: readString(awaitingApprovalSource.reason, 'awaitingApproval.reason'),
                       ...(awaitingApprovalPermissionRequestId
                           ? { permissionRequestId: awaitingApprovalPermissionRequestId }
+                          : {}),
+                      ...(awaitingApprovalSource.planId
+                          ? { planId: readEntityId(awaitingApprovalSource.planId, 'awaitingApproval.planId', 'plan') }
+                          : {}),
+                      ...(awaitingApprovalSource.planRevisionId
+                          ? {
+                                planRevisionId: readEntityId(
+                                    awaitingApprovalSource.planRevisionId,
+                                    'awaitingApproval.planRevisionId',
+                                    'prev'
+                                ),
+                            }
+                          : {}),
+                      ...(awaitingApprovalSource.requiredPlanStatus
+                          ? {
+                                requiredPlanStatus: readEnumValue(
+                                    awaitingApprovalSource.requiredPlanStatus,
+                                    'awaitingApproval.requiredPlanStatus',
+                                    ['draft', 'approved'] as const
+                                ),
+                            }
                           : {}),
                   },
               }
@@ -407,6 +519,50 @@ export function parseFlowLifecycleEvent(input: unknown, field = 'input'): FlowLi
                 stepId: readString(payload.stepId, 'payload.stepId'),
                 stepKind: readEnumValue(payload.stepKind, 'payload.stepKind', flowStepKinds),
                 status: 'running',
+                ...(payload.currentRunId
+                    ? { currentRunId: readEntityId(payload.currentRunId, 'payload.currentRunId', 'run') }
+                    : {}),
+                ...(payload.currentChildThreadId
+                    ? {
+                          currentChildThreadId: readEntityId(
+                              payload.currentChildThreadId,
+                              'payload.currentChildThreadId',
+                              'thr'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentChildSessionId
+                    ? {
+                          currentChildSessionId: readEntityId(
+                              payload.currentChildSessionId,
+                              'payload.currentChildSessionId',
+                              'sess'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanId
+                    ? { currentPlanId: readEntityId(payload.currentPlanId, 'payload.currentPlanId', 'plan') }
+                    : {}),
+                ...(payload.currentPlanRevisionId
+                    ? {
+                          currentPlanRevisionId: readEntityId(
+                              payload.currentPlanRevisionId,
+                              'payload.currentPlanRevisionId',
+                              'prev'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanPhaseId
+                    ? { currentPlanPhaseId: readString(payload.currentPlanPhaseId, 'payload.currentPlanPhaseId') }
+                    : {}),
+                    ...(payload.currentPlanPhaseRevisionId
+                        ? {
+                              currentPlanPhaseRevisionId: readString(
+                                  payload.currentPlanPhaseRevisionId,
+                                  'payload.' + currentPlanPhaseRevisionIdField
+                              ),
+                          }
+                        : {}),
             } satisfies FlowStepStartedLifecycleEventPayload,
         };
     }
@@ -423,6 +579,50 @@ export function parseFlowLifecycleEvent(input: unknown, field = 'input'): FlowLi
                 stepId: readString(payload.stepId, 'payload.stepId'),
                 stepKind: readEnumValue(payload.stepKind, 'payload.stepKind', flowStepKinds),
                 status: 'running',
+                ...(payload.currentRunId
+                    ? { currentRunId: readEntityId(payload.currentRunId, 'payload.currentRunId', 'run') }
+                    : {}),
+                ...(payload.currentChildThreadId
+                    ? {
+                          currentChildThreadId: readEntityId(
+                              payload.currentChildThreadId,
+                              'payload.currentChildThreadId',
+                              'thr'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentChildSessionId
+                    ? {
+                          currentChildSessionId: readEntityId(
+                              payload.currentChildSessionId,
+                              'payload.currentChildSessionId',
+                              'sess'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanId
+                    ? { currentPlanId: readEntityId(payload.currentPlanId, 'payload.currentPlanId', 'plan') }
+                    : {}),
+                ...(payload.currentPlanRevisionId
+                    ? {
+                          currentPlanRevisionId: readEntityId(
+                              payload.currentPlanRevisionId,
+                              'payload.currentPlanRevisionId',
+                              'prev'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanPhaseId
+                    ? { currentPlanPhaseId: readString(payload.currentPlanPhaseId, 'payload.currentPlanPhaseId') }
+                    : {}),
+                    ...(payload.currentPlanPhaseRevisionId
+                        ? {
+                              currentPlanPhaseRevisionId: readString(
+                                  payload.currentPlanPhaseRevisionId,
+                                  'payload.' + currentPlanPhaseRevisionIdField
+                              ),
+                          }
+                        : {}),
             } satisfies FlowStepCompletedLifecycleEventPayload,
         };
     }
@@ -449,6 +649,19 @@ export function parseFlowLifecycleEvent(input: unknown, field = 'input'): FlowLi
                           ),
                       }
                     : {}),
+                ...(payload.planId ? { planId: readEntityId(payload.planId, 'payload.planId', 'plan') } : {}),
+                ...(payload.planRevisionId
+                    ? { planRevisionId: readEntityId(payload.planRevisionId, 'payload.planRevisionId', 'prev') }
+                    : {}),
+                ...(payload.requiredPlanStatus
+                    ? {
+                          requiredPlanStatus: readEnumValue(
+                              payload.requiredPlanStatus,
+                              'payload.requiredPlanStatus',
+                              ['draft', 'approved'] as const
+                          ),
+                      }
+                    : {}),
                 status: 'approval_required',
             } satisfies FlowApprovalRequiredLifecycleEventPayload,
         };
@@ -469,6 +682,50 @@ export function parseFlowLifecycleEvent(input: unknown, field = 'input'): FlowLi
                     : {}),
                 ...(payload.stepId ? { stepId: readString(payload.stepId, 'payload.stepId') } : {}),
                 ...(payload.stepKind ? { stepKind: readEnumValue(payload.stepKind, 'payload.stepKind', flowStepKinds) } : {}),
+                ...(payload.currentRunId
+                    ? { currentRunId: readEntityId(payload.currentRunId, 'payload.currentRunId', 'run') }
+                    : {}),
+                ...(payload.currentChildThreadId
+                    ? {
+                          currentChildThreadId: readEntityId(
+                              payload.currentChildThreadId,
+                              'payload.currentChildThreadId',
+                              'thr'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentChildSessionId
+                    ? {
+                          currentChildSessionId: readEntityId(
+                              payload.currentChildSessionId,
+                              'payload.currentChildSessionId',
+                              'sess'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanId
+                    ? { currentPlanId: readEntityId(payload.currentPlanId, 'payload.currentPlanId', 'plan') }
+                    : {}),
+                ...(payload.currentPlanRevisionId
+                    ? {
+                          currentPlanRevisionId: readEntityId(
+                              payload.currentPlanRevisionId,
+                              'payload.currentPlanRevisionId',
+                              'prev'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanPhaseId
+                    ? { currentPlanPhaseId: readString(payload.currentPlanPhaseId, 'payload.currentPlanPhaseId') }
+                    : {}),
+                    ...(payload.currentPlanPhaseRevisionId
+                        ? {
+                              currentPlanPhaseRevisionId: readString(
+                                  payload.currentPlanPhaseRevisionId,
+                                  'payload.' + currentPlanPhaseRevisionIdField
+                              ),
+                          }
+                        : {}),
             } satisfies FlowFailedLifecycleEventPayload,
         };
     }
@@ -488,6 +745,50 @@ export function parseFlowLifecycleEvent(input: unknown, field = 'input'): FlowLi
                     : {}),
                 ...(payload.stepId ? { stepId: readString(payload.stepId, 'payload.stepId') } : {}),
                 ...(payload.stepKind ? { stepKind: readEnumValue(payload.stepKind, 'payload.stepKind', flowStepKinds) } : {}),
+                ...(payload.currentRunId
+                    ? { currentRunId: readEntityId(payload.currentRunId, 'payload.currentRunId', 'run') }
+                    : {}),
+                ...(payload.currentChildThreadId
+                    ? {
+                          currentChildThreadId: readEntityId(
+                              payload.currentChildThreadId,
+                              'payload.currentChildThreadId',
+                              'thr'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentChildSessionId
+                    ? {
+                          currentChildSessionId: readEntityId(
+                              payload.currentChildSessionId,
+                              'payload.currentChildSessionId',
+                              'sess'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanId
+                    ? { currentPlanId: readEntityId(payload.currentPlanId, 'payload.currentPlanId', 'plan') }
+                    : {}),
+                ...(payload.currentPlanRevisionId
+                    ? {
+                          currentPlanRevisionId: readEntityId(
+                              payload.currentPlanRevisionId,
+                              'payload.currentPlanRevisionId',
+                              'prev'
+                          ),
+                      }
+                    : {}),
+                ...(payload.currentPlanPhaseId
+                    ? { currentPlanPhaseId: readString(payload.currentPlanPhaseId, 'payload.currentPlanPhaseId') }
+                    : {}),
+                    ...(payload.currentPlanPhaseRevisionId
+                        ? {
+                              currentPlanPhaseRevisionId: readString(
+                                  payload.currentPlanPhaseRevisionId,
+                                  'payload.' + currentPlanPhaseRevisionIdField
+                              ),
+                          }
+                        : {}),
             } satisfies FlowCancelledLifecycleEventPayload,
         };
     }

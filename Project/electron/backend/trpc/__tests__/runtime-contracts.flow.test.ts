@@ -1,10 +1,16 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { buildShellApprovalContext } from '@/app/backend/runtime/services/toolExecution/shellApproval';
-import { createCaller, registerRuntimeContractHooks, runtimeContractProfileId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+import {
+    createCaller,
+    createSessionInScope,
+    type EntityId,
+    registerRuntimeContractHooks,
+    runtimeContractProfileId,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
 
@@ -81,6 +87,62 @@ async function waitForFlowInstanceByDefinition(input: {
 
     throw new Error(
         `Timed out waiting for a flow instance from "${input.flowDefinitionId}" to reach status "${input.expectedStatus}".`
+    );
+}
+
+async function answerRequiredPlanQuestions(input: {
+    caller: ReturnType<typeof createCaller>;
+    profileId: string;
+    planId: EntityId<'plan'>;
+}) {
+    const found = await input.caller.plan.get({
+        profileId: input.profileId,
+        planId: input.planId,
+    });
+    if (!found.found) {
+        throw new Error(`Expected plan "${input.planId}" to exist.`);
+    }
+
+    let latestPlan = found.plan;
+    for (const question of latestPlan.questions.filter((candidate) => candidate.required && !candidate.answer)) {
+        const answered = await input.caller.plan.answerQuestion({
+            profileId: input.profileId,
+            planId: input.planId,
+            questionId: question.id,
+            answer: `Answer for ${question.id}.`,
+        });
+        if (!answered.found) {
+            throw new Error(`Expected question "${question.id}" to be answerable.`);
+        }
+
+        latestPlan = answered.plan;
+    }
+
+    return latestPlan;
+}
+
+function stubOpenAiCompletionFetch(content: string) {
+    vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            content,
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 8,
+                    completion_tokens: 12,
+                    total_tokens: 20,
+                },
+            }),
+        })
     );
 }
 
@@ -459,6 +521,188 @@ describe('runtime contracts: flow', () => {
         expect(failed.availableActions.canRetry).toBe(true);
     });
 
+    it('executes mode-run steps through delegated child lanes and persists child provenance', async () => {
+        const caller = createCaller();
+        stubOpenAiCompletionFetch('Child mode completed.');
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-test-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const defaultChanged = await caller.provider.setDefault({
+            profileId,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(defaultChanged.success).toBe(true);
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'ws_flow_mode_run',
+            title: 'Flow Mode Root',
+            kind: 'local',
+            topLevelTab: 'chat',
+        });
+
+        const definition = await caller.flow.createDefinition({
+            profileId,
+            label: 'Mode-run flow',
+            enabled: true,
+            triggerKind: 'manual',
+            steps: [
+                {
+                    kind: 'mode_run',
+                    id: 'step_mode_run',
+                    label: 'Run child chat mode',
+                    topLevelTab: 'chat',
+                    modeKey: 'chat',
+                    promptMarkdown: 'Say hello from the child lane.',
+                },
+            ],
+        });
+
+        const started = await caller.flow.startInstance({
+            profileId,
+            flowDefinitionId: definition.flowDefinition.definition.id,
+            executionContext: {
+                sessionId: created.session.id,
+                workspaceFingerprint: 'ws_flow_mode_run',
+            },
+        });
+        expect(started.found).toBe(true);
+        if (!started.found) {
+            throw new Error('Expected mode-run flow instance to start.');
+        }
+        expect(started.flowInstance.instance.status).toBe('completed');
+        expect(started.flowInstance.currentRunId).toMatch(/^run_/);
+        expect(started.flowInstance.currentChildThreadId).toMatch(/^thr_/);
+        expect(started.flowInstance.currentChildSessionId).toMatch(/^sess_/);
+
+        const { getPersistence } = await import('@/app/backend/trpc/__tests__/runtime-contracts.shared');
+        const childThread = await getPersistence()
+            .db.selectFrom('threads')
+            .selectAll()
+            .where('id', '=', started.flowInstance.currentChildThreadId ?? 'thr_missing')
+            .executeTakeFirst();
+        const childSession = await getPersistence()
+            .db.selectFrom('sessions')
+            .selectAll()
+            .where('id', '=', started.flowInstance.currentChildSessionId ?? 'sess_missing')
+            .executeTakeFirst();
+        expect(childThread?.delegated_from_flow_instance_id).toBe(started.flowInstance.instance.id);
+        expect(childSession?.delegated_from_flow_instance_id).toBe(started.flowInstance.instance.id);
+    });
+
+    it('creates planning artifacts, waits on explicit plan checkpoints, and resumes after approval', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'ws_flow_plan_checkpoint',
+            title: 'Flow Planning Root',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+
+        const definition = await caller.flow.createDefinition({
+            profileId,
+            label: 'Planning checkpoint flow',
+            enabled: true,
+            triggerKind: 'manual',
+            steps: [
+                {
+                    kind: 'workflow',
+                    id: 'step_plan_workflow',
+                    label: 'Create plan',
+                    workflowCapability: 'planning',
+                    promptMarkdown: 'Create a compact implementation plan.',
+                    planningDepth: 'simple',
+                    requireApprovedPlan: true,
+                    reuseExistingPlan: true,
+                },
+            ],
+        });
+
+        const started = await caller.flow.startInstance({
+            profileId,
+            flowDefinitionId: definition.flowDefinition.definition.id,
+            executionContext: {
+                sessionId: created.session.id,
+                workspaceFingerprint: 'ws_flow_plan_checkpoint',
+            },
+        });
+        expect(started.found).toBe(true);
+        if (!started.found || !started.flowInstance.awaitingApproval?.planId) {
+            throw new Error('Expected planning workflow step to block on a linked plan checkpoint.');
+        }
+        expect(started.flowInstance.instance.status).toBe('approval_required');
+        expect(started.flowInstance.awaitingApproval).toMatchObject({
+            kind: 'plan_checkpoint',
+            stepIndex: 0,
+            stepId: 'step_plan_workflow',
+            planId: started.flowInstance.currentPlanId,
+            requiredPlanStatus: 'approved',
+        });
+
+        await expect(
+            caller.flow.resumeInstance({
+                profileId,
+                flowInstanceId: started.flowInstance.instance.id,
+                expectedStepIndex: 0,
+                expectedStepId: 'step_plan_workflow',
+                expectedPlanId: started.flowInstance.awaitingApproval.planId,
+            })
+        ).rejects.toThrow(/cannot resume until the linked plan is approved/i);
+
+        const answeredPlan = await answerRequiredPlanQuestions({
+            caller,
+            profileId,
+            planId: started.flowInstance.awaitingApproval.planId,
+        });
+        const revised = await caller.plan.revise({
+            profileId,
+            planId: answeredPlan.id,
+            summaryMarkdown: '# Approved via Flow',
+            items: [
+                {
+                    description: 'Complete the planning checkpoint.',
+                },
+            ],
+        });
+        expect(revised.found).toBe(true);
+        if (!revised.found) {
+            throw new Error('Expected flow-linked plan revision.');
+        }
+
+        const approved = await caller.plan.approve({
+            profileId,
+            planId: revised.plan.id,
+            revisionId: revised.plan.currentRevisionId,
+        });
+        expect(approved.found).toBe(true);
+        if (!approved.found) {
+            throw new Error('Expected flow-linked plan approval.');
+        }
+
+        const resumed = await caller.flow.resumeInstance({
+            profileId,
+            flowInstanceId: started.flowInstance.instance.id,
+            expectedStepIndex: 0,
+            expectedStepId: 'step_plan_workflow',
+            expectedPlanId: approved.plan.id,
+        });
+        expect(resumed.found).toBe(true);
+        if (!resumed.found) {
+            throw new Error('Expected plan-checkpoint flow to resume.');
+        }
+        expect(resumed.flowInstance.instance.status).toBe('completed');
+        expect(resumed.flowInstance.currentPlanId).toBe(approved.plan.id);
+        expect(resumed.flowInstance.currentPlanRevisionId).toBe(approved.plan.currentRevisionId);
+        expect(resumed.flowInstance.awaitingApproval).toBeUndefined();
+    });
+
     it('fails denied and unsupported flows, retries failed instances from immutable snapshots, and cancels running commands', async () => {
         const caller = createCaller();
 
@@ -531,11 +775,11 @@ describe('runtime contracts: flow', () => {
             triggerKind: 'manual',
             steps: [
                 {
-                    kind: 'mode_run',
-                    id: 'step_mode',
-                    label: 'Run mode',
-                    topLevelTab: 'agent',
-                    modeKey: 'code',
+                    kind: 'workflow',
+                    id: 'step_workflow',
+                    label: 'Run review workflow',
+                    workflowCapability: 'review',
+                    promptMarkdown: 'Review the codebase.',
                 },
             ],
         });
@@ -549,7 +793,7 @@ describe('runtime contracts: flow', () => {
         }
         expect(unsupportedStart.flowInstance.instance.status).toBe('failed');
         expect(unsupportedStart.flowInstance.lastErrorMessage).toContain(
-            'not executable in Execute Flow Slice 3'
+            'not executable in Execute Flow Slice 4'
         );
 
         const cancelWorkspaceFingerprint = 'ws_flow_cancel';

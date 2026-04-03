@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FlowApprovalKind, FlowInstanceStatus, FlowStepKind, FlowTriggerKind } from '@/shared/contracts';
+import type {
+    EntityId,
+    FlowApprovalKind,
+    FlowInstanceStatus,
+    FlowStepKind,
+    FlowTriggerKind,
+    PlanStatus,
+} from '@/shared/contracts';
 
 export const flowLifecycleEventKinds = [
     'flow.started',
@@ -30,14 +37,24 @@ export interface FlowStartedLifecycleEventPayload {
     retrySourceFlowInstanceId?: string;
 }
 
-export interface FlowStepStartedLifecycleEventPayload {
+export interface FlowStepLifecycleProvenancePayload {
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
+}
+
+export interface FlowStepStartedLifecycleEventPayload extends FlowStepLifecycleProvenancePayload {
     stepIndex: number;
     stepId: string;
     stepKind: FlowStepKind;
     status: Extract<FlowInstanceStatus, 'running'>;
 }
 
-export interface FlowStepCompletedLifecycleEventPayload {
+export interface FlowStepCompletedLifecycleEventPayload extends FlowStepLifecycleProvenancePayload {
     stepIndex: number;
     stepId: string;
     stepKind: FlowStepKind;
@@ -50,11 +67,14 @@ export interface FlowApprovalRequiredLifecycleEventPayload {
     stepKind: FlowStepKind;
     reason: string;
     approvalKind: FlowApprovalKind;
-    permissionRequestId?: string;
+    permissionRequestId?: EntityId<'perm'>;
+    planId?: EntityId<'plan'>;
+    planRevisionId?: EntityId<'prev'>;
+    requiredPlanStatus?: Extract<PlanStatus, 'draft' | 'approved'>;
     status: Extract<FlowInstanceStatus, 'approval_required'>;
 }
 
-export interface FlowFailedLifecycleEventPayload {
+export interface FlowFailedLifecycleEventPayload extends FlowStepLifecycleProvenancePayload {
     stepIndex?: number;
     stepId?: string;
     stepKind?: FlowStepKind;
@@ -62,7 +82,7 @@ export interface FlowFailedLifecycleEventPayload {
     status: Extract<FlowInstanceStatus, 'failed'>;
 }
 
-export interface FlowCancelledLifecycleEventPayload {
+export interface FlowCancelledLifecycleEventPayload extends FlowStepLifecycleProvenancePayload {
     stepIndex?: number;
     stepId?: string;
     stepKind?: FlowStepKind;
@@ -135,6 +155,13 @@ export function createFlowStepStartedLifecycleEvent(input: {
     stepIndex: number;
     stepId: string;
     stepKind: FlowStepKind;
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
     at?: string;
     id?: string;
 }): FlowLifecycleEventBase<'flow.step_started', FlowStepStartedLifecycleEventPayload> {
@@ -149,6 +176,15 @@ export function createFlowStepStartedLifecycleEvent(input: {
             stepId: input.stepId,
             stepKind: input.stepKind,
             status: 'running',
+            ...(input.currentRunId ? { currentRunId: input.currentRunId } : {}),
+            ...(input.currentChildThreadId ? { currentChildThreadId: input.currentChildThreadId } : {}),
+            ...(input.currentChildSessionId ? { currentChildSessionId: input.currentChildSessionId } : {}),
+            ...(input.currentPlanId ? { currentPlanId: input.currentPlanId } : {}),
+            ...(input.currentPlanRevisionId ? { currentPlanRevisionId: input.currentPlanRevisionId } : {}),
+            ...(input.currentPlanPhaseId ? { currentPlanPhaseId: input.currentPlanPhaseId } : {}),
+            ...(input.currentPlanPhaseRevisionId
+                ? { currentPlanPhaseRevisionId: input.currentPlanPhaseRevisionId }
+                : {}),
         },
     });
 }
@@ -159,6 +195,13 @@ export function createFlowStepCompletedLifecycleEvent(input: {
     stepIndex: number;
     stepId: string;
     stepKind: FlowStepKind;
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
     at?: string;
     id?: string;
 }): FlowLifecycleEventBase<'flow.step_completed', FlowStepCompletedLifecycleEventPayload> {
@@ -173,6 +216,15 @@ export function createFlowStepCompletedLifecycleEvent(input: {
             stepId: input.stepId,
             stepKind: input.stepKind,
             status: 'running',
+            ...(input.currentRunId ? { currentRunId: input.currentRunId } : {}),
+            ...(input.currentChildThreadId ? { currentChildThreadId: input.currentChildThreadId } : {}),
+            ...(input.currentChildSessionId ? { currentChildSessionId: input.currentChildSessionId } : {}),
+            ...(input.currentPlanId ? { currentPlanId: input.currentPlanId } : {}),
+            ...(input.currentPlanRevisionId ? { currentPlanRevisionId: input.currentPlanRevisionId } : {}),
+            ...(input.currentPlanPhaseId ? { currentPlanPhaseId: input.currentPlanPhaseId } : {}),
+            ...(input.currentPlanPhaseRevisionId
+                ? { currentPlanPhaseRevisionId: input.currentPlanPhaseRevisionId }
+                : {}),
         },
     });
 }
@@ -185,7 +237,10 @@ export function createFlowApprovalRequiredLifecycleEvent(input: {
     stepKind: FlowStepKind;
     reason: string;
     approvalKind: FlowApprovalKind;
-    permissionRequestId?: string;
+    permissionRequestId?: EntityId<'perm'>;
+    planId?: EntityId<'plan'>;
+    planRevisionId?: EntityId<'prev'>;
+    requiredPlanStatus?: Extract<PlanStatus, 'draft' | 'approved'>;
     at?: string;
     id?: string;
 }): FlowLifecycleEventBase<'flow.approval_required', FlowApprovalRequiredLifecycleEventPayload> {
@@ -202,6 +257,9 @@ export function createFlowApprovalRequiredLifecycleEvent(input: {
             reason: input.reason,
             approvalKind: input.approvalKind,
             ...(input.permissionRequestId ? { permissionRequestId: input.permissionRequestId } : {}),
+            ...(input.planId ? { planId: input.planId } : {}),
+            ...(input.planRevisionId ? { planRevisionId: input.planRevisionId } : {}),
+            ...(input.requiredPlanStatus ? { requiredPlanStatus: input.requiredPlanStatus } : {}),
             status: 'approval_required',
         },
     });
@@ -214,6 +272,13 @@ export function createFlowFailedLifecycleEvent(input: {
     stepIndex?: number;
     stepId?: string;
     stepKind?: FlowStepKind;
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
     at?: string;
     id?: string;
 }): FlowLifecycleEventBase<'flow.failed', FlowFailedLifecycleEventPayload> {
@@ -229,6 +294,15 @@ export function createFlowFailedLifecycleEvent(input: {
             ...(input.stepIndex !== undefined ? { stepIndex: input.stepIndex } : {}),
             ...(input.stepId ? { stepId: input.stepId } : {}),
             ...(input.stepKind ? { stepKind: input.stepKind } : {}),
+            ...(input.currentRunId ? { currentRunId: input.currentRunId } : {}),
+            ...(input.currentChildThreadId ? { currentChildThreadId: input.currentChildThreadId } : {}),
+            ...(input.currentChildSessionId ? { currentChildSessionId: input.currentChildSessionId } : {}),
+            ...(input.currentPlanId ? { currentPlanId: input.currentPlanId } : {}),
+            ...(input.currentPlanRevisionId ? { currentPlanRevisionId: input.currentPlanRevisionId } : {}),
+            ...(input.currentPlanPhaseId ? { currentPlanPhaseId: input.currentPlanPhaseId } : {}),
+            ...(input.currentPlanPhaseRevisionId
+                ? { currentPlanPhaseRevisionId: input.currentPlanPhaseRevisionId }
+                : {}),
         },
     });
 }
@@ -240,6 +314,13 @@ export function createFlowCancelledLifecycleEvent(input: {
     stepIndex?: number;
     stepId?: string;
     stepKind?: FlowStepKind;
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
     at?: string;
     id?: string;
 }): FlowLifecycleEventBase<'flow.cancelled', FlowCancelledLifecycleEventPayload> {
@@ -255,6 +336,15 @@ export function createFlowCancelledLifecycleEvent(input: {
             ...(input.stepIndex !== undefined ? { stepIndex: input.stepIndex } : {}),
             ...(input.stepId ? { stepId: input.stepId } : {}),
             ...(input.stepKind ? { stepKind: input.stepKind } : {}),
+            ...(input.currentRunId ? { currentRunId: input.currentRunId } : {}),
+            ...(input.currentChildThreadId ? { currentChildThreadId: input.currentChildThreadId } : {}),
+            ...(input.currentChildSessionId ? { currentChildSessionId: input.currentChildSessionId } : {}),
+            ...(input.currentPlanId ? { currentPlanId: input.currentPlanId } : {}),
+            ...(input.currentPlanRevisionId ? { currentPlanRevisionId: input.currentPlanRevisionId } : {}),
+            ...(input.currentPlanPhaseId ? { currentPlanPhaseId: input.currentPlanPhaseId } : {}),
+            ...(input.currentPlanPhaseRevisionId
+                ? { currentPlanPhaseRevisionId: input.currentPlanPhaseRevisionId }
+                : {}),
         },
     });
 }

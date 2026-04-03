@@ -316,6 +316,7 @@ CREATE TABLE threads (
     root_thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
     delegated_from_orchestrator_run_id TEXT NULL,
     delegated_from_plan_research_batch_id TEXT NULL,
+    delegated_from_flow_instance_id TEXT NULL,
     last_assistant_at TEXT NULL,
     execution_environment_mode TEXT NOT NULL DEFAULT 'local',
     sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
@@ -349,6 +350,7 @@ CREATE TABLE sessions (
     sandbox_id TEXT NULL REFERENCES sandboxes(id) ON DELETE SET NULL,
     delegated_from_orchestrator_run_id TEXT NULL,
     delegated_from_plan_research_batch_id TEXT NULL,
+    delegated_from_flow_instance_id TEXT NULL,
     run_status TEXT NOT NULL CHECK (run_status IN ('idle', 'running', 'completed', 'aborted', 'error')),
     pending_completion_run_id TEXT NULL,
     created_at TEXT NOT NULL,
@@ -1137,10 +1139,20 @@ CREATE TABLE flow_instances (
     current_step_index INTEGER NOT NULL CHECK (current_step_index >= 0),
     definition_snapshot_json TEXT NOT NULL,
     execution_context_json TEXT NULL,
-    awaiting_approval_kind TEXT NULL CHECK (awaiting_approval_kind IN ('flow_gate', 'tool_permission')),
+    current_run_id TEXT NULL,
+    current_child_thread_id TEXT NULL,
+    current_child_session_id TEXT NULL,
+    current_plan_id TEXT NULL,
+    current_plan_revision_id TEXT NULL,
+    current_plan_phase_id TEXT NULL,
+    current_plan_phase_revision_id TEXT NULL,
+    awaiting_approval_kind TEXT NULL CHECK (awaiting_approval_kind IN ('flow_gate', 'tool_permission', 'plan_checkpoint')),
     awaiting_approval_step_index INTEGER NULL CHECK (awaiting_approval_step_index IS NULL OR awaiting_approval_step_index >= 0),
     awaiting_approval_step_id TEXT NULL,
     awaiting_permission_request_id TEXT NULL REFERENCES permissions(id) ON DELETE SET NULL,
+    awaiting_plan_id TEXT NULL,
+    awaiting_plan_revision_id TEXT NULL,
+    awaiting_required_plan_status TEXT NULL CHECK (awaiting_required_plan_status IN ('draft', 'approved')),
     last_error_message TEXT NULL,
     retry_source_flow_instance_id TEXT NULL REFERENCES flow_instances(id) ON DELETE SET NULL,
     started_at TEXT NULL,
@@ -1374,6 +1386,9 @@ CREATE INDEX idx_threads_delegated_orchestrator_run_id
 CREATE INDEX idx_threads_delegated_plan_research_batch_id
     ON threads(delegated_from_plan_research_batch_id);
 
+CREATE INDEX idx_threads_delegated_flow_instance_id
+    ON threads(delegated_from_flow_instance_id);
+
 CREATE INDEX idx_threads_profile_parent_updated_at
     ON threads(profile_id, parent_thread_id, updated_at DESC);
 
@@ -1403,6 +1418,9 @@ CREATE INDEX idx_sessions_delegated_orchestrator_run_id
 
 CREATE INDEX idx_sessions_delegated_plan_research_batch_id
     ON sessions(delegated_from_plan_research_batch_id);
+
+CREATE INDEX idx_sessions_delegated_flow_instance_id
+    ON sessions(delegated_from_flow_instance_id);
 
 CREATE INDEX idx_sessions_profile_sandbox_updated_at
     ON sessions(profile_id, sandbox_id, updated_at DESC);

@@ -77,6 +77,7 @@ export interface SessionSummaryRecord {
     sandboxId?: EntityId<'sb'>;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
+    delegatedFromFlowInstanceId?: string;
     runStatus: RunStatus;
     turnCount: number;
     createdAt: string;
@@ -434,6 +435,7 @@ export interface ThreadRecord {
     rootThreadId: string;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
+    delegatedFromFlowInstanceId?: string;
     isFavorite: boolean;
     executionEnvironmentMode: ExecutionEnvironmentMode;
     sandboxId?: EntityId<'sb'>;

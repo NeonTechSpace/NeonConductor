@@ -142,6 +142,49 @@ describe('threadCreationLifecycle', () => {
         expect(orchestratorRun.run.planRevisionId).toBe(plan.currentRevisionId);
     });
 
+    it('allows delegated flow-instance children to use a flow-owned mode lane', async () => {
+        const profileId = getDefaultProfileId();
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_creation_flow_owner',
+            title: 'Workspace',
+        });
+        if (conversation.isErr()) {
+            throw new Error(conversation.error.message);
+        }
+
+        const parent = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Planning root',
+            topLevelTab: 'agent',
+        });
+        if (parent.isErr()) {
+            throw new Error(parent.error.message);
+        }
+
+        const flowInstanceId = 'flow_instance_creation_flow_owner';
+        const created = await createThreadRecord({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Flow-owned mode run',
+            topLevelTab: 'orchestrator',
+            parentThreadId: parent.value.id,
+            delegatedFromFlowInstanceId: flowInstanceId,
+        });
+
+        expect(created.isOk()).toBe(true);
+        if (created.isErr()) {
+            throw new Error(created.error.message);
+        }
+        expect(created.value.parentThreadId).toBe(parent.value.id);
+        expect(created.value.rootThreadId).toBe(parent.value.rootThreadId);
+        expect(created.value.delegatedFromFlowInstanceId).toBe(flowInstanceId);
+        expect(created.value.executionEnvironmentMode).toBe('new_sandbox');
+        expect(created.value.sandboxId).toBeUndefined();
+    });
+
     it('defaults non-chat workspace threads to new_sandbox when no environment is provided', async () => {
         const profileId = getDefaultProfileId();
         const conversation = await conversationStore.createOrGetBucket({

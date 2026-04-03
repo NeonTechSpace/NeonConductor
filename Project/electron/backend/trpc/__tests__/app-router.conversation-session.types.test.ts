@@ -150,30 +150,62 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         profileId: string;
         flowDefinitionId: string;
     }>();
-    expectTypeOf<AppRouterInputs['flow']['createDefinition']>().toExtend<{
-        profileId: string;
-        label: string;
-        description?: string;
-        enabled: boolean;
-        triggerKind: 'manual';
-        steps: Array<
-            | { kind: 'legacy_command'; id: string; label: string; command: string }
-            | { kind: 'mode_run'; id: string; label: string; topLevelTab: 'chat' | 'agent' | 'orchestrator'; modeKey: string }
-            | { kind: 'workflow'; id: string; label: string; workflowCapability: string }
+        expectTypeOf<AppRouterInputs['flow']['createDefinition']>().toExtend<{
+            profileId: string;
+            label: string;
+            description?: string;
+            enabled: boolean;
+            triggerKind: 'manual';
+            steps: Array<
+                | { kind: 'legacy_command'; id: string; label: string; command: string }
+                | {
+                      kind: 'mode_run';
+                      id: string;
+                      label: string;
+                      topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                      modeKey: string;
+                      promptMarkdown: string;
+                  }
+                | {
+                      kind: 'workflow';
+                      id: string;
+                      label: string;
+                      workflowCapability: string;
+                      promptMarkdown: string;
+                      planningDepth?: 'simple' | 'advanced';
+                      requireApprovedPlan?: boolean;
+                      reuseExistingPlan?: boolean;
+                  }
             | { kind: 'approval_gate'; id: string; label: string }
         >;
     }>();
-    expectTypeOf<AppRouterInputs['flow']['updateDefinition']>().toExtend<{
-        profileId: string;
-        flowDefinitionId: string;
-        label: string;
-        description?: string;
-        enabled: boolean;
-        triggerKind: 'manual';
-        steps: Array<
-            | { kind: 'legacy_command'; id: string; label: string; command: string }
-            | { kind: 'mode_run'; id: string; label: string; topLevelTab: 'chat' | 'agent' | 'orchestrator'; modeKey: string }
-            | { kind: 'workflow'; id: string; label: string; workflowCapability: string }
+        expectTypeOf<AppRouterInputs['flow']['updateDefinition']>().toExtend<{
+            profileId: string;
+            flowDefinitionId: string;
+            label: string;
+            description?: string;
+            enabled: boolean;
+            triggerKind: 'manual';
+            steps: Array<
+                | { kind: 'legacy_command'; id: string; label: string; command: string }
+                | {
+                      kind: 'mode_run';
+                      id: string;
+                      label: string;
+                      topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                      modeKey: string;
+                      promptMarkdown: string;
+                  }
+                | {
+                      kind: 'workflow';
+                      id: string;
+                      label: string;
+                      workflowCapability: string;
+                      promptMarkdown: string;
+                      planningDepth?: 'simple' | 'advanced';
+                      requireApprovedPlan?: boolean;
+                      reuseExistingPlan?: boolean;
+                  }
             | { kind: 'approval_gate'; id: string; label: string }
         >;
     }>();

@@ -52,10 +52,20 @@ type FlowInstanceRow = {
     current_step_index: number;
     definition_snapshot_json: string;
     execution_context_json: string | null;
+    current_run_id: string | null;
+    current_child_thread_id: string | null;
+    current_child_session_id: string | null;
+    current_plan_id: string | null;
+    current_plan_revision_id: string | null;
+    current_plan_phase_id: string | null;
+    current_plan_phase_revision_id: string | null;
     awaiting_approval_kind: string | null;
     awaiting_approval_step_index: number | null;
     awaiting_approval_step_id: string | null;
     awaiting_permission_request_id: string | null;
+    awaiting_plan_id: string | null;
+    awaiting_plan_revision_id: string | null;
+    awaiting_required_plan_status: string | null;
     last_error_message: string | null;
     retry_source_flow_instance_id: string | null;
     started_at: string | null;
@@ -77,10 +87,20 @@ const flowInstanceSelectColumns = [
     'flow_instances.current_step_index',
     'flow_instances.definition_snapshot_json',
     'flow_instances.execution_context_json',
+    'flow_instances.current_run_id',
+    'flow_instances.current_child_thread_id',
+    'flow_instances.current_child_session_id',
+    'flow_instances.current_plan_id',
+    'flow_instances.current_plan_revision_id',
+    'flow_instances.current_plan_phase_id',
+    'flow_instances.current_plan_phase_revision_id',
     'flow_instances.awaiting_approval_kind',
     'flow_instances.awaiting_approval_step_index',
     'flow_instances.awaiting_approval_step_id',
     'flow_instances.awaiting_permission_request_id',
+    'flow_instances.awaiting_plan_id',
+    'flow_instances.awaiting_plan_revision_id',
+    'flow_instances.awaiting_required_plan_status',
     'flow_instances.last_error_message',
     'flow_instances.retry_source_flow_instance_id',
     'flow_instances.started_at',
@@ -141,6 +161,15 @@ function hydrateFlowInstanceRecord(row: FlowInstanceRow): FlowInstanceRecord {
             status: parseEnumValue(row.status, 'flow_instances.status', flowInstanceStatuses),
             currentStepIndex: row.current_step_index,
             ...(executionContext ? { executionContext } : {}),
+            ...(row.current_run_id ? { currentRunId: row.current_run_id } : {}),
+            ...(row.current_child_thread_id ? { currentChildThreadId: row.current_child_thread_id } : {}),
+            ...(row.current_child_session_id ? { currentChildSessionId: row.current_child_session_id } : {}),
+            ...(row.current_plan_id ? { currentPlanId: row.current_plan_id } : {}),
+            ...(row.current_plan_revision_id ? { currentPlanRevisionId: row.current_plan_revision_id } : {}),
+            ...(row.current_plan_phase_id ? { currentPlanPhaseId: row.current_plan_phase_id } : {}),
+            ...(row.current_plan_phase_revision_id
+                ? { currentPlanPhaseRevisionId: row.current_plan_phase_revision_id }
+                : {}),
             ...(row.awaiting_approval_kind
                 ? {
                       awaitingApprovalKind: parseEnumValue(
@@ -156,6 +185,11 @@ function hydrateFlowInstanceRecord(row: FlowInstanceRow): FlowInstanceRecord {
             ...(row.awaiting_approval_step_id ? { awaitingApprovalStepId: row.awaiting_approval_step_id } : {}),
             ...(row.awaiting_permission_request_id
                 ? { awaitingPermissionRequestId: row.awaiting_permission_request_id }
+                : {}),
+            ...(row.awaiting_plan_id ? { awaitingPlanId: row.awaiting_plan_id } : {}),
+            ...(row.awaiting_plan_revision_id ? { awaitingPlanRevisionId: row.awaiting_plan_revision_id } : {}),
+            ...(row.awaiting_required_plan_status
+                ? { awaitingRequiredPlanStatus: row.awaiting_required_plan_status as 'draft' | 'approved' }
                 : {}),
             ...(row.last_error_message ? { lastErrorMessage: row.last_error_message } : {}),
             ...(row.retry_source_flow_instance_id
@@ -247,6 +281,21 @@ function toFlowInstanceView(input: {
         ...(input.record.instance.executionContext
             ? { executionContext: input.record.instance.executionContext }
             : {}),
+        ...(input.record.instance.currentRunId ? { currentRunId: input.record.instance.currentRunId } : {}),
+        ...(input.record.instance.currentChildThreadId
+            ? { currentChildThreadId: input.record.instance.currentChildThreadId }
+            : {}),
+        ...(input.record.instance.currentChildSessionId
+            ? { currentChildSessionId: input.record.instance.currentChildSessionId }
+            : {}),
+        ...(input.record.instance.currentPlanId ? { currentPlanId: input.record.instance.currentPlanId } : {}),
+        ...(input.record.instance.currentPlanRevisionId
+            ? { currentPlanRevisionId: input.record.instance.currentPlanRevisionId }
+            : {}),
+        ...(input.record.instance.currentPlanPhaseId ? { currentPlanPhaseId: input.record.instance.currentPlanPhaseId } : {}),
+        ...(input.record.instance.currentPlanPhaseRevisionId
+            ? { currentPlanPhaseRevisionId: input.record.instance.currentPlanPhaseRevisionId }
+            : {}),
         ...(currentStep ? { currentStep } : {}),
         ...(input.record.instance.awaitingApprovalKind &&
         input.record.instance.awaitingApprovalStepIndex !== undefined &&
@@ -261,11 +310,22 @@ function toFlowInstanceView(input: {
                       ...(input.record.instance.awaitingPermissionRequestId
                           ? { permissionRequestId: input.record.instance.awaitingPermissionRequestId }
                           : {}),
+                      ...(input.record.instance.awaitingPlanId
+                          ? { planId: input.record.instance.awaitingPlanId }
+                          : {}),
+                      ...(input.record.instance.awaitingPlanRevisionId
+                          ? { planRevisionId: input.record.instance.awaitingPlanRevisionId }
+                          : {}),
+                      ...(input.record.instance.awaitingRequiredPlanStatus
+                          ? { requiredPlanStatus: input.record.instance.awaitingRequiredPlanStatus }
+                          : {}),
                   },
               }
             : {}),
         availableActions: {
-            canResume: input.record.instance.awaitingApprovalKind === 'flow_gate',
+            canResume:
+                input.record.instance.awaitingApprovalKind === 'flow_gate' ||
+                input.record.instance.awaitingApprovalKind === 'plan_checkpoint',
             canCancel: ['queued', 'running', 'approval_required'].includes(input.record.instance.status),
             canRetry: ['failed', 'cancelled'].includes(input.record.instance.status),
         },
@@ -548,6 +608,13 @@ export class FlowStore {
         flowDefinitionId: string;
         definitionSnapshot: FlowDefinitionRecord;
         executionContext?: FlowExecutionContext;
+        currentRunId?: string | null;
+        currentChildThreadId?: string | null;
+        currentChildSessionId?: string | null;
+        currentPlanId?: string | null;
+        currentPlanRevisionId?: string | null;
+        currentPlanPhaseId?: string | null;
+        currentPlanPhaseRevisionId?: string | null;
         retrySourceFlowInstanceId?: string;
     }): Promise<FlowInstancePersistenceRecord | null> {
         const definitionRow = await this.getFlowDefinitionRowById(input.profileId, input.flowDefinitionId);
@@ -564,10 +631,20 @@ export class FlowStore {
             current_step_index: 0,
             definition_snapshot_json: JSON.stringify(input.definitionSnapshot),
             execution_context_json: serializeExecutionContext(input.executionContext),
+            current_run_id: input.currentRunId ?? null,
+            current_child_thread_id: input.currentChildThreadId ?? null,
+            current_child_session_id: input.currentChildSessionId ?? null,
+            current_plan_id: input.currentPlanId ?? null,
+            current_plan_revision_id: input.currentPlanRevisionId ?? null,
+            current_plan_phase_id: input.currentPlanPhaseId ?? null,
+            current_plan_phase_revision_id: input.currentPlanPhaseRevisionId ?? null,
             awaiting_approval_kind: null,
             awaiting_approval_step_index: null,
             awaiting_approval_step_id: null,
             awaiting_permission_request_id: null,
+            awaiting_plan_id: null,
+            awaiting_plan_revision_id: null,
+            awaiting_required_plan_status: null,
             last_error_message: null,
             retry_source_flow_instance_id: input.retrySourceFlowInstanceId ?? null,
             started_at: null,
@@ -592,10 +669,20 @@ export class FlowStore {
         status: FlowInstanceRecord['status'];
         currentStepIndex: number;
         executionContext?: FlowExecutionContext;
+        currentRunId?: string | null;
+        currentChildThreadId?: string | null;
+        currentChildSessionId?: string | null;
+        currentPlanId?: string | null;
+        currentPlanRevisionId?: string | null;
+        currentPlanPhaseId?: string | null;
+        currentPlanPhaseRevisionId?: string | null;
         awaitingApprovalKind?: FlowApprovalKind | null;
         awaitingApprovalStepIndex?: number | null;
         awaitingApprovalStepId?: string | null;
         awaitingPermissionRequestId?: string | null;
+        awaitingPlanId?: string | null;
+        awaitingPlanRevisionId?: string | null;
+        awaitingRequiredPlanStatus?: 'draft' | 'approved' | null;
         lastErrorMessage?: string | null;
         retrySourceFlowInstanceId?: string | null;
         startedAt?: string;
@@ -619,6 +706,21 @@ export class FlowStore {
                 ...(input.executionContext !== undefined
                     ? { execution_context_json: serializeExecutionContext(input.executionContext) }
                     : {}),
+                ...(input.currentRunId !== undefined ? { current_run_id: input.currentRunId } : {}),
+                ...(input.currentChildThreadId !== undefined
+                    ? { current_child_thread_id: input.currentChildThreadId }
+                    : {}),
+                ...(input.currentChildSessionId !== undefined
+                    ? { current_child_session_id: input.currentChildSessionId }
+                    : {}),
+                ...(input.currentPlanId !== undefined ? { current_plan_id: input.currentPlanId } : {}),
+                ...(input.currentPlanRevisionId !== undefined
+                    ? { current_plan_revision_id: input.currentPlanRevisionId }
+                    : {}),
+                ...(input.currentPlanPhaseId !== undefined ? { current_plan_phase_id: input.currentPlanPhaseId } : {}),
+                ...(input.currentPlanPhaseRevisionId !== undefined
+                    ? { current_plan_phase_revision_id: input.currentPlanPhaseRevisionId }
+                    : {}),
                 ...(input.awaitingApprovalKind !== undefined
                     ? { awaiting_approval_kind: input.awaitingApprovalKind }
                     : {}),
@@ -630,6 +732,13 @@ export class FlowStore {
                     : {}),
                 ...(input.awaitingPermissionRequestId !== undefined
                     ? { awaiting_permission_request_id: input.awaitingPermissionRequestId }
+                    : {}),
+                ...(input.awaitingPlanId !== undefined ? { awaiting_plan_id: input.awaitingPlanId } : {}),
+                ...(input.awaitingPlanRevisionId !== undefined
+                    ? { awaiting_plan_revision_id: input.awaitingPlanRevisionId }
+                    : {}),
+                ...(input.awaitingRequiredPlanStatus !== undefined
+                    ? { awaiting_required_plan_status: input.awaitingRequiredPlanStatus }
                     : {}),
                 ...(input.lastErrorMessage !== undefined ? { last_error_message: input.lastErrorMessage } : {}),
                 ...(input.retrySourceFlowInstanceId !== undefined
@@ -739,18 +848,47 @@ export class FlowStore {
             event: input.event,
         });
 
+        const provenanceUpdate =
+            input.event.kind === 'flow.step_started' ||
+            input.event.kind === 'flow.step_completed' ||
+            input.event.kind === 'flow.failed' ||
+            input.event.kind === 'flow.cancelled'
+                ? {
+                      ...(input.event.payload.currentRunId ? { currentRunId: input.event.payload.currentRunId } : {}),
+                      ...(input.event.payload.currentChildThreadId
+                          ? { currentChildThreadId: input.event.payload.currentChildThreadId }
+                          : {}),
+                      ...(input.event.payload.currentChildSessionId
+                          ? { currentChildSessionId: input.event.payload.currentChildSessionId }
+                          : {}),
+                      ...(input.event.payload.currentPlanId ? { currentPlanId: input.event.payload.currentPlanId } : {}),
+                      ...(input.event.payload.currentPlanRevisionId
+                          ? { currentPlanRevisionId: input.event.payload.currentPlanRevisionId }
+                          : {}),
+                      ...(input.event.payload.currentPlanPhaseId
+                          ? { currentPlanPhaseId: input.event.payload.currentPlanPhaseId }
+                          : {}),
+                      ...(input.event.payload.currentPlanPhaseRevisionId
+                          ? { currentPlanPhaseRevisionId: input.event.payload.currentPlanPhaseRevisionId }
+                          : {}),
+                  }
+                : {};
+
         const updated = await this.updateFlowInstance({
             profileId: input.profileId,
             flowInstanceId: input.flowInstanceId,
             status,
             currentStepIndex,
             ...(input.event.kind === 'flow.approval_required'
-                ? {
-                      awaitingApprovalKind: input.event.payload.approvalKind,
-                      awaitingApprovalStepIndex: input.event.payload.stepIndex,
-                      awaitingApprovalStepId: input.event.payload.stepId,
-                      awaitingPermissionRequestId: input.event.payload.permissionRequestId ?? null,
-                  }
+                    ? {
+                          awaitingApprovalKind: input.event.payload.approvalKind,
+                          awaitingApprovalStepIndex: input.event.payload.stepIndex,
+                          awaitingApprovalStepId: input.event.payload.stepId,
+                          awaitingPermissionRequestId: input.event.payload.permissionRequestId ?? null,
+                          awaitingPlanId: input.event.payload.planId ?? null,
+                          awaitingPlanRevisionId: input.event.payload.planRevisionId ?? null,
+                          awaitingRequiredPlanStatus: input.event.payload.requiredPlanStatus ?? null,
+                      }
                 : {}),
             ...(['flow.failed', 'flow.cancelled', 'flow.completed'].includes(input.event.kind)
                 ? {
@@ -758,6 +896,9 @@ export class FlowStore {
                       awaitingApprovalStepIndex: null,
                       awaitingApprovalStepId: null,
                       awaitingPermissionRequestId: null,
+                      awaitingPlanId: null,
+                      awaitingPlanRevisionId: null,
+                      awaitingRequiredPlanStatus: null,
                   }
                 : {}),
             ...(input.event.kind === 'flow.failed'
@@ -768,6 +909,7 @@ export class FlowStore {
                       retrySourceFlowInstanceId: input.event.payload.retrySourceFlowInstanceId ?? null,
                   }
                 : {}),
+            ...provenanceUpdate,
             ...(status === 'running' || status === 'approval_required'
                 ? { startedAt: input.event.at }
                 : {}),

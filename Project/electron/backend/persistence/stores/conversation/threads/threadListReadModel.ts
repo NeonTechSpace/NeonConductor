@@ -1,4 +1,5 @@
 import { getPersistence } from '@/app/backend/persistence/db';
+import type { ThreadListQueryInput } from '@/app/backend/persistence/stores/conversation/threads/threadLifecycle.types';
 import { mapThreadListRecord } from '@/app/backend/persistence/stores/conversation/threads/threadStore.mapper';
 import {
     compareAnchor,
@@ -8,7 +9,6 @@ import {
     getAnchorActivity,
     toAnchorKey,
 } from '@/app/backend/persistence/stores/conversation/threads/threadStore.ordering';
-import type { ThreadListQueryInput } from '@/app/backend/persistence/stores/conversation/threads/threadLifecycle.types';
 import type { ThreadListRecord } from '@/app/backend/persistence/types';
 
 export async function listThreadRecords(input: ThreadListQueryInput): Promise<ThreadListRecord[]> {
@@ -29,6 +29,7 @@ export async function listThreadRecords(input: ThreadListQueryInput): Promise<Th
             'threads.root_thread_id as root_thread_id',
             'threads.delegated_from_orchestrator_run_id as delegated_from_orchestrator_run_id',
             'threads.delegated_from_plan_research_batch_id as delegated_from_plan_research_batch_id',
+            'threads.delegated_from_flow_instance_id as delegated_from_flow_instance_id',
             'threads.is_favorite as is_favorite',
             'threads.execution_environment_mode as execution_environment_mode',
             'threads.sandbox_id as sandbox_id',
@@ -51,6 +52,7 @@ export async function listThreadRecords(input: ThreadListQueryInput): Promise<Th
             'threads.root_thread_id',
             'threads.delegated_from_orchestrator_run_id',
             'threads.delegated_from_plan_research_batch_id',
+            'threads.delegated_from_flow_instance_id',
             'threads.is_favorite',
             'threads.execution_environment_mode',
             'threads.sandbox_id',

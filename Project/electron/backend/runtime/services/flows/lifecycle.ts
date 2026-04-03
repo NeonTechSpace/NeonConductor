@@ -37,6 +37,7 @@ function normalizeStep(step: FlowStepDefinition): FlowStepDefinition {
             id: step.id.trim(),
             label: step.label.trim(),
             modeKey: step.modeKey.trim(),
+            promptMarkdown: step.promptMarkdown.trim(),
         };
         return normalizedStep;
     }
@@ -46,6 +47,7 @@ function normalizeStep(step: FlowStepDefinition): FlowStepDefinition {
             ...step,
             id: step.id.trim(),
             label: step.label.trim(),
+            promptMarkdown: step.promptMarkdown.trim(),
         };
         return normalizedStep;
     }

@@ -10,6 +10,7 @@ export interface ResolvedThreadCreationInput {
     rootThreadId?: string;
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
+    delegatedFromFlowInstanceId?: string;
     executionEnvironmentMode?: ExecutionEnvironmentMode;
     sandboxId?: EntityId<'sb'>;
 }
@@ -61,6 +62,12 @@ export type DeleteDelegatedChildLaneInput =
           threadId: EntityId<'thr'>;
           sessionId?: EntityId<'sess'>;
           planResearchBatchId: EntityId<'prb'>;
+      }
+    | {
+          profileId: string;
+          threadId: EntityId<'thr'>;
+          sessionId?: EntityId<'sess'>;
+          flowInstanceId: string;
       };
 
 export interface DelegatedChildLaneDeletionResult {

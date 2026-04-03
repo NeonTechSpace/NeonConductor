@@ -1,10 +1,7 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import { deleteDelegatedChildLane } from '@/app/backend/persistence/stores/conversation/threads/delegatedChildLaneDeletionLifecycle';
+import { markThreadAssistantActivity, touchThreadActivity } from '@/app/backend/persistence/stores/conversation/threads/threadActivityWriter';
 import { createThreadRecord } from '@/app/backend/persistence/stores/conversation/threads/threadCreationLifecycle';
-import {
-    markThreadAssistantActivity,
-    touchThreadActivity,
-} from '@/app/backend/persistence/stores/conversation/threads/threadActivityWriter';
 import type {
     DeleteDelegatedChildLaneInput,
     DeleteWorkspaceThreadsResult,
@@ -22,15 +19,15 @@ import {
     THREAD_COLUMNS,
 } from '@/app/backend/persistence/stores/conversation/threads/threadStore.queries';
 import { parseThreadTitle } from '@/app/backend/persistence/stores/conversation/threads/threadStore.validation';
+import {
+    applyWorkspaceThreadDeletion,
+    getWorkspaceThreadDeletionPreview,
+} from '@/app/backend/persistence/stores/conversation/threads/workspaceThreadDeletionLifecycle';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { ThreadListRecord, ThreadRecord } from '@/app/backend/persistence/types';
 import type { EntityId, ExecutionEnvironmentMode, TopLevelTab } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
-import {
-    applyWorkspaceThreadDeletion,
-    getWorkspaceThreadDeletionPreview,
-} from '@/app/backend/persistence/stores/conversation/threads/workspaceThreadDeletionLifecycle';
 
 type ThreadGroupView = 'workspace' | 'branch';
 
@@ -55,6 +52,7 @@ export class ThreadStore {
                 'threads.root_thread_id as root_thread_id',
                 'threads.delegated_from_orchestrator_run_id as delegated_from_orchestrator_run_id',
                 'threads.delegated_from_plan_research_batch_id as delegated_from_plan_research_batch_id',
+                'threads.delegated_from_flow_instance_id as delegated_from_flow_instance_id',
                 'threads.is_favorite as is_favorite',
                 'threads.execution_environment_mode as execution_environment_mode',
                 'threads.sandbox_id as sandbox_id',
@@ -78,6 +76,7 @@ export class ThreadStore {
                 'threads.root_thread_id',
                 'threads.delegated_from_orchestrator_run_id',
                 'threads.delegated_from_plan_research_batch_id',
+                'threads.delegated_from_flow_instance_id',
                 'threads.is_favorite',
                 'threads.execution_environment_mode',
                 'threads.sandbox_id',
@@ -113,6 +112,7 @@ export class ThreadStore {
         rootThreadId?: string;
         delegatedFromOrchestratorRunId?: EntityId<'orch'>;
         delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
+        delegatedFromFlowInstanceId?: string;
         executionEnvironmentMode?: ExecutionEnvironmentMode;
         sandboxId?: EntityId<'sb'>;
     }): Promise<OperationalResult<ThreadRecord>> {

@@ -7,12 +7,10 @@ import {
     sessionStore,
     threadStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
-import { runtimeEventStore } from '@/app/backend/persistence/stores';
 import { getPersistence } from '@/app/backend/persistence/db';
+import { runtimeEventStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
-
-import { deleteDelegatedChildLane } from './delegatedChildLaneDeletionLifecycle';
 
 registerPersistenceStoreHooks();
 
@@ -81,7 +79,7 @@ describe('delegatedChildLaneDeletionLifecycle', () => {
     it('fails closed when ownership does not match', async () => {
         const fixture = await seedDelegatedChildLaneFixture();
 
-        const deleted = await deleteDelegatedChildLane({
+        const deleted = await threadStore.deleteDelegatedChildLane({
             profileId: fixture.profileId,
             threadId: parseEntityId(fixture.threadId, 'threads.id', 'thr'),
             sessionId: fixture.sessionId,
@@ -100,7 +98,7 @@ describe('delegatedChildLaneDeletionLifecycle', () => {
     it('deletes the delegated child lane when ownership matches', async () => {
         const fixture = await seedDelegatedChildLaneFixture();
 
-        const deleted = await deleteDelegatedChildLane({
+        const deleted = await threadStore.deleteDelegatedChildLane({
             profileId: fixture.profileId,
             threadId: parseEntityId(fixture.threadId, 'threads.id', 'thr'),
             sessionId: fixture.sessionId,
@@ -122,5 +120,56 @@ describe('delegatedChildLaneDeletionLifecycle', () => {
             .where('entity_id', 'in', [fixture.threadId, fixture.sessionId])
             .execute();
         expect(remainingRuntimeEvents).toEqual([]);
+    });
+
+    it('deletes flow-owned delegated child lanes when ownership matches', async () => {
+        const profileId = getDefaultProfileId();
+        const workspaceFingerprint = 'wsf_delegated_flow_child_lane';
+
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'workspace',
+            workspaceFingerprint,
+            title: 'Delegated Flow Child Lane',
+        });
+        if (conversation.isErr()) {
+            throw new Error(conversation.error.message);
+        }
+
+        const flowInstanceId = 'flow_instance_delegated_child_lane_delete';
+        const thread = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Flow-owned worker',
+            topLevelTab: 'orchestrator',
+            delegatedFromFlowInstanceId: flowInstanceId,
+        });
+        if (thread.isErr()) {
+            throw new Error(thread.error.message);
+        }
+        expect(thread.value.delegatedFromFlowInstanceId).toBe(flowInstanceId);
+
+        const session = await sessionStore.create(profileId, thread.value.id, 'local', {
+            delegatedFromFlowInstanceId: flowInstanceId,
+        });
+        if (!session.created) {
+            throw new Error(`Expected flow-owned session creation to succeed, received "${session.reason}".`);
+        }
+        expect(session.session.delegatedFromFlowInstanceId).toBe(flowInstanceId);
+
+        const deleted = await threadStore.deleteDelegatedChildLane({
+            profileId,
+            threadId: parseEntityId(thread.value.id, 'threads.id', 'thr'),
+            sessionId: session.session.id,
+            flowInstanceId,
+        });
+
+        expect(deleted).toBe(true);
+
+        const remainingThread = await threadStore.getListRecordById(profileId, thread.value.id);
+        expect(remainingThread).toBeNull();
+
+        const remainingSession = await sessionStore.status(profileId, session.session.id);
+        expect(remainingSession.found).toBe(false);
     });
 });

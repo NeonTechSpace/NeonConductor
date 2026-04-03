@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
+import type { ResolvedThreadCreationInput } from '@/app/backend/persistence/stores/conversation/threads/threadLifecycle.types';
 import { mapThreadRecord } from '@/app/backend/persistence/stores/conversation/threads/threadStore.mapper';
 import { THREAD_COLUMNS } from '@/app/backend/persistence/stores/conversation/threads/threadStore.queries';
 import { parseThreadTitle } from '@/app/backend/persistence/stores/conversation/threads/threadStore.validation';
@@ -9,8 +10,6 @@ import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { ThreadRecord } from '@/app/backend/persistence/types';
 import { topLevelTabs } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
-
-import type { ResolvedThreadCreationInput } from '@/app/backend/persistence/stores/conversation/threads/threadLifecycle.types';
 
 function createThreadId(): string {
     return `thr_${randomUUID()}`;
@@ -49,8 +48,15 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
     let inheritedExecutionEnvironmentMode = input.executionEnvironmentMode;
     let inheritedSandboxId = input.sandboxId;
     const hasDelegatedOwner =
-        input.delegatedFromOrchestratorRunId !== undefined || input.delegatedFromPlanResearchBatchId !== undefined;
-    if (input.delegatedFromOrchestratorRunId && input.delegatedFromPlanResearchBatchId) {
+        input.delegatedFromOrchestratorRunId !== undefined ||
+        input.delegatedFromPlanResearchBatchId !== undefined ||
+        input.delegatedFromFlowInstanceId !== undefined;
+    const delegatedOwnerCount = [
+        input.delegatedFromOrchestratorRunId,
+        input.delegatedFromPlanResearchBatchId,
+        input.delegatedFromFlowInstanceId,
+    ].filter((owner) => owner !== undefined).length;
+    if (delegatedOwnerCount > 1) {
         return errOp('thread_mode_mismatch', 'Delegated child lanes must have exactly one owner.');
     }
 
@@ -78,9 +84,7 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
             return errOp('thread_mode_mismatch', 'Parent thread must belong to the same conversation bucket.');
         }
         const parentTopLevelTab = parseEnumValue(parent.top_level_tab, 'threads.top_level_tab', topLevelTabs);
-        const parentAllowsDelegatedWorker =
-            hasDelegatedOwner && input.topLevelTab === 'agent' && parentTopLevelTab === 'orchestrator';
-        if (parentTopLevelTab !== input.topLevelTab && !parentAllowsDelegatedWorker) {
+        if (parentTopLevelTab !== input.topLevelTab && !hasDelegatedOwner) {
             return errOp('thread_mode_mismatch', 'Thread mode affinity mismatch with parent thread.');
         }
 
@@ -115,9 +119,7 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
             return errOp('thread_mode_mismatch', 'Root thread must belong to the same conversation bucket.');
         }
         const rootTopLevelTab = parseEnumValue(root.top_level_tab, 'threads.top_level_tab', topLevelTabs);
-        const rootAllowsDelegatedWorker =
-            hasDelegatedOwner && input.topLevelTab === 'agent' && rootTopLevelTab === 'orchestrator';
-        if (rootTopLevelTab !== input.topLevelTab && !rootAllowsDelegatedWorker) {
+        if (rootTopLevelTab !== input.topLevelTab && !hasDelegatedOwner) {
             return errOp('thread_mode_mismatch', 'Thread mode affinity mismatch with root thread.');
         }
         resolvedRootThreadId = root.id;
@@ -145,6 +147,7 @@ export async function createThreadRecord(input: ResolvedThreadCreationInput): Pr
             root_thread_id: resolvedRootThreadId ?? threadId,
             delegated_from_orchestrator_run_id: input.delegatedFromOrchestratorRunId ?? null,
             delegated_from_plan_research_batch_id: input.delegatedFromPlanResearchBatchId ?? null,
+            delegated_from_flow_instance_id: input.delegatedFromFlowInstanceId ?? null,
             is_favorite: 0,
             execution_environment_mode: inheritedExecutionEnvironmentMode ?? 'local',
             sandbox_id: inheritedSandboxId ?? null,

@@ -12,6 +12,7 @@ export interface ThreadRow {
     root_thread_id: string;
     delegated_from_orchestrator_run_id: string | null;
     delegated_from_plan_research_batch_id: string | null;
+    delegated_from_flow_instance_id: string | null;
     is_favorite: 0 | 1;
     execution_environment_mode: string;
     sandbox_id: string | null;
@@ -54,6 +55,9 @@ export function mapThreadRecord(row: ThreadRow): ThreadRecord {
                   ),
               }
             : {}),
+        ...(row.delegated_from_flow_instance_id
+            ? { delegatedFromFlowInstanceId: row.delegated_from_flow_instance_id }
+            : {}),
         isFavorite: row.is_favorite === 1,
         executionEnvironmentMode: parseEnumValue(
             row.execution_environment_mode,
@@ -93,6 +97,9 @@ export function mapThreadListRecord(row: ThreadListRow): ThreadListRecord {
                       'prb'
                   ),
               }
+            : {}),
+        ...(row.delegated_from_flow_instance_id
+            ? { delegatedFromFlowInstanceId: row.delegated_from_flow_instance_id }
             : {}),
         isFavorite: row.is_favorite === 1,
         executionEnvironmentMode: parseEnumValue(

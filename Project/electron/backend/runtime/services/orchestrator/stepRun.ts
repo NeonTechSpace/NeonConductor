@@ -73,6 +73,7 @@ export async function startDelegatedChildRun(input: {
         rootSessionId: input.plan.sessionId,
         childTitle: buildChildThreadTitle(input.step),
         prompt: buildStepPrompt(input.approvedArtifact, input.step),
+        topLevelTab: 'agent',
         modeKey: 'code',
         runtimeOptions: input.startInput.runtimeOptions,
         ...(input.startInput.providerId ? { providerId: input.startInput.providerId } : {}),

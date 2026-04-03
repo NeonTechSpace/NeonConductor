@@ -5,6 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { flowStore, runtimeEventStore } from '@/app/backend/persistence/stores';
 import { getPersistence, registerRuntimeContractHooks, runtimeContractProfileId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
+import {
+    createFlowApprovalRequiredLifecycleEvent,
+    createFlowStepStartedLifecycleEvent,
+} from '@/shared/flowLifecycle';
+
 registerRuntimeContractHooks();
 
 describe('flowStore', () => {
@@ -138,6 +143,82 @@ describe('flowStore', () => {
         const persistedInstance = await flowStore.getFlowInstanceById(profileId, instance.instance.id);
         expect(persistedInstance?.definitionSnapshot.label).toBe('Review flow');
         expect(persistedInstance?.instance.status).toBe('completed');
+    });
+
+    it('persists flow provenance and planning checkpoint state through lifecycle events', async () => {
+        const created = await flowStore.createCanonicalDefinition({
+            profileId,
+            label: 'Planning flow',
+            enabled: true,
+            triggerKind: 'manual',
+            steps: [
+                {
+                    kind: 'workflow',
+                    id: 'step_plan',
+                    label: 'Plan',
+                    workflowCapability: 'planning',
+                    promptMarkdown: 'Draft the plan.',
+                },
+            ],
+        });
+        const instance = await flowStore.createFlowInstance({
+            profileId,
+            flowDefinitionId: created.definition.id,
+            definitionSnapshot: created.definition,
+        });
+        if (!instance) {
+            throw new Error('Expected planning flow instance to be created.');
+        }
+
+        await flowStore.recordFlowLifecycleEvent({
+            profileId,
+            flowInstanceId: instance.instance.id,
+            event: createFlowStepStartedLifecycleEvent({
+                flowDefinitionId: created.definition.id,
+                flowInstanceId: instance.instance.id,
+                stepIndex: 0,
+                stepId: 'step_plan',
+                stepKind: 'workflow',
+                currentRunId: 'run_flow_123',
+                currentChildThreadId: 'thr_flow_123',
+                currentChildSessionId: 'sess_flow_123',
+                currentPlanId: 'plan_flow_123',
+                currentPlanRevisionId: 'prev_flow_123',
+                currentPlanPhaseId: 'phase_flow_123',
+                currentPlanPhaseRevisionId: 'phase_rev_flow_123',
+            }),
+        });
+
+        await flowStore.recordFlowLifecycleEvent({
+            profileId,
+            flowInstanceId: instance.instance.id,
+            event: createFlowApprovalRequiredLifecycleEvent({
+                flowDefinitionId: created.definition.id,
+                flowInstanceId: instance.instance.id,
+                stepIndex: 0,
+                stepId: 'step_plan',
+                stepKind: 'workflow',
+                reason: 'Wait for the plan checkpoint.',
+                approvalKind: 'plan_checkpoint',
+                planId: 'plan_flow_123',
+                planRevisionId: 'prev_flow_123',
+                requiredPlanStatus: 'approved',
+            }),
+        });
+
+        const persistedView = await flowStore.getFlowInstanceViewById(profileId, instance.instance.id);
+        expect(persistedView?.currentRunId).toBe('run_flow_123');
+        expect(persistedView?.currentChildThreadId).toBe('thr_flow_123');
+        expect(persistedView?.currentChildSessionId).toBe('sess_flow_123');
+        expect(persistedView?.currentPlanId).toBe('plan_flow_123');
+        expect(persistedView?.currentPlanRevisionId).toBe('prev_flow_123');
+        expect(persistedView?.currentPlanPhaseId).toBe('phase_flow_123');
+        expect(persistedView?.currentPlanPhaseRevisionId).toBe('phase_rev_flow_123');
+        expect(persistedView?.awaitingApproval?.kind).toBe('plan_checkpoint');
+        expect(persistedView?.awaitingApproval?.planId).toBe('plan_flow_123');
+        expect(persistedView?.awaitingApproval?.planRevisionId).toBe('prev_flow_123');
+        expect(persistedView?.awaitingApproval?.requiredPlanStatus).toBe('approved');
+        expect(persistedView?.availableActions.canResume).toBe(true);
     });
 
     it('keeps branch-workflow adapter identities stable per profile and workspace', async () => {

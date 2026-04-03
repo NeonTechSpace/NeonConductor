@@ -98,7 +98,7 @@ export const flowInstanceStatuses = [
 ] as const;
 export type FlowInstanceStatus = (typeof flowInstanceStatuses)[number];
 
-export const flowApprovalKinds = ['flow_gate', 'tool_permission'] as const;
+export const flowApprovalKinds = ['flow_gate', 'tool_permission', 'plan_checkpoint'] as const;
 export type FlowApprovalKind = (typeof flowApprovalKinds)[number];
 
 export const flowDefinitionOriginKinds = ['canonical', 'branch_workflow_adapter'] as const;

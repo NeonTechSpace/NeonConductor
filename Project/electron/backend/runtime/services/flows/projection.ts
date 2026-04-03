@@ -27,6 +27,15 @@ export function buildFlowInstanceView(input: {
         definitionSnapshot: input.definitionSnapshot,
         lifecycleEvents: input.lifecycleEvents,
         ...(input.executionContext ? { executionContext: input.executionContext } : {}),
+        ...(input.instance.currentRunId ? { currentRunId: input.instance.currentRunId } : {}),
+        ...(input.instance.currentChildThreadId ? { currentChildThreadId: input.instance.currentChildThreadId } : {}),
+        ...(input.instance.currentChildSessionId ? { currentChildSessionId: input.instance.currentChildSessionId } : {}),
+        ...(input.instance.currentPlanId ? { currentPlanId: input.instance.currentPlanId } : {}),
+        ...(input.instance.currentPlanRevisionId ? { currentPlanRevisionId: input.instance.currentPlanRevisionId } : {}),
+        ...(input.instance.currentPlanPhaseId ? { currentPlanPhaseId: input.instance.currentPlanPhaseId } : {}),
+        ...(input.instance.currentPlanPhaseRevisionId
+            ? { currentPlanPhaseRevisionId: input.instance.currentPlanPhaseRevisionId }
+            : {}),
         ...(input.currentStep ? { currentStep: input.currentStep } : {}),
         ...(input.awaitingApproval ? { awaitingApproval: input.awaitingApproval } : {}),
         availableActions: input.availableActions,

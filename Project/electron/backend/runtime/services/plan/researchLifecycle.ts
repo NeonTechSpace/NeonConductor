@@ -153,6 +153,7 @@ async function runPlannerResearchWorker(input: {
         rootSessionId: input.plan.sessionId,
         childTitle: readWorkerThreadTitle(input.worker),
         prompt: input.worker.promptMarkdown,
+        topLevelTab: 'agent',
         modeKey: 'ask',
         runtimeOptions: input.runtimeOptions,
         ...(input.providerId ? { providerId: input.providerId } : {}),

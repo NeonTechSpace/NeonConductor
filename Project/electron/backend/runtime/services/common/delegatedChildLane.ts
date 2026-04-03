@@ -12,7 +12,13 @@ import type {
     SessionSummaryRecord,
     ThreadRecord,
 } from '@/app/backend/persistence/types';
-import type { EntityId, ResolvedWorkspaceContext, RuntimeRunOptions, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import type {
+    EntityId,
+    ResolvedWorkspaceContext,
+    RuntimeRunOptions,
+    RuntimeProviderId,
+    TopLevelTab,
+} from '@/app/backend/runtime/contracts';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
@@ -43,12 +49,19 @@ interface ChildLaneOwnerPlanResearch {
     planResearchBatchId: EntityId<'prb'>;
 }
 
-export type ChildLaneOwner = ChildLaneOwnerOrchestrator | ChildLaneOwnerPlanResearch;
+interface ChildLaneOwnerFlowInstance {
+    kind: 'flow_instance';
+    flowInstanceId: string;
+}
+
+export type ChildLaneOwner = ChildLaneOwnerOrchestrator | ChildLaneOwnerPlanResearch | ChildLaneOwnerFlowInstance;
 
 function readOwnerOrigin(owner: ChildLaneOwner): string {
     return owner.kind === 'orchestrator'
         ? 'runtime.orchestrator.delegateChildLane'
-        : 'runtime.planResearch.delegateChildLane';
+        : owner.kind === 'plan_research'
+          ? 'runtime.planResearch.delegateChildLane'
+          : 'runtime.flow.delegateChildLane';
 }
 
 function buildChildExecutionBinding(executionTarget: WorkspaceExecutionTarget): {
@@ -137,19 +150,33 @@ async function appendDelegatedChildLaneEvents(input: {
 function buildThreadOwnerFields(owner: ChildLaneOwner): {
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
+    delegatedFromFlowInstanceId?: string;
 } {
-    return owner.kind === 'orchestrator'
-        ? { delegatedFromOrchestratorRunId: owner.orchestratorRunId }
-        : { delegatedFromPlanResearchBatchId: owner.planResearchBatchId };
+    if (owner.kind === 'orchestrator') {
+        return { delegatedFromOrchestratorRunId: owner.orchestratorRunId };
+    }
+
+    if (owner.kind === 'plan_research') {
+        return { delegatedFromPlanResearchBatchId: owner.planResearchBatchId };
+    }
+
+    return { delegatedFromFlowInstanceId: owner.flowInstanceId };
 }
 
 function buildSessionOwnerFields(owner: ChildLaneOwner): {
     delegatedFromOrchestratorRunId?: EntityId<'orch'>;
     delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
+    delegatedFromFlowInstanceId?: string;
 } {
-    return owner.kind === 'orchestrator'
-        ? { delegatedFromOrchestratorRunId: owner.orchestratorRunId }
-        : { delegatedFromPlanResearchBatchId: owner.planResearchBatchId };
+    if (owner.kind === 'orchestrator') {
+        return { delegatedFromOrchestratorRunId: owner.orchestratorRunId };
+    }
+
+    if (owner.kind === 'plan_research') {
+        return { delegatedFromPlanResearchBatchId: owner.planResearchBatchId };
+    }
+
+    return { delegatedFromFlowInstanceId: owner.flowInstanceId };
 }
 
 function buildDeletionOwnerInput(input: {
@@ -169,20 +196,37 @@ function buildDeletionOwnerInput(input: {
           threadId: EntityId<'thr'>;
           sessionId?: EntityId<'sess'>;
           planResearchBatchId: EntityId<'prb'>;
+      }
+    | {
+          profileId: string;
+          threadId: EntityId<'thr'>;
+          sessionId?: EntityId<'sess'>;
+          flowInstanceId: string;
       } {
-    return input.owner.kind === 'orchestrator'
-        ? {
-              profileId: input.profileId,
-              threadId: input.threadId,
-              ...(input.sessionId ? { sessionId: input.sessionId } : {}),
-              orchestratorRunId: input.owner.orchestratorRunId,
-          }
-        : {
-              profileId: input.profileId,
-              threadId: input.threadId,
-              ...(input.sessionId ? { sessionId: input.sessionId } : {}),
-              planResearchBatchId: input.owner.planResearchBatchId,
-          };
+    if (input.owner.kind === 'orchestrator') {
+        return {
+            profileId: input.profileId,
+            threadId: input.threadId,
+            ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+            orchestratorRunId: input.owner.orchestratorRunId,
+        };
+    }
+
+    if (input.owner.kind === 'plan_research') {
+        return {
+            profileId: input.profileId,
+            threadId: input.threadId,
+            ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+            planResearchBatchId: input.owner.planResearchBatchId,
+        };
+    }
+
+    return {
+        profileId: input.profileId,
+        threadId: input.threadId,
+        ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+        flowInstanceId: input.owner.flowInstanceId,
+    };
 }
 
 export async function resolveDelegatedChildRootExecutionContext(input: {
@@ -231,7 +275,8 @@ export async function startDelegatedChildLaneRun(input: {
     rootSessionId: EntityId<'sess'>;
     childTitle: string;
     prompt: string;
-    modeKey: 'ask' | 'code';
+    topLevelTab: TopLevelTab;
+    modeKey: string;
     runtimeOptions: RuntimeRunOptions;
     providerId?: RuntimeProviderId;
     modelId?: string;
@@ -246,7 +291,7 @@ export async function startDelegatedChildLaneRun(input: {
         profileId: input.profileId,
         conversationId: input.rootContext.bucket.id,
         title: input.childTitle,
-        topLevelTab: 'agent',
+        topLevelTab: input.topLevelTab,
         parentThreadId: input.rootContext.rootThread.id,
         rootThreadId: input.rootContext.rootThread.id,
         executionEnvironmentMode: childExecutionBinding.executionEnvironmentMode,
@@ -289,7 +334,7 @@ export async function startDelegatedChildLaneRun(input: {
         profileId: input.profileId,
         sessionId: createdSession.session.id,
         prompt: input.prompt,
-        topLevelTab: 'agent',
+        topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
         runtimeOptions: input.runtimeOptions,
         ...(input.providerId ? { providerId: input.providerId } : {}),

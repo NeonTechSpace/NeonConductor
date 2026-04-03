@@ -7,6 +7,8 @@ import type {
     WorkflowCapability,
 } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { PlanPlanningDepth } from '@/app/backend/runtime/contracts/types/plan';
+
 import type { EntityId } from '@/shared/contracts';
 import type { FlowLifecycleEvent as SharedFlowLifecycleEvent } from '@/shared/flowLifecycle';
 
@@ -23,6 +25,7 @@ export interface FlowModeRunStepDefinition {
     label: string;
     topLevelTab: TopLevelTab;
     modeKey: string;
+    promptMarkdown: string;
 }
 
 export interface FlowWorkflowStepDefinition {
@@ -30,6 +33,10 @@ export interface FlowWorkflowStepDefinition {
     id: string;
     label: string;
     workflowCapability: WorkflowCapability;
+    promptMarkdown: string;
+    planningDepth?: PlanPlanningDepth;
+    requireApprovedPlan?: boolean;
+    reuseExistingPlan?: boolean;
 }
 
 export interface FlowApprovalGateStepDefinition {
@@ -61,10 +68,20 @@ export interface FlowInstanceRecord {
     status: FlowInstanceStatus;
     currentStepIndex: number;
     executionContext?: FlowExecutionContext;
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
     awaitingApprovalKind?: FlowApprovalKind;
     awaitingApprovalStepIndex?: number;
     awaitingApprovalStepId?: string;
     awaitingPermissionRequestId?: EntityId<'perm'>;
+    awaitingPlanId?: EntityId<'plan'>;
+    awaitingPlanRevisionId?: EntityId<'prev'>;
+    awaitingRequiredPlanStatus?: 'draft' | 'approved';
     lastErrorMessage?: string;
     retrySourceFlowInstanceId?: string;
     startedAt?: string;
@@ -76,6 +93,7 @@ export type FlowLifecycleEvent = SharedFlowLifecycleEvent;
 export interface FlowExecutionContext {
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
+    sessionId?: EntityId<'sess'>;
 }
 
 export interface FlowCurrentStepView {
@@ -89,6 +107,9 @@ export interface FlowAwaitingApprovalView {
     stepId: string;
     reason: string;
     permissionRequestId?: EntityId<'perm'>;
+    planId?: EntityId<'plan'>;
+    planRevisionId?: EntityId<'prev'>;
+    requiredPlanStatus?: 'draft' | 'approved';
 }
 
 export interface FlowInstanceAvailableActions {
@@ -109,6 +130,13 @@ export interface FlowInstanceView {
     definitionSnapshot: FlowDefinitionRecord;
     lifecycleEvents: FlowLifecycleEvent[];
     executionContext?: FlowExecutionContext;
+    currentRunId?: EntityId<'run'>;
+    currentChildThreadId?: EntityId<'thr'>;
+    currentChildSessionId?: EntityId<'sess'>;
+    currentPlanId?: EntityId<'plan'>;
+    currentPlanRevisionId?: EntityId<'prev'>;
+    currentPlanPhaseId?: string;
+    currentPlanPhaseRevisionId?: string;
     currentStep?: FlowCurrentStepView;
     awaitingApproval?: FlowAwaitingApprovalView;
     availableActions: FlowInstanceAvailableActions;
@@ -162,6 +190,7 @@ export interface FlowResumeInput extends ProfileInput {
     flowInstanceId: string;
     expectedStepIndex: number;
     expectedStepId: string;
+    expectedPlanId?: EntityId<'plan'>;
 }
 
 export interface FlowCancelInput extends ProfileInput {

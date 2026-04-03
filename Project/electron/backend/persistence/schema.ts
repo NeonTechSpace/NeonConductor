@@ -48,6 +48,7 @@ export interface SessionsTable {
     sandbox_id: string | null;
     delegated_from_orchestrator_run_id: string | null;
     delegated_from_plan_research_batch_id: string | null;
+    delegated_from_flow_instance_id: string | null;
     run_status: string;
     pending_completion_run_id: string | null;
     created_at: string;
@@ -485,6 +486,7 @@ export interface ThreadsTable {
     root_thread_id: string;
     delegated_from_orchestrator_run_id: string | null;
     delegated_from_plan_research_batch_id: string | null;
+    delegated_from_flow_instance_id: string | null;
     is_favorite: 0 | 1;
     execution_environment_mode: string;
     sandbox_id: string | null;
@@ -1062,10 +1064,20 @@ export interface FlowInstancesTable {
     current_step_index: number;
     definition_snapshot_json: string;
     execution_context_json: string | null;
+    current_run_id: string | null;
+    current_child_thread_id: string | null;
+    current_child_session_id: string | null;
+    current_plan_id: string | null;
+    current_plan_revision_id: string | null;
+    current_plan_phase_id: string | null;
+    current_plan_phase_revision_id: string | null;
     awaiting_approval_kind: string | null;
     awaiting_approval_step_index: number | null;
     awaiting_approval_step_id: string | null;
     awaiting_permission_request_id: string | null;
+    awaiting_plan_id: string | null;
+    awaiting_plan_revision_id: string | null;
+    awaiting_required_plan_status: string | null;
     last_error_message: string | null;
     retry_source_flow_instance_id: string | null;
     started_at: string | null;
