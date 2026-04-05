@@ -1,14 +1,17 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+interface ProviderSettingsViewMockProps {
+    profileId: string;
+    selectedProviderId?: string;
+    onOpenKiloSettings?: () => void;
+}
+
 const { providerSettingsViewMock } = vi.hoisted(() => ({
-    providerSettingsViewMock: vi.fn(
-        (_props: {
-            profileId: string;
-            selectedProviderId?: string;
-            onOpenKiloSettings?: () => void;
-        }) => <div>provider section</div>
-    ),
+    providerSettingsViewMock: vi.fn((props: ProviderSettingsViewMockProps) => {
+        void props;
+        return <div>provider section</div>;
+    }),
 }));
 
 vi.mock('@/web/components/settings/kiloSettingsView', () => ({
@@ -39,10 +42,8 @@ vi.mock('@/web/components/settings/appSettings/view', () => ({
     AppSettingsView: () => <div>app section</div>,
 }));
 
-import {
-    getGroupedSettingsPrimarySections,
-    SettingsSectionContent,
-} from '@/web/components/settings/settingsSectionContent';
+import { SettingsSectionContent } from '@/web/components/settings/settingsSectionContent';
+import { getGroupedSettingsPrimarySections } from '@/web/components/settings/shared/settingsWorkspaceNavigation';
 
 describe('settings section content', () => {
     it('keeps Kilo-first grouping in one shared helper', () => {

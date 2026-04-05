@@ -53,7 +53,9 @@ describe('settings workspace', () => {
         expect(html).toContain('Kilo');
         expect(html).toContain('Modes &amp; Instructions');
         expect(html).toContain('Providers &amp; Models');
-        expect(html).toContain('Kilo is the default setup path.');
+        expect(html).toContain('Account &amp; Access');
+        expect(html).toContain('Gateway Models');
+        expect(html).toContain('One routed utility surface for Kilo');
     });
 
     it('keeps the settings body overflow-safe inside the workspace surface', () => {
@@ -70,6 +72,7 @@ describe('settings workspace', () => {
         expect(html).toContain('min-w-0');
         expect(html).toContain('overflow-hidden');
         expect(html).toContain('kilo view');
+        expect(html).toContain('w-[288px]');
     });
 
     it('renders the shared modes surface when that primary section is selected', () => {
@@ -86,6 +89,22 @@ describe('settings workspace', () => {
         );
 
         expect(html).toContain('modes view');
+        expect(html).toContain('Shared Modes &amp; Instructions');
+    });
+
+    it('keeps provider-specific navigation inside the content surface hint when providers are selected', () => {
+        const html = renderToStaticMarkup(
+            <SettingsWorkspace
+                profileId='profile_default'
+                selection={{ section: 'providers', subsection: 'kilo' }}
+                onSelectionChange={vi.fn()}
+                onProfileActivated={vi.fn()}
+                onReturnToSessions={vi.fn()}
+            />
+        );
+
+        expect(html).toContain('providers view');
+        expect(html).toContain('Provider-specific navigation stays inside the content surface');
     });
 
     it('keeps the settings rail scrollable and wrap-safe for dense labels at narrow sizes', () => {
@@ -101,6 +120,6 @@ describe('settings workspace', () => {
 
         expect(html).toContain('overflow-y-auto');
         expect(html).toContain('break-words');
-        expect(html).toContain('w-[272px]');
+        expect(html).toContain('w-[288px]');
     });
 });

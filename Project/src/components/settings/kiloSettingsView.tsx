@@ -1,8 +1,8 @@
 import { KiloAccountAccessScreen, KiloGatewayModelsScreen, KiloRoutingScreen } from '@/web/components/settings/kiloSettingsSections';
-import { useKiloSettingsController } from '@/web/components/settings/providerSettings/hooks/useKiloSettingsController';
 import { useKiloInitialCatalogBootstrap } from '@/web/components/settings/providerSettings/hooks/useKiloInitialCatalogBootstrap';
-import { KILO_SETTINGS_SUBSECTIONS, type KiloSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
+import { useKiloSettingsController } from '@/web/components/settings/providerSettings/hooks/useKiloSettingsController';
+import type { KiloSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
+import { SettingsContentScaffold } from '@/web/components/settings/shared/settingsContentScaffold';
 
 interface KiloSettingsViewProps {
     profileId: string;
@@ -10,8 +10,41 @@ interface KiloSettingsViewProps {
     onSubsectionChange?: (subsection: KiloSettingsSubsectionId) => void;
 }
 
-export function KiloSettingsView({ profileId, subsection = 'account', onSubsectionChange }: KiloSettingsViewProps) {
+function getKiloSectionMetadata(subsection: KiloSettingsSubsectionId): {
+    title: string;
+    description: string;
+} {
+    switch (subsection) {
+        case 'account':
+            return {
+                title: 'Account & Access',
+                description:
+                    'Sign in to Kilo, inspect identity and organization state, and manage session access from one place.',
+            };
+        case 'models':
+            return {
+                title: 'Gateway Models',
+                description:
+                    'Set the default Kilo model for this profile and decide which provider and model pairs specialists should prefer.',
+            };
+        case 'routing':
+            return {
+                title: 'Provider Choice',
+                description:
+                    'Choose how Kilo should route a selected model when multiple upstream providers are available.',
+            };
+        case 'marketplace':
+            return {
+                title: 'Marketplace',
+                description:
+                    'Marketplace installation and update management remain reserved here while the rest of the Kilo setup lives in the shared Settings shell.',
+            };
+    }
+}
+
+export function KiloSettingsView({ profileId, subsection = 'account' }: KiloSettingsViewProps) {
     const controller = useKiloSettingsController(profileId);
+    const sectionMetadata = getKiloSectionMetadata(subsection);
 
     useKiloInitialCatalogBootstrap({
         selectedProviderId: controller.selectedProvider?.id,
@@ -26,49 +59,36 @@ export function KiloSettingsView({ profileId, subsection = 'account', onSubsecti
     }
 
     return (
-        <section className='grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]'>
-            <SettingsSelectionRail
-                title='Kilo'
-                ariaLabel='Kilo settings sections'
-                selectedId={subsection}
-                onSelect={(itemId) => {
-                    const nextSection = KILO_SETTINGS_SUBSECTIONS.find((candidate) => candidate.id === itemId);
-                    if (!nextSection || nextSection.availability !== 'available') {
-                        return;
-                    }
-
-                    onSubsectionChange?.(nextSection.id);
-                }}
-                items={KILO_SETTINGS_SUBSECTIONS.map((item) => ({
-                    id: item.id,
-                    title: item.label,
-                    subtitle: item.description,
-                    ...(item.availability === 'planned' ? { meta: 'Planned', disabled: true } : {}),
-                }))}
-            />
-
-            <div className='min-h-0 min-w-0 overflow-y-auto p-5 md:p-6'>
-                {subsection === 'account' ? (
-                    <KiloAccountAccessScreen
-                        profileId={profileId}
-                        controller={controller}
-                        selectedProvider={controller.selectedProvider}
-                    />
-                ) : null}
-                {subsection === 'models' ? (
-                    <KiloGatewayModelsScreen profileId={profileId} controller={controller} />
-                ) : null}
-                {subsection === 'routing' ? <KiloRoutingScreen controller={controller} /> : null}
-                {subsection === 'marketplace' ? (
-                    <div className='border-border/70 bg-card/50 rounded-[24px] border p-5'>
-                        <p className='text-sm font-semibold'>Marketplace is not available yet</p>
-                        <p className='text-muted-foreground mt-2 text-sm leading-6'>
-                            Marketplace installation and update management remain reserved here, while app-level modes
-                            and instruction controls now live in their own shared settings surface.
-                        </p>
+        <SettingsContentScaffold
+            eyebrow='Kilo'
+            title={sectionMetadata.title}
+            description={sectionMetadata.description}
+            toolbar={
+                subsection === 'account' ? (
+                    <div className='border-border/70 bg-background/80 rounded-full border px-3 py-1.5 text-xs font-medium'>
+                        Auth {controller.effectiveAuthState}
                     </div>
-                ) : null}
-            </div>
-        </section>
+                ) : undefined
+            }
+            contentClassName='max-w-6xl'>
+            {subsection === 'account' ? (
+                <KiloAccountAccessScreen
+                    profileId={profileId}
+                    controller={controller}
+                    selectedProvider={controller.selectedProvider}
+                />
+            ) : null}
+            {subsection === 'models' ? <KiloGatewayModelsScreen profileId={profileId} controller={controller} /> : null}
+            {subsection === 'routing' ? <KiloRoutingScreen controller={controller} /> : null}
+            {subsection === 'marketplace' ? (
+                <div className='border-border/70 bg-card/50 rounded-[24px] border p-5'>
+                    <p className='text-sm font-semibold'>Marketplace is not available yet</p>
+                    <p className='text-muted-foreground mt-2 text-sm leading-6'>
+                        Marketplace installation and update management remain reserved here, while app-level modes and
+                        instruction controls now live in their own shared settings surface.
+                    </p>
+                </div>
+            ) : null}
+        </SettingsContentScaffold>
     );
 }

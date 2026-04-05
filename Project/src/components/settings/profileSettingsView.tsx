@@ -1,12 +1,9 @@
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { ProfileCreateSection } from '@/web/components/settings/profileSettings/profileCreateSection';
 import { useProfileSettingsController } from '@/web/components/settings/profileSettings/useProfileSettingsController';
-import {
-    PROFILE_SETTINGS_SUBSECTIONS,
-    type ProfileSettingsSubsectionId,
-} from '@/web/components/settings/settingsNavigation';
+import type { ProfileSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
+import { SettingsContentScaffold } from '@/web/components/settings/shared/settingsContentScaffold';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
 import { Button } from '@/web/components/ui/button';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 
@@ -17,53 +14,37 @@ interface ProfileSettingsViewProps {
     onSubsectionChange?: (subsection: ProfileSettingsSubsectionId) => void;
 }
 
-function ProfileSectionHeader({
-    eyebrow,
-    title,
-    description,
+function ProfileSelectionToolbar({
     selectedProfileId,
     profiles,
     onSelectProfile,
 }: {
-    eyebrow: string;
-    title: string;
-    description: string;
     selectedProfileId: string | undefined;
     profiles: Array<{ id: string; name: string }>;
     onSelectProfile: (profileId: string) => void;
 }) {
     return (
-        <div className='flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between'>
-            <div className='space-y-2'>
-                <p className='text-primary text-[11px] font-semibold tracking-[0.16em] uppercase'>{eyebrow}</p>
-                <div className='space-y-1'>
-                    <h4 className='text-xl font-semibold text-balance'>{title}</h4>
-                    <p className='text-muted-foreground max-w-3xl text-sm leading-6'>{description}</p>
-                </div>
-            </div>
-
-            <label className='space-y-1'>
-                <span className='text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase'>
-                    Selected Profile
-                </span>
-                <select
-                    aria-label='Selected profile'
-                    className='border-border bg-background h-10 min-w-[220px] rounded-xl border px-3 text-sm'
-                    value={selectedProfileId ?? ''}
-                    onChange={(event) => {
-                        const nextProfileId = event.target.value.trim();
-                        if (nextProfileId.length > 0) {
-                            onSelectProfile(nextProfileId);
-                        }
-                    }}>
-                    {profiles.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                            {profile.name}
-                        </option>
-                    ))}
-                </select>
-            </label>
-        </div>
+        <label className='space-y-1'>
+            <span className='text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase'>
+                Selected Profile
+            </span>
+            <select
+                aria-label='Selected profile'
+                className='border-border bg-background h-10 min-w-[220px] rounded-xl border px-3 text-sm'
+                value={selectedProfileId ?? ''}
+                onChange={(event) => {
+                    const nextProfileId = event.target.value.trim();
+                    if (nextProfileId.length > 0) {
+                        onSelectProfile(nextProfileId);
+                    }
+                }}>
+                {profiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                        {profile.name}
+                    </option>
+                ))}
+            </select>
+        </label>
     );
 }
 
@@ -81,19 +62,6 @@ function ProfileManagementScreen({
 
     return (
         <div className='space-y-5'>
-            <ProfileSectionHeader
-                eyebrow='Profiles'
-                title='Profile Management'
-                description='Rename, duplicate, activate, delete, and create profiles without nesting another persistent rail inside Settings.'
-                selectedProfileId={controller.selection.selectedProfileId}
-                profiles={controller.selection.profiles}
-                onSelectProfile={(profileId) => {
-                    controller.selection.setSelectedProfileId(profileId);
-                }}
-            />
-
-            <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
-
             <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
                 <div className='space-y-1'>
                     <p className='text-sm font-semibold'>Identity</p>
@@ -190,19 +158,6 @@ function ProfileManagementScreen({
 function ProfileExecutionScreen({ controller }: { controller: ReturnType<typeof useProfileSettingsController> }) {
     return (
         <div className='space-y-5'>
-            <ProfileSectionHeader
-                eyebrow='Profiles'
-                title='Execution Defaults'
-                description='Keep profile-level runtime approvals and edit-flow defaults together instead of burying them in profile management.'
-                selectedProfileId={controller.selection.selectedProfileId}
-                profiles={controller.selection.profiles}
-                onSelectProfile={(profileId) => {
-                    controller.selection.setSelectedProfileId(profileId);
-                }}
-            />
-
-            <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
-
             <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
                 <div className='space-y-1'>
                     <p className='text-sm font-semibold'>Execution preset</p>
@@ -264,46 +219,31 @@ function ProfileConversationNamingScreen({
     controller: ReturnType<typeof useProfileSettingsController>;
 }) {
     return (
-        <div className='space-y-5'>
-            <ProfileSectionHeader
-                eyebrow='Profiles'
-                title='Conversation Naming'
-                description='Control how new conversation names are generated. AI refinement now uses the shared Utility AI model and falls back to the active conversation model when Utility AI is unset or unavailable.'
-                selectedProfileId={controller.selection.selectedProfileId}
-                profiles={controller.selection.profiles}
-                onSelectProfile={(profileId) => {
-                    controller.selection.setSelectedProfileId(profileId);
-                }}
-            />
+        <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
+            <div className='space-y-1'>
+                <p className='text-sm font-semibold'>Conversation naming mode</p>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Template naming is the baseline path. Optional AI refinement uses the shared Utility AI selection
+                    from the adjacent profile subsection.
+                </p>
+            </div>
+            <select
+                aria-label='Conversation naming mode'
+                className='border-border bg-background h-10 w-full max-w-sm rounded-xl border px-3 text-sm'
+                value={controller.preferences.threadTitleMode}
+                disabled={controller.preferences.setThreadTitlePreferenceMutation.isPending}
+                onChange={(event) => {
+                    const nextMode = event.target.value;
+                    if (nextMode !== 'template' && nextMode !== 'ai_optional') {
+                        return;
+                    }
 
-            <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
-
-            <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
-                <div className='space-y-1'>
-                    <p className='text-sm font-semibold'>Conversation naming mode</p>
-                    <p className='text-muted-foreground text-xs leading-5'>
-                        Template naming is the baseline path. Optional AI refinement uses the shared Utility AI
-                        selection from the adjacent profile subsection.
-                    </p>
-                </div>
-                <select
-                    aria-label='Conversation naming mode'
-                    className='border-border bg-background h-10 w-full max-w-sm rounded-xl border px-3 text-sm'
-                    value={controller.preferences.threadTitleMode}
-                    disabled={controller.preferences.setThreadTitlePreferenceMutation.isPending}
-                    onChange={(event) => {
-                        const nextMode = event.target.value;
-                        if (nextMode !== 'template' && nextMode !== 'ai_optional') {
-                            return;
-                        }
-
-                        void controller.preferences.updateThreadTitleMode(nextMode);
-                    }}>
-                    <option value='template'>Template only</option>
-                    <option value='ai_optional'>Template + optional AI refine</option>
-                </select>
-            </section>
-        </div>
+                    void controller.preferences.updateThreadTitleMode(nextMode);
+                }}>
+                <option value='template'>Template only</option>
+                <option value='ai_optional'>Template + optional AI refine</option>
+            </select>
+        </section>
     );
 }
 
@@ -313,116 +253,97 @@ function ProfileUtilityAiScreen({
     controller: ReturnType<typeof useProfileSettingsController>;
 }) {
     return (
-        <div className='space-y-5'>
-            <ProfileSectionHeader
-                eyebrow='Profiles'
-                title='Utility AI'
-                description='Choose the shared small utility model used for conversation naming, context compaction, and future lightweight utility tasks.'
-                selectedProfileId={controller.selection.selectedProfileId}
-                profiles={controller.selection.profiles}
-                onSelectProfile={(profileId) => {
-                    controller.selection.setSelectedProfileId(profileId);
-                }}
-            />
+        <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
+            <div className='space-y-1'>
+                <p className='text-sm font-semibold'>Shared utility model</p>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Neon uses this model for context compaction, conversation naming, and similar low-stakes
+                    background work. If it is unset or unavailable, Neon falls back to the active conversation model.
+                </p>
+            </div>
 
-            <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
-
-            <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
-                <div className='space-y-1'>
-                    <p className='text-sm font-semibold'>Shared utility model</p>
-                    <p className='text-muted-foreground text-xs leading-5'>
-                        Neon uses this model for context compaction, conversation naming, and similar low-stakes
-                        background work. If it is unset or unavailable, Neon falls back to the active conversation
-                        model.
-                    </p>
-                </div>
-
-                <div className='grid gap-4 md:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]'>
-                    <label className='space-y-2'>
-                        <span className='text-sm font-medium'>Provider</span>
-                        <select
-                            aria-label='Utility AI provider'
-                            className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
-                            value={controller.preferences.selectedUtilityProviderId ?? ''}
-                            disabled={controller.preferences.setUtilityModelMutation.isPending}
-                            onChange={(event) => {
-                                const nextProviderId = controller.preferences.utilityProviderItems.find(
-                                    (provider) => provider.id === event.target.value
-                                )?.id;
-                                controller.preferences.setUtilityProviderId(nextProviderId);
-                            }}>
-                            {controller.preferences.utilityProviderItems.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.label}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <label className='space-y-2'>
-                        <span className='text-sm font-medium'>Model</span>
-                        <ModelPicker
-                            providerId={controller.preferences.selectedUtilityProviderId}
-                            selectedModelId={controller.preferences.selectedUtilityModelId}
-                            models={controller.preferences.utilityModelOptions}
-                            ariaLabel='Utility AI model'
-                            placeholder='Select a utility model'
-                            disabled={controller.preferences.setUtilityModelMutation.isPending}
-                            onSelectModel={controller.preferences.setUtilityModelId}
-                            onSelectOption={(option) => {
-                                if (
-                                    option.providerId &&
-                                    option.providerId !== controller.preferences.selectedUtilityProviderId
-                                ) {
-                                    controller.preferences.setUtilityProviderId(option.providerId);
-                                }
-                                controller.preferences.setUtilityModelId(option.id);
-                            }}
-                        />
-                        {controller.preferences.selectedUtilityModelOption?.compatibilityReason ? (
-                            <p className='text-muted-foreground text-xs'>
-                                {controller.preferences.selectedUtilityModelOption.compatibilityReason}
-                            </p>
-                        ) : null}
-                    </label>
-                </div>
-
-                <div className='flex flex-wrap items-center gap-2'>
-                    <Button
-                        type='button'
-                        size='sm'
-                        variant='outline'
-                        disabled={
-                            controller.preferences.setUtilityModelMutation.isPending ||
-                            !controller.preferences.selectedUtilityProviderId ||
-                            controller.preferences.selectedUtilityModelId.length === 0
-                        }
-                        onClick={() => {
-                            void controller.preferences.saveUtilityModel();
+            <div className='grid gap-4 md:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]'>
+                <label className='space-y-2'>
+                    <span className='text-sm font-medium'>Provider</span>
+                    <select
+                        aria-label='Utility AI provider'
+                        className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                        value={controller.preferences.selectedUtilityProviderId ?? ''}
+                        disabled={controller.preferences.setUtilityModelMutation.isPending}
+                        onChange={(event) => {
+                            const nextProviderId = controller.preferences.utilityProviderItems.find(
+                                (provider) => provider.id === event.target.value
+                            )?.id;
+                            controller.preferences.setUtilityProviderId(nextProviderId);
                         }}>
-                        Save Utility AI
-                    </Button>
-                    <Button
-                        type='button'
-                        size='sm'
-                        variant='outline'
-                        disabled={
-                            controller.preferences.setUtilityModelMutation.isPending ||
-                            !controller.preferences.utilityModelSelection
-                        }
-                        onClick={() => {
-                            void controller.preferences.clearUtilityModel();
-                        }}>
-                        Clear
-                    </Button>
-                    <span className='text-muted-foreground text-xs'>
-                        {controller.preferences.utilityModelSelection
-                            ? `Saved model: ${controller.preferences.utilityModelSelection.providerId}/${controller.preferences.utilityModelSelection.modelId}`
-                            : 'No Utility AI saved. Neon currently falls back to the active conversation model.'}
-                    </span>
-                </div>
-            </section>
-        </div>
+                        {controller.preferences.utilityProviderItems.map((provider) => (
+                            <option key={provider.id} value={provider.id}>
+                                {provider.label}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+
+                <label className='space-y-2'>
+                    <span className='text-sm font-medium'>Model</span>
+                    <ModelPicker
+                        providerId={controller.preferences.selectedUtilityProviderId}
+                        selectedModelId={controller.preferences.selectedUtilityModelId}
+                        models={controller.preferences.utilityModelOptions}
+                        ariaLabel='Utility AI model'
+                        placeholder='Select a utility model'
+                        disabled={controller.preferences.setUtilityModelMutation.isPending}
+                        onSelectModel={controller.preferences.setUtilityModelId}
+                        onSelectOption={(option) => {
+                            if (option.providerId && option.providerId !== controller.preferences.selectedUtilityProviderId) {
+                                controller.preferences.setUtilityProviderId(option.providerId);
+                            }
+                            controller.preferences.setUtilityModelId(option.id);
+                        }}
+                    />
+                    {controller.preferences.selectedUtilityModelOption?.compatibilityReason ? (
+                        <p className='text-muted-foreground text-xs'>
+                            {controller.preferences.selectedUtilityModelOption.compatibilityReason}
+                        </p>
+                    ) : null}
+                </label>
+            </div>
+
+            <div className='flex flex-wrap items-center gap-2'>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    disabled={
+                        controller.preferences.setUtilityModelMutation.isPending ||
+                        !controller.preferences.selectedUtilityProviderId ||
+                        controller.preferences.selectedUtilityModelId.length === 0
+                    }
+                    onClick={() => {
+                        void controller.preferences.saveUtilityModel();
+                    }}>
+                    Save Utility AI
+                </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    disabled={
+                        controller.preferences.setUtilityModelMutation.isPending ||
+                        !controller.preferences.utilityModelSelection
+                    }
+                    onClick={() => {
+                        void controller.preferences.clearUtilityModel();
+                    }}>
+                    Clear
+                </Button>
+                <span className='text-muted-foreground text-xs'>
+                    {controller.preferences.utilityModelSelection
+                        ? `Saved model: ${controller.preferences.utilityModelSelection.providerId}/${controller.preferences.utilityModelSelection.modelId}`
+                        : 'No Utility AI saved. Neon currently falls back to the active conversation model.'}
+                </span>
+            </div>
+        </section>
     );
 }
 
@@ -434,160 +355,177 @@ function ProfileMemoryRetrievalScreen({
     const hasModelOptions = controller.preferences.memoryRetrievalModelOptions.length > 0;
 
     return (
-        <div className='space-y-5'>
-            <ProfileSectionHeader
-                eyebrow='Profiles'
-                title='Memory Retrieval'
-                description='Choose the dedicated model Neon will reserve for future semantic memory retrieval work. This setting is stored separately from Utility AI.'
-                selectedProfileId={controller.selection.selectedProfileId}
-                profiles={controller.selection.profiles}
-                onSelectProfile={(profileId) => {
-                    controller.selection.setSelectedProfileId(profileId);
-                }}
-            />
+        <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
+            <div className='space-y-1'>
+                <p className='text-sm font-semibold'>Memory retrieval model</p>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Neon stores this selection for the semantic retrieval phase. It is intentionally separate from the
+                    shared Utility AI model.
+                </p>
+            </div>
 
-            <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
-
-            <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
-                <div className='space-y-1'>
-                    <p className='text-sm font-semibold'>Memory retrieval model</p>
-                    <p className='text-muted-foreground text-xs leading-5'>
-                        Neon stores this selection for the semantic retrieval phase. It is intentionally separate from
-                        the shared Utility AI model.
-                    </p>
-                </div>
-
-                {hasModelOptions ? (
-                    <>
-                        <div className='grid gap-4 md:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]'>
-                            <label className='space-y-2'>
-                                <span className='text-sm font-medium'>Provider</span>
-                                <select
-                                    aria-label='Memory Retrieval provider'
-                                    className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
-                                    value={controller.preferences.selectedMemoryRetrievalProviderId ?? ''}
-                                    disabled={controller.preferences.setMemoryRetrievalModelMutation.isPending}
-                                    onChange={(event) => {
-                                        const nextProviderId = controller.preferences.memoryRetrievalProviderItems.find(
-                                            (provider) => provider.id === event.target.value
-                                        )?.id;
-                                        controller.preferences.setMemoryRetrievalProviderId(nextProviderId);
-                                    }}>
-                                    {controller.preferences.memoryRetrievalProviderItems.map((provider) => (
-                                        <option key={provider.id} value={provider.id}>
-                                            {provider.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-
-                            <label className='space-y-2'>
-                                <span className='text-sm font-medium'>Model</span>
-                                <ModelPicker
-                                    providerId={controller.preferences.selectedMemoryRetrievalProviderId}
-                                    selectedModelId={controller.preferences.selectedMemoryRetrievalModelId}
-                                    models={controller.preferences.memoryRetrievalModelOptions}
-                                    ariaLabel='Memory Retrieval model'
-                                    placeholder='Select a memory retrieval model'
-                                    disabled={controller.preferences.setMemoryRetrievalModelMutation.isPending}
-                                    onSelectModel={controller.preferences.setMemoryRetrievalModelId}
-                                    onSelectOption={(option) => {
-                                        if (
-                                            option.providerId &&
-                                            option.providerId !== controller.preferences.selectedMemoryRetrievalProviderId
-                                        ) {
-                                            controller.preferences.setMemoryRetrievalProviderId(option.providerId);
-                                        }
-                                        controller.preferences.setMemoryRetrievalModelId(option.id);
-                                    }}
-                                />
-                                {controller.preferences.selectedMemoryRetrievalModelOption?.compatibilityReason ? (
-                                    <p className='text-muted-foreground text-xs'>
-                                        {controller.preferences.selectedMemoryRetrievalModelOption.compatibilityReason}
-                                    </p>
-                                ) : null}
-                            </label>
-                        </div>
-
-                        <div className='flex flex-wrap items-center gap-2'>
-                            <Button
-                                type='button'
-                                size='sm'
-                                variant='outline'
-                                disabled={
-                                    controller.preferences.setMemoryRetrievalModelMutation.isPending ||
-                                    !controller.preferences.selectedMemoryRetrievalProviderId ||
-                                    controller.preferences.selectedMemoryRetrievalModelId.length === 0
-                                }
-                                onClick={() => {
-                                    void controller.preferences.saveMemoryRetrievalModel();
+            {hasModelOptions ? (
+                <>
+                    <div className='grid gap-4 md:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]'>
+                        <label className='space-y-2'>
+                            <span className='text-sm font-medium'>Provider</span>
+                            <select
+                                aria-label='Memory Retrieval provider'
+                                className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                                value={controller.preferences.selectedMemoryRetrievalProviderId ?? ''}
+                                disabled={controller.preferences.setMemoryRetrievalModelMutation.isPending}
+                                onChange={(event) => {
+                                    const nextProviderId = controller.preferences.memoryRetrievalProviderItems.find(
+                                        (provider) => provider.id === event.target.value
+                                    )?.id;
+                                    controller.preferences.setMemoryRetrievalProviderId(nextProviderId);
                                 }}>
-                                Save Memory Retrieval
-                            </Button>
-                            <Button
-                                type='button'
-                                size='sm'
-                                variant='outline'
-                                disabled={
-                                    controller.preferences.setMemoryRetrievalModelMutation.isPending ||
-                                    !controller.preferences.memoryRetrievalModelSelection
-                                }
-                                onClick={() => {
-                                    void controller.preferences.clearMemoryRetrievalModel();
-                                }}>
-                                Clear
-                            </Button>
-                            <span className='text-muted-foreground text-xs'>
-                                {controller.preferences.memoryRetrievalModelSelection
-                                    ? `Saved model: ${controller.preferences.memoryRetrievalModelSelection.providerId}/${controller.preferences.memoryRetrievalModelSelection.modelId}`
-                                    : 'No Memory Retrieval model saved yet.'}
-                            </span>
-                        </div>
-                    </>
-                ) : (
-                    <div className='border-border/70 bg-background/60 text-muted-foreground rounded-2xl border border-dashed px-4 py-5 text-sm leading-6'>
-                        No compatible memory retrieval models are available right now.
+                                {controller.preferences.memoryRetrievalProviderItems.map((provider) => (
+                                    <option key={provider.id} value={provider.id}>
+                                        {provider.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className='space-y-2'>
+                            <span className='text-sm font-medium'>Model</span>
+                            <ModelPicker
+                                providerId={controller.preferences.selectedMemoryRetrievalProviderId}
+                                selectedModelId={controller.preferences.selectedMemoryRetrievalModelId}
+                                models={controller.preferences.memoryRetrievalModelOptions}
+                                ariaLabel='Memory Retrieval model'
+                                placeholder='Select a memory retrieval model'
+                                disabled={controller.preferences.setMemoryRetrievalModelMutation.isPending}
+                                onSelectModel={controller.preferences.setMemoryRetrievalModelId}
+                                onSelectOption={(option) => {
+                                    if (
+                                        option.providerId &&
+                                        option.providerId !== controller.preferences.selectedMemoryRetrievalProviderId
+                                    ) {
+                                        controller.preferences.setMemoryRetrievalProviderId(option.providerId);
+                                    }
+                                    controller.preferences.setMemoryRetrievalModelId(option.id);
+                                }}
+                            />
+                            {controller.preferences.selectedMemoryRetrievalModelOption?.compatibilityReason ? (
+                                <p className='text-muted-foreground text-xs'>
+                                    {controller.preferences.selectedMemoryRetrievalModelOption.compatibilityReason}
+                                </p>
+                            ) : null}
+                        </label>
                     </div>
-                )}
-            </section>
-        </div>
+
+                    <div className='flex flex-wrap items-center gap-2'>
+                        <Button
+                            type='button'
+                            size='sm'
+                            variant='outline'
+                            disabled={
+                                controller.preferences.setMemoryRetrievalModelMutation.isPending ||
+                                !controller.preferences.selectedMemoryRetrievalProviderId ||
+                                controller.preferences.selectedMemoryRetrievalModelId.length === 0
+                            }
+                            onClick={() => {
+                                void controller.preferences.saveMemoryRetrievalModel();
+                            }}>
+                            Save Memory Retrieval
+                        </Button>
+                        <Button
+                            type='button'
+                            size='sm'
+                            variant='outline'
+                            disabled={
+                                controller.preferences.setMemoryRetrievalModelMutation.isPending ||
+                                !controller.preferences.memoryRetrievalModelSelection
+                            }
+                            onClick={() => {
+                                void controller.preferences.clearMemoryRetrievalModel();
+                            }}>
+                            Clear
+                        </Button>
+                        <span className='text-muted-foreground text-xs'>
+                            {controller.preferences.memoryRetrievalModelSelection
+                                ? `Saved model: ${controller.preferences.memoryRetrievalModelSelection.providerId}/${controller.preferences.memoryRetrievalModelSelection.modelId}`
+                                : 'No Memory Retrieval model saved yet.'}
+                        </span>
+                    </div>
+                </>
+            ) : (
+                <div className='border-border/70 bg-background/60 text-muted-foreground rounded-2xl border border-dashed px-4 py-5 text-sm leading-6'>
+                    No compatible memory retrieval models are available right now.
+                </div>
+            )}
+        </section>
     );
+}
+
+function getProfileSectionMetadata(subsection: ProfileSettingsSubsectionId): {
+    title: string;
+    description: string;
+} {
+    switch (subsection) {
+        case 'management':
+            return {
+                title: 'Profile Management',
+                description:
+                    'Rename, duplicate, activate, delete, and create profiles without nesting another navigation rail inside Settings.',
+            };
+        case 'execution':
+            return {
+                title: 'Execution Defaults',
+                description:
+                    'Keep profile-level runtime approvals and edit-flow defaults together instead of burying them inside profile management.',
+            };
+        case 'naming':
+            return {
+                title: 'Conversation Naming',
+                description:
+                    'Control how new conversation names are generated. AI refinement uses the shared Utility AI model and falls back to the active conversation model when Utility AI is unset or unavailable.',
+            };
+        case 'utility':
+            return {
+                title: 'Utility AI',
+                description:
+                    'Choose the shared small utility model used for conversation naming, context compaction, and future lightweight utility tasks.',
+            };
+        case 'memoryRetrieval':
+            return {
+                title: 'Memory Retrieval',
+                description:
+                    'Choose the dedicated model Neon will reserve for future semantic memory retrieval work. This stays separate from Utility AI.',
+            };
+    }
 }
 
 export function ProfileSettingsView({
     activeProfileId,
     onProfileActivated,
     subsection = 'management',
-    onSubsectionChange,
 }: ProfileSettingsViewProps) {
     const controller = useProfileSettingsController({
         activeProfileId,
         onProfileActivated,
     });
+    const sectionMetadata = getProfileSectionMetadata(subsection);
 
     return (
-        <section className='grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]'>
-            <SettingsSelectionRail
-                title='Profiles'
-                ariaLabel='Profile settings sections'
-                selectedId={subsection}
-                onSelect={(itemId) => {
-                    const nextSection = PROFILE_SETTINGS_SUBSECTIONS.find((candidate) => candidate.id === itemId);
-                    if (!nextSection || nextSection.availability !== 'available') {
-                        return;
-                    }
+        <>
+            <SettingsContentScaffold
+                eyebrow='Profiles'
+                title={sectionMetadata.title}
+                description={sectionMetadata.description}
+                toolbar={
+                    <ProfileSelectionToolbar
+                        selectedProfileId={controller.selection.selectedProfileId}
+                        profiles={controller.selection.profiles}
+                        onSelectProfile={(profileId) => {
+                            controller.selection.setSelectedProfileId(profileId);
+                        }}
+                    />
+                }>
+                <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
 
-                    onSubsectionChange?.(nextSection.id);
-                }}
-                items={PROFILE_SETTINGS_SUBSECTIONS.map((item) => ({
-                    id: item.id,
-                    title: item.label,
-                    subtitle: item.description,
-                    ...(item.availability === 'planned' ? { meta: 'Planned', disabled: true } : {}),
-                }))}
-            />
-
-            <div className='min-h-0 min-w-0 overflow-y-auto p-5 md:p-6'>
                 {subsection === 'management' ? (
                     <ProfileManagementScreen controller={controller} activeProfileId={activeProfileId} />
                 ) : null}
@@ -595,7 +533,7 @@ export function ProfileSettingsView({
                 {subsection === 'naming' ? <ProfileConversationNamingScreen controller={controller} /> : null}
                 {subsection === 'utility' ? <ProfileUtilityAiScreen controller={controller} /> : null}
                 {subsection === 'memoryRetrieval' ? <ProfileMemoryRetrievalScreen controller={controller} /> : null}
-            </div>
+            </SettingsContentScaffold>
 
             <ConfirmDialog
                 open={controller.library.confirmDeleteOpen}
@@ -611,6 +549,6 @@ export function ProfileSettingsView({
                     void controller.library.deleteProfile();
                 }}
             />
-        </section>
+        </>
     );
 }

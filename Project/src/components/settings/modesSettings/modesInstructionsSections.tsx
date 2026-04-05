@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react';
 
 import type { FileBackedModeItemsByTab } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import {
+    formatDelimitedLabel,
+    formatRuntimeProfileLabel,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import type {
     BuiltInToolMetadataCardModel,
     PromptLayerSectionModel,
@@ -20,10 +23,8 @@ import {
     type TopLevelTab,
     type WorkflowCapability,
 } from '@/shared/contracts';
-import {
-    formatDelimitedLabel,
-    formatRuntimeProfileLabel,
-} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+
+import type { ReactNode } from 'react';
 
 function isTopLevelTab(value: string): value is TopLevelTab {
     return isOneOf(value, topLevelTabs);
@@ -31,21 +32,6 @@ function isTopLevelTab(value: string): value is TopLevelTab {
 
 function isCustomModeScope(value: string): value is 'global' | 'workspace' {
     return value === 'global' || value === 'workspace';
-}
-
-export function PromptInstructionsHeader() {
-    return (
-        <div className='space-y-2'>
-            <p className='text-primary text-[11px] font-semibold tracking-[0.18em] uppercase'>App-Level Modes</p>
-            <div className='space-y-1'>
-                <h4 className='text-xl font-semibold text-balance'>Modes &amp; Instructions</h4>
-                <p className='text-muted-foreground max-w-3xl text-sm leading-6'>
-                    Configure app-level prompt layers, built-in mode overrides, and text-based portability for
-                    file-backed custom modes across chat, agent, and orchestrator.
-                </p>
-            </div>
-        </div>
-    );
 }
 
 export function TopLevelPromptSection(input: {

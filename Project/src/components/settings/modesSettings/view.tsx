@@ -1,9 +1,6 @@
 import { ModesInstructionsScreen } from '@/web/components/settings/modesSettings/modesInstructionsScreen';
-import {
-    MODES_SETTINGS_SUBSECTIONS,
-    type ModesSettingsSubsectionId,
-} from '@/web/components/settings/settingsNavigation';
-import { SettingsSelectionRail } from '@/web/components/settings/shared/settingsSelectionRail';
+import type { ModesSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
+import { SettingsContentScaffold } from '@/web/components/settings/shared/settingsContentScaffold';
 
 interface ModesSettingsViewProps {
     profileId: string;
@@ -15,39 +12,20 @@ interface ModesSettingsViewProps {
 
 export function ModesSettingsView({
     profileId,
-    subsection = 'instructions',
-    onSubsectionChange,
     workspaceFingerprint,
     selectedWorkspaceLabel,
 }: ModesSettingsViewProps) {
     return (
-        <section className='grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]'>
-            <SettingsSelectionRail
-                title='Modes & Instructions'
-                ariaLabel='Modes and instructions settings sections'
-                selectedId={subsection}
-                onSelect={(itemId) => {
-                    const nextSection = MODES_SETTINGS_SUBSECTIONS.find((candidate) => candidate.id === itemId);
-                    if (!nextSection || nextSection.availability !== 'available') {
-                        return;
-                    }
-
-                    onSubsectionChange?.(nextSection.id);
-                }}
-                items={MODES_SETTINGS_SUBSECTIONS.map((item) => ({
-                    id: item.id,
-                    title: item.label,
-                    subtitle: item.description,
-                }))}
+        <SettingsContentScaffold
+            eyebrow='Modes & Instructions'
+            title='Shared Modes & Instructions'
+            description='Manage app-level prompt layers, built-in mode overrides, and portable file-backed custom modes without mounting a second settings rail.'
+            contentClassName='max-w-6xl'>
+            <ModesInstructionsScreen
+                profileId={profileId}
+                {...(workspaceFingerprint ? { workspaceFingerprint } : {})}
+                {...(selectedWorkspaceLabel ? { selectedWorkspaceLabel } : {})}
             />
-
-            <div className='min-h-0 min-w-0 overflow-y-auto p-5 md:p-6'>
-                <ModesInstructionsScreen
-                    profileId={profileId}
-                    {...(workspaceFingerprint ? { workspaceFingerprint } : {})}
-                    {...(selectedWorkspaceLabel ? { selectedWorkspaceLabel } : {})}
-                />
-            </div>
-        </section>
+        </SettingsContentScaffold>
     );
 }

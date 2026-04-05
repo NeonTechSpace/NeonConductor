@@ -1,14 +1,12 @@
 import { ProviderAuthenticationSection } from '@/web/components/settings/providerSettings/authenticationSection';
 import { ProviderDefaultModelSection } from '@/web/components/settings/providerSettings/defaultModelSection';
 import { formatDateTime, formatInteger } from '@/web/components/settings/providerSettings/helpers';
+import type { KiloSettingsControllerState } from '@/web/components/settings/providerSettings/hooks/useKiloSettingsController';
 import { KiloAccountSection } from '@/web/components/settings/providerSettings/kiloAccountSection';
 import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
 import { ProviderSpecialistDefaultsSection } from '@/web/components/settings/providerSettings/specialistDefaultsSection';
-import type { KiloSettingsControllerState } from '@/web/components/settings/providerSettings/hooks/useKiloSettingsController';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
-
-import type { ReactNode } from 'react';
 
 function formatBalance(amount: number | undefined, currency: string | undefined): string {
     if (amount === undefined || !currency) {
@@ -21,38 +19,17 @@ function formatBalance(amount: number | undefined, currency: string | undefined)
     })} ${currency}`;
 }
 
-function SummaryCard(input: { label: string; value: ReactNode; meta?: string }) {
+function SummaryCard(input: {
+    label: string;
+    value: React.JSX.Element | string | number | null | undefined;
+    meta?: string;
+}) {
     return (
         <article className='border-border/70 bg-background/80 rounded-[22px] border p-4'>
             <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase'>{input.label}</p>
             <div className='mt-2 text-sm font-medium'>{input.value}</div>
             {input.meta ? <p className='text-muted-foreground mt-2 text-xs'>{input.meta}</p> : null}
         </article>
-    );
-}
-
-function KiloSectionHeader({
-    eyebrow,
-    title,
-    description,
-    meta,
-}: {
-    eyebrow: string;
-    title: string;
-    description: string;
-    meta?: ReactNode;
-}) {
-    return (
-        <div className='space-y-2'>
-            <p className='text-primary text-[11px] font-semibold tracking-[0.18em] uppercase'>{eyebrow}</p>
-            <div className='flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between'>
-                <div className='space-y-1'>
-                    <h4 className='text-xl font-semibold text-balance'>{title}</h4>
-                    <p className='text-muted-foreground max-w-3xl text-sm leading-6'>{description}</p>
-                </div>
-                {meta ? <div className='shrink-0'>{meta}</div> : null}
-            </div>
-        </div>
     );
 }
 
@@ -70,17 +47,6 @@ export function KiloAccountAccessScreen({
 
     return (
         <div className='space-y-5'>
-            <KiloSectionHeader
-                eyebrow='Kilo'
-                title='Account & Access'
-                description='Sign in to Kilo, inspect identity and organization state, and manage session access from one place.'
-                meta={
-                    <div className='border-border/70 bg-background/80 rounded-full border px-3 py-1.5 text-xs font-medium'>
-                        Auth {controller.effectiveAuthState}
-                    </div>
-                }
-            />
-
             <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
 
             <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
@@ -210,12 +176,6 @@ export function KiloGatewayModelsScreen({
 }) {
     return (
         <div className='space-y-5'>
-            <KiloSectionHeader
-                eyebrow='Kilo'
-                title='Gateway Models'
-                description='Set the default Kilo model for this profile and decide which provider/model pairs specialists should prefer.'
-            />
-
             <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
 
             <ProviderSpecialistDefaultsSection profileId={profileId} />
@@ -256,12 +216,6 @@ export function KiloRoutingScreen({ controller }: { controller: KiloSettingsCont
 
     return (
         <div className='space-y-5'>
-            <KiloSectionHeader
-                eyebrow='Kilo'
-                title='Routing'
-                description='Choose how Kilo should route a selected model when multiple upstream providers are available.'
-            />
-
             <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
 
             <ProviderDefaultModelSection

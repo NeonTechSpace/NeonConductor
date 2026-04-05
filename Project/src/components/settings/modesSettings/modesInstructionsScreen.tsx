@@ -5,7 +5,6 @@ import {
     BuiltInToolMetadataCard,
     CustomModeEditorSection,
     FileBackedModeInventorySection,
-    PromptInstructionsHeader,
     PromptLayerCard,
     TopLevelPromptSection,
     formatTopLevelLabel,
@@ -40,8 +39,6 @@ export function ModesInstructionsScreen(input: {
 
     return (
         <div className='space-y-5'>
-            <PromptInstructionsHeader />
-
             <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
 
             <div className='grid gap-5 xl:grid-cols-2'>

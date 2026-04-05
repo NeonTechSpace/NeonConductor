@@ -5,10 +5,7 @@ import { ModesSettingsView } from '@/web/components/settings/modesSettings/view'
 import { ProfileSettingsView } from '@/web/components/settings/profileSettingsView';
 import { ProviderSettingsView } from '@/web/components/settings/providerSettingsView';
 import { RegistrySettingsView } from '@/web/components/settings/registrySettingsView';
-import {
-    SETTINGS_PRIMARY_SECTIONS,
-    type SettingsSelection,
-} from '@/web/components/settings/settingsNavigation';
+import type { SettingsSelection } from '@/web/components/settings/settingsNavigation';
 
 export interface SettingsSectionContentProps {
     profileId: string;
@@ -17,13 +14,6 @@ export interface SettingsSectionContentProps {
     onProfileActivated: (profileId: string) => void;
     currentWorkspaceFingerprint?: string;
     selectedWorkspaceLabel?: string;
-}
-
-export function getGroupedSettingsPrimarySections() {
-    return {
-        kiloSections: SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'kilo'),
-        generalSections: SETTINGS_PRIMARY_SECTIONS.filter((section) => section.group === 'general'),
-    };
 }
 
 export function SettingsSectionContent({

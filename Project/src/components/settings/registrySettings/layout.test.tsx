@@ -63,10 +63,10 @@ vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
 import { RegistrySettingsScreen } from '@/web/components/settings/registrySettings/view';
 
 describe('registry settings layout', () => {
-    it('wraps long registry content in an inner scroll container', () => {
+    it('renders registry content without a nested settings rail', () => {
         const html = renderToStaticMarkup(<RegistrySettingsScreen profileId='profile_default' />);
 
-        expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]');
-        expect(html).toContain('min-h-0 flex-1 overflow-y-auto p-5 md:p-6');
+        expect(html).toContain('Rules, Skills &amp; Modes');
+        expect(html).toContain('min-h-0 min-w-0 overflow-y-auto');
     });
 });

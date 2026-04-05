@@ -71,10 +71,6 @@ vi.mock('@/web/components/settings/contextSettings/contextResolvedSummarySection
     ContextResolvedSummarySection: () => createElement('section', undefined, 'summary'),
 }));
 
-vi.mock('@/web/components/settings/shared/settingsSelectionRail', () => ({
-    SettingsSelectionRail: ({ title }: { title: string }) => createElement('aside', undefined, title),
-}));
-
 vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
     SettingsFeedbackBanner: () => null,
 }));
@@ -82,11 +78,11 @@ vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
 import { ContextSettingsView } from '@/web/components/settings/contextSettingsView';
 
 describe('context settings view layout', () => {
-    it('keeps the split pane constrained and leaves scrolling to the detail column', () => {
+    it('renders the content surface without a nested settings rail', () => {
         const html = renderToStaticMarkup(createElement(ContextSettingsView, { activeProfileId: 'profile_default' }));
 
-        expect(html).toContain('grid h-full min-h-0 min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]');
-        expect(html).toContain('min-h-0 min-w-0 overflow-y-auto p-5 md:p-6');
+        expect(html).toContain('Context &amp; Limits');
+        expect(html).toContain('min-h-0 min-w-0 overflow-y-auto');
         expect(html).toContain('Profile Scope');
         expect(html).toContain('media');
         expect(html).toContain('global');

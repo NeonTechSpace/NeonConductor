@@ -87,10 +87,6 @@ vi.mock('@/web/components/settings/profileSettings/profileCreateSection', () => 
     ProfileCreateSection: () => <div>create section</div>,
 }));
 
-vi.mock('@/web/components/settings/shared/settingsSelectionRail', () => ({
-    SettingsSelectionRail: () => <div>settings rail</div>,
-}));
-
 vi.mock('@/web/components/settings/shared/settingsFeedbackBanner', () => ({
     SettingsFeedbackBanner: () => null,
 }));
@@ -100,7 +96,7 @@ vi.mock('@/web/components/modelSelection/modelPicker', () => ({
 }));
 
 vi.mock('@/web/components/ui/button', () => ({
-    Button: (props: any) => <button>{props.children}</button>,
+    Button: ({ children }: { children?: string }) => <button>{children}</button>,
 }));
 
 vi.mock('@/web/components/ui/confirmDialog', () => ({
@@ -116,6 +112,7 @@ describe('ProfileSettingsView', () => {
         );
 
         expect(html).toContain('Utility AI');
+        expect(html).toContain('Selected Profile');
         expect(html).toContain('Save Utility AI');
         expect(html).not.toContain('Interim AI model override');
         expect(html).not.toContain('threadTitleAiModel');

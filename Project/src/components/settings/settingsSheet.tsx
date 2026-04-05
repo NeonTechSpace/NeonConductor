@@ -2,15 +2,13 @@ import { X } from 'lucide-react';
 import { startTransition, useRef, useState } from 'react';
 
 import {
-    getGroupedSettingsPrimarySections,
-    SettingsSectionContent,
-} from '@/web/components/settings/settingsSectionContent';
-import {
     getDefaultSettingsSelection,
     SETTINGS_PRIMARY_SECTIONS,
     type SettingsPrimarySectionId,
     type SettingsSelection,
 } from '@/web/components/settings/settingsNavigation';
+import { SettingsSectionContent } from '@/web/components/settings/settingsSectionContent';
+import { getGroupedSettingsPrimarySections } from '@/web/components/settings/shared/settingsWorkspaceNavigation';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
 
