@@ -1,6 +1,5 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
-import iconv from 'iconv-lite';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { spawnMock } = vi.hoisted(() => ({
@@ -185,7 +184,10 @@ describe('runCommandToolHandler', () => {
             })
             .mockImplementationOnce(() =>
                 createSpawnedProcess({
-                    stdout: iconv.encode('Привет из PowerShell', 'cp1251'),
+                    stdout: Buffer.from([
+                        0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2, 0x20, 0xe8, 0xe7, 0x20, 0x50, 0x6f, 0x77, 0x65, 0x72, 0x53,
+                        0x68, 0x65, 0x6c, 0x6c,
+                    ]),
                 })
             );
 

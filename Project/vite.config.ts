@@ -3,22 +3,12 @@ import tailwindcss from '@tailwindcss/vite';
 import { devtools } from '@tanstack/devtools-vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
-import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
 import electron from 'vite-plugin-electron';
 
+import { createElectronMainBuildConfig } from './electron/main/buildConfig';
 import { createPreloadBuildConfig } from './electron/main/preload/buildConfig';
 import { resolveElectronChildEnv } from './electron/main/runtime/electronChildEnv';
-
-const electronMainExternalModules = [
-    'electron',
-    'electron-updater',
-    'ws',
-    /^@modelcontextprotocol\/sdk(?:\/.*)?$/,
-    ...builtinModules
-        .filter((moduleName) => !moduleName.startsWith('_'))
-        .flatMap((moduleName) => [moduleName, `node:${moduleName}`]),
-];
 
 function buildPreloadOptions(input: string, outputFileName: string) {
     return {
@@ -70,16 +60,7 @@ export default defineConfig(async () => {
                             env: resolveElectronChildEnv(),
                         });
                     },
-                    vite: {
-                        resolve: {
-                            tsconfigPaths: true,
-                        },
-                        build: {
-                            rollupOptions: {
-                                external: electronMainExternalModules,
-                            },
-                        },
-                    },
+                    vite: createElectronMainBuildConfig(),
                 },
                 buildPreloadOptions('electron/main/preload/index.ts', 'mainWindow'),
                 buildPreloadOptions('electron/main/preload/splash.ts', 'splashWindow'),

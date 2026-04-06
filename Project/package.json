@@ -77,7 +77,6 @@
         "electron-store": "^11.0.2",
         "electron-trpc-experimental": "1.0.0-alpha.1",
         "evlog": "^2.9.0",
-        "iconv-lite": "0.7.0",
         "kysely": "^0.28.14",
         "lucide-react": "^0.577.0",
         "neverthrow": "^8.2.0",

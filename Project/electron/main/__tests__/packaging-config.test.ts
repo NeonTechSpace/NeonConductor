@@ -34,16 +34,20 @@ describe('electron-builder packaging config', () => {
 
     it('keeps the splash page and named preload bundles in the desktop build config', () => {
         const viteConfigPath = path.join(process.cwd(), 'vite.config.ts');
+        const mainBuildConfigPath = path.join(process.cwd(), 'electron', 'main', 'buildConfig.ts');
         const preloadBuildConfigPath = path.join(process.cwd(), 'electron', 'main', 'preload', 'buildConfig.ts');
         const splashHtmlPath = path.join(process.cwd(), 'splash.html');
         const contents = readFileSync(viteConfigPath, 'utf8');
+        const mainBuildConfigContents = readFileSync(mainBuildConfigPath, 'utf8');
         const preloadBuildConfigContents = readFileSync(preloadBuildConfigPath, 'utf8');
 
         expect(readFileSync(splashHtmlPath, 'utf8')).toContain('/src/splash/main.ts');
+        expect(contents).toContain('createElectronMainBuildConfig');
         expect(contents).toContain("buildPreloadOptions('electron/main/preload/index.ts', 'mainWindow')");
         expect(contents).toContain("buildPreloadOptions('electron/main/preload/splash.ts', 'splashWindow')");
         expect(contents).toContain('createPreloadBuildConfig');
         expect(contents).toContain("splash: 'splash.html'");
+        expect(mainBuildConfigContents).toContain('isElectronMainExternalModule');
         expect(preloadBuildConfigContents).toContain('.cjs');
     });
 

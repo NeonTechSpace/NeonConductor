@@ -64,9 +64,6 @@ importers:
       evlog:
         specifier: ^2.9.0
         version: 2.9.0(patch_hash=f210e5dc66b12df9cea0c607b8b65b27e11fcb0da7a28f5ac0e365c4ef38aaba)(express@5.2.1)(hono@4.12.9)(react@19.2.4)(vite@8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
-      iconv-lite:
-        specifier: 0.7.0
-        version: 0.7.0
       kysely:
         specifier: ^0.28.14
         version: 0.28.14
