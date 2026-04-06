@@ -154,6 +154,7 @@
             "@typescript-eslint/utils": "8.57.1"
         },
         "patchedDependencies": {
+            "electron-trpc-experimental@1.0.0-alpha.1": "patches/electron-trpc-experimental@1.0.0-alpha.1.patch",
             "evlog@2.9.0": "patches/evlog@2.9.0.patch"
         }
     }

@@ -8,6 +8,9 @@ overrides:
   '@typescript-eslint/utils': 8.57.1
 
 patchedDependencies:
+  electron-trpc-experimental@1.0.0-alpha.1:
+    hash: a0c34ff705c8ab8d6726538de8f451151e610562100a87748b3d12452cca9274
+    path: patches/electron-trpc-experimental@1.0.0-alpha.1.patch
   evlog@2.9.0:
     hash: f210e5dc66b12df9cea0c607b8b65b27e11fcb0da7a28f5ac0e365c4ef38aaba
     path: patches/evlog@2.9.0.patch
@@ -60,7 +63,7 @@ importers:
         version: 11.0.2
       electron-trpc-experimental:
         specifier: 1.0.0-alpha.1
-        version: 1.0.0-alpha.1(@trpc/client@11.15.0(@trpc/server@11.15.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.15.0(typescript@5.9.3))(electron@41.0.3)
+        version: 1.0.0-alpha.1(patch_hash=a0c34ff705c8ab8d6726538de8f451151e610562100a87748b3d12452cca9274)(@trpc/client@11.15.0(@trpc/server@11.15.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.15.0(typescript@5.9.3))(electron@41.0.3)
       evlog:
         specifier: ^2.9.0
         version: 2.9.0(patch_hash=f210e5dc66b12df9cea0c607b8b65b27e11fcb0da7a28f5ac0e365c4ef38aaba)(express@5.2.1)(hono@4.12.9)(react@19.2.4)(vite@8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
@@ -6674,7 +6677,7 @@ snapshots:
 
   electron-to-chromium@1.5.321: {}
 
-  electron-trpc-experimental@1.0.0-alpha.1(@trpc/client@11.15.0(@trpc/server@11.15.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.15.0(typescript@5.9.3))(electron@41.0.3):
+  electron-trpc-experimental@1.0.0-alpha.1(patch_hash=a0c34ff705c8ab8d6726538de8f451151e610562100a87748b3d12452cca9274)(@trpc/client@11.15.0(@trpc/server@11.15.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.15.0(typescript@5.9.3))(electron@41.0.3):
     dependencies:
       '@trpc/client': 11.15.0(@trpc/server@11.15.0(typescript@5.9.3))(typescript@5.9.3)
       '@trpc/server': 11.15.0(typescript@5.9.3)
