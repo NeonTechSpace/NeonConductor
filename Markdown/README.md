@@ -27,7 +27,7 @@
 </div>
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/d9557370-952a-476c-b159-019f0d0427b8" alt="NeonConductor mascot" width="180" />
+  <img src="https://github.com/user-attachments/assets/e05f7336-ec9a-47e9-9efb-055ece09a6bc" alt="NeonConductor mascot" width="180" />
 </p>
 
 <p align="center">
@@ -39,7 +39,7 @@
 > [!IMPORTANT]
 > This project is currently under active development.
 
-> The repo was rebased to tidy things up (only while the foundation is still being laid), and renamed from `KiloDesktop` to `NeonConductor` since it's not an official Kilo product... yet?
+> The repo was rebased to tidy things up (only while the foundation is still being laid)
 
 Release channels map to branches:
 
