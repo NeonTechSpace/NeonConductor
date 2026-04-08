@@ -70,6 +70,9 @@
 - Keep it concise enough to resist context rot, but complete enough that another AI can act safely without access to `Research`.
 - Human contributor workflow, release flow, and local setup live in `Markdown/CONTRIBUTING.md`.
 - Historical and architectural explanation lives in `Research`.
+- Feature-affecting and subsystem-boundary changes must update `Research/Current System Blueprint.md`.
+- Frontend/backend ownership changes must update the blueprint relation maps.
+- Removals and deferments must be reflected in the blueprint immediately, not later.
 - Do not create new markdown docs outside `Research` unless the user explicitly allows it.
 - Do not commit machine-specific absolute paths in docs, tests, configs, or source.
 
