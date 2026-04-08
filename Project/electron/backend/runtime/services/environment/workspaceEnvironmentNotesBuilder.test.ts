@@ -7,7 +7,6 @@ import type {
     WorkspaceProjectNodeExpectation,
 } from '@/app/backend/runtime/contracts/types/runtime';
 import { buildWorkspaceEnvironmentNotes } from '@/app/backend/runtime/services/environment/workspaceEnvironmentNotesBuilder';
-import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 function buildMarkers(input: Partial<WorkspaceEnvironmentMarkers>): WorkspaceEnvironmentMarkers {
     return {
@@ -106,7 +105,7 @@ describe('workspaceEnvironmentNotesBuilder', () => {
                 },
             }),
             vendoredNode: {
-                version: VENDORED_NODE_VERSION,
+                version: '24.14.1',
                 available: true,
                 targetKey: 'win32-x64',
                 executablePath: 'C:\\vendor\\node.exe',
@@ -122,8 +121,6 @@ describe('workspaceEnvironmentNotesBuilder', () => {
             'This workspace looks Node/TypeScript-oriented.',
             'tsx is available for TypeScript repo scripts and utilities.',
             'The pinned VCS preference "jj" is not available on this machine.',
-            `Vendored Node v${VENDORED_NODE_VERSION} is available for Neon's code runtime.`,
-            `This workspace looks Node/TypeScript-oriented, but no explicit root Node version expectation was found. Vendored Node v${VENDORED_NODE_VERSION} is the only trusted known runtime.`,
         ]);
     });
 
@@ -159,7 +156,7 @@ describe('workspaceEnvironmentNotesBuilder', () => {
                 },
             }),
             vendoredNode: {
-                version: VENDORED_NODE_VERSION,
+                version: '24.14.1',
                 available: false,
                 reason: 'missing_asset',
             },
@@ -170,7 +167,6 @@ describe('workspaceEnvironmentNotesBuilder', () => {
             'This workspace has a .git marker, but git is not available on this machine.',
             'This workspace signals npm via package-lock.json, but npm is not available on this machine.',
             'Do not assume Python is available for repo-local scripts.',
-            `Vendored Node v${VENDORED_NODE_VERSION} should be available for this platform, but the packaged/runtime asset is missing.`,
         ]);
     });
 
@@ -198,7 +194,7 @@ describe('workspaceEnvironmentNotesBuilder', () => {
                 },
             }),
             vendoredNode: {
-                version: VENDORED_NODE_VERSION,
+                version: '24.14.1',
                 available: false,
                 reason: 'unsupported_target',
             },
@@ -207,12 +203,9 @@ describe('workspaceEnvironmentNotesBuilder', () => {
         expect(notes).toContain(
             'Command execution uses Windows Command Prompt via cmd.exe fallback. Do not assume PowerShell or POSIX shell syntax.'
         );
-        expect(notes).toContain(
-            `Vendored Node v${VENDORED_NODE_VERSION} is not available for this platform or architecture.`
-        );
     });
 
-    it('describes explicit project-runtime mismatch advisory notes', () => {
+    it('does not emit vendored-runtime mismatch notes after runtime presentation moved out of generic notes', () => {
         const packageJsonExpectation = buildProjectNodeExpectation({
             source: 'package_json_engines',
             rawValue: '^22',
@@ -245,7 +238,7 @@ describe('workspaceEnvironmentNotesBuilder', () => {
                 },
             }),
             vendoredNode: {
-                version: VENDORED_NODE_VERSION,
+                version: '24.14.1',
                 available: true,
                 targetKey: 'linux-x64',
                 executablePath: '/vendor/node',
@@ -253,8 +246,10 @@ describe('workspaceEnvironmentNotesBuilder', () => {
             ...(packageJsonExpectation ? { projectNodeExpectation: packageJsonExpectation } : {}),
         });
 
-        expect(notes).toContain(
-            `This workspace declares a root Node expectation of "^22", which does not match vendored Node v${VENDORED_NODE_VERSION}.`
-        );
+        expect(notes).toEqual([
+            'Command execution uses a /bin/sh-style shell. Do not assume PowerShell syntax.',
+            'This workspace looks Node/TypeScript-oriented.',
+            'Do not assume Python is available for repo-local scripts.',
+        ]);
     });
 });

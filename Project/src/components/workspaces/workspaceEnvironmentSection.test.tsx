@@ -122,6 +122,25 @@ const snapshotWithNoAvailableCommands = {
     },
 };
 
+const unavailableVendoredNodeSnapshot = {
+    ...snapshot,
+    vendoredNode: {
+        version: VENDORED_NODE_VERSION,
+        available: false,
+        reason: 'missing_asset' as const,
+    },
+};
+
+const mismatchedProjectNodeSnapshot = {
+    ...snapshot,
+    projectNodeExpectation: {
+        source: 'package_json_engines' as const,
+        rawValue: '>=25',
+        detectedMajor: 25,
+        satisfiesVendoredNode: false,
+    },
+};
+
 describe('WorkspaceEnvironmentPreviewCard', () => {
     it('renders backend snapshot guidance', () => {
         const html = renderToStaticMarkup(
@@ -137,6 +156,9 @@ describe('WorkspaceEnvironmentPreviewCard', () => {
         expect(html).toContain('pnpm');
         expect(html).toContain('PowerShell');
         expect(html).toContain('pwsh.exe');
+        expect(html).toContain(`Vendored Node v${VENDORED_NODE_VERSION} available (win32-x64)`);
+        expect(html).toContain('Workspace expects ^24 from package.json engines');
+        expect(html).toContain('Matches vendored Node');
         expect(html).toContain('The pinned VCS preference');
     });
 
@@ -169,6 +191,33 @@ describe('WorkspaceEnvironmentPreviewCard', () => {
 
         expect(html).toContain('Command Prompt');
         expect(html).toContain('cmd.exe');
+    });
+
+    it('renders vendored runtime unavailability explicitly', () => {
+        const html = renderToStaticMarkup(
+            <WorkspaceEnvironmentPreviewCard
+                isLoading={false}
+                errorMessage={undefined}
+                snapshot={unavailableVendoredNodeSnapshot}
+                emptyMessage='No preview yet.'
+            />
+        );
+
+        expect(html).toContain(`Vendored Node v${VENDORED_NODE_VERSION}: Missing packaged/runtime asset`);
+    });
+
+    it('renders explicit runtime mismatch state', () => {
+        const html = renderToStaticMarkup(
+            <WorkspaceEnvironmentPreviewCard
+                isLoading={false}
+                errorMessage={undefined}
+                snapshot={mismatchedProjectNodeSnapshot}
+                emptyMessage='No preview yet.'
+            />
+        );
+
+        expect(html).toContain('Workspace expects &gt;=25 from package.json engines');
+        expect(html).toContain('Does not match vendored Node');
     });
 
     it('renders error state when inspection fails', () => {
@@ -212,6 +261,8 @@ describe('WorkspaceEnvironmentSection', () => {
         expect(html).toContain('Version control to prefer');
         expect(html).toContain('Package manager to prefer');
         expect(html).toContain('This workspace prefers pnpm.');
+        expect(html).toContain(`Vendored Node v${VENDORED_NODE_VERSION} available (win32-x64)`);
+        expect(html).toContain('Workspace expects ^24 from package.json engines');
         expect(html).toContain('The pinned VCS preference');
     });
 });

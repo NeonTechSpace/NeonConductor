@@ -2,6 +2,7 @@ import { useWorkspaceEnvironmentPreferencesController } from '@/web/components/w
 
 import type {
     WorkspaceEnvironmentCommandAvailability,
+    WorkspaceProjectNodeExpectation,
     WorkspaceEnvironmentSnapshot,
     WorkspacePreferenceRecord,
     WorkspacePreferredPackageManager,
@@ -100,7 +101,74 @@ function formatShellSummary(snapshot: WorkspaceEnvironmentSnapshot): string {
     return `${formatFamilyLabel(snapshot.platform)} via ${familyLabel} (${snapshot.shellExecutable})`;
 }
 
+function formatVendoredNodeSummary(snapshot: WorkspaceEnvironmentSnapshot): string {
+    if (snapshot.vendoredNode.available) {
+        const targetSuffix = snapshot.vendoredNode.targetKey ? ` (${snapshot.vendoredNode.targetKey})` : '';
+        return `Vendored Node v${snapshot.vendoredNode.version} available${targetSuffix}`;
+    }
+
+    if (snapshot.vendoredNode.reason === 'unsupported_target') {
+        return `Vendored Node v${snapshot.vendoredNode.version}: Unavailable for this platform/architecture`;
+    }
+
+    return `Vendored Node v${snapshot.vendoredNode.version}: Missing packaged/runtime asset`;
+}
+
+function formatProjectNodeExpectationSource(
+    source: WorkspaceProjectNodeExpectation['source']
+): string {
+    if (source === 'package_json_engines') {
+        return 'package.json engines';
+    }
+
+    if (source === 'nvmrc') {
+        return '.nvmrc';
+    }
+
+    if (source === 'node_version_file') {
+        return '.node-version';
+    }
+
+    return 'workspace markers';
+}
+
+function formatProjectNodeExpectation(snapshot: WorkspaceEnvironmentSnapshot): string | undefined {
+    if (!snapshot.projectNodeExpectation) {
+        return undefined;
+    }
+
+    if (snapshot.projectNodeExpectation.source === 'node_workspace_heuristic') {
+        return 'No explicit root Node version found';
+    }
+
+    const rawValue = snapshot.projectNodeExpectation.rawValue?.trim();
+    if (!rawValue) {
+        return undefined;
+    }
+
+    return `Workspace expects ${rawValue} from ${formatProjectNodeExpectationSource(snapshot.projectNodeExpectation.source)}`;
+}
+
+function formatProjectNodeCompatibility(snapshot: WorkspaceEnvironmentSnapshot): string | undefined {
+    if (!snapshot.projectNodeExpectation) {
+        return undefined;
+    }
+
+    if (snapshot.projectNodeExpectation.satisfiesVendoredNode === true) {
+        return 'Matches vendored Node';
+    }
+
+    if (snapshot.projectNodeExpectation.satisfiesVendoredNode === false) {
+        return 'Does not match vendored Node';
+    }
+
+    return undefined;
+}
+
 function RuntimeEnvironmentSummary({ snapshot }: { snapshot: WorkspaceEnvironmentSnapshot }) {
+    const projectNodeExpectation = formatProjectNodeExpectation(snapshot);
+    const projectNodeCompatibility = formatProjectNodeCompatibility(snapshot);
+
     return (
         <div className='space-y-3'>
             <div className='grid gap-3 md:grid-cols-3'>
@@ -136,6 +204,13 @@ function RuntimeEnvironmentSummary({ snapshot }: { snapshot: WorkspaceEnvironmen
                     <p className='text-muted-foreground mt-1 text-xs'>
                         Script runner {formatFamilyLabel(snapshot.effectivePreferences.scriptRunner)}
                     </p>
+                    <p className='text-muted-foreground mt-1 text-xs leading-5'>{formatVendoredNodeSummary(snapshot)}</p>
+                    {projectNodeExpectation ? (
+                        <p className='text-muted-foreground mt-1 text-xs leading-5'>{projectNodeExpectation}</p>
+                    ) : null}
+                    {projectNodeCompatibility ? (
+                        <p className='text-muted-foreground mt-1 text-xs leading-5'>{projectNodeCompatibility}</p>
+                    ) : null}
                 </div>
             </div>
 

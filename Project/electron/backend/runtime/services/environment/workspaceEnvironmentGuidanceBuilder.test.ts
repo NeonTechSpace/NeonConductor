@@ -74,12 +74,25 @@ function buildSnapshot(overrides: Partial<WorkspaceEnvironmentSnapshot>): Worksp
 }
 
 describe('workspaceEnvironmentGuidanceBuilder', () => {
-    it('includes shell executable and rg/search guidance when vendored ripgrep is available', () => {
-        const guidance = buildWorkspaceEnvironmentGuidance(buildSnapshot({}), {
+    it('includes explicit vendored runtime summary and rg/search guidance when vendored ripgrep is available', () => {
+        const guidance = buildWorkspaceEnvironmentGuidance(
+            buildSnapshot({
+                projectNodeExpectation: {
+                    source: 'package_json_engines',
+                    rawValue: '^24',
+                    detectedMajor: 24,
+                    satisfiesVendoredNode: true,
+                },
+            }),
+            {
             vendoredRipgrepAvailable: true,
-        });
+            }
+        );
 
         expect(guidance).toContain('Shell family: powershell. Shell executable: pwsh.exe.');
+        expect(guidance).toContain(`Vendored code runtime: Node v${VENDORED_NODE_VERSION}. Target: win32-x64.`);
+        expect(guidance).toContain('Workspace Node expectation: "^24" from package.json engines.');
+        expect(guidance).toContain('Vendored Node satisfies that expectation.');
         expect(guidance).toContain('prefer the native search_files tool');
         expect(guidance).toContain('prefer rg and rg --files');
     });
@@ -92,5 +105,49 @@ describe('workspaceEnvironmentGuidanceBuilder', () => {
         const guidance = buildWorkspaceEnvironmentGuidance(unresolvedSnapshot);
 
         expect(guidance).toContain('Windows shell could not be resolved.');
+    });
+
+    it('describes vendored runtime mismatch and heuristic workspaces without duplicating runtime notes', () => {
+        const guidance = buildWorkspaceEnvironmentGuidance(
+            buildSnapshot({
+                projectNodeExpectation: {
+                    source: 'package_json_engines',
+                    rawValue: '^22',
+                    detectedMajor: 22,
+                    satisfiesVendoredNode: false,
+                },
+                notes: [
+                    'This workspace looks Node/TypeScript-oriented.',
+                    'This workspace prefers pnpm.',
+                ],
+            })
+        );
+
+        expect(guidance).toContain('Workspace Node expectation: "^22" from package.json engines.');
+        expect(guidance).toContain('Vendored Node does not satisfy that expectation.');
+        expect(guidance).toContain('This workspace looks Node/TypeScript-oriented.');
+        expect(guidance).not.toContain(`Vendored Node v${VENDORED_NODE_VERSION} is available for Neon's code runtime.`);
+    });
+
+    it('describes unavailable vendored runtimes and heuristic fallback explicitly', () => {
+        const guidance = buildWorkspaceEnvironmentGuidance(
+            buildSnapshot({
+                vendoredNode: {
+                    version: VENDORED_NODE_VERSION,
+                    available: false,
+                    reason: 'missing_asset',
+                },
+                projectNodeExpectation: {
+                    source: 'node_workspace_heuristic',
+                },
+            })
+        );
+
+        expect(guidance).toContain(
+            `Vendored code runtime: Node v${VENDORED_NODE_VERSION}. Status: packaged/runtime asset missing.`
+        );
+        expect(guidance).toContain(
+            'Workspace looks Node/TypeScript-oriented, but no explicit root Node version expectation was found.'
+        );
     });
 });

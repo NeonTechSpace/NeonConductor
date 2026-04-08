@@ -18,6 +18,7 @@ import {
 import { appPromptLayerSettingsStore } from '@/app/backend/persistence/stores/runtime/appPromptLayerSettingsStore';
 import { resolveActiveMode } from '@/app/backend/runtime/services/mode/activeMode';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
+import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 describe('buildSessionSystemPrelude', () => {
     beforeEach(() => {
@@ -105,6 +106,7 @@ describe('buildSessionSystemPrelude', () => {
         expect(environmentGuidancePart.text).toContain(
             process.platform === 'win32' ? 'PowerShell' : '/bin/sh-style shell'
         );
+        expect(environmentGuidancePart.text).toContain(`Vendored code runtime: Node v${VENDORED_NODE_VERSION}.`);
     });
 
     it('assembles prompt layers in the documented order for chat sessions', async () => {
