@@ -129,7 +129,7 @@ const MODE_SEED = [
         label: 'Agent Debug',
         prompt: {},
         executionPolicy: {
-            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime'],
             workflowCapabilities: ['artifact_view'],
             behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
             runtimeProfile: 'mutating_agent',
@@ -141,7 +141,7 @@ const MODE_SEED = [
         label: 'Agent Code',
         prompt: {},
         executionPolicy: {
-            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp'],
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime'],
             workflowCapabilities: ['artifact_view'],
             behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
             runtimeProfile: 'mutating_agent',

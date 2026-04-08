@@ -128,7 +128,7 @@ describe('resolveRuntimeToolsForMode', () => {
 
     it('orders the built-in core deliberately for write-capable modes', async () => {
         const tools = await resolveRuntimeToolsForMode({
-            mode: buildMode({ toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell'] }),
+            mode: buildMode({ toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'code_runtime'] }),
         });
 
         expect(tools.map((tool) => tool.id)).toEqual([
@@ -142,7 +142,7 @@ describe('resolveRuntimeToolsForMode', () => {
 
     it('exposes write_file to custom modes that already declare filesystem_write', async () => {
         const tools = await resolveRuntimeToolsForMode({
-            mode: buildMode({ toolCapabilities: ['filesystem_read', 'filesystem_write'] }),
+            mode: buildMode({ toolCapabilities: ['filesystem_read', 'filesystem_write', 'code_runtime'] }),
         });
 
         expect(tools.map((tool) => tool.id)).toEqual(['list_files', 'read_file', 'search_files', 'write_file']);
@@ -232,5 +232,13 @@ describe('resolveRuntimeToolsForMode', () => {
         });
 
         expect(tools.map((tool) => tool.id)).toEqual(['list_files', 'read_file', 'search_files', 'mcp__read_only']);
+    });
+
+    it('does not expose dormant execute_code even when a mode includes code_runtime', async () => {
+        const tools = await resolveRuntimeToolsForMode({
+            mode: buildMode({ toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'code_runtime'] }),
+        });
+
+        expect(tools.map((tool) => tool.id)).not.toContain('execute_code');
     });
 });

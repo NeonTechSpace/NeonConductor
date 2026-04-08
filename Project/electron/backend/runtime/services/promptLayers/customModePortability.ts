@@ -246,6 +246,9 @@ function convertToolCapabilitiesToPortableGroups(toolCapabilities: ToolCapabilit
     if (capabilitySet.has('git')) {
         throw new Error('Portable export does not support the "git" tool capability in this slice.');
     }
+    if (capabilitySet.has('code_runtime')) {
+        throw new Error('Portable export does not support the "code_runtime" tool capability in this slice.');
+    }
     if (capabilitySet.has('filesystem_write') && !capabilitySet.has('filesystem_read')) {
         throw new Error('Portable export cannot represent "filesystem_write" without "filesystem_read".');
     }

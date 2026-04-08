@@ -52,7 +52,7 @@ export type PermissionScopeKind = (typeof permissionScopeKinds)[number];
 export const permissionResolutions = ['deny', 'allow_once', 'allow_profile', 'allow_workspace'] as const;
 export type PermissionResolution = (typeof permissionResolutions)[number];
 
-export const toolCapabilities = ['filesystem_read', 'filesystem_write', 'shell', 'git', 'mcp'] as const;
+export const toolCapabilities = ['filesystem_read', 'filesystem_write', 'shell', 'git', 'mcp', 'code_runtime'] as const;
 export type ToolCapability = (typeof toolCapabilities)[number];
 
 export const workflowCapabilities = [

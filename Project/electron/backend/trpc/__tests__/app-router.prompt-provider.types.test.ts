@@ -63,7 +63,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             customInstructions?: string;
             whenToUse?: string;
             tags?: string[];
-            toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+            toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
         };
     }>();
     expectTypeOf<AppRouterInputs['prompt']['updateCustomMode']>().toExtend<{
@@ -79,7 +79,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             customInstructions?: string;
             whenToUse?: string;
             tags?: string[];
-            toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+            toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
         };
     }>();
     expectTypeOf<AppRouterInputs['prompt']['deleteCustomMode']>().toExtend<{
@@ -351,7 +351,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                         description?: string;
                         whenToUse?: string;
                         tags?: string[];
-                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
                     }>
                 >;
                 workspace?: Record<
@@ -363,7 +363,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                         description?: string;
                         whenToUse?: string;
                         tags?: string[];
-                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
                     }>
                 >;
             };
@@ -386,7 +386,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             customInstructions?: string;
             whenToUse?: string;
             tags?: string[];
-            toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp'>;
+            toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
         };
     }>();
 });

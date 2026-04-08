@@ -35,8 +35,8 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(agentModes.modes.map((mode) => [mode.modeKey, mode.executionPolicy.toolCapabilities ?? []])).toEqual([
             ['ask', ['filesystem_read']],
-            ['code', ['filesystem_read', 'filesystem_write', 'shell', 'mcp']],
-            ['debug', ['filesystem_read', 'filesystem_write', 'shell', 'mcp']],
+            ['code', ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime']],
+            ['debug', ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime']],
             ['plan', ['filesystem_read', 'mcp']],
         ]);
 
@@ -168,6 +168,7 @@ describe('runtime contracts: permissions and tooling', () => {
 
         const tools = await caller.tool.list();
         expect(tools.tools.map((item) => item.id)).toContain('read_file');
+        expect(tools.tools.map((item) => item.id)).not.toContain('execute_code');
         const readTool = tools.tools.find((item) => item.id === 'read_file');
         expect(readTool?.requiresWorkspace).toBe(true);
         expect(readTool?.capabilities).toContain('filesystem_read');

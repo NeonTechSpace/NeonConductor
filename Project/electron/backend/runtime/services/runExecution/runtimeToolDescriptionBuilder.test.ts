@@ -67,4 +67,16 @@ describe('runtimeToolDescriptionBuilder', () => {
         expect(description).toContain('overwrite: true');
         expect(description).toContain('run_command only when shell behavior is specifically needed');
     });
+
+    it('formats future execute_code guidance without exposing the tool', () => {
+        const description = composeRuntimeToolDescription({
+            descriptionKind: 'execute_code',
+            baseDescription: 'Execute code in the vendored runtime.',
+            guidanceContext: buildGuidanceContext(),
+        });
+
+        expect(description).toContain('preferred orchestration surface');
+        expect(description).toContain('typed host interaction');
+        expect(description).toContain('run_command only when shell-specific behavior or external tooling is the correct fit');
+    });
 });

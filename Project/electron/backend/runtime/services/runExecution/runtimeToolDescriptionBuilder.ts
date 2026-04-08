@@ -1,4 +1,5 @@
 import type { RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
+import type { BuiltInRuntimeToolDescriptionKind } from '@/app/backend/runtime/services/runExecution/builtInRuntimeToolContracts';
 
 function joinSections(sections: string[]): string {
     return sections.filter((section) => section.trim().length > 0).join('\n\n');
@@ -87,8 +88,16 @@ function buildWriteFileGuidance(): string {
     ]);
 }
 
+function buildExecuteCodeGuidance(): string {
+    return joinSections([
+        'This future tool is intended to be the preferred orchestration surface for branching, filtering, retries, transformations, and typed host interaction.',
+        'Use run_command only when shell-specific behavior or external tooling is the correct fit.',
+    ]);
+}
+
 export function composeRuntimeToolDescription(input: {
-    toolId: string;
+    descriptionKind?: BuiltInRuntimeToolDescriptionKind;
+    toolId?: string;
     baseDescription: string;
     guidanceContext?: RuntimeToolGuidanceContext;
 }): string {
@@ -96,16 +105,22 @@ export function composeRuntimeToolDescription(input: {
         return input.baseDescription;
     }
 
-    if (input.toolId === 'run_command') {
+    const descriptionKind = input.descriptionKind ?? input.toolId ?? 'default';
+
+    if (descriptionKind === 'run_command') {
         return joinSections([input.baseDescription, buildRunCommandGuidance({ guidanceContext: input.guidanceContext })]);
     }
 
-    if (input.toolId === 'search_files') {
+    if (descriptionKind === 'search_files') {
         return joinSections([input.baseDescription, buildSearchFilesGuidance()]);
     }
 
-    if (input.toolId === 'write_file') {
+    if (descriptionKind === 'write_file') {
         return joinSections([input.baseDescription, buildWriteFileGuidance()]);
+    }
+
+    if (descriptionKind === 'execute_code') {
+        return joinSections([input.baseDescription, buildExecuteCodeGuidance()]);
     }
 
     return input.baseDescription;

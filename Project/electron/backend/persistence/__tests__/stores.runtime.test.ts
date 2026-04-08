@@ -662,6 +662,12 @@ describe('persistence stores: runtime domain', () => {
             behaviorFlags: ['checkpoint_eligible', 'artifact_producing', 'child_worker_capable'],
             runtimeProfile: 'orchestrator',
         });
+        expect(modes.find((mode) => mode.topLevelTab === 'agent' && mode.modeKey === 'code')?.executionPolicy).toMatchObject({
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime'],
+        });
+        expect(modes.find((mode) => mode.topLevelTab === 'agent' && mode.modeKey === 'debug')?.executionPolicy).toMatchObject({
+            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime'],
+        });
         expect(skillfiles).toEqual([]);
         expect(account.authState).toBe('logged_out');
         expect(account.profileId).toBe(profileId);
