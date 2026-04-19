@@ -14,7 +14,7 @@ import { resolveRunAuth } from '@/app/backend/runtime/services/runExecution/reso
 import type { PreparedRunnableCandidate } from '@/app/backend/runtime/services/runExecution/types';
 
 import type {
-    ComposerImageAttachmentInput,
+    ComposerAttachmentInput,
     ModeDefinition,
     RuntimeProviderId,
     RuntimeRunOptions,
@@ -58,7 +58,11 @@ interface PrepareRunnableCandidateInput {
     topLevelTab: TopLevelTab;
     mode: ModeDefinition;
     runtimeOptions: RuntimeRunOptions;
-    attachments?: ComposerImageAttachmentInput[];
+    attachments?: ComposerAttachmentInput[];
+}
+
+function hasImageAttachments(attachments: ComposerAttachmentInput[] | undefined): boolean {
+    return (attachments ?? []).some((attachment) => attachment.kind !== 'text_file_attachment');
 }
 
 function buildInvalidPersistedModelError(input: {
@@ -153,7 +157,7 @@ export async function prepareRunnableCandidate(
         });
     }
 
-    if (input.attachments && input.attachments.length > 0 && !modelCapabilities.features.supportsVision) {
+    if (hasImageAttachments(input.attachments) && !modelCapabilities.features.supportsVision) {
         return okRunExecution({
             kind: 'incompatible',
             error: {

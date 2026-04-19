@@ -59,17 +59,31 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         profileId: string;
         sessionId: string;
         prompt: string;
-        attachments?: Array<{
-            clientId: string;
-            mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
-            bytesBase64: string;
-            width: number;
-            height: number;
-            sha256: string;
-        }>;
+        attachments?: Array<
+            | {
+                  clientId: string;
+                  kind?: 'image_attachment';
+                  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+                  bytesBase64: string;
+                  width: number;
+                  height: number;
+                  sha256: string;
+              }
+            | {
+                  clientId: string;
+                  kind: 'text_file_attachment';
+                  fileName: string;
+                  mimeType: string;
+                  text: string;
+                  sha256: string;
+                  byteSize: number;
+                  encoding: 'utf-8' | 'utf-8-bom';
+              }
+        >;
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         workspaceFingerprint?: string;
+        sandboxId?: string;
         runtimeOptions: {
             reasoning: {
                 effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';

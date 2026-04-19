@@ -178,6 +178,11 @@ export function useConversationShellComposerSetup(input: UseConversationShellCom
                 ...planStartInput,
             } as Parameters<typeof input.mutations.planStartMutation.mutateAsync>[0]),
         startRun: input.mutations.startRunMutation.mutateAsync,
+        queueRun: async (queueInput) => {
+            const queued = await input.mutations.queueRunMutation.mutateAsync(queueInput);
+            await input.queries.outboxQuery.refetch();
+            return queued;
+        },
         onPlanStarted: (result) => {
             input.applyPlanWorkspaceUpdate({
                 found: true,

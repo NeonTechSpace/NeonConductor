@@ -19,8 +19,7 @@ import type {
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 
-import type { ResolvedWorkspaceContext } from '@/shared/contracts';
-import type { OpenAIExecutionMode } from '@/shared/contracts';
+import type { OpenAIExecutionMode, ResolvedWorkspaceContext, RunContractPreview } from '@/shared/contracts';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
@@ -51,6 +50,8 @@ export async function runToTerminalState(input: {
     sandboxId?: EntityId<'sb'>;
     workspaceContext: ResolvedWorkspaceContext;
     assistantMessageId: EntityId<'msg'>;
+    runContractPreview?: RunContractPreview;
+    sourceOutboxEntryId?: EntityId<'outbox'>;
     signal: AbortSignal;
 }): Promise<void> {
     try {
@@ -71,6 +72,8 @@ export async function runToTerminalState(input: {
                 errorCode: checkpoint.error.code,
                 errorMessage: checkpoint.error.message,
                 logMessage: 'Run moved to failed terminal state.',
+                ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+                ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
             });
             return;
         }
@@ -155,6 +158,8 @@ export async function runToTerminalState(input: {
                     sessionId: input.sessionId,
                     runId: input.runId,
                     logMessage: 'Run moved to aborted terminal state.',
+                    ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+                    ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
                 });
                 return;
             }
@@ -165,6 +170,8 @@ export async function runToTerminalState(input: {
                 errorCode: executionResult.error.code,
                 errorMessage: executionResult.error.message,
                 logMessage: 'Run moved to failed terminal state.',
+                ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+                ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
             });
             return;
         }
@@ -180,6 +187,8 @@ export async function runToTerminalState(input: {
             authMethod: input.authMethod,
             outcome: executionResult.value,
             logMessage: 'Run moved to completed terminal state.',
+            ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+            ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
         });
     } catch (error) {
         if (isAbortError(error) || input.signal.aborted) {
@@ -188,6 +197,8 @@ export async function runToTerminalState(input: {
                 sessionId: input.sessionId,
                 runId: input.runId,
                 logMessage: 'Run moved to aborted terminal state.',
+                ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+                ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
             });
             return;
         }
@@ -200,6 +211,8 @@ export async function runToTerminalState(input: {
             errorCode: 'invariant_violation',
             errorMessage: message,
             logMessage: 'Run moved to failed terminal state.',
+            ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+            ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
         });
     }
 }

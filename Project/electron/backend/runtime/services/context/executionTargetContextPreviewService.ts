@@ -1,5 +1,5 @@
 import type {
-    ComposerImageAttachmentInput,
+    ComposerAttachmentInput,
     ResolvedContextPolicy,
     ResolvedContextState,
     EntityId,
@@ -46,7 +46,7 @@ export async function resolveExecutionTargetContextPreview(input: {
         preparedContextProfileDefaults: PreparedContextProfileDefaults;
         modePromptLayerOverrides: PreparedContextModeOverrides;
         prompt: string;
-        attachments?: ComposerImageAttachmentInput[];
+        attachments?: ComposerAttachmentInput[];
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         workspaceFingerprint?: string;

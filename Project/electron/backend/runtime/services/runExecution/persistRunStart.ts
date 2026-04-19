@@ -1,8 +1,6 @@
-import { messageMediaStore, messageStore, runStore, sessionStore } from '@/app/backend/persistence/stores';
-import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
+import { conversationAttachmentStore, messageStore, runStore, sessionStore } from '@/app/backend/persistence/stores';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
 import { publishRunStartedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
-import { decodeAttachmentBytes } from '@/app/backend/runtime/services/runExecution/contextParts';
 import {
     emitCacheResolutionEvent,
     emitMessageCreatedEvent,
@@ -75,33 +73,66 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
     }
 
     for (const attachment of input.input.attachments ?? []) {
-        const mediaId = createEntityId('media');
-        const imagePart = await messageStore.appendPart({
+        if (attachment.kind !== 'text_file_attachment') {
+            const attachmentSummary = await conversationAttachmentStore.createSnapshot({
+                profileId: input.input.profileId,
+                sessionId: input.input.sessionId,
+                attachment,
+            });
+            const imagePart = await messageStore.appendPart({
+                messageId: userMessage.id,
+                partType: 'image',
+                payload: {
+                    attachmentId: attachmentSummary.id,
+                    mimeType: attachment.mimeType,
+                    width: attachment.width,
+                    height: attachment.height,
+                    sha256: attachment.sha256,
+                    ...(attachment.fileName ? { fileName: attachment.fileName } : {}),
+                },
+            });
+            await conversationAttachmentStore.attachToMessagePart({
+                attachmentId: attachmentSummary.id,
+                messagePartId: imagePart.id,
+            });
+            await emitMessagePartAppendedEvent({
+                runId: run.id,
+                profileId: input.input.profileId,
+                sessionId: input.input.sessionId,
+                messageId: userMessage.id,
+                part: imagePart,
+            });
+            continue;
+        }
+
+        const attachmentSummary = await conversationAttachmentStore.createSnapshot({
+            profileId: input.input.profileId,
+            sessionId: input.input.sessionId,
+            attachment,
+        });
+        const textFilePart = await messageStore.appendPart({
             messageId: userMessage.id,
-            partType: 'image',
+            partType: 'text_file_attachment',
             payload: {
-                mediaId,
+                attachmentId: attachmentSummary.id,
+                fileName: attachment.fileName,
                 mimeType: attachment.mimeType,
-                width: attachment.width,
-                height: attachment.height,
+                text: attachment.text,
                 sha256: attachment.sha256,
+                byteSize: attachment.byteSize,
+                encoding: attachment.encoding,
             },
         });
-        await messageMediaStore.create({
-            mediaId,
-            messagePartId: imagePart.id,
-            mimeType: attachment.mimeType,
-            width: attachment.width,
-            height: attachment.height,
-            sha256: attachment.sha256,
-            bytes: decodeAttachmentBytes(attachment),
+        await conversationAttachmentStore.attachToMessagePart({
+            attachmentId: attachmentSummary.id,
+            messagePartId: textFilePart.id,
         });
         await emitMessagePartAppendedEvent({
             runId: run.id,
             profileId: input.input.profileId,
             sessionId: input.input.sessionId,
             messageId: userMessage.id,
-            part: imagePart,
+            part: textFilePart,
         });
     }
 

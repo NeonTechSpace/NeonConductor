@@ -12,7 +12,8 @@ import type { EntityId } from '@/shared/contracts';
 interface MessageMediaPreviewProps {
     profileId: string;
     item: {
-        mediaId: EntityId<'media'>;
+        mediaId?: EntityId<'media'>;
+        attachmentId?: EntityId<'att'>;
         width: number;
         height: number;
         mimeType: string;
@@ -53,7 +54,8 @@ export function MessageMediaPreview({ profileId, item }: MessageMediaPreviewProp
 
     const { objectUrl: imageUrl, mediaQuery } = useMessageMediaUrl({
         profileId,
-        mediaId: item.mediaId,
+        ...(item.mediaId ? { mediaId: item.mediaId } : {}),
+        ...(item.attachmentId ? { attachmentId: item.attachmentId } : {}),
         enabled: isNearViewport || isLightboxOpen,
     });
     const detail = `${String(item.width)} x ${String(item.height)}`;

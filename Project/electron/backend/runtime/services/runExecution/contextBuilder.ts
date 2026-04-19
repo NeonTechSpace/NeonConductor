@@ -107,6 +107,7 @@ export async function buildRunContext(input: {
     return okRunExecution({
         messages: preparedContext.value.messages,
         digest: preparedContext.value.digest,
+        preparedContext: preparedContext.value.preparedContext,
         ...(preparedContext.value.retrievedMemory ? { retrievedMemory: preparedContext.value.retrievedMemory } : {}),
     });
 }

@@ -435,6 +435,69 @@ CREATE TABLE message_media (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE conversation_attachments (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    message_part_id TEXT NULL UNIQUE REFERENCES message_parts(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('image_attachment', 'text_file_attachment')),
+    file_name TEXT NULL,
+    mime_type TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    byte_size INTEGER NOT NULL CHECK (byte_size >= 0),
+    width INTEGER NULL,
+    height INTEGER NULL,
+    encoding TEXT NULL CHECK (encoding IS NULL OR encoding IN ('utf-8', 'utf-8-bom')),
+    bytes_blob BLOB NULL,
+    text_content TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+        (kind = 'image_attachment' AND bytes_blob IS NOT NULL AND text_content IS NULL AND width IS NOT NULL AND height IS NOT NULL AND width > 0 AND height > 0)
+        OR
+        (kind = 'text_file_attachment' AND bytes_blob IS NULL AND text_content IS NOT NULL AND width IS NULL AND height IS NULL AND encoding IS NOT NULL)
+    )
+);
+
+CREATE TABLE execution_receipts (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    run_id TEXT NOT NULL UNIQUE REFERENCES runs(id) ON DELETE CASCADE,
+    contract_json TEXT NOT NULL,
+    approvals_used_json TEXT NOT NULL,
+    tools_invoked_json TEXT NOT NULL,
+    memory_hit_count INTEGER NOT NULL CHECK (memory_hit_count >= 0),
+    cache_result_json TEXT NOT NULL,
+    usage_summary_json TEXT NOT NULL,
+    terminal_outcome_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE session_outbox_entries (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    state TEXT NOT NULL CHECK (state IN ('queued', 'running', 'paused_for_review', 'paused_for_permission', 'completed', 'failed', 'cancelled')),
+    sequence INTEGER NOT NULL CHECK (sequence >= 0),
+    prompt TEXT NOT NULL,
+    steering_snapshot_json TEXT NOT NULL,
+    latest_run_contract_json TEXT NULL,
+    latest_receipt_id TEXT NULL REFERENCES execution_receipts(id) ON DELETE SET NULL,
+    active_permission_request_id TEXT NULL REFERENCES permissions(id) ON DELETE SET NULL,
+    paused_reason TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE session_outbox_entry_attachments (
+    outbox_entry_id TEXT NOT NULL REFERENCES session_outbox_entries(id) ON DELETE CASCADE,
+    attachment_id TEXT NOT NULL REFERENCES conversation_attachments(id) ON DELETE CASCADE,
+    sequence INTEGER NOT NULL CHECK (sequence >= 0),
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (outbox_entry_id, attachment_id)
+);
+
 CREATE TABLE tool_result_artifacts (
     message_part_id TEXT PRIMARY KEY REFERENCES message_parts(id) ON DELETE CASCADE,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -1459,6 +1522,24 @@ CREATE UNIQUE INDEX idx_message_parts_message_sequence
 
 CREATE INDEX idx_message_media_part_id
     ON message_media(message_part_id);
+
+CREATE INDEX idx_conversation_attachments_session_created_at
+    ON conversation_attachments(session_id, created_at ASC);
+
+CREATE INDEX idx_conversation_attachments_message_part_id
+    ON conversation_attachments(message_part_id);
+
+CREATE INDEX idx_execution_receipts_session_created_at
+    ON execution_receipts(session_id, created_at DESC);
+
+CREATE INDEX idx_session_outbox_entries_session_sequence
+    ON session_outbox_entries(session_id, sequence ASC);
+
+CREATE INDEX idx_session_outbox_entries_session_state
+    ON session_outbox_entries(session_id, state);
+
+CREATE INDEX idx_session_outbox_entry_attachments_entry_sequence
+    ON session_outbox_entry_attachments(outbox_entry_id, sequence ASC);
 
 CREATE INDEX idx_tool_result_artifacts_profile_session
     ON tool_result_artifacts(profile_id, session_id);

@@ -7,6 +7,7 @@ export { appContextSettingsStore } from '@/app/backend/persistence/stores/runtim
 export { appPromptLayerSettingsStore } from '@/app/backend/persistence/stores/runtime/appPromptLayerSettingsStore';
 export { builtInModePromptOverrideStore } from '@/app/backend/persistence/stores/runtime/builtInModePromptOverrideStore';
 export { conversationStore } from '@/app/backend/persistence/stores/conversation/conversationStore';
+export { conversationAttachmentStore } from '@/app/backend/persistence/stores/conversation/attachments/conversationAttachmentStore';
 export { diffStore } from '@/app/backend/persistence/stores/runtime/diffStore';
 export { flowStore } from '@/app/backend/persistence/stores/runtime/flowStore';
 export { kiloRoutingPreferenceStore } from '@/app/backend/persistence/stores/provider/kiloRoutingPreferenceStore';
@@ -40,6 +41,7 @@ export { providerCatalogStore } from '@/app/backend/persistence/stores/provider/
 export { providerEmbeddingCatalogStore } from '@/app/backend/persistence/stores/provider/providerEmbeddingCatalogStore';
 export { providerStore } from '@/app/backend/persistence/stores/provider/providerStore';
 export { runStore } from '@/app/backend/persistence/stores/conversation/runs/runStore';
+export { executionReceiptStore } from '@/app/backend/persistence/stores/conversation/runs/executionReceiptStore';
 export { runUsageStore } from '@/app/backend/persistence/stores/conversation/runs/runUsageStore';
 export { rulesetStore } from '@/app/backend/persistence/stores/registry/rulesetStore';
 export { runtimeEventStore } from '@/app/backend/persistence/stores/runtime/runtimeEventStore';
@@ -49,6 +51,7 @@ export { sessionAttachedSkillStore } from '@/app/backend/persistence/stores/conv
 export { sessionContextCompactionStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionContextCompactionStore';
 export { sessionContextCompactionPreparationStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionContextCompactionPreparationStore';
 export { sessionStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionStore';
+export { sessionOutboxStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionOutboxStore';
 export { settingsStore } from '@/app/backend/persistence/stores/profile/settingsStore';
 export { skillfileStore } from '@/app/backend/persistence/stores/registry/skillfileStore';
 export { tagStore } from '@/app/backend/persistence/stores/conversation/threads/tagStore';

@@ -2,18 +2,27 @@ import { buildComposerControlsReadModel } from '@/web/components/conversation/pa
 import { buildComposerSubmissionPolicy } from '@/web/components/conversation/panels/composerActionPanel/buildComposerSubmissionPolicy';
 import { ComposerContextSummarySection } from '@/web/components/conversation/panels/composerActionPanel/ComposerContextSummarySection';
 import { ComposerPromptCard } from '@/web/components/conversation/panels/composerActionPanel/ComposerPromptCard';
+import { ComposerRunContractPreviewSection } from '@/web/components/conversation/panels/composerActionPanel/ComposerRunContractPreviewSection';
 import { ComposerRunControlsBar } from '@/web/components/conversation/panels/composerActionPanel/ComposerRunControlsBar';
 import { ComposerStatusFooter } from '@/web/components/conversation/panels/composerActionPanel/ComposerStatusFooter';
-import { formatImageBytes, shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
+import {
+    formatAttachmentBytes,
+    formatImageBytes,
+    shouldSubmitComposerOnEnter,
+} from '@/web/components/conversation/panels/composerActionPanel/helpers';
 import type { ComposerActionPanelProps } from '@/web/components/conversation/panels/composerActionPanel/types';
 import { useComposerAttachmentController } from '@/web/components/conversation/panels/composerActionPanel/useComposerAttachmentController';
 import { useComposerContextCardController } from '@/web/components/conversation/panels/composerActionPanel/useComposerContextCardController';
 import { useComposerDraftController } from '@/web/components/conversation/panels/composerActionPanel/useComposerDraftController';
 import { useComposerSlashCommandController } from '@/web/components/conversation/panels/composerActionPanel/useComposerSlashCommandController';
 import { shouldInterceptSlashSubmit } from '@/web/components/conversation/panels/composerSlashCommands';
+import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
+import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
+import { trpc } from '@/web/trpc/client';
 
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { skipToken } from '@tanstack/react-query';
+import { useDeferredValue, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 export { shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
 export { handleComposerSlashAcceptance } from '@/web/components/conversation/panels/composerActionPanel/useComposerSlashCommandController';
@@ -43,6 +52,9 @@ function readReasoningExplanationMessage(input: {
 function ComposerActionPanelDraftBoundary({
     profileId,
     pendingImages,
+    pendingTextFiles,
+    readyComposerAttachments,
+    hasBlockingPendingAttachments,
     disabled,
     controlsDisabled,
     submitDisabled,
@@ -70,6 +82,8 @@ function ComposerActionPanelDraftBoundary({
     selectedSessionId,
     workspaceFingerprint,
     sandboxId,
+    runtimeOptions,
+    showRunContractPreview = true,
     attachedRules = [],
     missingAttachedRuleKeys = [],
     attachedSkills = [],
@@ -83,9 +97,11 @@ function ComposerActionPanelDraftBoundary({
     onReasoningEffortChange,
     onModeChange,
     onPromptEdited,
-    onAddImageFiles,
+    onAddFiles,
     onRemovePendingImage,
+    onRemovePendingTextFile,
     onRetryPendingImage,
+    onQueuePrompt,
     onSubmitPrompt,
     onCompactContext,
 }: ComposerActionPanelProps) {
@@ -104,9 +120,9 @@ function ComposerActionPanelDraftBoundary({
         ...(selectedProviderStatus ? { selectedProviderStatus } : {}),
     });
     const attachmentController = useComposerAttachmentController({
-        canAttachImages,
+        canAttachFiles: true,
         controlsDisabled: controlsReadModel.composerControlsDisabled,
-        onAddImageFiles,
+        onAddFiles,
     });
     const slashCommandController = useComposerSlashCommandController({
         profileId,
@@ -137,6 +153,7 @@ function ComposerActionPanelDraftBoundary({
     });
     const submissionPolicy = buildComposerSubmissionPolicy({
         pendingImages,
+        pendingTextFiles,
         canAttachImages,
         runErrorMessage,
         maxImageAttachmentsPerMessage,
@@ -159,6 +176,42 @@ function ComposerActionPanelDraftBoundary({
     const composerErrorTone = selectedModelCompatibilityState === 'incompatible' ? 'destructive' : 'muted';
     const composerSubmitDisabled =
         controlsReadModel.composerSubmitDisabled || isSubmitting || !submissionPolicy.canSubmit;
+    const deferredDraftPrompt = useDeferredValue(draftController.draftPrompt);
+    const validatedSelectedProviderId =
+        selectedProviderId && isProviderId(selectedProviderId) ? selectedProviderId : undefined;
+    const runContractPreviewInput =
+        showRunContractPreview &&
+        selectedSessionId &&
+        validatedSelectedProviderId &&
+        selectedModelId &&
+        !hasBlockingPendingAttachments &&
+        (deferredDraftPrompt.trim().length > 0 || readyComposerAttachments.length > 0)
+            ? {
+                  profileId,
+                  sessionId: selectedSessionId,
+                  prompt: deferredDraftPrompt.trim(),
+                  attachments: readyComposerAttachments,
+                  providerId: validatedSelectedProviderId,
+                  modelId: selectedModelId,
+                  topLevelTab,
+                  modeKey: activeModeKey,
+                  ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+                  ...(sandboxId ? { sandboxId } : {}),
+                  runtimeOptions,
+              }
+            : skipToken;
+    const runContractPreviewQuery = trpc.session.previewRunContract.useQuery(
+        runContractPreviewInput,
+        PROGRESSIVE_QUERY_OPTIONS
+    );
+    const runContractPreviewUnavailableMessage =
+        hasBlockingPendingAttachments
+            ? undefined
+            : runContractPreviewQuery.data && !runContractPreviewQuery.data.available
+              ? runContractPreviewQuery.data.message ?? 'Run contract preview is unavailable for the current draft.'
+              : !selectedSessionId
+                ? 'Select a session to inspect the run contract for the current draft.'
+                : undefined;
 
     function handlePromptEdited() {
         if (slashCommandController.slashCommandError) {
@@ -177,21 +230,34 @@ function ComposerActionPanelDraftBoundary({
                 }}>
                 <div className='space-y-3 px-4 py-4'>
                     {contextState ? (
-                    <ComposerContextSummarySection
-                        contextState={contextState}
-                        contextFeedback={contextCardController.contextFeedback}
-                        canCompactContext={canCompactContext}
-                        isCompactingContext={isCompactingContext}
-                        onCompactContext={() => {
-                            void contextCardController.handleCompactContext();
-                        }}
-                    />
-                ) : null}
+                        <ComposerContextSummarySection
+                            contextState={contextState}
+                            contextFeedback={contextCardController.contextFeedback}
+                            canCompactContext={canCompactContext}
+                            isCompactingContext={isCompactingContext}
+                            onCompactContext={() => {
+                                void contextCardController.handleCompactContext();
+                            }}
+                        />
+                    ) : null}
+                    {showRunContractPreview ? (
+                        <ComposerRunContractPreviewSection
+                            isLoading={runContractPreviewQuery.isFetching}
+                            waitingForAttachments={hasBlockingPendingAttachments}
+                            {...(runContractPreviewQuery.data?.available
+                                ? { preview: runContractPreviewQuery.data.preview }
+                                : {})}
+                            {...(runContractPreviewUnavailableMessage
+                                ? { unavailableMessage: runContractPreviewUnavailableMessage }
+                                : {})}
+                        />
+                    ) : null}
                     <ComposerPromptCard
                         isDragActive={attachmentController.isDragActive}
                         canAttachImages={canAttachImages}
                         imageAttachmentBlockedReason={imageAttachmentBlockedReason}
                         pendingImages={pendingImages}
+                        pendingTextFiles={pendingTextFiles}
                         composerErrorMessage={submissionPolicy.composerErrorMessage}
                         composerErrorTone={composerErrorTone}
                         draftPrompt={draftController.draftPrompt}
@@ -257,6 +323,8 @@ function ComposerActionPanelDraftBoundary({
                         onRetryPendingImage={onRetryPendingImage}
                         onRemovePendingImage={onRemovePendingImage}
                         formatImageBytes={formatImageBytes}
+                        formatAttachmentBytes={formatAttachmentBytes}
+                        onRemovePendingTextFile={onRemovePendingTextFile}
                     />
                     <ComposerRunControlsBar
                         composerControlsDisabled={controlsReadModel.composerControlsDisabled}
@@ -277,11 +345,19 @@ function ComposerActionPanelDraftBoundary({
                         compactConnectionLabel={controlsReadModel.compactConnectionLabel}
                         modelOptions={modelOptions}
                         submitButtonLabel={submissionPolicy.hasBlockingPendingImages ? 'Images preparing…' : 'Start Run'}
+                        queueButtonLabel='Queue'
                         onProfileChange={onProfileChange}
                         onProviderChange={onProviderChange}
                         onModelChange={onModelChange}
                         onReasoningEffortChange={onReasoningEffortChange}
                         onModeChange={onModeChange}
+                        {...(onQueuePrompt
+                            ? {
+                                  onQueuePrompt: () => {
+                                      onQueuePrompt(draftController.draftPrompt);
+                                  },
+                              }
+                            : {})}
                         onOpenFilePicker={() => {
                             attachmentController.openFilePicker();
                         }}

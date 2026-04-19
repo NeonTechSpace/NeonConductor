@@ -9,9 +9,9 @@ import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 import type { ComposerLightboxState } from '@/web/components/conversation/panels/composerActionPanel/types';
 
 export function useComposerAttachmentController(input: {
-    canAttachImages: boolean;
+    canAttachFiles: boolean;
     controlsDisabled: boolean;
-    onAddImageFiles: (files: FileList | File[]) => void;
+    onAddFiles: (files: FileList | File[]) => void;
 }) {
     const [isDragActive, setIsDragActive] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<ComposerLightboxState | undefined>(undefined);
@@ -32,7 +32,7 @@ export function useComposerAttachmentController(input: {
         },
         handleDragOver(event: React.DragEvent<HTMLDivElement>) {
             event.preventDefault();
-            if (!input.canAttachImages || input.controlsDisabled) {
+            if (!input.canAttachFiles || input.controlsDisabled) {
                 return;
             }
 
@@ -48,7 +48,7 @@ export function useComposerAttachmentController(input: {
         handleDrop(event: React.DragEvent<HTMLDivElement>) {
             event.preventDefault();
             setIsDragActive(false);
-            if (!input.canAttachImages || input.controlsDisabled) {
+            if (!input.canAttachFiles || input.controlsDisabled) {
                 return;
             }
 
@@ -57,11 +57,11 @@ export function useComposerAttachmentController(input: {
                 return;
             }
 
-            input.onAddImageFiles(files);
+            input.onAddFiles(files);
         },
         handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
             if (event.target.files && event.target.files.length > 0) {
-                input.onAddImageFiles(event.target.files);
+                input.onAddFiles(event.target.files);
                 event.target.value = '';
             }
         },
@@ -71,7 +71,7 @@ export function useComposerAttachmentController(input: {
                 return;
             }
 
-            input.onAddImageFiles(files);
+            input.onAddFiles(files);
             if (event.clipboardData.getData('text').trim().length === 0) {
                 event.preventDefault();
             }

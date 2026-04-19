@@ -8,6 +8,11 @@ import {
     type ComposerPendingImage,
 } from '@/web/components/conversation/hooks/composerImageAttachments';
 import {
+    createPendingTextFile,
+    prepareComposerTextFileAttachment,
+    type ComposerPendingTextFile,
+} from '@/web/components/conversation/hooks/composerTextFileAttachments';
+import {
     failComposerPendingImage,
     pumpComposerPendingImages,
     queueComposerPendingImageForRetry,
@@ -26,6 +31,7 @@ import type {
     SessionStartRunInput,
     TopLevelTab,
 } from '@/shared/contracts';
+import { isEntityId } from '@/shared/contracts';
 
 type ComposerPlanStartInput = PlanStartInput & {
     planningDepth?: PlanningDepth;
@@ -66,6 +72,7 @@ interface UseConversationShellComposerInput<
     planningDepthSelection: PlanningDepth;
     startPlan: (input: ComposerPlanStartInput) => Promise<TPlanStartResult>;
     startRun: (input: SessionStartRunInput) => Promise<TRunStartAcceptedResult | TRunStartRejectedResult>;
+    queueRun: (input: SessionStartRunInput) => Promise<unknown>;
     onPlanStarted: (result: TPlanStartResult) => void;
     onRunStarted: (result: TRunStartAcceptedResult) => void;
 }
@@ -108,12 +115,14 @@ export function useConversationShellComposer<
     TRunStartRejectedResult extends { accepted: false; message?: string },
 >(input: UseConversationShellComposerInput<TPlanStartResult, TRunStartAcceptedResult, TRunStartRejectedResult>) {
     const [pendingImages, setPendingImages] = useState<ComposerPendingImage[]>([]);
+    const [pendingTextFiles, setPendingTextFiles] = useState<ComposerPendingTextFile[]>([]);
     const [optimisticUserMessage, setOptimisticUserMessage] = useState<OptimisticConversationUserMessage | undefined>(
         undefined
     );
     const [runSubmitError, setRunSubmitError] = useState<string | undefined>(undefined);
     const [promptResetKey, setPromptResetKey] = useState(0);
     const pendingImagesRef = useRef<ComposerPendingImage[]>([]);
+    const pendingTextFilesRef = useRef<ComposerPendingTextFile[]>([]);
     const promptRef = useRef('');
 
     useEffect(() => {
@@ -129,6 +138,11 @@ export function useConversationShellComposer<
         setPendingImages(nextImages);
     }
 
+    function replacePendingTextFiles(nextFiles: ComposerPendingTextFile[]) {
+        pendingTextFilesRef.current = nextFiles;
+        setPendingTextFiles(nextFiles);
+    }
+
     function updatePendingImages(updater: (current: ComposerPendingImage[]) => ComposerPendingImage[]) {
         const nextImages = updater(pendingImagesRef.current);
         replacePendingImages(nextImages);
@@ -140,6 +154,10 @@ export function useConversationShellComposer<
             releasePendingImageResources(image);
         }
         replacePendingImages([]);
+    }
+
+    function clearPendingTextFiles() {
+        replacePendingTextFiles([]);
     }
 
     function failImageAttachment(message: string) {
@@ -191,39 +209,79 @@ export function useConversationShellComposer<
         });
     }
 
-    function onAddImageFiles(inputFiles: FileList | File[]) {
-        setRunSubmitError(undefined);
-
-        if (!input.canAttachImages) {
-            failImageAttachment(
-                input.imageAttachmentBlockedReason ?? 'Select a vision-capable run target to attach images.'
-            );
-            return;
+    async function prepareTextFile(file: File, clientId: string) {
+        const prepared = await prepareComposerTextFileAttachment(file, clientId);
+        replacePendingTextFiles(
+            pendingTextFilesRef.current.map((candidate) =>
+                candidate.clientId !== clientId
+                    ? candidate
+                    : prepared.isOk()
+                      ? {
+                            clientId,
+                            fileName: file.name,
+                            status: 'ready',
+                            byteSize: prepared.value.attachment.byteSize,
+                            attachment: prepared.value.attachment,
+                        }
+                      : {
+                            clientId,
+                            fileName: file.name,
+                            status: 'failed',
+                            errorMessage: prepared.error.message,
+                        }
+            )
+        );
+        if (prepared.isErr()) {
+            failImageAttachment(prepared.error.message);
         }
+    }
+
+    function onAddFiles(inputFiles: FileList | File[]) {
+        setRunSubmitError(undefined);
 
         const allFiles = Array.from(inputFiles);
         const imageFiles = allFiles.filter((file) => file.type.startsWith('image/'));
-        if (imageFiles.length === 0) {
-            failImageAttachment('Only image files can be attached to a prompt.');
+        const textFiles = allFiles.filter((file) => !file.type.startsWith('image/'));
+        if (imageFiles.length === 0 && textFiles.length === 0) {
+            failImageAttachment('Only screenshots/images and UTF-8 text/code files can be attached to a prompt.');
             return;
         }
 
-        const availableSlots = Math.max(0, input.maxImageAttachmentsPerMessage - pendingImagesRef.current.length);
-        if (availableSlots === 0) {
-            failImageAttachment(
-                `You can attach up to ${String(input.maxImageAttachmentsPerMessage)} images per message.`
-            );
-            return;
+        if (imageFiles.length > 0) {
+            if (!input.canAttachImages) {
+                failImageAttachment(
+                    input.imageAttachmentBlockedReason ?? 'Select a vision-capable run target to attach images.'
+                );
+            } else {
+                const availableSlots = Math.max(0, input.maxImageAttachmentsPerMessage - pendingImagesRef.current.length);
+                if (availableSlots === 0) {
+                    failImageAttachment(
+                        `You can attach up to ${String(input.maxImageAttachmentsPerMessage)} images per message.`
+                    );
+                } else {
+                    const acceptedImageFiles = imageFiles.slice(0, availableSlots);
+                    if (acceptedImageFiles.length < imageFiles.length) {
+                        failImageAttachment(`Only the first ${String(input.maxImageAttachmentsPerMessage)} images were kept.`);
+                    }
+
+                    const nextImages = acceptedImageFiles.map((file) => createPendingImage(file));
+                    updatePendingImages((current) => [...current, ...nextImages]);
+                    pumpPendingImageCompressionQueue();
+                }
+            }
         }
 
-        const acceptedFiles = imageFiles.slice(0, availableSlots);
-        if (acceptedFiles.length < imageFiles.length) {
-            failImageAttachment(`Only the first ${String(input.maxImageAttachmentsPerMessage)} images were kept.`);
+        if (textFiles.length > 0) {
+            const nextPendingFiles = textFiles.map((file) => createPendingTextFile(file));
+            replacePendingTextFiles([...pendingTextFilesRef.current, ...nextPendingFiles]);
+            nextPendingFiles.forEach((pendingFile, index) => {
+                const sourceFile = textFiles[index];
+                if (!sourceFile) {
+                    return;
+                }
+                void prepareTextFile(sourceFile, pendingFile.clientId);
+            });
         }
-
-        const nextImages = acceptedFiles.map((file) => createPendingImage(file));
-        updatePendingImages((current) => [...current, ...nextImages]);
-        pumpPendingImageCompressionQueue();
     }
 
     function removePendingImage(clientId: string) {
@@ -253,10 +311,12 @@ export function useConversationShellComposer<
         pumpPendingImageCompressionQueue();
     }, [input.imageCompressionConcurrency]);
 
-    const readyAttachments = pendingImages.flatMap((image) =>
-        image.status === 'ready' && image.attachment ? [image.attachment] : []
-    );
+    const readyAttachments = [
+        ...pendingImages.flatMap((image) => (image.status === 'ready' && image.attachment ? [image.attachment] : [])),
+        ...pendingTextFiles.flatMap((file) => (file.status === 'ready' && file.attachment ? [file.attachment] : [])),
+    ];
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
+    const hasBlockingPendingTextFiles = pendingTextFiles.some((file) => file.status === 'reading');
 
     function createOptimisticUserMessage(
         sessionId: OptimisticConversationUserMessage['sessionId'],
@@ -274,9 +334,11 @@ export function useConversationShellComposer<
 
     return {
         pendingImages,
+        pendingTextFiles,
         optimisticUserMessage,
         promptResetKey,
         hasBlockingPendingImages,
+        hasBlockingPendingTextFiles,
         runSubmitError,
         setRunSubmitError,
         clearRunSubmitError: () => {
@@ -286,14 +348,70 @@ export function useConversationShellComposer<
             promptRef.current = '';
             setPromptResetKey((current) => current + 1);
             clearPendingImages();
+            clearPendingTextFiles();
             setRunSubmitError(undefined);
         },
         onPromptEdited: () => {
             setRunSubmitError(undefined);
         },
-        onAddImageFiles,
+        onAddFiles,
         onRemovePendingImage: removePendingImage,
+        onRemovePendingTextFile: (clientId: string) => {
+            replacePendingTextFiles(pendingTextFilesRef.current.filter((candidate) => candidate.clientId !== clientId));
+        },
         onRetryPendingImage: retryPendingImage,
+        onQueuePrompt: (prompt: string) => {
+            promptRef.current = prompt;
+            const hasPromptContent = prompt.trim().length > 0;
+            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0;
+
+            if (!hasSubmittableComposerContent) {
+                return;
+            }
+            if (hasBlockingPendingImages || hasBlockingPendingTextFiles) {
+                failImageAttachment('Wait until all attached files are ready, or remove the failed ones.');
+                return;
+            }
+            if (readyAttachments.some((attachment) => attachment.kind !== 'text_file_attachment') && !input.canAttachImages) {
+                failImageAttachment(
+                    input.imageAttachmentBlockedReason ?? 'Select a vision-capable run target to attach images.'
+                );
+                return;
+            }
+            if (input.submitBlockedReason) {
+                setRunSubmitError(input.submitBlockedReason);
+                return;
+            }
+            if (typeof input.selectedSessionId !== 'string' || !isEntityId(input.selectedSessionId, 'sess')) {
+                return;
+            }
+            const selectedSessionId = input.selectedSessionId;
+
+            void input
+                .queueRun({
+                    profileId: input.profileId,
+                    sessionId: selectedSessionId,
+                    prompt: promptRef.current.trim(),
+                    topLevelTab: input.topLevelTab,
+                    modeKey: input.modeKey,
+                    ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
+                    ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
+                    ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                    ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
+                    runtimeOptions: input.runtimeOptions,
+                })
+                .then(() => {
+                    setRunSubmitError(undefined);
+                    promptRef.current = '';
+                    setPromptResetKey((current) => current + 1);
+                    clearPendingImages();
+                    clearPendingTextFiles();
+                })
+                .catch((error: unknown) => {
+                    setRunSubmitError(error instanceof Error ? error.message : String(error));
+                });
+        },
         onSubmitPrompt: (prompt: string) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
@@ -302,8 +420,8 @@ export function useConversationShellComposer<
             if (!hasSubmittableComposerContent) {
                 return;
             }
-            if (hasBlockingPendingImages) {
-                failImageAttachment('Wait until all attached images are ready, or remove the failed ones.');
+            if (hasBlockingPendingImages || hasBlockingPendingTextFiles) {
+                failImageAttachment('Wait until all attached files are ready, or remove the failed ones.');
                 return;
             }
             if (readyAttachments.length > 0 && !input.canAttachImages) {
@@ -339,6 +457,7 @@ export function useConversationShellComposer<
                     promptRef.current = '';
                     setPromptResetKey((current) => current + 1);
                     clearPendingImages();
+                    clearPendingTextFiles();
                 },
                 onPlanStarted: (result) => {
                     input.onPlanStarted(result);

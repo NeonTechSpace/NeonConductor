@@ -1,4 +1,5 @@
-import { threadStore } from '@/app/backend/persistence/stores';
+import { sessionOutboxStore, threadStore } from '@/app/backend/persistence/stores';
+import { createExecutionReceipt } from '@/app/backend/runtime/services/runContract/receiptService';
 import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/types';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
 import {
@@ -14,7 +15,7 @@ import { appLog } from '@/app/main/logging';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import type { RunTerminalPersistenceResult } from '@/app/backend/runtime/services/runExecution/runTerminalPersistence';
 
-import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
+import type { EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
 
 async function markThreadAssistantActivity(input: { profileId: string; threadId: EntityId<'thr'> }): Promise<void> {
     await threadStore.markAssistantActivity(input.profileId, input.threadId, new Date().toISOString());
@@ -49,7 +50,20 @@ export async function applyRunTerminalSideEffects(input: {
     providerId?: RuntimeProviderId;
     modelId?: string;
     authMethod?: ProviderAuthMethod | 'none';
+    contract?: RunContractPreview;
+    sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
+    const receipt =
+        input.contract !== undefined
+            ? await createExecutionReceipt({
+                  profileId: input.profileId,
+                  sessionId: input.sessionId,
+                  runId: input.runId,
+                  contract: input.contract,
+                  outcome: input.outcome,
+              })
+            : undefined;
+
     if (input.outcome.kind === 'completed') {
         if (!input.threadId || !input.providerId || !input.modelId) {
             throw new InvariantError('Completed terminal outcome requires thread, provider, and model context.');
@@ -109,6 +123,18 @@ export async function applyRunTerminalSideEffects(input: {
             profileId: input.profileId,
             runId: input.runId,
         });
+
+        if (input.sourceOutboxEntryId) {
+            await sessionOutboxStore.update({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                entryId: input.sourceOutboxEntryId,
+                state: 'completed',
+                ...(receipt ? { latestReceiptId: receipt.id } : {}),
+                activePermissionRequestId: null,
+                pausedReason: null,
+            });
+        }
         return;
     }
 
@@ -139,6 +165,18 @@ export async function applyRunTerminalSideEffects(input: {
             sessionId: input.sessionId,
             runId: input.runId,
         });
+
+        if (input.sourceOutboxEntryId) {
+            await sessionOutboxStore.update({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                entryId: input.sourceOutboxEntryId,
+                state: 'cancelled',
+                ...(receipt ? { latestReceiptId: receipt.id } : {}),
+                activePermissionRequestId: null,
+                pausedReason: 'Run was aborted.',
+            });
+        }
         return;
     }
 
@@ -179,4 +217,16 @@ export async function applyRunTerminalSideEffects(input: {
         profileId: input.profileId,
         runId: input.runId,
     });
+
+    if (input.sourceOutboxEntryId) {
+        await sessionOutboxStore.update({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            entryId: input.sourceOutboxEntryId,
+            state: 'failed',
+            ...(receipt ? { latestReceiptId: receipt.id } : {}),
+            activePermissionRequestId: null,
+            pausedReason: input.outcome.errorMessage,
+        });
+    }
 }

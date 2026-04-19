@@ -70,6 +70,18 @@ export function invalidateSessionRuns(
     return toVoidPromise(utils.session.listRuns.invalidate());
 }
 
+export function invalidateSessionOutbox(
+    utils: TrpcUtils,
+    profileId: string | undefined,
+    sessionId: EntityId<'sess'> | undefined
+): Promise<void> {
+    if (profileId && sessionId) {
+        return toVoidPromise(utils.session.listOutbox.invalidate({ profileId, sessionId }));
+    }
+
+    return toVoidPromise(utils.session.listOutbox.invalidate());
+}
+
 export function invalidateRunDiffs(
     utils: TrpcUtils,
     profileId: string | undefined,
@@ -122,6 +134,18 @@ export function invalidateSelectedMessages(utils: TrpcUtils, context: RuntimeEve
     );
 }
 
+export function invalidateExecutionReceipt(
+    utils: TrpcUtils,
+    profileId: string | undefined,
+    runId: EntityId<'run'> | undefined
+): Promise<void> {
+    if (profileId && runId) {
+        return toVoidPromise(utils.session.getExecutionReceipt.invalidate({ profileId, runId }));
+    }
+
+    return toVoidPromise(utils.session.getExecutionReceipt.invalidate());
+}
+
 export function invalidatePlanActive(utils: TrpcUtils, context: RuntimeEventContext): Promise<void> {
     if (context.profileId && context.sessionId && context.topLevelTab) {
         return toVoidPromise(
@@ -172,7 +196,10 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
         utils.session.list.invalidate(),
         utils.session.status.invalidate(),
         utils.session.listRuns.invalidate(),
+        utils.session.listOutbox.invalidate(),
         utils.session.listMessages.invalidate(),
+        utils.session.getExecutionReceipt.invalidate(),
+        utils.session.getOutboxEntry.invalidate(),
         utils.diff.listByRun.invalidate(),
         utils.diff.getFilePatch.invalidate(),
         utils.checkpoint.list.invalidate(),

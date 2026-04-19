@@ -27,11 +27,13 @@ interface ComposerRunControlsBarProps {
     compactConnectionLabel: string | undefined;
     modelOptions: ModelPickerOption[];
     submitButtonLabel: string;
+    queueButtonLabel: string;
     onProfileChange: ((profileId: string) => void) | undefined;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
     onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
+    onQueuePrompt?: () => void;
     onOpenFilePicker: () => void;
 }
 
@@ -54,11 +56,13 @@ export function ComposerRunControlsBar({
     compactConnectionLabel,
     modelOptions,
     submitButtonLabel,
+    queueButtonLabel,
     onProfileChange,
     onProviderChange,
     onModelChange,
     onReasoningEffortChange,
     onModeChange,
+    onQueuePrompt,
     onOpenFilePicker,
 }: ComposerRunControlsBarProps) {
     return (
@@ -155,6 +159,17 @@ export function ComposerRunControlsBar({
                             Attach
                         </Button>
                 <div className='ml-auto'>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        className='mr-2 min-h-10 rounded-full'
+                        disabled={composerSubmitDisabled || isSubmitting || !onQueuePrompt}
+                        onClick={() => {
+                            onQueuePrompt?.();
+                        }}>
+                        {queueButtonLabel}
+                    </Button>
                     <Button
                         type='submit'
                         size='sm'

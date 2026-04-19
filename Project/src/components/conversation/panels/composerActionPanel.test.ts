@@ -160,12 +160,15 @@ function createContextState(
 }
 
 function createComposerActionPanelProps(
-    input: Omit<ComponentProps<typeof ComposerActionPanel>, 'profileId'>
+    input: Omit<Partial<ComponentProps<typeof ComposerActionPanel>>, 'profileId'>
 ): ComponentProps<typeof ComposerActionPanel> {
-    return {
+    const { pendingTextFiles, onAddFiles, onRemovePendingTextFile, ...rest } = input;
+    return Object.assign({}, rest, {
         profileId: 'profile_default',
-        ...input,
-    };
+        pendingTextFiles: pendingTextFiles ?? [],
+        onAddFiles: onAddFiles ?? (() => {}),
+        onRemovePendingTextFile: onRemovePendingTextFile ?? (() => {}),
+    }) as ComponentProps<typeof ComposerActionPanel>;
 }
 
 describe('composer enter handling', () => {
@@ -234,7 +237,7 @@ describe('composer enter handling', () => {
                     onReasoningEffortChange: () => {},
                     onModeChange: () => {},
                     onPromptEdited: () => {},
-                    onAddImageFiles: () => {},
+                    onAddFiles: () => {},
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},
@@ -280,7 +283,7 @@ describe('composer enter handling', () => {
                     onReasoningEffortChange: () => {},
                     onModeChange: () => {},
                     onPromptEdited: () => {},
-                    onAddImageFiles: () => {},
+                    onAddFiles: () => {},
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},
@@ -325,7 +328,7 @@ describe('composer enter handling', () => {
                     onReasoningEffortChange: () => {},
                     onModeChange: () => {},
                     onPromptEdited: () => {},
-                    onAddImageFiles: () => {},
+                    onAddFiles: () => {},
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},
@@ -374,7 +377,7 @@ describe('composer enter handling', () => {
                     onReasoningEffortChange: () => {},
                     onModeChange: () => {},
                     onPromptEdited: () => {},
-                    onAddImageFiles: () => {},
+                    onAddFiles: () => {},
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},
@@ -424,7 +427,7 @@ describe('composer enter handling', () => {
                         onReasoningEffortChange: () => {},
                         onModeChange: () => {},
                         onPromptEdited: () => {},
-                        onAddImageFiles: () => {},
+                        onAddFiles: () => {},
                         onRemovePendingImage: () => {},
                         onRetryPendingImage: () => {},
                         onSubmitPrompt: () => {},
@@ -492,6 +495,8 @@ describe('composer enter handling', () => {
                                     injectionCheckpoint: 'bootstrap',
                                     resolvedOrder: 0,
                                     countMode: 'estimated',
+                                    trustLevel: 'workspace_content',
+                                    instructionAuthority: 'contextualize',
                                     digest: 'ctxcontrib-resolved',
                                     dynamicExpansion: {
                                         sourceId: 'resolved',
@@ -519,6 +524,8 @@ describe('composer enter handling', () => {
                                     injectionCheckpoint: 'bootstrap',
                                     resolvedOrder: 1,
                                     countMode: 'estimated',
+                                    trustLevel: 'workspace_content',
+                                    instructionAuthority: 'contextualize',
                                     digest: 'ctxcontrib-blocked',
                                     dynamicExpansion: {
                                         sourceId: 'blocked',
@@ -540,7 +547,7 @@ describe('composer enter handling', () => {
                     onReasoningEffortChange: () => {},
                     onModeChange: () => {},
                     onPromptEdited: () => {},
-                    onAddImageFiles: () => {},
+                    onAddFiles: () => {},
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},
@@ -589,7 +596,7 @@ describe('composer enter handling', () => {
                     onReasoningEffortChange: () => {},
                     onModeChange: () => {},
                     onPromptEdited: () => {},
-                    onAddImageFiles: () => {},
+                    onAddFiles: () => {},
                     onRemovePendingImage: () => {},
                     onRetryPendingImage: () => {},
                     onSubmitPrompt: () => {},

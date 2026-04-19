@@ -7,11 +7,14 @@ type ComposerImageAttachmentMimeType = (typeof composerImageAttachmentMimeTypes)
 
 interface ComposerImageAttachmentInput {
     clientId: string;
+    kind: 'image_attachment';
     mimeType: ComposerImageAttachmentMimeType;
     bytesBase64: string;
     width: number;
     height: number;
     sha256: string;
+    byteSize?: number;
+    fileName?: string;
 }
 
 const MAX_IMAGE_EDGE_PX = 2048;
@@ -146,6 +149,7 @@ async function finalizePreparedAttachment(
 
     return ok({
         clientId,
+        kind: 'image_attachment',
         mimeType,
         bytesBase64,
         width,
@@ -223,11 +227,14 @@ async function compressImage(
                         status: 'success',
                         attachment: {
                             clientId: prepared.value.clientId,
+                            kind: 'image_attachment',
                             mimeType: prepared.value.mimeType,
                             bytesBase64: prepared.value.bytesBase64,
                             width: prepared.value.width,
                             height: prepared.value.height,
                             sha256: prepared.value.sha256,
+                            byteSize: prepared.value.byteSize,
+                            fileName: file.name,
                         },
                         byteSize: prepared.value.byteSize,
                     });
@@ -250,11 +257,14 @@ async function compressImage(
                             status: 'success',
                             attachment: {
                                 clientId: prepared.value.clientId,
+                                kind: 'image_attachment',
                                 mimeType: prepared.value.mimeType,
                                 bytesBase64: prepared.value.bytesBase64,
                                 width: prepared.value.width,
                                 height: prepared.value.height,
                                 sha256: prepared.value.sha256,
+                                byteSize: prepared.value.byteSize,
+                                fileName: file.name,
                             },
                             byteSize: prepared.value.byteSize,
                         });

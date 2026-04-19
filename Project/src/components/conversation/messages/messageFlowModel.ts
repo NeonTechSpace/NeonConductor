@@ -25,7 +25,8 @@ export type MessageFlowBodyEntry =
     | {
           id: string;
           type: MessageFlowImageEntryType;
-          mediaId: EntityId<'media'>;
+          mediaId?: EntityId<'media'>;
+          attachmentId?: EntityId<'att'>;
           mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
           width: number;
           height: number;
@@ -137,14 +138,15 @@ function buildBodyEntries(message: ConversationTanstackMessage): MessageFlowBody
 
             if (
                 imageEntryType &&
-                isEntityId(part.mediaId, 'media') &&
+                (isEntityId(part.mediaId, 'media') || isEntityId(part.attachmentId, 'att')) &&
                 typeof part.width === 'number' &&
                 typeof part.height === 'number'
             ) {
                 projected.push({
                     id: part.key,
                     type: imageEntryType,
-                    mediaId: part.mediaId,
+                    ...(isEntityId(part.mediaId, 'media') ? { mediaId: part.mediaId } : {}),
+                    ...(isEntityId(part.attachmentId, 'att') ? { attachmentId: part.attachmentId } : {}),
                     mimeType: part.mimeType,
                     width: part.width,
                     height: part.height,

@@ -8,7 +8,7 @@ import {
 import { isProviderRunnable, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
 import type {
-    ComposerImageAttachmentInput,
+    ComposerAttachmentInput,
     EntityId,
     PlanStartInput,
     PlanRecordView,
@@ -43,7 +43,7 @@ interface SubmitPromptInput<
     TRunStartAcceptedResult extends RunStartAcceptedResult,
 > {
     prompt: string;
-    attachments?: ComposerImageAttachmentInput[];
+    attachments?: ComposerAttachmentInput[];
     isStartingRun: boolean;
     selectedSessionId: string | undefined;
     isPlanningMode: boolean;

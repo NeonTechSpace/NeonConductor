@@ -1,3 +1,4 @@
+import { skipToken } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import {
@@ -8,6 +9,7 @@ import { SECONDARY_QUERY_OPTIONS } from '@/web/lib/query/secondaryQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
 import type { EntityId, SessionMessageMediaPayload } from '@/shared/contracts';
+import { readImageMimeType } from '@/app/shared/imageMimeType';
 
 function isIndexedRecord(value: unknown): value is Record<PropertyKey, unknown> {
     return typeof value === 'object' && value !== null;
@@ -71,15 +73,84 @@ function toMediaPayload(
     };
 }
 
-export function useMessageMediaUrl(input: { profileId: string; mediaId: EntityId<'media'>; enabled: boolean }) {
+function decodeBase64ToBytes(value: string | undefined): Uint8Array | undefined {
+    if (!value) {
+        return undefined;
+    }
+
+    const binary = atob(value);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function toAttachmentMediaPayload(
+    value:
+        | {
+              found: boolean;
+              kind?: 'image_attachment' | 'text_file_attachment';
+              mimeType?: string;
+              bytesBase64?: string;
+              byteSize?: number;
+              width?: number;
+              height?: number;
+              sha256?: string;
+          }
+        | undefined
+): SessionMessageMediaPayload | undefined {
+    const bytes = decodeBase64ToBytes(value?.bytesBase64);
+    const mimeType = readImageMimeType(value?.mimeType);
+    if (
+        !value?.found ||
+        value.kind !== 'image_attachment' ||
+        !mimeType ||
+        !bytes ||
+        typeof value.byteSize !== 'number' ||
+        typeof value.width !== 'number' ||
+        typeof value.height !== 'number' ||
+        !value.sha256
+    ) {
+        return undefined;
+    }
+
+    return {
+        mimeType,
+        bytes,
+        byteSize: value.byteSize,
+        width: value.width,
+        height: value.height,
+        sha256: value.sha256,
+    };
+}
+
+export function useMessageMediaUrl(input: {
+    profileId: string;
+    enabled: boolean;
+    mediaId?: EntityId<'media'>;
+    attachmentId?: EntityId<'att'>;
+}) {
     const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
     const mediaQuery = trpc.session.getMessageMedia.useQuery(
+        input.mediaId
+            ? {
+                  profileId: input.profileId,
+                  mediaId: input.mediaId,
+              }
+            : skipToken,
         {
-            profileId: input.profileId,
-            mediaId: input.mediaId,
-        },
+            enabled: input.enabled && Boolean(input.mediaId) && !input.attachmentId,
+            ...SECONDARY_QUERY_OPTIONS,
+            staleTime: Number.POSITIVE_INFINITY,
+            gcTime: 1000 * 60 * 20,
+        }
+    );
+    const attachmentQuery = trpc.session.getAttachment.useQuery(
+        input.attachmentId
+            ? {
+                  profileId: input.profileId,
+                  attachmentId: input.attachmentId,
+              }
+            : skipToken,
         {
-            enabled: input.enabled,
+            enabled: input.enabled && Boolean(input.attachmentId),
             ...SECONDARY_QUERY_OPTIONS,
             staleTime: Number.POSITIVE_INFINITY,
             gcTime: 1000 * 60 * 20,
@@ -87,22 +158,27 @@ export function useMessageMediaUrl(input: { profileId: string; mediaId: EntityId
     );
 
     useEffect(() => {
-        const payload = toMediaPayload(mediaQuery.data);
+        const payload = input.attachmentId ? toAttachmentMediaPayload(attachmentQuery.data) : toMediaPayload(mediaQuery.data);
         if (!payload) {
             setObjectUrl(undefined);
             return;
         }
 
-        const nextObjectUrl = acquireMessageMediaObjectUrl(input.mediaId, payload);
+        const cacheId = input.attachmentId ?? input.mediaId;
+        if (!cacheId) {
+            setObjectUrl(undefined);
+            return;
+        }
+        const nextObjectUrl = acquireMessageMediaObjectUrl(cacheId, payload);
         setObjectUrl(nextObjectUrl);
 
         return () => {
-            releaseMessageMediaObjectUrl(input.mediaId, payload);
+            releaseMessageMediaObjectUrl(cacheId, payload);
         };
-    }, [input.mediaId, mediaQuery.data]);
+    }, [attachmentQuery.data, input.attachmentId, input.mediaId, mediaQuery.data]);
 
     return {
         objectUrl,
-        mediaQuery,
+        mediaQuery: input.attachmentId ? attachmentQuery : mediaQuery,
     };
 }

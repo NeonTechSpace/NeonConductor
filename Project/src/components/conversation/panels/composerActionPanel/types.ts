@@ -3,15 +3,29 @@ import type { ModelCompatibilityState, ModelPickerOption } from '@/web/component
 import type { PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 
 import type {
+    ComposerAttachmentInput,
     EntityId,
     ResolvedContextState,
     RulesetDefinition,
+    RuntimeRunOptions,
     RuntimeReasoningEffort,
     SkillfileDefinition,
     TopLevelTab,
 } from '@/shared/contracts';
 
 export type PendingImageView = PendingImageCardView;
+
+export interface PendingTextFileView {
+    clientId: string;
+    fileName: string;
+    status: 'reading' | 'ready' | 'failed';
+    byteSize?: number;
+    errorMessage?: string;
+    attachment?: {
+        mimeType: string;
+        encoding: 'utf-8' | 'utf-8-bom';
+    };
+}
 
 export interface ComposerActionFeedback {
     message: string;
@@ -21,6 +35,9 @@ export interface ComposerActionFeedback {
 export interface ComposerActionPanelProps {
     profileId: string;
     pendingImages: PendingImageView[];
+    pendingTextFiles: PendingTextFileView[];
+    readyComposerAttachments: ComposerAttachmentInput[];
+    hasBlockingPendingAttachments: boolean;
     disabled: boolean;
     controlsDisabled?: boolean;
     submitDisabled?: boolean;
@@ -52,6 +69,8 @@ export interface ComposerActionPanelProps {
     selectedSessionId?: EntityId<'sess'>;
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
+    runtimeOptions: RuntimeRunOptions;
+    showRunContractPreview?: boolean;
     attachedRules?: RulesetDefinition[];
     missingAttachedRuleKeys?: string[];
     attachedSkills?: SkillfileDefinition[];
@@ -66,9 +85,11 @@ export interface ComposerActionPanelProps {
     onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onPromptEdited: () => void;
-    onAddImageFiles: (files: FileList | File[]) => void;
+    onAddFiles: (files: FileList | File[]) => void;
     onRemovePendingImage: (clientId: string) => void;
+    onRemovePendingTextFile: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
+    onQueuePrompt?: (prompt: string) => void;
     onSubmitPrompt: (prompt: string) => void;
     onCompactContext?: () => Promise<ComposerActionFeedback | undefined>;
 }

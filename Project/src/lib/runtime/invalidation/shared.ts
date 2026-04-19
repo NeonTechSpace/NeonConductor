@@ -10,6 +10,7 @@ export {
 export { readConversationSelectionState } from '@/web/lib/runtime/invalidation/selectionState';
 export {
     addInvalidation,
+    invalidateExecutionReceipt,
     invalidateBucketList,
     invalidateRunDiffs,
     invalidateOrchestratorLatest,
@@ -22,6 +23,7 @@ export {
     invalidateSessionCheckpoints,
     invalidateSessionList,
     invalidateSessionMessages,
+    invalidateSessionOutbox,
     invalidateSessionRuns,
     invalidateSessionStatus,
     invalidateShellBootstrap,

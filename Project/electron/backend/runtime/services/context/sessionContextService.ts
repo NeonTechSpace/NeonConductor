@@ -1,13 +1,13 @@
 import type { SessionContextCompactionRecord } from '@/app/backend/persistence/types';
 import type {
     CompactSessionResult,
+    ComposerAttachmentInput,
     PreparedContextSummary,
     ResolvedContextPolicy,
     ResolvedContextState,
     RetrievedMemorySummary,
     TokenCountEstimate,
 } from '@/app/backend/runtime/contracts';
-import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
 import type { EntityId } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { contextPolicyService } from '@/app/backend/runtime/services/context/policyService';
@@ -247,7 +247,7 @@ class SessionContextService {
         preparedContextProfileDefaults: PreparedContextProfileDefaults;
         modePromptLayerOverrides: PreparedContextModeOverrides;
         prompt: string;
-        attachments?: ComposerImageAttachmentInput[];
+        attachments?: ComposerAttachmentInput[];
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         workspaceFingerprint?: string;

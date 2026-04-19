@@ -240,6 +240,33 @@ export class MessageStore {
         return rows.map(mapMessagePartRecord);
     }
 
+    async summarizeToolInvocationsByRun(runId: EntityId<'run'>): Promise<Array<{ toolName: string; callCount: number }>> {
+        const { db } = getPersistence();
+        const rows = await db
+            .selectFrom('message_parts')
+            .innerJoin('messages', 'messages.id', 'message_parts.message_id')
+            .innerJoin('tool_result_artifacts', 'tool_result_artifacts.message_part_id', 'message_parts.id')
+            .select((eb) => [
+                eb.ref('tool_result_artifacts.tool_name').as('tool_name'),
+                eb.fn.count<number>('tool_result_artifacts.tool_name').as('call_count'),
+            ])
+            .where('messages.run_id', '=', runId)
+            .groupBy('tool_result_artifacts.tool_name')
+            .orderBy('call_count', 'desc')
+            .execute();
+
+        return rows.flatMap((row) =>
+            row.tool_name
+                ? [
+                      {
+                          toolName: row.tool_name,
+                          callCount: row.call_count,
+                      },
+                  ]
+                : []
+        );
+    }
+
     async getEditableUserMessageTarget(input: {
         profileId: string;
         sessionId: string;

@@ -2,7 +2,7 @@ import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecu
 import { persistRunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/runTerminalPersistence';
 import { applyRunTerminalSideEffects } from '@/app/backend/runtime/services/runExecution/runTerminalSideEffects';
 
-import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
+import type { EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
 
 export async function applyRunTerminalOutcome(input: {
     profileId: string;
@@ -15,12 +15,16 @@ export async function applyRunTerminalOutcome(input: {
     providerId?: RuntimeProviderId;
     modelId?: string;
     authMethod?: ProviderAuthMethod | 'none';
+    contract?: RunContractPreview;
+    sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     const persisted = await persistRunTerminalOutcome(input);
     await applyRunTerminalSideEffects({
         ...input,
         run: persisted.run,
         ...(persisted.usageRecord ? { usageRecord: persisted.usageRecord } : {}),
+        ...(input.contract ? { contract: input.contract } : {}),
+        ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
     });
 }
 
@@ -29,6 +33,8 @@ export async function moveRunToAbortedState(input: {
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
     logMessage: string;
+    contract?: RunContractPreview;
+    sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     await applyRunTerminalOutcome({
         profileId: input.profileId,
@@ -38,6 +44,8 @@ export async function moveRunToAbortedState(input: {
             kind: 'aborted',
         },
         logMessage: input.logMessage,
+        ...(input.contract ? { contract: input.contract } : {}),
+        ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
     });
 }
 
@@ -48,6 +56,8 @@ export async function moveRunToFailedState(input: {
     errorCode: string;
     errorMessage: string;
     logMessage: string;
+    contract?: RunContractPreview;
+    sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     await applyRunTerminalOutcome({
         profileId: input.profileId,
@@ -59,6 +69,8 @@ export async function moveRunToFailedState(input: {
             errorMessage: input.errorMessage,
         },
         logMessage: input.logMessage,
+        ...(input.contract ? { contract: input.contract } : {}),
+        ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
     });
 }
 

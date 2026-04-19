@@ -43,19 +43,21 @@ function extractReplayParts(parts: MessagePartRecord[]): RunContextPart[] {
     for (const part of parts) {
         if (part.partType === 'image') {
             const mediaId = part.payload['mediaId'];
+            const attachmentId = part.payload['attachmentId'];
             const mimeType = part.payload['mimeType'];
             const width = part.payload['width'];
             const height = part.payload['height'];
             const normalizedMimeType = readImageMimeType(mimeType);
             if (
-                typeof mediaId === 'string' &&
+                (typeof mediaId === 'string' || typeof attachmentId === 'string') &&
                 normalizedMimeType &&
                 typeof width === 'number' &&
                 typeof height === 'number'
             ) {
                 replayParts.push({
                     type: 'image',
-                    mediaId,
+                    ...(typeof mediaId === 'string' ? { mediaId } : {}),
+                    ...(typeof attachmentId === 'string' ? { attachmentId } : {}),
                     mimeType: normalizedMimeType,
                     width,
                     height,

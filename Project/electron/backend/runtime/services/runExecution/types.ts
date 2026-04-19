@@ -15,16 +15,19 @@ import type { WorkspaceEnvironmentSnapshot } from '@/app/backend/runtime/contrac
 import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runExecution/errors';
 
 import type {
+    ComposerAttachmentInput,
     ComposerImageAttachmentInput,
     EntityId,
     ModeDefinition,
     OpenAIExecutionMode,
+    PreparedContextSummary,
     ResolvedContextState,
     ProviderAuthMethod,
     RuntimeProviderId,
     RuntimeRunOptions,
     RunStatus,
     RetrievedMemorySummary,
+    RunContractPreview,
     TopLevelTab,
     RunStartRejectionAction,
     ResolvedWorkspaceContext,
@@ -39,7 +42,7 @@ export interface StartRunInput {
     planPhaseId?: string;
     planPhaseRevisionId?: string;
     prompt: string;
-    attachments?: ComposerImageAttachmentInput[];
+    attachments?: ComposerAttachmentInput[];
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;
@@ -91,6 +94,7 @@ export type RunContextPart =
     | {
           type: 'image';
           mediaId?: string;
+          attachmentId?: string;
           dataUrl?: string;
           sha256?: string;
           mimeType: ComposerImageAttachmentInput['mimeType'];
@@ -126,6 +130,7 @@ export type RunContextPart =
 export interface RunContext {
     messages: RunContextMessage[];
     digest: string;
+    preparedContext: PreparedContextSummary;
     retrievedMemory?: RetrievedMemorySummary;
 }
 
@@ -229,6 +234,7 @@ export type StartRunResult =
               messages: MessageRecord[];
               messageParts: MessagePartRecord[];
           };
+          runContractPreview?: RunContractPreview;
           thread?: ThreadListRecord;
           resolvedContextState: ResolvedContextState;
       };

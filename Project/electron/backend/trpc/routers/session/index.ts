@@ -1,4 +1,4 @@
-import { messageMediaStore, messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
+import { conversationAttachmentStore, messageMediaStore, messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import {
     profileInputSchema,
     sessionBranchFromMessageInputSchema,
@@ -7,11 +7,18 @@ import {
     sessionCreateInputSchema,
     sessionEditInputSchema,
     sessionGetAttachedRulesInputSchema,
+    sessionGetExecutionReceiptInputSchema,
+    sessionGetAttachmentInputSchema,
     sessionGetAttachedSkillsInputSchema,
     sessionGetMessageMediaInputSchema,
+    sessionListOutboxInputSchema,
     sessionListMessagesInputSchema,
     sessionListRunsInputSchema,
+    sessionMoveOutboxEntryInputSchema,
+    sessionOutboxEntryInputSchema,
+    sessionQueueRunInputSchema,
     sessionRevertInputSchema,
+    sessionUpdateOutboxEntryInputSchema,
     sessionSetAttachedRulesInputSchema,
     sessionSetAttachedSkillsInputSchema,
     sessionStartRunInputSchema,
@@ -165,6 +172,47 @@ export const sessionRouter = router({
 
         return result;
     }),
+    previewRunContract: publicProcedure.input(sessionStartRunInputSchema).query(async ({ input, ctx }) => {
+        return runExecutionService.previewRunContract({
+            ...input,
+            requestId: ctx.requestId,
+            correlationId: ctx.correlationId,
+        });
+    }),
+    listOutbox: publicProcedure.input(sessionListOutboxInputSchema).query(async ({ input }) => {
+        return runExecutionService.listOutbox(input.profileId, input.sessionId);
+    }),
+    getOutboxEntry: publicProcedure.input(sessionOutboxEntryInputSchema).query(async ({ input }) => {
+        return runExecutionService.getOutboxEntry(input.profileId, input.sessionId, input.entryId);
+    }),
+    queueRun: publicProcedure.input(sessionQueueRunInputSchema).mutation(async ({ input, ctx }) => {
+        return runExecutionService.queueRun({
+            ...input,
+            requestId: ctx.requestId,
+            correlationId: ctx.correlationId,
+        });
+    }),
+    updateOutboxEntry: publicProcedure.input(sessionUpdateOutboxEntryInputSchema).mutation(async ({ input }) => {
+        return runExecutionService.updateOutboxEntry({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            entryId: input.entryId,
+            prompt: input.prompt,
+            ...(input.attachments ? { attachments: input.attachments } : {}),
+        });
+    }),
+    moveOutboxEntry: publicProcedure.input(sessionMoveOutboxEntryInputSchema).mutation(async ({ input }) => {
+        return runExecutionService.moveOutboxEntry(input);
+    }),
+    cancelOutboxEntry: publicProcedure.input(sessionOutboxEntryInputSchema).mutation(async ({ input }) => {
+        return runExecutionService.cancelOutboxEntry(input);
+    }),
+    resumeOutboxEntry: publicProcedure.input(sessionOutboxEntryInputSchema).mutation(async ({ input }) => {
+        return runExecutionService.resumeOutboxEntry(input);
+    }),
+    getExecutionReceipt: publicProcedure.input(sessionGetExecutionReceiptInputSchema).query(async ({ input }) => {
+        return runExecutionService.getExecutionReceipt(input.profileId, input.runId);
+    }),
     listRuns: publicProcedure.input(sessionListRunsInputSchema).query(async ({ input }) => {
         return {
             runs: await runStore.listBySession(input.profileId, input.sessionId),
@@ -187,6 +235,14 @@ export const sessionRouter = router({
         return {
             found: media !== null,
             ...(media ?? {}),
+        };
+    }),
+    getAttachment: publicProcedure.input(sessionGetAttachmentInputSchema).query(async ({ input }) => {
+        const attachment = await conversationAttachmentStore.getPayloadForProfile(input.profileId, input.attachmentId);
+
+        return {
+            found: attachment !== null,
+            ...(attachment ?? {}),
         };
     }),
     abort: publicProcedure.input(sessionByIdInputSchema).mutation(async ({ input, ctx }) => {

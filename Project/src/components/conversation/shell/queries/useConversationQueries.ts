@@ -140,6 +140,7 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
 
     const sessionsQuery = trpc.session.list.useQuery(sessionsInput, PROGRESSIVE_QUERY_OPTIONS);
     const runsQuery = trpc.session.listRuns.useQuery(runsInput, PROGRESSIVE_QUERY_OPTIONS);
+    const outboxQuery = trpc.session.listOutbox.useQuery(runsInput, PROGRESSIVE_QUERY_OPTIONS);
     const messagesQuery = trpc.session.listMessages.useQuery(messagesInput, PROGRESSIVE_QUERY_OPTIONS);
     const attachedRulesQuery = trpc.session.getAttachedRules.useQuery(attachedRegistryInput, PROGRESSIVE_QUERY_OPTIONS);
     const attachedSkillsQuery = trpc.session.getAttachedSkills.useQuery(
@@ -174,6 +175,7 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
         sessionsQuery,
         runsInput,
         runsQuery,
+        outboxQuery,
         messagesInput,
         messagesQuery,
         attachedRulesQuery,
@@ -182,6 +184,7 @@ export function useConversationQueries(input: UseConversationQueriesInput) {
         runDiffsQuery,
         checkpointsQuery,
         pendingPermissionsQuery,
+        executionReceiptQuery: trpc.session.getExecutionReceipt.useQuery(runDiffsInput, PROGRESSIVE_QUERY_OPTIONS),
         activePlanQuery,
         orchestratorLatestQuery,
     };

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { ComposerImageAttachmentInput } from '@/app/backend/runtime/contracts';
+import type { ComposerAttachmentInput } from '@/app/backend/runtime/contracts';
 import { appendPromptMessage, hashablePartContent } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { ReplayMessage } from '@/app/backend/runtime/services/runExecution/contextReplay';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
@@ -15,7 +15,7 @@ export function buildPreparedContextMessages(input: {
     postCompactionReseedMessages?: RunContextMessage[];
     replayMessages: ReplayMessage[];
     prompt: string;
-    attachments?: ComposerImageAttachmentInput[];
+    attachments?: ComposerAttachmentInput[];
     summaryMessage?: RunContextMessage;
 }): RunContextMessage[] {
     return appendPromptMessage({

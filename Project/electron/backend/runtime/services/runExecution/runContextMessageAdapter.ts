@@ -1,8 +1,9 @@
 import { Buffer } from 'node:buffer';
 
-import { messageMediaStore } from '@/app/backend/persistence/stores';
+import { conversationAttachmentStore, messageMediaStore } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeInput } from '@/app/backend/providers/types';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
+import { isEntityId } from '@/shared/contracts';
 
 type ProviderContextMessage = NonNullable<ProviderRuntimeInput['contextMessages']>[number];
 
@@ -30,11 +31,29 @@ export async function resolveRunContextMessages(input: {
                             return part;
                         }
 
+                        const attachmentId =
+                            typeof part.attachmentId === 'string' && isEntityId(part.attachmentId, 'att')
+                                ? part.attachmentId
+                                : undefined;
+                        const mediaId =
+                            typeof part.mediaId === 'string' && isEntityId(part.mediaId, 'media')
+                                ? part.mediaId
+                                : undefined;
+                        const attachmentPayload = part.dataUrl
+                            ? undefined
+                            : attachmentId
+                              ? await conversationAttachmentStore.getPayload(attachmentId)
+                              : null;
                         const mediaPayload = part.dataUrl
                             ? undefined
-                            : part.mediaId
-                              ? await messageMediaStore.getPayload(part.mediaId)
-                              : null;
+                            : attachmentPayload && attachmentPayload.kind === 'image_attachment'
+                              ? {
+                                    mimeType: attachmentPayload.mimeType,
+                                    bytes: Buffer.from(attachmentPayload.bytesBase64, 'base64'),
+                                }
+                              : mediaId
+                                ? await messageMediaStore.getPayload(mediaId)
+                                : null;
                         const dataUrl =
                             part.dataUrl ??
                             (mediaPayload

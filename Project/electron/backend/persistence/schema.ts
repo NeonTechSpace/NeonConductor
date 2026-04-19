@@ -258,6 +258,63 @@ export interface MessageMediaTable {
     created_at: string;
 }
 
+export interface ConversationAttachmentsTable {
+    id: string;
+    profile_id: string;
+    session_id: string | null;
+    message_part_id: string | null;
+    kind: string;
+    file_name: string | null;
+    mime_type: string;
+    sha256: string;
+    byte_size: number;
+    width: number | null;
+    height: number | null;
+    encoding: string | null;
+    bytes_blob: Uint8Array | null;
+    text_content: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SessionOutboxEntriesTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    state: string;
+    sequence: number;
+    prompt: string;
+    steering_snapshot_json: string;
+    latest_run_contract_json: string | null;
+    latest_receipt_id: string | null;
+    active_permission_request_id: string | null;
+    paused_reason: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SessionOutboxEntryAttachmentsTable {
+    outbox_entry_id: string;
+    attachment_id: string;
+    sequence: number;
+    created_at: string;
+}
+
+export interface ExecutionReceiptsTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    run_id: string;
+    contract_json: string;
+    approvals_used_json: string;
+    tools_invoked_json: string;
+    memory_hit_count: number;
+    cache_result_json: string;
+    usage_summary_json: string;
+    terminal_outcome_json: string;
+    created_at: string;
+}
+
 export interface ToolResultArtifactsTable {
     message_part_id: string;
     profile_id: string;
@@ -1166,6 +1223,10 @@ export interface DatabaseSchema {
     messages: MessagesTable;
     message_parts: MessagePartsTable;
     message_media: MessageMediaTable;
+    conversation_attachments: ConversationAttachmentsTable;
+    session_outbox_entries: SessionOutboxEntriesTable;
+    session_outbox_entry_attachments: SessionOutboxEntryAttachmentsTable;
+    execution_receipts: ExecutionReceiptsTable;
     tool_result_artifacts: ToolResultArtifactsTable;
     run_usage: RunUsageTable;
     permissions: PermissionsTable;

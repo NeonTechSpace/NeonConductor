@@ -1,5 +1,7 @@
 import type {
     ContextCompactionSource,
+    PreparedContextInstructionAuthority,
+    PreparedContextTrustLevel,
     ContextLimitSource,
     ContextProfileOverrideMode,
     ContextSettingMode,
@@ -199,6 +201,8 @@ export interface PreparedContextContributorSummary {
     injectionCheckpoint: PreparedContextInjectionCheckpoint;
     resolvedOrder: number;
     countMode: PreparedContextContributorCountMode;
+    trustLevel: PreparedContextTrustLevel;
+    instructionAuthority: PreparedContextInstructionAuthority;
     tokenCount?: number;
     digest: string;
     dynamicExpansion?: DynamicContextExpansion;

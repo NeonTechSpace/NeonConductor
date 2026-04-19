@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer';
 import type { ProviderRuntimePart } from '@/app/backend/providers/types';
 import type { RunContextMessage, RunContextPart } from '@/app/backend/runtime/services/runExecution/types';
 
-import type { ComposerImageAttachmentInput } from '@/shared/contracts';
+import type { ComposerAttachmentInput, ComposerImageAttachmentInput, ComposerTextFileAttachmentInput } from '@/shared/contracts';
 
 export function createTextPart(text: string): RunContextPart | null {
     const normalized = text.trim();
@@ -157,7 +157,7 @@ export function createTextMessage(role: RunContextMessage['role'], text: string)
 export function appendPromptMessage(input: {
     messages: RunContextMessage[];
     prompt: string;
-    attachments?: ComposerImageAttachmentInput[];
+    attachments?: ComposerAttachmentInput[];
 }): RunContextMessage[] {
     const parts: RunContextPart[] = [];
     const promptPart = createTextPart(input.prompt);
@@ -166,13 +166,21 @@ export function appendPromptMessage(input: {
     }
 
     for (const attachment of input.attachments ?? []) {
+        if (attachment.kind !== 'text_file_attachment') {
+            parts.push({
+                type: 'image',
+                dataUrl: `data:${attachment.mimeType};base64,${attachment.bytesBase64}`,
+                sha256: attachment.sha256,
+                mimeType: attachment.mimeType,
+                width: attachment.width,
+                height: attachment.height,
+            });
+            continue;
+        }
+
         parts.push({
-            type: 'image',
-            dataUrl: `data:${attachment.mimeType};base64,${attachment.bytesBase64}`,
-            sha256: attachment.sha256,
-            mimeType: attachment.mimeType,
-            width: attachment.width,
-            height: attachment.height,
+            type: 'text',
+            text: formatTextFileAttachmentForPrompt(attachment),
         });
     }
 
@@ -217,6 +225,17 @@ export function extractTextFromParts(parts: RunContextPart[]): string {
 
 export function hasImageParts(messages: RunContextMessage[]): boolean {
     return messages.some((message) => message.parts.some((part) => part.type === 'image'));
+}
+
+function formatTextFileAttachmentForPrompt(attachment: ComposerTextFileAttachmentInput): string {
+    const normalizedText = attachment.text.replace(/\r\n/g, '\n').trimEnd();
+    return [
+        `Attached text file: ${attachment.fileName}`,
+        `MIME type: ${attachment.mimeType}`,
+        `Encoding: ${attachment.encoding}`,
+        '',
+        normalizedText,
+    ].join('\n');
 }
 
 export function hashablePartContent(part: RunContextPart): string {

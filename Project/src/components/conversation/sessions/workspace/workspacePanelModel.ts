@@ -25,13 +25,17 @@ import type {
 } from '@/app/backend/persistence/types';
 
 import type {
+    ComposerAttachmentInput,
     DiffOverview,
     EntityId,
     ResolvedContextState,
     RulesetDefinition,
+    RuntimeRunOptions,
     RuntimeReasoningEffort,
+    SessionOutboxEntry,
     SkillfileDefinition,
     TopLevelTab,
+    ExecutionReceipt,
 } from '@/shared/contracts';
 
 import type { ReactNode } from 'react';
@@ -47,6 +51,18 @@ export interface PendingImageView {
         mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
         width: number;
         height: number;
+    };
+}
+
+export interface PendingTextFileView {
+    clientId: string;
+    fileName: string;
+    status: 'reading' | 'ready' | 'failed';
+    byteSize?: number;
+    errorMessage?: string;
+    attachment?: {
+        mimeType: string;
+        encoding: 'utf-8' | 'utf-8-bom';
     };
 }
 
@@ -112,6 +128,9 @@ export interface SessionWorkspacePanelProps {
         }
     >;
     pendingImages: PendingImageView[];
+    pendingTextFiles: PendingTextFileView[];
+    readyComposerAttachments: ComposerAttachmentInput[];
+    hasBlockingPendingAttachments: boolean;
     isCreatingSession: boolean;
     isStartingRun: boolean;
     isResolvingPermission: boolean;
@@ -140,10 +159,14 @@ export interface SessionWorkspacePanelProps {
     modelOptions: ModelPickerOption[];
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
+    outboxEntries?: SessionOutboxEntry[];
+    selectedOutboxEntry?: SessionOutboxEntry;
+    executionReceipt?: ExecutionReceipt;
     attachedRules: RulesetDefinition[];
     missingAttachedRuleKeys: string[];
     attachedSkills: SkillfileDefinition[];
     missingAttachedSkillKeys: string[];
+    showRunContractPreview?: boolean;
     canCompactContext?: boolean;
     isCompactingContext?: boolean;
     executionEnvironmentPanel?: ReactNode;
@@ -165,10 +188,23 @@ export interface SessionWorkspacePanelProps {
     onModeChange: (modeKey: string) => void;
     onCreateSession: () => void;
     onPromptEdited: () => void;
-    onAddImageFiles: (files: FileList | File[]) => void;
+    onAddFiles: (files: FileList | File[]) => void;
     onRemovePendingImage: (clientId: string) => void;
+    onRemovePendingTextFile: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
+    onQueuePrompt?: (prompt: string) => void;
     onSubmitPrompt: (prompt: string) => void;
+    onMoveOutboxEntry?: (entryId: EntityId<'outbox'>, direction: 'up' | 'down') => void;
+    onResumeOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
+    onCancelOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
+    onUpdateOutboxEntry?: (input: {
+        entryId: EntityId<'outbox'>;
+        prompt: string;
+        attachments: ComposerAttachmentInput[];
+    }) => Promise<void>;
+    onSelectOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
+    selectedOutboxEntryId?: EntityId<'outbox'>;
+    runtimeOptions: RuntimeRunOptions;
     onCompactContext?: () => Promise<
         | {
               message: string;
@@ -207,6 +243,14 @@ export function buildWorkspaceHeaderModel(input: SessionWorkspacePanelProps): Wo
 export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps): WorkspaceInspectorModel {
     const header = buildWorkspaceHeaderModel(input);
     const pendingPermissionCount = header.pendingPermissionCount;
+    const selectedOutboxDynamicContributors =
+        input.selectedOutboxEntry?.latestRunContract?.preparedContext.contributors.filter(
+            (contributor) => contributor.kind === 'dynamic_skill_context'
+        ) ?? [];
+    const receiptDynamicContributors =
+        input.executionReceipt?.contract.preparedContext.contributors.filter(
+            (contributor) => contributor.kind === 'dynamic_skill_context'
+        ) ?? [];
 
     return {
         sections: [
@@ -258,6 +302,106 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                     ...(input.runDiffOverview ? { overview: input.runDiffOverview } : {}),
                 }),
             },
+            ...(input.executionReceipt
+                ? [
+                      {
+                          id: 'execution-receipt',
+                          label: 'Execution receipt',
+                          description: 'Immutable execution summary for the selected run.',
+                          content: createElement('div', { className: 'space-y-2 text-xs' }, [
+                              createElement(
+                                  'p',
+                                  { key: 'outcome', className: 'font-medium' },
+                                  `Outcome: ${input.executionReceipt.terminalOutcome.kind}`
+                              ),
+                              createElement(
+                                  'p',
+                                  { key: 'attachments', className: 'text-muted-foreground' },
+                                  `Attachments: ${String(input.executionReceipt.contract.attachmentSummary.totalCount)}`
+                              ),
+                              createElement(
+                                  'p',
+                                  { key: 'contributors', className: 'text-muted-foreground' },
+                                  `Prepared context contributors: ${String(input.executionReceipt.contract.preparedContext.activeContributorCount)}`
+                              ),
+                              createElement(
+                                  'p',
+                                  { key: 'tools', className: 'text-muted-foreground' },
+                                  `Tools invoked: ${String(input.executionReceipt.toolsInvoked.length)}`
+                              ),
+                              ...receiptDynamicContributors.slice(0, 3).map((contributor) =>
+                                  createElement(
+                                      'p',
+                                      {
+                                          key: `dynamic-${contributor.id}`,
+                                          className: 'text-muted-foreground',
+                                      },
+                                      `Dynamic context: ${contributor.label} (${contributor.dynamicExpansion?.resolutionState ?? 'preview_only'})`
+                                  )
+                              ),
+                          ]),
+                      } satisfies WorkspaceInspectorSection,
+                  ]
+                : []),
+            ...(input.selectedOutboxEntry
+                ? [
+                      {
+                          id: 'selected-outbox-entry',
+                          label: 'Queued run review',
+                          description: 'Current queued entry steering, run-contract status, and review signals.',
+                          content: createElement('div', { className: 'space-y-2 text-xs' }, [
+                              createElement(
+                                  'p',
+                                  { key: 'state', className: 'font-medium' },
+                                  `State: ${input.selectedOutboxEntry.state.replaceAll('_', ' ')}`
+                              ),
+                              createElement(
+                                  'p',
+                                  { key: 'target', className: 'text-muted-foreground' },
+                                  `Target: ${input.selectedOutboxEntry.steeringSnapshot.providerId} / ${input.selectedOutboxEntry.steeringSnapshot.modelId}`
+                              ),
+                              createElement(
+                                  'p',
+                                  { key: 'attachments', className: 'text-muted-foreground' },
+                                  `Attachments: ${String(input.selectedOutboxEntry.attachmentIds.length)}`
+                              ),
+                              createElement(
+                                  'p',
+                                  { key: 'contributors', className: 'text-muted-foreground' },
+                                  `Prepared context contributors: ${String(input.selectedOutboxEntry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}`
+                              ),
+                              ...(input.selectedOutboxEntry.pausedReason
+                                  ? [
+                                        createElement(
+                                            'p',
+                                            { key: 'paused', className: 'text-amber-700 dark:text-amber-300' },
+                                            input.selectedOutboxEntry.pausedReason
+                                        ),
+                                    ]
+                                  : []),
+                              ...(input.selectedOutboxEntry.latestRunContract?.diffFromLastCompatible?.items
+                                  .slice(0, 3)
+                                  .map((item, index) =>
+                                      createElement(
+                                          'p',
+                                          { key: `diff-${String(index)}`, className: 'text-muted-foreground' },
+                                          `${item.field}: ${item.reason}`
+                                      )
+                                  ) ?? []),
+                              ...selectedOutboxDynamicContributors.slice(0, 3).map((contributor) =>
+                                  createElement(
+                                      'p',
+                                      {
+                                          key: `dynamic-${contributor.id}`,
+                                          className: 'text-muted-foreground',
+                                      },
+                                      `Dynamic context: ${contributor.label} (${contributor.dynamicExpansion?.resolutionState ?? 'preview_only'})`
+                                  )
+                              ),
+                          ]),
+                      } satisfies WorkspaceInspectorSection,
+                  ]
+                : []),
             {
                 id: 'pending-permissions',
                 label: 'Pending permissions',

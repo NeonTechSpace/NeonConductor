@@ -19,9 +19,11 @@ import { isEntityId } from '@/web/components/conversation/shell/workspace/helper
 import type { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 
 import type {
+    ComposerAttachmentInput,
     EntityId,
     OrchestratorExecutionStrategy,
     ResolvedContextState,
+    RuntimeRunOptions,
     RuntimeReasoningEffort,
     TopLevelTab,
 } from '@/shared/contracts';
@@ -39,6 +41,7 @@ interface BuildConversationWorkspaceProjectionInput {
     planningDepthSelection: PlanningDepth;
     modes: SessionWorkspacePanelProps['modes'];
     reasoningEffort: RuntimeReasoningEffort;
+    runtimeOptions: RuntimeRunOptions;
     selectedModelSupportsReasoning: boolean;
     supportedReasoningEfforts?: RuntimeReasoningEffort[];
     composerModelOptions: SessionWorkspacePanelProps['modelOptions'];
@@ -247,6 +250,18 @@ export function buildConversationWorkspaceProjection(
         pendingPermissions: input.shellViewModel.pendingPermissions,
         permissionWorkspaces: input.shellViewModel.permissionWorkspaces,
         pendingImages: input.composer.pendingImages,
+        pendingTextFiles: input.composer.pendingTextFiles,
+        readyComposerAttachments: [
+            ...input.composer.pendingImages.flatMap((image) =>
+                image.status === 'ready' && image.attachment ? [image.attachment] : []
+            ),
+            ...input.composer.pendingTextFiles.flatMap((file) =>
+                file.status === 'ready' && file.attachment ? [file.attachment] : []
+            ),
+        ],
+        hasBlockingPendingAttachments:
+            input.composer.pendingImages.some((image) => image.status !== 'ready') ||
+            input.composer.pendingTextFiles.some((file) => file.status === 'reading'),
         isCreatingSession: input.mutations.createSessionMutation.isPending,
         isStartingRun: input.mutations.startRunMutation.isPending || input.mutations.planStartMutation.isPending,
         isResolvingPermission: input.mutations.resolvePermissionMutation.isPending,
@@ -312,10 +327,16 @@ export function buildConversationWorkspaceProjection(
         modelOptions: input.composerModelOptions,
         runErrorMessage: input.composer.runSubmitError,
         ...(input.contextState ? { contextState: input.contextState } : {}),
+        outboxEntries: input.queries.outboxQuery.data?.entries ?? [],
+        ...(input.queries.executionReceiptQuery.data?.found
+            ? { executionReceipt: input.queries.executionReceiptQuery.data.receipt }
+            : {}),
         attachedRules: input.shellViewModel.attachedRules,
         missingAttachedRuleKeys: input.shellViewModel.missingAttachedRuleKeys,
         attachedSkills: input.shellViewModel.attachedSkills,
         missingAttachedSkillKeys: input.shellViewModel.missingAttachedSkillKeys,
+        showRunContractPreview: !input.isPlanningComposerMode,
+        runtimeOptions: input.runtimeOptions,
         canCompactContext:
             input.topLevelTab !== 'orchestrator' &&
             input.hasSelectedSession &&
@@ -339,10 +360,68 @@ export function buildConversationWorkspaceProjection(
         onModeChange: input.onModeChange,
         onCreateSession: input.sessionActions.onCreateSession,
         onPromptEdited: input.composer.onPromptEdited,
-        onAddImageFiles: input.composer.onAddImageFiles,
+        onAddFiles: input.composer.onAddFiles,
         onRemovePendingImage: input.composer.onRemovePendingImage,
+        onRemovePendingTextFile: input.composer.onRemovePendingTextFile,
         onRetryPendingImage: input.composer.onRetryPendingImage,
+        ...(!input.isPlanningComposerMode ? { onQueuePrompt: input.composer.onQueuePrompt } : {}),
         onSubmitPrompt: input.composer.onSubmitPrompt,
+        onMoveOutboxEntry: (entryId, direction) => {
+            if (!isEntityId(input.selectedSessionId, 'sess')) {
+                return;
+            }
+            void input.mutations.moveOutboxEntryMutation
+                .mutateAsync({
+                    profileId: input.profileId,
+                    sessionId: input.selectedSessionId,
+                    entryId,
+                    direction,
+                })
+                .then(() => input.queries.outboxQuery.refetch());
+        },
+        onResumeOutboxEntry: (entryId) => {
+            if (!isEntityId(input.selectedSessionId, 'sess')) {
+                return;
+            }
+            void input.mutations.resumeOutboxEntryMutation
+                .mutateAsync({
+                    profileId: input.profileId,
+                    sessionId: input.selectedSessionId,
+                    entryId,
+                })
+                .then(async () => {
+                    await Promise.all([input.queries.outboxQuery.refetch(), input.queries.runsQuery.refetch()]);
+                });
+        },
+        onCancelOutboxEntry: (entryId) => {
+            if (!isEntityId(input.selectedSessionId, 'sess')) {
+                return;
+            }
+            void input.mutations.cancelOutboxEntryMutation
+                .mutateAsync({
+                    profileId: input.profileId,
+                    sessionId: input.selectedSessionId,
+                    entryId,
+                })
+                .then(() => input.queries.outboxQuery.refetch());
+        },
+        onUpdateOutboxEntry: async (updateInput: {
+            entryId: EntityId<'outbox'>;
+            prompt: string;
+            attachments: ComposerAttachmentInput[];
+        }) => {
+            if (!isEntityId(input.selectedSessionId, 'sess')) {
+                return;
+            }
+            await input.mutations.updateOutboxEntryMutation.mutateAsync({
+                profileId: input.profileId,
+                sessionId: input.selectedSessionId,
+                entryId: updateInput.entryId,
+                prompt: updateInput.prompt,
+                attachments: updateInput.attachments,
+            });
+            await input.queries.outboxQuery.refetch();
+        },
         onCompactContext: input.onCompactContext,
         onResolvePermission: (requestId, resolution, selectedApprovalResource) => {
             void input.workspaceActions.resolvePermission(

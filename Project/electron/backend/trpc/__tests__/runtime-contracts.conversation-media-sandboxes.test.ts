@@ -29,7 +29,7 @@ function buildTinyPngBase64(): string {
 
 describe('runtime contracts: conversation and runs', () => {
     const profileId = runtimeContractProfileId;
-    it('persists image attachments, exposes media reads, and replays multimodal context', async () => {
+    it('persists image attachments in the shared attachment store, exposes attachment reads, and replays multimodal context', async () => {
         const caller = createCaller();
         const requestBodies: Array<Record<string, unknown>> = [];
         vi.stubGlobal(
@@ -117,25 +117,29 @@ describe('runtime contracts: conversation and runs', () => {
         if (!imagePart) {
             throw new Error('Expected persisted image message part.');
         }
-        expect(imagePart.payload['mediaId']).toEqual(expect.stringMatching(/^media_/));
+        expect(imagePart.payload['attachmentId']).toEqual(expect.stringMatching(/^att_/));
 
-        const mediaId = requireEntityId(
-            typeof imagePart.payload['mediaId'] === 'string' ? imagePart.payload['mediaId'] : undefined,
-            'media',
-            'Expected persisted media id.'
+        const attachmentId = requireEntityId(
+            typeof imagePart.payload['attachmentId'] === 'string' ? imagePart.payload['attachmentId'] : undefined,
+            'att',
+            'Expected persisted attachment id.'
         );
 
-        const media = await caller.session.getMessageMedia({
+        const media = await caller.session.getAttachment({
             profileId,
-            mediaId,
+            attachmentId,
         });
         expect(media.found).toBe(true);
         if (!media.found) {
-            throw new Error('Expected persisted message media.');
+            throw new Error('Expected persisted conversation attachment.');
         }
+        expect(media.kind).toBe('image_attachment');
         expect(media.mimeType).toBe('image/png');
-        expect(media.bytes).toEqual(Uint8Array.from(Buffer.from(pngBytesBase64, 'base64')));
         expect(media.byteSize).toBeGreaterThan(0);
+        if (media.kind !== 'image_attachment') {
+            throw new Error('Expected persisted image attachment payload.');
+        }
+        expect(Buffer.from(media.bytesBase64, 'base64')).toEqual(Buffer.from(pngBytesBase64, 'base64'));
 
         const contextState = await caller.context.getResolvedState({
             profileId,

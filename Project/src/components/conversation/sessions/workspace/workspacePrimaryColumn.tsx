@@ -1,5 +1,6 @@
 import { ComposerActionPanel } from '@/web/components/conversation/panels/composerActionPanel';
 import { MessageFlowPanel } from '@/web/components/conversation/panels/messageFlowPanel';
+import { SessionOutboxPanel } from '@/web/components/conversation/panels/sessionOutboxPanel';
 import type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
@@ -16,6 +17,9 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'runs'
     | 'optimisticUserMessage'
     | 'pendingImages'
+    | 'pendingTextFiles'
+    | 'readyComposerAttachments'
+    | 'hasBlockingPendingAttachments'
     | 'isStartingRun'
     | 'selectedProviderId'
     | 'selectedModelId'
@@ -35,10 +39,14 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'modelOptions'
     | 'runErrorMessage'
     | 'contextState'
+    | 'outboxEntries'
+    | 'selectedOutboxEntryId'
     | 'attachedRules'
     | 'missingAttachedRuleKeys'
     | 'attachedSkills'
     | 'missingAttachedSkillKeys'
+    | 'showRunContractPreview'
+    | 'runtimeOptions'
     | 'canCompactContext'
     | 'isCompactingContext'
     | 'promptResetKey'
@@ -51,10 +59,17 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onReasoningEffortChange'
     | 'onModeChange'
     | 'onPromptEdited'
-    | 'onAddImageFiles'
+    | 'onAddFiles'
     | 'onRemovePendingImage'
+    | 'onRemovePendingTextFile'
     | 'onRetryPendingImage'
+    | 'onQueuePrompt'
     | 'onSubmitPrompt'
+    | 'onMoveOutboxEntry'
+    | 'onResumeOutboxEntry'
+    | 'onCancelOutboxEntry'
+    | 'onUpdateOutboxEntry'
+    | 'onSelectOutboxEntry'
     | 'onCompactContext'
     | 'onEditMessage'
     | 'onBranchFromMessage'
@@ -73,6 +88,9 @@ export function WorkspacePrimaryColumn({
     runs,
     optimisticUserMessage,
     pendingImages,
+    pendingTextFiles,
+    readyComposerAttachments,
+    hasBlockingPendingAttachments,
     isStartingRun,
     selectedProviderId,
     selectedModelId,
@@ -92,10 +110,14 @@ export function WorkspacePrimaryColumn({
     modelOptions,
     runErrorMessage,
     contextState,
+    outboxEntries,
+    selectedOutboxEntryId,
     attachedRules,
     missingAttachedRuleKeys,
     attachedSkills,
     missingAttachedSkillKeys,
+    showRunContractPreview,
+    runtimeOptions,
     canCompactContext,
     isCompactingContext,
     promptResetKey,
@@ -108,10 +130,17 @@ export function WorkspacePrimaryColumn({
     onReasoningEffortChange,
     onModeChange,
     onPromptEdited,
-    onAddImageFiles,
+    onAddFiles,
     onRemovePendingImage,
+    onRemovePendingTextFile,
     onRetryPendingImage,
+    onQueuePrompt,
     onSubmitPrompt,
+    onMoveOutboxEntry,
+    onResumeOutboxEntry,
+    onCancelOutboxEntry,
+    onUpdateOutboxEntry,
+    onSelectOutboxEntry,
     onCompactContext,
     onEditMessage,
     onBranchFromMessage,
@@ -138,9 +167,34 @@ export function WorkspacePrimaryColumn({
                     </div>
                 </div>
 
+                {outboxEntries && outboxEntries.length > 0 ? (
+                    <SessionOutboxPanel
+                        entries={outboxEntries}
+                        {...(selectedOutboxEntryId ? { selectedEntryId: selectedOutboxEntryId } : {})}
+                        {...(onSelectOutboxEntry ? { onSelectEntry: onSelectOutboxEntry } : {})}
+                        onMoveEntry={(entryId, direction) => {
+                            onMoveOutboxEntry?.(entryId, direction);
+                        }}
+                        onResumeEntry={(entryId) => {
+                            onResumeOutboxEntry?.(entryId);
+                        }}
+                        onCancelEntry={(entryId) => {
+                            onCancelOutboxEntry?.(entryId);
+                        }}
+                        {...(onUpdateOutboxEntry
+                            ? {
+                                  onUpdateEntry: onUpdateOutboxEntry,
+                              }
+                            : {})}
+                    />
+                ) : null}
+
                 <ComposerActionPanel
                     profileId={profileId}
                     pendingImages={pendingImages}
+                    pendingTextFiles={pendingTextFiles}
+                    readyComposerAttachments={readyComposerAttachments}
+                    hasBlockingPendingAttachments={hasBlockingPendingAttachments}
                     disabled={false}
                     isSubmitting={isStartingRun}
                     profiles={profiles}
@@ -166,10 +220,12 @@ export function WorkspacePrimaryColumn({
                     {...(validatedSelectedSessionId ? { selectedSessionId: validatedSelectedSessionId } : {})}
                     {...(selectedWorkspaceFingerprint ? { workspaceFingerprint: selectedWorkspaceFingerprint } : {})}
                     {...(selectedSandboxId ? { sandboxId: selectedSandboxId } : {})}
+                    runtimeOptions={runtimeOptions}
                     attachedRules={attachedRules}
                     missingAttachedRuleKeys={missingAttachedRuleKeys}
                     attachedSkills={attachedSkills}
                     missingAttachedSkillKeys={missingAttachedSkillKeys}
+                    {...(showRunContractPreview !== undefined ? { showRunContractPreview } : {})}
                     {...(canCompactContext !== undefined ? { canCompactContext } : {})}
                     {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
                     {...(promptResetKey !== undefined ? { promptResetKey } : {})}
@@ -182,9 +238,11 @@ export function WorkspacePrimaryColumn({
                     onReasoningEffortChange={onReasoningEffortChange}
                     onModeChange={onModeChange}
                     onPromptEdited={onPromptEdited}
-                    onAddImageFiles={onAddImageFiles}
+                    onAddFiles={onAddFiles}
                     onRemovePendingImage={onRemovePendingImage}
+                    onRemovePendingTextFile={onRemovePendingTextFile}
                     onRetryPendingImage={onRetryPendingImage}
+                    {...(onQueuePrompt ? { onQueuePrompt } : {})}
                     onSubmitPrompt={onSubmitPrompt}
                     {...(onCompactContext ? { onCompactContext } : {})}
                 />

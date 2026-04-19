@@ -296,7 +296,8 @@ async function finalizePreparedAttachment(
     blob: Blob,
     width: number,
     height: number,
-    clientId: string
+    clientId: string,
+    fileName: string
 ): Promise<PreparedComposerImageAttachmentResult> {
     try {
         const buffer = await blob.arrayBuffer();
@@ -315,20 +316,26 @@ async function finalizePreparedAttachment(
         return ok({
             attachment: {
                 clientId,
+                kind: 'image_attachment',
                 mimeType,
                 bytesBase64,
                 width,
                 height,
                 sha256,
+                byteSize: blob.size,
+                fileName,
             },
             byteSize: blob.size,
             previewUrl: createBlobPreviewUrl({
                 clientId,
+                kind: 'image_attachment',
                 mimeType,
                 bytesBase64,
                 width,
                 height,
                 sha256,
+                byteSize: blob.size,
+                fileName,
             }),
         });
     } catch (error) {
@@ -382,7 +389,8 @@ async function prepareComposerImageAttachmentOnMainThread(
                             pngBlob.value,
                             dimensions.width,
                             dimensions.height,
-                            clientId
+                            clientId,
+                            file.name
                         );
                     }
                 } else {
@@ -396,7 +404,8 @@ async function prepareComposerImageAttachmentOnMainThread(
                                 jpegBlob.value,
                                 dimensions.width,
                                 dimensions.height,
-                                clientId
+                                clientId,
+                                file.name
                             );
                         }
                     }

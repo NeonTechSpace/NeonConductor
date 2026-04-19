@@ -234,6 +234,12 @@ export function ContextResolvedSummarySection({
                                                     <span className='rounded-full border px-2 py-1'>
                                                         {formatDelimitedLabel(contributor.kind)}
                                                     </span>
+                                                    <span className='rounded-full border px-2 py-1'>
+                                                        Trust · {formatDelimitedLabel(contributor.trustLevel)}
+                                                    </span>
+                                                    <span className='rounded-full border px-2 py-1'>
+                                                        Authority · {formatDelimitedLabel(contributor.instructionAuthority)}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div className='text-muted-foreground mt-2 grid gap-2 text-xs md:grid-cols-2 xl:grid-cols-4'>

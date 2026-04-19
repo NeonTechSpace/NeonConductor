@@ -275,6 +275,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         planningDepthSelection,
         modes,
         reasoningEffort: effectiveReasoningEffort,
+        runtimeOptions,
         selectedModelSupportsReasoning,
         ...(supportedReasoningEfforts !== undefined ? { supportedReasoningEfforts } : {}),
         composerModelOptions,

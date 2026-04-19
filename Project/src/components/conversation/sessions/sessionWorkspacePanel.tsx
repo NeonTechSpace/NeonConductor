@@ -5,11 +5,31 @@ import {
 import { WorkspacePrimaryColumn } from '@/web/components/conversation/sessions/workspace/workspacePrimaryColumn';
 import { WorkspaceSelectionHeader } from '@/web/components/conversation/sessions/workspace/workspaceSelectionHeader';
 import { WorkspaceShell } from '@/web/components/conversation/sessions/workspace/workspaceShell';
+import { useEffect, useState } from 'react';
 
 export type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 
 export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
-    const workspaceShell = input.workspaceShell ?? buildWorkspaceShellProjection(input);
+    const [selectedOutboxEntryId, setSelectedOutboxEntryId] = useState(input.outboxEntries?.[0]?.id);
+
+    useEffect(() => {
+        if (!input.outboxEntries || input.outboxEntries.length === 0) {
+            setSelectedOutboxEntryId(undefined);
+            return;
+        }
+        if (selectedOutboxEntryId && input.outboxEntries.some((entry) => entry.id === selectedOutboxEntryId)) {
+            return;
+        }
+        setSelectedOutboxEntryId(input.outboxEntries[0]?.id);
+    }, [input.outboxEntries, selectedOutboxEntryId]);
+
+    const selectedOutboxEntry = input.outboxEntries?.find((entry) => entry.id === selectedOutboxEntryId);
+    const workspaceShell =
+        input.workspaceShell ??
+        buildWorkspaceShellProjection({
+            ...input,
+            ...(selectedOutboxEntry ? { selectedOutboxEntry } : {}),
+        });
     const {
         profileId,
         profiles,
@@ -22,6 +42,9 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         selectedSessionId,
         optimisticUserMessage,
         pendingImages,
+        pendingTextFiles,
+        readyComposerAttachments,
+        hasBlockingPendingAttachments,
         isStartingRun,
         selectedProviderId,
         selectedModelId,
@@ -41,10 +64,13 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         modelOptions,
         runErrorMessage,
         contextState,
+        outboxEntries,
+        showRunContractPreview,
         attachedRules,
         missingAttachedRuleKeys,
         attachedSkills,
         missingAttachedSkillKeys,
+        runtimeOptions,
         canCompactContext,
         isCompactingContext,
         promptResetKey,
@@ -59,10 +85,16 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         onReasoningEffortChange,
         onModeChange,
         onPromptEdited,
-        onAddImageFiles,
+        onAddFiles,
         onRemovePendingImage,
+        onRemovePendingTextFile,
         onRetryPendingImage,
+        onQueuePrompt,
         onSubmitPrompt,
+        onMoveOutboxEntry,
+        onResumeOutboxEntry,
+        onCancelOutboxEntry,
+        onUpdateOutboxEntry,
         onCompactContext,
         onEditMessage,
         onBranchFromMessage,
@@ -96,6 +128,9 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                 partsByMessageId={partsByMessageId}
                 runs={runs}
                 pendingImages={pendingImages}
+                pendingTextFiles={pendingTextFiles}
+                readyComposerAttachments={readyComposerAttachments}
+                hasBlockingPendingAttachments={hasBlockingPendingAttachments}
                 isStartingRun={isStartingRun}
                 selectedProviderId={selectedProviderId}
                 selectedModelId={selectedModelId}
@@ -124,8 +159,12 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                 {...(selectedModelCompatibilityReason ? { selectedModelCompatibilityReason } : {})}
                 {...(selectedProviderStatus ? { selectedProviderStatus } : {})}
                 {...(contextState ? { contextState } : {})}
+                {...(outboxEntries ? { outboxEntries } : {})}
+                {...(selectedOutboxEntryId ? { selectedOutboxEntryId } : {})}
+                {...(showRunContractPreview !== undefined ? { showRunContractPreview } : {})}
                 {...(canCompactContext !== undefined ? { canCompactContext } : {})}
                 {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
+                runtimeOptions={runtimeOptions}
                 {...(promptResetKey !== undefined ? { promptResetKey } : {})}
                 {...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {})}
                 {...(controlsDisabled !== undefined ? { controlsDisabled } : {})}
@@ -136,10 +175,19 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                 onReasoningEffortChange={onReasoningEffortChange}
                 onModeChange={onModeChange}
                 onPromptEdited={onPromptEdited}
-                onAddImageFiles={onAddImageFiles}
+                onAddFiles={onAddFiles}
                 onRemovePendingImage={onRemovePendingImage}
+                onRemovePendingTextFile={onRemovePendingTextFile}
                 onRetryPendingImage={onRetryPendingImage}
+                {...(onQueuePrompt ? { onQueuePrompt } : {})}
                 onSubmitPrompt={onSubmitPrompt}
+                {...(onMoveOutboxEntry ? { onMoveOutboxEntry } : {})}
+                {...(onResumeOutboxEntry ? { onResumeOutboxEntry } : {})}
+                {...(onCancelOutboxEntry ? { onCancelOutboxEntry } : {})}
+                {...(onUpdateOutboxEntry ? { onUpdateOutboxEntry } : {})}
+                onSelectOutboxEntry={(entryId) => {
+                    setSelectedOutboxEntryId(entryId);
+                }}
                 {...(onCompactContext ? { onCompactContext } : {})}
                 {...(onEditMessage ? { onEditMessage } : {})}
                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}

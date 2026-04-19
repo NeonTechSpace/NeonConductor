@@ -28,12 +28,28 @@ export function formatImageBytes(value?: number): string | undefined {
     return `${(value / 1_000_000).toFixed(2)} MB`;
 }
 
+export function formatAttachmentBytes(value?: number): string | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (value >= 1_000_000) {
+        return `${(value / 1_000_000).toFixed(2)} MB`;
+    }
+
+    if (value >= 1_000) {
+        return `${(value / 1_000).toFixed(1)} KB`;
+    }
+
+    return `${String(value)} B`;
+}
+
 export function extractDroppedFiles(dataTransfer: DataTransfer | null): File[] {
     if (!dataTransfer) {
         return [];
     }
 
-    return Array.from(dataTransfer.files).filter((file) => file.type.startsWith('image/'));
+    return Array.from(dataTransfer.files);
 }
 
 export function extractClipboardFiles(clipboardData: DataTransfer | null): File[] {
@@ -42,7 +58,7 @@ export function extractClipboardFiles(clipboardData: DataTransfer | null): File[
     }
 
     return Array.from(clipboardData.items)
-        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+        .filter((item) => item.kind === 'file')
         .map((item) => item.getAsFile())
         .filter((file): file is File => file !== null);
 }

@@ -8,7 +8,7 @@ import {
 import type { PreparedRunnableCandidate, ResolvedRunTarget } from '@/app/backend/runtime/services/runExecution/types';
 
 import type {
-    ComposerImageAttachmentInput,
+    ComposerAttachmentInput,
     ModeDefinition,
     RuntimeRunOptions,
     TopLevelTab,
@@ -20,7 +20,7 @@ interface ResolveRunnableRunTargetInput {
     topLevelTab: TopLevelTab;
     mode: ModeDefinition;
     runtimeOptions: RuntimeRunOptions;
-    attachments?: ComposerImageAttachmentInput[];
+    attachments?: ComposerAttachmentInput[];
     preferredTarget?: ResolvedRunTarget;
 }
 

@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import type {
     DynamicContextExpansion,
     PreparedContextCheckpointSummary,
+    PreparedContextInstructionAuthority,
+    PreparedContextTrustLevel,
     PreparedContextContributorGroup,
     PreparedContextContributorKind,
     PreparedContextContributorInclusionState,
@@ -41,6 +43,33 @@ export interface PreparedContextLedgerResolution {
     checkpointSummaries: Record<PreparedContextInjectionCheckpoint, PreparedContextCheckpointSummary>;
     contributorDigest: string;
     compactionReseedActive: boolean;
+}
+
+function resolveContributorTrustLevel(kind: PreparedContextContributorKind): PreparedContextTrustLevel {
+    switch (kind) {
+        case 'retrieved_memory':
+        case 'compaction_summary':
+            return 'promoted_fact';
+        case 'project_instruction':
+        case 'dynamic_skill_context':
+            return 'workspace_content';
+        default:
+            return 'trusted_instruction';
+    }
+}
+
+function resolveContributorInstructionAuthority(
+    kind: PreparedContextContributorKind
+): PreparedContextInstructionAuthority {
+    switch (kind) {
+        case 'retrieved_memory':
+        case 'compaction_summary':
+            return 'retrieval_only';
+        case 'dynamic_skill_context':
+            return 'contextualize';
+        default:
+            return 'instruct';
+    }
 }
 
 function digestMessages(prefix: string, messages: RunContextMessage[]): string {
@@ -182,6 +211,8 @@ export async function resolvePreparedContextLedger(input: {
                     injectionCheckpoint: checkpoint,
                     resolvedOrder,
                     countMode: tokenCount !== undefined ? 'estimated' : 'not_counted',
+                    trustLevel: resolveContributorTrustLevel(spec.kind),
+                    instructionAuthority: resolveContributorInstructionAuthority(spec.kind),
                     ...(tokenCount !== undefined ? { tokenCount } : {}),
                     digest: digestMessages(`ctxcontrib-${spec.id}-${checkpoint}`, spec.messages),
                 });
@@ -223,6 +254,8 @@ export async function resolvePreparedContextLedger(input: {
             injectionCheckpoint: checkpoint,
             resolvedOrder,
             countMode: tokenCount !== undefined ? 'estimated' : 'not_counted',
+            trustLevel: resolveContributorTrustLevel(spec.kind),
+            instructionAuthority: resolveContributorInstructionAuthority(spec.kind),
             ...(tokenCount !== undefined ? { tokenCount } : {}),
             digest: digestMessages(`ctxcontrib-${spec.id}`, spec.messages),
             ...(spec.dynamicExpansion ? { dynamicExpansion: spec.dynamicExpansion } : {}),

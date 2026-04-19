@@ -3,6 +3,7 @@ export type * from '@/shared/contracts/types/checkpoint';
 export type * from '@/shared/contracts/types/profile';
 export type * from '@/shared/contracts/types/diff';
 export * from '@/shared/contracts/types/runtimeExecution';
+export * from '@/shared/contracts/types/runContract';
 export * from '@/shared/contracts/types/messagePart';
 export * from '@/shared/contracts/types/session';
 export type * from '@/shared/contracts/types/conversation';

@@ -35,7 +35,8 @@ export type ConversationTanstackRenderPart =
     | {
           key: string;
           kind: 'image';
-          mediaId: EntityId<'media'>;
+          mediaId?: EntityId<'media'>;
+          attachmentId?: EntityId<'att'>;
           mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
           width: number;
           height: number;
@@ -80,7 +81,8 @@ export type ConversationTanstackRenderPart =
       };
 
 interface ConversationImageMetadata {
-    mediaId: EntityId<'media'>;
+    mediaId?: EntityId<'media'>;
+    attachmentId?: EntityId<'att'>;
     mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
     width: number;
     height: number;
@@ -110,6 +112,18 @@ function readTextPayload(part: MessagePartRecord): string | null {
     return text.trim().length > 0 ? text : null;
 }
 
+function readTextFileAttachmentPayload(part: MessagePartRecord): string | null {
+    const fileName = typeof part.payload['fileName'] === 'string' ? part.payload['fileName'] : 'attachment.txt';
+    const mimeType = typeof part.payload['mimeType'] === 'string' ? part.payload['mimeType'] : 'text/plain';
+    const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
+    const encoding = typeof part.payload['encoding'] === 'string' ? part.payload['encoding'] : 'utf-8';
+    if (text.trim().length === 0) {
+        return null;
+    }
+
+    return [`Attached text file: ${fileName}`, `MIME type: ${mimeType}`, `Encoding: ${encoding}`, '', text].join('\n');
+}
+
 function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[]): ConversationTanstackRenderPart[] {
     const projected: ConversationTanstackRenderPart[] = [];
 
@@ -120,14 +134,16 @@ function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[])
 
         if (part.partType === 'image') {
             const rawMediaId = part.payload['mediaId'];
+            const rawAttachmentId = part.payload['attachmentId'];
             const mimeType = part.payload['mimeType'];
             const width = part.payload['width'];
             const height = part.payload['height'];
             const mediaId = typeof rawMediaId === 'string' ? rawMediaId : undefined;
+            const attachmentId = typeof rawAttachmentId === 'string' ? rawAttachmentId : undefined;
             const normalizedMimeType = readImageMimeType(mimeType);
 
             if (
-                isEntityId(mediaId, 'media') &&
+                (isEntityId(mediaId, 'media') || isEntityId(attachmentId, 'att')) &&
                 normalizedMimeType &&
                 typeof width === 'number' &&
                 typeof height === 'number'
@@ -135,12 +151,27 @@ function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[])
                 projected.push({
                     key: part.id,
                     kind: 'image',
-                    mediaId,
+                    ...(isEntityId(mediaId, 'media') ? { mediaId } : {}),
+                    ...(isEntityId(attachmentId, 'att') ? { attachmentId } : {}),
                     mimeType: normalizedMimeType,
                     width,
                     height,
                 });
             }
+            continue;
+        }
+
+        if (part.partType === 'text_file_attachment') {
+            const text = readTextFileAttachmentPayload(part);
+            if (!text) {
+                continue;
+            }
+
+            projected.push({
+                key: part.id,
+                kind: 'text',
+                text,
+            });
             continue;
         }
 
@@ -254,7 +285,8 @@ function buildMessageParts(projectedParts: ConversationTanstackRenderPart[]): Me
     for (const part of projectedParts) {
         if (part.kind === 'image') {
             const metadata: ConversationImageMetadata = {
-                mediaId: part.mediaId,
+                ...(part.mediaId ? { mediaId: part.mediaId } : {}),
+                ...(part.attachmentId ? { attachmentId: part.attachmentId } : {}),
                 mimeType: part.mimeType,
                 width: part.width,
                 height: part.height,
@@ -264,7 +296,7 @@ function buildMessageParts(projectedParts: ConversationTanstackRenderPart[]): Me
                 type: 'image',
                 source: {
                     type: 'url',
-                    value: `neonconductor://media/${part.mediaId}`,
+                    value: `neonconductor://${part.attachmentId ? 'attachment' : 'media'}/${part.attachmentId ?? part.mediaId ?? 'missing'}`,
                     mimeType: part.mimeType,
                 },
                 metadata,

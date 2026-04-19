@@ -198,6 +198,7 @@ export type KiloDynamicSort = (typeof kiloDynamicSorts)[number];
 export const runtimeMessagePartTypes = [
     'text',
     'image',
+    'text_file_attachment',
     'reasoning',
     'reasoning_summary',
     'reasoning_encrypted',
@@ -216,6 +217,29 @@ export type RuntimeResetTarget = (typeof runtimeResetTargets)[number];
 
 export const providerIds = firstPartyProviderIds;
 export type RuntimeProviderId = FirstPartyProviderId;
+
+export const preparedContextTrustLevels = [
+    'trusted_instruction',
+    'user_input',
+    'workspace_content',
+    'external_untrusted',
+    'promoted_fact',
+] as const;
+export type PreparedContextTrustLevel = (typeof preparedContextTrustLevels)[number];
+
+export const preparedContextInstructionAuthorities = ['instruct', 'contextualize', 'retrieval_only'] as const;
+export type PreparedContextInstructionAuthority = (typeof preparedContextInstructionAuthorities)[number];
+
+export const sessionOutboxEntryStates = [
+    'queued',
+    'running',
+    'paused_for_review',
+    'paused_for_permission',
+    'completed',
+    'failed',
+    'cancelled',
+] as const;
+export type SessionOutboxEntryState = (typeof sessionOutboxEntryStates)[number];
 
 export const providerAuthMethods = ['api_key', 'device_code', 'oauth_pkce', 'oauth_device'] as const;
 export type ProviderAuthMethod = (typeof providerAuthMethods)[number];
