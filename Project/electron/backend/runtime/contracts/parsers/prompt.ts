@@ -4,6 +4,11 @@ import {
     topLevelTabs,
 } from '@/app/backend/runtime/contracts/enums';
 import {
+    createDefaultPreparedContextModeOverrides,
+    normalizePreparedContextModeOverrides,
+    normalizePreparedContextProfileDefaults,
+} from '@/app/backend/runtime/contracts/types/prompt';
+import {
     createParser,
     readBoolean,
     readEnumValue,
@@ -28,9 +33,11 @@ import type {
     PromptLayerModeDraftPayload,
     PromptLayerResetBuiltInModePromptInput,
     PromptLayerResetAppGlobalInstructionsInput,
+    PromptLayerResetPreparedContextProfileDefaultsInput,
     PromptLayerResetProfileGlobalInstructionsInput,
     PromptLayerResetTopLevelInstructionsInput,
     PromptLayerCustomModePayload,
+    PromptLayerSetPreparedContextProfileDefaultsInput,
     PromptLayerSetBuiltInModePromptInput,
     PromptLayerSetAppGlobalInstructionsInput,
     PromptLayerSetProfileGlobalInstructionsInput,
@@ -118,6 +125,20 @@ function readModeDraftSourceKind(value: unknown, field: string): ModeDraftSource
     return readEnumValue(value, field, ['manual', 'portable_json_v1', 'portable_json_v2', 'pasted_source_material'] as const);
 }
 
+function readPreparedContextModeOverrides(value: unknown, field: string) {
+    if (value === undefined) {
+        return createDefaultPreparedContextModeOverrides();
+    }
+
+    const source = readObject(value, field);
+    return normalizePreparedContextModeOverrides(source);
+}
+
+function readPreparedContextProfileDefaults(value: unknown, field: string) {
+    const source = readObject(value, field);
+    return normalizePreparedContextProfileDefaults(source);
+}
+
 function parsePromptLayerCustomModePayload(value: unknown, field: string): PromptLayerCustomModePayload {
     const source = readObject(value, field);
     const description = readOptionalInstructionText(source.description, `${field}.description`);
@@ -125,6 +146,9 @@ function parsePromptLayerCustomModePayload(value: unknown, field: string): Promp
     const customInstructions = readOptionalInstructionText(source.customInstructions, `${field}.customInstructions`);
     const whenToUse = readOptionalInstructionText(source.whenToUse, `${field}.whenToUse`);
     const tags = readOptionalStringList(source.tags, `${field}.tags`);
+    const promptLayerOverrides = source.promptLayerOverrides
+        ? readPreparedContextModeOverrides(source.promptLayerOverrides, `${field}.promptLayerOverrides`)
+        : undefined;
     const authoringRole = readEnumValue(source.authoringRole, `${field}.authoringRole`, modeAuthoringRoles);
     const roleTemplate = readEnumValue(source.roleTemplate, `${field}.roleTemplate`, modeRoleTemplateKeys);
 
@@ -138,6 +162,7 @@ function parsePromptLayerCustomModePayload(value: unknown, field: string): Promp
         ...(customInstructions ? { customInstructions } : {}),
         ...(whenToUse ? { whenToUse } : {}),
         ...(tags ? { tags } : {}),
+        ...(promptLayerOverrides ? { promptLayerOverrides } : {}),
     };
 }
 
@@ -151,6 +176,9 @@ function parsePromptLayerEditableCustomModePayload(
     const customInstructions = readOptionalInstructionText(source.customInstructions, `${field}.customInstructions`);
     const whenToUse = readOptionalInstructionText(source.whenToUse, `${field}.whenToUse`);
     const tags = readOptionalStringList(source.tags, `${field}.tags`);
+    const promptLayerOverrides = source.promptLayerOverrides
+        ? readPreparedContextModeOverrides(source.promptLayerOverrides, `${field}.promptLayerOverrides`)
+        : undefined;
     const authoringRole = readEnumValue(source.authoringRole, `${field}.authoringRole`, modeAuthoringRoles);
     const roleTemplate = readEnumValue(source.roleTemplate, `${field}.roleTemplate`, modeRoleTemplateKeys);
 
@@ -163,6 +191,7 @@ function parsePromptLayerEditableCustomModePayload(
         ...(customInstructions ? { customInstructions } : {}),
         ...(whenToUse ? { whenToUse } : {}),
         ...(tags ? { tags } : {}),
+        ...(promptLayerOverrides ? { promptLayerOverrides } : {}),
     };
 }
 
@@ -179,6 +208,9 @@ function parsePromptLayerModeDraftPayload(value: unknown, field: string): Prompt
     const customInstructions = readOptionalInstructionText(source.customInstructions, `${field}.customInstructions`);
     const whenToUse = readOptionalInstructionText(source.whenToUse, `${field}.whenToUse`);
     const tags = readOptionalStringList(source.tags, `${field}.tags`);
+    const promptLayerOverrides = source.promptLayerOverrides
+        ? readPreparedContextModeOverrides(source.promptLayerOverrides, `${field}.promptLayerOverrides`)
+        : undefined;
 
     return {
         ...(topLevelTab ? { topLevelTab } : {}),
@@ -191,6 +223,7 @@ function parsePromptLayerModeDraftPayload(value: unknown, field: string): Prompt
         ...(customInstructions ? { customInstructions } : {}),
         ...(whenToUse ? { whenToUse } : {}),
         ...(tags ? { tags } : {}),
+        ...(promptLayerOverrides ? { promptLayerOverrides } : {}),
     };
 }
 
@@ -268,6 +301,7 @@ export function parsePromptLayerSetBuiltInModePromptInput(input: unknown): Promp
         modeKey: readString(source.modeKey, 'modeKey'),
         roleDefinition: readInstructionValue(source.roleDefinition, 'roleDefinition'),
         customInstructions: readInstructionValue(source.customInstructions, 'customInstructions'),
+        promptLayerOverrides: readPreparedContextModeOverrides(source.promptLayerOverrides, 'promptLayerOverrides'),
     };
 }
 
@@ -425,6 +459,23 @@ export function parsePromptLayerDiscardModeDraftInput(input: unknown): PromptLay
     };
 }
 
+export function parsePromptLayerSetPreparedContextProfileDefaultsInput(
+    input: unknown
+): PromptLayerSetPreparedContextProfileDefaultsInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        defaults: readPreparedContextProfileDefaults(source.defaults, 'defaults'),
+    };
+}
+
+export function parsePromptLayerResetPreparedContextProfileDefaultsInput(
+    input: unknown
+): PromptLayerResetPreparedContextProfileDefaultsInput {
+    return parseProfileInput(input);
+}
+
 export const promptLayerGetSettingsInputSchema = createParser(parsePromptLayerGetSettingsInput);
 export const promptLayerSetAppGlobalInstructionsInputSchema = createParser(
     parsePromptLayerSetAppGlobalInstructionsInput
@@ -443,6 +494,12 @@ export const promptLayerResetTopLevelInstructionsInputSchema = createParser(
     parsePromptLayerResetTopLevelInstructionsInput
 );
 export const promptLayerSetBuiltInModePromptInputSchema = createParser(parsePromptLayerSetBuiltInModePromptInput);
+export const promptLayerSetPreparedContextProfileDefaultsInputSchema = createParser(
+    parsePromptLayerSetPreparedContextProfileDefaultsInput
+);
+export const promptLayerResetPreparedContextProfileDefaultsInputSchema = createParser(
+    parsePromptLayerResetPreparedContextProfileDefaultsInput
+);
 export const promptLayerResetBuiltInModePromptInputSchema = createParser(parsePromptLayerResetBuiltInModePromptInput);
 export const promptLayerExportCustomModeInputSchema = createParser(parsePromptLayerExportCustomModeInput);
 export const promptLayerGetCustomModeInputSchema = createParser(parsePromptLayerGetCustomModeInput);

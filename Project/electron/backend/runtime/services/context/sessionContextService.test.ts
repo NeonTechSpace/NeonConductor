@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    createDefaultPreparedContextModeOverrides,
+    createDefaultPreparedContextProfileDefaults,
+} from '@/app/backend/runtime/contracts';
 
 const {
     loadSessionReplaySnapshotMock,
@@ -139,7 +143,9 @@ describe('sessionContextService', () => {
             sessionId: 'sess_test',
             providerId: 'openai',
             modelId: 'openai/gpt-5',
-            systemMessages: [],
+            systemContributorSpecs: [],
+            preparedContextProfileDefaults: createDefaultPreparedContextProfileDefaults(),
+            modePromptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             prompt: 'Preview prompt',
             topLevelTab: 'agent',
             modeKey: 'code',
@@ -156,7 +162,9 @@ describe('sessionContextService', () => {
             sessionId: 'sess_test',
             providerId: 'openai',
             modelId: 'openai/gpt-5',
-            systemMessages: [],
+            systemContributorSpecs: [],
+            preparedContextProfileDefaults: createDefaultPreparedContextProfileDefaults(),
+            modePromptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             prompt: 'Execution prompt',
             topLevelTab: 'agent',
             modeKey: 'code',

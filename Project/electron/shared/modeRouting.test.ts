@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import type { ModeDefinition, RuntimeRequirementProfile, ToolCapability } from '@/shared/contracts';
 import {
     isSupportedModeSpecialistAlias,
@@ -32,6 +33,7 @@ function createMode(input: {
         label: input.modeKey,
         assetKey: `${input.topLevelTab}.${input.modeKey}`,
         prompt: {},
+        promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         executionPolicy: {
             ...(input.runtimeProfile ? { runtimeProfile: input.runtimeProfile } : {}),
             ...(input.planningOnly ? { planningOnly: true } : {}),

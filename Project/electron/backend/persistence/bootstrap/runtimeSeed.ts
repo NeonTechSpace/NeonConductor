@@ -286,6 +286,7 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
                     label,
                     asset_key,
                     prompt_json,
+                    prompt_layer_overrides_json,
                     execution_policy_json,
                     source,
                     source_kind,
@@ -301,7 +302,7 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
                     created_at,
                     updated_at
                 )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
     );
     const insertKiloAccountSnapshot = sqlite.prepare(
@@ -446,6 +447,7 @@ export function seedRuntimeData(sqlite: DatabaseSync, defaultProfileId: string):
             mode.label,
             mode.modeKey,
             JSON.stringify(mode.prompt),
+            '{}',
             JSON.stringify(mode.executionPolicy),
             'system',
             'system_seed',

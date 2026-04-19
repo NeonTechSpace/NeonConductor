@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { settingsStore } from '@/app/backend/persistence/stores';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { readActiveAgentModeAfterRefresh } from '@/app/backend/runtime/services/registry/registryActiveModeReadModel';
 
@@ -31,6 +32,7 @@ describe('registryActiveModeReadModel', () => {
                     label: 'Ask',
                     assetKey: 'ask',
                     prompt: { customInstructions: 'Ask' },
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                     executionPolicy: {
                         authoringRole: 'single_task_agent',
                         roleTemplate: 'single_task_agent/ask',
@@ -60,6 +62,7 @@ describe('registryActiveModeReadModel', () => {
                     label: 'Code',
                     assetKey: 'code',
                     prompt: { customInstructions: 'Code' },
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                     executionPolicy: {
                         authoringRole: 'single_task_agent',
                         roleTemplate: 'single_task_agent/apply',

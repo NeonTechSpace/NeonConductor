@@ -4,13 +4,19 @@ import {
     settingsStore,
 } from '@/app/backend/persistence/stores';
 import {
+    createDefaultPreparedContextModeOverrides,
+    createDefaultPreparedContextProfileDefaults,
     normalizeModePromptDefinition,
+    normalizePreparedContextModeOverrides,
+    normalizePreparedContextProfileDefaults,
     type PromptLayerSettings,
+    type PreparedContextProfileDefaults,
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import {
     PROFILE_GLOBAL_INSTRUCTIONS_KEY,
+    PREPARED_CONTEXT_PROFILE_DEFAULTS_KEY,
     assertBuiltInModeExists,
     getTopLevelInstructionsKey,
     normalizeInstructions,
@@ -91,6 +97,7 @@ export async function setBuiltInModePrompt(input: {
     modeKey: string;
     roleDefinition: string;
     customInstructions: string;
+    promptLayerOverrides: PromptLayerSettings['builtInModes'][TopLevelTab][number]['promptLayerOverrides'];
 }): Promise<OperationalResult<PromptLayerSettings>> {
     const builtInModeExists = await assertBuiltInModeExists(input.profileId, input.topLevelTab, input.modeKey);
     if (builtInModeExists.isErr()) {
@@ -102,13 +109,26 @@ export async function setBuiltInModePrompt(input: {
         customInstructions: input.customInstructions,
     });
     if (Object.keys(normalizedPrompt).length === 0) {
-        await builtInModePromptOverrideStore.delete(input.profileId, input.topLevelTab, input.modeKey);
+        const normalizedOverrides = normalizePreparedContextModeOverrides(input.promptLayerOverrides);
+        const hasOverrideEntries = JSON.stringify(normalizedOverrides) !== JSON.stringify(createDefaultPreparedContextModeOverrides());
+        if (!hasOverrideEntries) {
+            await builtInModePromptOverrideStore.delete(input.profileId, input.topLevelTab, input.modeKey);
+        } else {
+            await builtInModePromptOverrideStore.setPrompt({
+                profileId: input.profileId,
+                topLevelTab: input.topLevelTab,
+                modeKey: input.modeKey,
+                prompt: normalizedPrompt,
+                promptLayerOverrides: normalizedOverrides,
+            });
+        }
     } else {
         await builtInModePromptOverrideStore.setPrompt({
             profileId: input.profileId,
             topLevelTab: input.topLevelTab,
             modeKey: input.modeKey,
             prompt: normalizedPrompt,
+            promptLayerOverrides: normalizePreparedContextModeOverrides(input.promptLayerOverrides),
         });
     }
 
@@ -127,4 +147,18 @@ export async function resetBuiltInModePrompt(input: {
 
     await builtInModePromptOverrideStore.delete(input.profileId, input.topLevelTab, input.modeKey);
     return okOp(await getPromptLayerSettings(input.profileId));
+}
+
+export async function setPreparedContextProfileDefaults(input: {
+    profileId: string;
+    defaults: PreparedContextProfileDefaults;
+}): Promise<PromptLayerSettings> {
+    const normalizedDefaults = normalizePreparedContextProfileDefaults(input.defaults);
+    await settingsStore.setJson(input.profileId, PREPARED_CONTEXT_PROFILE_DEFAULTS_KEY, normalizedDefaults);
+    return getPromptLayerSettings(input.profileId);
+}
+
+export async function resetPreparedContextProfileDefaults(profileId: string): Promise<PromptLayerSettings> {
+    await settingsStore.setJson(profileId, PREPARED_CONTEXT_PROFILE_DEFAULTS_KEY, createDefaultPreparedContextProfileDefaults());
+    return getPromptLayerSettings(profileId);
 }

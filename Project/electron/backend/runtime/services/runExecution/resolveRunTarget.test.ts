@@ -17,6 +17,7 @@ import {
     resolveRequestedOrDefaultRunTarget,
     verifyResolvedRunTargetAvailability,
 } from '@/app/backend/runtime/services/runExecution/resolveRunTarget';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 
 function createMode(input: {
     topLevelTab: ModeDefinition['topLevelTab'];
@@ -53,6 +54,7 @@ function createMode(input: {
         label: input.modeKey,
         assetKey: `${input.topLevelTab}.${input.modeKey}`,
         prompt: {},
+        promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         executionPolicy: {
             authoringRole:
                 input.topLevelTab === 'chat'

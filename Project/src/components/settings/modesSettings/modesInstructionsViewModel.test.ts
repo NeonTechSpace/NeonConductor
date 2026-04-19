@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildModesInstructionsViewModel } from '@/web/components/settings/modesSettings/modesInstructionsViewModel';
+import {
+    createDefaultPreparedContextModeOverridesSnapshot,
+    createDefaultPreparedContextProfileDefaultsSnapshot,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 
 describe('buildModesInstructionsViewModel', () => {
     it('orders prompt layers and preserves workspace mode-library scope details', () => {
@@ -15,6 +19,7 @@ describe('buildModesInstructionsViewModel', () => {
                 orchestrator: 'orch',
             },
             topLevelIsSaving: false,
+            preparedContextProfileDefaults: createDefaultPreparedContextProfileDefaultsSnapshot(),
             builtInModesByTab: {
                 chat: [],
                 agent: [
@@ -29,6 +34,7 @@ describe('buildModesInstructionsViewModel', () => {
                             roleDefinition: 'role',
                             customInstructions: 'instructions',
                         },
+                        promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
                         hasOverride: true,
                     },
                 ],

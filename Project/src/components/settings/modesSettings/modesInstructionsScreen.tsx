@@ -7,6 +7,7 @@ import {
     DelegatedWorkerModeInventorySection,
     FileBackedModeInventorySection,
     ModeDraftInventorySection,
+    PreparedContextProfileDefaultsCard,
     PromptLayerCard,
     TopLevelPromptSection,
     formatTopLevelLabel,
@@ -55,17 +56,29 @@ export function ModesInstructionsScreen(input: {
                     }}
                 />
 
-                <PromptLayerCard
-                    {...viewModel.promptLayers.profileGlobal}
-                    onChange={controller.profileGlobal.setValue}
+                <PreparedContextProfileDefaultsCard
+                    values={controller.preparedContextDefaults.value}
+                    isSaving={controller.preparedContextDefaults.isSaving}
+                    onChange={controller.preparedContextDefaults.setValue}
                     onSave={() => {
-                        void controller.profileGlobal.save();
+                        void controller.preparedContextDefaults.save();
                     }}
                     onReset={() => {
-                        void controller.profileGlobal.reset();
+                        void controller.preparedContextDefaults.reset();
                     }}
                 />
             </div>
+
+            <PromptLayerCard
+                {...viewModel.promptLayers.profileGlobal}
+                onChange={controller.profileGlobal.setValue}
+                onSave={() => {
+                    void controller.profileGlobal.save();
+                }}
+                onReset={() => {
+                    void controller.profileGlobal.reset();
+                }}
+            />
 
             <TopLevelPromptSection
                 title='Built-In Top-Level Instructions'
@@ -108,6 +121,18 @@ export function ModesInstructionsScreen(input: {
                                     hasOverride={mode.hasOverride}
                                     isSaving={controller.builtInModes.isSaving}
                                     warning={mode.warning}
+                                    metadata={{
+                                        authoringRole: mode.authoringRole,
+                                        roleTemplate: mode.roleTemplate,
+                                        internalModelRole: mode.internalModelRole,
+                                        ...(mode.toolCapabilities ? { toolCapabilities: mode.toolCapabilities } : {}),
+                                        ...(mode.workflowCapabilities
+                                            ? { workflowCapabilities: mode.workflowCapabilities }
+                                            : {}),
+                                        ...(mode.behaviorFlags ? { behaviorFlags: mode.behaviorFlags } : {}),
+                                        ...(mode.runtimeProfile ? { runtimeProfile: mode.runtimeProfile } : {}),
+                                    }}
+                                    promptLayerOverrides={mode.promptLayerOverrides}
                                     onRoleDefinitionChange={(value) => {
                                         controller.builtInModes.setPromptField(
                                             mode.topLevelTab,
@@ -121,6 +146,15 @@ export function ModesInstructionsScreen(input: {
                                             mode.topLevelTab,
                                             mode.modeKey,
                                             'customInstructions',
+                                            value
+                                        );
+                                    }}
+                                    onPromptLayerOverrideChange={(group, checkpoint, value) => {
+                                        controller.builtInModes.setPromptLayerOverride(
+                                            mode.topLevelTab,
+                                            mode.modeKey,
+                                            group,
+                                            checkpoint,
                                             value
                                         );
                                     }}

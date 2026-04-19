@@ -343,6 +343,7 @@ export interface BuiltInModePromptOverridesTable {
     top_level_tab: string;
     mode_key: string;
     prompt_json: string;
+    prompt_layer_overrides_json: string;
     updated_at: string;
 }
 
@@ -652,6 +653,7 @@ export interface ModeDefinitionsTable {
     label: string;
     asset_key: string;
     prompt_json: string;
+    prompt_layer_overrides_json: string;
     execution_policy_json: string;
     source: string;
     source_kind: string;

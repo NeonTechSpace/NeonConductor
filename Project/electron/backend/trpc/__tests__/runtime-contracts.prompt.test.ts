@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import {
     createCaller,
     createSessionInScope,
@@ -29,6 +30,20 @@ describe('runtime contracts: prompt layers', () => {
             agent: '',
             orchestrator: '',
         });
+        expect(initialSettings.settings.preparedContextProfileDefaults).toEqual({
+            app_global_instructions: {
+                bootstrap: 'include',
+                post_compaction_reseed: 'include',
+            },
+            profile_global_instructions: {
+                bootstrap: 'include',
+                post_compaction_reseed: 'include',
+            },
+            top_level_instructions: {
+                bootstrap: 'include',
+                post_compaction_reseed: 'include',
+            },
+        });
         expect(initialSettings.settings.modeDrafts).toEqual([]);
         expect(initialSettings.settings.delegatedWorkerModes.global).toEqual([]);
         expect(initialSettings.settings.builtInModes.chat).toEqual([
@@ -41,6 +56,7 @@ describe('runtime contracts: prompt layers', () => {
                 authoringRole: 'chat',
                 roleTemplate: 'chat/default',
                 internalModelRole: 'chat',
+                promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                 runtimeProfile: 'general',
                 toolCapabilities: [],
             }),
@@ -60,6 +76,7 @@ describe('runtime contracts: prompt layers', () => {
             authoringRole: 'single_task_agent',
             roleTemplate: 'single_task_agent/plan',
             internalModelRole: 'planner',
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             delegatedOnly: false,
             sessionSelectable: true,
                 executionPolicy: {
@@ -73,6 +90,78 @@ describe('runtime contracts: prompt layers', () => {
                     behaviorFlags: ['approval_gated', 'artifact_producing', 'read_only_execution'],
                     runtimeProfile: 'planner',
                 },
+        });
+    });
+
+    it('persists prepared-context profile defaults and prompt-layer overrides through prompt settings', async () => {
+        const caller = createCaller();
+
+        const updatedDefaults = await caller.prompt.setPreparedContextProfileDefaults({
+            profileId,
+            defaults: {
+                app_global_instructions: {
+                    bootstrap: 'include',
+                    post_compaction_reseed: 'exclude',
+                },
+                profile_global_instructions: {
+                    bootstrap: 'exclude',
+                    post_compaction_reseed: 'exclude',
+                },
+                top_level_instructions: {
+                    bootstrap: 'include',
+                    post_compaction_reseed: 'include',
+                },
+            },
+        });
+        expect(updatedDefaults.settings.preparedContextProfileDefaults.profile_global_instructions.bootstrap).toBe(
+            'exclude'
+        );
+
+        const builtInUpdated = await caller.prompt.setBuiltInModePrompt({
+            profileId,
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            roleDefinition: 'Chat role override',
+            customInstructions: 'Chat custom override',
+            promptLayerOverrides: {
+                app_global_instructions: {
+                    bootstrap: 'inherit',
+                    post_compaction_reseed: 'exclude',
+                },
+                profile_global_instructions: {
+                    bootstrap: 'include',
+                    post_compaction_reseed: 'inherit',
+                },
+                top_level_instructions: {
+                    bootstrap: 'inherit',
+                    post_compaction_reseed: 'include',
+                },
+            },
+        });
+        expect(builtInUpdated.settings.builtInModes.chat[0]).toMatchObject({
+            hasOverride: true,
+            promptLayerOverrides: {
+                profile_global_instructions: {
+                    bootstrap: 'include',
+                    post_compaction_reseed: 'inherit',
+                },
+            },
+        });
+
+        const resetDefaults = await caller.prompt.resetPreparedContextProfileDefaults({ profileId });
+        expect(resetDefaults.settings.preparedContextProfileDefaults).toEqual({
+            app_global_instructions: {
+                bootstrap: 'include',
+                post_compaction_reseed: 'include',
+            },
+            profile_global_instructions: {
+                bootstrap: 'include',
+                post_compaction_reseed: 'include',
+            },
+            top_level_instructions: {
+                bootstrap: 'include',
+                post_compaction_reseed: 'include',
+            },
         });
     });
 
@@ -113,6 +202,7 @@ describe('runtime contracts: prompt layers', () => {
                 description: 'Workflow-aware review mode',
                 whenToUse: 'Use when the plan needs a recovery-aware review.',
                 tags: ['workflow', 'review'],
+                promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                 toolCapabilities: ['filesystem_read', 'mcp'],
                 workflowCapabilities: ['review', 'artifact_view'],
                 behaviorFlags: ['read_only_execution', 'artifact_producing'],
@@ -142,6 +232,7 @@ describe('runtime contracts: prompt layers', () => {
             customInstructions: 'Review workflow boundaries carefully.',
             whenToUse: 'Use when the plan needs a recovery-aware review.',
             tags: ['workflow', 'review'],
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             toolCapabilities: ['filesystem_read', 'mcp'],
             workflowCapabilities: ['review', 'artifact_view'],
             behaviorFlags: ['read_only_execution', 'artifact_producing'],
@@ -269,6 +360,7 @@ describe('runtime contracts: prompt layers', () => {
                 internalModelRole: 'apply',
                 delegatedOnly: false,
                 sessionSelectable: true,
+                promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                 toolCapabilities: ['filesystem_read', 'mcp'],
                 workflowCapabilities: ['review', 'artifact_view'],
                 behaviorFlags: ['read_only_execution', 'artifact_producing'],

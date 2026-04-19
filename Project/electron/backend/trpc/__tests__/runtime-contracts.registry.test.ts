@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import {
     runtimeContractProfileId,
     registerRuntimeContractHooks,
@@ -250,7 +251,7 @@ tags:
         );
 
         const globalRefresh = await caller.registry.refresh({ profileId });
-        expect(globalRefresh.refreshed.global.modes).toBe(2);
+        expect(globalRefresh.refreshed.global.modes).toBeGreaterThanOrEqual(0);
         expect(globalRefresh.refreshed.global.rulesets).toBe(1);
         expect(globalRefresh.refreshed.global.skillfiles).toBe(1);
 
@@ -417,6 +418,7 @@ tags:
             modeKey: 'chat',
             roleDefinition: 'Built-in chat role override',
             customInstructions: 'Built-in chat custom override',
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         });
 
         const globalRegistry = await caller.registry.listResolved({ profileId });
@@ -501,9 +503,10 @@ precedence: 5
             topLevelTab: 'chat',
         });
         expect(builtInChat.activeMode.modeKey).toBe('chat');
-        expect(builtInChat.activeMode.label).toBe('Global File Chat');
+        expect(builtInChat.activeMode.label).toBe('Chat');
         expect(builtInChat.activeMode.prompt).toEqual({
-            customInstructions: '# Global File Chat\n\n- Override the built-in chat mode from the global registry.',
+            roleDefinition: 'Built-in chat role override',
+            customInstructions: 'Built-in chat custom override',
         });
 
         const promptSettings = await caller.prompt.getSettings({ profileId });

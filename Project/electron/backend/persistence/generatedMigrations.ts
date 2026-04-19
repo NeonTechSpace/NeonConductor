@@ -62,6 +62,7 @@ CREATE TABLE built_in_mode_prompt_overrides (
     top_level_tab TEXT NOT NULL,
     mode_key TEXT NOT NULL,
     prompt_json TEXT NOT NULL,
+    prompt_layer_overrides_json TEXT NOT NULL DEFAULT '{}',
     updated_at TEXT NOT NULL,
     PRIMARY KEY (profile_id, top_level_tab, mode_key)
 );
@@ -641,6 +642,7 @@ CREATE TABLE mode_definitions (
     label TEXT NOT NULL,
     asset_key TEXT NOT NULL DEFAULT '',
     prompt_json TEXT NOT NULL,
+    prompt_layer_overrides_json TEXT NOT NULL DEFAULT '{}',
     execution_policy_json TEXT NOT NULL,
     source TEXT NOT NULL,
     source_kind TEXT NOT NULL DEFAULT 'system_seed',

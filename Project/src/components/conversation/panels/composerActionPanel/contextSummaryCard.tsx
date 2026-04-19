@@ -12,6 +12,8 @@ interface ContextSummaryCardProps {
     thresholdTokens: number | undefined;
     limitsSource: string;
     limitsOverrideReason: string | undefined;
+    preparedContextContributorCount: number;
+    compactionReseedActive: boolean;
     compactionRecord:
         | {
               source: string;
@@ -43,6 +45,8 @@ export function ContextSummaryCard({
     thresholdTokens,
     limitsSource,
     limitsOverrideReason,
+    preparedContextContributorCount,
+    compactionReseedActive,
     compactionRecord,
     contextFeedback,
     canCompactContext,
@@ -108,6 +112,11 @@ export function ContextSummaryCard({
                     Compaction threshold: {formatTokenCount(thresholdTokens)} tokens.
                 </p>
             ) : null}
+            <p className='text-muted-foreground text-[11px]'>
+                Prepared context: {preparedContextContributorCount} loaded contributor
+                {preparedContextContributorCount === 1 ? '' : 's'}
+                {compactionReseedActive ? ' · Compaction reseed active' : ''}.
+            </p>
             <p className='text-muted-foreground text-[11px]'>
                 Limit source: {limitsSource}
                 {limitsOverrideReason ? ` · Override: ${limitsOverrideReason}` : ''}

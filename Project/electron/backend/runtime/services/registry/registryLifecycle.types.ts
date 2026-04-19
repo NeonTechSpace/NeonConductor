@@ -1,6 +1,7 @@
 import type {
     ModeExecutionPolicy,
     ModePromptDefinition,
+    PreparedContextModeOverrides,
     RegistryPresetKey,
     RegistryScope,
     RegistrySourceKind,
@@ -20,6 +21,7 @@ export interface ParsedRegistryModeAsset {
     label: string;
     assetKey: string;
     prompt: ModePromptDefinition;
+    promptLayerOverrides: PreparedContextModeOverrides;
     executionPolicy: ModeExecutionPolicy;
     source: Extract<RegistrySourceKind, 'global_file' | 'workspace_file'>;
     sourceKind: Extract<RegistrySourceKind, 'global_file' | 'workspace_file'>;

@@ -155,7 +155,7 @@ export async function deriveCompactionCandidate(input: {
         profileId: input.profileId,
         policy: input.policy,
         messages: buildPreparedContextMessages({
-            systemMessages: [],
+            bootstrapMessages: [],
             replayMessages: persisted.replayMessages,
             prompt: '',
             ...(persisted.summaryMessage ? { summaryMessage: persisted.summaryMessage } : {}),

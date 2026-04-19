@@ -2,12 +2,21 @@ import { useState } from 'react';
 
 import type { CustomModeEditorDraft, CustomModeScope } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import {
+    createDefaultPreparedContextModeOverridesSnapshot,
     createEmptyCustomModeEditorDraft,
     getModeRoleTemplateOptions,
 } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { trpc } from '@/web/trpc/client';
 
-import type { ModeAuthoringRole, ModeDraftRecord, ModeRoleTemplateKey, TopLevelTab } from '@/shared/contracts';
+import type {
+    ModeAuthoringRole,
+    ModeDraftRecord,
+    ModeRoleTemplateKey,
+    PreparedContextEditablePromptLayerGroup,
+    PreparedContextInjectionCheckpoint,
+    PreparedContextModeOverrideValue,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 interface UseModesInstructionsCustomModeEditorStateInput {
     profileId: string;
@@ -52,6 +61,7 @@ export function useModesInstructionsCustomModeEditorState(input: UseModesInstruc
                 customInstructions: result.mode.customInstructions ?? '',
                 whenToUse: result.mode.whenToUse ?? '',
                 tagsText: result.mode.tags?.join(', ') ?? '',
+                promptLayerOverrides: result.mode.promptLayerOverrides ?? createDefaultPreparedContextModeOverridesSnapshot(),
                 deleteConfirmed: false,
                 sourceText: '',
             });
@@ -80,6 +90,7 @@ export function useModesInstructionsCustomModeEditorState(input: UseModesInstruc
                 customInstructions: draft.mode.customInstructions ?? '',
                 whenToUse: draft.mode.whenToUse ?? '',
                 tagsText: draft.mode.tags?.join(', ') ?? '',
+                promptLayerOverrides: draft.mode.promptLayerOverrides ?? createDefaultPreparedContextModeOverridesSnapshot(),
                 deleteConfirmed: false,
                 sourceText: draft.sourceText ?? '',
                 validationState: draft.validationState,
@@ -152,6 +163,27 @@ export function useModesInstructionsCustomModeEditorState(input: UseModesInstruc
                     ? {
                           ...currentDraft,
                           [field]: value,
+                      }
+                    : currentDraft
+            );
+            input.clearFeedback();
+        },
+        setPromptLayerOverride: (
+            group: PreparedContextEditablePromptLayerGroup,
+            checkpoint: PreparedContextInjectionCheckpoint,
+            value: PreparedContextModeOverrideValue
+        ) => {
+            setDraft((currentDraft) =>
+                currentDraft
+                    ? {
+                          ...currentDraft,
+                          promptLayerOverrides: {
+                              ...currentDraft.promptLayerOverrides,
+                              [group]: {
+                                  ...currentDraft.promptLayerOverrides[group],
+                                  [checkpoint]: value,
+                              },
+                          },
                       }
                     : currentDraft
             );

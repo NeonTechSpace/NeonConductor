@@ -11,22 +11,23 @@ export interface PreparedContextMessages {
 }
 
 export function buildPreparedContextMessages(input: {
-    systemMessages: RunContextMessage[];
+    bootstrapMessages: RunContextMessage[];
+    postCompactionReseedMessages?: RunContextMessage[];
     replayMessages: ReplayMessage[];
     prompt: string;
     attachments?: ComposerImageAttachmentInput[];
     summaryMessage?: RunContextMessage;
 }): RunContextMessage[] {
-    const baseMessages = [
-        ...(input.summaryMessage ? [input.summaryMessage] : []),
-        ...input.replayMessages.map<RunContextMessage>((message) => ({
-            role: message.role,
-            parts: message.parts,
-        })),
-    ];
-
     return appendPromptMessage({
-        messages: [...input.systemMessages, ...baseMessages],
+        messages: [
+            ...input.bootstrapMessages,
+            ...(input.summaryMessage ? [input.summaryMessage] : []),
+            ...(input.postCompactionReseedMessages ?? []),
+            ...input.replayMessages.map<RunContextMessage>((message) => ({
+                role: message.role,
+                parts: message.parts,
+            })),
+        ],
         prompt: input.prompt,
         ...(input.attachments ? { attachments: input.attachments } : {}),
     });

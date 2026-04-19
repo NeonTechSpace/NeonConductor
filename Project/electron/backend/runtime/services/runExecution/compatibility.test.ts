@@ -25,6 +25,7 @@ vi.mock('@/app/backend/runtime/services/runExecution/protocol', () => ({
 }));
 
 import { prepareRunnableCandidate } from '@/app/backend/runtime/services/runExecution/compatibility';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 
 function createModeDefinition() {
     return {
@@ -40,6 +41,7 @@ function createModeDefinition() {
         label: 'Chat',
         assetKey: 'mode.chat',
         prompt: {},
+        promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         executionPolicy: {
             authoringRole: 'chat',
             roleTemplate: 'chat/default',

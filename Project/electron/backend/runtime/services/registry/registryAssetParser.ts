@@ -9,8 +9,9 @@ import type {
     TopLevelTab,
     ModeExecutionPolicy,
     ModePromptDefinition,
+    PreparedContextModeOverrides,
 } from '@/app/backend/runtime/contracts';
-import { ruleActivationModes } from '@/app/backend/runtime/contracts';
+import { normalizePreparedContextModeOverrides, ruleActivationModes } from '@/app/backend/runtime/contracts';
 import type { RegistryAssetFile } from '@/app/backend/runtime/services/registry/filesystem';
 import { slugifyAssetKey, titleCaseFromKey, toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
 import type {
@@ -39,6 +40,10 @@ function readString(value: unknown): string | undefined {
 
 function readBoolean(value: unknown): boolean | undefined {
     return typeof value === 'boolean' ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function readNumber(value: unknown): number | undefined {
@@ -165,6 +170,14 @@ function mapModePrompt(input: { bodyMarkdown: string; attributes: Record<string,
         ...(roleDefinition ? { roleDefinition } : {}),
         ...(customInstructions.length > 0 ? { customInstructions } : {}),
     };
+}
+
+function readPromptLayerOverrides(value: unknown): PreparedContextModeOverrides | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    return normalizePreparedContextModeOverrides(isRecord(value) ? value : undefined);
 }
 
 function mergeTags(values: Array<string[] | undefined>): string[] | undefined {
@@ -302,6 +315,7 @@ export function parseRegistryModeAsset(
     if (runtimeProfile === null) {
         return null;
     }
+    const promptLayerOverrides = readPromptLayerOverrides(file.parsed.attributes['promptLayerOverrides']);
     const templateTopLevelTab = roleTemplate ? getModeRoleTemplateDefinition(roleTemplate).topLevelTab : undefined;
     if (parsedTopLevelTab && templateTopLevelTab && parsedTopLevelTab !== templateTopLevelTab) {
         return null;
@@ -324,6 +338,7 @@ export function parseRegistryModeAsset(
             bodyMarkdown: file.parsed.bodyMarkdown,
             attributes: file.parsed.attributes,
         }),
+        promptLayerOverrides: promptLayerOverrides ?? normalizePreparedContextModeOverrides(undefined),
         executionPolicy: buildModeExecutionPolicy({
             ...(authoringRole !== undefined ? { authoringRole } : {}),
             ...(roleTemplate !== undefined ? { roleTemplate } : {}),

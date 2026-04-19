@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import {
     buildCanonicalCustomModePayload,
     parsePortableCustomModeJson,
@@ -94,6 +95,7 @@ describe('customModePortability', () => {
                     roleDefinition: 'Act as a reviewer.',
                     customInstructions: 'Review carefully.',
                 },
+                promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                 executionPolicy: {
                     authoringRole: 'single_task_agent',
                     roleTemplate: 'single_task_agent/review',

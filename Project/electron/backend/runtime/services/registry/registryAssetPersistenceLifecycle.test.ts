@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { modeStore, rulesetStore, skillfileStore } from '@/app/backend/persistence/stores';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import type { ParsedRegistryAsset, ParsedRegistryModeAsset, ParsedRegistryRulesetAsset } from '@/app/backend/runtime/services/registry/registryLifecycle.types';
 import {
     replaceDiscoveredModes,
@@ -27,6 +28,7 @@ describe('registryAssetPersistenceLifecycle', () => {
                     label: 'Code',
                     assetKey: 'code',
                     prompt: { customInstructions: 'Global code mode' },
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                     executionPolicy: {},
                     source: 'global_file',
                     sourceKind: 'global_file',
@@ -48,6 +50,7 @@ describe('registryAssetPersistenceLifecycle', () => {
                     label: 'Ask',
                     assetKey: 'ask',
                     prompt: { customInstructions: 'Global ask mode' },
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                     executionPolicy: {},
                     source: 'global_file',
                     sourceKind: 'global_file',

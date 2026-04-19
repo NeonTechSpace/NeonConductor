@@ -4,6 +4,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import {
     builtInModePromptOverrideStore,
     conversationStore,
@@ -17,8 +18,17 @@ import {
 } from '@/app/backend/persistence/stores';
 import { appPromptLayerSettingsStore } from '@/app/backend/persistence/stores/runtime/appPromptLayerSettingsStore';
 import { resolveActiveMode } from '@/app/backend/runtime/services/mode/activeMode';
+import type { PreparedContextContributorSpec } from '@/app/backend/runtime/services/context/preparedContextLedger';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
 import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
+
+function collectContributorTextParts(result: { contributorSpecs: PreparedContextContributorSpec[] }): string[] {
+    return result.contributorSpecs.flatMap((contributor) =>
+        contributor.messages.flatMap((message) =>
+            message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
+        )
+    );
+}
 
 describe('buildSessionSystemPrelude', () => {
     beforeEach(() => {
@@ -74,6 +84,7 @@ describe('buildSessionSystemPrelude', () => {
                     sessionSelectable: true,
                     label: 'Agent Code',
                     prompt: {},
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                     executionPolicy: {
                         authoringRole: 'single_task_agent',
                         roleTemplate: 'single_task_agent/apply',
@@ -99,8 +110,9 @@ describe('buildSessionSystemPrelude', () => {
             throw new Error(result.error.message);
         }
 
-        expect(result.value[0]?.role).toBe('system');
-        const firstTextPart = result.value[0]?.parts[0];
+        const contributorMessages = result.value.contributorSpecs.flatMap((contributor) => contributor.messages);
+        expect(contributorMessages[0]?.role).toBe('system');
+        const firstTextPart = contributorMessages[0]?.parts[0];
         expect(firstTextPart?.type).toBe('text');
         if (!firstTextPart || firstTextPart.type !== 'text') {
             throw new Error('Expected workspace prelude text part.');
@@ -108,7 +120,7 @@ describe('buildSessionSystemPrelude', () => {
 
         expect(firstTextPart.text).toContain(workspaceRoot.absolutePath);
         expect(firstTextPart.text).toContain('"/workspace"');
-        const environmentGuidancePart = result.value[1]?.parts[0];
+        const environmentGuidancePart = contributorMessages[1]?.parts[0];
         expect(environmentGuidancePart?.type).toBe('text');
         if (!environmentGuidancePart || environmentGuidancePart.type !== 'text') {
             throw new Error('Expected environment guidance text part.');
@@ -161,6 +173,7 @@ describe('buildSessionSystemPrelude', () => {
                     roleDefinition: 'Role layer',
                     customInstructions: 'Mode layer',
                 },
+                promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             }),
         ]);
 
@@ -292,9 +305,7 @@ Nested project instructions.
             throw new Error(result.error.message);
         }
 
-        const messageTexts = result.value.flatMap((message) =>
-            message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
-        );
+        const messageTexts = collectContributorTextParts(result.value);
         expect(messageTexts.map((message) => message.split('\n\n')[0])).toEqual([
             'Execution environment',
             'Environment guidance',
@@ -390,6 +401,7 @@ Nested project instructions.
                     sessionSelectable: true,
                     label: 'Agent Code',
                     prompt: {},
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                     executionPolicy: {
                         authoringRole: 'single_task_agent',
                         roleTemplate: 'single_task_agent/apply',
@@ -415,9 +427,7 @@ Nested project instructions.
             throw new Error(result.error.message);
         }
 
-        const projectInstructionTexts = result.value.flatMap((message) =>
-            message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
-        );
+        const projectInstructionTexts = collectContributorTextParts(result.value);
         expect(
             projectInstructionTexts.some(
                 (text) => text.includes('Project instructions: AGENTS.md') && text.includes('Sandbox Root')

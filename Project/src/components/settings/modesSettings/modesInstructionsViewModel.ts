@@ -24,6 +24,14 @@ export interface BuiltInModePromptCardModel {
     roleDefinition: string;
     customInstructions: string;
     hasOverride: boolean;
+    authoringRole: BuiltInModePromptEntry['authoringRole'];
+    roleTemplate: BuiltInModePromptEntry['roleTemplate'];
+    internalModelRole: BuiltInModePromptEntry['internalModelRole'];
+    toolCapabilities: BuiltInModePromptEntry['toolCapabilities'];
+    workflowCapabilities: BuiltInModePromptEntry['workflowCapabilities'];
+    behaviorFlags: BuiltInModePromptEntry['behaviorFlags'];
+    runtimeProfile: BuiltInModePromptEntry['runtimeProfile'];
+    promptLayerOverrides: BuiltInModePromptEntry['promptLayerOverrides'];
 }
 
 export interface BuiltInModePromptSectionModel {
@@ -105,6 +113,14 @@ function buildBuiltInModeSectionModel(input: {
             roleDefinition: mode.prompt.roleDefinition ?? '',
             customInstructions: mode.prompt.customInstructions ?? '',
             hasOverride: mode.hasOverride,
+            authoringRole: mode.authoringRole,
+            roleTemplate: mode.roleTemplate,
+            internalModelRole: mode.internalModelRole,
+            toolCapabilities: mode.toolCapabilities,
+            workflowCapabilities: mode.workflowCapabilities,
+            behaviorFlags: mode.behaviorFlags,
+            runtimeProfile: mode.runtimeProfile,
+            promptLayerOverrides: mode.promptLayerOverrides,
         })),
     };
 }
@@ -117,6 +133,7 @@ export function buildModesInstructionsViewModel(input: {
     topLevelValues: Record<TopLevelTab, string>;
     topLevelIsSaving: boolean;
     builtInModesByTab: Record<TopLevelTab, BuiltInModePromptEntry[]>;
+    preparedContextProfileDefaults: import('@/shared/contracts').PreparedContextProfileDefaults;
     builtInModesIsSaving: boolean;
     builtInToolMetadata: BuiltInToolMetadataSnapshot;
     fileBackedGlobalModes: FileBackedModeItemsByTab;

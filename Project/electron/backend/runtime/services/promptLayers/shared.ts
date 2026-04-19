@@ -6,11 +6,16 @@ import {
     settingsStore,
 } from '@/app/backend/persistence/stores';
 import {
+    createDefaultPreparedContextProfileDefaults,
+    createDefaultPreparedContextModeOverrides,
     type FileBackedCustomModeSettingsItem,
     normalizeModePromptDefinition,
+    normalizePreparedContextModeOverrides,
+    normalizePreparedContextProfileDefaults,
     topLevelTabs,
     type BuiltInModePromptSettingsItem,
     type ModeDefinition,
+    type PreparedContextProfileDefaults,
     type PromptLayerCustomModePayload,
     type PromptLayerCustomModeRecord,
     type PromptLayerSettings,
@@ -32,6 +37,7 @@ import { buildDiscoveredAssets, replaceDiscoveredModes } from '@/app/backend/run
 import { resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
 
 export const PROFILE_GLOBAL_INSTRUCTIONS_KEY = 'prompt_layer.profile_global_instructions';
+export const PREPARED_CONTEXT_PROFILE_DEFAULTS_KEY = 'prompt_layer.prepared_context_profile_defaults';
 const TOP_LEVEL_INSTRUCTIONS_KEY_PREFIX = 'prompt_layer.top_level.';
 const BUILT_IN_MODE_ORDER: Record<TopLevelTab, string[]> = {
     chat: ['chat'],
@@ -110,6 +116,7 @@ async function readFileBackedCustomModes(input: {
             ...(mode.description ? { description: mode.description } : {}),
             ...(mode.whenToUse ? { whenToUse: mode.whenToUse } : {}),
             ...(mode.tags ? { tags: mode.tags } : {}),
+            promptLayerOverrides: normalizePreparedContextModeOverrides(mode.promptLayerOverrides),
             ...(mode.executionPolicy.toolCapabilities
                 ? { toolCapabilities: mode.executionPolicy.toolCapabilities }
                 : {}),
@@ -198,6 +205,9 @@ export async function readBuiltInModes(
             authoringRole: getModeAuthoringRole(mode.executionPolicy),
             roleTemplate: getModeRoleTemplate(mode.executionPolicy),
             internalModelRole: getModeInternalModelRole(mode.executionPolicy),
+            promptLayerOverrides: override
+                ? normalizePreparedContextModeOverrides(override.promptLayerOverrides)
+                : createDefaultPreparedContextModeOverrides(),
             ...(mode.executionPolicy.toolCapabilities ? { toolCapabilities: mode.executionPolicy.toolCapabilities } : {}),
             ...(workflowCapabilities.length > 0 ? { workflowCapabilities } : {}),
             ...(behaviorFlags.length > 0 ? { behaviorFlags } : {}),
@@ -241,15 +251,28 @@ export async function readTopLevelInstructions(profileId: string): Promise<Recor
     return Object.fromEntries(storedInstructions) as Record<TopLevelTab, string>;
 }
 
+export async function readPreparedContextProfileDefaults(profileId: string): Promise<PreparedContextProfileDefaults> {
+    const storedValue = await settingsStore.getJsonOptional(
+        profileId,
+        PREPARED_CONTEXT_PROFILE_DEFAULTS_KEY,
+        (value): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+    );
+
+    return storedValue
+        ? normalizePreparedContextProfileDefaults(storedValue)
+        : createDefaultPreparedContextProfileDefaults();
+}
+
 export async function readPromptLayerSettings(input: {
     profileId: string;
     workspaceFingerprint?: string;
 }): Promise<PromptLayerSettings> {
-    const [appSettings, profileGlobalInstructions, topLevelInstructions, builtInModes, customModeInventories, modeDrafts] =
+    const [appSettings, profileGlobalInstructions, topLevelInstructions, preparedContextProfileDefaults, builtInModes, customModeInventories, modeDrafts] =
         await Promise.all([
             appPromptLayerSettingsStore.get(),
             settingsStore.getStringOptional(input.profileId, PROFILE_GLOBAL_INSTRUCTIONS_KEY),
             readTopLevelInstructions(input.profileId),
+            readPreparedContextProfileDefaults(input.profileId),
             readBuiltInModes(input.profileId),
             readFileBackedCustomModes(input),
             readModeDrafts(input),
@@ -259,6 +282,7 @@ export async function readPromptLayerSettings(input: {
         appGlobalInstructions: normalizeInstructions(appSettings.globalInstructions),
         profileGlobalInstructions: normalizeInstructions(profileGlobalInstructions),
         topLevelInstructions,
+        preparedContextProfileDefaults,
         builtInModes,
         fileBackedCustomModes: customModeInventories.fileBackedCustomModes,
         delegatedWorkerModes: customModeInventories.delegatedWorkerModes,
@@ -304,6 +328,7 @@ export function toPromptLayerCustomModeRecord(mode: ModeDefinition): PromptLayer
         ...(mode.prompt.customInstructions ? { customInstructions: mode.prompt.customInstructions } : {}),
         ...(mode.whenToUse ? { whenToUse: mode.whenToUse } : {}),
         ...(mode.tags ? { tags: mode.tags } : {}),
+        promptLayerOverrides: normalizePreparedContextModeOverrides(mode.promptLayerOverrides),
         ...(mode.executionPolicy.toolCapabilities ? { toolCapabilities: mode.executionPolicy.toolCapabilities } : {}),
         ...(workflowCapabilities.length > 0
             ? { workflowCapabilities }
@@ -327,6 +352,7 @@ export function buildEditableCustomModePayload(input: {
     customInstructions?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides?: PromptLayerCustomModePayload['promptLayerOverrides'];
 }): PromptLayerCustomModePayload {
     return buildCanonicalCustomModePayload({
         slug: input.slug,
@@ -338,6 +364,7 @@ export function buildEditableCustomModePayload(input: {
         ...(input.customInstructions ? { customInstructions: input.customInstructions } : {}),
         ...(input.whenToUse ? { whenToUse: input.whenToUse } : {}),
         ...(input.tags ? { tags: input.tags } : {}),
+        ...(input.promptLayerOverrides ? { promptLayerOverrides: input.promptLayerOverrides } : {}),
     });
 }
 

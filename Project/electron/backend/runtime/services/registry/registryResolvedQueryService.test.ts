@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, getPersistenceStoragePaths, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { builtInModePromptOverrideStore } from '@/app/backend/persistence/stores';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import { registryResolvedQueryService } from '@/app/backend/runtime/services/registry/registryResolvedQueryService';
 import { refreshRegistry } from '@/app/backend/runtime/services/registry/service';
 
@@ -199,6 +200,7 @@ tags:
                 customInstructions: 'Override instructions for the built-in mode.',
                 roleDefinition: 'Override role definition.',
             },
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         });
 
         await refreshRegistry({ profileId });

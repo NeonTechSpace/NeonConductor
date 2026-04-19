@@ -87,6 +87,10 @@ async function buildEstimatedPart(input: { modelId: string; message: RunContextM
     };
 }
 
+export async function estimateMessageTokensLocally(input: { modelId: string; message: RunContextMessage }): Promise<number> {
+    return (await buildEstimatedPart(input)).part.tokenCount;
+}
+
 async function buildEstimatedCount(input: {
     providerId: RuntimeProviderId;
     modelId: string;

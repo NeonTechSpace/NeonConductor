@@ -7,8 +7,10 @@ import type {
     ModeRoleTemplateKey,
     PromptLayerCustomModePayload,
     PromptLayerModeDraftPayload,
+    PreparedContextModeOverrides,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
+import { createDefaultPreparedContextModeOverrides, normalizePreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import { slugifyAssetKey, resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
 
 import { getModeRoleTemplateDefinition } from '@/shared/modeRoleCatalog';
@@ -36,6 +38,7 @@ export interface PortableCustomModePayloadV2 {
     customInstructions?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides?: PreparedContextModeOverrides;
 }
 
 export type ParsedPortableCustomModeJson =
@@ -63,6 +66,7 @@ const portableModeV2AllowedKeys = new Set([
     'customInstructions',
     'whenToUse',
     'tags',
+    'promptLayerOverrides',
 ]);
 
 function readOptionalPortableString(value: unknown, field: string): string | undefined {
@@ -167,6 +171,7 @@ function normalizePortableCustomModePayloadV2(input: PortableCustomModePayloadV2
         ...(normalized.customInstructions ? { customInstructions: normalized.customInstructions } : {}),
         ...(normalized.whenToUse ? { whenToUse: normalized.whenToUse } : {}),
         ...(normalized.tags ? { tags: normalized.tags } : {}),
+        ...(input.promptLayerOverrides ? { promptLayerOverrides: normalizePreparedContextModeOverrides(input.promptLayerOverrides) } : {}),
     };
 }
 
@@ -236,6 +241,9 @@ export function parsePortableCustomModeJson(jsonText: string): ParsedPortableCus
                 ...(typeof source.customInstructions === 'string' ? { customInstructions: source.customInstructions } : {}),
                 ...(typeof source.whenToUse === 'string' ? { whenToUse: source.whenToUse } : {}),
                 ...(source.tags !== undefined ? { tags: source.tags as string[] } : {}),
+                ...(source.promptLayerOverrides !== undefined
+                    ? { promptLayerOverrides: source.promptLayerOverrides as PreparedContextModeOverrides }
+                    : {}),
             }),
         };
     }
@@ -277,6 +285,9 @@ export function toDraftModePayloadFromPortableImport(input: {
                 : {}),
             ...(input.parsed.payload.whenToUse ? { whenToUse: input.parsed.payload.whenToUse } : {}),
             ...(input.parsed.payload.tags ? { tags: input.parsed.payload.tags } : {}),
+            ...(input.parsed.payload.promptLayerOverrides
+                ? { promptLayerOverrides: input.parsed.payload.promptLayerOverrides }
+                : {}),
         };
     }
 
@@ -322,6 +333,10 @@ export function toPortableModePayload(mode: ModeDefinitionRecord): PortableCusto
         ...(mode.prompt.customInstructions ? { customInstructions: mode.prompt.customInstructions } : {}),
         ...(mode.whenToUse ? { whenToUse: mode.whenToUse } : {}),
         ...(mode.tags ? { tags: mode.tags } : {}),
+        ...(mode.promptLayerOverrides !== undefined &&
+        JSON.stringify(mode.promptLayerOverrides) !== JSON.stringify(createDefaultPreparedContextModeOverrides())
+            ? { promptLayerOverrides: mode.promptLayerOverrides }
+            : {}),
     });
 }
 
@@ -331,6 +346,23 @@ export function buildCanonicalCustomModePayload(input: CanonicalCustomModePayloa
 
 function stringifyFrontmatterValue(value: string): string {
     return JSON.stringify(value.replace(/\r\n?/g, '\n'));
+}
+
+function renderPromptLayerOverridesFrontmatter(promptLayerOverrides: PreparedContextModeOverrides | undefined): string[] {
+    const normalizedOverrides = normalizePreparedContextModeOverrides(promptLayerOverrides);
+    if (JSON.stringify(normalizedOverrides) === JSON.stringify(createDefaultPreparedContextModeOverrides())) {
+        return [];
+    }
+
+    const lines = ['promptLayerOverrides:'];
+    for (const group of Object.keys(normalizedOverrides) as Array<keyof PreparedContextModeOverrides>) {
+        lines.push(`  ${group}:`);
+        for (const checkpoint of Object.keys(normalizedOverrides[group]) as Array<keyof PreparedContextModeOverrides[typeof group]>) {
+            lines.push(`    ${checkpoint}: ${normalizedOverrides[group][checkpoint]}`);
+        }
+    }
+
+    return lines;
 }
 
 export function renderCanonicalModeMarkdown(input: { payload: CanonicalCustomModePayload }): {
@@ -356,6 +388,7 @@ export function renderCanonicalModeMarkdown(input: { payload: CanonicalCustomMod
         ...(payload.whenToUse ? [`whenToUse: ${stringifyFrontmatterValue(payload.whenToUse)}`] : []),
         ...(payload.tags ? ['tags:', ...payload.tags.map((tag) => `  - ${stringifyFrontmatterValue(tag)}`)] : []),
         ...(payload.roleDefinition ? [`roleDefinition: ${stringifyFrontmatterValue(payload.roleDefinition)}`] : []),
+        ...renderPromptLayerOverridesFrontmatter(payload.promptLayerOverrides),
         '---',
     ];
     const body = payload.customInstructions?.replace(/\r\n?/g, '\n').trim() ?? '';

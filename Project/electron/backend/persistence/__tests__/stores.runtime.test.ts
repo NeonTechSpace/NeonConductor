@@ -24,6 +24,7 @@ import {
     threadStore,
     toolStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 
 registerPersistenceStoreHooks();
@@ -54,6 +55,7 @@ describe('persistence stores: runtime domain', () => {
                 roleDefinition: 'Override role',
                 customInstructions: 'Override instructions',
             },
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         });
         expect(saved.prompt).toEqual({
             roleDefinition: 'Override role',

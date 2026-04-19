@@ -1,14 +1,24 @@
 import { useState } from 'react';
 
 import type {
+    PreparedContextProfileDefaultsDraftState,
     PromptSettingsSnapshot,
     TopLevelDraftState,
 } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
-import { resolveTopLevelDraftValue } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import {
+    clonePreparedContextProfileDefaults,
+    createDefaultPreparedContextProfileDefaultsSnapshot,
+    resolveTopLevelDraftValue,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { trpc } from '@/web/trpc/client';
 
-import type { TopLevelTab } from '@/shared/contracts';
+import type {
+    PreparedContextEditablePromptLayerGroup,
+    PreparedContextInjectionCheckpoint,
+    PreparedContextProfileDefaultValue,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 
 export function useModesInstructionsGlobalController(input: {
@@ -26,6 +36,8 @@ export function useModesInstructionsGlobalController(input: {
         undefined
     );
     const [topLevelDrafts, setTopLevelDrafts] = useState<TopLevelDraftState>({});
+    const [preparedContextDefaultsDraft, setPreparedContextDefaultsDraft] =
+        useState<PreparedContextProfileDefaultsDraftState>(undefined);
 
     const setAppGlobalInstructionsMutation = trpc.prompt.setAppGlobalInstructions.useMutation({
         onSuccess: ({ settings }) => {
@@ -93,12 +105,39 @@ export function useModesInstructionsGlobalController(input: {
             input.setErrorFeedback(error.message);
         },
     });
+    const setPreparedContextProfileDefaultsMutation = trpc.prompt.setPreparedContextProfileDefaults.useMutation({
+        onSuccess: ({ settings }) => {
+            input.applySettings(settings);
+            setPreparedContextDefaultsDraft(undefined);
+            input.setSuccessFeedback('Saved prepared-context profile defaults.');
+        },
+        onError: (error) => {
+            input.setErrorFeedback(error.message);
+        },
+    });
+    const resetPreparedContextProfileDefaultsMutation = trpc.prompt.resetPreparedContextProfileDefaults.useMutation({
+        onSuccess: ({ settings }) => {
+            input.applySettings(settings);
+            setPreparedContextDefaultsDraft(undefined);
+            input.setSuccessFeedback('Reset prepared-context profile defaults.');
+        },
+        onError: (error) => {
+            input.setErrorFeedback(error.message);
+        },
+    });
 
     const appGlobalInstructions = appGlobalDraft ?? input.persistedSettings?.appGlobalInstructions ?? '';
     const profileGlobalInstructions =
         profileGlobalDraft?.profileId === input.profileId
             ? profileGlobalDraft.value
             : (input.persistedSettings?.profileGlobalInstructions ?? '');
+    const preparedContextProfileDefaults =
+        preparedContextDefaultsDraft?.profileId === input.profileId
+            ? preparedContextDefaultsDraft.values
+            : clonePreparedContextProfileDefaults(
+                  input.persistedSettings?.preparedContextProfileDefaults ??
+                      createDefaultPreparedContextProfileDefaultsSnapshot()
+              );
 
     return {
         appGlobal: {
@@ -168,6 +207,40 @@ export function useModesInstructionsGlobalController(input: {
                 await resetTopLevelInstructionsMutation.mutateAsync({
                     profileId: input.profileId,
                     topLevelTab,
+                });
+            }),
+        },
+        preparedContextDefaults: {
+            value: preparedContextProfileDefaults,
+            isSaving:
+                setPreparedContextProfileDefaultsMutation.isPending ||
+                resetPreparedContextProfileDefaultsMutation.isPending,
+            setValue: (
+                group: PreparedContextEditablePromptLayerGroup,
+                checkpoint: PreparedContextInjectionCheckpoint,
+                value: PreparedContextProfileDefaultValue
+            ) => {
+                setPreparedContextDefaultsDraft({
+                    profileId: input.profileId,
+                    values: {
+                        ...preparedContextProfileDefaults,
+                        [group]: {
+                            ...preparedContextProfileDefaults[group],
+                            [checkpoint]: value,
+                        },
+                    },
+                });
+                input.clearFeedback();
+            },
+            save: wrapFailClosedAction(async () => {
+                await setPreparedContextProfileDefaultsMutation.mutateAsync({
+                    profileId: input.profileId,
+                    defaults: preparedContextProfileDefaults,
+                });
+            }),
+            reset: wrapFailClosedAction(async () => {
+                await resetPreparedContextProfileDefaultsMutation.mutateAsync({
+                    profileId: input.profileId,
                 });
             }),
         },

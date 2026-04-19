@@ -41,6 +41,8 @@ export function ComposerContextSummarySection(input: {
             thresholdTokens={thresholdTokens}
             limitsSource={input.contextState.policy.limits.source}
             limitsOverrideReason={input.contextState.policy.limits.overrideReason}
+            preparedContextContributorCount={input.contextState.preparedContext.activeContributorCount}
+            compactionReseedActive={input.contextState.preparedContext.compactionReseedActive}
             compactionRecord={input.contextState.compaction}
             contextFeedback={input.contextFeedback}
             canCompactContext={input.canCompactContext}

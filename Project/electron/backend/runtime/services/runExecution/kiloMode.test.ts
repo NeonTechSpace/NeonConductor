@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { resolveKiloModeHeader } from '@/app/backend/runtime/services/runExecution/kiloMode';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 
 import type { ModeDefinition } from '@/shared/contracts';
 
@@ -34,6 +35,7 @@ function createMode(topLevelTab: ModeDefinition['topLevelTab'], modeKey: string)
         label: `${topLevelTab}:${modeKey}`,
         assetKey: `${topLevelTab}.${modeKey}`,
         prompt: {},
+        promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         executionPolicy: {
             authoringRole:
                 topLevelTab === 'chat'

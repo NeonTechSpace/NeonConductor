@@ -9,6 +9,116 @@ import type {
     WorkflowCapability,
 } from '@/shared/contracts';
 
+export const preparedContextEditablePromptLayerGroups = [
+    'app_global_instructions',
+    'profile_global_instructions',
+    'top_level_instructions',
+] as const;
+
+export type PreparedContextEditablePromptLayerGroup =
+    (typeof preparedContextEditablePromptLayerGroups)[number];
+
+export const preparedContextInjectionCheckpoints = ['bootstrap', 'post_compaction_reseed'] as const;
+
+export type PreparedContextInjectionCheckpoint = (typeof preparedContextInjectionCheckpoints)[number];
+
+export const preparedContextProfileDefaultValues = ['include', 'exclude'] as const;
+
+export type PreparedContextProfileDefaultValue = (typeof preparedContextProfileDefaultValues)[number];
+
+export const preparedContextModeOverrideValues = ['inherit', 'include', 'exclude'] as const;
+
+export type PreparedContextModeOverrideValue = (typeof preparedContextModeOverrideValues)[number];
+
+export type PreparedContextProfileDefaults = Record<
+    PreparedContextEditablePromptLayerGroup,
+    Record<PreparedContextInjectionCheckpoint, PreparedContextProfileDefaultValue>
+>;
+
+export type PreparedContextModeOverrides = Record<
+    PreparedContextEditablePromptLayerGroup,
+    Record<PreparedContextInjectionCheckpoint, PreparedContextModeOverrideValue>
+>;
+
+function createCheckpointRecord<TValue>(value: TValue): Record<PreparedContextInjectionCheckpoint, TValue> {
+    return {
+        bootstrap: value,
+        post_compaction_reseed: value,
+    };
+}
+
+export function createDefaultPreparedContextProfileDefaults(): PreparedContextProfileDefaults {
+    return {
+        app_global_instructions: createCheckpointRecord('include'),
+        profile_global_instructions: createCheckpointRecord('include'),
+        top_level_instructions: createCheckpointRecord('include'),
+    };
+}
+
+export function createDefaultPreparedContextModeOverrides(): PreparedContextModeOverrides {
+    return {
+        app_global_instructions: createCheckpointRecord('inherit'),
+        profile_global_instructions: createCheckpointRecord('inherit'),
+        top_level_instructions: createCheckpointRecord('inherit'),
+    };
+}
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readProfileDefaultValue(value: unknown): PreparedContextProfileDefaultValue | undefined {
+    return value === 'include' || value === 'exclude' ? value : undefined;
+}
+
+function readModeOverrideValue(value: unknown): PreparedContextModeOverrideValue | undefined {
+    return value === 'inherit' || value === 'include' || value === 'exclude' ? value : undefined;
+}
+
+export function normalizePreparedContextProfileDefaults(value: unknown): PreparedContextProfileDefaults {
+    const defaults = createDefaultPreparedContextProfileDefaults();
+    if (!isJsonRecord(value)) {
+        return defaults;
+    }
+
+    for (const group of preparedContextEditablePromptLayerGroups) {
+        const groupValue = value[group];
+        if (!isJsonRecord(groupValue)) {
+            continue;
+        }
+        for (const checkpoint of preparedContextInjectionCheckpoints) {
+            const normalizedValue = readProfileDefaultValue(groupValue[checkpoint]);
+            if (normalizedValue) {
+                defaults[group][checkpoint] = normalizedValue;
+            }
+        }
+    }
+
+    return defaults;
+}
+
+export function normalizePreparedContextModeOverrides(value: unknown): PreparedContextModeOverrides {
+    const defaults = createDefaultPreparedContextModeOverrides();
+    if (!isJsonRecord(value)) {
+        return defaults;
+    }
+
+    for (const group of preparedContextEditablePromptLayerGroups) {
+        const groupValue = value[group];
+        if (!isJsonRecord(groupValue)) {
+            continue;
+        }
+        for (const checkpoint of preparedContextInjectionCheckpoints) {
+            const normalizedValue = readModeOverrideValue(groupValue[checkpoint]);
+            if (normalizedValue) {
+                defaults[group][checkpoint] = normalizedValue;
+            }
+        }
+    }
+
+    return defaults;
+}
+
 export interface FileBackedCustomModeSettingsItem {
     topLevelTab: TopLevelTab;
     modeKey: string;
@@ -21,6 +131,7 @@ export interface FileBackedCustomModeSettingsItem {
     description?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides: PreparedContextModeOverrides;
     toolCapabilities?: ToolCapability[];
     workflowCapabilities?: WorkflowCapability[];
     behaviorFlags?: BehaviorFlag[];
@@ -46,6 +157,7 @@ export interface BuiltInModePromptSettingsItem {
     authoringRole: ModeAuthoringRole;
     roleTemplate: ModeRoleTemplateKey;
     internalModelRole: InternalModelRole;
+    promptLayerOverrides: PreparedContextModeOverrides;
     toolCapabilities?: ToolCapability[];
     workflowCapabilities?: WorkflowCapability[];
     behaviorFlags?: BehaviorFlag[];
@@ -71,6 +183,7 @@ export interface PromptLayerModeDraftPayload {
     customInstructions?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides?: PreparedContextModeOverrides;
 }
 
 export interface ModeDraftRecord {
@@ -91,6 +204,7 @@ export interface PromptLayerSettings {
     appGlobalInstructions: string;
     profileGlobalInstructions: string;
     topLevelInstructions: Record<TopLevelTab, string>;
+    preparedContextProfileDefaults: PreparedContextProfileDefaults;
     builtInModes: Record<TopLevelTab, BuiltInModePromptSettingsItem[]>;
     fileBackedCustomModes: FileBackedCustomModeSettingsByScope;
     delegatedWorkerModes: DelegatedCustomModeSettingsByScope;
@@ -127,6 +241,7 @@ export interface PromptLayerSetBuiltInModePromptInput extends ProfileInput {
     modeKey: string;
     roleDefinition: string;
     customInstructions: string;
+    promptLayerOverrides: PreparedContextModeOverrides;
 }
 
 export interface PromptLayerResetBuiltInModePromptInput extends ProfileInput {
@@ -151,6 +266,7 @@ export interface PromptLayerCustomModePayload {
     customInstructions?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides?: PreparedContextModeOverrides;
 }
 
 export interface PromptLayerEditableCustomModePayload {
@@ -162,6 +278,7 @@ export interface PromptLayerEditableCustomModePayload {
     customInstructions?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides?: PreparedContextModeOverrides;
 }
 
 export interface PromptLayerCustomModeRecord {
@@ -180,6 +297,7 @@ export interface PromptLayerCustomModeRecord {
     customInstructions?: string;
     whenToUse?: string;
     tags?: string[];
+    promptLayerOverrides: PreparedContextModeOverrides;
     toolCapabilities?: ToolCapability[];
     workflowCapabilities?: WorkflowCapability[];
     behaviorFlags?: BehaviorFlag[];
@@ -255,3 +373,9 @@ export interface PromptLayerApplyModeDraftInput extends ProfileInput {
 export interface PromptLayerDiscardModeDraftInput extends ProfileInput {
     draftId: string;
 }
+
+export interface PromptLayerSetPreparedContextProfileDefaultsInput extends ProfileInput {
+    defaults: PreparedContextProfileDefaults;
+}
+
+export type PromptLayerResetPreparedContextProfileDefaultsInput = ProfileInput;

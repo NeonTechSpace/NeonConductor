@@ -3,9 +3,11 @@ import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParse
 import { nowIso, isJsonRecord, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
 import type { BuiltInModePromptOverrideRecord } from '@/app/backend/persistence/types';
 import {
+    normalizePreparedContextModeOverrides,
     normalizeModePromptDefinition,
     topLevelTabs,
     type ModePromptDefinition,
+    type PreparedContextModeOverrides,
     type TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 
@@ -14,6 +16,7 @@ function mapBuiltInModePromptOverride(row: {
     top_level_tab: string;
     mode_key: string;
     prompt_json: string;
+    prompt_layer_overrides_json: string;
     updated_at: string;
 }): BuiltInModePromptOverrideRecord {
     return {
@@ -21,6 +24,9 @@ function mapBuiltInModePromptOverride(row: {
         topLevelTab: parseEnumValue(row.top_level_tab, 'built_in_mode_prompt_overrides.top_level_tab', topLevelTabs),
         modeKey: row.mode_key,
         prompt: normalizeModePromptDefinition(parseJsonValue(row.prompt_json, {}, isJsonRecord)),
+        promptLayerOverrides: normalizePreparedContextModeOverrides(
+            parseJsonValue(row.prompt_layer_overrides_json, {}, isJsonRecord)
+        ),
         updatedAt: row.updated_at,
     };
 }
@@ -30,7 +36,7 @@ export class BuiltInModePromptOverrideStore {
         const { db } = getPersistence();
         const rows = await db
             .selectFrom('built_in_mode_prompt_overrides')
-            .select(['profile_id', 'top_level_tab', 'mode_key', 'prompt_json', 'updated_at'])
+            .select(['profile_id', 'top_level_tab', 'mode_key', 'prompt_json', 'prompt_layer_overrides_json', 'updated_at'])
             .where('profile_id', '=', profileId)
             .orderBy('top_level_tab', 'asc')
             .orderBy('mode_key', 'asc')
@@ -47,7 +53,7 @@ export class BuiltInModePromptOverrideStore {
         const { db } = getPersistence();
         const row = await db
             .selectFrom('built_in_mode_prompt_overrides')
-            .select(['profile_id', 'top_level_tab', 'mode_key', 'prompt_json', 'updated_at'])
+            .select(['profile_id', 'top_level_tab', 'mode_key', 'prompt_json', 'prompt_layer_overrides_json', 'updated_at'])
             .where('profile_id', '=', profileId)
             .where('top_level_tab', '=', topLevelTab)
             .where('mode_key', '=', modeKey)
@@ -61,9 +67,11 @@ export class BuiltInModePromptOverrideStore {
         topLevelTab: TopLevelTab;
         modeKey: string;
         prompt: ModePromptDefinition;
+        promptLayerOverrides: PreparedContextModeOverrides;
     }): Promise<BuiltInModePromptOverrideRecord> {
         const { db } = getPersistence();
         const normalizedPrompt = normalizeModePromptDefinition(input.prompt);
+        const promptLayerOverrides = normalizePreparedContextModeOverrides(input.promptLayerOverrides);
         const updatedAt = nowIso();
 
         await db
@@ -73,11 +81,13 @@ export class BuiltInModePromptOverrideStore {
                 top_level_tab: input.topLevelTab,
                 mode_key: input.modeKey,
                 prompt_json: JSON.stringify(normalizedPrompt),
+                prompt_layer_overrides_json: JSON.stringify(promptLayerOverrides),
                 updated_at: updatedAt,
             })
             .onConflict((oc) =>
                 oc.columns(['profile_id', 'top_level_tab', 'mode_key']).doUpdateSet({
                     prompt_json: JSON.stringify(normalizedPrompt),
+                    prompt_layer_overrides_json: JSON.stringify(promptLayerOverrides),
                     updated_at: updatedAt,
                 })
             )
@@ -88,6 +98,7 @@ export class BuiltInModePromptOverrideStore {
             topLevelTab: input.topLevelTab,
             modeKey: input.modeKey,
             prompt: normalizedPrompt,
+            promptLayerOverrides,
             updatedAt,
         };
     }

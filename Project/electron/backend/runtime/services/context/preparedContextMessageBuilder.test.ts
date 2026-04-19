@@ -5,7 +5,7 @@ import { buildPreparedContextDigest, buildPreparedContextMessages } from '@/app/
 describe('preparedContextMessageBuilder', () => {
     it('keeps system messages ahead of replay, summary, and prompt content', () => {
         const messages = buildPreparedContextMessages({
-            systemMessages: [
+            bootstrapMessages: [
                 {
                     role: 'system',
                     parts: [{ type: 'text', text: 'App instructions' }],
@@ -35,12 +35,12 @@ describe('preparedContextMessageBuilder', () => {
 
     it('changes the digest when the assembled messages change', () => {
         const baseMessages = buildPreparedContextMessages({
-            systemMessages: [{ role: 'system', parts: [{ type: 'text', text: 'One' }] }],
+            bootstrapMessages: [{ role: 'system', parts: [{ type: 'text', text: 'One' }] }],
             replayMessages: [],
             prompt: 'Prompt',
         });
         const nextMessages = buildPreparedContextMessages({
-            systemMessages: [{ role: 'system', parts: [{ type: 'text', text: 'Two' }] }],
+            bootstrapMessages: [{ role: 'system', parts: [{ type: 'text', text: 'Two' }] }],
             replayMessages: [],
             prompt: 'Prompt',
         });

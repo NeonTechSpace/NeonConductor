@@ -1,6 +1,7 @@
 import type { SessionContextCompactionRecord } from '@/app/backend/persistence/types';
 import type {
     CompactSessionResult,
+    PreparedContextSummary,
     ResolvedContextPolicy,
     ResolvedContextState,
     RetrievedMemorySummary,
@@ -21,13 +22,23 @@ import { compactLoadedSessionContext } from '@/app/backend/runtime/services/cont
 import { loadRetrievedMemoryInjection } from '@/app/backend/runtime/services/context/retrievedMemoryInjection';
 import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
 import {
+    buildPreparedContextDigestSummary,
+    resolvePreparedContextLedger,
+    type PreparedContextContributorSpec,
+} from '@/app/backend/runtime/services/context/preparedContextLedger';
+import {
     resolveExecutionTargetContextPreview,
 } from '@/app/backend/runtime/services/context/executionTargetContextPreviewService';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
+import {
+    type PreparedContextModeOverrides,
+    type PreparedContextProfileDefaults,
+} from '@/app/backend/runtime/contracts';
 
 export interface PreparedSessionContext {
     messages: RunContextMessage[];
     digest: string;
+    preparedContext: PreparedContextSummary;
     estimate?: TokenCountEstimate;
     policy: ResolvedContextPolicy;
     compaction?: SessionContextCompactionRecord;
@@ -35,6 +46,80 @@ export interface PreparedSessionContext {
 }
 
 type ContextPreparationSideEffectMode = 'execution' | 'preview';
+
+function createEmptyPreparedContextSummary(input: {
+    fullDigest: string;
+    compactionReseedActive: boolean;
+}): PreparedContextSummary {
+    return {
+        contributors: [],
+        digest: buildPreparedContextDigestSummary({
+            fullDigest: input.fullDigest,
+            contributorDigest: 'ctxcontributors-empty',
+            checkpointSummaries: {
+                bootstrap: {
+                    checkpoint: 'bootstrap',
+                    includedContributorCount: 0,
+                    excludedContributorCount: 0,
+                    digest: 'ctxchk-bootstrap-empty',
+                    active: true,
+                },
+                post_compaction_reseed: {
+                    checkpoint: 'post_compaction_reseed',
+                    includedContributorCount: 0,
+                    excludedContributorCount: 0,
+                    digest: 'ctxchk-post_compaction_reseed-empty',
+                    active: input.compactionReseedActive,
+                },
+            },
+            compactionReseedActive: input.compactionReseedActive,
+        }),
+        activeContributorCount: 0,
+        compactionReseedActive: input.compactionReseedActive,
+    };
+}
+
+function buildRetrievedMemoryContributorSpecs(messages: RunContextMessage[]): PreparedContextContributorSpec[] {
+    return messages.map((message, index) => ({
+        id: `retrieved_memory:${index}`,
+        kind: 'retrieved_memory',
+        group: 'retrieved_memory',
+        label: 'Retrieved memory',
+        source: {
+            kind: 'memory',
+            key: `retrieved_memory:${index}`,
+            label: 'Retrieved memory',
+        },
+        messages: [message],
+        fixedCheckpoint: 'bootstrap',
+        inclusionReason: 'Included by memory retrieval for the active prompt.',
+    }));
+}
+
+function buildCompactionContributorSpec(
+    summaryMessage: RunContextMessage | undefined
+): PreparedContextContributorSpec[] {
+    if (!summaryMessage) {
+        return [];
+    }
+
+    return [
+        {
+            id: 'compaction_summary',
+            kind: 'compaction_summary',
+            group: 'compaction',
+            label: 'Compacted conversation summary',
+            source: {
+                kind: 'compaction',
+                key: 'session_compaction_summary',
+                label: 'Compacted conversation summary',
+            },
+            messages: [summaryMessage],
+            fixedCheckpoint: 'post_compaction_reseed',
+            inclusionReason: 'Included because session compaction replay is active.',
+        },
+    ];
+}
 
 class SessionContextService {
     async getResolvedState(input: {
@@ -46,7 +131,13 @@ class SessionContextService {
     }): Promise<ResolvedContextState> {
         const policy = await contextPolicyService.resolvePolicy(input);
         if (!input.sessionId) {
-            return buildResolvedContextState({ policy });
+            return buildResolvedContextState({
+                policy,
+                preparedContext: createEmptyPreparedContextSummary({
+                    fullDigest: 'runctx-empty',
+                    compactionReseedActive: false,
+                }),
+            });
         }
 
         const replaySnapshot = await loadSessionReplaySnapshot({
@@ -54,8 +145,16 @@ class SessionContextService {
             sessionId: input.sessionId,
         });
         const persistedReplay = applyPersistedCompaction(replaySnapshot.replayMessages, replaySnapshot.compaction);
+        const preparedContextDigest = buildPreparedContextDigest(
+            buildPreparedContextMessages({
+                bootstrapMessages: input.systemMessages ?? [],
+                replayMessages: persistedReplay.replayMessages,
+                prompt: '',
+                ...(persistedReplay.summaryMessage ? { summaryMessage: persistedReplay.summaryMessage } : {}),
+            })
+        );
         const prepared = buildPreparedContextMessages({
-            systemMessages: input.systemMessages ?? [],
+            bootstrapMessages: input.systemMessages ?? [],
             replayMessages: persistedReplay.replayMessages,
             prompt: '',
             ...(persistedReplay.summaryMessage ? { summaryMessage: persistedReplay.summaryMessage } : {}),
@@ -68,6 +167,10 @@ class SessionContextService {
 
         return buildResolvedContextState({
             policy,
+            preparedContext: createEmptyPreparedContextSummary({
+                fullDigest: preparedContextDigest,
+                compactionReseedActive: Boolean(replaySnapshot.compaction),
+            }),
             ...(estimated.estimate ? { estimate: estimated.estimate } : {}),
             ...(replaySnapshot.compaction ? { compaction: replaySnapshot.compaction } : {}),
         });
@@ -133,7 +236,9 @@ class SessionContextService {
         sessionId: EntityId<'sess'>;
         providerId: ResolvedContextPolicy['providerId'];
         modelId: string;
-        systemMessages: RunContextMessage[];
+        systemContributorSpecs: PreparedContextContributorSpec[];
+        preparedContextProfileDefaults: PreparedContextProfileDefaults;
+        modePromptLayerOverrides: PreparedContextModeOverrides;
         prompt: string;
         attachments?: ComposerImageAttachmentInput[];
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
@@ -164,9 +269,23 @@ class SessionContextService {
         });
 
         const persistedReplay = applyPersistedCompaction(replaySnapshot.replayMessages, replaySnapshot.compaction);
-        const combinedSystemMessages = [...input.systemMessages, ...retrievedMemoryResult.messages];
+        const baseContributorSpecs = [
+            ...input.systemContributorSpecs,
+            ...buildRetrievedMemoryContributorSpecs(retrievedMemoryResult.messages),
+        ];
+        const ledger = await resolvePreparedContextLedger({
+            modelId: input.modelId,
+            contributorSpecs: [
+                ...baseContributorSpecs,
+                ...buildCompactionContributorSpec(persistedReplay.summaryMessage),
+            ],
+            profileDefaults: input.preparedContextProfileDefaults,
+            modeOverrides: input.modePromptLayerOverrides,
+            compactionReseedActive: Boolean(persistedReplay.summaryMessage),
+        });
         const preparedMessages = buildPreparedContextMessages({
-            systemMessages: combinedSystemMessages,
+            bootstrapMessages: ledger.bootstrapMessages,
+            postCompactionReseedMessages: ledger.postCompactionReseedMessages,
             replayMessages: persistedReplay.replayMessages,
             prompt: input.prompt,
             ...(input.attachments ? { attachments: input.attachments } : {}),
@@ -226,8 +345,19 @@ class SessionContextService {
             if (compactResult.value.compacted) {
                 compaction = compactResult.value.state.compaction ?? null;
                 const compactedReplay = applyPersistedCompaction(replaySnapshot.replayMessages, compaction);
+                const compactedLedger = await resolvePreparedContextLedger({
+                    modelId: input.modelId,
+                    contributorSpecs: [
+                        ...baseContributorSpecs,
+                        ...buildCompactionContributorSpec(compactedReplay.summaryMessage),
+                    ],
+                    profileDefaults: input.preparedContextProfileDefaults,
+                    modeOverrides: input.modePromptLayerOverrides,
+                    compactionReseedActive: Boolean(compactedReplay.summaryMessage),
+                });
                 finalMessages = buildPreparedContextMessages({
-                    systemMessages: combinedSystemMessages,
+                    bootstrapMessages: compactedLedger.bootstrapMessages,
+                    postCompactionReseedMessages: compactedLedger.postCompactionReseedMessages,
                     replayMessages: compactedReplay.replayMessages,
                     prompt: input.prompt,
                     ...(input.attachments ? { attachments: input.attachments } : {}),
@@ -240,6 +370,36 @@ class SessionContextService {
                 });
             }
         }
+
+        const finalLedger = await resolvePreparedContextLedger({
+            modelId: input.modelId,
+            contributorSpecs: [
+                ...baseContributorSpecs,
+                ...buildCompactionContributorSpec(
+                    compaction
+                        ? {
+                              role: 'system',
+                              parts: [{ type: 'text', text: `Compacted conversation summary\n\n${compaction.summaryText}` }],
+                          }
+                        : undefined
+                ),
+            ],
+            profileDefaults: input.preparedContextProfileDefaults,
+            modeOverrides: input.modePromptLayerOverrides,
+            compactionReseedActive: Boolean(compaction),
+        });
+        const digest = buildPreparedContextDigest(finalMessages);
+        const preparedContext = {
+            contributors: finalLedger.contributors,
+            digest: buildPreparedContextDigestSummary({
+                fullDigest: digest,
+                contributorDigest: finalLedger.contributorDigest,
+                checkpointSummaries: finalLedger.checkpointSummaries,
+                compactionReseedActive: finalLedger.compactionReseedActive,
+            }),
+            activeContributorCount: finalLedger.contributors.filter((contributor) => contributor.inclusionState === 'included').length,
+            compactionReseedActive: finalLedger.compactionReseedActive,
+        } satisfies PreparedContextSummary;
 
         const budgetAssessment = assessContextBudget({
             policy,
@@ -254,7 +414,8 @@ class SessionContextService {
 
         return okOp({
             messages: finalMessages,
-            digest: buildPreparedContextDigest(finalMessages),
+            digest,
+            preparedContext,
             ...(preparedEstimate.estimate ? { estimate: preparedEstimate.estimate } : {}),
             policy,
             ...(compaction ? { compaction } : {}),

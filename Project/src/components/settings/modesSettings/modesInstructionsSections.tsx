@@ -5,9 +5,15 @@ import type {
     FileBackedModeItemsByTab,
 } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import {
+    formatPreparedContextCheckpointLabel,
+    formatPreparedContextLayerGroupLabel,
+    formatPreparedContextModeOverrideValueLabel,
+    formatPreparedContextProfileDefaultValueLabel,
     formatDelimitedLabel,
     formatRuntimeProfileLabel,
     getModeRoleTemplateOptions,
+    preparedContextEditablePromptLayerGroupOrder,
+    preparedContextInjectionCheckpointOrder,
     resolveCustomModeEditorTopLevelTab,
 } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import type {
@@ -24,6 +30,12 @@ import {
     type ModeAuthoringRole,
     type ModeDraftRecord,
     type ModeRoleTemplateKey,
+    type PreparedContextEditablePromptLayerGroup,
+    type PreparedContextInjectionCheckpoint,
+    type PreparedContextModeOverrideValue,
+    type PreparedContextModeOverrides,
+    type PreparedContextProfileDefaultValue,
+    type PreparedContextProfileDefaults,
     type TopLevelTab,
 } from '@/shared/contracts';
 import { getModeRoleTemplateDefinition } from '@/shared/modeRoleCatalog';
@@ -67,19 +79,20 @@ function formatMetadataPill(label: string, value: string) {
     );
 }
 
+type MetadataSummaryItem = {
+    authoringRole: FileBackedCustomModeSettingsItem['authoringRole'];
+    roleTemplate: FileBackedCustomModeSettingsItem['roleTemplate'];
+    internalModelRole: FileBackedCustomModeSettingsItem['internalModelRole'];
+    toolCapabilities?: FileBackedCustomModeSettingsItem['toolCapabilities'];
+    workflowCapabilities?: FileBackedCustomModeSettingsItem['workflowCapabilities'];
+    behaviorFlags?: FileBackedCustomModeSettingsItem['behaviorFlags'];
+    runtimeProfile?: FileBackedCustomModeSettingsItem['runtimeProfile'];
+    delegatedOnly?: FileBackedCustomModeSettingsItem['delegatedOnly'];
+    sessionSelectable?: FileBackedCustomModeSettingsItem['sessionSelectable'];
+};
+
 function MetadataSummary(input: {
-    item: Pick<
-        FileBackedCustomModeSettingsItem,
-        | 'authoringRole'
-        | 'roleTemplate'
-        | 'internalModelRole'
-        | 'toolCapabilities'
-        | 'workflowCapabilities'
-        | 'behaviorFlags'
-        | 'runtimeProfile'
-        | 'delegatedOnly'
-        | 'sessionSelectable'
-    >;
+    item: MetadataSummaryItem;
 }) {
     return (
         <div className='space-y-3'>
@@ -125,6 +138,158 @@ function MetadataSummary(input: {
                 </div>
             ) : null}
         </div>
+    );
+}
+
+function PreparedContextMatrixScaffold(input: {
+    title: string;
+    description: string;
+    children: ReactNode;
+    footer?: ReactNode;
+}) {
+    return (
+        <div className='space-y-3 rounded-2xl border border-dashed px-4 py-4'>
+            <div className='space-y-1'>
+                <h6 className='text-sm font-semibold'>{input.title}</h6>
+                <p className='text-muted-foreground text-sm leading-6'>{input.description}</p>
+            </div>
+            {input.children}
+            {input.footer ? <div className='text-muted-foreground text-xs leading-5'>{input.footer}</div> : null}
+        </div>
+    );
+}
+
+function PreparedContextProfileDefaultsCard(input: {
+    values: PreparedContextProfileDefaults;
+    isSaving: boolean;
+    onChange: (
+        group: PreparedContextEditablePromptLayerGroup,
+        checkpoint: PreparedContextInjectionCheckpoint,
+        value: PreparedContextProfileDefaultValue
+    ) => void;
+    onSave: () => void;
+    onReset: () => void;
+}) {
+    return (
+        <section className='border-border/70 bg-card/50 space-y-4 rounded-[24px] border p-5'>
+            <PreparedContextMatrixScaffold
+                title='Prepared Context Load Controls'
+                description='Choose which shared prompt layers load by default at bootstrap and after compaction reseed. Runtime-owned contributors stay visible in previews but are not editable here.'
+                footer='Profile defaults are the baseline. Active mode overrides can inherit, force include, or force exclude each shared layer per checkpoint.'>
+                <div className='overflow-x-auto'>
+                    <table className='min-w-full border-separate border-spacing-y-2 text-sm'>
+                        <thead>
+                            <tr className='text-left text-xs uppercase tracking-[0.12em] text-muted-foreground'>
+                                <th className='pb-1 pr-4 font-semibold'>Layer</th>
+                                {preparedContextInjectionCheckpointOrder.map((checkpoint) => (
+                                    <th key={checkpoint} className='pb-1 pr-4 font-semibold'>
+                                        {formatPreparedContextCheckpointLabel(checkpoint)}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {preparedContextEditablePromptLayerGroupOrder.map((group) => (
+                                <tr key={group}>
+                                    <td className='pr-4 font-medium'>{formatPreparedContextLayerGroupLabel(group)}</td>
+                                    {preparedContextInjectionCheckpointOrder.map((checkpoint) => (
+                                        <td key={`${group}:${checkpoint}`} className='pr-4'>
+                                            <select
+                                                className='border-border bg-background h-10 w-full min-w-[170px] rounded-xl border px-3 text-sm'
+                                                value={input.values[group][checkpoint]}
+                                                onChange={(event) => {
+                                                    input.onChange(
+                                                        group,
+                                                        checkpoint,
+                                                        event.target.value as PreparedContextProfileDefaultValue
+                                                    );
+                                                }}>
+                                                <option value='include'>
+                                                    {formatPreparedContextProfileDefaultValueLabel('include')}
+                                                </option>
+                                                <option value='exclude'>
+                                                    {formatPreparedContextProfileDefaultValueLabel('exclude')}
+                                                </option>
+                                            </select>
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </PreparedContextMatrixScaffold>
+            <div className='flex flex-wrap gap-2'>
+                <Button type='button' size='sm' disabled={input.isSaving} onClick={input.onSave}>
+                    {input.isSaving ? 'Saving…' : 'Save'}
+                </Button>
+                <Button type='button' size='sm' variant='outline' disabled={input.isSaving} onClick={input.onReset}>
+                    Reset
+                </Button>
+            </div>
+        </section>
+    );
+}
+
+function PreparedContextModeOverridesEditor(input: {
+    values: PreparedContextModeOverrides;
+    onChange: (
+        group: PreparedContextEditablePromptLayerGroup,
+        checkpoint: PreparedContextInjectionCheckpoint,
+        value: PreparedContextModeOverrideValue
+    ) => void;
+}) {
+    return (
+        <PreparedContextMatrixScaffold
+            title='Shared Prompt-Layer Overrides'
+            description='These overrides only affect app instructions, profile instructions, and built-in top-level instructions. Mode prompt text, rules, skills, project instructions, retrieved memory, and compaction summaries remain runtime-owned.'
+            footer='Inherit uses the profile default. Include and exclude force the selected layer at the chosen injection checkpoint when prompt text exists.'>
+            <div className='overflow-x-auto'>
+                <table className='min-w-full border-separate border-spacing-y-2 text-sm'>
+                    <thead>
+                        <tr className='text-left text-xs uppercase tracking-[0.12em] text-muted-foreground'>
+                            <th className='pb-1 pr-4 font-semibold'>Layer</th>
+                            {preparedContextInjectionCheckpointOrder.map((checkpoint) => (
+                                <th key={checkpoint} className='pb-1 pr-4 font-semibold'>
+                                    {formatPreparedContextCheckpointLabel(checkpoint)}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {preparedContextEditablePromptLayerGroupOrder.map((group) => (
+                            <tr key={group}>
+                                <td className='pr-4 font-medium'>{formatPreparedContextLayerGroupLabel(group)}</td>
+                                {preparedContextInjectionCheckpointOrder.map((checkpoint) => (
+                                    <td key={`${group}:${checkpoint}`} className='pr-4'>
+                                        <select
+                                            className='border-border bg-background h-10 w-full min-w-[170px] rounded-xl border px-3 text-sm'
+                                            value={input.values[group][checkpoint]}
+                                            onChange={(event) => {
+                                                input.onChange(
+                                                    group,
+                                                    checkpoint,
+                                                    event.target.value as PreparedContextModeOverrideValue
+                                                );
+                                            }}>
+                                            <option value='inherit'>
+                                                {formatPreparedContextModeOverrideValueLabel('inherit')}
+                                            </option>
+                                            <option value='include'>
+                                                {formatPreparedContextModeOverrideValueLabel('include')}
+                                            </option>
+                                            <option value='exclude'>
+                                                {formatPreparedContextModeOverrideValueLabel('exclude')}
+                                            </option>
+                                        </select>
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </PreparedContextMatrixScaffold>
     );
 }
 
@@ -193,8 +358,24 @@ export function BuiltInModePromptCard(input: {
     hasOverride: boolean;
     isSaving: boolean;
     warning: string;
+    metadata: Pick<
+        MetadataSummaryItem,
+        | 'authoringRole'
+        | 'roleTemplate'
+        | 'internalModelRole'
+        | 'toolCapabilities'
+        | 'workflowCapabilities'
+        | 'behaviorFlags'
+        | 'runtimeProfile'
+    >;
+    promptLayerOverrides: PreparedContextModeOverrides;
     onRoleDefinitionChange: (value: string) => void;
     onCustomInstructionsChange: (value: string) => void;
+    onPromptLayerOverrideChange: (
+        group: PreparedContextEditablePromptLayerGroup,
+        checkpoint: PreparedContextInjectionCheckpoint,
+        value: PreparedContextModeOverrideValue
+    ) => void;
     onSave: () => void;
     onReset: () => void;
 }) {
@@ -212,6 +393,7 @@ export function BuiltInModePromptCard(input: {
             <div className='rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100'>
                 {input.warning}
             </div>
+            <MetadataSummary item={input.metadata} />
             <label className='space-y-2'>
                 <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
                     Role Definition
@@ -238,6 +420,10 @@ export function BuiltInModePromptCard(input: {
                     spellCheck={false}
                 />
             </label>
+            <PreparedContextModeOverridesEditor
+                values={input.promptLayerOverrides}
+                onChange={input.onPromptLayerOverrideChange}
+            />
             <div className='flex flex-wrap gap-2'>
                 <Button type='button' size='sm' disabled={input.isSaving} onClick={input.onSave}>
                     {input.isSaving ? 'Saving…' : 'Save'}
@@ -334,6 +520,11 @@ export function CustomModeEditorSection(input: {
                 | 'tagsText'
                 | 'sourceText',
             value: string
+        ) => void;
+        setPromptLayerOverride: (
+            group: PreparedContextEditablePromptLayerGroup,
+            checkpoint: PreparedContextInjectionCheckpoint,
+            value: PreparedContextModeOverrideValue
         ) => void;
         setDeleteConfirmed: (value: boolean) => void;
         save: () => Promise<void>;
@@ -518,6 +709,11 @@ export function CustomModeEditorSection(input: {
                     />
                 </div>
             </div>
+
+            <PreparedContextModeOverridesEditor
+                values={draft.promptLayerOverrides}
+                onChange={input.editor.setPromptLayerOverride}
+            />
 
             <div className='grid gap-4 md:grid-cols-2'>
                 <label className='space-y-2'>
@@ -900,3 +1096,4 @@ export function ModeDraftInventorySection(input: {
 }
 
 export { formatTopLevelLabel };
+export { PreparedContextProfileDefaultsCard };

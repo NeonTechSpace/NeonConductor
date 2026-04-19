@@ -8,11 +8,13 @@ import {
     promptLayerGetCustomModeInputSchema,
     promptLayerGetSettingsInputSchema,
     promptLayerImportCustomModeInputSchema,
+    promptLayerResetPreparedContextProfileDefaultsInputSchema,
     promptLayerResetBuiltInModePromptInputSchema,
     promptLayerResetAppGlobalInstructionsInputSchema,
     promptLayerResetProfileGlobalInstructionsInputSchema,
     promptLayerResetTopLevelInstructionsInputSchema,
     promptLayerSetBuiltInModePromptInputSchema,
+    promptLayerSetPreparedContextProfileDefaultsInputSchema,
     promptLayerSetAppGlobalInstructionsInputSchema,
     promptLayerSetProfileGlobalInstructionsInputSchema,
     promptLayerSetTopLevelInstructionsInputSchema,
@@ -32,10 +34,12 @@ import {
     importCustomModeToDraft,
     resetBuiltInModePrompt,
     resetAppGlobalInstructions,
+    resetPreparedContextProfileDefaults,
     resetProfileGlobalInstructions,
     resetTopLevelInstructions,
     setBuiltInModePrompt,
     setAppGlobalInstructions,
+    setPreparedContextProfileDefaults,
     setProfileGlobalInstructions,
     setTopLevelInstructions,
     updateCustomMode,
@@ -89,6 +93,20 @@ export const promptRouter = router({
         .mutation(async ({ input }) => {
             return {
                 settings: await setTopLevelInstructions(input),
+            };
+        }),
+    setPreparedContextProfileDefaults: publicProcedure
+        .input(promptLayerSetPreparedContextProfileDefaultsInputSchema)
+        .mutation(async ({ input }) => {
+            return {
+                settings: await setPreparedContextProfileDefaults(input),
+            };
+        }),
+    resetPreparedContextProfileDefaults: publicProcedure
+        .input(promptLayerResetPreparedContextProfileDefaultsInputSchema)
+        .mutation(async ({ input }) => {
+            return {
+                settings: await resetPreparedContextProfileDefaults(input.profileId),
             };
         }),
     resetTopLevelInstructions: publicProcedure

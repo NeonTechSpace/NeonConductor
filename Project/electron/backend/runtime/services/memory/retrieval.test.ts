@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { memoryEvidenceStore, memoryStore, runStore } from '@/app/backend/persistence/stores';
-import type { ModeDefinition } from '@/app/backend/runtime/contracts';
+import { createDefaultPreparedContextModeOverrides, type ModeDefinition } from '@/app/backend/runtime/contracts';
 import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
@@ -59,6 +59,7 @@ function createResolvedMode(modeKey: string, topLevelTab: 'chat' | 'agent' | 'or
             sessionSelectable: true,
             label: `${topLevelTab} ${modeKey}`,
             prompt: {},
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             executionPolicy: {
                 authoringRole:
                     topLevelTab === 'chat'

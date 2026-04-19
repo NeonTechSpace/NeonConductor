@@ -1,10 +1,12 @@
 export {
     getPromptLayerSettings,
     resetAppGlobalInstructions,
+    resetPreparedContextProfileDefaults,
     resetBuiltInModePrompt,
     resetProfileGlobalInstructions,
     resetTopLevelInstructions,
     setAppGlobalInstructions,
+    setPreparedContextProfileDefaults,
     setBuiltInModePrompt,
     setProfileGlobalInstructions,
     setTopLevelInstructions,

@@ -1,4 +1,5 @@
 import type {
+    PreparedContextSummary,
     ResolvedContextPolicy,
     ResolvedContextState,
     RetrievedMemorySummary,
@@ -9,12 +10,14 @@ import { tokenCountingService } from '@/app/backend/runtime/services/context/tok
 
 export function buildResolvedContextState(input: {
     policy: ResolvedContextPolicy;
+    preparedContext: PreparedContextSummary;
     estimate?: TokenCountEstimate;
     compaction?: SessionContextCompactionRecord | null;
     retrievedMemory?: RetrievedMemorySummary;
 }): ResolvedContextState {
     return {
         policy: input.policy,
+        preparedContext: input.preparedContext,
         countingMode: input.estimate?.mode ?? tokenCountingService.getPreferredMode(input.policy),
         ...(input.estimate ? { estimate: input.estimate } : {}),
         ...(input.compaction ? { compaction: input.compaction } : {}),

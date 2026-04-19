@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     createEmptyCustomModeEditorDraft,
+    createDefaultPreparedContextModeOverridesSnapshot,
     formatRuntimeProfileLabel,
     getModeRoleTemplateOptions,
     resolveCustomModeEditorTopLevelTab,
@@ -23,6 +24,7 @@ describe('modesInstructionsControllerShared', () => {
             customInstructions: '',
             whenToUse: '',
             tagsText: '',
+            promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
             deleteConfirmed: false,
             sourceText: '',
         });
@@ -42,6 +44,7 @@ describe('modesInstructionsControllerShared', () => {
                 customInstructions: '',
                 whenToUse: '',
                 tagsText: '',
+                promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
                 deleteConfirmed: false,
                 sourceText: '',
             })

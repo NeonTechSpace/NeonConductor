@@ -136,6 +136,7 @@ export async function updateCustomMode(input: {
         ...(input.mode.customInstructions ? { customInstructions: input.mode.customInstructions } : {}),
         ...(input.mode.whenToUse ? { whenToUse: input.mode.whenToUse } : {}),
         ...(input.mode.tags ? { tags: input.mode.tags } : {}),
+        ...(input.mode.promptLayerOverrides ? { promptLayerOverrides: input.mode.promptLayerOverrides } : {}),
     });
     const { fileContent } = renderCanonicalModeMarkdown({ payload });
 

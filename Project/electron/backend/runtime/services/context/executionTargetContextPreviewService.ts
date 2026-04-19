@@ -6,15 +6,20 @@ import type {
     RetrievedMemorySummary,
     SessionContextCompactionRecord,
     TokenCountEstimate,
+    PreparedContextSummary,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
 import { resolveModeExecution } from '@/app/backend/runtime/services/runExecution/mode';
-import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
+import type {
+    PreparedContextModeOverrides,
+    PreparedContextProfileDefaults,
+} from '@/app/backend/runtime/contracts';
 
 export interface PreparedContextStateProjection {
     policy: ResolvedContextPolicy;
+    preparedContext: PreparedContextSummary;
     estimate?: TokenCountEstimate;
     compaction?: SessionContextCompactionRecord;
     retrievedMemory?: RetrievedMemorySummary;
@@ -35,7 +40,9 @@ export async function resolveExecutionTargetContextPreview(input: {
         sessionId: EntityId<'sess'>;
         providerId: ResolvedContextPolicy['providerId'];
         modelId: string;
-        systemMessages: RunContextMessage[];
+        systemContributorSpecs: import('@/app/backend/runtime/services/context/preparedContextLedger').PreparedContextContributorSpec[];
+        preparedContextProfileDefaults: PreparedContextProfileDefaults;
+        modePromptLayerOverrides: PreparedContextModeOverrides;
         prompt: string;
         attachments?: ComposerImageAttachmentInput[];
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
@@ -72,7 +79,9 @@ export async function resolveExecutionTargetContextPreview(input: {
         sessionId: input.sessionId,
         providerId: input.providerId,
         modelId: input.modelId,
-        systemMessages: systemPreludeResult.value,
+        systemContributorSpecs: systemPreludeResult.value.contributorSpecs,
+        preparedContextProfileDefaults: systemPreludeResult.value.preparedContextProfileDefaults,
+        modePromptLayerOverrides: systemPreludeResult.value.modePromptLayerOverrides,
         prompt: input.prompt ?? '',
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
@@ -90,6 +99,7 @@ export async function resolveExecutionTargetContextPreview(input: {
     return okOp(
         buildResolvedContextState({
             policy: preparedContext.value.policy,
+            preparedContext: preparedContext.value.preparedContext,
             ...(preparedContext.value.estimate ? { estimate: preparedContext.value.estimate } : {}),
             ...(preparedContext.value.compaction ? { compaction: preparedContext.value.compaction } : {}),
             ...(preparedContext.value.retrievedMemory ? { retrievedMemory: preparedContext.value.retrievedMemory } : {}),

@@ -55,6 +55,35 @@ import type { ModelPickerOption } from '@/web/components/modelSelection/modelCap
 
 import type { ResolvedContextState } from '@/shared/contracts';
 
+function createEmptyPreparedContextSummary() {
+    return {
+        contributors: [],
+        digest: {
+            fullDigest: 'runctx-empty',
+            contributorDigest: 'ctxcontributors-empty',
+            cacheabilityHint: 'Prepared context is stable until prompt layers, mode overrides, or system-owned contributors change.',
+            checkpoints: {
+                bootstrap: {
+                    checkpoint: 'bootstrap',
+                    includedContributorCount: 0,
+                    excludedContributorCount: 0,
+                    digest: 'ctxchk-bootstrap-empty',
+                    active: true,
+                },
+                post_compaction_reseed: {
+                    checkpoint: 'post_compaction_reseed',
+                    includedContributorCount: 0,
+                    excludedContributorCount: 0,
+                    digest: 'ctxchk-post_compaction_reseed-empty',
+                    active: false,
+                },
+            },
+        },
+        activeContributorCount: 0,
+        compactionReseedActive: false,
+    } satisfies ResolvedContextState['preparedContext'];
+}
+
 function createModelOption(
     input: Partial<ModelPickerOption> & Pick<ModelPickerOption, 'id' | 'label'>
 ): ModelPickerOption {
@@ -126,6 +155,7 @@ function createContextState(
                   },
               }),
         compactable: true,
+        preparedContext: createEmptyPreparedContextSummary(),
     };
 }
 
@@ -407,6 +437,7 @@ describe('composer enter handling', () => {
             expect(html).toContain('Usage 40%');
             expect(html).toContain('Exact counting');
             expect(html).toContain('Compaction threshold: 80,000 tokens.');
+            expect(html).toContain('Prepared context: 0 loaded contributors.');
         }
     );
 

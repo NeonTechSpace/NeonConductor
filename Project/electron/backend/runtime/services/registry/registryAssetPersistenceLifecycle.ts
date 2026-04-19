@@ -46,6 +46,7 @@ export async function replaceDiscoveredModes(input: {
                 label: mode.label,
                 asset_key: mode.assetKey,
                 prompt_json: JSON.stringify(mode.prompt),
+                prompt_layer_overrides_json: JSON.stringify(mode.promptLayerOverrides),
                 execution_policy_json: JSON.stringify(mode.executionPolicy),
                 source: mode.source,
                 source_kind: mode.sourceKind,

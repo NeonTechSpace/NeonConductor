@@ -9,6 +9,7 @@ import type {
 } from '@/app/backend/runtime/contracts';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { RetrievedMemorySummary } from '@/app/backend/runtime/contracts/types/memory';
+import type { PreparedContextInjectionCheckpoint } from '@/app/backend/runtime/contracts/types/prompt';
 
 export interface ContextGlobalSettings {
     enabled: boolean;
@@ -121,12 +122,92 @@ export interface ResolvedContextStateInput extends ContextPolicyInput {
     runId?: EntityId<'run'>;
 }
 
+export type PreparedContextContributorKind =
+    | 'workspace_prelude'
+    | 'environment_guidance'
+    | 'prompt_layer'
+    | 'mode_role_definition'
+    | 'mode_custom_instructions'
+    | 'ruleset'
+    | 'project_instruction'
+    | 'attached_skill'
+    | 'retrieved_memory'
+    | 'compaction_summary';
+
+export type PreparedContextContributorGroup =
+    | 'runtime_environment'
+    | 'shared_prompt_layer'
+    | 'mode_prompt'
+    | 'ruleset'
+    | 'project_instruction'
+    | 'attached_skill'
+    | 'retrieved_memory'
+    | 'compaction';
+
+export type PreparedContextContributorInclusionState = 'included' | 'excluded';
+
+export type PreparedContextContributorCountMode = 'estimated' | 'not_counted';
+
+export interface PreparedContextContributorSource {
+    kind:
+        | 'workspace'
+        | 'environment'
+        | 'prompt_layer'
+        | 'mode'
+        | 'ruleset'
+        | 'project_instruction'
+        | 'skill'
+        | 'memory'
+        | 'compaction';
+    key: string;
+    label: string;
+}
+
+export interface PreparedContextContributorSummary {
+    id: string;
+    kind: PreparedContextContributorKind;
+    group: PreparedContextContributorGroup;
+    label: string;
+    source: PreparedContextContributorSource;
+    inclusionState: PreparedContextContributorInclusionState;
+    inclusionReason: string;
+    injectionCheckpoint: PreparedContextInjectionCheckpoint;
+    resolvedOrder: number;
+    countMode: PreparedContextContributorCountMode;
+    tokenCount?: number;
+    digest: string;
+}
+
+export interface PreparedContextCheckpointSummary {
+    checkpoint: PreparedContextInjectionCheckpoint;
+    includedContributorCount: number;
+    excludedContributorCount: number;
+    estimatedTokenCount?: number;
+    digest: string;
+    active: boolean;
+}
+
+export interface PreparedContextDigestSummary {
+    fullDigest: string;
+    contributorDigest: string;
+    cacheabilityHint: string;
+    checkpoints: Record<PreparedContextInjectionCheckpoint, PreparedContextCheckpointSummary>;
+}
+
+export interface PreparedContextSummary {
+    contributors: PreparedContextContributorSummary[];
+    digest: PreparedContextDigestSummary;
+    activeContributorCount: number;
+    compactionReseedActive: boolean;
+}
+
 export interface ResolvedContextState {
     policy: ResolvedContextPolicy;
     countingMode: TokenCountMode;
     estimate?: TokenCountEstimate;
     compaction?: SessionContextCompactionRecord;
     retrievedMemory?: RetrievedMemorySummary;
+    preparedContext: PreparedContextSummary;
     compactable: boolean;
 }
 

@@ -188,6 +188,7 @@ export function useModesInstructionsCustomModesController(input: {
                     ...(customInstructions ? { customInstructions } : {}),
                     ...(whenToUse ? { whenToUse } : {}),
                     ...(tags ? { tags } : {}),
+                    promptLayerOverrides: customModeEditorDraft.promptLayerOverrides,
                 },
             });
             return;
@@ -208,6 +209,7 @@ export function useModesInstructionsCustomModesController(input: {
                     ...(customInstructions ? { customInstructions } : {}),
                     ...(whenToUse ? { whenToUse } : {}),
                     ...(tags ? { tags } : {}),
+                    promptLayerOverrides: customModeEditorDraft.promptLayerOverrides,
                 },
             });
             return;
@@ -230,6 +232,7 @@ export function useModesInstructionsCustomModesController(input: {
                 ...(customInstructions ? { customInstructions } : {}),
                 ...(whenToUse ? { whenToUse } : {}),
                 ...(tags ? { tags } : {}),
+                promptLayerOverrides: customModeEditorDraft.promptLayerOverrides,
             },
         });
     }
@@ -319,6 +322,7 @@ export function useModesInstructionsCustomModesController(input: {
                 setAuthoringRole: editorState.setAuthoringRole,
                 setRoleTemplate: editorState.setRoleTemplate,
                 setField: editorState.setField,
+                setPromptLayerOverride: editorState.setPromptLayerOverride,
                 setDeleteConfirmed: editorState.setDeleteConfirmed,
                 save: wrapFailClosedAction(saveEditorDraft),
                 deleteMode: wrapFailClosedAction(deleteOrDiscardCurrentEditorItem),

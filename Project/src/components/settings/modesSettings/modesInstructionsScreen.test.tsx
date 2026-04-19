@@ -2,6 +2,11 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+    createDefaultPreparedContextModeOverridesSnapshot,
+    createDefaultPreparedContextProfileDefaultsSnapshot,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+
 vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsController', () => ({
     useModesInstructionsSettingsController: () => ({
         feedback: {
@@ -75,6 +80,14 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             roleDefinition: '',
                             customInstructions: '',
                             hasOverride: false,
+                            authoringRole: 'single_task_agent',
+                            roleTemplate: 'single_task_agent/apply',
+                            internalModelRole: 'apply',
+                            toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell'],
+                            workflowCapabilities: ['artifact_view'],
+                            behaviorFlags: ['workspace_mutating'],
+                            runtimeProfile: 'mutating_agent',
+                            promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
                         },
                     ],
                 },
@@ -109,6 +122,7 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                             description: 'Global chat review mode',
                             whenToUse: 'Use when a conversation needs a strict review pass.',
                             tags: ['quality', 'review'],
+                            promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
                             toolCapabilities: ['filesystem_read', 'mcp'],
                             workflowCapabilities: ['review', 'artifact_view'],
                             behaviorFlags: ['approval_gated', 'artifact_producing'],
@@ -141,6 +155,13 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
             save: vi.fn(),
             reset: vi.fn(),
         },
+        preparedContextDefaults: {
+            value: createDefaultPreparedContextProfileDefaultsSnapshot(),
+            isSaving: false,
+            setValue: vi.fn(),
+            save: vi.fn(),
+            reset: vi.fn(),
+        },
         topLevel: {
             isSaving: false,
             getValue: () => '',
@@ -151,6 +172,7 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
         builtInModes: {
             isSaving: false,
             setPromptField: vi.fn(),
+            setPromptLayerOverride: vi.fn(),
             save: vi.fn(),
             reset: vi.fn(),
         },
@@ -183,6 +205,7 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                         delegatedOnly: true,
                         sessionSelectable: false,
                         description: 'Delegated worker mode',
+                        promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
                         toolCapabilities: ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime'],
                         workflowCapabilities: ['artifact_view'],
                         behaviorFlags: ['workspace_mutating', 'checkpoint_eligible', 'artifact_producing'],
@@ -223,6 +246,7 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                     customInstructions: 'Review the active conversation carefully.',
                     whenToUse: 'Use when a conversation needs a strict review pass.',
                     tagsText: 'quality, review',
+                    promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
                     deleteConfirmed: false,
                     sourceText: 'Imported from JSON.',
                     validationState: 'valid',
@@ -241,6 +265,7 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
                 setAuthoringRole: vi.fn(),
                 setRoleTemplate: vi.fn(),
                 setField: vi.fn(),
+                setPromptLayerOverride: vi.fn(),
                 setDeleteConfirmed: vi.fn(),
                 save: vi.fn(),
                 deleteMode: vi.fn(),

@@ -5,6 +5,12 @@ import type {
     ModeAuthoringRole,
     ModeDraftRecord,
     ModeRoleTemplateKey,
+    PreparedContextEditablePromptLayerGroup,
+    PreparedContextInjectionCheckpoint,
+    PreparedContextModeOverrideValue,
+    PreparedContextModeOverrides,
+    PreparedContextProfileDefaultValue,
+    PreparedContextProfileDefaults,
     RuntimeRequirementProfile,
     TopLevelTab,
 } from '@/shared/contracts';
@@ -21,9 +27,23 @@ export interface BuiltInModePromptEntry extends Omit<BuiltInModePromptSettingsIt
 
 export type TopLevelDraftState = Partial<Record<TopLevelTab, { profileId: string; value: string }>>;
 export type BuiltInModeDraftState = Partial<
-    Record<string, { profileId: string; roleDefinition: string; customInstructions: string }>
+    Record<
+        string,
+        {
+            profileId: string;
+            roleDefinition: string;
+            customInstructions: string;
+            promptLayerOverrides: PreparedContextModeOverrides;
+        }
+    >
 >;
 export type BuiltInToolMetadataDraftState = Partial<Record<string, { description: string }>>;
+export type PreparedContextProfileDefaultsDraftState =
+    | {
+          profileId: string;
+          values: PreparedContextProfileDefaults;
+      }
+    | undefined;
 export type CustomModeScope = 'global' | 'workspace';
 
 export interface CustomModeEditorDraftBase {
@@ -37,6 +57,7 @@ export interface CustomModeEditorDraftBase {
     customInstructions: string;
     whenToUse: string;
     tagsText: string;
+    promptLayerOverrides: PreparedContextModeOverrides;
     deleteConfirmed: boolean;
     sourceText: string;
 }
@@ -64,6 +85,7 @@ export interface PromptSettingsSnapshot {
     appGlobalInstructions: string;
     profileGlobalInstructions: string;
     topLevelInstructions: Record<TopLevelTab, string>;
+    preparedContextProfileDefaults: PreparedContextProfileDefaults;
     builtInModes: Record<TopLevelTab, BuiltInModePromptSettingsItem[]>;
     fileBackedCustomModes: {
         global: Record<TopLevelTab, FileBackedCustomModeSettingsItem[]>;
@@ -98,6 +120,110 @@ export function emptyModeItems(): Record<TopLevelTab, FileBackedCustomModeSettin
         agent: [],
         orchestrator: [],
     };
+}
+
+export function createDefaultPreparedContextProfileDefaultsSnapshot(): PreparedContextProfileDefaults {
+    return {
+        app_global_instructions: {
+            bootstrap: 'include',
+            post_compaction_reseed: 'include',
+        },
+        profile_global_instructions: {
+            bootstrap: 'include',
+            post_compaction_reseed: 'include',
+        },
+        top_level_instructions: {
+            bootstrap: 'include',
+            post_compaction_reseed: 'include',
+        },
+    };
+}
+
+export function createDefaultPreparedContextModeOverridesSnapshot(): PreparedContextModeOverrides {
+    return {
+        app_global_instructions: {
+            bootstrap: 'inherit',
+            post_compaction_reseed: 'inherit',
+        },
+        profile_global_instructions: {
+            bootstrap: 'inherit',
+            post_compaction_reseed: 'inherit',
+        },
+        top_level_instructions: {
+            bootstrap: 'inherit',
+            post_compaction_reseed: 'inherit',
+        },
+    };
+}
+
+export const preparedContextEditablePromptLayerGroupOrder: PreparedContextEditablePromptLayerGroup[] = [
+    'app_global_instructions',
+    'profile_global_instructions',
+    'top_level_instructions',
+];
+
+export const preparedContextInjectionCheckpointOrder: PreparedContextInjectionCheckpoint[] = [
+    'bootstrap',
+    'post_compaction_reseed',
+];
+
+export function clonePreparedContextProfileDefaults(
+    value: PreparedContextProfileDefaults
+): PreparedContextProfileDefaults {
+    return {
+        app_global_instructions: { ...value.app_global_instructions },
+        profile_global_instructions: { ...value.profile_global_instructions },
+        top_level_instructions: { ...value.top_level_instructions },
+    };
+}
+
+export function clonePreparedContextModeOverrides(value: PreparedContextModeOverrides): PreparedContextModeOverrides {
+    return {
+        app_global_instructions: { ...value.app_global_instructions },
+        profile_global_instructions: { ...value.profile_global_instructions },
+        top_level_instructions: { ...value.top_level_instructions },
+    };
+}
+
+export function formatPreparedContextLayerGroupLabel(group: PreparedContextEditablePromptLayerGroup): string {
+    switch (group) {
+        case 'app_global_instructions':
+            return 'App instructions';
+        case 'profile_global_instructions':
+            return 'Profile instructions';
+        case 'top_level_instructions':
+            return 'Top-level instructions';
+        default:
+            return formatDelimitedLabel(group);
+    }
+}
+
+export function formatPreparedContextCheckpointLabel(checkpoint: PreparedContextInjectionCheckpoint): string {
+    switch (checkpoint) {
+        case 'bootstrap':
+            return 'Bootstrap';
+        case 'post_compaction_reseed':
+            return 'Post-compaction reseed';
+        default:
+            return formatDelimitedLabel(checkpoint);
+    }
+}
+
+export function formatPreparedContextProfileDefaultValueLabel(value: PreparedContextProfileDefaultValue): string {
+    return value === 'include' ? 'Include' : 'Exclude';
+}
+
+export function formatPreparedContextModeOverrideValueLabel(value: PreparedContextModeOverrideValue): string {
+    switch (value) {
+        case 'inherit':
+            return 'Inherit';
+        case 'include':
+            return 'Include';
+        case 'exclude':
+            return 'Exclude';
+        default:
+            return formatDelimitedLabel(value);
+    }
 }
 
 export function normalizeOptionalText(value: string): string | undefined {
@@ -153,6 +279,7 @@ export function createEmptyCustomModeEditorDraft(scope: CustomModeScope): Create
         customInstructions: '',
         whenToUse: '',
         tagsText: '',
+        promptLayerOverrides: createDefaultPreparedContextModeOverridesSnapshot(),
         deleteConfirmed: false,
         sourceText: '',
     };

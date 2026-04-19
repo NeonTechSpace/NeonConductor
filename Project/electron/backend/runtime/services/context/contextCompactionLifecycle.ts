@@ -1,5 +1,5 @@
 import type { SessionContextCompactionRecord } from '@/app/backend/persistence/types';
-import type { CompactSessionResult, ResolvedContextPolicy } from '@/app/backend/runtime/contracts';
+import type { CompactSessionResult, PreparedContextSummary, ResolvedContextPolicy } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { contextCompactionPreparationCoordinator } from '@/app/backend/runtime/services/context/contextCompactionPreparationCoordinator';
 import { persistAppliedCompaction } from '@/app/backend/runtime/services/context/contextCompactionPersistence';
@@ -10,11 +10,45 @@ import {
 } from '@/app/backend/runtime/services/context/contextCompactionShared';
 import { buildPreparedContextMessages } from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
 import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
+import { buildPreparedContextDigest } from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
+import { buildPreparedContextDigestSummary } from '@/app/backend/runtime/services/context/preparedContextLedger';
 import { estimatePreparedContextMessages } from '@/app/backend/runtime/services/context/sessionContextBudgetEvaluator';
 import { applyPersistedCompaction } from '@/app/backend/runtime/services/context/sessionReplayLoader';
 import type { ReplayMessage } from '@/app/backend/runtime/services/runExecution/contextReplay';
 
 export { selectMessagesToKeep } from '@/app/backend/runtime/services/context/contextCompactionShared';
+
+function createEmptyPreparedContextSummary(input: {
+    fullDigest: string;
+    compactionReseedActive: boolean;
+}): PreparedContextSummary {
+    return {
+        contributors: [],
+        digest: buildPreparedContextDigestSummary({
+            fullDigest: input.fullDigest,
+            contributorDigest: 'ctxcontributors-empty',
+            checkpointSummaries: {
+                bootstrap: {
+                    checkpoint: 'bootstrap',
+                    includedContributorCount: 0,
+                    excludedContributorCount: 0,
+                    digest: 'ctxchk-bootstrap-empty',
+                    active: true,
+                },
+                post_compaction_reseed: {
+                    checkpoint: 'post_compaction_reseed',
+                    includedContributorCount: 0,
+                    excludedContributorCount: 0,
+                    digest: 'ctxchk-post_compaction_reseed-empty',
+                    active: input.compactionReseedActive,
+                },
+            },
+            compactionReseedActive: input.compactionReseedActive,
+        }),
+        activeContributorCount: 0,
+        compactionReseedActive: input.compactionReseedActive,
+    };
+}
 
 export async function compactLoadedSessionContext(input: {
     profileId: string;
@@ -32,6 +66,10 @@ export async function compactLoadedSessionContext(input: {
             reason: 'feature_disabled',
             state: buildResolvedContextState({
                 policy: input.policy,
+                preparedContext: createEmptyPreparedContextSummary({
+                    fullDigest: 'runctx-empty',
+                    compactionReseedActive: Boolean(input.existingCompaction),
+                }),
                 ...(input.existingCompaction ? { compaction: input.existingCompaction } : {}),
             }),
         });
@@ -43,6 +81,10 @@ export async function compactLoadedSessionContext(input: {
             reason: 'multimodal_counting_unavailable',
             state: buildResolvedContextState({
                 policy: input.policy,
+                preparedContext: createEmptyPreparedContextSummary({
+                    fullDigest: 'runctx-empty',
+                    compactionReseedActive: Boolean(input.existingCompaction),
+                }),
                 ...(input.existingCompaction ? { compaction: input.existingCompaction } : {}),
             }),
         });
@@ -54,6 +96,10 @@ export async function compactLoadedSessionContext(input: {
             reason: 'missing_model_limits',
             state: buildResolvedContextState({
                 policy: input.policy,
+                preparedContext: createEmptyPreparedContextSummary({
+                    fullDigest: 'runctx-empty',
+                    compactionReseedActive: Boolean(input.existingCompaction),
+                }),
                 ...(input.existingCompaction ? { compaction: input.existingCompaction } : {}),
             }),
         });
@@ -72,6 +118,10 @@ export async function compactLoadedSessionContext(input: {
             reason: candidateResult.reason,
             state: buildResolvedContextState({
                 policy: input.policy,
+                preparedContext: createEmptyPreparedContextSummary({
+                    fullDigest: 'runctx-empty',
+                    compactionReseedActive: Boolean(input.existingCompaction),
+                }),
                 ...(candidateResult.replayEstimate ? { estimate: candidateResult.replayEstimate } : {}),
                 ...(input.existingCompaction ? { compaction: input.existingCompaction } : {}),
             }),
@@ -125,7 +175,7 @@ export async function compactLoadedSessionContext(input: {
         profileId: input.profileId,
         policy: input.policy,
         messages: buildPreparedContextMessages({
-            systemMessages: [],
+            bootstrapMessages: [],
             replayMessages: compactedReplay.replayMessages,
             prompt: '',
             ...(compactedReplay.summaryMessage ? { summaryMessage: compactedReplay.summaryMessage } : {}),
@@ -136,6 +186,17 @@ export async function compactLoadedSessionContext(input: {
         compacted: true,
         state: buildResolvedContextState({
             policy: input.policy,
+            preparedContext: createEmptyPreparedContextSummary({
+                fullDigest: buildPreparedContextDigest(
+                    buildPreparedContextMessages({
+                        bootstrapMessages: [],
+                        replayMessages: compactedReplay.replayMessages,
+                        prompt: '',
+                        ...(compactedReplay.summaryMessage ? { summaryMessage: compactedReplay.summaryMessage } : {}),
+                    })
+                ),
+                compactionReseedActive: Boolean(compactedReplay.summaryMessage),
+            }),
             ...(nextEstimate.estimate ? { estimate: nextEstimate.estimate } : {}),
             compaction,
         }),

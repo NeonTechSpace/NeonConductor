@@ -13,6 +13,7 @@ import type {
     RuntimeRequirementProfile,
 } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { PreparedContextModeOverrides } from '@/app/backend/runtime/contracts/types/prompt';
 
 export interface ModeExecutionPolicy {
     authoringRole?: ModeAuthoringRole;
@@ -114,6 +115,7 @@ export interface ModeDefinition {
     label: string;
     assetKey: string;
     prompt: ModePromptDefinition;
+    promptLayerOverrides: PreparedContextModeOverrides;
     executionPolicy: ModeExecutionPolicy;
     source: string;
     sourceKind: RegistrySourceKind;

@@ -40,6 +40,7 @@ import type {
     MarketplacePackage,
     ModeDefinition,
     ModeDraftRecord,
+    PreparedContextModeOverrides,
     ModePromptDefinition,
     OpenAIExecutionMode,
     PlanAdvancedSnapshotView,
@@ -300,6 +301,7 @@ export interface BuiltInModePromptOverrideRecord {
     topLevelTab: TopLevelTab;
     modeKey: string;
     prompt: ModePromptDefinition;
+    promptLayerOverrides: PreparedContextModeOverrides;
     updatedAt: string;
 }
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import type { RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
 
 import type { ModeDefinition } from '@/shared/contracts';
@@ -45,6 +46,7 @@ function buildMode(input: {
         label: 'Agent Code',
         assetKey: 'agent.code',
         prompt: {},
+        promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
         executionPolicy: {
             authoringRole: 'single_task_agent',
             roleTemplate:

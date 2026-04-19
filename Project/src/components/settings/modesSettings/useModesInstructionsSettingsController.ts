@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import type { PromptSettingsSnapshot } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
+import { createDefaultPreparedContextProfileDefaultsSnapshot } from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { buildModesInstructionsViewModel } from '@/web/components/settings/modesSettings/modesInstructionsViewModel';
 import { useModesInstructionsBuiltInModesController } from '@/web/components/settings/modesSettings/useModesInstructionsBuiltInModesController';
 import { useModesInstructionsCustomModesController } from '@/web/components/settings/modesSettings/useModesInstructionsCustomModesController';
@@ -96,6 +97,10 @@ export function useModesInstructionsSettingsController(input: {
         profileGlobalIsSaving: globalController.profileGlobal.isSaving,
         topLevelValues,
         topLevelIsSaving: globalController.topLevel.isSaving,
+        preparedContextProfileDefaults:
+            persistedSettings?.preparedContextProfileDefaults ??
+            settingsQuery.data?.settings.preparedContextProfileDefaults ??
+            createDefaultPreparedContextProfileDefaultsSnapshot(),
         builtInModesByTab,
         builtInModesIsSaving: builtInModesController.builtInModes.isSaving,
         builtInToolMetadata: toolMetadataController.builtInToolMetadata.items,

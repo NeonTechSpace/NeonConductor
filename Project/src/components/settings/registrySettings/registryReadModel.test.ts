@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest';
 
 import { buildRegistryReadModel } from '@/web/components/settings/registrySettings/registryReadModel';
 
+function createDefaultPreparedContextModeOverrides() {
+    return {
+        app_global_instructions: {
+            bootstrap: 'inherit',
+            post_compaction_reseed: 'inherit',
+        },
+        profile_global_instructions: {
+            bootstrap: 'inherit',
+            post_compaction_reseed: 'inherit',
+        },
+        top_level_instructions: {
+            bootstrap: 'inherit',
+            post_compaction_reseed: 'inherit',
+        },
+    } as const;
+}
+
 describe('buildRegistryReadModel', () => {
     it('projects workspace selection and filtered skill matches from registry data', () => {
         const readModel = buildRegistryReadModel({
@@ -47,6 +64,7 @@ describe('buildRegistryReadModel', () => {
                             sourceKind: 'system_seed',
                             precedence: 1,
                             prompt: {},
+                            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                             createdAt: '2026-01-01T00:00:00.000Z',
                             updatedAt: '2026-01-01T00:00:00.000Z',
                         },

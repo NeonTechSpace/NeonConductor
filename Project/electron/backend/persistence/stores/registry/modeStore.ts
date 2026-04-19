@@ -7,8 +7,20 @@ import {
     parseJsonValue,
 } from '@/app/backend/persistence/stores/shared/utils';
 import type { ModeDefinitionRecord } from '@/app/backend/persistence/types';
-import { normalizeModeMetadata, normalizeModePromptDefinition, registryScopes, registrySourceKinds, topLevelTabs } from '@/app/backend/runtime/contracts';
-import type { ModeExecutionPolicy, ToolCapability, RuntimeRequirementProfile, TopLevelTab } from '@/app/backend/runtime/contracts';
+import {
+    normalizeModeMetadata,
+    normalizeModePromptDefinition,
+    normalizePreparedContextModeOverrides,
+    registryScopes,
+    registrySourceKinds,
+    topLevelTabs,
+} from '@/app/backend/runtime/contracts';
+import type {
+    ModeExecutionPolicy,
+    RuntimeRequirementProfile,
+    ToolCapability,
+    TopLevelTab,
+} from '@/app/backend/runtime/contracts';
 import { normalizeModeExecutionMetadata } from '@/shared/modeRoleCatalog';
 
 import {
@@ -132,6 +144,7 @@ function mapModeDefinition(row: {
     label: string;
     asset_key: string;
     prompt_json: string;
+    prompt_layer_overrides_json: string;
     execution_policy_json: string;
     source: string;
     source_kind: string;
@@ -171,6 +184,9 @@ function mapModeDefinition(row: {
         label: row.label,
         assetKey: row.asset_key,
         prompt: normalizeModePromptDefinition(parseJsonValue(row.prompt_json, {}, isJsonRecord)),
+        promptLayerOverrides: normalizePreparedContextModeOverrides(
+            parseJsonValue(row.prompt_layer_overrides_json, {}, isJsonRecord)
+        ),
         executionPolicy,
         source: row.source,
         sourceKind: parseEnumValue(row.source_kind, 'mode_definitions.source_kind', registrySourceKinds),
@@ -204,6 +220,7 @@ export class ModeStore {
                 'label',
                 'asset_key',
                 'prompt_json',
+                'prompt_layer_overrides_json',
                 'execution_policy_json',
                 'source',
                 'source_kind',
@@ -244,6 +261,7 @@ export class ModeStore {
                 'label',
                 'asset_key',
                 'prompt_json',
+                'prompt_layer_overrides_json',
                 'execution_policy_json',
                 'source',
                 'source_kind',

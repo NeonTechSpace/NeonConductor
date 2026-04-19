@@ -14,6 +14,7 @@ vi.mock('@/app/backend/runtime/services/runExecution/contextPrelude', () => ({
 }));
 
 import { okOp } from '@/app/backend/runtime/services/common/operationalError';
+import { createDefaultPreparedContextModeOverrides, createDefaultPreparedContextProfileDefaults } from '@/app/backend/runtime/contracts';
 import {
     resolveExecutionTargetContextPreview,
     type PreparedContextStateProjection,
@@ -72,6 +73,33 @@ describe('executionTargetContextPreviewService', () => {
                 records: [],
                 injectedTextLength: 0,
             },
+            preparedContext: {
+                contributors: [],
+                digest: {
+                    fullDigest: 'runctx-preview',
+                    contributorDigest: 'ctxcontributors-preview',
+                    cacheabilityHint:
+                        'Prepared context is stable until prompt layers, mode overrides, or system-owned contributors change.',
+                    checkpoints: {
+                        bootstrap: {
+                            checkpoint: 'bootstrap',
+                            includedContributorCount: 0,
+                            excludedContributorCount: 0,
+                            digest: 'ctxchk-bootstrap-preview',
+                            active: true,
+                        },
+                        post_compaction_reseed: {
+                            checkpoint: 'post_compaction_reseed',
+                            includedContributorCount: 0,
+                            excludedContributorCount: 0,
+                            digest: 'ctxchk-post-preview',
+                            active: false,
+                        },
+                    },
+                },
+                activeContributorCount: 0,
+                compactionReseedActive: false,
+            },
         };
 
         resolveModeExecutionMock.mockResolvedValue({
@@ -84,12 +112,30 @@ describe('executionTargetContextPreviewService', () => {
         });
         buildSessionSystemPreludeMock.mockResolvedValue({
             isErr: () => false,
-            value: [
-                {
-                    role: 'system',
-                    parts: [{ type: 'text', text: 'Prelude' }],
-                },
-            ],
+            value: {
+                contributorSpecs: [
+                    {
+                        id: 'prelude',
+                        kind: 'runtime_prelude',
+                        group: 'runtime_environment',
+                        label: 'Prelude',
+                        source: {
+                            kind: 'runtime',
+                            key: 'prelude',
+                            label: 'Prelude',
+                        },
+                        messages: [
+                            {
+                                role: 'system',
+                                parts: [{ type: 'text', text: 'Prelude' }],
+                            },
+                        ],
+                        fixedCheckpoint: 'bootstrap',
+                    },
+                ],
+                preparedContextProfileDefaults: createDefaultPreparedContextProfileDefaults(),
+                modePromptLayerOverrides: createDefaultPreparedContextModeOverrides(),
+            },
         });
 
         const result = await resolveExecutionTargetContextPreview({
