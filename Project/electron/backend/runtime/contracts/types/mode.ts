@@ -152,6 +152,24 @@ export interface RulesetDefinition {
     updatedAt: string;
 }
 
+export type SkillDynamicContextSafetyClass = 'safe' | 'unsafe';
+
+export type SkillDynamicContextValidationState = 'valid' | 'invalid';
+
+export interface SkillDynamicContextSource {
+    id: string;
+    label: string;
+    command: string;
+    declaredSafetyClass: SkillDynamicContextSafetyClass;
+    required: boolean;
+    timeoutMs?: number;
+    maxBytes?: number;
+    maxLines?: number;
+    validationState: SkillDynamicContextValidationState;
+    effectiveSafetyClass?: SkillDynamicContextSafetyClass;
+    validationMessage?: string;
+}
+
 export interface SkillfileDefinition {
     id: string;
     profileId: string;
@@ -161,6 +179,7 @@ export interface SkillfileDefinition {
     workspaceFingerprint?: string;
     name: string;
     bodyMarkdown: string;
+    dynamicContextSources: SkillDynamicContextSource[];
     source: string;
     sourceKind: RegistrySourceKind;
     originPath?: string;

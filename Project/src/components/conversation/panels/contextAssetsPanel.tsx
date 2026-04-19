@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useContextAssetAttachmentController } from '@/web/components/conversation/panels/useContextAssetAttachmentController';
 import { Button } from '@/web/components/ui/button';
 import { useDebouncedQueryValue } from '@/web/lib/hooks/useDebouncedQueryValue';
+import { summarizeSkillDynamicContext } from '@/web/lib/skillDynamicContextSummary';
 
 import type { EntityId, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/shared/contracts';
 
@@ -41,6 +42,31 @@ function ActivationBadge({ activationMode }: { activationMode: RulesetDefinition
         <span className='bg-primary/10 text-primary rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase'>
             {activationMode}
         </span>
+    );
+}
+
+function SkillDynamicContextBadges({ skillfile }: { skillfile: SkillfileDefinition }) {
+    const summary = summarizeSkillDynamicContext(skillfile.dynamicContextSources);
+    if (summary.sourceCount === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <span className='bg-primary/10 text-primary rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase'>
+                {summary.sourceCount} dynamic
+            </span>
+            {summary.unsafeCount > 0 ? (
+                <span className='rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase text-amber-700 dark:text-amber-300'>
+                    {summary.unsafeCount} unsafe
+                </span>
+            ) : null}
+            {summary.invalidCount > 0 ? (
+                <span className='rounded-full bg-rose-500/10 px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase text-rose-700 dark:text-rose-300'>
+                    {summary.invalidCount} invalid
+                </span>
+            ) : null}
+        </>
     );
 }
 
@@ -176,6 +202,7 @@ export function ContextAssetsPanel({
                                     <p className='text-sm font-medium'>{skillfile.name}</p>
                                     <ScopeBadge scope={skillfile.scope} />
                                     <PresetBadge presetKey={skillfile.presetKey} />
+                                    <SkillDynamicContextBadges skillfile={skillfile} />
                                 </div>
                                 <p className='text-muted-foreground mt-1 text-xs'>
                                     {skillfile.description ?? skillfile.assetKey}
@@ -262,6 +289,7 @@ export function ContextAssetsPanel({
                                         <p className='text-sm font-medium'>{skillfile.name}</p>
                                         <ScopeBadge scope={skillfile.scope} />
                                         <PresetBadge presetKey={skillfile.presetKey} />
+                                        <SkillDynamicContextBadges skillfile={skillfile} />
                                     </div>
                                     <p className='text-muted-foreground mt-1 text-xs'>
                                         {skillfile.description ?? skillfile.assetKey}

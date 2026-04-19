@@ -1,4 +1,5 @@
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
+import { summarizeSkillDynamicContext } from '@/web/lib/skillDynamicContextSummary';
 
 import type {
     ModeDefinitionRecord,
@@ -21,6 +22,35 @@ function formatScopeLabel(asset: RegistryAsset): string {
     return `${asset.scope}${presetLabel}`;
 }
 
+function isSkillAsset(asset: RegistryAsset): asset is SkillfileDefinitionRecord {
+    return 'dynamicContextSources' in asset;
+}
+
+function SkillDynamicContextMeta({ asset }: { asset: SkillfileDefinitionRecord }) {
+    const summary = summarizeSkillDynamicContext(asset.dynamicContextSources);
+    if (summary.sourceCount === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <span className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>
+                {summary.sourceCount} dynamic source{summary.sourceCount === 1 ? '' : 's'}
+            </span>
+            {summary.unsafeCount > 0 ? (
+                <span className='rounded-full bg-amber-500/10 px-2 py-1 font-medium text-amber-700 dark:text-amber-300'>
+                    {summary.unsafeCount} unsafe
+                </span>
+            ) : null}
+            {summary.invalidCount > 0 ? (
+                <span className='rounded-full bg-rose-500/10 px-2 py-1 font-medium text-rose-700 dark:text-rose-300'>
+                    {summary.invalidCount} invalid
+                </span>
+            ) : null}
+        </>
+    );
+}
+
 export function AssetMeta({ asset }: { asset: RegistryAsset }) {
     return (
         <div className='mt-2 flex flex-wrap gap-2 text-[11px]'>
@@ -38,6 +68,7 @@ export function AssetMeta({ asset }: { asset: RegistryAsset }) {
                     {tag}
                 </span>
             ))}
+            {isSkillAsset(asset) ? <SkillDynamicContextMeta asset={asset} /> : null}
         </div>
     );
 }

@@ -9,6 +9,7 @@ import type {
 } from '@/app/backend/runtime/contracts';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { RetrievedMemorySummary } from '@/app/backend/runtime/contracts/types/memory';
+import type { SkillDynamicContextSafetyClass } from '@/app/backend/runtime/contracts/types/mode';
 import type { PreparedContextInjectionCheckpoint } from '@/app/backend/runtime/contracts/types/prompt';
 
 export interface ContextGlobalSettings {
@@ -131,6 +132,7 @@ export type PreparedContextContributorKind =
     | 'ruleset'
     | 'project_instruction'
     | 'attached_skill'
+    | 'dynamic_skill_context'
     | 'retrieved_memory'
     | 'compaction_summary';
 
@@ -141,6 +143,7 @@ export type PreparedContextContributorGroup =
     | 'ruleset'
     | 'project_instruction'
     | 'attached_skill'
+    | 'dynamic_skill_context'
     | 'retrieved_memory'
     | 'compaction';
 
@@ -157,10 +160,32 @@ export interface PreparedContextContributorSource {
         | 'ruleset'
         | 'project_instruction'
         | 'skill'
+        | 'skill_dynamic_context'
         | 'memory'
         | 'compaction';
     key: string;
     label: string;
+}
+
+export type DynamicContextExpansionResolutionState =
+    | 'preview_only'
+    | 'pending_approval'
+    | 'resolved'
+    | 'omitted'
+    | 'failed'
+    | 'invalid';
+
+export interface DynamicContextExpansion {
+    sourceId: string;
+    sourceLabel: string;
+    required: boolean;
+    effectiveSafetyClass?: SkillDynamicContextSafetyClass;
+    resolutionState: DynamicContextExpansionResolutionState;
+    commandDigest: string;
+    outputDigest?: string;
+    truncated: boolean;
+    failureReason?: string;
+    permissionRequestId?: EntityId<'perm'>;
 }
 
 export interface PreparedContextContributorSummary {
@@ -176,6 +201,7 @@ export interface PreparedContextContributorSummary {
     countMode: PreparedContextContributorCountMode;
     tokenCount?: number;
     digest: string;
+    dynamicExpansion?: DynamicContextExpansion;
 }
 
 export interface PreparedContextCheckpointSummary {

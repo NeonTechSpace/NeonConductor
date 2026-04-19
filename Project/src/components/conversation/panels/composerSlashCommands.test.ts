@@ -24,6 +24,7 @@ function createSkill(input: {
         profileId: 'prof_1',
         source: input.scope,
         bodyMarkdown: '',
+        dynamicContextSources: [],
         enabled: true,
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',

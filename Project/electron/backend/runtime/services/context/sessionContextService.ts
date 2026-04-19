@@ -29,11 +29,17 @@ import {
 import {
     resolveExecutionTargetContextPreview,
 } from '@/app/backend/runtime/services/context/executionTargetContextPreviewService';
+import {
+    appendDynamicContributors,
+    resolveDynamicSkillContextContributors,
+} from '@/app/backend/runtime/services/sessionSkills/dynamicContextResolver';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 import {
     type PreparedContextModeOverrides,
     type PreparedContextProfileDefaults,
+    type SkillfileDefinition,
 } from '@/app/backend/runtime/contracts';
+import type { ResolvedWorkspaceContext } from '@/shared/contracts';
 
 export interface PreparedSessionContext {
     messages: RunContextMessage[];
@@ -237,6 +243,7 @@ class SessionContextService {
         providerId: ResolvedContextPolicy['providerId'];
         modelId: string;
         systemContributorSpecs: PreparedContextContributorSpec[];
+        attachedSkillfiles: SkillfileDefinition[];
         preparedContextProfileDefaults: PreparedContextProfileDefaults;
         modePromptLayerOverrides: PreparedContextModeOverrides;
         prompt: string;
@@ -244,6 +251,7 @@ class SessionContextService {
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         workspaceFingerprint?: string;
+        workspaceContext?: ResolvedWorkspaceContext;
         runId?: EntityId<'run'>;
         sideEffectMode?: ContextPreparationSideEffectMode;
     }): Promise<OperationalResult<PreparedSessionContext>> {
@@ -269,10 +277,34 @@ class SessionContextService {
         });
 
         const persistedReplay = applyPersistedCompaction(replaySnapshot.replayMessages, replaySnapshot.compaction);
-        const baseContributorSpecs = [
-            ...input.systemContributorSpecs,
-            ...buildRetrievedMemoryContributorSpecs(retrievedMemoryResult.messages),
-        ];
+        const dynamicSkillContextResult = await resolveDynamicSkillContextContributors({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            topLevelTab: input.topLevelTab,
+            modeKey: input.modeKey,
+            skillfiles: input.attachedSkillfiles,
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+            ...(input.workspaceContext ? { workspaceContext: input.workspaceContext } : {}),
+            sideEffectMode: input.sideEffectMode ?? 'execution',
+        });
+        if (dynamicSkillContextResult.isErr()) {
+            return errOp(dynamicSkillContextResult.error.code, dynamicSkillContextResult.error.message, {
+                ...(dynamicSkillContextResult.error.details
+                    ? { details: dynamicSkillContextResult.error.details }
+                    : {}),
+                ...(dynamicSkillContextResult.error.retryable !== undefined
+                    ? { retryable: dynamicSkillContextResult.error.retryable }
+                    : {}),
+            });
+        }
+
+        const baseContributorSpecs = appendDynamicContributors({
+            baseContributorSpecs: [
+                ...input.systemContributorSpecs,
+                ...buildRetrievedMemoryContributorSpecs(retrievedMemoryResult.messages),
+            ],
+            dynamicContributors: dynamicSkillContextResult.value.contributors,
+        });
         const ledger = await resolvePreparedContextLedger({
             modelId: input.modelId,
             contributorSpecs: [

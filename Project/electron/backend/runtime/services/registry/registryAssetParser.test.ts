@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import type { RegistryAssetFile } from '@/app/backend/runtime/services/registry/filesystem';
 import {
     buildModeExecutionPolicy,
@@ -56,6 +57,7 @@ describe('registryAssetParser', () => {
             prompt: {
                 customInstructions: '# Guidance\nUse the tools wisely.',
             },
+            promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
             executionPolicy: {
                 authoringRole: 'single_task_agent',
                 roleTemplate: 'single_task_agent/plan',
@@ -183,6 +185,7 @@ describe('registryAssetParser', () => {
             presetKey: 'ask',
             name: 'Review',
             bodyMarkdown: '# Skill body',
+            dynamicContextSources: [],
             source: 'global_file',
             sourceKind: 'global_file',
             scope: 'global',
@@ -191,6 +194,59 @@ describe('registryAssetParser', () => {
             enabled: true,
             precedence: 0,
         });
+    });
+
+    it('keeps valid and invalid dynamic skill declarations inspectable', () => {
+        const skill = parseRegistrySkillAsset(
+            buildAssetFile({
+                parsed: {
+                    attributes: {
+                        key: 'skills/agent/review',
+                        name: 'Review',
+                        dynamicContextSources: [
+                            {
+                                id: 'repo_status',
+                                label: 'Repo status',
+                                command: 'git status',
+                                declaredSafetyClass: 'safe',
+                                required: true,
+                            },
+                            {
+                                id: 'bad_chain',
+                                label: 'Bad chain',
+                                command: 'git status && git diff',
+                                declaredSafetyClass: 'safe',
+                                required: false,
+                            },
+                        ],
+                    },
+                    bodyMarkdown: '# Skill body',
+                },
+            }),
+            createRegistryAssetParserContext({ scope: 'workspace', workspaceFingerprint: 'ws_123' })
+        );
+
+        expect(skill?.dynamicContextSources).toEqual([
+            {
+                id: 'repo_status',
+                label: 'Repo status',
+                command: 'git status',
+                declaredSafetyClass: 'safe',
+                required: true,
+                validationState: 'valid',
+                effectiveSafetyClass: 'safe',
+            },
+            {
+                id: 'bad_chain',
+                label: 'Bad chain',
+                command: 'git status && git diff',
+                declaredSafetyClass: 'safe',
+                required: false,
+                validationState: 'invalid',
+                validationMessage:
+                    'Dynamic context source command must be a single shell command without chaining or redirection operators.',
+            },
+        ]);
     });
 
     it('keeps execution-policy derivation predictable', () => {

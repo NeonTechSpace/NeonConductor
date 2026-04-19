@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
 
 import type {
+    DynamicContextExpansion,
     PreparedContextCheckpointSummary,
     PreparedContextContributorGroup,
     PreparedContextContributorKind,
+    PreparedContextContributorInclusionState,
     PreparedContextContributorSource,
     PreparedContextContributorSummary,
     PreparedContextDigestSummary,
@@ -26,8 +28,10 @@ export interface PreparedContextContributorSpec {
     source: PreparedContextContributorSource;
     messages: RunContextMessage[];
     fixedCheckpoint?: PreparedContextInjectionCheckpoint;
+    fixedInclusionState?: PreparedContextContributorInclusionState;
     eligiblePromptLayerGroup?: PreparedContextEditablePromptLayerGroup;
     inclusionReason?: string;
+    dynamicExpansion?: DynamicContextExpansion;
 }
 
 export interface PreparedContextLedgerResolution {
@@ -186,8 +190,9 @@ export async function resolvePreparedContextLedger(input: {
         }
 
         const checkpoint = spec.fixedCheckpoint ?? 'bootstrap';
+        const inclusionState = spec.fixedInclusionState ?? 'included';
         const tokenCount =
-            spec.messages.length > 0
+            inclusionState === 'included' && spec.messages.length > 0
                 ? (
                       await Promise.all(
                           spec.messages.map((message) =>
@@ -200,10 +205,12 @@ export async function resolvePreparedContextLedger(input: {
                   ).reduce((sum, count) => sum + count, 0)
                 : undefined;
         const resolvedOrder = checkpoint === 'bootstrap' ? bootstrapOrder++ : postCompactionOrder++;
-        if (checkpoint === 'bootstrap') {
-            bootstrapMessages.push(...spec.messages);
-        } else {
-            postCompactionReseedMessages.push(...spec.messages);
+        if (inclusionState === 'included') {
+            if (checkpoint === 'bootstrap') {
+                bootstrapMessages.push(...spec.messages);
+            } else {
+                postCompactionReseedMessages.push(...spec.messages);
+            }
         }
         contributors.push({
             id: spec.id,
@@ -211,13 +218,14 @@ export async function resolvePreparedContextLedger(input: {
             group: spec.group,
             label: spec.label,
             source: spec.source,
-            inclusionState: 'included',
+            inclusionState,
             inclusionReason: spec.inclusionReason ?? 'Included by runtime-owned prepared context resolution.',
             injectionCheckpoint: checkpoint,
             resolvedOrder,
             countMode: tokenCount !== undefined ? 'estimated' : 'not_counted',
             ...(tokenCount !== undefined ? { tokenCount } : {}),
             digest: digestMessages(`ctxcontrib-${spec.id}`, spec.messages),
+            ...(spec.dynamicExpansion ? { dynamicExpansion: spec.dynamicExpansion } : {}),
         });
     }
 

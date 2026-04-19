@@ -4,9 +4,9 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { RegistryScope } from '@/app/backend/runtime/contracts';
 import type {
-    ParsedRegistryAsset,
     ParsedRegistryModeAsset,
     ParsedRegistryRulesetAsset,
+    ParsedRegistrySkillAsset,
 } from '@/app/backend/runtime/services/registry/registryLifecycle.types';
 import { toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
 
@@ -122,7 +122,7 @@ export async function replaceDiscoveredSkillfiles(input: {
     profileId: string;
     scope: Extract<RegistryScope, 'global' | 'workspace'>;
     workspaceFingerprint?: string;
-    skillfiles: ParsedRegistryAsset[];
+    skillfiles: ParsedRegistrySkillAsset[];
 }): Promise<void> {
     const { db } = getPersistence();
     const now = nowIso();
@@ -155,6 +155,7 @@ export async function replaceDiscoveredSkillfiles(input: {
                 ...(skillfile.presetKey ? { preset_key: skillfile.presetKey } : {}),
                 name: skillfile.name,
                 body_markdown: skillfile.bodyMarkdown,
+                dynamic_context_sources_json: JSON.stringify(skillfile.dynamicContextSources),
                 source: skillfile.source,
                 source_kind: skillfile.sourceKind,
                 origin_path: skillfile.originPath,

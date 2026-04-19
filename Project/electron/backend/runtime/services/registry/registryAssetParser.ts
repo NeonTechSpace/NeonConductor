@@ -14,6 +14,7 @@ import type {
 import { normalizePreparedContextModeOverrides, ruleActivationModes } from '@/app/backend/runtime/contracts';
 import type { RegistryAssetFile } from '@/app/backend/runtime/services/registry/filesystem';
 import { slugifyAssetKey, titleCaseFromKey, toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
+import { normalizeSkillDynamicContextSources } from '@/app/backend/runtime/services/sessionSkills/dynamicContextSources';
 import type {
     ParsedRegistryModeAsset,
     ParsedRegistryRulesetAsset,
@@ -410,6 +411,7 @@ export function parseRegistrySkillAsset(
         ...(file.presetKey ? { presetKey: file.presetKey } : {}),
         name: readString(file.parsed.attributes['name']) ?? titleCaseFromKey(file.assetPath),
         bodyMarkdown: file.parsed.bodyMarkdown,
+        dynamicContextSources: normalizeSkillDynamicContextSources(file.parsed.attributes['dynamicContextSources']),
         source: context.source,
         sourceKind: context.sourceKind,
         scope: context.scope,

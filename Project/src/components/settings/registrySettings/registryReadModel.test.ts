@@ -77,6 +77,7 @@ describe('buildRegistryReadModel', () => {
                             assetKey: 'skills/review',
                             name: 'Review',
                             bodyMarkdown: '',
+                            dynamicContextSources: [],
                             source: 'workspace',
                             enabled: true,
                             sourceKind: 'workspace_file',

@@ -80,6 +80,34 @@ describe('ContextResolvedSummarySection', () => {
                                 digest: 'ctxcontrib-app',
                             },
                             {
+                                id: 'dynamic:repo_status',
+                                kind: 'dynamic_skill_context',
+                                group: 'dynamic_skill_context',
+                                label: 'Dynamic skill context: Review / Repo status',
+                                source: {
+                                    kind: 'skill_dynamic_context',
+                                    key: 'skills/review:repo_status',
+                                    label: 'Review / Repo status',
+                                },
+                                inclusionState: 'excluded',
+                                inclusionReason: 'Dynamic skill context resolves during execution only.',
+                                injectionCheckpoint: 'bootstrap',
+                                resolvedOrder: 1,
+                                countMode: 'estimated',
+                                digest: 'ctxcontrib-dynamic',
+                                dynamicExpansion: {
+                                    sourceId: 'repo_status',
+                                    sourceLabel: 'Repo status',
+                                    required: true,
+                                    effectiveSafetyClass: 'unsafe',
+                                    resolutionState: 'pending_approval',
+                                    commandDigest: 'dynctxcmd-repo-status',
+                                    truncated: false,
+                                    permissionRequestId: 'perm_123',
+                                    failureReason: 'Approval is required before execution.',
+                                },
+                            },
+                            {
                                 id: 'compaction_summary',
                                 kind: 'compaction_summary',
                                 group: 'compaction',
@@ -135,6 +163,9 @@ describe('ContextResolvedSummarySection', () => {
 
         expect(html).toContain('Prepared Context Preview');
         expect(html).toContain('App instructions');
+        expect(html).toContain('Dynamic skill context: Review / Repo status');
+        expect(html).toContain('Pending Approval · Unsafe · Required');
+        expect(html).toContain('perm_123');
         expect(html).toContain('Compacted conversation summary');
         expect(html).toContain('Prepared context is less stable while post-compaction reseed is active.');
         expect(html).toContain('ctxcontributors-full');

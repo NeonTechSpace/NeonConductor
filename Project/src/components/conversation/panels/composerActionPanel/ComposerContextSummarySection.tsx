@@ -27,6 +27,15 @@ export function ComposerContextSummarySection(input: {
         input.contextState.estimate?.mode === 'exact' || input.contextState.countingMode === 'exact'
             ? 'Exact'
             : 'Estimated';
+    const dynamicSkillContributors = input.contextState.preparedContext.contributors.filter(
+        (contributor) => contributor.kind === 'dynamic_skill_context'
+    );
+    const resolvedDynamicSkillContributorCount = dynamicSkillContributors.filter(
+        (contributor) => contributor.dynamicExpansion?.resolutionState === 'resolved'
+    ).length;
+    const blockedDynamicSkillContributorCount = dynamicSkillContributors.filter(
+        (contributor) => contributor.dynamicExpansion?.resolutionState !== 'resolved'
+    ).length;
 
     return (
         <ContextSummaryCard
@@ -42,6 +51,8 @@ export function ComposerContextSummarySection(input: {
             limitsSource={input.contextState.policy.limits.source}
             limitsOverrideReason={input.contextState.policy.limits.overrideReason}
             preparedContextContributorCount={input.contextState.preparedContext.activeContributorCount}
+            dynamicSkillContributorCount={resolvedDynamicSkillContributorCount}
+            blockedDynamicSkillContributorCount={blockedDynamicSkillContributorCount}
             compactionReseedActive={input.contextState.preparedContext.compactionReseedActive}
             compactionRecord={input.contextState.compaction}
             contextFeedback={input.contextFeedback}

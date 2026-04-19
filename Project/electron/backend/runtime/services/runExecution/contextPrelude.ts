@@ -413,6 +413,8 @@ export async function buildSessionSystemPrelude(input: {
         contributorSpecs: PreparedContextContributorSpec[];
         preparedContextProfileDefaults: PreparedContextProfileDefaults;
         modePromptLayerOverrides: PreparedContextModeOverrides;
+        attachedSkillfiles: SkillfileDefinition[];
+        resolvedWorkspaceContext?: Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>;
     }>
 > {
     const presetKeys = getRegistryPresetKeysForMode({
@@ -529,6 +531,8 @@ export async function buildSessionSystemPrelude(input: {
             }),
             preparedContextProfileDefaults: promptLayerSettings.preparedContextProfileDefaults,
             modePromptLayerOverrides: input.resolvedMode.mode.promptLayerOverrides,
+            attachedSkillfiles: activeSkillfiles,
+            ...(workspaceContext ? { resolvedWorkspaceContext: workspaceContext } : {}),
         }
     );
 }

@@ -13,6 +13,8 @@ interface ContextSummaryCardProps {
     limitsSource: string;
     limitsOverrideReason: string | undefined;
     preparedContextContributorCount: number;
+    dynamicSkillContributorCount: number;
+    blockedDynamicSkillContributorCount: number;
     compactionReseedActive: boolean;
     compactionRecord:
         | {
@@ -46,6 +48,8 @@ export function ContextSummaryCard({
     limitsSource,
     limitsOverrideReason,
     preparedContextContributorCount,
+    dynamicSkillContributorCount,
+    blockedDynamicSkillContributorCount,
     compactionReseedActive,
     compactionRecord,
     contextFeedback,
@@ -117,6 +121,15 @@ export function ContextSummaryCard({
                 {preparedContextContributorCount === 1 ? '' : 's'}
                 {compactionReseedActive ? ' · Compaction reseed active' : ''}.
             </p>
+            {dynamicSkillContributorCount > 0 || blockedDynamicSkillContributorCount > 0 ? (
+                <p className='text-muted-foreground text-[11px]'>
+                    Dynamic skills: {dynamicSkillContributorCount} loaded
+                    {blockedDynamicSkillContributorCount > 0
+                        ? ` · ${blockedDynamicSkillContributorCount} blocked or unresolved`
+                        : ''}
+                    .
+                </p>
+            ) : null}
             <p className='text-muted-foreground text-[11px]'>
                 Limit source: {limitsSource}
                 {limitsOverrideReason ? ` · Override: ${limitsOverrideReason}` : ''}

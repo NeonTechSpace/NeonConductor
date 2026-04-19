@@ -3,6 +3,7 @@ import { err, ok, type Result } from 'neverthrow';
 import type { RunStartRejectionAction } from '@/shared/contracts';
 
 export type RunExecutionErrorCode =
+    | 'permission_required'
     | 'invalid_mode'
     | 'mode_not_available'
     | 'mode_policy_invalid'

@@ -441,6 +441,117 @@ describe('composer enter handling', () => {
         }
     );
 
+    it('shows dynamic skill load and blocked counts in the context summary', () => {
+        const html = renderToStaticMarkup(
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
+                    pendingImages: [],
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'openai',
+                    selectedModelId: 'openai/gpt-5',
+                    topLevelTab: 'agent',
+                    activeModeKey: 'code',
+                    modes: [],
+                    reasoningEffort: 'none',
+                    selectedModelSupportsReasoning: false,
+                    canAttachImages: false,
+                    maxImageAttachmentsPerMessage: 4,
+                    modelOptions: [
+                        createModelOption({
+                            id: 'openai/gpt-5',
+                            label: 'GPT-5',
+                            providerId: 'openai',
+                            providerLabel: 'OpenAI',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    contextState: {
+                        ...createContextState({
+                            totalTokens: 40000,
+                            usableInputBudgetTokens: 100000,
+                            thresholdTokens: 80000,
+                            estimateMode: 'exact',
+                        }),
+                        preparedContext: {
+                            ...createEmptyPreparedContextSummary(),
+                            contributors: [
+                                {
+                                    id: 'dynamic:resolved',
+                                    kind: 'dynamic_skill_context',
+                                    group: 'dynamic_skill_context',
+                                    label: 'Dynamic resolved',
+                                    source: {
+                                        kind: 'skill_dynamic_context',
+                                        key: 'skills/review:resolved',
+                                        label: 'Dynamic resolved',
+                                    },
+                                    inclusionState: 'included',
+                                    inclusionReason: 'Included.',
+                                    injectionCheckpoint: 'bootstrap',
+                                    resolvedOrder: 0,
+                                    countMode: 'estimated',
+                                    digest: 'ctxcontrib-resolved',
+                                    dynamicExpansion: {
+                                        sourceId: 'resolved',
+                                        sourceLabel: 'Resolved',
+                                        required: true,
+                                        effectiveSafetyClass: 'safe',
+                                        resolutionState: 'resolved',
+                                        commandDigest: 'dynctxcmd-resolved',
+                                        outputDigest: 'dynctxout-resolved',
+                                        truncated: false,
+                                    },
+                                },
+                                {
+                                    id: 'dynamic:blocked',
+                                    kind: 'dynamic_skill_context',
+                                    group: 'dynamic_skill_context',
+                                    label: 'Dynamic blocked',
+                                    source: {
+                                        kind: 'skill_dynamic_context',
+                                        key: 'skills/review:blocked',
+                                        label: 'Dynamic blocked',
+                                    },
+                                    inclusionState: 'excluded',
+                                    inclusionReason: 'Blocked pending approval.',
+                                    injectionCheckpoint: 'bootstrap',
+                                    resolvedOrder: 1,
+                                    countMode: 'estimated',
+                                    digest: 'ctxcontrib-blocked',
+                                    dynamicExpansion: {
+                                        sourceId: 'blocked',
+                                        sourceLabel: 'Blocked',
+                                        required: false,
+                                        effectiveSafetyClass: 'unsafe',
+                                        resolutionState: 'pending_approval',
+                                        commandDigest: 'dynctxcmd-blocked',
+                                        truncated: false,
+                                        permissionRequestId: 'perm_blocked',
+                                    },
+                                },
+                            ],
+                            activeContributorCount: 1,
+                        },
+                    },
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddImageFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                })
+            )
+        );
+
+        expect(html).toContain('Prepared context: 1 loaded contributor.');
+        expect(html).toContain('Dynamic skills: 1 loaded · 1 blocked or unresolved.');
+    });
+
     it('keeps context disabled-state messaging focused on thread usage', () => {
         const html = renderToStaticMarkup(
             createElement(

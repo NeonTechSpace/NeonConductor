@@ -14,6 +14,7 @@ import type { ModeDefinition, ResolvedWorkspaceContext, RuntimeProviderId, TopLe
 
 function toRunExecutionErrorCode(code: OperationalErrorCode): RunExecutionErrorCode {
     switch (code) {
+        case 'permission_required':
         case 'invalid_mode':
         case 'mode_not_available':
         case 'mode_policy_invalid':
@@ -74,17 +75,33 @@ export async function buildRunContext(input: {
         providerId: input.providerId,
         modelId: input.modelId,
         systemContributorSpecs: systemPreludeResult.value.contributorSpecs,
+        attachedSkillfiles: systemPreludeResult.value.attachedSkillfiles,
         preparedContextProfileDefaults: systemPreludeResult.value.preparedContextProfileDefaults,
         modePromptLayerOverrides: systemPreludeResult.value.modePromptLayerOverrides,
         prompt: input.prompt,
         topLevelTab: input.topLevelTab,
         modeKey: input.resolvedMode.mode.modeKey,
         sideEffectMode: 'execution',
+        ...(systemPreludeResult.value.resolvedWorkspaceContext
+            ? { workspaceContext: systemPreludeResult.value.resolvedWorkspaceContext }
+            : {}),
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.attachments ? { attachments: input.attachments } : {}),
     });
     if (preparedContext.isErr()) {
-        return errRunExecution(toRunExecutionErrorCode(preparedContext.error.code), preparedContext.error.message);
+        return errRunExecution(toRunExecutionErrorCode(preparedContext.error.code), preparedContext.error.message, {
+            ...(preparedContext.error.code === 'permission_required'
+                ? {
+                      action: {
+                          code: 'permission_required' as const,
+                          detail: 'dynamic_skill_context' as const,
+                          ...(typeof preparedContext.error.details?.['requestId'] === 'string'
+                              ? { requestId: preparedContext.error.details['requestId'] }
+                              : {}),
+                      },
+                  }
+                : {}),
+        });
     }
 
     return okRunExecution({

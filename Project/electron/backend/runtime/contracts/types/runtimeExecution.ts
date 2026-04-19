@@ -10,6 +10,11 @@ export type RuntimeCompatibilityIssue =
           detail?: 'sandbox_not_materialized' | 'workspace_not_resolved' | 'generic';
       }
     | {
+          code: 'permission_required';
+          requestId?: string;
+          detail?: 'dynamic_skill_context' | 'generic';
+      }
+    | {
           code: 'provider_not_runnable';
           providerId?: RuntimeProviderId;
       }

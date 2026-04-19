@@ -2,6 +2,7 @@ import { err, ok, type Result } from 'neverthrow';
 
 export type OperationalErrorCode =
     | 'invalid_input'
+    | 'permission_required'
     | 'not_found'
     | 'conversation_not_found'
     | 'thread_not_found'

@@ -49,6 +49,10 @@ export function formatRuntimeCapabilityIssue(input: {
     });
 
     switch (issue?.code) {
+        case 'permission_required':
+            return input.surface === 'run_rejection'
+                ? 'Dynamic skill context needs approval before this run can start. Review the pending permission request and retry.'
+                : fallbackMessage;
         case 'execution_target_unavailable':
             return input.surface === 'run_rejection'
                 ? 'This run could not prepare its workspace or sandbox target. Fix the execution target and try again.'

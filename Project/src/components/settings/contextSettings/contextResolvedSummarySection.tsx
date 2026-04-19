@@ -25,6 +25,15 @@ function formatPreparedContextSource(
     return source.label ?? `${formatDelimitedLabel(source.kind)} · ${source.key}`;
 }
 
+function formatDynamicExpansionState(
+    expansion: NonNullable<ResolvedContextState['preparedContext']['contributors'][number]['dynamicExpansion']>
+): string {
+    const stateLabel = formatDelimitedLabel(expansion.resolutionState);
+    const safetyLabel = expansion.effectiveSafetyClass ? ` · ${formatDelimitedLabel(expansion.effectiveSafetyClass)}` : '';
+    const requiredLabel = expansion.required ? ' · Required' : ' · Optional';
+    return `${stateLabel}${safetyLabel}${requiredLabel}`;
+}
+
 interface ContextResolvedSummarySectionProps {
     defaultModel: ProviderModelRecord | undefined;
     defaultProvider: ProviderRecord | undefined;
@@ -239,6 +248,35 @@ export function ContextResolvedSummarySection({
                                                 </p>
                                             </div>
                                             <p className='mt-2 text-sm leading-6'>{contributor.inclusionReason}</p>
+                                            {contributor.dynamicExpansion ? (
+                                                <div className='mt-3 rounded-xl border border-dashed p-3 text-xs'>
+                                                    <p className='text-sm font-semibold'>Dynamic expansion</p>
+                                                    <div className='text-muted-foreground mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3'>
+                                                        <p>State: {formatDynamicExpansionState(contributor.dynamicExpansion)}</p>
+                                                        <p>Command digest: {contributor.dynamicExpansion.commandDigest}</p>
+                                                        <p>
+                                                            Output digest:{' '}
+                                                            {contributor.dynamicExpansion.outputDigest ?? 'n/a'}
+                                                        </p>
+                                                        <p>
+                                                            Truncated:{' '}
+                                                            {contributor.dynamicExpansion.truncated ? 'Yes' : 'No'}
+                                                        </p>
+                                                        {contributor.dynamicExpansion.permissionRequestId ? (
+                                                            <p>
+                                                                Permission request:{' '}
+                                                                {contributor.dynamicExpansion.permissionRequestId}
+                                                            </p>
+                                                        ) : null}
+                                                        {contributor.dynamicExpansion.failureReason ? (
+                                                            <p className='md:col-span-2 xl:col-span-3'>
+                                                                Failure reason:{' '}
+                                                                {contributor.dynamicExpansion.failureReason}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                             <p className='text-muted-foreground mt-2 break-all font-mono text-[11px]'>
                                                 {contributor.digest}
                                             </p>

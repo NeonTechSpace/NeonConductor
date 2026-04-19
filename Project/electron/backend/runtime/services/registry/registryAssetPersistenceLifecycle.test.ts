@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
 import { modeStore, rulesetStore, skillfileStore } from '@/app/backend/persistence/stores';
 import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
-import type { ParsedRegistryAsset, ParsedRegistryModeAsset, ParsedRegistryRulesetAsset } from '@/app/backend/runtime/services/registry/registryLifecycle.types';
+import type {
+    ParsedRegistryModeAsset,
+    ParsedRegistryRulesetAsset,
+    ParsedRegistrySkillAsset,
+} from '@/app/backend/runtime/services/registry/registryLifecycle.types';
 import {
     replaceDiscoveredModes,
     replaceDiscoveredRulesets,
@@ -102,6 +106,7 @@ describe('registryAssetPersistenceLifecycle', () => {
                     assetKey: 'workspace_skill',
                     name: 'Workspace Skill',
                     bodyMarkdown: '# Workspace Skill',
+                    dynamicContextSources: [],
                     source: 'workspace_file',
                     sourceKind: 'workspace_file',
                     scope: 'workspace',
@@ -109,7 +114,7 @@ describe('registryAssetPersistenceLifecycle', () => {
                     originPath: '/workspace/skills/workspace-skill.md',
                     enabled: true,
                     precedence: 4,
-                } satisfies ParsedRegistryAsset,
+                } satisfies ParsedRegistrySkillAsset,
             ],
         });
 

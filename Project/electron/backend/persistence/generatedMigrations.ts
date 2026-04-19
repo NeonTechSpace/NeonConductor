@@ -705,6 +705,7 @@ CREATE TABLE skillfiles (
     preset_key TEXT NULL CHECK (preset_key IN ('ask', 'code', 'debug', 'orchestrator')),
     name TEXT NOT NULL,
     body_markdown TEXT NOT NULL,
+    dynamic_context_sources_json TEXT NOT NULL DEFAULT '[]',
     source TEXT NOT NULL,
     source_kind TEXT NOT NULL CHECK (source_kind IN ('system_seed', 'global_file', 'workspace_file', 'session_override')),
     origin_path TEXT NULL,

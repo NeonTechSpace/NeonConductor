@@ -714,6 +714,7 @@ export interface SkillfilesTable {
     preset_key: string | null;
     name: string;
     body_markdown: string;
+    dynamic_context_sources_json: string;
     source: string;
     source_kind: string;
     origin_path: string | null;

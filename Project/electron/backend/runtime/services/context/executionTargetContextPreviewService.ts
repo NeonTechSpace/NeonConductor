@@ -7,6 +7,7 @@ import type {
     SessionContextCompactionRecord,
     TokenCountEstimate,
     PreparedContextSummary,
+    SkillfileDefinition,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
@@ -41,6 +42,7 @@ export async function resolveExecutionTargetContextPreview(input: {
         providerId: ResolvedContextPolicy['providerId'];
         modelId: string;
         systemContributorSpecs: import('@/app/backend/runtime/services/context/preparedContextLedger').PreparedContextContributorSpec[];
+        attachedSkillfiles: SkillfileDefinition[];
         preparedContextProfileDefaults: PreparedContextProfileDefaults;
         modePromptLayerOverrides: PreparedContextModeOverrides;
         prompt: string;
@@ -48,6 +50,7 @@ export async function resolveExecutionTargetContextPreview(input: {
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         workspaceFingerprint?: string;
+        workspaceContext?: import('@/shared/contracts').ResolvedWorkspaceContext;
         runId?: EntityId<'run'>;
         sideEffectMode?: 'execution' | 'preview';
     }) => Promise<OperationalResult<PreparedContextStateProjection>>;
@@ -80,12 +83,16 @@ export async function resolveExecutionTargetContextPreview(input: {
         providerId: input.providerId,
         modelId: input.modelId,
         systemContributorSpecs: systemPreludeResult.value.contributorSpecs,
+        attachedSkillfiles: systemPreludeResult.value.attachedSkillfiles,
         preparedContextProfileDefaults: systemPreludeResult.value.preparedContextProfileDefaults,
         modePromptLayerOverrides: systemPreludeResult.value.modePromptLayerOverrides,
         prompt: input.prompt ?? '',
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
         sideEffectMode: 'preview',
+        ...(systemPreludeResult.value.resolvedWorkspaceContext
+            ? { workspaceContext: systemPreludeResult.value.resolvedWorkspaceContext }
+            : {}),
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.runId ? { runId: input.runId } : {}),
     });

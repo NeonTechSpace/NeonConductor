@@ -6,6 +6,7 @@ import type {
     RegistryScope,
     RegistrySourceKind,
     RuleActivationMode,
+    SkillDynamicContextSource,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import type {
@@ -55,7 +56,9 @@ export interface ParsedRegistryRulesetAsset extends ParsedRegistryAsset {
     activationMode: RuleActivationMode;
 }
 
-export interface ParsedRegistrySkillAsset extends ParsedRegistryAsset {}
+export interface ParsedRegistrySkillAsset extends ParsedRegistryAsset {
+    dynamicContextSources: SkillDynamicContextSource[];
+}
 
 export interface RegistryDiscoveryBatch {
     modes: ParsedRegistryModeAsset[];

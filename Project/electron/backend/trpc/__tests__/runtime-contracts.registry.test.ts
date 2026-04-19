@@ -503,10 +503,10 @@ precedence: 5
             topLevelTab: 'chat',
         });
         expect(builtInChat.activeMode.modeKey).toBe('chat');
-        expect(builtInChat.activeMode.label).toBe('Chat');
+        expect(builtInChat.activeMode.label).toBe('Global File Chat');
         expect(builtInChat.activeMode.prompt).toEqual({
-            roleDefinition: 'Built-in chat role override',
-            customInstructions: 'Built-in chat custom override',
+            customInstructions:
+                '# Global File Chat\n\n- Override the built-in chat mode from the global registry.',
         });
 
         const promptSettings = await caller.prompt.getSettings({ profileId });
