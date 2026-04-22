@@ -18,7 +18,7 @@ vi.mock('@/web/trpc/client', () => ({
                     refetch: vi.fn(() => Promise.resolve(undefined)),
                 }),
             },
-            buildBrowserCommentPacket: {
+            buildBrowserContextPacket: {
                 useQuery: () => ({
                     data: {
                         packet: undefined,
@@ -164,6 +164,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                 commentCount: 3,
                 captureCount: 1,
                 enrichmentMode: 'dom_only',
+                designerDraftCount: 0,
+                designerPatchCount: 0,
+                designerApplyIntentStatus: 'none',
                 digest: 'browserctx-1',
             },
             steeringSnapshot: {
@@ -216,7 +219,7 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                     digest: {
                         fullDigest: 'runctx-1',
                         contributorDigest: 'ctxcontributors-1',
-                        checkpointSummaries: {
+                        checkpoints: {
                             bootstrap: {
                                 checkpoint: 'bootstrap',
                                 includedContributorCount: 0,
@@ -232,7 +235,6 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                                 active: false,
                             },
                         },
-                        compactionReseedActive: false,
                         cacheabilityHint: 'cacheable',
                     },
                     activeContributorCount: 0,
@@ -277,6 +279,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                     commentCount: 3,
                     captureCount: 1,
                     enrichmentMode: 'dom_only',
+                    designerDraftCount: 0,
+                    designerPatchCount: 0,
+                    designerApplyIntentStatus: 'none',
                     digest: 'browserctx-1',
                 },
                 diffFromLastCompatible: {
@@ -304,6 +309,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
             commentCount: 3,
             captureCount: 1,
             enrichmentMode: 'dom_only',
+            designerDraftCount: 0,
+            designerPatchCount: 0,
+            designerApplyIntentStatus: 'none',
             digest: 'browserctx-1',
         },
         steeringSnapshot: {
@@ -364,7 +372,7 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                 digest: {
                     fullDigest: 'runctx-1',
                     contributorDigest: 'ctxcontributors-1',
-                    checkpointSummaries: {
+                    checkpoints: {
                         bootstrap: {
                             checkpoint: 'bootstrap',
                             includedContributorCount: 0,
@@ -380,7 +388,6 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                             active: false,
                         },
                     },
-                    compactionReseedActive: false,
                     cacheabilityHint: 'cacheable',
                 },
                 activeContributorCount: 0,
@@ -425,6 +432,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                 commentCount: 3,
                 captureCount: 1,
                 enrichmentMode: 'dom_only',
+                designerDraftCount: 0,
+                designerPatchCount: 0,
+                designerApplyIntentStatus: 'none',
                 digest: 'browserctx-1',
             },
             diffFromLastCompatible: {

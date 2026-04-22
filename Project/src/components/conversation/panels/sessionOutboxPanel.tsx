@@ -19,7 +19,7 @@ import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptio
 import { trpc } from '@/web/trpc/client';
 
 import type {
-    BrowserCommentPacket,
+    BrowserContextPacket,
     ComposerAttachmentInput,
     EntityId,
     SessionAttachmentPayload,
@@ -37,7 +37,7 @@ interface SessionOutboxPanelProps {
         entryId: EntityId<'outbox'>;
         prompt: string;
         attachments: ComposerAttachmentInput[];
-        browserContext?: BrowserCommentPacket | null;
+        browserContext?: BrowserContextPacket | null;
     }) => Promise<void>;
 }
 
@@ -52,7 +52,7 @@ function formatBrowserContextSummary(entry: SessionOutboxEntry): string {
     if (!entry.browserContextSummary) {
         return 'No browser context';
     }
-    return `${String(entry.browserContextSummary.commentCount)} comments · ${String(entry.browserContextSummary.selectedElementCount)} elements`;
+    return `${String(entry.browserContextSummary.commentCount)} comments · ${String(entry.browserContextSummary.selectedElementCount)} elements · ${String(entry.browserContextSummary.designerDraftCount)} designer`;
 }
 
 function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
@@ -150,7 +150,7 @@ export function SessionOutboxPanel({
             : skipToken,
         PROGRESSIVE_QUERY_OPTIONS
     );
-    const liveBrowserPacketQuery = trpc.session.buildBrowserCommentPacket.useQuery(
+    const liveBrowserPacketQuery = trpc.session.buildBrowserContextPacket.useQuery(
         selectedEntry
             ? {
                   profileId: selectedEntry.profileId,
@@ -522,7 +522,7 @@ export function SessionOutboxPanel({
                                     <p className='text-muted-foreground text-xs'>Browser packet</p>
                                     <span className='text-muted-foreground text-xs'>
                                         {selectedEntry.browserContextSummary
-                                            ? `${String(selectedEntry.browserContextSummary.commentCount)} queued comments`
+                                            ? `${String(selectedEntry.browserContextSummary.commentCount)} queued comments · ${String(selectedEntry.browserContextSummary.designerDraftCount)} designer drafts`
                                             : 'No queued browser context'}
                                     </span>
                                 </div>
@@ -551,7 +551,7 @@ export function SessionOutboxPanel({
                                         <p className='font-medium'>Replace with current staged packet</p>
                                         <p className='text-muted-foreground mt-1'>
                                             {liveBrowserPacketQuery.data?.available
-                                                ? `${String(liveBrowserPacketQuery.data.summary.commentCount)} comments · ${String(liveBrowserPacketQuery.data.summary.selectedElementCount)} elements are staged now`
+                                                ? `${String(liveBrowserPacketQuery.data.summary.commentCount)} comments · ${String(liveBrowserPacketQuery.data.summary.selectedElementCount)} elements · ${String(liveBrowserPacketQuery.data.summary.designerDraftCount)} designer drafts are staged now`
                                                 : liveBrowserPacketQuery.data?.message ?? 'No current staged browser packet is available.'}
                                         </p>
                                     </button>
@@ -581,7 +581,7 @@ export function SessionOutboxPanel({
                             <p className='text-muted-foreground'>
                                 Browser context:{' '}
                                 {selectedEntry.browserContextSummary
-                                    ? `${String(selectedEntry.browserContextSummary.commentCount)} comments · ${String(selectedEntry.browserContextSummary.selectedElementCount)} elements · ${selectedEntry.browserContextSummary.targetLabel}`
+                                    ? `${String(selectedEntry.browserContextSummary.commentCount)} comments · ${String(selectedEntry.browserContextSummary.selectedElementCount)} elements · ${String(selectedEntry.browserContextSummary.designerDraftCount)} designer drafts · ${selectedEntry.browserContextSummary.targetLabel}`
                                     : 'none'}
                             </p>
                             <p className='text-muted-foreground'>

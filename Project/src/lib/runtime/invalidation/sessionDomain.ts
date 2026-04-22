@@ -7,7 +7,7 @@ import {
     invalidateSessionAttachedSkills,
     invalidateRunDiffs,
     invalidateExecutionReceipt,
-    invalidateSessionBrowserCommentPacket,
+    invalidateSessionBrowserContextPacket,
     invalidateSessionDevBrowserState,
     invalidateSessionCheckpoints,
     invalidateSessionList,
@@ -25,7 +25,7 @@ export async function invalidateSessionQueries(utils: TrpcUtils, context: Runtim
         invalidateSessionCheckpoints(utils, context.profileId, context.sessionId),
         invalidateSessionOutbox(utils, context.profileId, context.sessionId),
         invalidateSessionDevBrowserState(utils, context.profileId, context.sessionId),
-        invalidateSessionBrowserCommentPacket(utils),
+        invalidateSessionBrowserContextPacket(utils),
         invalidateSessionAttachedRules(utils),
         invalidateSessionAttachedSkills(utils),
     ];
@@ -54,7 +54,7 @@ export async function invalidateRunQueries(utils: TrpcUtils, context: RuntimeEve
         invalidateSessionAttachedRules(utils),
         invalidateSessionAttachedSkills(utils),
         invalidateSessionDevBrowserState(utils, context.profileId, context.sessionId),
-        invalidateSessionBrowserCommentPacket(utils),
+        invalidateSessionBrowserContextPacket(utils),
     ];
 
     if (hasSelectedWorkspaceImpact(context)) {

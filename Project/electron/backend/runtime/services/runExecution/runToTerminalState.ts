@@ -19,7 +19,7 @@ import type {
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 
-import type { BrowserCommentPacket, OpenAIExecutionMode, ResolvedWorkspaceContext, RunContractPreview } from '@/shared/contracts';
+import type { BrowserContextPacket, OpenAIExecutionMode, ResolvedWorkspaceContext, RunContractPreview } from '@/shared/contracts';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
@@ -51,7 +51,7 @@ export async function runToTerminalState(input: {
     workspaceContext: ResolvedWorkspaceContext;
     assistantMessageId: EntityId<'msg'>;
     runContractPreview?: RunContractPreview;
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
     signal: AbortSignal;
 }): Promise<void> {

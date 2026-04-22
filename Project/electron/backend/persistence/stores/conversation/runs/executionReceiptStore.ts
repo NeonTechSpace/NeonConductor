@@ -2,7 +2,7 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { isJsonRecord, nowIso, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
 import type { ExecutionReceipt } from '@/app/backend/runtime/contracts';
-import { parseBrowserCommentPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
+import { parseBrowserContextPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 
@@ -38,7 +38,7 @@ function mapReceipt(row: {
         contract,
         ...(row.browser_context_packet_json !== null
             ? {
-                  browserContext: parseBrowserCommentPacket(
+                  browserContext: parseBrowserContextPacket(
                       parseJsonValue(row.browser_context_packet_json, {}, isJsonRecord),
                       'execution_receipts.browser_context_packet_json'
                   ),

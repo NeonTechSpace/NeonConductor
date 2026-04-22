@@ -494,7 +494,8 @@ CREATE TABLE session_dev_browser_selections (
     text_excerpt TEXT NULL,
     bounds_json TEXT NOT NULL,
     crop_attachment_id TEXT NULL REFERENCES conversation_attachments(id) ON DELETE SET NULL,
-    enrichment_mode TEXT NOT NULL CHECK (enrichment_mode IN ('dom_only', 'react_source_enriched')),
+    enrichment_mode TEXT NOT NULL CHECK (enrichment_mode IN ('dom_only', 'react_component_enriched', 'react_source_enriched')),
+    react_enrichment_json TEXT NULL,
     stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
     created_at TEXT NOT NULL
 );
@@ -508,6 +509,30 @@ CREATE TABLE session_dev_browser_comment_drafts (
     comment_text TEXT NOT NULL,
     inclusion_state TEXT NOT NULL CHECK (inclusion_state IN ('included', 'excluded')),
     sequence INTEGER NOT NULL CHECK (sequence >= 0),
+    stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE session_dev_browser_designer_drafts (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    selection_id TEXT NOT NULL REFERENCES session_dev_browser_selections(id) ON DELETE CASCADE,
+    page_identity TEXT NOT NULL,
+    inclusion_state TEXT NOT NULL CHECK (inclusion_state IN ('included', 'excluded')),
+    apply_mode TEXT NOT NULL CHECK (apply_mode IN ('preview_only', 'apply_with_agent')),
+    apply_status TEXT NOT NULL CHECK (
+        apply_status IN (
+            'eligible',
+            'blocked_no_workspace',
+            'blocked_outside_current_workspace',
+            'blocked_missing_source_anchor'
+        )
+    ),
+    blocked_reason_message TEXT NULL,
+    style_patches_json TEXT NOT NULL,
+    text_content_override TEXT NULL,
     stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -1596,6 +1621,12 @@ CREATE INDEX idx_session_dev_browser_comment_drafts_session_sequence
 
 CREATE INDEX idx_session_dev_browser_comment_drafts_session_stale
     ON session_dev_browser_comment_drafts(session_id, stale, sequence ASC);
+
+CREATE INDEX idx_session_dev_browser_designer_drafts_session_created_at
+    ON session_dev_browser_designer_drafts(session_id, created_at ASC);
+
+CREATE INDEX idx_session_dev_browser_designer_drafts_session_stale
+    ON session_dev_browser_designer_drafts(session_id, stale, created_at ASC);
 
 CREATE INDEX idx_execution_receipts_session_created_at
     ON execution_receipts(session_id, created_at DESC);

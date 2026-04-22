@@ -2,6 +2,7 @@ export type EntityIdPrefix =
     | 'ws'
     | 'bsel'
     | 'bcmt'
+    | 'bdsn'
     | 'mem'
     | 'mrev'
     | 'mcon'

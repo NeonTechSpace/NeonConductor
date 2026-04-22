@@ -8,7 +8,7 @@ import {
 import { isProviderRunnable, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
 import type {
-    BrowserCommentPacket,
+    BrowserContextPacket,
     ComposerAttachmentInput,
     EntityId,
     PlanStartInput,
@@ -45,7 +45,7 @@ interface SubmitPromptInput<
 > {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     isStartingRun: boolean;
     selectedSessionId: string | undefined;
     isPlanningMode: boolean;

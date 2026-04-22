@@ -6,7 +6,7 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { PreparedContextSummary } from '@/app/backend/runtime/contracts/types/context';
-import type { BrowserCommentPacket, BrowserContextSummary } from '@/app/backend/runtime/contracts/types/devBrowser';
+import type { BrowserContextPacket, BrowserContextSummary } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts/types/session';
 
 export interface SteeringSnapshot {
@@ -94,7 +94,7 @@ export interface ExecutionReceipt {
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
     contract: RunContractPreview;
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     approvalsUsed: Array<{
         permissionRequestId: EntityId<'perm'>;
         scope: 'once' | 'profile' | 'workspace';
@@ -142,7 +142,7 @@ export interface SessionOutboxEntry {
     sequence: number;
     prompt: string;
     attachmentIds: EntityId<'att'>[];
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     browserContextSummary?: BrowserContextSummary;
     steeringSnapshot: SteeringSnapshot;
     latestRunContract?: RunContractPreview;

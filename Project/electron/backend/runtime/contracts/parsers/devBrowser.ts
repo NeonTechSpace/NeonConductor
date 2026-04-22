@@ -1,33 +1,58 @@
-import { createParser, readArray, readEntityId, readEnumValue, readObject, readOptionalNumber, readOptionalString, readString } from '@/app/backend/runtime/contracts/parsers/helpers';
+import {
+    createParser,
+    readArray,
+    readEntityId,
+    readEnumValue,
+    readObject,
+    readOptionalNumber,
+    readOptionalString,
+    readProfileId,
+    readString,
+} from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
     BrowserCommentDraft,
-    BrowserCommentPacket,
-    BrowserCommentPacketComment,
+    BrowserContextPacket,
+    BrowserContextPacketComment,
+    BrowserContextPacketDesignerDraft,
     BrowserContextSummary,
+    BrowserDesignerDraft,
+    BrowserDesignerStylePatchSet,
     BrowserSelectionAncestryEntry,
     BrowserSelectionBounds,
+    BrowserSelectionReactComponentIdentity,
+    BrowserSelectionReactEnrichment,
     BrowserSelectionRecord,
     BrowserSelectionSelectorSnapshot,
     BrowserSelectionSnapshotInput,
+    BrowserSelectionSourceAnchor,
     DevBrowserCurrentPage,
     DevBrowserTarget,
     DevBrowserTargetDraft,
     DevBrowserValidation,
-    SessionBuildBrowserCommentPacketInput,
+    SessionBuildBrowserContextPacketInput,
     SessionClearStaleBrowserContextInput,
     SessionControlDevBrowserInput,
     SessionCreateBrowserCommentDraftInput,
     SessionDeleteBrowserCommentDraftInput,
+    SessionDeleteBrowserDesignerDraftInput,
     SessionDevBrowserStateInput,
     SessionMoveBrowserCommentDraftInput,
     SessionPersistBrowserSelectionInput,
     SessionSetBrowserCommentDraftInclusionInput,
+    SessionSetBrowserDesignerDraftInclusionInput,
     SessionSetDevBrowserPickerInput,
     SessionSetDevBrowserTargetInput,
     SessionUpdateBrowserCommentDraftInput,
+    SessionUpsertBrowserDesignerDraftInput,
 } from '@/app/backend/runtime/contracts/types/devBrowser';
 import {
     browserCommentDraftInclusionStates,
+    browserContextSummaryDesignerApplyIntentStatuses,
+    browserDesignerApplyModes,
+    browserDesignerApplyStatuses,
+    browserDesignerStylePropertyKeys,
+    browserSelectionReactSourceKinds,
+    browserSelectionSourceAnchorStatuses,
     devBrowserAvailabilityStates,
     devBrowserBlockedReasonCodes,
     devBrowserControlActions,
@@ -37,7 +62,6 @@ import {
     devBrowserValidationSources,
     devBrowserValidationStatuses,
 } from '@/app/backend/runtime/contracts/types/devBrowser';
-import { readProfileId } from '@/app/backend/runtime/contracts/parsers/helpers';
 
 function readNonNegativeNumber(value: unknown, field: string): number {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
@@ -84,6 +108,50 @@ function parseBrowserSelectionAncestryEntry(value: unknown, field: string): Brow
         selector: readString(source.selector, `${field}.selector`),
         ...(accessibleLabel ? { accessibleLabel } : {}),
         ...(accessibleRole ? { accessibleRole } : {}),
+    };
+}
+
+function parseBrowserSelectionSourceAnchor(value: unknown, field: string): BrowserSelectionSourceAnchor {
+    const source = readObject(value, field);
+    const line = readOptionalNumber(source.line, `${field}.line`);
+    const column = readOptionalNumber(source.column, `${field}.column`);
+    const workspaceFingerprint =
+        source.workspaceFingerprint !== undefined
+            ? readEntityId(source.workspaceFingerprint, `${field}.workspaceFingerprint`, 'ws')
+            : undefined;
+    const relativePath = readOptionalString(source.relativePath, `${field}.relativePath`);
+    return {
+        status: readEnumValue(source.status, `${field}.status`, browserSelectionSourceAnchorStatuses),
+        displayPath: readString(source.displayPath, `${field}.displayPath`),
+        ...(line !== undefined ? { line } : {}),
+        ...(column !== undefined ? { column } : {}),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        ...(relativePath ? { relativePath } : {}),
+    };
+}
+
+function parseBrowserSelectionReactComponentIdentity(
+    value: unknown,
+    field: string
+): BrowserSelectionReactComponentIdentity {
+    const source = readObject(value, field);
+    return {
+        displayName: readString(source.displayName, `${field}.displayName`),
+    };
+}
+
+function parseBrowserSelectionReactEnrichment(value: unknown, field: string): BrowserSelectionReactEnrichment {
+    const source = readObject(value, field);
+    const sourceAnchor =
+        source.sourceAnchor !== undefined
+            ? parseBrowserSelectionSourceAnchor(source.sourceAnchor, `${field}.sourceAnchor`)
+            : undefined;
+    return {
+        sourceKind: readEnumValue(source.sourceKind, `${field}.sourceKind`, browserSelectionReactSourceKinds),
+        componentChain: readArray(source.componentChain, `${field}.componentChain`).map((item, index) =>
+            parseBrowserSelectionReactComponentIdentity(item, `${field}.componentChain[${String(index)}]`)
+        ),
+        ...(sourceAnchor ? { sourceAnchor } : {}),
     };
 }
 
@@ -147,13 +215,22 @@ export function parseDevBrowserTarget(value: unknown, field: string): DevBrowser
     return {
         ...parseDevBrowserTargetDraft(source, field),
         validation: parseDevBrowserValidation(source.validation, `${field}.validation`),
-        browserAvailability: readEnumValue(
-            source.browserAvailability,
-            `${field}.browserAvailability`,
-            devBrowserAvailabilityStates
-        ),
+        browserAvailability: readEnumValue(source.browserAvailability, `${field}.browserAvailability`, devBrowserAvailabilityStates),
         ...(currentPage ? { currentPage } : {}),
     };
+}
+
+function parseBrowserDesignerStylePatchSet(value: unknown, field: string): BrowserDesignerStylePatchSet {
+    const source = readObject(value, field);
+    const allowedKeys = new Set<string>(browserDesignerStylePropertyKeys);
+    const next: BrowserDesignerStylePatchSet = {};
+    for (const [key, rawValue] of Object.entries(source)) {
+        if (!allowedKeys.has(key)) {
+            throw new Error(`Invalid "${field}.${key}": unsupported browser designer property.`);
+        }
+        next[key as keyof BrowserDesignerStylePatchSet] = readString(rawValue, `${field}.${key}`);
+    }
+    return next;
 }
 
 export function parseBrowserSelectionSnapshotInput(value: unknown, field: string): BrowserSelectionSnapshotInput {
@@ -165,6 +242,10 @@ export function parseBrowserSelectionSnapshotInput(value: unknown, field: string
     const cropAttachmentId =
         source.cropAttachmentId !== undefined
             ? readEntityId(source.cropAttachmentId, `${field}.cropAttachmentId`, 'att')
+            : undefined;
+    const reactEnrichment =
+        source.reactEnrichment !== undefined
+            ? parseBrowserSelectionReactEnrichment(source.reactEnrichment, `${field}.reactEnrichment`)
             : undefined;
 
     return {
@@ -181,17 +262,17 @@ export function parseBrowserSelectionSnapshotInput(value: unknown, field: string
         bounds: parseBrowserSelectionBounds(source.bounds, `${field}.bounds`),
         ...(cropAttachmentId ? { cropAttachmentId } : {}),
         enrichmentMode: readEnumValue(source.enrichmentMode, `${field}.enrichmentMode`, devBrowserEnrichmentModes),
+        ...(reactEnrichment ? { reactEnrichment } : {}),
     };
 }
 
 export function parseBrowserSelectionRecord(value: unknown, field: string): BrowserSelectionRecord {
     const source = readObject(value, field);
-    const createdAt = readString(source.createdAt, `${field}.createdAt`);
     return {
         id: readEntityId(source.id, `${field}.id`, 'bsel'),
         ...parseBrowserSelectionSnapshotInput(source, field),
         stale: source.stale === true,
-        createdAt,
+        createdAt: readString(source.createdAt, `${field}.createdAt`),
     };
 }
 
@@ -210,7 +291,27 @@ export function parseBrowserCommentDraft(value: unknown, field: string): Browser
     };
 }
 
-function parseBrowserCommentPacketComment(value: unknown, field: string): BrowserCommentPacketComment {
+export function parseBrowserDesignerDraft(value: unknown, field: string): BrowserDesignerDraft {
+    const source = readObject(value, field);
+    const blockedReasonMessage = readOptionalString(source.blockedReasonMessage, `${field}.blockedReasonMessage`);
+    const textContentOverride = readOptionalString(source.textContentOverride, `${field}.textContentOverride`);
+    return {
+        id: readEntityId(source.id, `${field}.id`, 'bdsn'),
+        selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
+        inclusionState: readEnumValue(source.inclusionState, `${field}.inclusionState`, browserCommentDraftInclusionStates),
+        applyMode: readEnumValue(source.applyMode, `${field}.applyMode`, browserDesignerApplyModes),
+        applyStatus: readEnumValue(source.applyStatus, `${field}.applyStatus`, browserDesignerApplyStatuses),
+        ...(blockedReasonMessage ? { blockedReasonMessage } : {}),
+        stylePatches: parseBrowserDesignerStylePatchSet(source.stylePatches ?? {}, `${field}.stylePatches`),
+        ...(textContentOverride ? { textContentOverride } : {}),
+        stale: source.stale === true,
+        createdAt: readString(source.createdAt, `${field}.createdAt`),
+        updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
+    };
+}
+
+function parseBrowserContextPacketComment(value: unknown, field: string): BrowserContextPacketComment {
     const source = readObject(value, field);
     return {
         draftId: readEntityId(source.draftId, `${field}.draftId`, 'bcmt'),
@@ -218,6 +319,24 @@ function parseBrowserCommentPacketComment(value: unknown, field: string): Browse
         pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
         commentText: readString(source.commentText, `${field}.commentText`),
         sequence: readNonNegativeNumber(source.sequence, `${field}.sequence`),
+        createdAt: readString(source.createdAt, `${field}.createdAt`),
+        updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
+    };
+}
+
+function parseBrowserContextPacketDesignerDraft(value: unknown, field: string): BrowserContextPacketDesignerDraft {
+    const source = readObject(value, field);
+    const blockedReasonMessage = readOptionalString(source.blockedReasonMessage, `${field}.blockedReasonMessage`);
+    const textContentOverride = readOptionalString(source.textContentOverride, `${field}.textContentOverride`);
+    return {
+        draftId: readEntityId(source.draftId, `${field}.draftId`, 'bdsn'),
+        selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
+        applyMode: readEnumValue(source.applyMode, `${field}.applyMode`, browserDesignerApplyModes),
+        applyStatus: readEnumValue(source.applyStatus, `${field}.applyStatus`, browserDesignerApplyStatuses),
+        ...(blockedReasonMessage ? { blockedReasonMessage } : {}),
+        stylePatches: parseBrowserDesignerStylePatchSet(source.stylePatches ?? {}, `${field}.stylePatches`),
+        ...(textContentOverride ? { textContentOverride } : {}),
         createdAt: readString(source.createdAt, `${field}.createdAt`),
         updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
     };
@@ -232,11 +351,18 @@ export function parseBrowserContextSummary(value: unknown, field: string): Brows
         commentCount: readNonNegativeNumber(source.commentCount, `${field}.commentCount`),
         captureCount: readNonNegativeNumber(source.captureCount, `${field}.captureCount`),
         enrichmentMode: readEnumValue(source.enrichmentMode, `${field}.enrichmentMode`, devBrowserEnrichmentModes),
+        designerDraftCount: readNonNegativeNumber(source.designerDraftCount, `${field}.designerDraftCount`),
+        designerPatchCount: readNonNegativeNumber(source.designerPatchCount, `${field}.designerPatchCount`),
+        designerApplyIntentStatus: readEnumValue(
+            source.designerApplyIntentStatus,
+            `${field}.designerApplyIntentStatus`,
+            browserContextSummaryDesignerApplyIntentStatuses
+        ),
         digest: readString(source.digest, `${field}.digest`),
     };
 }
 
-export function parseBrowserCommentPacket(value: unknown, field: string): BrowserCommentPacket {
+export function parseBrowserContextPacket(value: unknown, field: string): BrowserContextPacket {
     const source = readObject(value, field);
     return {
         target: parseDevBrowserTarget(source.target, `${field}.target`),
@@ -244,10 +370,13 @@ export function parseBrowserCommentPacket(value: unknown, field: string): Browse
             parseBrowserSelectionRecord(item, `${field}.selections[${String(index)}]`)
         ),
         comments: readArray(source.comments, `${field}.comments`).map((item, index) =>
-            parseBrowserCommentPacketComment(item, `${field}.comments[${String(index)}]`)
+            parseBrowserContextPacketComment(item, `${field}.comments[${String(index)}]`)
         ),
         cropAttachmentIds: readArray(source.cropAttachmentIds ?? [], `${field}.cropAttachmentIds`).map((item, index) =>
             readEntityId(item, `${field}.cropAttachmentIds[${String(index)}]`, 'att')
+        ),
+        designerDrafts: readArray(source.designerDrafts ?? [], `${field}.designerDrafts`).map((item, index) =>
+            parseBrowserContextPacketDesignerDraft(item, `${field}.designerDrafts[${String(index)}]`)
         ),
         enrichmentMode: readEnumValue(source.enrichmentMode, `${field}.enrichmentMode`, devBrowserEnrichmentModes),
     };
@@ -348,19 +477,57 @@ export function parseSessionSetBrowserCommentDraftInclusionInput(
     };
 }
 
+export function parseSessionUpsertBrowserDesignerDraftInput(input: unknown): SessionUpsertBrowserDesignerDraftInput {
+    const source = readObject(input, 'input');
+    const inclusionState =
+        source.inclusionState !== undefined
+            ? readEnumValue(source.inclusionState, 'inclusionState', browserCommentDraftInclusionStates)
+            : undefined;
+    const textContentOverride = readOptionalString(source.textContentOverride, 'textContentOverride');
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        selectionId: readEntityId(source.selectionId, 'selectionId', 'bsel'),
+        applyMode: readEnumValue(source.applyMode, 'applyMode', browserDesignerApplyModes),
+        stylePatches: parseBrowserDesignerStylePatchSet(source.stylePatches ?? {}, 'stylePatches'),
+        ...(inclusionState ? { inclusionState } : {}),
+        ...(textContentOverride ? { textContentOverride } : {}),
+    };
+}
+
+export function parseSessionDeleteBrowserDesignerDraftInput(input: unknown): SessionDeleteBrowserDesignerDraftInput {
+    const source = readObject(input, 'input');
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        draftId: readEntityId(source.draftId, 'draftId', 'bdsn'),
+    };
+}
+
+export function parseSessionSetBrowserDesignerDraftInclusionInput(
+    input: unknown
+): SessionSetBrowserDesignerDraftInclusionInput {
+    const source = readObject(input, 'input');
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        draftId: readEntityId(source.draftId, 'draftId', 'bdsn'),
+        inclusionState: readEnumValue(source.inclusionState, 'inclusionState', browserCommentDraftInclusionStates),
+    };
+}
+
 export function parseSessionClearStaleBrowserContextInput(input: unknown): SessionClearStaleBrowserContextInput {
     return parseSessionDevBrowserStateInputBase(input);
 }
 
-export function parseSessionBuildBrowserCommentPacketInput(input: unknown): SessionBuildBrowserCommentPacketInput {
+export function parseSessionBuildBrowserContextPacketInput(input: unknown): SessionBuildBrowserContextPacketInput {
     const source = readObject(input, 'input');
-    const draftIds =
-        source.draftIds !== undefined
-            ? readArray(source.draftIds, 'draftIds').map((item, index) => readEntityId(item, `draftIds[${String(index)}]`, 'bcmt'))
+    const commentDraftIds =
+        source.commentDraftIds !== undefined
+            ? readArray(source.commentDraftIds, 'commentDraftIds').map((item, index) =>
+                  readEntityId(item, `commentDraftIds[${String(index)}]`, 'bcmt')
+              )
             : undefined;
     return {
         ...parseSessionDevBrowserStateInputBase(input),
-        ...(draftIds ? { draftIds } : {}),
+        ...(commentDraftIds ? { commentDraftIds } : {}),
     };
 }
 
@@ -376,5 +543,13 @@ export const sessionMoveBrowserCommentDraftInputSchema = createParser(parseSessi
 export const sessionSetBrowserCommentDraftInclusionInputSchema = createParser(
     parseSessionSetBrowserCommentDraftInclusionInput
 );
+export const sessionUpsertBrowserDesignerDraftInputSchema = createParser(parseSessionUpsertBrowserDesignerDraftInput);
+export const sessionDeleteBrowserDesignerDraftInputSchema = createParser(parseSessionDeleteBrowserDesignerDraftInput);
+export const sessionSetBrowserDesignerDraftInclusionInputSchema = createParser(
+    parseSessionSetBrowserDesignerDraftInclusionInput
+);
 export const sessionClearStaleBrowserContextInputSchema = createParser(parseSessionClearStaleBrowserContextInput);
-export const sessionBuildBrowserCommentPacketInputSchema = createParser(parseSessionBuildBrowserCommentPacketInput);
+export const sessionBuildBrowserContextPacketInputSchema = createParser(parseSessionBuildBrowserContextPacketInput);
+
+export const parseBrowserCommentPacket = parseBrowserContextPacket;
+export const sessionBuildBrowserCommentPacketInputSchema = sessionBuildBrowserContextPacketInputSchema;

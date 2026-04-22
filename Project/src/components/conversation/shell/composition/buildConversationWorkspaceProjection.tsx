@@ -19,7 +19,7 @@ import { isEntityId } from '@/web/components/conversation/shell/workspace/helper
 import type { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 
 import type {
-    BrowserCommentPacket,
+    BrowserContextPacket,
     ComposerAttachmentInput,
     EntityId,
     OrchestratorExecutionStrategy,
@@ -410,7 +410,7 @@ export function buildConversationWorkspaceProjection(
             entryId: EntityId<'outbox'>;
             prompt: string;
             attachments: ComposerAttachmentInput[];
-            browserContext?: BrowserCommentPacket | null;
+            browserContext?: BrowserContextPacket | null;
         }) => {
             if (!isEntityId(input.selectedSessionId, 'sess')) {
                 return;

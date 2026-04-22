@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 import { RendererBootStatusBootstrap } from '@/web/components/runtime/rendererBootStatusBootstrap';
 import DevTools from '@/web/components/utils/devtools';
+import { registerFirstPartyReactProvider } from '@/web/lib/devBrowser/registerFirstPartyReactProvider';
 import { initializePrivacyMode } from '@/web/lib/privacy/privacy';
 import Providers from '@/web/lib/providers';
 import { initializeThemeClass } from '@/web/lib/theme/theme';
@@ -27,6 +28,7 @@ if (isDev) {
             environment: 'development',
         },
     });
+    registerFirstPartyReactProvider();
 }
 
 if (rootElement) {

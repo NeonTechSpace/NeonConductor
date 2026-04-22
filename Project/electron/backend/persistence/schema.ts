@@ -308,6 +308,7 @@ export interface SessionDevBrowserSelectionsTable {
     bounds_json: string;
     crop_attachment_id: string | null;
     enrichment_mode: string;
+    react_enrichment_json: string | null;
     stale: 0 | 1;
     created_at: string;
 }
@@ -321,6 +322,23 @@ export interface SessionDevBrowserCommentDraftsTable {
     comment_text: string;
     inclusion_state: string;
     sequence: number;
+    stale: 0 | 1;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SessionDevBrowserDesignerDraftsTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    selection_id: string;
+    page_identity: string;
+    inclusion_state: string;
+    apply_mode: string;
+    apply_status: string;
+    blocked_reason_message: string | null;
+    style_patches_json: string;
+    text_content_override: string | null;
     stale: 0 | 1;
     created_at: string;
     updated_at: string;
@@ -1278,6 +1296,7 @@ export interface DatabaseSchema {
     session_dev_browser_state: SessionDevBrowserStateTable;
     session_dev_browser_selections: SessionDevBrowserSelectionsTable;
     session_dev_browser_comment_drafts: SessionDevBrowserCommentDraftsTable;
+    session_dev_browser_designer_drafts: SessionDevBrowserDesignerDraftsTable;
     session_outbox_entries: SessionOutboxEntriesTable;
     session_outbox_entry_attachments: SessionOutboxEntryAttachmentsTable;
     execution_receipts: ExecutionReceiptsTable;

@@ -3,7 +3,7 @@ import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/
 import { nowIso, parseJsonValue, isJsonRecord, isJsonUnknownArray } from '@/app/backend/persistence/stores/shared/utils';
 import type { RunContractPreview, SessionOutboxEntry, SessionOutboxEntryState, SteeringSnapshot } from '@/app/backend/runtime/contracts';
 import { sessionOutboxEntryStates } from '@/app/backend/runtime/contracts';
-import { parseBrowserCommentPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
+import { parseBrowserContextPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
@@ -62,7 +62,7 @@ function mapOutboxEntry(row: {
             : undefined;
     const browserContext =
         row.browser_context_packet_json !== null
-            ? parseBrowserCommentPacket(
+            ? parseBrowserContextPacket(
                   parseJsonValue(row.browser_context_packet_json, {}, isJsonRecord),
                   'session_outbox_entries.browser_context_packet_json'
               )

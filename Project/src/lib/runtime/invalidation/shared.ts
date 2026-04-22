@@ -20,7 +20,7 @@ export {
     invalidateSelectedMessages,
     invalidateSessionAttachedRules,
     invalidateSessionAttachedSkills,
-    invalidateSessionBrowserCommentPacket,
+    invalidateSessionBrowserContextPacket,
     invalidateSessionCheckpoints,
     invalidateSessionDevBrowserState,
     invalidateSessionList,

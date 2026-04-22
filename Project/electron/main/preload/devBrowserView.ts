@@ -2,7 +2,17 @@
 
 import { ipcRenderer } from 'electron';
 
-import { DEV_BROWSER_PICKER_CHANNEL, DEV_BROWSER_SELECTION_CHANNEL } from '@/app/shared/desktopBridgeContract';
+import {
+    DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL,
+    DEV_BROWSER_PICKER_CHANNEL,
+    DEV_BROWSER_SELECTION_CHANNEL,
+    isDevBrowserDesignerPreviewPayload,
+} from '@/app/shared/desktopBridgeContract';
+import {
+    DEV_BROWSER_PAGE_BRIDGE_REQUEST,
+    DEV_BROWSER_PAGE_BRIDGE_RESPONSE,
+    isDevBrowserPageInspectResult,
+} from '@/app/shared/devBrowserPageBridge';
 
 type ElementSnapshot = {
     pageIdentity: string;
@@ -27,6 +37,31 @@ type ElementSnapshot = {
         width: number;
         height: number;
     };
+    reactEnrichment?: {
+        sourceKind: 'provider' | 'fiber_zero_config';
+        componentChain: Array<{
+            displayName: string;
+        }>;
+        sourceAnchor?: {
+            absolutePath: string;
+            displayPath?: string;
+            line?: number;
+            column?: number;
+        };
+    };
+};
+
+type ReactFiberNode = {
+    return?: ReactFiberNode | null;
+    type?: unknown;
+    elementType?: unknown;
+    _debugOwner?: ReactFiberNode | null;
+};
+
+type DesignerPreviewState = {
+    element: HTMLElement;
+    originalStyleValues: Record<string, string>;
+    originalTextContent?: string;
 };
 
 let pickerActive = false;
@@ -37,6 +72,7 @@ let dragStartPoint: { x: number; y: number } | null = null;
 let dragCurrentPoint: { x: number; y: number } | null = null;
 let dragTargetElement: Element | null = null;
 let suppressNextClick = false;
+const designerPreviewStates = new Map<string, DesignerPreviewState>();
 
 const DRAG_SELECTION_THRESHOLD = 8;
 
@@ -112,6 +148,32 @@ function buildSelectorPath(element: Element): string[] {
     return path;
 }
 
+function resolveElementFromSelector(selector: { primary: string; path: string[] }): HTMLElement | null {
+    try {
+        const directMatch = document.querySelector(selector.primary);
+        if (directMatch instanceof HTMLElement) {
+            return directMatch;
+        }
+    } catch {
+        // Ignore invalid selector fallback.
+    }
+
+    let current: Element | null = document.documentElement;
+    for (const segment of selector.path) {
+        if (!current) {
+            return null;
+        }
+        try {
+            const next: Element | null = current.querySelector(`:scope > ${segment}`) ?? current.querySelector(segment);
+            current = next;
+        } catch {
+            current = null;
+        }
+    }
+
+    return current instanceof HTMLElement ? current : null;
+}
+
 function readAccessibleLabel(element: Element): string | undefined {
     const ariaLabel = element.getAttribute('aria-label');
     if (ariaLabel && ariaLabel.trim().length > 0) {
@@ -128,7 +190,107 @@ function readAccessibleLabel(element: Element): string | undefined {
     return textContent && textContent.length > 0 ? textContent.slice(0, 160) : undefined;
 }
 
-function buildElementSnapshot(element: Element): ElementSnapshot {
+function readFiberFromElement(element: Element): ReactFiberNode | null {
+    const candidateKeys = Object.getOwnPropertyNames(element).filter(
+        (key) => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')
+    );
+    for (const key of candidateKeys) {
+        const candidate = (element as unknown as Record<string, unknown>)[key];
+        if (candidate && typeof candidate === 'object') {
+            return candidate as ReactFiberNode;
+        }
+    }
+    return null;
+}
+
+function readFiberDisplayName(value: unknown): string | undefined {
+    if (!value) {
+        return undefined;
+    }
+    if (typeof value === 'function') {
+        const displayName = (value as { displayName?: string }).displayName ?? value.name;
+        return displayName && displayName.trim().length > 0 ? displayName.trim() : undefined;
+    }
+    if (typeof value === 'object') {
+        const candidate = value as Record<string, unknown>;
+        if (typeof candidate['displayName'] === 'string' && candidate['displayName'].trim().length > 0) {
+            return candidate['displayName'].trim();
+        }
+        if (typeof candidate['name'] === 'string' && candidate['name'].trim().length > 0) {
+            return candidate['name'].trim();
+        }
+        if (candidate['render']) {
+            return readFiberDisplayName(candidate['render']);
+        }
+        if (candidate['type']) {
+            return readFiberDisplayName(candidate['type']);
+        }
+    }
+    return undefined;
+}
+
+function probeReactFiberEnrichment(element: Element): ElementSnapshot['reactEnrichment'] | undefined {
+    const fiber = readFiberFromElement(element);
+    if (!fiber) {
+        return undefined;
+    }
+
+    const componentChain: Array<{ displayName: string }> = [];
+    let current: ReactFiberNode | null | undefined = fiber;
+    while (current && componentChain.length < 12) {
+        const displayName = readFiberDisplayName(current.type ?? current.elementType);
+        if (displayName && !componentChain.some((candidate) => candidate.displayName === displayName)) {
+            componentChain.push({ displayName });
+        }
+        current = current.return;
+    }
+
+    return componentChain.length > 0
+        ? {
+              sourceKind: 'fiber_zero_config',
+              componentChain,
+          }
+        : undefined;
+}
+
+function requestProviderReactEnrichment(selector: ElementSnapshot['selector']): Promise<ElementSnapshot['reactEnrichment'] | undefined> {
+    return new Promise((resolve) => {
+        const requestId = crypto.randomUUID();
+        const timeoutId = window.setTimeout(() => {
+            window.removeEventListener('message', handleMessage);
+            resolve(undefined);
+        }, 180);
+
+        const handleMessage = (event: MessageEvent<unknown>) => {
+            if (event.source !== window || !isDevBrowserPageInspectResult(event.data) || event.data.requestId !== requestId) {
+                return;
+            }
+            window.clearTimeout(timeoutId);
+            window.removeEventListener('message', handleMessage);
+            if (!event.data.found || !event.data.componentChain || event.data.componentChain.length === 0) {
+                resolve(undefined);
+                return;
+            }
+            resolve({
+                sourceKind: 'provider',
+                componentChain: event.data.componentChain,
+                ...(event.data.sourceAnchor ? { sourceAnchor: event.data.sourceAnchor } : {}),
+            });
+        };
+
+        window.addEventListener('message', handleMessage);
+        window.postMessage(
+            {
+                source: DEV_BROWSER_PAGE_BRIDGE_REQUEST,
+                requestId,
+                selector,
+            },
+            '*'
+        );
+    });
+}
+
+async function buildElementSnapshot(element: Element): Promise<ElementSnapshot> {
     const rect = element.getBoundingClientRect();
     const selectorPath = buildSelectorPath(element);
     const ancestryTrail: ElementSnapshot['ancestryTrail'] = [];
@@ -145,18 +307,21 @@ function buildElementSnapshot(element: Element): ElementSnapshot {
         current = current.parentElement;
     }
 
+    const selector = {
+        primary: selectorPath.join(' > '),
+        path: selectorPath,
+    };
     const accessibleLabel = readAccessibleLabel(element);
     const accessibleRole = element.getAttribute('role') ?? undefined;
     const textExcerpt = element.textContent?.trim()?.replace(/\s+/g, ' ').slice(0, 240);
+    const providerEnrichment = await requestProviderReactEnrichment(selector);
+    const reactEnrichment = providerEnrichment ?? probeReactFiberEnrichment(element);
 
     return {
         pageIdentity: `${window.location.origin}${window.location.pathname}${window.location.search}`,
         pageUrl: window.location.href,
         ...(document.title.trim().length > 0 ? { pageTitle: document.title.trim() } : {}),
-        selector: {
-            primary: selectorPath.join(' > '),
-            path: selectorPath,
-        },
+        selector,
         ancestryTrail,
         ...(accessibleLabel ? { accessibleLabel } : {}),
         ...(accessibleRole ? { accessibleRole } : {}),
@@ -167,6 +332,7 @@ function buildElementSnapshot(element: Element): ElementSnapshot {
             width: Math.max(1, Math.round(rect.width)),
             height: Math.max(1, Math.round(rect.height)),
         },
+        ...(reactEnrichment ? { reactEnrichment } : {}),
     };
 }
 
@@ -347,6 +513,84 @@ function updateHighlight(element: Element | null): void {
     overlay.style.height = `${String(Math.max(1, Math.round(rect.height)))}px`;
 }
 
+function camelToKebab(value: string): string {
+    return value.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`);
+}
+
+function restoreDesignerPreview(draftId: string): void {
+    const existing = designerPreviewStates.get(draftId);
+    if (!existing) {
+        return;
+    }
+    for (const [styleKey, originalValue] of Object.entries(existing.originalStyleValues)) {
+        existing.element.style.setProperty(camelToKebab(styleKey), originalValue);
+    }
+    if (existing.originalTextContent !== undefined) {
+        existing.element.textContent = existing.originalTextContent;
+    }
+    designerPreviewStates.delete(draftId);
+}
+
+function applyDesignerPreviewDraft(draft: {
+    draftId: string;
+    selector: ElementSnapshot['selector'];
+    stylePatches: Record<string, string>;
+    textContentOverride?: string;
+    active: boolean;
+}): void {
+    restoreDesignerPreview(draft.draftId);
+    if (!draft.active) {
+        return;
+    }
+    const element = resolveElementFromSelector(draft.selector);
+    if (!element) {
+        return;
+    }
+
+    const originalStyleValues: Record<string, string> = {};
+    for (const styleKey of Object.keys(draft.stylePatches)) {
+        originalStyleValues[styleKey] = element.style.getPropertyValue(camelToKebab(styleKey));
+    }
+    const state: DesignerPreviewState = {
+        element,
+        originalStyleValues,
+        ...(draft.textContentOverride !== undefined ? { originalTextContent: element.textContent ?? '' } : {}),
+    };
+    designerPreviewStates.set(draft.draftId, state);
+
+    for (const [styleKey, styleValue] of Object.entries(draft.stylePatches)) {
+        element.style.setProperty(camelToKebab(styleKey), styleValue);
+    }
+    if (draft.textContentOverride !== undefined) {
+        element.textContent = draft.textContentOverride;
+    }
+}
+
+function syncDesignerPreviews(payload: {
+    drafts: Array<{
+        draftId: string;
+        selector: ElementSnapshot['selector'];
+        stylePatches: Record<string, string>;
+        textContentOverride?: string;
+        active: boolean;
+    }>;
+}): void {
+    const nextDraftIds = new Set(payload.drafts.map((draft) => draft.draftId));
+    for (const draftId of Array.from(designerPreviewStates.keys())) {
+        if (!nextDraftIds.has(draftId)) {
+            restoreDesignerPreview(draftId);
+        }
+    }
+    for (const draft of payload.drafts) {
+        applyDesignerPreviewDraft(draft);
+    }
+}
+
+async function persistSelectionForTarget(target: Element): Promise<void> {
+    const snapshot = await buildElementSnapshot(target);
+    ipcRenderer.send(DEV_BROWSER_SELECTION_CHANNEL, snapshot);
+}
+
 function handleMouseMove(event: MouseEvent): void {
     if (!pickerActive) {
         return;
@@ -390,11 +634,12 @@ function handleMouseUp(event: MouseEvent): void {
         x: event.clientX,
         y: event.clientY,
     };
-    const target = dragStartPoint && dragCurrentPoint && isDraggingAreaSelection()
-        ? selectElementForArea(dragStartPoint, dragCurrentPoint)
-        : event.target instanceof Element
-          ? event.target
-          : highlightedElement ?? dragTargetElement;
+    const target =
+        dragStartPoint && dragCurrentPoint && isDraggingAreaSelection()
+            ? selectElementForArea(dragStartPoint, dragCurrentPoint)
+            : event.target instanceof Element
+              ? event.target
+              : highlightedElement ?? dragTargetElement;
     if (!target) {
         clearDragState();
         return;
@@ -406,7 +651,7 @@ function handleMouseUp(event: MouseEvent): void {
     event.stopImmediatePropagation();
     clearDragState();
     updateHighlight(target);
-    ipcRenderer.send(DEV_BROWSER_SELECTION_CHANNEL, buildElementSnapshot(target));
+    void persistSelectionForTarget(target);
 }
 
 function handleClick(event: MouseEvent): void {
@@ -419,29 +664,41 @@ function handleClick(event: MouseEvent): void {
     suppressNextClick = false;
 }
 
-function setPickerActive(nextActive: boolean): void {
-    pickerActive = nextActive;
-    if (!pickerActive) {
+function setPickerState(active: boolean): void {
+    pickerActive = active;
+    if (!active) {
+        highlightedElement = null;
         hideOverlay();
         clearDragState();
-        return;
     }
-    ensureOverlay();
-    ensureSelectionOverlay();
 }
 
-window.addEventListener('mousedown', handleMouseDown, true);
-window.addEventListener('mousemove', handleMouseMove, true);
-window.addEventListener('mouseup', handleMouseUp, true);
-window.addEventListener('click', handleClick, true);
-window.addEventListener('blur', () => {
-    if (pickerActive) {
-        hideOverlay();
-        hideSelectionOverlay();
-    }
-});
+document.addEventListener('mousemove', handleMouseMove, true);
+document.addEventListener('mousedown', handleMouseDown, true);
+document.addEventListener('mouseup', handleMouseUp, true);
+document.addEventListener('click', handleClick, true);
 
 ipcRenderer.on(DEV_BROWSER_PICKER_CHANNEL, (_event, payload: unknown) => {
-    const active = !!(payload && typeof payload === 'object' && (payload as Record<string, unknown>)['active'] === true);
-    setPickerActive(active);
+    if (!payload || typeof payload !== 'object' || typeof (payload as Record<string, unknown>)['active'] !== 'boolean') {
+        return;
+    }
+    const rawActive = (payload as Record<string, unknown>)['active'];
+    setPickerState(rawActive === true);
+});
+
+ipcRenderer.on(DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL, (_event, payload: unknown) => {
+    if (!isDevBrowserDesignerPreviewPayload(payload)) {
+        return;
+    }
+    syncDesignerPreviews(payload);
+});
+
+window.addEventListener('message', (event: MessageEvent<unknown>) => {
+    if (!event.data || typeof event.data !== 'object') {
+        return;
+    }
+    const candidate = event.data as Record<string, unknown>;
+    if (candidate['source'] !== DEV_BROWSER_PAGE_BRIDGE_RESPONSE || !isDevBrowserPageInspectResult(event.data)) {
+        return;
+    }
 });

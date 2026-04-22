@@ -1,5 +1,5 @@
 import type {
-    BrowserCommentPacket,
+    BrowserContextPacket,
     ComposerAttachmentInput,
     ExecutionReceipt,
     PreparedContextContributorSummary,
@@ -66,7 +66,7 @@ function buildDynamicExpansionSummary(
 function buildTrustSummary(input: {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     contributors: PreparedContextContributorSummary[];
 }): RunContractPreview['trustSummary'] {
     const byTrustLevel = createTrustLevelCounts();
@@ -89,7 +89,9 @@ function buildTrustSummary(input: {
 
     if (input.browserContext) {
         const contextualizedInputCount =
-            input.browserContext.selections.length + input.browserContext.cropAttachmentIds.length;
+            input.browserContext.selections.length +
+            input.browserContext.cropAttachmentIds.length +
+            input.browserContext.designerDrafts.length;
         const instructiveInputCount = input.browserContext.comments.length;
 
         byTrustLevel['user_input'] += contextualizedInputCount + instructiveInputCount;
@@ -174,7 +176,7 @@ function buildDiffSummary(previousContract: RunContractPreview | undefined, next
     if (previousBrowserContextSummary?.digest !== nextBrowserContextSummary?.digest) {
         items.push({
             field: 'browserContextDigest',
-            reason: 'The selected browser elements or staged comments changed.',
+            reason: 'The selected browser elements, designer previews, or staged comments changed.',
             material: true,
             ...(previousBrowserContextSummary?.digest ? { previousValue: previousBrowserContextSummary.digest } : {}),
             ...(nextBrowserContextSummary?.digest ? { nextValue: nextBrowserContextSummary.digest } : {}),

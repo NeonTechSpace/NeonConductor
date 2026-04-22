@@ -18,18 +18,79 @@ import { trpc } from '@/web/trpc/client';
 
 import type {
     BrowserCommentDraft,
-    BrowserCommentPacket,
+    BrowserContextPacket,
+    BrowserDesignerDraft,
     BrowserSelectionRecord,
     EntityId,
 } from '@/shared/contracts';
+
+type DesignerDraftFormState = {
+    applyMode: 'preview_only' | 'apply_with_agent';
+    width: string;
+    height: string;
+    gap: string;
+    padding: string;
+    fontSize: string;
+    color: string;
+    backgroundColor: string;
+    borderRadius: string;
+    boxShadow: string;
+    opacity: string;
+    textContentOverride: string;
+};
+
+const DESIGNER_STYLE_FIELDS: Array<{ key: keyof Omit<DesignerDraftFormState, 'applyMode' | 'textContentOverride'>; label: string }> = [
+    { key: 'width', label: 'Width' },
+    { key: 'height', label: 'Height' },
+    { key: 'gap', label: 'Gap' },
+    { key: 'padding', label: 'Padding' },
+    { key: 'fontSize', label: 'Font Size' },
+    { key: 'color', label: 'Text Color' },
+    { key: 'backgroundColor', label: 'Background' },
+    { key: 'borderRadius', label: 'Radius' },
+    { key: 'boxShadow', label: 'Shadow' },
+    { key: 'opacity', label: 'Opacity' },
+];
+
+function buildDesignerDraftFormState(draft?: BrowserDesignerDraft): DesignerDraftFormState {
+    return {
+        applyMode: draft?.applyMode ?? 'preview_only',
+        width: draft?.stylePatches.width ?? '',
+        height: draft?.stylePatches.height ?? '',
+        gap: draft?.stylePatches.gap ?? '',
+        padding: draft?.stylePatches.padding ?? '',
+        fontSize: draft?.stylePatches.fontSize ?? '',
+        color: draft?.stylePatches.color ?? '',
+        backgroundColor: draft?.stylePatches.backgroundColor ?? '',
+        borderRadius: draft?.stylePatches.borderRadius ?? '',
+        boxShadow: draft?.stylePatches.boxShadow ?? '',
+        opacity: draft?.stylePatches.opacity ?? '',
+        textContentOverride: draft?.textContentOverride ?? '',
+    };
+}
+
+function toDesignerStylePatchPayload(formState: DesignerDraftFormState): { stylePatches: Record<string, string>; textContentOverride?: string } {
+    const stylePatches: Record<string, string> = {};
+    for (const field of DESIGNER_STYLE_FIELDS) {
+        const value = formState[field.key].trim();
+        if (value.length > 0) {
+            stylePatches[field.key] = value;
+        }
+    }
+
+    return {
+        stylePatches,
+        ...(formState.textContentOverride.trim().length > 0 ? { textContentOverride: formState.textContentOverride.trim() } : {}),
+    };
+}
 
 interface DevBrowserPanelProps {
     profileId: string;
     sessionId?: EntityId<'sess'>;
     visible: boolean;
     currentDraftPrompt: string;
-    onSubmitPrompt: (prompt: string, browserContext?: BrowserCommentPacket) => void;
-    onQueuePrompt?: (prompt: string, browserContext?: BrowserCommentPacket) => void;
+    onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;
+    onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
 }
 
 function buildSessionScopedInput(profileId: string, sessionId: EntityId<'sess'> | undefined) {
@@ -81,7 +142,7 @@ export function DevBrowserPanel({
     const utils = trpc.useUtils();
     const scopedInput = buildSessionScopedInput(profileId, sessionId);
     const browserStateQuery = trpc.session.getDevBrowserState.useQuery(scopedInput, PROGRESSIVE_QUERY_OPTIONS);
-    const includedPacketQuery = trpc.session.buildBrowserCommentPacket.useQuery(scopedInput, PROGRESSIVE_QUERY_OPTIONS);
+    const includedPacketQuery = trpc.session.buildBrowserContextPacket.useQuery(scopedInput, PROGRESSIVE_QUERY_OPTIONS);
 
     const setTargetMutation = trpc.session.setDevBrowserTarget.useMutation();
     const controlMutation = trpc.session.controlDevBrowser.useMutation();
@@ -93,6 +154,9 @@ export function DevBrowserPanel({
     const setInclusionMutation = trpc.session.setBrowserCommentDraftInclusion.useMutation();
     const clearStaleMutation = trpc.session.clearStaleBrowserContext.useMutation();
     const persistSelectionMutation = trpc.session.persistBrowserSelection.useMutation();
+    const upsertDesignerMutation = trpc.session.upsertBrowserDesignerDraft.useMutation();
+    const deleteDesignerMutation = trpc.session.deleteBrowserDesignerDraft.useMutation();
+    const setDesignerInclusionMutation = trpc.session.setBrowserDesignerDraftInclusion.useMutation();
 
     const browserState = browserStateQuery.data;
     const mountRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +166,7 @@ export function DevBrowserPanel({
     const [path, setPath] = useState('/');
     const [selectionDrafts, setSelectionDrafts] = useState<Record<string, string>>({});
     const [commentEdits, setCommentEdits] = useState<Record<string, string>>({});
+    const [designerDraftForms, setDesignerDraftForms] = useState<Record<string, DesignerDraftFormState>>({});
     const [feedback, setFeedback] = useState<string | undefined>(undefined);
 
     useEffect(() => {
@@ -188,13 +253,21 @@ export function DevBrowserPanel({
         return drafts;
     }, [browserState?.commentDrafts]);
 
+    const designerDraftsBySelectionId = useMemo(() => {
+        const drafts = new Map<EntityId<'bsel'>, BrowserDesignerDraft>();
+        for (const draft of browserState?.designerDrafts ?? []) {
+            drafts.set(draft.selectionId, draft);
+        }
+        return drafts;
+    }, [browserState?.designerDrafts]);
+
     async function invalidateBrowserQueries() {
         if (!sessionId) {
             return;
         }
         await Promise.all([
             utils.session.getDevBrowserState.invalidate({ profileId, sessionId }),
-            utils.session.buildBrowserCommentPacket.invalidate(),
+            utils.session.buildBrowserContextPacket.invalidate(),
         ]);
     }
 
@@ -296,10 +369,10 @@ export function DevBrowserPanel({
             input.scope === 'all'
                 ? (browserState?.commentDrafts ?? []).map((draft) => draft.id)
                 : undefined;
-        const packetResult = await utils.session.buildBrowserCommentPacket.fetch({
+        const packetResult = await utils.session.buildBrowserContextPacket.fetch({
             profileId,
             sessionId,
-            ...(allDraftIds && allDraftIds.length > 0 ? { draftIds: allDraftIds } : {}),
+            ...(allDraftIds && allDraftIds.length > 0 ? { commentDraftIds: allDraftIds } : {}),
         });
         if (!packetResult.available) {
             setFeedback(packetResult.message);
@@ -339,8 +412,50 @@ export function DevBrowserPanel({
                 ...(selection.textExcerpt ? { textExcerpt: selection.textExcerpt } : {}),
                 bounds: selection.bounds,
                 enrichmentMode: selection.enrichmentMode,
+                ...(selection.reactEnrichment ? { reactEnrichment: selection.reactEnrichment } : {}),
             },
         });
+        setFeedback(undefined);
+    }
+
+    async function handlePreviewDesigner(selectionId: EntityId<'bsel'>) {
+        if (!sessionId) {
+            return;
+        }
+        const formState = designerDraftForms[selectionId] ?? buildDesignerDraftFormState(designerDraftsBySelectionId.get(selectionId));
+        const payload = toDesignerStylePatchPayload(formState);
+        if (Object.keys(payload.stylePatches).length === 0 && !payload.textContentOverride) {
+            setFeedback('Add at least one preview change before saving a designer draft.');
+            return;
+        }
+        await upsertDesignerMutation.mutateAsync({
+            profileId,
+            sessionId,
+            selectionId,
+            applyMode: formState.applyMode,
+            stylePatches: payload.stylePatches,
+            ...(payload.textContentOverride ? { textContentOverride: payload.textContentOverride } : {}),
+            inclusionState: 'included',
+        });
+        await invalidateBrowserQueries();
+        setFeedback(undefined);
+    }
+
+    async function handleDeleteDesignerDraft(draftId: EntityId<'bdsn'>, selectionId: EntityId<'bsel'>) {
+        if (!sessionId) {
+            return;
+        }
+        await deleteDesignerMutation.mutateAsync({
+            profileId,
+            sessionId,
+            draftId,
+        });
+        setDesignerDraftForms((current) => {
+            const next = { ...current };
+            delete next[selectionId];
+            return next;
+        });
+        await invalidateBrowserQueries();
         setFeedback(undefined);
     }
 
@@ -348,9 +463,11 @@ export function DevBrowserPanel({
     const includedBrowserSummary =
         includedPacketQuery.data?.available === true ? includedPacketQuery.data.summary : browserState?.summary;
     const canSendIncluded = includedPacketQuery.data?.available === true;
-    const hasAnyDraftComments = (browserState?.commentDrafts.length ?? 0) > 0;
+    const hasAnyDraftContext = (browserState?.commentDrafts.length ?? 0) > 0 || (browserState?.designerDrafts.length ?? 0) > 0;
     const selectionCount = browserState?.selections.length ?? 0;
-    const staleCommentCount = browserState?.commentDrafts.filter((draft) => draft.stale).length ?? 0;
+    const staleContextCount =
+        (browserState?.commentDrafts.filter((draft) => draft.stale).length ?? 0) +
+        (browserState?.designerDrafts.filter((draft) => draft.stale).length ?? 0);
     const statusLabel = describeValidationStatus({
         ...(target?.validation.status ? { status: target.validation.status } : {}),
         ...(target?.browserAvailability ? { browserAvailability: target.browserAvailability } : {}),
@@ -384,6 +501,9 @@ export function DevBrowserPanel({
                         </span>
                         <span className='text-muted-foreground rounded-full border px-2 py-1'>
                             {browserState?.commentDrafts.length ?? 0} comment{browserState?.commentDrafts.length === 1 ? '' : 's'}
+                        </span>
+                        <span className='text-muted-foreground rounded-full border px-2 py-1'>
+                            {browserState?.designerDrafts.length ?? 0} designer{browserState?.designerDrafts.length === 1 ? '' : 's'}
                         </span>
                     </div>
                 </div>
@@ -445,7 +565,7 @@ export function DevBrowserPanel({
                         <MousePointerClick className='mr-2 h-4 w-4' />
                         {browserState?.pickerActive ? 'Picker On' : 'Start Picker'}
                     </Button>
-                    {staleCommentCount > 0 ? (
+                    {staleContextCount > 0 ? (
                         <Button type='button' size='sm' variant='outline' onClick={() => clearStaleMutation.mutateAsync({ profileId, sessionId })}>
                             Clear Stale
                         </Button>
@@ -506,7 +626,7 @@ export function DevBrowserPanel({
                             type='button'
                             size='sm'
                             variant='outline'
-                            disabled={!hasAnyDraftComments}
+                            disabled={!hasAnyDraftContext}
                             onClick={() => void handleBuildPacketAndSend({ scope: 'all', action: 'submit' })}>
                             Send All
                         </Button>
@@ -514,7 +634,7 @@ export function DevBrowserPanel({
                             type='button'
                             size='sm'
                             variant='outline'
-                            disabled={!onQueuePrompt || !hasAnyDraftComments}
+                            disabled={!onQueuePrompt || !hasAnyDraftContext}
                             onClick={() => void handleBuildPacketAndSend({ scope: 'all', action: 'queue' })}>
                             Queue All
                         </Button>
@@ -539,6 +659,16 @@ export function DevBrowserPanel({
                             <p className='text-muted-foreground'>Captures</p>
                             <p className='font-medium'>{includedBrowserSummary.captureCount}</p>
                         </div>
+                        <div className='rounded-xl border px-3 py-2'>
+                            <p className='text-muted-foreground'>Designer</p>
+                            <p className='font-medium'>
+                                {includedBrowserSummary.designerDraftCount} draft{includedBrowserSummary.designerDraftCount === 1 ? '' : 's'}
+                            </p>
+                        </div>
+                        <div className='rounded-xl border px-3 py-2'>
+                            <p className='text-muted-foreground'>Apply Intent</p>
+                            <p className='font-medium'>{includedBrowserSummary.designerApplyIntentStatus.replaceAll('_', ' ')}</p>
+                        </div>
                     </div>
                 ) : null}
 
@@ -551,6 +681,9 @@ export function DevBrowserPanel({
                         (browserState?.selections ?? []).map((selection) => {
                             const selectionDraftText = selectionDrafts[selection.id] ?? '';
                             const selectionComments = commentDraftsBySelectionId.get(selection.id) ?? [];
+                            const selectionDesignerDraft = designerDraftsBySelectionId.get(selection.id);
+                            const designerFormState =
+                                designerDraftForms[selection.id] ?? buildDesignerDraftFormState(selectionDesignerDraft);
 
                             return (
                                 <article key={selection.id} className='rounded-2xl border px-4 py-4'>
@@ -573,6 +706,23 @@ export function DevBrowserPanel({
                                             ) : null}
                                             {selection.textExcerpt ? (
                                                 <p className='text-muted-foreground mt-1 text-[11px]'>{selection.textExcerpt}</p>
+                                            ) : null}
+                                            {selection.reactEnrichment ? (
+                                                <div className='mt-2 space-y-1 text-[11px]'>
+                                                    <p className='text-muted-foreground'>
+                                                        React chain: {selection.reactEnrichment.componentChain.map((component) => component.displayName).join(' -> ')}
+                                                    </p>
+                                                    {selection.reactEnrichment.sourceAnchor ? (
+                                                        <p className='text-muted-foreground'>
+                                                            Source: {selection.reactEnrichment.sourceAnchor.displayPath}
+                                                            {selection.reactEnrichment.sourceAnchor.line
+                                                                ? `:${String(selection.reactEnrichment.sourceAnchor.line)}`
+                                                                : ''}
+                                                        </p>
+                                                    ) : (
+                                                        <p className='text-muted-foreground'>Source: component identity only</p>
+                                                    )}
+                                                </div>
                                             ) : null}
                                         </div>
                                         <div className='flex flex-wrap items-center gap-1 text-[11px]'>
@@ -715,6 +865,129 @@ export function DevBrowserPanel({
                                                 );
                                             })
                                         )}
+                                    </div>
+
+                                    <div className='mt-4 rounded-2xl border px-3 py-3'>
+                                        <div className='mb-3 flex flex-wrap items-start justify-between gap-2'>
+                                            <div>
+                                                <p className='text-sm font-medium'>Live Designer</p>
+                                                <p className='text-muted-foreground text-[11px]'>
+                                                    Preview safe style changes in-browser, then carry them through the normal run pipeline.
+                                                </p>
+                                            </div>
+                                            {selectionDesignerDraft ? (
+                                                <div className='flex items-center gap-2 text-[11px]'>
+                                                    <span className='rounded-full border px-2 py-0.5'>
+                                                        {selectionDesignerDraft.applyStatus.replaceAll('_', ' ')}
+                                                    </span>
+                                                    <Button
+                                                        type='button'
+                                                        size='icon'
+                                                        variant='ghost'
+                                                        className='h-7 w-7 rounded-full'
+                                                        onClick={() =>
+                                                            void setDesignerInclusionMutation.mutateAsync({
+                                                                profileId,
+                                                                sessionId,
+                                                                draftId: selectionDesignerDraft.id,
+                                                                inclusionState:
+                                                                    selectionDesignerDraft.inclusionState === 'included'
+                                                                        ? 'excluded'
+                                                                        : 'included',
+                                                            })
+                                                        }>
+                                                        {selectionDesignerDraft.inclusionState === 'included' ? (
+                                                            <CheckSquare className='h-4 w-4' />
+                                                        ) : (
+                                                            <Square className='h-4 w-4' />
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            ) : null}
+                                        </div>
+
+                                        <div className='grid gap-2 md:grid-cols-2 xl:grid-cols-5'>
+                                            {DESIGNER_STYLE_FIELDS.map((field) => (
+                                                <label key={`${selection.id}:${field.key}`} className='text-[11px]'>
+                                                    <span className='text-muted-foreground mb-1 block'>{field.label}</span>
+                                                    <input
+                                                        className='border-border bg-background w-full rounded-xl border px-3 py-2 text-sm'
+                                                        value={designerFormState[field.key]}
+                                                        onChange={(event) => {
+                                                            setDesignerDraftForms((current) => ({
+                                                                ...current,
+                                                                [selection.id]: {
+                                                                    ...designerFormState,
+                                                                    [field.key]: event.target.value,
+                                                                },
+                                                            }));
+                                                        }}
+                                                        placeholder='Optional'
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
+
+                                        <div className='mt-3 grid gap-3 xl:grid-cols-[200px_minmax(0,1fr)]'>
+                                            <label className='text-[11px]'>
+                                                <span className='text-muted-foreground mb-1 block'>Apply Intent</span>
+                                                <select
+                                                    className='border-border bg-background w-full rounded-xl border px-3 py-2 text-sm'
+                                                    value={designerFormState.applyMode}
+                                                    onChange={(event) => {
+                                                        setDesignerDraftForms((current) => ({
+                                                            ...current,
+                                                            [selection.id]: {
+                                                                ...designerFormState,
+                                                                applyMode:
+                                                                    event.target.value === 'apply_with_agent'
+                                                                        ? 'apply_with_agent'
+                                                                        : 'preview_only',
+                                                            },
+                                                        }));
+                                                    }}>
+                                                    <option value='preview_only'>Preview Only</option>
+                                                    <option value='apply_with_agent'>Apply With Agent</option>
+                                                </select>
+                                            </label>
+                                            <label className='text-[11px]'>
+                                                <span className='text-muted-foreground mb-1 block'>Text Override</span>
+                                                <input
+                                                    className='border-border bg-background w-full rounded-xl border px-3 py-2 text-sm'
+                                                    value={designerFormState.textContentOverride}
+                                                    onChange={(event) => {
+                                                        setDesignerDraftForms((current) => ({
+                                                            ...current,
+                                                            [selection.id]: {
+                                                                ...designerFormState,
+                                                                textContentOverride: event.target.value,
+                                                            },
+                                                        }));
+                                                    }}
+                                                    placeholder='Optional safe text preview'
+                                                />
+                                            </label>
+                                        </div>
+
+                                        {selectionDesignerDraft?.blockedReasonMessage ? (
+                                            <p className='text-muted-foreground mt-2 text-[11px]'>{selectionDesignerDraft.blockedReasonMessage}</p>
+                                        ) : null}
+
+                                        <div className='mt-3 flex flex-wrap justify-end gap-2'>
+                                            {selectionDesignerDraft ? (
+                                                <Button
+                                                    type='button'
+                                                    size='sm'
+                                                    variant='ghost'
+                                                    onClick={() => void handleDeleteDesignerDraft(selectionDesignerDraft.id, selection.id)}>
+                                                    <Trash2 className='mr-2 h-4 w-4' />
+                                                    Clear Preview
+                                                </Button>
+                                            ) : null}
+                                            <Button type='button' size='sm' variant='outline' onClick={() => void handlePreviewDesigner(selection.id)}>
+                                                Save Preview
+                                            </Button>
+                                        </div>
                                     </div>
                                 </article>
                             );

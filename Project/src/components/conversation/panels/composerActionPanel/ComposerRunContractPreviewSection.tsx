@@ -80,7 +80,11 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                             <p className='font-medium'>
                                 {String(browserContextSummary.commentCount)} comments,{' '}
                                 {String(browserContextSummary.selectedElementCount)} elements,{' '}
-                                {String(browserContextSummary.captureCount)} captures
+                                {String(browserContextSummary.captureCount)} captures,{' '}
+                                {String(browserContextSummary.designerDraftCount)} designer drafts
+                            </p>
+                            <p className='text-muted-foreground mt-1'>
+                                Apply intent: {browserContextSummary.designerApplyIntentStatus.replaceAll('_', ' ')}
                             </p>
                         </div>
                     ) : null}

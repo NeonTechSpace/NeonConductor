@@ -2,7 +2,7 @@ import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecu
 import { persistRunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/runTerminalPersistence';
 import { applyRunTerminalSideEffects } from '@/app/backend/runtime/services/runExecution/runTerminalSideEffects';
 
-import type { BrowserCommentPacket, EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
+import type { BrowserContextPacket, EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
 
 export async function applyRunTerminalOutcome(input: {
     profileId: string;
@@ -16,7 +16,7 @@ export async function applyRunTerminalOutcome(input: {
     modelId?: string;
     authMethod?: ProviderAuthMethod | 'none';
     contract?: RunContractPreview;
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     const persisted = await persistRunTerminalOutcome(input);
@@ -36,7 +36,7 @@ export async function moveRunToAbortedState(input: {
     runId: EntityId<'run'>;
     logMessage: string;
     contract?: RunContractPreview;
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     await applyRunTerminalOutcome({
@@ -61,7 +61,7 @@ export async function moveRunToFailedState(input: {
     errorMessage: string;
     logMessage: string;
     contract?: RunContractPreview;
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     await applyRunTerminalOutcome({

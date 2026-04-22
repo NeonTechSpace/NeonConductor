@@ -12,7 +12,7 @@ import {
     readProviderId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
-import { parseBrowserCommentPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
+import { parseBrowserContextPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import type {
     ComposerAttachmentInput,
     ComposerImageAttachmentInput,
@@ -139,7 +139,7 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
     const prompt = typeof source.prompt === 'string' ? source.prompt.trim() : '';
     const browserContext =
         source.browserContext !== undefined
-            ? parseBrowserCommentPacket(source.browserContext, 'browserContext')
+            ? parseBrowserContextPacket(source.browserContext, 'browserContext')
             : undefined;
     if (prompt.length === 0 && (!attachments || attachments.length === 0) && !browserContext) {
         throw new Error('Invalid "prompt": expected non-empty string when no attachments or browser context are provided.');
@@ -332,7 +332,7 @@ export function parseSessionUpdateOutboxEntryInput(input: unknown): SessionUpdat
         source.browserContext === null
             ? null
             : source.browserContext !== undefined
-              ? parseBrowserCommentPacket(source.browserContext, 'browserContext')
+              ? parseBrowserContextPacket(source.browserContext, 'browserContext')
               : undefined;
     const prompt = typeof source.prompt === 'string' ? source.prompt.trim() : '';
     if (

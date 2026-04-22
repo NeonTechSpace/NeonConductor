@@ -2,9 +2,9 @@ import { conversationAttachmentStore } from '@/app/backend/persistence/stores';
 import { createTextPart } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { RunContextMessage, RunContextPart } from '@/app/backend/runtime/services/runExecution/types';
 
-import type { BrowserCommentPacket, EntityId } from '@/shared/contracts';
+import type { BrowserContextPacket, EntityId } from '@/shared/contracts';
 
-export function formatBrowserSelectionBlock(packet: BrowserCommentPacket): string {
+export function formatBrowserSelectionBlock(packet: BrowserContextPacket): string {
     const lines: string[] = [];
     lines.push(`Browser target: ${packet.target.currentPage?.url ?? packet.target.validation.normalizedUrl ?? packet.target.host}`);
     lines.push(`Browser enrichment mode: ${packet.enrichmentMode}`);
@@ -21,6 +21,15 @@ export function formatBrowserSelectionBlock(packet: BrowserCommentPacket): strin
         if (selection.textExcerpt) {
             lines.push(`Text: ${selection.textExcerpt}`);
         }
+        if (selection.reactEnrichment) {
+            lines.push(`React chain: ${selection.reactEnrichment.componentChain.map((component) => component.displayName).join(' -> ')}`);
+            if (selection.reactEnrichment.sourceAnchor) {
+                const sourceAnchor = selection.reactEnrichment.sourceAnchor;
+                lines.push(
+                    `Source anchor: ${sourceAnchor.displayPath}${sourceAnchor.line ? `:${String(sourceAnchor.line)}` : ''}`
+                );
+            }
+        }
         lines.push(
             `Bounds: x=${String(selection.bounds.x)}, y=${String(selection.bounds.y)}, width=${String(selection.bounds.width)}, height=${String(selection.bounds.height)}`
         );
@@ -29,7 +38,7 @@ export function formatBrowserSelectionBlock(packet: BrowserCommentPacket): strin
     return lines.join('\n').trim();
 }
 
-export function formatBrowserCommentBlock(packet: BrowserCommentPacket): string {
+export function formatBrowserCommentBlock(packet: BrowserContextPacket): string {
     const lines: string[] = [];
     lines.push('Staged browser comments:');
     for (const [index, comment] of packet.comments.entries()) {
@@ -41,7 +50,34 @@ export function formatBrowserCommentBlock(packet: BrowserCommentPacket): string 
     return lines.join('\n').trim();
 }
 
-async function loadBrowserCropImageParts(packet: BrowserCommentPacket): Promise<RunContextPart[]> {
+export function formatBrowserDesignerBlock(packet: BrowserContextPacket): string {
+    if (packet.designerDrafts.length === 0) {
+        return '';
+    }
+
+    const lines: string[] = [];
+    lines.push('Live designer previews:');
+    for (const [index, draft] of packet.designerDrafts.entries()) {
+        const selection = packet.selections.find((candidate) => candidate.id === draft.selectionId);
+        lines.push(`${String(index + 1)}. Selection: ${selection?.selector.primary ?? draft.selectionId}`);
+        lines.push(`Apply intent: ${draft.applyMode}`);
+        lines.push(`Eligibility: ${draft.applyStatus}`);
+        if (draft.blockedReasonMessage) {
+            lines.push(`Blocked reason: ${draft.blockedReasonMessage}`);
+        }
+        const styleEntries = Object.entries(draft.stylePatches);
+        if (styleEntries.length > 0) {
+            lines.push(`Preview patches: ${styleEntries.map(([key, value]) => `${key}=${value}`).join(', ')}`);
+        }
+        if (draft.textContentOverride) {
+            lines.push(`Preview text: ${draft.textContentOverride}`);
+        }
+        lines.push('');
+    }
+    return lines.join('\n').trim();
+}
+
+async function loadBrowserCropImageParts(packet: BrowserContextPacket): Promise<RunContextPart[]> {
     const parts: RunContextPart[] = [];
     for (const attachmentId of packet.cropAttachmentIds) {
         const payload = await conversationAttachmentStore.getPayload(attachmentId as EntityId<'att'>);
@@ -60,7 +96,7 @@ async function loadBrowserCropImageParts(packet: BrowserCommentPacket): Promise<
     return parts;
 }
 
-export async function buildBrowserContextParts(packet: BrowserCommentPacket): Promise<RunContextPart[]> {
+export async function buildBrowserContextParts(packet: BrowserContextPacket): Promise<RunContextPart[]> {
     const parts: RunContextPart[] = [];
     const selectionPart = createTextPart(formatBrowserSelectionBlock(packet));
     if (selectionPart) {
@@ -70,13 +106,17 @@ export async function buildBrowserContextParts(packet: BrowserCommentPacket): Pr
     if (commentPart) {
         parts.push(commentPart);
     }
+    const designerPart = createTextPart(formatBrowserDesignerBlock(packet));
+    if (designerPart) {
+        parts.push(designerPart);
+    }
     parts.push(...(await loadBrowserCropImageParts(packet)));
     return parts;
 }
 
 export async function appendBrowserContextMessage(input: {
     messages: RunContextMessage[];
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     mergeIntoLastUserMessage?: boolean;
 }): Promise<RunContextMessage[]> {
     if (!input.browserContext) {

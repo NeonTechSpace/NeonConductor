@@ -25,7 +25,7 @@ import type {
 } from '@/app/backend/persistence/types';
 
 import type {
-    BrowserCommentPacket,
+    BrowserContextPacket,
     ComposerAttachmentInput,
     DiffOverview,
     EntityId,
@@ -193,8 +193,8 @@ export interface SessionWorkspacePanelProps {
     onRemovePendingImage: (clientId: string) => void;
     onRemovePendingTextFile: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onQueuePrompt?: (prompt: string, browserContext?: BrowserCommentPacket) => void;
-    onSubmitPrompt: (prompt: string, browserContext?: BrowserCommentPacket) => void;
+    onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
+    onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;
     onMoveOutboxEntry?: (entryId: EntityId<'outbox'>, direction: 'up' | 'down') => void;
     onResumeOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
     onCancelOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
@@ -202,7 +202,7 @@ export interface SessionWorkspacePanelProps {
         entryId: EntityId<'outbox'>;
         prompt: string;
         attachments: ComposerAttachmentInput[];
-        browserContext?: BrowserCommentPacket | null;
+        browserContext?: BrowserContextPacket | null;
     }) => Promise<void>;
     onSelectOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
     selectedOutboxEntryId?: EntityId<'outbox'>;
@@ -326,7 +326,7 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                                         createElement(
                                             'p',
                                             { key: 'browser', className: 'text-muted-foreground' },
-                                            `Browser context: ${String(input.executionReceipt.contract.browserContextSummary.commentCount)} comments · ${String(input.executionReceipt.contract.browserContextSummary.selectedElementCount)} elements`
+                                            `Browser context: ${String(input.executionReceipt.contract.browserContextSummary.commentCount)} comments · ${String(input.executionReceipt.contract.browserContextSummary.selectedElementCount)} elements · ${String(input.executionReceipt.contract.browserContextSummary.designerDraftCount)} designer drafts`
                                         ),
                                     ]
                                   : []),
@@ -381,7 +381,7 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                                         createElement(
                                             'p',
                                             { key: 'browser', className: 'text-muted-foreground' },
-                                            `Browser context: ${String(input.selectedOutboxEntry.browserContextSummary.commentCount)} comments · ${String(input.selectedOutboxEntry.browserContextSummary.selectedElementCount)} elements`
+                                            `Browser context: ${String(input.selectedOutboxEntry.browserContextSummary.commentCount)} comments · ${String(input.selectedOutboxEntry.browserContextSummary.selectedElementCount)} elements · ${String(input.selectedOutboxEntry.browserContextSummary.designerDraftCount)} designer drafts`
                                         ),
                                     ]
                                   : []),

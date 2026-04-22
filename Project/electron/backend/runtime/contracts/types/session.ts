@@ -12,21 +12,24 @@ import type {
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 import type {
-    BrowserCommentPacket,
-    SessionBuildBrowserCommentPacketResult,
-    SessionBuildBrowserCommentPacketInput,
+    BrowserContextPacket,
+    SessionBuildBrowserContextPacketResult,
+    SessionBuildBrowserContextPacketInput,
     SessionClearStaleBrowserContextInput,
     SessionControlDevBrowserInput,
     SessionCreateBrowserCommentDraftInput,
     SessionDeleteBrowserCommentDraftInput,
+    SessionDeleteBrowserDesignerDraftInput,
     SessionDevBrowserState,
     SessionMoveBrowserCommentDraftInput,
     SessionPersistBrowserSelectionInput,
     SessionSetBrowserCommentDraftInclusionInput,
+    SessionSetBrowserDesignerDraftInclusionInput,
     SessionSetDevBrowserPickerInput,
     SessionSetDevBrowserTargetInput,
     SessionUpdateBrowserCommentDraftInput,
     SessionDevBrowserStateInput,
+    SessionUpsertBrowserDesignerDraftInput,
 } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { RulesetDefinition, SkillfileDefinition } from '@/app/backend/runtime/contracts/types/mode';
 import type { RunContractPreview, SessionOutboxEntry, ExecutionReceipt } from '@/app/backend/runtime/contracts/types/runContract';
@@ -121,7 +124,7 @@ export interface RuntimeRunOptions {
 export interface SessionStartRunInput extends SessionByIdInput {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     providerId?: RuntimeProviderId;
     modelId?: string;
     topLevelTab: TopLevelTab;
@@ -175,7 +178,7 @@ export interface SessionMoveOutboxEntryInput extends SessionOutboxEntryInput {
 export interface SessionUpdateOutboxEntryInput extends SessionOutboxEntryInput {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
-    browserContext?: BrowserCommentPacket | null;
+    browserContext?: BrowserContextPacket | null;
 }
 
 export interface SessionGetExecutionReceiptInput extends ProfileInput {
@@ -193,6 +196,9 @@ export type SessionUpdateBrowserCommentDraftResult = SessionDevBrowserState;
 export type SessionDeleteBrowserCommentDraftResult = SessionDevBrowserState;
 export type SessionMoveBrowserCommentDraftResult = SessionDevBrowserState;
 export type SessionSetBrowserCommentDraftInclusionResult = SessionDevBrowserState;
+export type SessionUpsertBrowserDesignerDraftResult = SessionDevBrowserState;
+export type SessionDeleteBrowserDesignerDraftResult = SessionDevBrowserState;
+export type SessionSetBrowserDesignerDraftInclusionResult = SessionDevBrowserState;
 export type SessionClearStaleBrowserContextResult = SessionDevBrowserState;
 
 export type {
@@ -205,9 +211,12 @@ export type {
     SessionDeleteBrowserCommentDraftInput,
     SessionMoveBrowserCommentDraftInput,
     SessionSetBrowserCommentDraftInclusionInput,
+    SessionUpsertBrowserDesignerDraftInput,
+    SessionDeleteBrowserDesignerDraftInput,
+    SessionSetBrowserDesignerDraftInclusionInput,
     SessionClearStaleBrowserContextInput,
-    SessionBuildBrowserCommentPacketInput,
-    SessionBuildBrowserCommentPacketResult,
+    SessionBuildBrowserContextPacketInput,
+    SessionBuildBrowserContextPacketResult,
 };
 
 export interface SessionGetMessageMediaInput extends ProfileInput {

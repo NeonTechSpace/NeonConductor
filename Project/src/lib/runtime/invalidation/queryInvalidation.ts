@@ -94,8 +94,8 @@ export function invalidateSessionDevBrowserState(
     return toVoidPromise(utils.session.getDevBrowserState.invalidate());
 }
 
-export function invalidateSessionBrowserCommentPacket(utils: TrpcUtils): Promise<void> {
-    return toVoidPromise(utils.session.buildBrowserCommentPacket.invalidate());
+export function invalidateSessionBrowserContextPacket(utils: TrpcUtils): Promise<void> {
+    return toVoidPromise(utils.session.buildBrowserContextPacket.invalidate());
 }
 
 export function invalidateRunDiffs(
@@ -214,7 +214,7 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
         utils.session.listRuns.invalidate(),
         utils.session.listOutbox.invalidate(),
         utils.session.getDevBrowserState.invalidate(),
-        utils.session.buildBrowserCommentPacket.invalidate(),
+        utils.session.buildBrowserContextPacket.invalidate(),
         utils.session.listMessages.invalidate(),
         utils.session.getExecutionReceipt.invalidate(),
         utils.session.getOutboxEntry.invalidate(),

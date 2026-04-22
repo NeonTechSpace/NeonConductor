@@ -156,7 +156,7 @@ export function WorkspacePrimaryColumn({
     const validatedSelectedSessionId = isEntityId(selectedSessionId, 'sess') ? selectedSessionId : undefined;
     const [activePrimarySurface, setActivePrimarySurface] = useState<'transcript' | 'browser'>('transcript');
     const [draftPromptSnapshot, setDraftPromptSnapshot] = useState('');
-    const includedBrowserPacketQuery = trpc.session.buildBrowserCommentPacket.useQuery(
+    const includedBrowserPacketQuery = trpc.session.buildBrowserContextPacket.useQuery(
         validatedSelectedSessionId
             ? {
                   profileId,

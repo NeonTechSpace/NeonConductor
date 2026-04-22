@@ -1,16 +1,18 @@
-import { sessionDevBrowserStore } from '@/app/backend/persistence/stores';
+import { sessionDevBrowserStore, threadStore } from '@/app/backend/persistence/stores';
 import type {
-    BrowserCommentPacket,
-    BrowserCommentPacketComment,
+    BrowserContextPacket,
+    BrowserContextPacketComment,
+    BrowserContextPacketDesignerDraft,
     BrowserContextSummary,
+    BrowserDesignerApplyStatus,
     BrowserSelectionRecord,
     BrowserSelectionSnapshotInput,
     DevBrowserTarget,
     DevBrowserTargetDraft,
-    SessionBuildBrowserCommentPacketResult,
+    SessionBuildBrowserContextPacketResult,
     SessionDevBrowserState,
 } from '@/app/backend/runtime/contracts';
-import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
+import { buildBrowserContextSummary, resolveBrowserContextEnrichmentMode } from '@/app/backend/runtime/services/devBrowser/browserContext';
 import {
     normalizeDevBrowserTargetDraft,
     validateLocalDevBrowserTarget,
@@ -31,45 +33,57 @@ function buildInitialTargetState(input: {
 
 function buildPacketFromState(input: {
     state: SessionDevBrowserState;
-    draftIds?: EntityId<'bcmt'>[];
-}): SessionBuildBrowserCommentPacketResult {
+    commentDraftIds?: EntityId<'bcmt'>[];
+}): SessionBuildBrowserContextPacketResult {
     if (!input.state.target) {
         return {
             available: false,
             reason: 'missing_target',
-            message: 'The browser packet cannot be built until a dev browser target is set.',
+            message: 'The browser context packet cannot be built until a dev browser target is set.',
         };
     }
 
     const commentDrafts = input.state.commentDrafts
         .filter((draft) =>
-            input.draftIds && input.draftIds.length > 0
-                ? input.draftIds.includes(draft.id)
+            input.commentDraftIds && input.commentDraftIds.length > 0
+                ? input.commentDraftIds.includes(draft.id)
                 : draft.inclusionState === 'included'
         )
         .sort((left, right) => left.sequence - right.sequence);
-    if (commentDrafts.length === 0) {
+    const designerDrafts = input.state.designerDrafts.filter((draft) => draft.inclusionState === 'included');
+
+    if (commentDrafts.length === 0 && designerDrafts.length === 0) {
         return {
             available: false,
-            reason: 'missing_comments',
-            message: 'Select at least one staged browser comment before sending or queueing a browser packet.',
+            reason: 'missing_context',
+            message: 'Stage at least one browser comment or designer preview before sending or queueing browser context.',
         };
     }
 
     const selectionById = new Map(input.state.selections.map((selection) => [selection.id, selection]));
     const packetSelections: BrowserSelectionRecord[] = [];
-    const packetComments: BrowserCommentPacketComment[] = [];
+    const packetComments: BrowserContextPacketComment[] = [];
+    const packetDesignerDrafts: BrowserContextPacketDesignerDraft[] = [];
+
+    const pushSelection = (selectionId: EntityId<'bsel'>): BrowserSelectionRecord | undefined => {
+        const selection = selectionById.get(selectionId);
+        if (!selection) {
+            return undefined;
+        }
+        if (!packetSelections.some((candidate) => candidate.id === selection.id)) {
+            packetSelections.push(selection);
+        }
+        return selection;
+    };
+
     for (const draft of commentDrafts) {
-        const selection = selectionById.get(draft.selectionId);
+        const selection = pushSelection(draft.selectionId);
         if (!selection) {
             return {
                 available: false,
                 reason: 'missing_selection',
                 message: 'One or more staged browser comments lost their element selection snapshot.',
             };
-        }
-        if (!packetSelections.some((candidate) => candidate.id === selection.id)) {
-            packetSelections.push(selection);
         }
         packetComments.push({
             draftId: draft.id,
@@ -82,14 +96,38 @@ function buildPacketFromState(input: {
         });
     }
 
-    const packet: BrowserCommentPacket = {
+    for (const draft of designerDrafts) {
+        const selection = pushSelection(draft.selectionId);
+        if (!selection) {
+            return {
+                available: false,
+                reason: 'missing_selection',
+                message: 'One or more designer previews lost their element selection snapshot.',
+            };
+        }
+        packetDesignerDrafts.push({
+            draftId: draft.id,
+            selectionId: draft.selectionId,
+            pageIdentity: draft.pageIdentity,
+            applyMode: draft.applyMode,
+            applyStatus: draft.applyStatus,
+            ...(draft.blockedReasonMessage ? { blockedReasonMessage: draft.blockedReasonMessage } : {}),
+            stylePatches: draft.stylePatches,
+            ...(draft.textContentOverride ? { textContentOverride: draft.textContentOverride } : {}),
+            createdAt: draft.createdAt,
+            updatedAt: draft.updatedAt,
+        });
+    }
+
+    const packet: BrowserContextPacket = {
         target: input.state.target,
         selections: packetSelections,
         comments: packetComments,
         cropAttachmentIds: packetSelections
             .map((selection) => selection.cropAttachmentId)
             .filter((attachmentId): attachmentId is EntityId<'att'> => attachmentId !== undefined),
-        enrichmentMode: packetSelections[0]?.enrichmentMode ?? 'dom_only',
+        designerDrafts: packetDesignerDrafts,
+        enrichmentMode: resolveBrowserContextEnrichmentMode(packetSelections.map((selection) => selection.enrichmentMode)),
     };
     const summary: BrowserContextSummary = buildBrowserContextSummary(packet);
 
@@ -98,6 +136,35 @@ function buildPacketFromState(input: {
         packet,
         summary,
     };
+}
+
+async function resolveDesignerApplyStatus(input: {
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    selection: BrowserSelectionRecord;
+}): Promise<{ status: BrowserDesignerApplyStatus; blockedReasonMessage?: string }> {
+    const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
+    if (!sessionThread?.workspaceFingerprint) {
+        return {
+            status: 'blocked_no_workspace',
+            blockedReasonMessage: 'Agent-applied designer changes are only available for workspace-backed sessions.',
+        };
+    }
+
+    const sourceAnchor = input.selection.reactEnrichment?.sourceAnchor;
+    if (!sourceAnchor || sourceAnchor.status === 'unresolved') {
+        return {
+            status: 'blocked_missing_source_anchor',
+            blockedReasonMessage: 'This selection does not have a workspace source anchor yet, so code apply is unavailable.',
+        };
+    }
+    if (sourceAnchor.status === 'outside_current_workspace') {
+        return {
+            status: 'blocked_outside_current_workspace',
+            blockedReasonMessage: 'This selection resolves outside the current workspace, so apply-through-agent is blocked.',
+        };
+    }
+    return { status: 'eligible' };
 }
 
 export class SessionDevBrowserService {
@@ -213,6 +280,61 @@ export class SessionDevBrowserService {
         return sessionDevBrowserStore.setCommentDraftInclusion(input);
     }
 
+    async upsertDesignerDraft(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        selectionId: EntityId<'bsel'>;
+        inclusionState?: 'included' | 'excluded';
+        applyMode: 'preview_only' | 'apply_with_agent';
+        stylePatches: Record<string, string>;
+        textContentOverride?: string;
+    }): Promise<SessionDevBrowserState> {
+        const state = await sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+        const selection = state.selections.find((candidate) => candidate.id === input.selectionId);
+        if (!selection) {
+            throw new Error('Designer draft cannot be saved because the selection no longer exists.');
+        }
+
+        const eligibility = await resolveDesignerApplyStatus({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            selection,
+        });
+        const applyMode =
+            input.applyMode === 'apply_with_agent' && eligibility.status === 'eligible'
+                ? 'apply_with_agent'
+                : 'preview_only';
+
+        return sessionDevBrowserStore.upsertDesignerDraft({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            selectionId: input.selectionId,
+            inclusionState: input.inclusionState ?? 'included',
+            applyMode,
+            applyStatus: eligibility.status,
+            ...(eligibility.blockedReasonMessage ? { blockedReasonMessage: eligibility.blockedReasonMessage } : {}),
+            stylePatches: input.stylePatches,
+            ...(input.textContentOverride ? { textContentOverride: input.textContentOverride } : {}),
+        });
+    }
+
+    async deleteDesignerDraft(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        draftId: EntityId<'bdsn'>;
+    }): Promise<SessionDevBrowserState> {
+        return sessionDevBrowserStore.deleteDesignerDraft(input);
+    }
+
+    async setDesignerDraftInclusion(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        draftId: EntityId<'bdsn'>;
+        inclusionState: 'included' | 'excluded';
+    }): Promise<SessionDevBrowserState> {
+        return sessionDevBrowserStore.setDesignerDraftInclusion(input);
+    }
+
     async clearStale(profileId: string, sessionId: EntityId<'sess'>): Promise<SessionDevBrowserState> {
         return sessionDevBrowserStore.clearStale(profileId, sessionId);
     }
@@ -220,10 +342,10 @@ export class SessionDevBrowserService {
     async buildPacket(input: {
         profileId: string;
         sessionId: EntityId<'sess'>;
-        draftIds?: EntityId<'bcmt'>[];
-    }): Promise<SessionBuildBrowserCommentPacketResult> {
+        commentDraftIds?: EntityId<'bcmt'>[];
+    }): Promise<SessionBuildBrowserContextPacketResult> {
         const state = await sessionDevBrowserStore.getState(input.profileId, input.sessionId);
-        return buildPacketFromState({ state, ...(input.draftIds ? { draftIds: input.draftIds } : {}) });
+        return buildPacketFromState({ state, ...(input.commentDraftIds ? { commentDraftIds: input.commentDraftIds } : {}) });
     }
 }
 

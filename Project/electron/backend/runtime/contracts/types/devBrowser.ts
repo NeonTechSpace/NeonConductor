@@ -1,5 +1,5 @@
-import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
+import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 
 export const devBrowserTargetSchemes = ['http', 'https'] as const;
 export type DevBrowserTargetScheme = (typeof devBrowserTargetSchemes)[number];
@@ -29,14 +29,83 @@ export const devBrowserBlockedReasonCodes = [
 ] as const;
 export type DevBrowserBlockedReasonCode = (typeof devBrowserBlockedReasonCodes)[number];
 
-export const devBrowserEnrichmentModes = ['dom_only', 'react_source_enriched'] as const;
+export const devBrowserEnrichmentModes = ['dom_only', 'react_component_enriched', 'react_source_enriched'] as const;
 export type DevBrowserEnrichmentMode = (typeof devBrowserEnrichmentModes)[number];
 
 export const browserCommentDraftInclusionStates = ['included', 'excluded'] as const;
 export type BrowserCommentDraftInclusionState = (typeof browserCommentDraftInclusionStates)[number];
 
+export const browserSelectionSourceAnchorStatuses = ['workspace_relative', 'outside_current_workspace', 'unresolved'] as const;
+export type BrowserSelectionSourceAnchorStatus = (typeof browserSelectionSourceAnchorStatuses)[number];
+
+export const browserSelectionReactSourceKinds = ['provider', 'fiber_zero_config'] as const;
+export type BrowserSelectionReactSourceKind = (typeof browserSelectionReactSourceKinds)[number];
+
+export const browserDesignerApplyModes = ['preview_only', 'apply_with_agent'] as const;
+export type BrowserDesignerApplyMode = (typeof browserDesignerApplyModes)[number];
+
+export const browserDesignerApplyStatuses = [
+    'eligible',
+    'blocked_no_workspace',
+    'blocked_outside_current_workspace',
+    'blocked_missing_source_anchor',
+] as const;
+export type BrowserDesignerApplyStatus = (typeof browserDesignerApplyStatuses)[number];
+
+export const browserDesignerStylePropertyKeys = [
+    'display',
+    'position',
+    'top',
+    'right',
+    'bottom',
+    'left',
+    'width',
+    'minWidth',
+    'maxWidth',
+    'height',
+    'minHeight',
+    'maxHeight',
+    'flexDirection',
+    'flexWrap',
+    'justifyContent',
+    'alignItems',
+    'alignSelf',
+    'gap',
+    'rowGap',
+    'columnGap',
+    'margin',
+    'marginTop',
+    'marginRight',
+    'marginBottom',
+    'marginLeft',
+    'padding',
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+    'fontFamily',
+    'fontSize',
+    'fontWeight',
+    'lineHeight',
+    'letterSpacing',
+    'textAlign',
+    'color',
+    'backgroundColor',
+    'borderRadius',
+    'borderWidth',
+    'borderStyle',
+    'borderColor',
+    'boxShadow',
+    'opacity',
+] as const;
+export type BrowserDesignerStylePropertyKey = (typeof browserDesignerStylePropertyKeys)[number];
+
 export const devBrowserControlActions = ['back', 'forward', 'reload'] as const;
 export type DevBrowserControlAction = (typeof devBrowserControlActions)[number];
+
+export const browserContextSummaryDesignerApplyIntentStatuses = ['none', 'preview_only', 'apply_with_agent', 'mixed'] as const;
+export type BrowserContextSummaryDesignerApplyIntentStatus =
+    (typeof browserContextSummaryDesignerApplyIntentStatuses)[number];
 
 export interface DevBrowserValidation {
     status: DevBrowserValidationStatus;
@@ -90,6 +159,25 @@ export interface BrowserSelectionSelectorSnapshot {
     path: string[];
 }
 
+export interface BrowserSelectionSourceAnchor {
+    status: BrowserSelectionSourceAnchorStatus;
+    displayPath: string;
+    line?: number;
+    column?: number;
+    workspaceFingerprint?: string;
+    relativePath?: string;
+}
+
+export interface BrowserSelectionReactComponentIdentity {
+    displayName: string;
+}
+
+export interface BrowserSelectionReactEnrichment {
+    sourceKind: BrowserSelectionReactSourceKind;
+    componentChain: BrowserSelectionReactComponentIdentity[];
+    sourceAnchor?: BrowserSelectionSourceAnchor;
+}
+
 export interface BrowserSelectionRecord {
     id: EntityId<'bsel'>;
     pageIdentity: string;
@@ -103,6 +191,7 @@ export interface BrowserSelectionRecord {
     bounds: BrowserSelectionBounds;
     cropAttachmentId?: EntityId<'att'>;
     enrichmentMode: DevBrowserEnrichmentMode;
+    reactEnrichment?: BrowserSelectionReactEnrichment;
     stale: boolean;
     createdAt: string;
 }
@@ -119,6 +208,7 @@ export interface BrowserSelectionSnapshotInput {
     bounds: BrowserSelectionBounds;
     cropAttachmentId?: EntityId<'att'>;
     enrichmentMode: DevBrowserEnrichmentMode;
+    reactEnrichment?: BrowserSelectionReactEnrichment;
 }
 
 export interface BrowserCommentDraft {
@@ -133,12 +223,42 @@ export interface BrowserCommentDraft {
     updatedAt: string;
 }
 
-export interface BrowserCommentPacketComment {
+export interface BrowserContextPacketComment {
     draftId: EntityId<'bcmt'>;
     selectionId: EntityId<'bsel'>;
     pageIdentity: string;
     commentText: string;
     sequence: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type BrowserDesignerStylePatchSet = Partial<Record<BrowserDesignerStylePropertyKey, string>>;
+
+export interface BrowserDesignerDraft {
+    id: EntityId<'bdsn'>;
+    selectionId: EntityId<'bsel'>;
+    pageIdentity: string;
+    inclusionState: BrowserCommentDraftInclusionState;
+    applyMode: BrowserDesignerApplyMode;
+    applyStatus: BrowserDesignerApplyStatus;
+    blockedReasonMessage?: string;
+    stylePatches: BrowserDesignerStylePatchSet;
+    textContentOverride?: string;
+    stale: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface BrowserContextPacketDesignerDraft {
+    draftId: EntityId<'bdsn'>;
+    selectionId: EntityId<'bsel'>;
+    pageIdentity: string;
+    applyMode: BrowserDesignerApplyMode;
+    applyStatus: BrowserDesignerApplyStatus;
+    blockedReasonMessage?: string;
+    stylePatches: BrowserDesignerStylePatchSet;
+    textContentOverride?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -150,14 +270,18 @@ export interface BrowserContextSummary {
     commentCount: number;
     captureCount: number;
     enrichmentMode: DevBrowserEnrichmentMode;
+    designerDraftCount: number;
+    designerPatchCount: number;
+    designerApplyIntentStatus: BrowserContextSummaryDesignerApplyIntentStatus;
     digest: string;
 }
 
-export interface BrowserCommentPacket {
+export interface BrowserContextPacket {
     target: DevBrowserTarget;
     selections: BrowserSelectionRecord[];
-    comments: BrowserCommentPacketComment[];
+    comments: BrowserContextPacketComment[];
     cropAttachmentIds: EntityId<'att'>[];
+    designerDrafts: BrowserContextPacketDesignerDraft[];
     enrichmentMode: DevBrowserEnrichmentMode;
 }
 
@@ -167,6 +291,7 @@ export interface SessionDevBrowserState {
     pickerActive: boolean;
     selections: BrowserSelectionRecord[];
     commentDrafts: BrowserCommentDraft[];
+    designerDrafts: BrowserDesignerDraft[];
     summary?: BrowserContextSummary;
 }
 
@@ -215,20 +340,42 @@ export interface SessionSetBrowserCommentDraftInclusionInput extends SessionDevB
     inclusionState: BrowserCommentDraftInclusionState;
 }
 
-export type SessionClearStaleBrowserContextInput = SessionDevBrowserStateInput;
-
-export interface SessionBuildBrowserCommentPacketInput extends SessionDevBrowserStateInput {
-    draftIds?: EntityId<'bcmt'>[];
+export interface SessionUpsertBrowserDesignerDraftInput extends SessionDevBrowserStateInput {
+    selectionId: EntityId<'bsel'>;
+    inclusionState?: BrowserCommentDraftInclusionState;
+    applyMode: BrowserDesignerApplyMode;
+    stylePatches: BrowserDesignerStylePatchSet;
+    textContentOverride?: string;
 }
 
-export type SessionBuildBrowserCommentPacketResult =
+export interface SessionDeleteBrowserDesignerDraftInput extends SessionDevBrowserStateInput {
+    draftId: EntityId<'bdsn'>;
+}
+
+export interface SessionSetBrowserDesignerDraftInclusionInput extends SessionDevBrowserStateInput {
+    draftId: EntityId<'bdsn'>;
+    inclusionState: BrowserCommentDraftInclusionState;
+}
+
+export type SessionClearStaleBrowserContextInput = SessionDevBrowserStateInput;
+
+export interface SessionBuildBrowserContextPacketInput extends SessionDevBrowserStateInput {
+    commentDraftIds?: EntityId<'bcmt'>[];
+}
+
+export type SessionBuildBrowserContextPacketResult =
     | {
           available: false;
-          reason: 'missing_target' | 'missing_comments' | 'missing_selection';
+          reason: 'missing_target' | 'missing_context' | 'missing_selection';
           message: string;
       }
     | {
           available: true;
-          packet: BrowserCommentPacket;
+          packet: BrowserContextPacket;
           summary: BrowserContextSummary;
       };
+
+export type BrowserCommentPacketComment = BrowserContextPacketComment;
+export type BrowserCommentPacket = BrowserContextPacket;
+export type SessionBuildBrowserCommentPacketInput = SessionBuildBrowserContextPacketInput;
+export type SessionBuildBrowserCommentPacketResult = SessionBuildBrowserContextPacketResult;

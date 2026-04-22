@@ -2,6 +2,7 @@ export const PICK_DIRECTORY_CHANNEL = 'neonconductor:desktop:pick-directory';
 export const DEV_BROWSER_SYNC_MOUNT_CHANNEL = 'neonconductor:desktop:dev-browser:sync-mount';
 export const DEV_BROWSER_PICKER_CHANNEL = 'neonconductor:desktop:dev-browser:picker';
 export const DEV_BROWSER_SELECTION_CHANNEL = 'neonconductor:desktop:dev-browser:selection';
+export const DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL = 'neonconductor:desktop:dev-browser:designer-preview';
 
 export type PickDirectoryResult = { canceled: true } | { canceled: false; absolutePath: string };
 
@@ -38,6 +39,33 @@ export interface DevBrowserSelectionPayload {
         width: number;
         height: number;
     };
+    reactEnrichment?: {
+        sourceKind: 'provider' | 'fiber_zero_config';
+        componentChain: Array<{
+            displayName: string;
+        }>;
+        sourceAnchor?: {
+            absolutePath: string;
+            displayPath?: string;
+            line?: number;
+            column?: number;
+        };
+    };
+}
+
+export interface DevBrowserDesignerPreviewDraftPayload {
+    draftId: string;
+    selector: {
+        primary: string;
+        path: string[];
+    };
+    stylePatches: Record<string, string>;
+    textContentOverride?: string;
+    active: boolean;
+}
+
+export interface DevBrowserDesignerPreviewPayload {
+    drafts: DevBrowserDesignerPreviewDraftPayload[];
 }
 
 export function isPickDirectoryResult(value: unknown): value is PickDirectoryResult {
@@ -107,4 +135,36 @@ export function isDevBrowserSelectionPayload(value: unknown): value is DevBrowse
         isFiniteNumber((bounds as Record<string, unknown>)['width']) &&
         isFiniteNumber((bounds as Record<string, unknown>)['height'])
     );
+}
+
+export function isDevBrowserDesignerPreviewPayload(value: unknown): value is DevBrowserDesignerPreviewPayload {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+
+    const candidate = value as Record<string, unknown>;
+    if (!Array.isArray(candidate['drafts'])) {
+        return false;
+    }
+
+    return candidate['drafts'].every((draft) => {
+        if (!draft || typeof draft !== 'object') {
+            return false;
+        }
+        const candidateDraft = draft as Record<string, unknown>;
+        const selector = candidateDraft['selector'];
+        return (
+            typeof candidateDraft['draftId'] === 'string' &&
+            candidateDraft['draftId'].trim().length > 0 &&
+            typeof selector === 'object' &&
+            selector !== null &&
+            !Array.isArray(selector) &&
+            typeof (selector as Record<string, unknown>)['primary'] === 'string' &&
+            Array.isArray((selector as Record<string, unknown>)['path']) &&
+            typeof candidateDraft['stylePatches'] === 'object' &&
+            candidateDraft['stylePatches'] !== null &&
+            !Array.isArray(candidateDraft['stylePatches']) &&
+            typeof candidateDraft['active'] === 'boolean'
+        );
+    });
 }

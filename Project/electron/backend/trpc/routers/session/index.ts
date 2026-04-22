@@ -1,7 +1,7 @@
 import { conversationAttachmentStore, messageMediaStore, messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import {
     profileInputSchema,
-    sessionBuildBrowserCommentPacketInputSchema,
+    sessionBuildBrowserContextPacketInputSchema,
     sessionBranchFromMessageInputSchema,
     sessionBranchFromMessageWithBranchWorkflowInputSchema,
     sessionClearStaleBrowserContextInputSchema,
@@ -10,6 +10,7 @@ import {
     sessionCreateInputSchema,
     sessionCreateBrowserCommentDraftInputSchema,
     sessionDeleteBrowserCommentDraftInputSchema,
+    sessionDeleteBrowserDesignerDraftInputSchema,
     sessionEditInputSchema,
     sessionGetAttachedRulesInputSchema,
     sessionGetExecutionReceiptInputSchema,
@@ -27,8 +28,10 @@ import {
     sessionQueueRunInputSchema,
     sessionRevertInputSchema,
     sessionSetBrowserCommentDraftInclusionInputSchema,
+    sessionSetBrowserDesignerDraftInclusionInputSchema,
     sessionSetDevBrowserPickerInputSchema,
     sessionSetDevBrowserTargetInputSchema,
+    sessionUpsertBrowserDesignerDraftInputSchema,
     sessionUpdateOutboxEntryInputSchema,
     sessionUpdateBrowserCommentDraftInputSchema,
     sessionSetAttachedRulesInputSchema,
@@ -479,10 +482,94 @@ export const sessionRouter = router({
             );
             return state;
         }),
+    upsertBrowserDesignerDraft: publicProcedure
+        .input(sessionUpsertBrowserDesignerDraftInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.upsertDesignerDraft(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_upserted',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.upsertBrowserDesignerDraft',
+                    }),
+                })
+            );
+            return state;
+        }),
+    deleteBrowserDesignerDraft: publicProcedure
+        .input(sessionDeleteBrowserDesignerDraftInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.deleteDesignerDraft(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_deleted',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.deleteBrowserDesignerDraft',
+                    }),
+                })
+            );
+            return state;
+        }),
+    setBrowserDesignerDraftInclusion: publicProcedure
+        .input(sessionSetBrowserDesignerDraftInclusionInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.setDesignerDraftInclusion(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_inclusion_updated',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.setBrowserDesignerDraftInclusion',
+                    }),
+                })
+            );
+            return state;
+        }),
     clearStaleBrowserContext: publicProcedure
         .input(sessionClearStaleBrowserContextInputSchema)
         .mutation(async ({ input, ctx }) => {
             const state = await sessionDevBrowserService.clearStale(input.profileId, input.sessionId);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
             await runtimeEventLogService.append(
                 runtimeUpsertEvent({
                     entityType: 'session',
@@ -503,8 +590,8 @@ export const sessionRouter = router({
             );
             return state;
         }),
-    buildBrowserCommentPacket: publicProcedure
-        .input(sessionBuildBrowserCommentPacketInputSchema)
+    buildBrowserContextPacket: publicProcedure
+        .input(sessionBuildBrowserContextPacketInputSchema)
         .query(async ({ input }) => {
             return sessionDevBrowserService.buildPacket(input);
         }),

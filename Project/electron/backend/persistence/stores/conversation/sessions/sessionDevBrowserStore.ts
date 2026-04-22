@@ -3,24 +3,25 @@ import { parseJsonRecord } from '@/app/backend/persistence/stores/shared/rowPars
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type {
     BrowserCommentDraft,
-    BrowserCommentPacket,
-    BrowserCommentPacketComment,
+    BrowserContextPacket,
+    BrowserContextPacketComment,
+    BrowserContextPacketDesignerDraft,
     BrowserContextSummary,
+    BrowserDesignerDraft,
     BrowserSelectionRecord,
     BrowserSelectionSnapshotInput,
     DevBrowserTarget,
     SessionDevBrowserState,
 } from '@/app/backend/runtime/contracts';
-import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
-import {
-    buildBrowserContextSummary,
-} from '@/app/backend/runtime/services/devBrowser/browserContext';
-import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 import {
     parseBrowserCommentDraft,
+    parseBrowserDesignerDraft,
     parseBrowserSelectionRecord,
     parseDevBrowserTarget,
 } from '@/app/backend/runtime/contracts/parsers/devBrowser';
+import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
+import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
+import { buildBrowserContextSummary, resolveBrowserContextEnrichmentMode } from '@/app/backend/runtime/services/devBrowser/browserContext';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -55,6 +56,7 @@ type BrowserSelectionRow = {
     bounds_json: string;
     crop_attachment_id: string | null;
     enrichment_mode: string;
+    react_enrichment_json: string | null;
     stale: 0 | 1;
     created_at: string;
 };
@@ -68,6 +70,23 @@ type BrowserCommentDraftRow = {
     comment_text: string;
     inclusion_state: string;
     sequence: number;
+    stale: 0 | 1;
+    created_at: string;
+    updated_at: string;
+};
+
+type BrowserDesignerDraftRow = {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    selection_id: string;
+    page_identity: string;
+    inclusion_state: string;
+    apply_mode: string;
+    apply_status: string;
+    blocked_reason_message: string | null;
+    style_patches_json: string;
+    text_content_override: string | null;
     stale: 0 | 1;
     created_at: string;
     updated_at: string;
@@ -108,6 +127,7 @@ function mapSelection(row: BrowserSelectionRow): BrowserSelectionRecord {
             bounds: parseJsonRecord(row.bounds_json),
             ...(row.crop_attachment_id ? { cropAttachmentId: row.crop_attachment_id } : {}),
             enrichmentMode: row.enrichment_mode,
+            ...(row.react_enrichment_json ? { reactEnrichment: parseJsonRecord(row.react_enrichment_json) } : {}),
             stale: row.stale === 1,
             createdAt: row.created_at,
         },
@@ -132,10 +152,31 @@ function mapCommentDraft(row: BrowserCommentDraftRow): BrowserCommentDraft {
     );
 }
 
+function mapDesignerDraft(row: BrowserDesignerDraftRow): BrowserDesignerDraft {
+    return parseBrowserDesignerDraft(
+        {
+            id: row.id,
+            selectionId: row.selection_id,
+            pageIdentity: row.page_identity,
+            inclusionState: row.inclusion_state,
+            applyMode: row.apply_mode,
+            applyStatus: row.apply_status,
+            ...(row.blocked_reason_message ? { blockedReasonMessage: row.blocked_reason_message } : {}),
+            stylePatches: parseJsonRecord(row.style_patches_json),
+            ...(row.text_content_override ? { textContentOverride: row.text_content_override } : {}),
+            stale: row.stale === 1,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+        },
+        'session_dev_browser_designer_drafts'
+    );
+}
+
 function buildLiveSummary(input: {
     target?: DevBrowserTarget;
     selections: BrowserSelectionRecord[];
     commentDrafts: BrowserCommentDraft[];
+    designerDrafts: BrowserDesignerDraft[];
 }): BrowserContextSummary | undefined {
     if (!input.target) {
         return undefined;
@@ -144,13 +185,16 @@ function buildLiveSummary(input: {
     const includedDrafts = input.commentDrafts
         .filter((draft) => draft.inclusionState === 'included')
         .sort((left, right) => left.sequence - right.sequence);
-    if (includedDrafts.length === 0) {
+    const includedDesignerDrafts = input.designerDrafts.filter((draft) => draft.inclusionState === 'included');
+    if (includedDrafts.length === 0 && includedDesignerDrafts.length === 0) {
         return undefined;
     }
 
     const selectionById = new Map(input.selections.map((selection) => [selection.id, selection]));
     const packetSelections: BrowserSelectionRecord[] = [];
-    const packetComments: BrowserCommentPacketComment[] = [];
+    const packetComments: BrowserContextPacketComment[] = [];
+    const packetDesignerDrafts: BrowserContextPacketDesignerDraft[] = [];
+
     for (const draft of includedDrafts) {
         const selection = selectionById.get(draft.selectionId);
         if (!selection) {
@@ -170,14 +214,37 @@ function buildLiveSummary(input: {
         });
     }
 
-    const packet: BrowserCommentPacket = {
+    for (const draft of includedDesignerDrafts) {
+        const selection = selectionById.get(draft.selectionId);
+        if (!selection) {
+            return undefined;
+        }
+        if (!packetSelections.some((candidate) => candidate.id === selection.id)) {
+            packetSelections.push(selection);
+        }
+        packetDesignerDrafts.push({
+            draftId: draft.id,
+            selectionId: draft.selectionId,
+            pageIdentity: draft.pageIdentity,
+            applyMode: draft.applyMode,
+            applyStatus: draft.applyStatus,
+            ...(draft.blockedReasonMessage ? { blockedReasonMessage: draft.blockedReasonMessage } : {}),
+            stylePatches: draft.stylePatches,
+            ...(draft.textContentOverride ? { textContentOverride: draft.textContentOverride } : {}),
+            createdAt: draft.createdAt,
+            updatedAt: draft.updatedAt,
+        });
+    }
+
+    const packet: BrowserContextPacket = {
         target: input.target,
         selections: packetSelections,
         comments: packetComments,
         cropAttachmentIds: packetSelections
             .map((selection) => selection.cropAttachmentId)
             .filter((attachmentId): attachmentId is EntityId<'att'> => attachmentId !== undefined),
-        enrichmentMode: packetSelections[0]?.enrichmentMode ?? 'dom_only',
+        designerDrafts: packetDesignerDrafts,
+        enrichmentMode: resolveBrowserContextEnrichmentMode(packetSelections.map((selection) => selection.enrichmentMode)),
     };
     return buildBrowserContextSummary(packet);
 }
@@ -215,6 +282,17 @@ export class SessionDevBrowserStore {
             .execute()) as BrowserCommentDraftRow[];
     }
 
+    private async listDesignerDraftRows(profileId: string, sessionId: EntityId<'sess'>): Promise<BrowserDesignerDraftRow[]> {
+        const { db } = getPersistence();
+        return (await db
+            .selectFrom('session_dev_browser_designer_drafts')
+            .selectAll()
+            .where('profile_id', '=', profileId)
+            .where('session_id', '=', sessionId)
+            .orderBy('created_at', 'asc')
+            .execute()) as BrowserDesignerDraftRow[];
+    }
+
     private async getSelectionRow(input: {
         profileId: string;
         sessionId: EntityId<'sess'>;
@@ -246,15 +324,19 @@ export class SessionDevBrowserStore {
     }
 
     async getState(profileId: string, sessionId: EntityId<'sess'>): Promise<SessionDevBrowserState> {
-        const [targetRow, selectionRows, commentRows] = await Promise.all([
+        const [targetRow, selectionRows, commentRows, designerRows] = await Promise.all([
             this.getTargetRow(profileId, sessionId),
             this.listSelectionRows(profileId, sessionId),
             this.listCommentDraftRows(profileId, sessionId),
+            this.listDesignerDraftRows(profileId, sessionId),
         ]);
         const target = mapTarget(targetRow);
         const selections = selectionRows.map(mapSelection);
         const commentDrafts = commentRows.map(mapCommentDraft);
-        const summary = buildLiveSummary(target ? { target, selections, commentDrafts } : { selections, commentDrafts });
+        const designerDrafts = designerRows.map(mapDesignerDraft);
+        const summary = buildLiveSummary(
+            target ? { target, selections, commentDrafts, designerDrafts } : { selections, commentDrafts, designerDrafts }
+        );
 
         return {
             sessionId,
@@ -262,6 +344,7 @@ export class SessionDevBrowserStore {
             pickerActive: targetRow?.picker_active === 1,
             selections,
             commentDrafts,
+            designerDrafts,
             ...(summary ? { summary } : {}),
         };
     }
@@ -372,6 +455,7 @@ export class SessionDevBrowserStore {
                 bounds_json: JSON.stringify(input.selection.bounds),
                 crop_attachment_id: input.selection.cropAttachmentId ?? null,
                 enrichment_mode: input.selection.enrichmentMode,
+                react_enrichment_json: input.selection.reactEnrichment ? JSON.stringify(input.selection.reactEnrichment) : null,
                 stale: 0,
                 created_at: nowIso(),
             })
@@ -386,23 +470,30 @@ export class SessionDevBrowserStore {
         activePageIdentity?: string;
     }): Promise<SessionDevBrowserState> {
         const { db } = getPersistence();
-        const query = db
+        const selectionQuery = db
             .updateTable('session_dev_browser_selections')
             .set({ stale: 1 })
             .where('profile_id', '=', input.profileId)
             .where('session_id', '=', input.sessionId);
-        await (input.activePageIdentity
-            ? query.where('page_identity', '!=', input.activePageIdentity)
-            : query).execute();
+        await (input.activePageIdentity ? selectionQuery.where('page_identity', '!=', input.activePageIdentity) : selectionQuery)
+            .execute();
 
+        const now = nowIso();
         const commentQuery = db
             .updateTable('session_dev_browser_comment_drafts')
-            .set({ stale: 1, updated_at: nowIso() })
+            .set({ stale: 1, updated_at: now })
             .where('profile_id', '=', input.profileId)
             .where('session_id', '=', input.sessionId);
-        await (input.activePageIdentity
-            ? commentQuery.where('page_identity', '!=', input.activePageIdentity)
-            : commentQuery).execute();
+        await (input.activePageIdentity ? commentQuery.where('page_identity', '!=', input.activePageIdentity) : commentQuery)
+            .execute();
+
+        const designerQuery = db
+            .updateTable('session_dev_browser_designer_drafts')
+            .set({ stale: 1, updated_at: now })
+            .where('profile_id', '=', input.profileId)
+            .where('session_id', '=', input.sessionId);
+        await (input.activePageIdentity ? designerQuery.where('page_identity', '!=', input.activePageIdentity) : designerQuery)
+            .execute();
 
         return this.getState(input.profileId, input.sessionId);
     }
@@ -566,10 +657,124 @@ export class SessionDevBrowserStore {
         return { state: await this.getState(input.profileId, input.sessionId) };
     }
 
+    async upsertDesignerDraft(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        selectionId: EntityId<'bsel'>;
+        inclusionState: BrowserDesignerDraft['inclusionState'];
+        applyMode: BrowserDesignerDraft['applyMode'];
+        applyStatus: BrowserDesignerDraft['applyStatus'];
+        blockedReasonMessage?: string;
+        stylePatches: BrowserDesignerDraft['stylePatches'];
+        textContentOverride?: string;
+    }): Promise<SessionDevBrowserState> {
+        const { db } = getPersistence();
+        const selectionRow = await this.getSelectionRow({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            selectionId: input.selectionId,
+        });
+        if (!selectionRow) {
+            throw new DataCorruptionError('Browser designer draft cannot be saved because the selection is missing.');
+        }
+
+        const existing = await db
+            .selectFrom('session_dev_browser_designer_drafts')
+            .select(['id', 'created_at'])
+            .where('profile_id', '=', input.profileId)
+            .where('session_id', '=', input.sessionId)
+            .where('selection_id', '=', input.selectionId)
+            .executeTakeFirst();
+        const now = nowIso();
+
+        if (existing) {
+            await db
+                .updateTable('session_dev_browser_designer_drafts')
+                .set({
+                    page_identity: selectionRow.page_identity,
+                    inclusion_state: input.inclusionState,
+                    apply_mode: input.applyMode,
+                    apply_status: input.applyStatus,
+                    blocked_reason_message: input.blockedReasonMessage ?? null,
+                    style_patches_json: JSON.stringify(input.stylePatches),
+                    text_content_override: input.textContentOverride ?? null,
+                    stale: selectionRow.stale,
+                    updated_at: now,
+                })
+                .where('id', '=', existing.id)
+                .execute();
+        } else {
+            await db
+                .insertInto('session_dev_browser_designer_drafts')
+                .values({
+                    id: createEntityId('bdsn'),
+                    profile_id: input.profileId,
+                    session_id: input.sessionId,
+                    selection_id: input.selectionId,
+                    page_identity: selectionRow.page_identity,
+                    inclusion_state: input.inclusionState,
+                    apply_mode: input.applyMode,
+                    apply_status: input.applyStatus,
+                    blocked_reason_message: input.blockedReasonMessage ?? null,
+                    style_patches_json: JSON.stringify(input.stylePatches),
+                    text_content_override: input.textContentOverride ?? null,
+                    stale: selectionRow.stale,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+        }
+
+        return this.getState(input.profileId, input.sessionId);
+    }
+
+    async deleteDesignerDraft(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        draftId: EntityId<'bdsn'>;
+    }): Promise<SessionDevBrowserState> {
+        const { db } = getPersistence();
+        await db
+            .deleteFrom('session_dev_browser_designer_drafts')
+            .where('profile_id', '=', input.profileId)
+            .where('session_id', '=', input.sessionId)
+            .where('id', '=', input.draftId)
+            .execute();
+
+        return this.getState(input.profileId, input.sessionId);
+    }
+
+    async setDesignerDraftInclusion(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        draftId: EntityId<'bdsn'>;
+        inclusionState: BrowserDesignerDraft['inclusionState'];
+    }): Promise<SessionDevBrowserState> {
+        const { db } = getPersistence();
+        await db
+            .updateTable('session_dev_browser_designer_drafts')
+            .set({
+                inclusion_state: input.inclusionState,
+                updated_at: nowIso(),
+            })
+            .where('profile_id', '=', input.profileId)
+            .where('session_id', '=', input.sessionId)
+            .where('id', '=', input.draftId)
+            .execute();
+
+        return this.getState(input.profileId, input.sessionId);
+    }
+
     async clearStale(profileId: string, sessionId: EntityId<'sess'>): Promise<SessionDevBrowserState> {
         const { db } = getPersistence();
         await db
             .deleteFrom('session_dev_browser_comment_drafts')
+            .where('profile_id', '=', profileId)
+            .where('session_id', '=', sessionId)
+            .where('stale', '=', 1)
+            .execute();
+        await db
+            .deleteFrom('session_dev_browser_designer_drafts')
             .where('profile_id', '=', profileId)
             .where('session_id', '=', sessionId)
             .where('stale', '=', 1)

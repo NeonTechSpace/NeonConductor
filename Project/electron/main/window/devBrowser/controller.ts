@@ -1,8 +1,10 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 
-import { conversationAttachmentStore } from '@/app/backend/persistence/stores';
+import { conversationAttachmentStore, threadStore, workspaceRootStore } from '@/app/backend/persistence/stores';
 import type {
+    BrowserSelectionReactEnrichment,
     BrowserSelectionSnapshotInput,
     DevBrowserTarget,
     DevBrowserValidationSource,
@@ -14,8 +16,12 @@ import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventE
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
 import { resolveDevBrowserViewPreloadPath } from '@/app/main/window/preloadPaths';
-import type { DevBrowserMountPayload, DevBrowserSelectionPayload } from '@/app/shared/desktopBridgeContract';
-import { DEV_BROWSER_PICKER_CHANNEL } from '@/app/shared/desktopBridgeContract';
+import type {
+    DevBrowserDesignerPreviewPayload,
+    DevBrowserMountPayload,
+    DevBrowserSelectionPayload,
+} from '@/app/shared/desktopBridgeContract';
+import { DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL, DEV_BROWSER_PICKER_CHANNEL } from '@/app/shared/desktopBridgeContract';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -46,6 +52,32 @@ function toTargetFromUrl(url: string, sourceKind: DevBrowserTarget['sourceKind']
     } catch {
         return null;
     }
+}
+
+function normalizeRawSourcePath(rawPath: string): string | null {
+    const trimmed = rawPath.trim();
+    if (trimmed.length === 0) {
+        return null;
+    }
+    if (trimmed.startsWith('file://')) {
+        try {
+            const pathname = new URL(trimmed).pathname;
+            const normalizedPath =
+                process.platform === 'win32' && /^\/[A-Za-z]:/.test(pathname) ? pathname.slice(1) : pathname;
+            return path.normalize(normalizedPath);
+        } catch {
+            return null;
+        }
+    }
+    if (path.isAbsolute(trimmed)) {
+        return path.normalize(trimmed);
+    }
+    return trimmed;
+}
+
+function isWithinWorkspaceRoot(candidatePath: string, workspaceRoot: string): boolean {
+    const relativePath = path.relative(workspaceRoot, candidatePath);
+    return relativePath.length === 0 || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
 }
 
 export interface DevBrowserWindowControllerOptions {
@@ -284,6 +316,7 @@ export class DevBrowserWindowController {
                     activePageIdentity: currentPage.pageIdentity,
                 });
             }
+            await this.syncDesignerPreviewState(this.boundProfileId, this.boundSessionId);
             await this.emitSessionBrowserEvent('page_state_updated');
         } finally {
             this.syncingObservedTarget = false;
@@ -411,12 +444,101 @@ export class DevBrowserWindowController {
         this.view.webContents.send(DEV_BROWSER_PICKER_CHANNEL, { active });
     }
 
+    async syncDesignerPreviewState(profileId: string, sessionId: EntityId<'sess'>): Promise<void> {
+        if (!this.view || profileId !== this.boundProfileId || sessionId !== this.boundSessionId) {
+            return;
+        }
+        const state = await sessionDevBrowserService.getState(profileId, sessionId);
+        const selectionById = new Map(state.selections.map((selection) => [selection.id, selection]));
+        const payload: DevBrowserDesignerPreviewPayload = {
+            drafts: state.designerDrafts
+                .filter((draft) => draft.inclusionState === 'included' && !draft.stale)
+                .flatMap((draft) => {
+                    const selection = selectionById.get(draft.selectionId);
+                    if (!selection || selection.stale) {
+                        return [];
+                    }
+                    return [
+                        {
+                            draftId: draft.id,
+                            selector: selection.selector,
+                            stylePatches: draft.stylePatches,
+                            ...(draft.textContentOverride ? { textContentOverride: draft.textContentOverride } : {}),
+                            active: true,
+                        },
+                    ];
+                }),
+        };
+        this.view.webContents.send(DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL, payload);
+    }
+
+    private async sanitizeReactEnrichment(
+        rawEnrichment: DevBrowserSelectionPayload['reactEnrichment']
+    ): Promise<BrowserSelectionReactEnrichment | undefined> {
+        if (!rawEnrichment || rawEnrichment.componentChain.length === 0 || !this.boundProfileId || !this.boundSessionId) {
+            return undefined;
+        }
+
+        const sessionThread = await threadStore.getBySessionId(this.boundProfileId, this.boundSessionId);
+        const workspaceFingerprint = sessionThread?.workspaceFingerprint;
+        const normalizedRawSourcePath = rawEnrichment.sourceAnchor?.absolutePath
+            ? normalizeRawSourcePath(rawEnrichment.sourceAnchor.absolutePath)
+            : null;
+
+        let sourceAnchor: BrowserSelectionReactEnrichment['sourceAnchor'] | undefined;
+        if (normalizedRawSourcePath && workspaceFingerprint) {
+            const workspaceRoot = await workspaceRootStore.getByFingerprint(this.boundProfileId, workspaceFingerprint);
+            if (workspaceRoot) {
+                const absolutePath = path.isAbsolute(normalizedRawSourcePath)
+                    ? normalizedRawSourcePath
+                    : path.resolve(workspaceRoot.absolutePath, normalizedRawSourcePath);
+                if (isWithinWorkspaceRoot(absolutePath, workspaceRoot.absolutePath)) {
+                    const relativePath = path.relative(workspaceRoot.absolutePath, absolutePath);
+                    sourceAnchor = {
+                        status: 'workspace_relative',
+                        displayPath: relativePath,
+                        workspaceFingerprint,
+                        relativePath,
+                        ...(rawEnrichment.sourceAnchor?.line ? { line: rawEnrichment.sourceAnchor.line } : {}),
+                        ...(rawEnrichment.sourceAnchor?.column ? { column: rawEnrichment.sourceAnchor.column } : {}),
+                    };
+                } else {
+                    sourceAnchor = {
+                        status: 'outside_current_workspace',
+                        displayPath:
+                            rawEnrichment.sourceAnchor?.displayPath?.trim() ||
+                            path.basename(absolutePath) ||
+                            'outside_current_workspace',
+                        ...(rawEnrichment.sourceAnchor?.line ? { line: rawEnrichment.sourceAnchor.line } : {}),
+                        ...(rawEnrichment.sourceAnchor?.column ? { column: rawEnrichment.sourceAnchor.column } : {}),
+                    };
+                }
+            }
+        } else if (rawEnrichment.sourceAnchor) {
+            sourceAnchor = {
+                status: 'unresolved',
+                displayPath:
+                    rawEnrichment.sourceAnchor.displayPath?.trim() ||
+                    (normalizedRawSourcePath ? path.basename(normalizedRawSourcePath) : 'unresolved'),
+                ...(rawEnrichment.sourceAnchor.line ? { line: rawEnrichment.sourceAnchor.line } : {}),
+                ...(rawEnrichment.sourceAnchor.column ? { column: rawEnrichment.sourceAnchor.column } : {}),
+            };
+        }
+
+        return {
+            sourceKind: rawEnrichment.sourceKind,
+            componentChain: rawEnrichment.componentChain,
+            ...(sourceAnchor ? { sourceAnchor } : {}),
+        };
+    }
+
     async handleSelectionPayload(payload: DevBrowserSelectionPayload): Promise<void> {
         if (!this.boundProfileId || !this.boundSessionId || !this.view) {
             return;
         }
 
         const cropAttachmentId = await this.captureSelectionCrop(payload.bounds);
+        const reactEnrichment = await this.sanitizeReactEnrichment(payload.reactEnrichment);
         const selection: BrowserSelectionSnapshotInput = {
             pageIdentity: payload.pageIdentity,
             pageUrl: payload.pageUrl,
@@ -428,7 +550,12 @@ export class DevBrowserWindowController {
             ...(payload.textExcerpt ? { textExcerpt: payload.textExcerpt } : {}),
             bounds: payload.bounds,
             ...(cropAttachmentId ? { cropAttachmentId } : {}),
-            enrichmentMode: 'dom_only',
+            enrichmentMode: reactEnrichment?.sourceAnchor
+                ? 'react_source_enriched'
+                : reactEnrichment
+                  ? 'react_component_enriched'
+                  : 'dom_only',
+            ...(reactEnrichment ? { reactEnrichment } : {}),
         };
         await sessionDevBrowserService.persistSelection({
             profileId: this.boundProfileId,

@@ -23,7 +23,7 @@ import { submitPrompt as submitPromptFromComposer } from '@/web/components/conve
 import type { PlanningDepth } from '@/web/components/conversation/shell/planningDepth';
 
 import type {
-    BrowserCommentPacket,
+    BrowserContextPacket,
     EntityId,
     PlanStartInput,
     PlanRecordView,
@@ -361,7 +361,7 @@ export function useConversationShellComposer<
             replacePendingTextFiles(pendingTextFilesRef.current.filter((candidate) => candidate.clientId !== clientId));
         },
         onRetryPendingImage: retryPendingImage,
-        onQueuePrompt: (prompt: string, browserContext?: BrowserCommentPacket) => {
+        onQueuePrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
             const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
@@ -414,7 +414,7 @@ export function useConversationShellComposer<
                     setRunSubmitError(error instanceof Error ? error.message : String(error));
                 });
         },
-        onSubmitPrompt: (prompt: string, browserContext?: BrowserCommentPacket) => {
+        onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
             const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);

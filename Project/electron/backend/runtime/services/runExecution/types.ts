@@ -16,7 +16,7 @@ import type { RunExecutionErrorCode } from '@/app/backend/runtime/services/runEx
 
 import type {
     ComposerAttachmentInput,
-    BrowserCommentPacket,
+    BrowserContextPacket,
     ComposerImageAttachmentInput,
     EntityId,
     ModeDefinition,
@@ -44,7 +44,7 @@ export interface StartRunInput {
     planPhaseRevisionId?: string;
     prompt: string;
     attachments?: ComposerAttachmentInput[];
-    browserContext?: BrowserCommentPacket;
+    browserContext?: BrowserContextPacket;
     topLevelTab: TopLevelTab;
     modeKey: string;
     workspaceFingerprint?: string;

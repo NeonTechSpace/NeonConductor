@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts/types/prompt';
 import { prepareRunContractPreview } from '@/app/backend/runtime/services/runContract/service';
 import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 
@@ -10,31 +11,28 @@ function createPreparedRunStart(): PreparedRunStart {
         resolvedMode: {
             mode: {
                 id: 'mode_chat_default',
+                profileId: 'profile_default',
                 modeKey: 'chat',
                 label: 'Chat',
                 topLevelTab: 'chat',
-                kind: 'builtin',
-                source: 'builtin',
-                prompt: 'Prompt',
+                assetKey: 'builtin:chat',
+                prompt: {
+                    roleDefinition: 'Prompt',
+                },
+                promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
                 authoringRole: 'chat',
                 roleTemplate: 'chat/default',
-                executionPolicy: {
-                    mode: 'default',
-                },
-                behaviorFlags: {
-                    allowsPlanning: false,
-                    allowsExecution: false,
-                    allowsToolUse: false,
-                    requiresPlanApproval: false,
-                },
-                sessionAppearance: {
-                    sessionSelectable: true,
-                    delegatedOnly: false,
-                },
-                runtimeProfile: {
-                    toolAuthority: 'manual',
-                    workerModelRole: 'chat',
-                },
+                internalModelRole: 'chat',
+                delegatedOnly: false,
+                sessionSelectable: true,
+                executionPolicy: {},
+                source: 'builtin',
+                sourceKind: 'system_seed',
+                scope: 'global',
+                enabled: true,
+                precedence: 0,
+                createdAt: '2026-04-22T09:55:00.000Z',
+                updatedAt: '2026-04-22T09:55:00.000Z',
             },
         },
         activeTarget: {
@@ -42,9 +40,10 @@ function createPreparedRunStart(): PreparedRunStart {
             modelId: kiloFrontierModelId,
         },
         runtimeDescriptor: {
-            family: 'chat',
-            supportsStreaming: true,
-        } as PreparedRunStart['runtimeDescriptor'],
+            toolProtocol: 'kilo_gateway',
+            apiFamily: 'kilo_gateway',
+            routedApiFamily: 'openai_compatible',
+        },
         resolvedAuth: {
             authMethod: 'none',
         },
@@ -54,7 +53,7 @@ function createPreparedRunStart(): PreparedRunStart {
         },
         initialTransport: {
             requested: 'auto',
-            selected: 'responses',
+            selected: 'kilo_gateway',
             degraded: false,
         },
         toolDefinitions: [],
@@ -66,7 +65,7 @@ function createPreparedRunStart(): PreparedRunStart {
                 digest: {
                     fullDigest: 'runctx-browser-test',
                     contributorDigest: 'ctxcontributors-browser-test',
-                    checkpointSummaries: {
+                    checkpoints: {
                         bootstrap: {
                             checkpoint: 'bootstrap',
                             includedContributorCount: 0,
@@ -82,7 +81,6 @@ function createPreparedRunStart(): PreparedRunStart {
                             active: false,
                         },
                     },
-                    compactionReseedActive: false,
                     cacheabilityHint: 'cacheable',
                 },
                 activeContributorCount: 0,
@@ -171,6 +169,7 @@ function createStartRunInput(commentText: string): StartRunInput {
                 },
             ],
             cropAttachmentIds: ['att_browser_crop'],
+            designerDrafts: [],
             enrichmentMode: 'dom_only',
         },
     };
