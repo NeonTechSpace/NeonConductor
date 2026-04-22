@@ -1,24 +1,36 @@
 import { conversationAttachmentStore, messageMediaStore, messageStore, runStore, sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import {
     profileInputSchema,
+    sessionBuildBrowserCommentPacketInputSchema,
     sessionBranchFromMessageInputSchema,
     sessionBranchFromMessageWithBranchWorkflowInputSchema,
+    sessionClearStaleBrowserContextInputSchema,
+    sessionControlDevBrowserInputSchema,
     sessionByIdInputSchema,
     sessionCreateInputSchema,
+    sessionCreateBrowserCommentDraftInputSchema,
+    sessionDeleteBrowserCommentDraftInputSchema,
     sessionEditInputSchema,
     sessionGetAttachedRulesInputSchema,
     sessionGetExecutionReceiptInputSchema,
     sessionGetAttachmentInputSchema,
     sessionGetAttachedSkillsInputSchema,
+    sessionDevBrowserStateInputSchema,
     sessionGetMessageMediaInputSchema,
     sessionListOutboxInputSchema,
     sessionListMessagesInputSchema,
     sessionListRunsInputSchema,
+    sessionMoveBrowserCommentDraftInputSchema,
     sessionMoveOutboxEntryInputSchema,
     sessionOutboxEntryInputSchema,
+    sessionPersistBrowserSelectionInputSchema,
     sessionQueueRunInputSchema,
     sessionRevertInputSchema,
+    sessionSetBrowserCommentDraftInclusionInputSchema,
+    sessionSetDevBrowserPickerInputSchema,
+    sessionSetDevBrowserTargetInputSchema,
     sessionUpdateOutboxEntryInputSchema,
+    sessionUpdateBrowserCommentDraftInputSchema,
     sessionSetAttachedRulesInputSchema,
     sessionSetAttachedSkillsInputSchema,
     sessionStartRunInputSchema,
@@ -34,8 +46,10 @@ import { sessionEditService } from '@/app/backend/runtime/services/sessionEdit/s
 import { sessionHistoryService } from '@/app/backend/runtime/services/sessionHistory/service';
 import { getAttachedRules, setAttachedRules } from '@/app/backend/runtime/services/sessionRules/service';
 import { getAttachedSkills, setAttachedSkills } from '@/app/backend/runtime/services/sessionSkills/service';
+import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrowser/service';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError, unwrapResultOrThrow } from '@/app/backend/trpc/trpcErrorMap';
+import { getDevBrowserController } from '@/app/main/window/devBrowser/registry';
 
 export const sessionRouter = router({
     create: publicProcedure.input(sessionCreateInputSchema).mutation(async ({ input, ctx }) => {
@@ -198,7 +212,8 @@ export const sessionRouter = router({
             sessionId: input.sessionId,
             entryId: input.entryId,
             prompt: input.prompt,
-            ...(input.attachments ? { attachments: input.attachments } : {}),
+            ...(input.attachments !== undefined ? { attachments: input.attachments } : {}),
+            ...(input.browserContext !== undefined ? { browserContext: input.browserContext } : {}),
         });
     }),
     moveOutboxEntry: publicProcedure.input(sessionMoveOutboxEntryInputSchema).mutation(async ({ input }) => {
@@ -232,19 +247,267 @@ export const sessionRouter = router({
     getMessageMedia: publicProcedure.input(sessionGetMessageMediaInputSchema).query(async ({ input }) => {
         const media = await messageMediaStore.getPayloadForProfile(input.profileId, input.mediaId);
 
-        return {
-            found: media !== null,
-            ...(media ?? {}),
-        };
+        return media === null ? { found: false as const } : { found: true as const, ...media };
     }),
     getAttachment: publicProcedure.input(sessionGetAttachmentInputSchema).query(async ({ input }) => {
         const attachment = await conversationAttachmentStore.getPayloadForProfile(input.profileId, input.attachmentId);
 
-        return {
-            found: attachment !== null,
-            ...(attachment ?? {}),
-        };
+        return attachment === null ? { found: false as const } : { found: true as const, ...attachment };
     }),
+    getDevBrowserState: publicProcedure.input(sessionDevBrowserStateInputSchema).query(async ({ input }) => {
+        return sessionDevBrowserService.getState(input.profileId, input.sessionId);
+    }),
+    setDevBrowserTarget: publicProcedure.input(sessionSetDevBrowserTargetInputSchema).mutation(async ({ input, ctx }) => {
+        const state = await sessionDevBrowserService.setTarget(input);
+        if (ctx.win && state.target) {
+            await getDevBrowserController(ctx.win)?.navigateToTarget({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                target: state.target,
+            });
+        }
+        await runtimeEventLogService.append(
+            runtimeUpsertEvent({
+                entityType: 'session',
+                domain: 'session',
+                entityId: input.sessionId,
+                eventType: 'session.dev_browser.updated',
+                payload: {
+                    profileId: input.profileId,
+                    sessionId: input.sessionId,
+                    reason: 'target_updated',
+                },
+                ...eventMetadata({
+                    requestId: ctx.requestId,
+                    correlationId: ctx.correlationId,
+                    origin: 'trpc.session.setDevBrowserTarget',
+                }),
+            })
+        );
+        return state;
+    }),
+    controlDevBrowser: publicProcedure.input(sessionControlDevBrowserInputSchema).mutation(async ({ input, ctx }) => {
+        const state = await sessionDevBrowserService.getState(input.profileId, input.sessionId);
+        const controller = getDevBrowserController(ctx.win);
+        if (controller) {
+            await controller.control(input.action);
+        }
+        await runtimeEventLogService.append(
+            runtimeStatusEvent({
+                entityType: 'session',
+                domain: 'session',
+                entityId: input.sessionId,
+                eventType: 'session.dev_browser.control_requested',
+                payload: {
+                    profileId: input.profileId,
+                    sessionId: input.sessionId,
+                    action: input.action,
+                },
+                ...eventMetadata({
+                    requestId: ctx.requestId,
+                    correlationId: ctx.correlationId,
+                    origin: 'trpc.session.controlDevBrowser',
+                }),
+            })
+        );
+        return state;
+    }),
+    setDevBrowserPicker: publicProcedure.input(sessionSetDevBrowserPickerInputSchema).mutation(async ({ input, ctx }) => {
+        const state = await sessionDevBrowserService.setPickerActive(input);
+        if (ctx.win) {
+            await getDevBrowserController(ctx.win)?.setPickerActive(input.active);
+        }
+        await runtimeEventLogService.append(
+            runtimeUpsertEvent({
+                entityType: 'session',
+                domain: 'session',
+                entityId: input.sessionId,
+                eventType: 'session.dev_browser.updated',
+                payload: {
+                    profileId: input.profileId,
+                    sessionId: input.sessionId,
+                    reason: input.active ? 'picker_enabled' : 'picker_disabled',
+                },
+                ...eventMetadata({
+                    requestId: ctx.requestId,
+                    correlationId: ctx.correlationId,
+                    origin: 'trpc.session.setDevBrowserPicker',
+                }),
+            })
+        );
+        return state;
+    }),
+    persistBrowserSelection: publicProcedure
+        .input(sessionPersistBrowserSelectionInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.persistSelection(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'selection_persisted',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.persistBrowserSelection',
+                    }),
+                })
+            );
+            return state;
+        }),
+    createBrowserCommentDraft: publicProcedure
+        .input(sessionCreateBrowserCommentDraftInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.createCommentDraft(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'comment_created',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.createBrowserCommentDraft',
+                    }),
+                })
+            );
+            return state;
+        }),
+    updateBrowserCommentDraft: publicProcedure
+        .input(sessionUpdateBrowserCommentDraftInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.updateCommentDraft(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'comment_updated',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.updateBrowserCommentDraft',
+                    }),
+                })
+            );
+            return state;
+        }),
+    deleteBrowserCommentDraft: publicProcedure
+        .input(sessionDeleteBrowserCommentDraftInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.deleteCommentDraft(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'comment_deleted',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.deleteBrowserCommentDraft',
+                    }),
+                })
+            );
+            return state;
+        }),
+    moveBrowserCommentDraft: publicProcedure.input(sessionMoveBrowserCommentDraftInputSchema).mutation(async ({ input, ctx }) => {
+        const state = await sessionDevBrowserService.moveCommentDraft(input);
+        await runtimeEventLogService.append(
+            runtimeUpsertEvent({
+                entityType: 'session',
+                domain: 'session',
+                entityId: input.sessionId,
+                eventType: 'session.dev_browser.updated',
+                payload: {
+                    profileId: input.profileId,
+                    sessionId: input.sessionId,
+                    reason: 'comment_reordered',
+                },
+                ...eventMetadata({
+                    requestId: ctx.requestId,
+                    correlationId: ctx.correlationId,
+                    origin: 'trpc.session.moveBrowserCommentDraft',
+                }),
+            })
+        );
+        return state;
+    }),
+    setBrowserCommentDraftInclusion: publicProcedure
+        .input(sessionSetBrowserCommentDraftInclusionInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.setCommentDraftInclusion(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'comment_inclusion_updated',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.setBrowserCommentDraftInclusion',
+                    }),
+                })
+            );
+            return state;
+        }),
+    clearStaleBrowserContext: publicProcedure
+        .input(sessionClearStaleBrowserContextInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.clearStale(input.profileId, input.sessionId);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'stale_context_cleared',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.clearStaleBrowserContext',
+                    }),
+                })
+            );
+            return state;
+        }),
+    buildBrowserCommentPacket: publicProcedure
+        .input(sessionBuildBrowserCommentPacketInputSchema)
+        .query(async ({ input }) => {
+            return sessionDevBrowserService.buildPacket(input);
+        }),
     abort: publicProcedure.input(sessionByIdInputSchema).mutation(async ({ input, ctx }) => {
         const result = await runExecutionService.abortRun(input.profileId, input.sessionId);
         if (result.aborted) {

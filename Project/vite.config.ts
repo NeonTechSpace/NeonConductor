@@ -63,6 +63,7 @@ export default defineConfig(async () => {
                     vite: createElectronMainBuildConfig(),
                 },
                 buildPreloadOptions('electron/main/preload/index.ts', 'mainWindow'),
+                buildPreloadOptions('electron/main/preload/devBrowserView.ts', 'devBrowserView'),
                 buildPreloadOptions('electron/main/preload/splash.ts', 'splashWindow'),
             ]),
         ],

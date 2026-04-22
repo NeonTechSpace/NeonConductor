@@ -11,6 +11,23 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type {
+    BrowserCommentPacket,
+    SessionBuildBrowserCommentPacketResult,
+    SessionBuildBrowserCommentPacketInput,
+    SessionClearStaleBrowserContextInput,
+    SessionControlDevBrowserInput,
+    SessionCreateBrowserCommentDraftInput,
+    SessionDeleteBrowserCommentDraftInput,
+    SessionDevBrowserState,
+    SessionMoveBrowserCommentDraftInput,
+    SessionPersistBrowserSelectionInput,
+    SessionSetBrowserCommentDraftInclusionInput,
+    SessionSetDevBrowserPickerInput,
+    SessionSetDevBrowserTargetInput,
+    SessionUpdateBrowserCommentDraftInput,
+    SessionDevBrowserStateInput,
+} from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { RulesetDefinition, SkillfileDefinition } from '@/app/backend/runtime/contracts/types/mode';
 import type { RunContractPreview, SessionOutboxEntry, ExecutionReceipt } from '@/app/backend/runtime/contracts/types/runContract';
 
@@ -104,6 +121,7 @@ export interface RuntimeRunOptions {
 export interface SessionStartRunInput extends SessionByIdInput {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
+    browserContext?: BrowserCommentPacket;
     providerId?: RuntimeProviderId;
     modelId?: string;
     topLevelTab: TopLevelTab;
@@ -157,11 +175,40 @@ export interface SessionMoveOutboxEntryInput extends SessionOutboxEntryInput {
 export interface SessionUpdateOutboxEntryInput extends SessionOutboxEntryInput {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
+    browserContext?: BrowserCommentPacket | null;
 }
 
 export interface SessionGetExecutionReceiptInput extends ProfileInput {
     runId: EntityId<'run'>;
 }
+
+export type SessionGetDevBrowserStateInput = SessionDevBrowserStateInput;
+export type SessionGetDevBrowserStateResult = SessionDevBrowserState;
+export type SessionSetDevBrowserTargetResult = SessionDevBrowserState;
+export type SessionControlDevBrowserResult = SessionDevBrowserState;
+export type SessionSetDevBrowserPickerResult = SessionDevBrowserState;
+export type SessionPersistBrowserSelectionResult = SessionDevBrowserState;
+export type SessionCreateBrowserCommentDraftResult = SessionDevBrowserState;
+export type SessionUpdateBrowserCommentDraftResult = SessionDevBrowserState;
+export type SessionDeleteBrowserCommentDraftResult = SessionDevBrowserState;
+export type SessionMoveBrowserCommentDraftResult = SessionDevBrowserState;
+export type SessionSetBrowserCommentDraftInclusionResult = SessionDevBrowserState;
+export type SessionClearStaleBrowserContextResult = SessionDevBrowserState;
+
+export type {
+    SessionSetDevBrowserTargetInput,
+    SessionControlDevBrowserInput,
+    SessionSetDevBrowserPickerInput,
+    SessionPersistBrowserSelectionInput,
+    SessionCreateBrowserCommentDraftInput,
+    SessionUpdateBrowserCommentDraftInput,
+    SessionDeleteBrowserCommentDraftInput,
+    SessionMoveBrowserCommentDraftInput,
+    SessionSetBrowserCommentDraftInclusionInput,
+    SessionClearStaleBrowserContextInput,
+    SessionBuildBrowserCommentPacketInput,
+    SessionBuildBrowserCommentPacketResult,
+};
 
 export interface SessionGetMessageMediaInput extends ProfileInput {
     mediaId: EntityId<'media'>;

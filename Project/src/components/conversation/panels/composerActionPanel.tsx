@@ -22,7 +22,7 @@ import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptio
 import { trpc } from '@/web/trpc/client';
 
 import { skipToken } from '@tanstack/react-query';
-import { useDeferredValue, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useDeferredValue, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 export { shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
 export { handleComposerSlashAcceptance } from '@/web/components/conversation/panels/composerActionPanel/useComposerSlashCommandController';
@@ -79,6 +79,8 @@ function ComposerActionPanelDraftBoundary({
     modelOptions,
     runErrorMessage,
     contextState,
+    browserContext,
+    browserContextSummary,
     selectedSessionId,
     workspaceFingerprint,
     sandboxId,
@@ -91,6 +93,7 @@ function ComposerActionPanelDraftBoundary({
     canCompactContext = false,
     isCompactingContext = false,
     focusComposerRequestKey,
+    onDraftPromptSnapshotChange,
     onProfileChange,
     onProviderChange,
     onModelChange,
@@ -108,6 +111,9 @@ function ComposerActionPanelDraftBoundary({
     const draftController = useComposerDraftController({
         ...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {}),
     });
+    useEffect(() => {
+        onDraftPromptSnapshotChange?.(draftController.draftPrompt);
+    }, [draftController.draftPrompt, onDraftPromptSnapshotChange]);
     const controlsReadModel = buildComposerControlsReadModel({
         disabled,
         topLevelTab,
@@ -185,12 +191,13 @@ function ComposerActionPanelDraftBoundary({
         validatedSelectedProviderId &&
         selectedModelId &&
         !hasBlockingPendingAttachments &&
-        (deferredDraftPrompt.trim().length > 0 || readyComposerAttachments.length > 0)
+        (deferredDraftPrompt.trim().length > 0 || readyComposerAttachments.length > 0 || browserContext !== undefined)
             ? {
                   profileId,
                   sessionId: selectedSessionId,
                   prompt: deferredDraftPrompt.trim(),
                   attachments: readyComposerAttachments,
+                  ...(browserContext ? { browserContext } : {}),
                   providerId: validatedSelectedProviderId,
                   modelId: selectedModelId,
                   topLevelTab,
@@ -247,6 +254,7 @@ function ComposerActionPanelDraftBoundary({
                             {...(runContractPreviewQuery.data?.available
                                 ? { preview: runContractPreviewQuery.data.preview }
                                 : {})}
+                            {...(browserContextSummary ? { browserContextSummary } : {})}
                             {...(runContractPreviewUnavailableMessage
                                 ? { unavailableMessage: runContractPreviewUnavailableMessage }
                                 : {})}
@@ -303,7 +311,7 @@ function ComposerActionPanelDraftBoundary({
                             }
 
                             event.preventDefault();
-                            onSubmitPrompt(draftController.draftPrompt);
+                            onSubmitPrompt(draftController.draftPrompt, browserContext);
                         }}
                         onDragOver={(event) => {
                             attachmentController.handleDragOver(event);
@@ -354,7 +362,7 @@ function ComposerActionPanelDraftBoundary({
                         {...(onQueuePrompt
                             ? {
                                   onQueuePrompt: () => {
-                                      onQueuePrompt(draftController.draftPrompt);
+                                      onQueuePrompt(draftController.draftPrompt, browserContext);
                                   },
                               }
                             : {})}

@@ -82,6 +82,22 @@ export function invalidateSessionOutbox(
     return toVoidPromise(utils.session.listOutbox.invalidate());
 }
 
+export function invalidateSessionDevBrowserState(
+    utils: TrpcUtils,
+    profileId: string | undefined,
+    sessionId: EntityId<'sess'> | undefined
+): Promise<void> {
+    if (profileId && sessionId) {
+        return toVoidPromise(utils.session.getDevBrowserState.invalidate({ profileId, sessionId }));
+    }
+
+    return toVoidPromise(utils.session.getDevBrowserState.invalidate());
+}
+
+export function invalidateSessionBrowserCommentPacket(utils: TrpcUtils): Promise<void> {
+    return toVoidPromise(utils.session.buildBrowserCommentPacket.invalidate());
+}
+
 export function invalidateRunDiffs(
     utils: TrpcUtils,
     profileId: string | undefined,
@@ -197,6 +213,8 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
         utils.session.status.invalidate(),
         utils.session.listRuns.invalidate(),
         utils.session.listOutbox.invalidate(),
+        utils.session.getDevBrowserState.invalidate(),
+        utils.session.buildBrowserCommentPacket.invalidate(),
         utils.session.listMessages.invalidate(),
         utils.session.getExecutionReceipt.invalidate(),
         utils.session.getOutboxEntry.invalidate(),

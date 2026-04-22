@@ -1,4 +1,5 @@
 import type {
+    BrowserCommentPacket,
     ComposerAttachmentInput,
     ExecutionReceipt,
     PreparedContextContributorSummary,
@@ -11,6 +12,7 @@ import type {
 } from '@/shared/contracts';
 
 import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
 
 function createTrustLevelCounts(): Record<PreparedContextTrustLevel, number> {
     return {
@@ -64,6 +66,7 @@ function buildDynamicExpansionSummary(
 function buildTrustSummary(input: {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
+    browserContext?: BrowserCommentPacket;
     contributors: PreparedContextContributorSummary[];
 }): RunContractPreview['trustSummary'] {
     const byTrustLevel = createTrustLevelCounts();
@@ -82,6 +85,16 @@ function buildTrustSummary(input: {
     for (const _attachment of input.attachments ?? []) {
         byTrustLevel['user_input'] += 1;
         byInstructionAuthority['contextualize'] += 1;
+    }
+
+    if (input.browserContext) {
+        const contextualizedInputCount =
+            input.browserContext.selections.length + input.browserContext.cropAttachmentIds.length;
+        const instructiveInputCount = input.browserContext.comments.length;
+
+        byTrustLevel['user_input'] += contextualizedInputCount + instructiveInputCount;
+        byInstructionAuthority['contextualize'] += contextualizedInputCount;
+        byInstructionAuthority['instruct'] += instructiveInputCount;
     }
 
     return {
@@ -145,6 +158,28 @@ function buildDiffSummary(previousContract: RunContractPreview | undefined, next
             material: true,
         });
     }
+    const previousBrowserContextSummary = previousContract.browserContextSummary;
+    const nextBrowserContextSummary = nextContract.browserContextSummary;
+    if (previousBrowserContextSummary?.targetUrl !== nextBrowserContextSummary?.targetUrl) {
+        items.push({
+            field: 'browserContextTargetUrl',
+            reason: 'The selected browser target changed.',
+            material: true,
+            ...(previousBrowserContextSummary?.targetUrl
+                ? { previousValue: previousBrowserContextSummary.targetUrl }
+                : {}),
+            ...(nextBrowserContextSummary?.targetUrl ? { nextValue: nextBrowserContextSummary.targetUrl } : {}),
+        });
+    }
+    if (previousBrowserContextSummary?.digest !== nextBrowserContextSummary?.digest) {
+        items.push({
+            field: 'browserContextDigest',
+            reason: 'The selected browser elements or staged comments changed.',
+            material: true,
+            ...(previousBrowserContextSummary?.digest ? { previousValue: previousBrowserContextSummary.digest } : {}),
+            ...(nextBrowserContextSummary?.digest ? { nextValue: nextBrowserContextSummary.digest } : {}),
+        });
+    }
 
     const hasMaterialChanges = items.some((item) => item.material);
     return {
@@ -180,9 +215,13 @@ export function prepareRunContractPreview(input: {
             prompt: input.startInput.prompt,
             contributors: preparedContext.contributors,
             ...(input.startInput.attachments ? { attachments: input.startInput.attachments } : {}),
+            ...(input.startInput.browserContext ? { browserContext: input.startInput.browserContext } : {}),
         }),
         dynamicExpansionSummary: buildDynamicExpansionSummary(preparedContext.contributors),
         attachmentSummary: buildAttachmentSummary(input.startInput.attachments),
+        ...(input.startInput.browserContext
+            ? { browserContextSummary: buildBrowserContextSummary(input.startInput.browserContext) }
+            : {}),
     };
 
     return {

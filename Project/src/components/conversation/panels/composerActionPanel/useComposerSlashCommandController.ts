@@ -14,7 +14,7 @@ export async function handleComposerSlashAcceptance(input: {
     acceptHighlighted: () => Promise<SlashAcceptResult>;
     draftPrompt: string;
     submitWhenUnhandled: boolean;
-    onSubmitPrompt: (prompt: string) => void;
+    onSubmitPrompt: (prompt: string, browserContext?: never) => void;
     onSetDraftPrompt: (prompt: string) => void;
     onFocusPrompt: () => void;
     onError: (message: string | undefined) => void;

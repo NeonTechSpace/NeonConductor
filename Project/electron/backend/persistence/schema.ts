@@ -277,6 +277,55 @@ export interface ConversationAttachmentsTable {
     updated_at: string;
 }
 
+export interface SessionDevBrowserStateTable {
+    session_id: string;
+    profile_id: string;
+    scheme: string | null;
+    host: string | null;
+    port: number | null;
+    path: string | null;
+    source_kind: string | null;
+    browser_availability: string;
+    validation_json: string | null;
+    current_page_json: string | null;
+    picker_active: 0 | 1;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SessionDevBrowserSelectionsTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    page_identity: string;
+    page_url: string;
+    page_title: string | null;
+    selector_json: string;
+    ancestry_trail_json: string;
+    accessible_label: string | null;
+    accessible_role: string | null;
+    text_excerpt: string | null;
+    bounds_json: string;
+    crop_attachment_id: string | null;
+    enrichment_mode: string;
+    stale: 0 | 1;
+    created_at: string;
+}
+
+export interface SessionDevBrowserCommentDraftsTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    selection_id: string;
+    page_identity: string;
+    comment_text: string;
+    inclusion_state: string;
+    sequence: number;
+    stale: 0 | 1;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface SessionOutboxEntriesTable {
     id: string;
     profile_id: string;
@@ -285,6 +334,7 @@ export interface SessionOutboxEntriesTable {
     sequence: number;
     prompt: string;
     steering_snapshot_json: string;
+    browser_context_packet_json: string | null;
     latest_run_contract_json: string | null;
     latest_receipt_id: string | null;
     active_permission_request_id: string | null;
@@ -306,6 +356,7 @@ export interface ExecutionReceiptsTable {
     session_id: string;
     run_id: string;
     contract_json: string;
+    browser_context_packet_json: string | null;
     approvals_used_json: string;
     tools_invoked_json: string;
     memory_hit_count: number;
@@ -1224,6 +1275,9 @@ export interface DatabaseSchema {
     message_parts: MessagePartsTable;
     message_media: MessageMediaTable;
     conversation_attachments: ConversationAttachmentsTable;
+    session_dev_browser_state: SessionDevBrowserStateTable;
+    session_dev_browser_selections: SessionDevBrowserSelectionsTable;
+    session_dev_browser_comment_drafts: SessionDevBrowserCommentDraftsTable;
     session_outbox_entries: SessionOutboxEntriesTable;
     session_outbox_entry_attachments: SessionOutboxEntryAttachmentsTable;
     execution_receipts: ExecutionReceiptsTable;

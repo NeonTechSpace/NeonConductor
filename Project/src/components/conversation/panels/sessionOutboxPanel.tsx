@@ -19,6 +19,7 @@ import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptio
 import { trpc } from '@/web/trpc/client';
 
 import type {
+    BrowserCommentPacket,
     ComposerAttachmentInput,
     EntityId,
     SessionAttachmentPayload,
@@ -36,6 +37,7 @@ interface SessionOutboxPanelProps {
         entryId: EntityId<'outbox'>;
         prompt: string;
         attachments: ComposerAttachmentInput[];
+        browserContext?: BrowserCommentPacket | null;
     }) => Promise<void>;
 }
 
@@ -44,6 +46,13 @@ function formatAttachmentSummary(entry: SessionOutboxEntry): string {
         return 'No attachments';
     }
     return `${String(entry.attachmentIds.length)} attachment${entry.attachmentIds.length === 1 ? '' : 's'}`;
+}
+
+function formatBrowserContextSummary(entry: SessionOutboxEntry): string {
+    if (!entry.browserContextSummary) {
+        return 'No browser context';
+    }
+    return `${String(entry.browserContextSummary.commentCount)} comments · ${String(entry.browserContextSummary.selectedElementCount)} elements`;
 }
 
 function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
@@ -106,6 +115,7 @@ export function SessionOutboxPanel({
     const [draftAttachments, setDraftAttachments] = useState<ComposerAttachmentInput[]>([]);
     const [editorMessage, setEditorMessage] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
+    const [draftBrowserContextAction, setDraftBrowserContextAction] = useState<'keep' | 'replace' | 'clear'>('keep');
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
@@ -140,10 +150,20 @@ export function SessionOutboxPanel({
             : skipToken,
         PROGRESSIVE_QUERY_OPTIONS
     );
+    const liveBrowserPacketQuery = trpc.session.buildBrowserCommentPacket.useQuery(
+        selectedEntry
+            ? {
+                  profileId: selectedEntry.profileId,
+                  sessionId: selectedEntry.sessionId,
+              }
+            : skipToken,
+        PROGRESSIVE_QUERY_OPTIONS
+    );
 
     useEffect(() => {
         setIsEditing(false);
         setEditorMessage(undefined);
+        setDraftBrowserContextAction('keep');
     }, [selectedEntry?.id]);
 
     useEffect(() => {
@@ -200,13 +220,26 @@ export function SessionOutboxPanel({
         if (!selectedEntry || !onUpdateEntry) {
             return;
         }
+        if (draftBrowserContextAction === 'replace' && liveBrowserPacketQuery.data?.available !== true) {
+            setEditorMessage('The current staged browser packet is not ready to replace the queued snapshot.');
+            return;
+        }
         setIsSaving(true);
         setEditorMessage(undefined);
         try {
+            const replacementBrowserContext =
+                draftBrowserContextAction === 'replace' && liveBrowserPacketQuery.data?.available === true
+                    ? liveBrowserPacketQuery.data.packet
+                    : undefined;
             await onUpdateEntry({
                 entryId: selectedEntry.id,
                 prompt: draftPrompt.trim(),
                 attachments: draftAttachments,
+                ...(draftBrowserContextAction === 'replace' && replacementBrowserContext
+                    ? { browserContext: replacementBrowserContext }
+                    : draftBrowserContextAction === 'clear'
+                      ? { browserContext: null }
+                      : {}),
             });
             await selectedEntryQuery.refetch();
             setIsEditing(false);
@@ -248,6 +281,9 @@ export function SessionOutboxPanel({
                                         </span>
                                         <span className='text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]'>
                                             {formatAttachmentSummary(entry)}
+                                        </span>
+                                        <span className='text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]'>
+                                            {formatBrowserContextSummary(entry)}
                                         </span>
                                     </div>
                                     <p className='line-clamp-2 text-sm'>{entry.prompt}</p>
@@ -481,6 +517,59 @@ export function SessionOutboxPanel({
                                     ))
                                 )}
                             </div>
+                            <div className='space-y-2'>
+                                <div className='flex items-center justify-between gap-2'>
+                                    <p className='text-muted-foreground text-xs'>Browser packet</p>
+                                    <span className='text-muted-foreground text-xs'>
+                                        {selectedEntry.browserContextSummary
+                                            ? `${String(selectedEntry.browserContextSummary.commentCount)} queued comments`
+                                            : 'No queued browser context'}
+                                    </span>
+                                </div>
+                                <div className='grid gap-2 md:grid-cols-3'>
+                                    <button
+                                        type='button'
+                                        className={`rounded-xl border px-3 py-3 text-left text-xs ${
+                                            draftBrowserContextAction === 'keep' ? 'border-foreground/30 bg-background' : ''
+                                        }`}
+                                        onClick={() => {
+                                            setDraftBrowserContextAction('keep');
+                                        }}>
+                                        <p className='font-medium'>Keep queued packet</p>
+                                        <p className='text-muted-foreground mt-1'>
+                                            Preserve the browser snapshot already stored on this queued entry.
+                                        </p>
+                                    </button>
+                                    <button
+                                        type='button'
+                                        className={`rounded-xl border px-3 py-3 text-left text-xs ${
+                                            draftBrowserContextAction === 'replace' ? 'border-foreground/30 bg-background' : ''
+                                        }`}
+                                        onClick={() => {
+                                            setDraftBrowserContextAction('replace');
+                                        }}>
+                                        <p className='font-medium'>Replace with current staged packet</p>
+                                        <p className='text-muted-foreground mt-1'>
+                                            {liveBrowserPacketQuery.data?.available
+                                                ? `${String(liveBrowserPacketQuery.data.summary.commentCount)} comments · ${String(liveBrowserPacketQuery.data.summary.selectedElementCount)} elements are staged now`
+                                                : liveBrowserPacketQuery.data?.message ?? 'No current staged browser packet is available.'}
+                                        </p>
+                                    </button>
+                                    <button
+                                        type='button'
+                                        className={`rounded-xl border px-3 py-3 text-left text-xs ${
+                                            draftBrowserContextAction === 'clear' ? 'border-foreground/30 bg-background' : ''
+                                        }`}
+                                        onClick={() => {
+                                            setDraftBrowserContextAction('clear');
+                                        }}>
+                                        <p className='font-medium'>Clear browser packet</p>
+                                        <p className='text-muted-foreground mt-1'>
+                                            Remove browser context from this queued entry and keep only prompt plus attachments.
+                                        </p>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className='space-y-2 text-xs'>
@@ -488,6 +577,12 @@ export function SessionOutboxPanel({
                             <p className='text-muted-foreground'>
                                 Attachments: {String(selectedEntry.attachmentIds.length)} · Context contributors:{' '}
                                 {String(selectedEntry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}
+                            </p>
+                            <p className='text-muted-foreground'>
+                                Browser context:{' '}
+                                {selectedEntry.browserContextSummary
+                                    ? `${String(selectedEntry.browserContextSummary.commentCount)} comments · ${String(selectedEntry.browserContextSummary.selectedElementCount)} elements · ${selectedEntry.browserContextSummary.targetLabel}`
+                                    : 'none'}
                             </p>
                             <p className='text-muted-foreground'>
                                 Trust mix: trusted{' '}

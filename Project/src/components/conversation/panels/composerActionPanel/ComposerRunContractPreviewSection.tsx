@@ -1,7 +1,8 @@
-import type { RunContractPreview } from '@/shared/contracts';
+import type { BrowserContextSummary, RunContractPreview } from '@/shared/contracts';
 
 interface ComposerRunContractPreviewSectionProps {
     preview?: RunContractPreview;
+    browserContextSummary?: BrowserContextSummary;
     isLoading: boolean;
     unavailableMessage?: string;
     waitingForAttachments?: boolean;
@@ -16,6 +17,8 @@ function renderTrustSummary(preview: RunContractPreview): string {
 }
 
 export function ComposerRunContractPreviewSection(input: ComposerRunContractPreviewSectionProps) {
+    const browserContextSummary = input.preview?.browserContextSummary ?? input.browserContextSummary;
+
     return (
         <section className='border-border/60 bg-card/25 rounded-2xl border px-3 py-3'>
             <div className='mb-2 flex items-start justify-between gap-3'>
@@ -71,6 +74,16 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                                 : ''}
                         </p>
                     </div>
+                    {browserContextSummary ? (
+                        <div className='rounded-xl border px-3 py-2'>
+                            <p className='text-muted-foreground'>Browser Context</p>
+                            <p className='font-medium'>
+                                {String(browserContextSummary.commentCount)} comments,{' '}
+                                {String(browserContextSummary.selectedElementCount)} elements,{' '}
+                                {String(browserContextSummary.captureCount)} captures
+                            </p>
+                        </div>
+                    ) : null}
                     <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
                         <p className='text-muted-foreground'>Trust Mix</p>
                         <p className='font-medium'>{renderTrustSummary(input.preview)}</p>

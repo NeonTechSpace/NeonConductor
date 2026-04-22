@@ -459,12 +459,67 @@ CREATE TABLE conversation_attachments (
     )
 );
 
+CREATE TABLE session_dev_browser_state (
+    session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    scheme TEXT NULL CHECK (scheme IS NULL OR scheme IN ('http', 'https')),
+    host TEXT NULL,
+    port INTEGER NULL CHECK (port IS NULL OR (port >= 1 AND port <= 65535)),
+    path TEXT NULL,
+    source_kind TEXT NULL CHECK (source_kind IS NULL OR source_kind IN ('manual', 'detected')),
+    browser_availability TEXT NOT NULL CHECK (browser_availability IN ('available', 'unavailable')),
+    validation_json TEXT NULL,
+    current_page_json TEXT NULL,
+    picker_active INTEGER NOT NULL CHECK (picker_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+        (scheme IS NULL AND host IS NULL AND port IS NULL AND path IS NULL AND source_kind IS NULL)
+        OR
+        (scheme IS NOT NULL AND host IS NOT NULL AND path IS NOT NULL AND source_kind IS NOT NULL)
+    )
+);
+
+CREATE TABLE session_dev_browser_selections (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    page_identity TEXT NOT NULL,
+    page_url TEXT NOT NULL,
+    page_title TEXT NULL,
+    selector_json TEXT NOT NULL,
+    ancestry_trail_json TEXT NOT NULL,
+    accessible_label TEXT NULL,
+    accessible_role TEXT NULL,
+    text_excerpt TEXT NULL,
+    bounds_json TEXT NOT NULL,
+    crop_attachment_id TEXT NULL REFERENCES conversation_attachments(id) ON DELETE SET NULL,
+    enrichment_mode TEXT NOT NULL CHECK (enrichment_mode IN ('dom_only', 'react_source_enriched')),
+    stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE session_dev_browser_comment_drafts (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    selection_id TEXT NOT NULL REFERENCES session_dev_browser_selections(id) ON DELETE CASCADE,
+    page_identity TEXT NOT NULL,
+    comment_text TEXT NOT NULL,
+    inclusion_state TEXT NOT NULL CHECK (inclusion_state IN ('included', 'excluded')),
+    sequence INTEGER NOT NULL CHECK (sequence >= 0),
+    stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE execution_receipts (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     run_id TEXT NOT NULL UNIQUE REFERENCES runs(id) ON DELETE CASCADE,
     contract_json TEXT NOT NULL,
+    browser_context_packet_json TEXT NULL,
     approvals_used_json TEXT NOT NULL,
     tools_invoked_json TEXT NOT NULL,
     memory_hit_count INTEGER NOT NULL CHECK (memory_hit_count >= 0),
@@ -482,6 +537,7 @@ CREATE TABLE session_outbox_entries (
     sequence INTEGER NOT NULL CHECK (sequence >= 0),
     prompt TEXT NOT NULL,
     steering_snapshot_json TEXT NOT NULL,
+    browser_context_packet_json TEXT NULL,
     latest_run_contract_json TEXT NULL,
     latest_receipt_id TEXT NULL REFERENCES execution_receipts(id) ON DELETE SET NULL,
     active_permission_request_id TEXT NULL REFERENCES permissions(id) ON DELETE SET NULL,
@@ -1528,6 +1584,18 @@ CREATE INDEX idx_conversation_attachments_session_created_at
 
 CREATE INDEX idx_conversation_attachments_message_part_id
     ON conversation_attachments(message_part_id);
+
+CREATE INDEX idx_session_dev_browser_selections_session_created_at
+    ON session_dev_browser_selections(session_id, created_at ASC);
+
+CREATE INDEX idx_session_dev_browser_selections_session_stale
+    ON session_dev_browser_selections(session_id, stale, created_at ASC);
+
+CREATE INDEX idx_session_dev_browser_comment_drafts_session_sequence
+    ON session_dev_browser_comment_drafts(session_id, sequence ASC);
+
+CREATE INDEX idx_session_dev_browser_comment_drafts_session_stale
+    ON session_dev_browser_comment_drafts(session_id, stale, sequence ASC);
 
 CREATE INDEX idx_execution_receipts_session_created_at
     ON execution_receipts(session_id, created_at DESC);

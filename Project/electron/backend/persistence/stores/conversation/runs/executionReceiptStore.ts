@@ -2,6 +2,7 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { isJsonRecord, nowIso, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
 import type { ExecutionReceipt } from '@/app/backend/runtime/contracts';
+import { parseBrowserCommentPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 
@@ -15,6 +16,7 @@ function mapReceipt(row: {
     session_id: string;
     run_id: string;
     contract_json: string;
+    browser_context_packet_json: string | null;
     approvals_used_json: string;
     tools_invoked_json: string;
     memory_hit_count: number;
@@ -34,6 +36,14 @@ function mapReceipt(row: {
         sessionId: parseEntityId(row.session_id, 'execution_receipts.session_id', 'sess'),
         runId: parseEntityId(row.run_id, 'execution_receipts.run_id', 'run'),
         contract,
+        ...(row.browser_context_packet_json !== null
+            ? {
+                  browserContext: parseBrowserCommentPacket(
+                      parseJsonValue(row.browser_context_packet_json, {}, isJsonRecord),
+                      'execution_receipts.browser_context_packet_json'
+                  ),
+              }
+            : {}),
         approvalsUsed: parseJsonValue(
             row.approvals_used_json,
             [] as ExecutionReceipt['approvalsUsed'],
@@ -77,6 +87,7 @@ export class ExecutionReceiptStore {
                 session_id: input.sessionId,
                 run_id: input.runId,
                 contract_json: JSON.stringify(input.contract),
+                browser_context_packet_json: input.browserContext ? JSON.stringify(input.browserContext) : null,
                 approvals_used_json: JSON.stringify(input.approvalsUsed),
                 tools_invoked_json: JSON.stringify(input.toolsInvoked),
                 memory_hit_count: input.memoryHitCount,

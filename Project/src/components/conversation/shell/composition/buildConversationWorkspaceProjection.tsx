@@ -19,6 +19,7 @@ import { isEntityId } from '@/web/components/conversation/shell/workspace/helper
 import type { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 
 import type {
+    BrowserCommentPacket,
     ComposerAttachmentInput,
     EntityId,
     OrchestratorExecutionStrategy,
@@ -409,6 +410,7 @@ export function buildConversationWorkspaceProjection(
             entryId: EntityId<'outbox'>;
             prompt: string;
             attachments: ComposerAttachmentInput[];
+            browserContext?: BrowserCommentPacket | null;
         }) => {
             if (!isEntityId(input.selectedSessionId, 'sess')) {
                 return;
@@ -419,6 +421,7 @@ export function buildConversationWorkspaceProjection(
                 entryId: updateInput.entryId,
                 prompt: updateInput.prompt,
                 attachments: updateInput.attachments,
+                ...(updateInput.browserContext !== undefined ? { browserContext: updateInput.browserContext } : {}),
             });
             await input.queries.outboxQuery.refetch();
         },

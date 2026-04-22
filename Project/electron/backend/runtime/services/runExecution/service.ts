@@ -111,6 +111,7 @@ export class RunExecutionService {
             profileId: entry.profileId,
             sessionId: entry.sessionId,
             prompt: entry.prompt,
+            ...(entry.browserContext ? { browserContext: entry.browserContext } : {}),
             topLevelTab: entry.steeringSnapshot.topLevelTab,
             modeKey: entry.steeringSnapshot.modeKey,
             providerId: entry.steeringSnapshot.providerId,
@@ -388,6 +389,7 @@ export class RunExecutionService {
             workspaceContext,
             assistantMessageId: persisted.assistantMessageId,
             ...(runContractPreview ? { runContractPreview } : {}),
+            ...(input.browserContext ? { browserContext: input.browserContext } : {}),
             ...(options?.sourceOutboxEntryId ? { sourceOutboxEntryId: options.sourceOutboxEntryId } : {}),
             signal: controller.signal,
         })
@@ -631,6 +633,7 @@ export class RunExecutionService {
             prompt: input.prompt,
             steeringSnapshot: previewResult.preview.steeringSnapshot,
             attachmentIds: attachmentSummaries.map((attachment) => attachment.id),
+            ...(input.browserContext ? { browserContext: input.browserContext } : {}),
             latestRunContract: previewResult.preview,
         });
         await conversationAttachmentStore.replaceOutboxEntryAttachments({
@@ -649,6 +652,7 @@ export class RunExecutionService {
         entryId: EntityId<'outbox'>;
         prompt: string;
         attachments?: StartRunInput['attachments'];
+        browserContext?: StartRunInput['browserContext'] | null;
     }): Promise<SessionUpdateOutboxEntryResult> {
         const existing = await sessionOutboxStore.getById({
             profileId: input.profileId,
@@ -658,6 +662,13 @@ export class RunExecutionService {
         if (!existing) {
             return { updated: false, reason: 'not_found' };
         }
+
+        const nextBrowserContext =
+            input.browserContext === undefined ? existing.browserContext : input.browserContext ?? undefined;
+        const nextAttachments =
+            input.attachments !== undefined
+                ? input.attachments
+                : (await conversationAttachmentStore.listPayloadsByOutboxEntry(input.entryId)).map(toComposerAttachmentInput);
 
         const previewInput: StartRunInput = {
             profileId: input.profileId,
@@ -672,11 +683,12 @@ export class RunExecutionService {
                 ? { workspaceFingerprint: existing.steeringSnapshot.workspaceFingerprint }
                 : {}),
             ...(existing.steeringSnapshot.sandboxId ? { sandboxId: existing.steeringSnapshot.sandboxId } : {}),
-            ...(input.attachments && input.attachments.length > 0 ? { attachments: input.attachments } : {}),
+            ...(nextAttachments.length > 0 ? { attachments: nextAttachments } : {}),
+            ...(nextBrowserContext ? { browserContext: nextBrowserContext } : {}),
         };
         const previewResult = await this.previewRunContractInternal(previewInput);
         const attachmentSummaries = await Promise.all(
-            (input.attachments ?? []).map((attachment) =>
+            nextAttachments.map((attachment) =>
                 conversationAttachmentStore.createSnapshot({
                     profileId: input.profileId,
                     sessionId: input.sessionId,
@@ -693,6 +705,7 @@ export class RunExecutionService {
             sessionId: input.sessionId,
             entryId: input.entryId,
             prompt: input.prompt,
+            ...(input.browserContext !== undefined ? { browserContext: input.browserContext } : {}),
             latestRunContract: previewResult.available ? previewResult.preview : null,
             state: previewResult.available ? 'queued' : previewResult.code === 'permission_required' ? 'paused_for_permission' : 'paused_for_review',
             activePermissionRequestId:

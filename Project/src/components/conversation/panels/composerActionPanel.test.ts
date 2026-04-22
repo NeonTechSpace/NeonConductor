@@ -31,6 +31,12 @@ vi.mock('@/web/trpc/client', () => ({
             },
         },
         session: {
+            previewRunContract: {
+                useQuery: () => ({
+                    data: undefined,
+                    isFetching: false,
+                }),
+            },
             setAttachedSkills: {
                 useMutation: () => ({
                     isPending: false,

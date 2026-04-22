@@ -25,6 +25,7 @@ import type {
 } from '@/app/backend/persistence/types';
 
 import type {
+    BrowserCommentPacket,
     ComposerAttachmentInput,
     DiffOverview,
     EntityId,
@@ -192,8 +193,8 @@ export interface SessionWorkspacePanelProps {
     onRemovePendingImage: (clientId: string) => void;
     onRemovePendingTextFile: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onQueuePrompt?: (prompt: string) => void;
-    onSubmitPrompt: (prompt: string) => void;
+    onQueuePrompt?: (prompt: string, browserContext?: BrowserCommentPacket) => void;
+    onSubmitPrompt: (prompt: string, browserContext?: BrowserCommentPacket) => void;
     onMoveOutboxEntry?: (entryId: EntityId<'outbox'>, direction: 'up' | 'down') => void;
     onResumeOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
     onCancelOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
@@ -201,6 +202,7 @@ export interface SessionWorkspacePanelProps {
         entryId: EntityId<'outbox'>;
         prompt: string;
         attachments: ComposerAttachmentInput[];
+        browserContext?: BrowserCommentPacket | null;
     }) => Promise<void>;
     onSelectOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
     selectedOutboxEntryId?: EntityId<'outbox'>;
@@ -319,6 +321,15 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                                   { key: 'attachments', className: 'text-muted-foreground' },
                                   `Attachments: ${String(input.executionReceipt.contract.attachmentSummary.totalCount)}`
                               ),
+                              ...(input.executionReceipt.contract.browserContextSummary
+                                  ? [
+                                        createElement(
+                                            'p',
+                                            { key: 'browser', className: 'text-muted-foreground' },
+                                            `Browser context: ${String(input.executionReceipt.contract.browserContextSummary.commentCount)} comments · ${String(input.executionReceipt.contract.browserContextSummary.selectedElementCount)} elements`
+                                        ),
+                                    ]
+                                  : []),
                               createElement(
                                   'p',
                                   { key: 'contributors', className: 'text-muted-foreground' },
@@ -365,6 +376,15 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                                   { key: 'attachments', className: 'text-muted-foreground' },
                                   `Attachments: ${String(input.selectedOutboxEntry.attachmentIds.length)}`
                               ),
+                              ...(input.selectedOutboxEntry.browserContextSummary
+                                  ? [
+                                        createElement(
+                                            'p',
+                                            { key: 'browser', className: 'text-muted-foreground' },
+                                            `Browser context: ${String(input.selectedOutboxEntry.browserContextSummary.commentCount)} comments · ${String(input.selectedOutboxEntry.browserContextSummary.selectedElementCount)} elements`
+                                        ),
+                                    ]
+                                  : []),
                               createElement(
                                   'p',
                                   { key: 'contributors', className: 'text-muted-foreground' },

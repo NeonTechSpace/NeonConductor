@@ -1,7 +1,7 @@
 import { executionReceiptStore, messageStore } from '@/app/backend/persistence/stores';
 import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/types';
 
-import type { ExecutionReceipt, RunContractPreview } from '@/shared/contracts';
+import type { BrowserCommentPacket, ExecutionReceipt, RunContractPreview } from '@/shared/contracts';
 import type { EntityId } from '@/shared/contracts';
 
 function countMemoryHits(contract: RunContractPreview): number {
@@ -15,6 +15,7 @@ export async function createExecutionReceipt(input: {
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
     contract: RunContractPreview;
+    browserContext?: BrowserCommentPacket;
     outcome: RunTerminalOutcome;
 }): Promise<ExecutionReceipt> {
     const toolsInvoked = await messageStore.summarizeToolInvocationsByRun(input.runId);
@@ -23,6 +24,7 @@ export async function createExecutionReceipt(input: {
         sessionId: input.sessionId,
         runId: input.runId,
         contract: input.contract,
+        ...(input.browserContext ? { browserContext: input.browserContext } : {}),
         approvalsUsed: [],
         toolsInvoked,
         memoryHitCount: countMemoryHits(input.contract),

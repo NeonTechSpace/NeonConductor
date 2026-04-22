@@ -1,6 +1,7 @@
 import { conversationAttachmentStore, messageStore, runStore, sessionStore } from '@/app/backend/persistence/stores';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
 import { publishRunStartedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
+import { buildBrowserContextParts } from '@/app/backend/runtime/services/runExecution/browserContextMessage';
 import {
     emitCacheResolutionEvent,
     emitMessageCreatedEvent,
@@ -13,6 +14,61 @@ import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEv
 
 import type { EntityId } from '@/shared/contracts';
 import { createAssistantStatusPartPayload } from '@/shared/contracts/types/messagePart';
+
+async function appendBrowserContextTranscriptParts(input: {
+    runId: EntityId<'run'>;
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    messageId: EntityId<'msg'>;
+    browserContext: NonNullable<StartRunInput['browserContext']>;
+}): Promise<void> {
+    for (const part of await buildBrowserContextParts(input.browserContext)) {
+        if (part.type === 'text') {
+            const textPart = await messageStore.appendPart({
+                messageId: input.messageId,
+                partType: 'text',
+                payload: {
+                    text: part.text,
+                },
+            });
+            await emitMessagePartAppendedEvent({
+                runId: input.runId,
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                messageId: input.messageId,
+                part: textPart,
+            });
+            continue;
+        }
+
+        if (part.type !== 'image' || !part.attachmentId) {
+            continue;
+        }
+
+        const imagePart = await messageStore.appendPart({
+            messageId: input.messageId,
+            partType: 'image',
+            payload: {
+                attachmentId: part.attachmentId,
+                mimeType: part.mimeType,
+                width: part.width,
+                height: part.height,
+                ...(part.sha256 ? { sha256: part.sha256 } : {}),
+            },
+        });
+        await conversationAttachmentStore.attachToMessagePart({
+            attachmentId: part.attachmentId as EntityId<'att'>,
+            messagePartId: imagePart.id,
+        });
+        await emitMessagePartAppendedEvent({
+            runId: input.runId,
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            messageId: input.messageId,
+            part: imagePart,
+        });
+    }
+}
 
 export async function persistRunStart(input: { input: StartRunInput; prepared: PreparedRunStart }): Promise<{
     run: Awaited<ReturnType<typeof runStore.create>>;
@@ -133,6 +189,16 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
             sessionId: input.input.sessionId,
             messageId: userMessage.id,
             part: textFilePart,
+        });
+    }
+
+    if (input.input.browserContext) {
+        await appendBrowserContextTranscriptParts({
+            runId: run.id,
+            profileId: input.input.profileId,
+            sessionId: input.input.sessionId,
+            messageId: userMessage.id,
+            browserContext: input.input.browserContext,
         });
     }
 

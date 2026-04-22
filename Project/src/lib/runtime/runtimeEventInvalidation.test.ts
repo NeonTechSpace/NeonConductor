@@ -54,6 +54,8 @@ function createUtilsMock(calls: InvalidationCall[]) {
         session: {
             getAttachedRules: createInvalidateLeaf(calls, 'session.getAttachedRules'),
             getAttachedSkills: createInvalidateLeaf(calls, 'session.getAttachedSkills'),
+            getDevBrowserState: createInvalidateLeaf(calls, 'session.getDevBrowserState'),
+            buildBrowserCommentPacket: createInvalidateLeaf(calls, 'session.buildBrowserCommentPacket'),
             getExecutionReceipt: createInvalidateLeaf(calls, 'session.getExecutionReceipt'),
             getOutboxEntry: createInvalidateLeaf(calls, 'session.getOutboxEntry'),
             list: createInvalidateLeaf(calls, 'session.list'),

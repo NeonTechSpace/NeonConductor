@@ -8,6 +8,7 @@ import {
 import { isProviderRunnable, type RunStartRejectedResultLike } from '@/web/lib/runtimeCapabilityIssue';
 
 import type {
+    BrowserCommentPacket,
     ComposerAttachmentInput,
     EntityId,
     PlanStartInput,
@@ -44,6 +45,7 @@ interface SubmitPromptInput<
 > {
     prompt: string;
     attachments?: ComposerAttachmentInput[];
+    browserContext?: BrowserCommentPacket;
     isStartingRun: boolean;
     selectedSessionId: string | undefined;
     isPlanningMode: boolean;
@@ -72,7 +74,7 @@ export async function submitPrompt<
 >(input: SubmitPromptInput<TPlanStartResult, TRunStartAcceptedResult>): Promise<void> {
     const trimmedPrompt = input.prompt.trim();
     const attachments = input.attachments ?? [];
-    if ((trimmedPrompt.length === 0 && attachments.length === 0) || input.isStartingRun) {
+    if ((trimmedPrompt.length === 0 && attachments.length === 0 && !input.browserContext) || input.isStartingRun) {
         return;
     }
 
@@ -142,6 +144,7 @@ export async function submitPrompt<
             providerId: input.resolvedRunTarget.providerId,
             modelId: input.resolvedRunTarget.modelId,
             ...(attachments.length > 0 ? { attachments } : {}),
+            ...(input.browserContext ? { browserContext: input.browserContext } : {}),
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
             runtimeOptions: input.runtimeOptions,

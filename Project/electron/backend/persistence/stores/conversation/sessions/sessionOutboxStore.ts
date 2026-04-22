@@ -3,7 +3,9 @@ import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/
 import { nowIso, parseJsonValue, isJsonRecord, isJsonUnknownArray } from '@/app/backend/persistence/stores/shared/utils';
 import type { RunContractPreview, SessionOutboxEntry, SessionOutboxEntryState, SteeringSnapshot } from '@/app/backend/runtime/contracts';
 import { sessionOutboxEntryStates } from '@/app/backend/runtime/contracts';
+import { parseBrowserCommentPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
+import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 
 function mapOutboxState(value: string): SessionOutboxEntryState {
@@ -26,6 +28,7 @@ function mapOutboxEntry(row: {
     sequence: number;
     prompt: string;
     steering_snapshot_json: string;
+    browser_context_packet_json: string | null;
     latest_run_contract_json: string | null;
     latest_receipt_id: string | null;
     active_permission_request_id: string | null;
@@ -57,6 +60,13 @@ function mapOutboxEntry(row: {
                   isRunContractPreview
               )
             : undefined;
+    const browserContext =
+        row.browser_context_packet_json !== null
+            ? parseBrowserCommentPacket(
+                  parseJsonValue(row.browser_context_packet_json, {}, isJsonRecord),
+                  'session_outbox_entries.browser_context_packet_json'
+              )
+            : undefined;
 
     return {
         id: parseEntityId(row.id, 'session_outbox_entries.id', 'outbox'),
@@ -66,6 +76,7 @@ function mapOutboxEntry(row: {
         sequence: row.sequence,
         prompt: row.prompt,
         attachmentIds,
+        ...(browserContext ? { browserContext, browserContextSummary: buildBrowserContextSummary(browserContext) } : {}),
         steeringSnapshot: steeringSnapshot as SteeringSnapshot,
         ...(latestRunContract ? { latestRunContract } : {}),
         ...(row.latest_receipt_id
@@ -94,6 +105,7 @@ const outboxColumns = [
     'session_outbox_entries.sequence as sequence',
     'session_outbox_entries.prompt as prompt',
     'session_outbox_entries.steering_snapshot_json as steering_snapshot_json',
+    'session_outbox_entries.browser_context_packet_json as browser_context_packet_json',
     'session_outbox_entries.latest_run_contract_json as latest_run_contract_json',
     'session_outbox_entries.latest_receipt_id as latest_receipt_id',
     'session_outbox_entries.active_permission_request_id as active_permission_request_id',
@@ -109,6 +121,7 @@ export class SessionOutboxStore {
         prompt: string;
         steeringSnapshot: SteeringSnapshot;
         attachmentIds: SessionOutboxEntry['attachmentIds'];
+        browserContext?: SessionOutboxEntry['browserContext'];
         latestRunContract?: RunContractPreview;
     }): Promise<SessionOutboxEntry> {
         const { db } = getPersistence();
@@ -132,6 +145,7 @@ export class SessionOutboxStore {
                 sequence,
                 prompt: input.prompt,
                 steering_snapshot_json: JSON.stringify(input.steeringSnapshot),
+                browser_context_packet_json: input.browserContext ? JSON.stringify(input.browserContext) : null,
                 latest_run_contract_json: input.latestRunContract ? JSON.stringify(input.latestRunContract) : null,
                 latest_receipt_id: null,
                 active_permission_request_id: null,
@@ -255,6 +269,7 @@ export class SessionOutboxStore {
         entryId: SessionOutboxEntry['id'];
         prompt?: string;
         state?: SessionOutboxEntryState;
+        browserContext?: SessionOutboxEntry['browserContext'] | null;
         latestRunContract?: RunContractPreview | null;
         latestReceiptId?: SessionOutboxEntry['latestReceiptId'] | null;
         activePermissionRequestId?: SessionOutboxEntry['activePermissionRequestId'] | null;
@@ -266,6 +281,13 @@ export class SessionOutboxStore {
             .set({
                 ...(input.prompt !== undefined ? { prompt: input.prompt } : {}),
                 ...(input.state !== undefined ? { state: input.state } : {}),
+                ...(input.browserContext !== undefined
+                    ? {
+                          browser_context_packet_json: input.browserContext
+                              ? JSON.stringify(input.browserContext)
+                              : null,
+                      }
+                    : {}),
                 ...(input.latestRunContract !== undefined
                     ? {
                           latest_run_contract_json: input.latestRunContract

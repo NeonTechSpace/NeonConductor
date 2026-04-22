@@ -149,6 +149,7 @@ export async function prepareRunStart(
         sessionId: input.sessionId,
         prompt: input.prompt,
         ...(input.attachments ? { attachments: input.attachments } : {}),
+        ...(input.browserContext ? { browserContext: input.browserContext } : {}),
         topLevelTab: input.topLevelTab,
         providerId: preparedCandidate.target.providerId,
         modelId: preparedCandidate.target.modelId,

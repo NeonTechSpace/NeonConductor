@@ -3,6 +3,8 @@ import type { ModelCompatibilityState, ModelPickerOption } from '@/web/component
 import type { PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 
 import type {
+    BrowserCommentPacket,
+    BrowserContextSummary,
     ComposerAttachmentInput,
     EntityId,
     ResolvedContextState,
@@ -66,6 +68,8 @@ export interface ComposerActionPanelProps {
     modelOptions: ModelPickerOption[];
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
+    browserContext?: BrowserCommentPacket;
+    browserContextSummary?: BrowserContextSummary;
     selectedSessionId?: EntityId<'sess'>;
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
@@ -79,6 +83,7 @@ export interface ComposerActionPanelProps {
     isCompactingContext?: boolean;
     promptResetKey?: number;
     focusComposerRequestKey?: number;
+    onDraftPromptSnapshotChange?: (prompt: string) => void;
     onProfileChange?: (profileId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
@@ -89,8 +94,8 @@ export interface ComposerActionPanelProps {
     onRemovePendingImage: (clientId: string) => void;
     onRemovePendingTextFile: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onQueuePrompt?: (prompt: string) => void;
-    onSubmitPrompt: (prompt: string) => void;
+    onQueuePrompt?: (prompt: string, browserContext?: BrowserCommentPacket) => void;
+    onSubmitPrompt: (prompt: string, browserContext?: BrowserCommentPacket) => void;
     onCompactContext?: () => Promise<ComposerActionFeedback | undefined>;
 }
 

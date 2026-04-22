@@ -16,6 +16,9 @@ describe('browseSidebarWorkspaceDirectory', () => {
                         absolutePath: 'C:/workspace',
                     })
                 ),
+                devBrowser: {
+                    syncMount: vi.fn(() => Promise.resolve({ ok: true })),
+                },
             } as typeof window.neonDesktop,
             isPickingWorkspaceDirectory: false,
             onPickingWorkspaceDirectoryChange,
@@ -35,6 +38,9 @@ describe('browseSidebarWorkspaceDirectory', () => {
         const result = await browseSidebarWorkspaceDirectory({
             desktopBridge: {
                 pickDirectory: vi.fn(() => Promise.reject(new Error('Picker failed.'))),
+                devBrowser: {
+                    syncMount: vi.fn(() => Promise.resolve({ ok: true })),
+                },
             } as typeof window.neonDesktop,
             isPickingWorkspaceDirectory: false,
             onPickingWorkspaceDirectoryChange,

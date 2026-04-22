@@ -23,6 +23,7 @@ import { submitPrompt as submitPromptFromComposer } from '@/web/components/conve
 import type { PlanningDepth } from '@/web/components/conversation/shell/planningDepth';
 
 import type {
+    BrowserCommentPacket,
     EntityId,
     PlanStartInput,
     PlanRecordView,
@@ -360,10 +361,10 @@ export function useConversationShellComposer<
             replacePendingTextFiles(pendingTextFilesRef.current.filter((candidate) => candidate.clientId !== clientId));
         },
         onRetryPendingImage: retryPendingImage,
-        onQueuePrompt: (prompt: string) => {
+        onQueuePrompt: (prompt: string, browserContext?: BrowserCommentPacket) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
-            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0;
+            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
 
             if (!hasSubmittableComposerContent) {
                 return;
@@ -397,6 +398,7 @@ export function useConversationShellComposer<
                     ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
                     ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
                     ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+                    ...(browserContext ? { browserContext } : {}),
                     ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
                     ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
                     runtimeOptions: input.runtimeOptions,
@@ -412,10 +414,10 @@ export function useConversationShellComposer<
                     setRunSubmitError(error instanceof Error ? error.message : String(error));
                 });
         },
-        onSubmitPrompt: (prompt: string) => {
+        onSubmitPrompt: (prompt: string, browserContext?: BrowserCommentPacket) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
-            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0;
+            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
 
             if (!hasSubmittableComposerContent) {
                 return;
@@ -438,6 +440,7 @@ export function useConversationShellComposer<
             void submitPromptFromComposer<TPlanStartResult, TRunStartAcceptedResult>({
                 prompt: promptRef.current,
                 ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+                ...(browserContext ? { browserContext } : {}),
                 isStartingRun: input.isStartingRun,
                 selectedSessionId: input.selectedSessionId,
                 isPlanningMode: input.isPlanningMode,

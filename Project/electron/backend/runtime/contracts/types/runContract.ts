@@ -6,6 +6,7 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { PreparedContextSummary } from '@/app/backend/runtime/contracts/types/context';
+import type { BrowserCommentPacket, BrowserContextSummary } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts/types/session';
 
 export interface SteeringSnapshot {
@@ -67,6 +68,7 @@ export interface RunContractPreview {
     trustSummary: RunContractTrustSummary;
     dynamicExpansionSummary: RunContractDynamicExpansionSummary;
     attachmentSummary: RunContractAttachmentSummary;
+    browserContextSummary?: BrowserContextSummary;
     diffFromLastCompatible?: RunContractDiffSummary;
 }
 
@@ -92,6 +94,7 @@ export interface ExecutionReceipt {
     sessionId: EntityId<'sess'>;
     runId: EntityId<'run'>;
     contract: RunContractPreview;
+    browserContext?: BrowserCommentPacket;
     approvalsUsed: Array<{
         permissionRequestId: EntityId<'perm'>;
         scope: 'once' | 'profile' | 'workspace';
@@ -139,6 +142,8 @@ export interface SessionOutboxEntry {
     sequence: number;
     prompt: string;
     attachmentIds: EntityId<'att'>[];
+    browserContext?: BrowserCommentPacket;
+    browserContextSummary?: BrowserContextSummary;
     steeringSnapshot: SteeringSnapshot;
     latestRunContract?: RunContractPreview;
     latestReceiptId?: EntityId<'rcpt'>;

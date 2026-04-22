@@ -2,7 +2,7 @@ import type { RunTerminalOutcome } from '@/app/backend/runtime/services/runExecu
 import { persistRunTerminalOutcome } from '@/app/backend/runtime/services/runExecution/runTerminalPersistence';
 import { applyRunTerminalSideEffects } from '@/app/backend/runtime/services/runExecution/runTerminalSideEffects';
 
-import type { EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
+import type { BrowserCommentPacket, EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
 
 export async function applyRunTerminalOutcome(input: {
     profileId: string;
@@ -16,6 +16,7 @@ export async function applyRunTerminalOutcome(input: {
     modelId?: string;
     authMethod?: ProviderAuthMethod | 'none';
     contract?: RunContractPreview;
+    browserContext?: BrowserCommentPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     const persisted = await persistRunTerminalOutcome(input);
@@ -24,6 +25,7 @@ export async function applyRunTerminalOutcome(input: {
         run: persisted.run,
         ...(persisted.usageRecord ? { usageRecord: persisted.usageRecord } : {}),
         ...(input.contract ? { contract: input.contract } : {}),
+        ...(input.browserContext ? { browserContext: input.browserContext } : {}),
         ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
     });
 }
@@ -34,6 +36,7 @@ export async function moveRunToAbortedState(input: {
     runId: EntityId<'run'>;
     logMessage: string;
     contract?: RunContractPreview;
+    browserContext?: BrowserCommentPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     await applyRunTerminalOutcome({
@@ -45,6 +48,7 @@ export async function moveRunToAbortedState(input: {
         },
         logMessage: input.logMessage,
         ...(input.contract ? { contract: input.contract } : {}),
+        ...(input.browserContext ? { browserContext: input.browserContext } : {}),
         ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
     });
 }
@@ -57,6 +61,7 @@ export async function moveRunToFailedState(input: {
     errorMessage: string;
     logMessage: string;
     contract?: RunContractPreview;
+    browserContext?: BrowserCommentPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     await applyRunTerminalOutcome({
@@ -70,6 +75,7 @@ export async function moveRunToFailedState(input: {
         },
         logMessage: input.logMessage,
         ...(input.contract ? { contract: input.contract } : {}),
+        ...(input.browserContext ? { browserContext: input.browserContext } : {}),
         ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
     });
 }

@@ -15,7 +15,7 @@ import { appLog } from '@/app/main/logging';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import type { RunTerminalPersistenceResult } from '@/app/backend/runtime/services/runExecution/runTerminalPersistence';
 
-import type { EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
+import type { BrowserCommentPacket, EntityId, ProviderAuthMethod, RunContractPreview, RuntimeProviderId } from '@/shared/contracts';
 
 async function markThreadAssistantActivity(input: { profileId: string; threadId: EntityId<'thr'> }): Promise<void> {
     await threadStore.markAssistantActivity(input.profileId, input.threadId, new Date().toISOString());
@@ -51,6 +51,7 @@ export async function applyRunTerminalSideEffects(input: {
     modelId?: string;
     authMethod?: ProviderAuthMethod | 'none';
     contract?: RunContractPreview;
+    browserContext?: BrowserCommentPacket;
     sourceOutboxEntryId?: EntityId<'outbox'>;
 }): Promise<void> {
     const receipt =
@@ -60,6 +61,7 @@ export async function applyRunTerminalSideEffects(input: {
                   sessionId: input.sessionId,
                   runId: input.runId,
                   contract: input.contract,
+                  ...(input.browserContext ? { browserContext: input.browserContext } : {}),
                   outcome: input.outcome,
               })
             : undefined;

@@ -11,9 +11,19 @@ import { devServerUrl, getMainDirname, isDev } from '@/app/main/runtime/env';
 import { resolveDesktopStorage, resolveDesktopStoragePaths } from '@/app/main/runtime/storage';
 import { attachCspHeaders } from '@/app/main/security/cspHeaders';
 import { registerBootWindows, reportMainBootStatus } from '@/app/main/window/bootCoordinator';
+import {
+    handleDevBrowserSelectionFromWebContents,
+    registerDevBrowserWindow,
+    syncDevBrowserMount,
+} from '@/app/main/window/devBrowser/registry';
 import { createMainWindow } from '@/app/main/window/factory';
 import { createSplashWindow } from '@/app/main/window/splash';
-import { PICK_DIRECTORY_CHANNEL } from '@/app/shared/desktopBridgeContract';
+import {
+    DEV_BROWSER_SELECTION_CHANNEL,
+    DEV_BROWSER_SYNC_MOUNT_CHANNEL,
+    PICK_DIRECTORY_CHANNEL,
+    isDevBrowserMountPayload,
+} from '@/app/shared/desktopBridgeContract';
 import { BOOT_STUCK_WARNING_DEV_MS } from '@/app/shared/splashContract';
 
 interface BootstrapDeps {
@@ -130,6 +140,10 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
 
     mainWindow = createBootManagedMainWindow();
     registerWindowStateBridge(mainWindow);
+    registerDevBrowserWindow(mainWindow, {
+        isDev,
+        mainDirname,
+    });
 
     // Wire up tRPC to handle IPC calls from the renderer
     ipcHandler = createIPCHandler({
@@ -157,6 +171,15 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
             absolutePath,
         };
     });
+    ipcMain.handle(DEV_BROWSER_SYNC_MOUNT_CHANNEL, async (event, payload: unknown) => {
+        if (!isDevBrowserMountPayload(payload)) {
+            return { ok: false as const };
+        }
+        return syncDevBrowserMount(BrowserWindow.fromWebContents(event.sender), payload);
+    });
+    ipcMain.on(DEV_BROWSER_SELECTION_CHANNEL, (event, payload: unknown) => {
+        void handleDevBrowserSelectionFromWebContents(event.sender.id, payload);
+    });
     reportMainBootStatus({
         stage: 'renderer_connecting',
         blockingPrerequisite: 'renderer_first_report',
@@ -165,12 +188,18 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
     app.on('browser-window-created', (_event, window) => {
         ipcHandler.attachWindow(window);
         registerWindowStateBridge(window);
+        registerDevBrowserWindow(window, {
+            isDev,
+            mainDirname,
+        });
     });
 
     initAutoUpdater();
 
     app.on('before-quit', () => {
         ipcMain.removeHandler(PICK_DIRECTORY_CHANNEL);
+        ipcMain.removeHandler(DEV_BROWSER_SYNC_MOUNT_CHANNEL);
+        ipcMain.removeAllListeners(DEV_BROWSER_SELECTION_CHANNEL);
         closePersistence();
         flushAppLogger().catch((error: unknown) => {
             appLog.error({
@@ -193,6 +222,10 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
         if (BrowserWindow.getAllWindows().length === 0) {
             mainWindow = createBootManagedMainWindow();
             registerWindowStateBridge(mainWindow);
+            registerDevBrowserWindow(mainWindow, {
+                isDev,
+                mainDirname,
+            });
         }
     });
 }
