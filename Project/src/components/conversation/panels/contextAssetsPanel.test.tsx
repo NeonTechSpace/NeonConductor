@@ -29,6 +29,7 @@ describe('ContextAssetsPanel', () => {
                         id: 'skill_attached',
                         profileId: 'profile_default',
                         assetKey: 'skills/review',
+                        targetKind: 'shared',
                         name: 'Review',
                         bodyMarkdown: '# Review skill',
                         dynamicContextSources: [
@@ -54,6 +55,7 @@ describe('ContextAssetsPanel', () => {
                         source: 'workspace',
                         sourceKind: 'workspace_file',
                         scope: 'workspace',
+                        relativeRootPath: 'skills/shared/review/SKILL.md',
                         enabled: true,
                         precedence: 1,
                         createdAt: '2026-01-01T00:00:00.000Z',
@@ -71,6 +73,7 @@ describe('ContextAssetsPanel', () => {
                         id: 'skill_search',
                         profileId: 'profile_default',
                         assetKey: 'skills/debug',
+                        targetKind: 'shared',
                         name: 'Debug',
                         bodyMarkdown: '# Debug skill',
                         dynamicContextSources: [
@@ -87,6 +90,7 @@ describe('ContextAssetsPanel', () => {
                         source: 'workspace',
                         sourceKind: 'workspace_file',
                         scope: 'workspace',
+                        relativeRootPath: 'skills/shared/debug/SKILL.md',
                         enabled: true,
                         precedence: 2,
                         createdAt: '2026-01-01T00:00:00.000Z',

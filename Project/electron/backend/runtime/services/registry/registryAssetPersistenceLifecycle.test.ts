@@ -83,6 +83,8 @@ describe('registryAssetPersistenceLifecycle', () => {
             rulesets: [
                 {
                     assetKey: 'workspace_rule',
+                    targetKind: 'shared',
+                    relativeRootPath: 'rules/shared/workspace-rule.md',
                     name: 'Workspace Rule',
                     bodyMarkdown: '# Workspace Rule',
                     source: 'workspace_file',
@@ -104,8 +106,9 @@ describe('registryAssetPersistenceLifecycle', () => {
             skillfiles: [
                 {
                     assetKey: 'workspace_skill',
+                    targetKind: 'shared',
+                    relativeRootPath: 'skills/shared/workspace-skill/SKILL.md',
                     name: 'Workspace Skill',
-                    bodyMarkdown: '# Workspace Skill',
                     dynamicContextSources: [],
                     source: 'workspace_file',
                     sourceKind: 'workspace_file',

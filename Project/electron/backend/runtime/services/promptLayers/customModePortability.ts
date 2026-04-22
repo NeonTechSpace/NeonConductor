@@ -411,16 +411,16 @@ export async function resolveCustomModeDirectory(input: {
     });
 
     if (input.scope === 'workspace') {
-        if (!paths.workspaceAssetsRoot || !input.workspaceFingerprint) {
+        if (!paths.modeRoots.workspaceRoot || !input.workspaceFingerprint) {
             throw new Error('Workspace mode import requires a selected workspace.');
         }
 
-        const directory = path.join(paths.workspaceAssetsRoot, 'modes');
+        const directory = path.join(paths.modeRoots.workspaceRoot, 'modes');
         await mkdir(directory, { recursive: true });
         return directory;
     }
 
-    const directory = path.join(paths.globalAssetsRoot, 'modes');
+    const directory = path.join(paths.modeRoots.globalRoot, 'modes');
     await mkdir(directory, { recursive: true });
     return directory;
 }

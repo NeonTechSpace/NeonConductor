@@ -40,6 +40,7 @@ import type {
     MarketplacePackage,
     ModeDefinition,
     ModeDraftRecord,
+    RegistryDiscoveryDiagnostic,
     PreparedContextModeOverrides,
     ModePromptDefinition,
     OpenAIExecutionMode,
@@ -1063,6 +1064,8 @@ export type ModeDraftRecordType = ModeDraftRecord;
 export type RulesetDefinitionRecord = RulesetDefinition;
 
 export type SkillfileDefinitionRecord = SkillfileDefinition;
+
+export type RegistryDiscoveryDiagnosticRecord = RegistryDiscoveryDiagnostic;
 
 export type MarketplacePackageRecord = MarketplacePackage;
 

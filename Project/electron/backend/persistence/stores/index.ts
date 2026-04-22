@@ -26,6 +26,7 @@ export { memoryStore } from '@/app/backend/persistence/stores/runtime/memoryStor
 export { modelLimitOverrideStore } from '@/app/backend/persistence/stores/runtime/modelLimitOverrideStore';
 export { modeDraftStore } from '@/app/backend/persistence/stores/registry/modeDraftStore';
 export { modeStore } from '@/app/backend/persistence/stores/registry/modeStore';
+export { registryDiscoveryDiagnosticStore } from '@/app/backend/persistence/stores/registry/registryDiscoveryDiagnosticStore';
 export { orchestratorStore } from '@/app/backend/persistence/stores/runtime/orchestratorStore';
 export { permissionStore } from '@/app/backend/persistence/stores/runtime/permissionStore';
 export { permissionPolicyOverrideStore } from '@/app/backend/persistence/stores/runtime/permissionPolicyOverrideStore';

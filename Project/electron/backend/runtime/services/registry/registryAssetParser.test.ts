@@ -15,7 +15,10 @@ function buildAssetFile(input: Partial<RegistryAssetFile> & { parsed: RegistryAs
         absolutePath: input.absolutePath ?? '/registry/assets/example.md',
         relativePath: input.relativePath ?? 'example.md',
         assetPath: input.assetPath ?? 'example.md',
+        ...(input.relativeRootPath ? { relativeRootPath: input.relativeRootPath } : {}),
+        ...(input.targetKind ? { targetKind: input.targetKind } : {}),
         ...(input.presetKey ? { presetKey: input.presetKey } : {}),
+        ...(input.targetMode ? { targetMode: input.targetMode } : {}),
         parsed: input.parsed,
     };
 }
@@ -132,6 +135,8 @@ describe('registryAssetParser', () => {
     it('normalizes ruleset and skill assets', () => {
         const ruleset = parseRegistryRulesetAsset(
             buildAssetFile({
+                targetKind: 'preset',
+                relativeRootPath: 'rules/presets/code/manual-rule.md',
                 presetKey: 'code',
                 parsed: {
                     attributes: {
@@ -150,7 +155,9 @@ describe('registryAssetParser', () => {
         );
         expect(ruleset).toEqual({
             assetKey: 'rules/code/manual_rule',
+            targetKind: 'preset',
             presetKey: 'code',
+            relativeRootPath: 'rules/presets/code/manual-rule.md',
             name: 'Manual Rule',
             bodyMarkdown: '# Manual rule body',
             source: 'workspace_file',
@@ -167,6 +174,8 @@ describe('registryAssetParser', () => {
 
         const skill = parseRegistrySkillAsset(
             buildAssetFile({
+                targetKind: 'preset',
+                relativeRootPath: 'skills/presets/ask/review/SKILL.md',
                 presetKey: 'ask',
                 parsed: {
                     attributes: {
@@ -182,9 +191,10 @@ describe('registryAssetParser', () => {
         );
         expect(skill).toEqual({
             assetKey: 'skills/ask/review',
+            targetKind: 'preset',
             presetKey: 'ask',
+            relativeRootPath: 'skills/presets/ask/review/SKILL.md',
             name: 'Review',
-            bodyMarkdown: '# Skill body',
             dynamicContextSources: [],
             source: 'global_file',
             sourceKind: 'global_file',

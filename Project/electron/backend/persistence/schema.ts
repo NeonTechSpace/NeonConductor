@@ -814,14 +814,18 @@ export interface RulesetsTable {
     id: string;
     profile_id: string;
     asset_key: string;
+    target_kind: string;
     scope: string;
     workspace_fingerprint: string | null;
     preset_key: string | null;
+    target_top_level_tab: string | null;
+    target_mode_key: string | null;
     name: string;
     body_markdown: string;
     source: string;
     source_kind: string;
     origin_path: string | null;
+    relative_root_path: string | null;
     description: string | null;
     tags_json: string;
     activation_mode: string;
@@ -835,19 +839,36 @@ export interface SkillfilesTable {
     id: string;
     profile_id: string;
     asset_key: string;
+    target_kind: string;
     scope: string;
     workspace_fingerprint: string | null;
     preset_key: string | null;
+    target_top_level_tab: string | null;
+    target_mode_key: string | null;
     name: string;
-    body_markdown: string;
     dynamic_context_sources_json: string;
     source: string;
     source_kind: string;
     origin_path: string | null;
+    relative_root_path: string | null;
     description: string | null;
     tags_json: string;
     enabled: 0 | 1;
     precedence: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface RegistryDiscoveryDiagnosticsTable {
+    id: string;
+    profile_id: string;
+    asset_kind: string;
+    scope: string;
+    workspace_fingerprint: string | null;
+    relative_path: string;
+    severity: string;
+    code: string;
+    message: string;
     created_at: string;
     updated_at: string;
 }
@@ -1337,6 +1358,7 @@ export interface DatabaseSchema {
     mode_drafts: ModeDraftsTable;
     rulesets: RulesetsTable;
     skillfiles: SkillfilesTable;
+    registry_discovery_diagnostics: RegistryDiscoveryDiagnosticsTable;
     marketplace_packages: MarketplacePackagesTable;
     marketplace_assets: MarketplaceAssetsTable;
     kilo_account_snapshots: KiloAccountSnapshotsTable;

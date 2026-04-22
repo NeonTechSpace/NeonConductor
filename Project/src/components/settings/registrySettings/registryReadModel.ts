@@ -16,7 +16,12 @@ export interface RegistryReadModel {
     discoveredWorkspaceRules: NonNullable<RegistryListResolvedResult['discovered']['workspace']>['rulesets'];
     discoveredGlobalSkills: RegistryListResolvedResult['discovered']['global']['skillfiles'];
     discoveredWorkspaceSkills: NonNullable<RegistryListResolvedResult['discovered']['workspace']>['skillfiles'];
-    globalAssetsRoot?: string;
+    globalModeRoot?: string;
+    globalNativeRoot?: string;
+    workspaceModeRoot?: string;
+    workspaceNativeRoot?: string;
+    globalDiagnostics: RegistryListResolvedResult['diagnostics']['global'];
+    workspaceDiagnostics: NonNullable<RegistryListResolvedResult['diagnostics']['workspace']>;
     skillMatches: RegistryListResolvedResult['resolved']['skillfiles'];
 }
 
@@ -45,9 +50,20 @@ export function buildRegistryReadModel(input: {
         discoveredWorkspaceRules: input.registryData?.discovered.workspace?.rulesets ?? [],
         discoveredGlobalSkills: input.registryData?.discovered.global.skillfiles ?? [],
         discoveredWorkspaceSkills: input.registryData?.discovered.workspace?.skillfiles ?? [],
-        ...(input.registryData?.paths.globalAssetsRoot
-            ? { globalAssetsRoot: input.registryData.paths.globalAssetsRoot }
+        ...(input.registryData?.paths.modeRoots.globalRoot
+            ? { globalModeRoot: input.registryData.paths.modeRoots.globalRoot }
             : {}),
+        ...(input.registryData?.paths.nativeRulesSkillsRoots.globalRoot
+            ? { globalNativeRoot: input.registryData.paths.nativeRulesSkillsRoots.globalRoot }
+            : {}),
+        ...(input.registryData?.paths.modeRoots.workspaceRoot
+            ? { workspaceModeRoot: input.registryData.paths.modeRoots.workspaceRoot }
+            : {}),
+        ...(input.registryData?.paths.nativeRulesSkillsRoots.workspaceRoot
+            ? { workspaceNativeRoot: input.registryData.paths.nativeRulesSkillsRoots.workspaceRoot }
+            : {}),
+        globalDiagnostics: input.registryData?.diagnostics.global ?? [],
+        workspaceDiagnostics: input.registryData?.diagnostics.workspace ?? [],
         skillMatches: filterResolvedSkillfiles(input.registryData?.resolved.skillfiles ?? [], input.deferredSkillQuery),
     };
 }

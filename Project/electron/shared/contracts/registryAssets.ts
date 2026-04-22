@@ -3,6 +3,14 @@ import type { AgentMode, OrchestratorMode, TopLevelTab } from '@/shared/contract
 export const registryPresetKeys = ['ask', 'code', 'debug', 'orchestrator'] as const;
 export type RegistryPresetKey = (typeof registryPresetKeys)[number];
 
+export const registryAssetTargetKinds = ['shared', 'preset', 'exact_mode'] as const;
+export type RegistryAssetTargetKind = (typeof registryAssetTargetKinds)[number];
+
+export interface RegistryExactModeTarget {
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+}
+
 export const ruleActivationModes = ['always', 'auto', 'manual'] as const;
 export type RuleActivationMode = (typeof ruleActivationModes)[number];
 

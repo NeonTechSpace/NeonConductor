@@ -1,7 +1,12 @@
 import type { RegistryRefreshResult } from '@/app/backend/runtime/contracts/types/registry';
 import { buildDiscoveredAssets } from '@/app/backend/runtime/services/registry/registryDiscoveredAssetBuilder';
 import { readActiveAgentModeAfterRefresh } from '@/app/backend/runtime/services/registry/registryActiveModeReadModel';
-import { replaceDiscoveredModes, replaceDiscoveredRulesets, replaceDiscoveredSkillfiles } from '@/app/backend/runtime/services/registry/registryAssetPersistenceLifecycle';
+import {
+    replaceDiscoveredModes,
+    replaceDiscoveredRulesets,
+    replaceDiscoveredSkillfiles,
+    replaceRegistryDiscoveryDiagnostics,
+} from '@/app/backend/runtime/services/registry/registryAssetPersistenceLifecycle';
 import { registryResolvedQueryService } from '@/app/backend/runtime/services/registry/registryResolvedQueryService';
 import { resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
 
@@ -12,7 +17,8 @@ export async function refreshRegistry(input: {
 }): Promise<RegistryRefreshResult> {
     const paths = await resolveRegistryPaths(input);
     const globalAssets = await buildDiscoveredAssets({
-        rootPath: paths.globalAssetsRoot,
+        modeRootPath: paths.modeRoots.globalRoot,
+        nativeRootPath: paths.nativeRulesSkillsRoots.globalRoot,
         scope: 'global',
     });
 
@@ -32,12 +38,18 @@ export async function refreshRegistry(input: {
             scope: 'global',
             skillfiles: globalAssets.skillfiles,
         }),
+        replaceRegistryDiscoveryDiagnostics({
+            profileId: input.profileId,
+            scope: 'global',
+            diagnostics: globalAssets.diagnostics,
+        }),
     ]);
 
     let workspaceCounts: RegistryRefreshResult['refreshed']['workspace'] | undefined;
-    if (input.workspaceFingerprint && paths.workspaceAssetsRoot) {
+    if (input.workspaceFingerprint && paths.modeRoots.workspaceRoot && paths.nativeRulesSkillsRoots.workspaceRoot) {
         const workspaceAssets = await buildDiscoveredAssets({
-            rootPath: paths.workspaceAssetsRoot,
+            modeRootPath: paths.modeRoots.workspaceRoot,
+            nativeRootPath: paths.nativeRulesSkillsRoots.workspaceRoot,
             scope: 'workspace',
             workspaceFingerprint: input.workspaceFingerprint,
         });
@@ -60,6 +72,12 @@ export async function refreshRegistry(input: {
                 scope: 'workspace',
                 workspaceFingerprint: input.workspaceFingerprint,
                 skillfiles: workspaceAssets.skillfiles,
+            }),
+            replaceRegistryDiscoveryDiagnostics({
+                profileId: input.profileId,
+                scope: 'workspace',
+                workspaceFingerprint: input.workspaceFingerprint,
+                diagnostics: workspaceAssets.diagnostics,
             }),
         ]);
 

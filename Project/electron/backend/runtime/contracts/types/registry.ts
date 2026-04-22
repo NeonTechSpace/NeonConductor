@@ -33,9 +33,39 @@ export interface RegistrySearchRulesInput extends ProfileInput {
     modeKey?: string;
 }
 
+export interface RegistryReadSkillBodyInput extends ProfileInput {
+    skillId: string;
+}
+
+export interface RegistryModeRoots {
+    globalRoot: string;
+    workspaceRoot?: string;
+}
+
+export interface NativeRulesSkillsRoots {
+    globalRoot: string;
+    workspaceRoot?: string;
+}
+
+export interface RegistryDiscoveryDiagnostic {
+    id: string;
+    assetKind: 'rules' | 'skills';
+    scope: 'global' | 'workspace';
+    relativePath: string;
+    severity: 'error';
+    code:
+        | 'invalid_target_layout'
+        | 'invalid_target_folder'
+        | 'invalid_target_mode'
+        | 'invalid_package_layout';
+    message: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface RegistryPaths {
-    globalAssetsRoot: string;
-    workspaceAssetsRoot?: string;
+    modeRoots: RegistryModeRoots;
+    nativeRulesSkillsRoots: NativeRulesSkillsRoots;
 }
 
 export interface RegistryResolvedView {
@@ -49,9 +79,15 @@ export interface RegistryDiscoveredView {
     workspace?: RegistryResolvedView;
 }
 
+export interface RegistryDiscoveryDiagnosticsView {
+    global: RegistryDiscoveryDiagnostic[];
+    workspace?: RegistryDiscoveryDiagnostic[];
+}
+
 export interface RegistryListResolvedResult {
     paths: RegistryPaths;
     discovered: RegistryDiscoveredView;
+    diagnostics: RegistryDiscoveryDiagnosticsView;
     resolved: RegistryResolvedView;
 }
 
@@ -73,3 +109,15 @@ export interface RegistryRefreshResult {
     agentModes: ModeDefinitionRecord[];
     activeAgentMode: ModeDefinitionRecord;
 }
+
+export type RegistryReadSkillBodyResult =
+    | {
+          found: false;
+      }
+    | {
+          found: true;
+          skillId: string;
+          assetKey: string;
+          name: string;
+          bodyMarkdown: string;
+      };

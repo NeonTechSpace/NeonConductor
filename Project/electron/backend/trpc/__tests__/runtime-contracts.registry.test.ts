@@ -17,22 +17,10 @@ import {
 
 registerRuntimeContractHooks();
 
-function resetRegistryAssetDirectories(rootPath: string): void {
-    for (const relativeDirectory of [
-        'modes',
-        'rules',
-        'rules-ask',
-        'rules-code',
-        'rules-debug',
-        'rules-orchestrator',
-        'skills',
-        'skills-ask',
-        'skills-code',
-        'skills-debug',
-        'skills-orchestrator',
-    ]) {
-        rmSync(path.join(rootPath, relativeDirectory), { recursive: true, force: true });
-    }
+function resetRegistryAssetDirectories(input: { modeRoot: string; nativeRoot: string }): void {
+    rmSync(path.join(input.modeRoot, 'modes'), { recursive: true, force: true });
+    rmSync(path.join(input.nativeRoot, 'rules'), { recursive: true, force: true });
+    rmSync(path.join(input.nativeRoot, 'skills'), { recursive: true, force: true });
 }
 
 describe('runtime contracts: registry and attached skills', () => {
@@ -43,14 +31,15 @@ describe('runtime contracts: registry and attached skills', () => {
         const workspaceFingerprint = 'wsf_registry_contracts';
 
         const globalRegistry = await caller.registry.listResolved({ profileId });
-        const globalAssetsRoot = globalRegistry.paths.globalAssetsRoot;
-        resetRegistryAssetDirectories(globalAssetsRoot);
-        mkdirSync(path.join(globalAssetsRoot, 'modes'), { recursive: true });
-        mkdirSync(path.join(globalAssetsRoot, 'rules'), { recursive: true });
-        mkdirSync(path.join(globalAssetsRoot, 'skills'), { recursive: true });
+        const globalModeRoot = globalRegistry.paths.modeRoots.globalRoot;
+        const globalNativeRoot = globalRegistry.paths.nativeRulesSkillsRoots.globalRoot;
+        resetRegistryAssetDirectories({ modeRoot: globalModeRoot, nativeRoot: globalNativeRoot });
+        mkdirSync(path.join(globalModeRoot, 'modes'), { recursive: true });
+        mkdirSync(path.join(globalNativeRoot, 'rules', 'shared'), { recursive: true });
+        mkdirSync(path.join(globalNativeRoot, 'skills', 'shared', 'repo-search'), { recursive: true });
 
         writeFileSync(
-            path.join(globalAssetsRoot, 'modes', 'review.md'),
+            path.join(globalModeRoot, 'modes', 'review.md'),
             `---
 modeKey: review
 label: Global Review
@@ -68,7 +57,7 @@ tags:
             'utf8'
         );
         writeFileSync(
-            path.join(globalAssetsRoot, 'modes', 'chat.md'),
+            path.join(globalModeRoot, 'modes', 'chat.md'),
             `---
 topLevelTab: chat
 modeKey: chat
@@ -82,7 +71,7 @@ description: Global chat mode override
             'utf8'
         );
         writeFileSync(
-            path.join(globalAssetsRoot, 'rules', 'coding-rules.md'),
+            path.join(globalNativeRoot, 'rules', 'shared', 'coding-rules.md'),
             `---
 key: coding_rules
 name: Global Rules
@@ -96,7 +85,7 @@ tags:
             'utf8'
         );
         writeFileSync(
-            path.join(globalAssetsRoot, 'skills', 'repo-search.md'),
+            path.join(globalNativeRoot, 'skills', 'shared', 'repo-search', 'SKILL.md'),
             `---
 key: repo_search
 name: Repo Search
@@ -109,17 +98,6 @@ tags:
 
 - Use ripgrep first.
 `,
-            'utf8'
-        );
-        writeFileSync(
-            path.join(globalAssetsRoot, 'AGENTS.md'),
-            '# Global agents root\n\nThis should not affect registry.',
-            'utf8'
-        );
-        mkdirSync(path.join(globalAssetsRoot, '.agents'), { recursive: true });
-        writeFileSync(
-            path.join(globalAssetsRoot, '.agents', 'ignored.md'),
-            '# Ignored modular agents\n\nThis should not be treated as a registry asset.',
             'utf8'
         );
 
@@ -137,13 +115,14 @@ tags:
             throw new Error('Expected workspace root for registry contracts test.');
         }
 
-        const workspaceAssetsRoot = path.join(workspaceRoot.absolutePath, '.neonconductor');
-        mkdirSync(path.join(workspaceAssetsRoot, 'modes'), { recursive: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'rules'), { recursive: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'skills'), { recursive: true });
+        const workspaceModeRoot = path.join(workspaceRoot.absolutePath, '.neonconductor');
+        const workspaceNativeRoot = path.join(workspaceRoot.absolutePath, '.neonconductor');
+        mkdirSync(path.join(workspaceModeRoot, 'modes'), { recursive: true });
+        mkdirSync(path.join(workspaceNativeRoot, 'rules', 'shared'), { recursive: true });
+        mkdirSync(path.join(workspaceNativeRoot, 'skills', 'shared', 'repo-search'), { recursive: true });
 
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'modes', 'review.md'),
+            path.join(workspaceModeRoot, 'modes', 'review.md'),
             `---
 modeKey: review
 label: Workspace Review
@@ -166,7 +145,7 @@ tags:
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'modes', 'orchestrator.md'),
+            path.join(workspaceModeRoot, 'modes', 'orchestrator.md'),
             `---
 topLevelTab: orchestrator
 modeKey: workspace-orchestrator
@@ -181,7 +160,7 @@ precedence: 5
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'modes', 'invalid.md'),
+            path.join(workspaceModeRoot, 'modes', 'invalid.md'),
             `---
 topLevelTab: shared
 modeKey: invalid-shared
@@ -194,7 +173,7 @@ label: Invalid Shared Mode
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'modes', 'invalid-groups.md'),
+            path.join(workspaceModeRoot, 'modes', 'invalid-groups.md'),
             `---
 topLevelTab: agent
 modeKey: invalid-groups
@@ -208,7 +187,7 @@ groups: review
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'rules', 'coding-rules.md'),
+            path.join(workspaceNativeRoot, 'rules', 'shared', 'coding-rules.md'),
             `---
 key: coding_rules
 name: Workspace Rules
@@ -223,7 +202,7 @@ tags:
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'skills', 'repo-search.md'),
+            path.join(workspaceNativeRoot, 'skills', 'shared', 'repo-search', 'SKILL.md'),
             `---
 key: repo_search
 name: Workspace Search
@@ -392,7 +371,7 @@ tags:
         expect(orchestratorActiveMode.activeMode.modeKey).toBe('workspace-orchestrator');
         expect(orchestratorActiveMode.activeMode.label).toBe('Workspace Orchestrator');
 
-        rmSync(path.join(workspaceAssetsRoot, 'skills', 'repo-search.md'));
+        rmSync(path.join(workspaceNativeRoot, 'skills', 'shared', 'repo-search', 'SKILL.md'));
         const prunedRefresh = await caller.registry.refresh({
             profileId,
             workspaceFingerprint,
@@ -422,11 +401,12 @@ tags:
         });
 
         const globalRegistry = await caller.registry.listResolved({ profileId });
-        const globalAssetsRoot = globalRegistry.paths.globalAssetsRoot;
-        resetRegistryAssetDirectories(globalAssetsRoot);
-        mkdirSync(path.join(globalAssetsRoot, 'modes'), { recursive: true });
+        const globalModeRoot = globalRegistry.paths.modeRoots.globalRoot;
+        const globalNativeRoot = globalRegistry.paths.nativeRulesSkillsRoots.globalRoot;
+        resetRegistryAssetDirectories({ modeRoot: globalModeRoot, nativeRoot: globalNativeRoot });
+        mkdirSync(path.join(globalModeRoot, 'modes'), { recursive: true });
         writeFileSync(
-            path.join(globalAssetsRoot, 'modes', 'chat.md'),
+            path.join(globalModeRoot, 'modes', 'chat.md'),
             `---
 topLevelTab: chat
 modeKey: chat
@@ -454,10 +434,10 @@ precedence: 5
             throw new Error('Expected workspace root for non-agent refresh guard test.');
         }
 
-        const workspaceAssetsRoot = path.join(workspaceRoot.absolutePath, '.neonconductor');
-        mkdirSync(path.join(workspaceAssetsRoot, 'modes'), { recursive: true });
+        const workspaceModeRoot = path.join(workspaceRoot.absolutePath, '.neonconductor');
+        mkdirSync(path.join(workspaceModeRoot, 'modes'), { recursive: true });
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'modes', 'orchestrate.md'),
+            path.join(workspaceModeRoot, 'modes', 'orchestrate.md'),
             `---
 topLevelTab: orchestrator
 modeKey: orchestrate
@@ -495,7 +475,7 @@ precedence: 5
             throw new Error('Expected custom orchestrator mode activation to succeed.');
         }
 
-        rmSync(path.join(workspaceAssetsRoot, 'modes', 'orchestrate.md'));
+        rmSync(path.join(workspaceModeRoot, 'modes', 'orchestrate.md'));
         await caller.registry.refresh({ profileId, workspaceFingerprint });
 
         const builtInChat = await caller.mode.getActive({
@@ -656,23 +636,25 @@ precedence: 5
             profileId,
             workspaceFingerprint,
         });
-        const globalAssetsRoot = registryPaths.paths.globalAssetsRoot;
-        const workspaceAssetsRoot = registryPaths.paths.workspaceAssetsRoot;
-        if (!workspaceAssetsRoot) {
+        const globalModeRoot = registryPaths.paths.modeRoots.globalRoot;
+        const globalNativeRoot = registryPaths.paths.nativeRulesSkillsRoots.globalRoot;
+        const workspaceModeRoot = registryPaths.paths.modeRoots.workspaceRoot;
+        const workspaceNativeRoot = registryPaths.paths.nativeRulesSkillsRoots.workspaceRoot;
+        if (!workspaceModeRoot || !workspaceNativeRoot) {
             throw new Error('Expected workspace asset root for registry-backed agent context test.');
         }
 
-        resetRegistryAssetDirectories(globalAssetsRoot);
-        resetRegistryAssetDirectories(workspaceAssetsRoot);
-        mkdirSync(path.join(globalAssetsRoot, 'modes'), { recursive: true });
-        mkdirSync(path.join(globalAssetsRoot, 'rules'), { recursive: true });
-        mkdirSync(path.join(globalAssetsRoot, 'skills'), { recursive: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'modes'), { recursive: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'rules'), { recursive: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'skills'), { recursive: true });
+        resetRegistryAssetDirectories({ modeRoot: globalModeRoot, nativeRoot: globalNativeRoot });
+        resetRegistryAssetDirectories({ modeRoot: workspaceModeRoot, nativeRoot: workspaceNativeRoot });
+        mkdirSync(path.join(globalModeRoot, 'modes'), { recursive: true });
+        mkdirSync(path.join(globalNativeRoot, 'rules', 'shared'), { recursive: true });
+        mkdirSync(path.join(globalNativeRoot, 'skills', 'shared', 'docs-lookup'), { recursive: true });
+        mkdirSync(path.join(workspaceModeRoot, 'modes'), { recursive: true });
+        mkdirSync(path.join(workspaceNativeRoot, 'rules', 'shared'), { recursive: true });
+        mkdirSync(path.join(workspaceNativeRoot, 'skills', 'shared', 'repo-search'), { recursive: true });
 
         writeFileSync(
-            path.join(globalAssetsRoot, 'modes', 'review.md'),
+            path.join(globalModeRoot, 'modes', 'review.md'),
             `---
 modeKey: review
 label: Global Review
@@ -686,7 +668,7 @@ toolCapabilities:
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'modes', 'review.md'),
+            path.join(workspaceModeRoot, 'modes', 'review.md'),
             `---
 modeKey: review
 label: Workspace Review
@@ -701,7 +683,7 @@ toolCapabilities:
             'utf8'
         );
         writeFileSync(
-            path.join(globalAssetsRoot, 'rules', 'coding-rules.md'),
+            path.join(globalNativeRoot, 'rules', 'shared', 'coding-rules.md'),
             `---
 key: coding_rules
 name: Global Rules
@@ -713,7 +695,7 @@ name: Global Rules
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'rules', 'coding-rules.md'),
+            path.join(workspaceNativeRoot, 'rules', 'shared', 'coding-rules.md'),
             `---
 key: coding_rules
 name: Workspace Rules
@@ -726,7 +708,7 @@ precedence: 5
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'skills', 'repo-search.md'),
+            path.join(workspaceNativeRoot, 'skills', 'shared', 'repo-search', 'SKILL.md'),
             `---
 key: repo_search
 name: Workspace Search
@@ -738,7 +720,7 @@ name: Workspace Search
             'utf8'
         );
         writeFileSync(
-            path.join(globalAssetsRoot, 'skills', 'docs-lookup.md'),
+            path.join(globalNativeRoot, 'skills', 'shared', 'docs-lookup', 'SKILL.md'),
             `---
 key: docs_lookup
 name: Docs Lookup
@@ -830,7 +812,7 @@ name: Docs Lookup
         expect(contents.some((content) => content.includes('Global Review Mode'))).toBe(false);
         expect(contents.some((content) => content.includes('This global rule should be overridden'))).toBe(false);
 
-        rmSync(path.join(workspaceAssetsRoot, 'skills', 'repo-search.md'));
+        rmSync(path.join(workspaceNativeRoot, 'skills', 'shared', 'repo-search', 'SKILL.md'));
         await caller.registry.refresh({
             profileId,
             workspaceFingerprint,

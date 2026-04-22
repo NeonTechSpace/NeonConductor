@@ -266,22 +266,32 @@ describe('runtime contracts: core flows', () => {
             .prepare(
                 `
                     INSERT INTO rulesets (
-                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
-                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                        id, profile_id, asset_key, target_kind, scope, workspace_fingerprint, preset_key,
+                        target_top_level_tab, target_mode_key, name, body_markdown, source, source_kind,
+                        origin_path, relative_root_path, description, tags_json, activation_mode, enabled,
+                        precedence, created_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_workspace_target',
                 profileId,
                 'ruleset.workspace.target',
+                'shared',
                 'workspace',
                 'wsf_runtime_contracts',
+                null,
+                null,
+                null,
                 'Workspace Rules',
                 '# Rules',
                 'user',
                 'workspace_file',
+                null,
+                'rules/shared/ruleset-workspace-target.md',
+                null,
+                '[]',
                 'manual',
                 1,
                 100,
@@ -292,22 +302,32 @@ describe('runtime contracts: core flows', () => {
             .prepare(
                 `
                     INSERT INTO skillfiles (
-                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
-                        source_kind, enabled, precedence, created_at, updated_at
+                        id, profile_id, asset_key, target_kind, scope, workspace_fingerprint, preset_key,
+                        target_top_level_tab, target_mode_key, name, dynamic_context_sources_json, source,
+                        source_kind, origin_path, relative_root_path, description, tags_json, enabled,
+                        precedence, created_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'skill_workspace_target',
                 profileId,
                 'skill.workspace.target',
+                'shared',
                 'workspace',
                 'wsf_runtime_contracts',
+                null,
+                null,
+                null,
                 'Workspace Skillfile',
-                '# Skill',
+                '[]',
                 'user',
                 'workspace_file',
+                null,
+                'skills/shared/skill-workspace-target/SKILL.md',
+                null,
+                '[]',
                 1,
                 100,
                 now,
@@ -317,22 +337,32 @@ describe('runtime contracts: core flows', () => {
             .prepare(
                 `
                     INSERT INTO rulesets (
-                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
-                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                        id, profile_id, asset_key, target_kind, scope, workspace_fingerprint, preset_key,
+                        target_top_level_tab, target_mode_key, name, body_markdown, source, source_kind,
+                        origin_path, relative_root_path, description, tags_json, activation_mode, enabled,
+                        precedence, created_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_workspace_other',
                 profileId,
                 'ruleset.workspace.other',
+                'shared',
                 'workspace',
                 'wsf_other_workspace',
+                null,
+                null,
+                null,
                 'Other Rules',
                 '# Rules',
                 'user',
                 'workspace_file',
+                null,
+                'rules/shared/ruleset-workspace-other.md',
+                null,
+                '[]',
                 'manual',
                 1,
                 100,
@@ -404,22 +434,32 @@ describe('runtime contracts: core flows', () => {
             .prepare(
                 `
                     INSERT INTO rulesets (
-                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
-                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                        id, profile_id, asset_key, target_kind, scope, workspace_fingerprint, preset_key,
+                        target_top_level_tab, target_mode_key, name, body_markdown, source, source_kind,
+                        origin_path, relative_root_path, description, tags_json, activation_mode, enabled,
+                        precedence, created_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_profile_other',
                 otherProfileId,
                 'ruleset.profile.other',
+                'shared',
                 'global',
+                null,
+                null,
+                null,
                 null,
                 'Other Profile Rules',
                 '# Rules',
                 'user',
                 'global_file',
+                null,
+                'rules/shared/ruleset-profile-other.md',
+                null,
+                '[]',
                 'manual',
                 1,
                 100,

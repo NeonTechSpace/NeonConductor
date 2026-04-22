@@ -2,6 +2,9 @@ import type {
     ModeExecutionPolicy,
     ModePromptDefinition,
     PreparedContextModeOverrides,
+    RegistryAssetTargetKind,
+    RegistryDiscoveryDiagnostic,
+    RegistryExactModeTarget,
     RegistryPresetKey,
     RegistryScope,
     RegistrySourceKind,
@@ -36,11 +39,13 @@ export interface ParsedRegistryModeAsset {
     precedence: number;
 }
 
-export interface ParsedRegistryAsset {
+export interface ParsedRegistryMetadataAsset {
     assetKey: string;
+    targetKind: RegistryAssetTargetKind;
     presetKey?: RegistryPresetKey;
+    targetMode?: RegistryExactModeTarget;
+    relativeRootPath: string;
     name: string;
-    bodyMarkdown: string;
     source: Extract<RegistrySourceKind, 'global_file' | 'workspace_file'>;
     sourceKind: Extract<RegistrySourceKind, 'global_file' | 'workspace_file'>;
     scope: Extract<RegistryScope, 'global' | 'workspace'>;
@@ -52,11 +57,12 @@ export interface ParsedRegistryAsset {
     precedence: number;
 }
 
-export interface ParsedRegistryRulesetAsset extends ParsedRegistryAsset {
+export interface ParsedRegistryRulesetAsset extends ParsedRegistryMetadataAsset {
+    bodyMarkdown: string;
     activationMode: RuleActivationMode;
 }
 
-export interface ParsedRegistrySkillAsset extends ParsedRegistryAsset {
+export interface ParsedRegistrySkillAsset extends ParsedRegistryMetadataAsset {
     dynamicContextSources: SkillDynamicContextSource[];
 }
 
@@ -64,6 +70,7 @@ export interface RegistryDiscoveryBatch {
     modes: ParsedRegistryModeAsset[];
     rulesets: ParsedRegistryRulesetAsset[];
     skillfiles: ParsedRegistrySkillAsset[];
+    diagnostics: RegistryDiscoveryDiagnostic[];
 }
 
 export interface RegistryPersistenceScope {

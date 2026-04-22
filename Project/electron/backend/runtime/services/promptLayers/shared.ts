@@ -377,13 +377,16 @@ export async function refreshDiscoveredModesForScope(input: {
         profileId: input.profileId,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
     });
-    const rootPath = input.scope === 'workspace' ? paths.workspaceAssetsRoot : paths.globalAssetsRoot;
-    if (!rootPath) {
+    const modeRootPath = input.scope === 'workspace' ? paths.modeRoots.workspaceRoot : paths.modeRoots.globalRoot;
+    const nativeRootPath =
+        input.scope === 'workspace' ? paths.nativeRulesSkillsRoots.workspaceRoot : paths.nativeRulesSkillsRoots.globalRoot;
+    if (!modeRootPath || !nativeRootPath) {
         return errOp('invalid_input', 'Workspace mode import requires a selected workspace.');
     }
 
     const discoveredAssets = await buildDiscoveredAssets({
-        rootPath,
+        modeRootPath,
+        nativeRootPath,
         scope: input.scope,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
     });

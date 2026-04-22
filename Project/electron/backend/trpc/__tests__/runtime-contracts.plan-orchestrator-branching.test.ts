@@ -172,16 +172,19 @@ describe('runtime contracts: planning and orchestrator', () => {
             profileId,
             workspaceFingerprint,
         });
-        const workspaceAssetsRoot = registryPaths.paths.workspaceAssetsRoot;
-        if (!workspaceAssetsRoot) {
+        const workspaceNativeRoot = registryPaths.paths.nativeRulesSkillsRoots.workspaceRoot;
+        if (!workspaceNativeRoot) {
             throw new Error('Expected workspace assets root for delegated child propagation test.');
         }
 
-        rmSync(workspaceAssetsRoot, { recursive: true, force: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'rules-code'), { recursive: true });
-        mkdirSync(path.join(workspaceAssetsRoot, 'skills-code'), { recursive: true });
+        rmSync(path.join(workspaceNativeRoot, 'rules'), { recursive: true, force: true });
+        rmSync(path.join(workspaceNativeRoot, 'skills'), { recursive: true, force: true });
+        mkdirSync(path.join(workspaceNativeRoot, 'rules', 'modes', 'agent', 'code'), { recursive: true });
+        mkdirSync(path.join(workspaceNativeRoot, 'skills', 'modes', 'agent', 'code', 'delegated-repo-search'), {
+            recursive: true,
+        });
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'rules-code', 'delegated-manual-rule.md'),
+            path.join(workspaceNativeRoot, 'rules', 'modes', 'agent', 'code', 'delegated-manual-rule.md'),
             `---
 key: delegated_manual_rule
 name: Delegated Manual Rule
@@ -194,7 +197,7 @@ activationMode: manual
             'utf8'
         );
         writeFileSync(
-            path.join(workspaceAssetsRoot, 'skills-code', 'delegated-repo-search.md'),
+            path.join(workspaceNativeRoot, 'skills', 'modes', 'agent', 'code', 'delegated-repo-search', 'SKILL.md'),
             `---
 key: delegated_repo_search
 name: Delegated Repo Search

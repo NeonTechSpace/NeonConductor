@@ -12,7 +12,7 @@ export {
     replaceDiscoveredSkillfiles,
 } from '@/app/backend/runtime/services/registry/registryAssetPersistenceLifecycle';
 export type {
-    ParsedRegistryAsset,
+    ParsedRegistryMetadataAsset,
     ParsedRegistryModeAsset,
     ParsedRegistryRulesetAsset,
     ParsedRegistrySkillAsset,

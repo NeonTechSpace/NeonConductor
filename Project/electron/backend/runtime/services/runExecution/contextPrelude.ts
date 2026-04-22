@@ -36,6 +36,8 @@ import type {
     TopLevelTab,
 } from '@/shared/contracts';
 
+type LoadedSkillfileDefinition = SkillfileDefinition & { bodyMarkdown: string };
+
 function readPromptText(value: string | undefined): string | undefined {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
@@ -154,9 +156,9 @@ function buildAgentPreludeContributorSpecs(input: {
     profileGlobalInstructions?: string;
     topLevelInstructions?: string;
     mode: ModeDefinition;
-    rulesets: RulesetDefinition[];
+    rulesets: Array<{ ruleset: RulesetDefinition; inclusionReason: string }>;
     projectInstructions: ProjectInstructionDocument[];
-    skillfiles: SkillfileDefinition[];
+    skillfiles: LoadedSkillfileDefinition[];
     workspacePrelude?: RunContextMessage[];
     workspaceContextLabel?: string;
 }): PreparedContextContributorSpec[] {
@@ -277,7 +279,8 @@ function buildAgentPreludeContributorSpecs(input: {
         );
     }
 
-    for (const ruleset of input.rulesets) {
+    for (const entry of input.rulesets) {
+        const { ruleset } = entry;
         prelude.push(
             createContributorSpec({
                 id: `ruleset:${ruleset.assetKey}`,
@@ -291,7 +294,7 @@ function buildAgentPreludeContributorSpecs(input: {
                 },
                 body: ruleset.bodyMarkdown,
                 fixedCheckpoint: 'bootstrap',
-                inclusionReason: 'Included by attached or auto-applied ruleset resolution.',
+                inclusionReason: entry.inclusionReason,
             })
         );
     }
@@ -376,24 +379,72 @@ function shouldAutoApplyRuleset(input: {
     return normalizedHaystacks.some((value) => normalizedPrompt.includes(value));
 }
 
-async function loadActiveSkillBodies(skillfiles: SkillfileDefinition[]): Promise<SkillfileDefinition[]> {
-    return Promise.all(
-        skillfiles.map(async (skillfile) => {
-            if (!skillfile.originPath) {
-                return skillfile;
-            }
+function describeAutoApplyRulesetReason(input: {
+    ruleset: RulesetDefinition;
+    prompt: string;
+    presetKeys: RegistryPresetKey[];
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+}): string | undefined {
+    if (input.ruleset.activationMode !== 'auto') {
+        return undefined;
+    }
 
-            try {
-                const bodyMarkdown = await readRegistryMarkdownBody(skillfile.originPath);
-                return {
-                    ...skillfile,
-                    bodyMarkdown,
-                };
-            } catch {
-                return skillfile;
-            }
-        })
-    );
+    const normalizedPrompt = input.prompt.trim().toLowerCase();
+    const candidates = [
+        { label: 'rule name', value: input.ruleset.name },
+        { label: 'rule description', value: input.ruleset.description ?? '' },
+        ...(input.ruleset.tags ?? []).map((tag) => ({ label: 'rule tag', value: tag })),
+        { label: 'active top-level tab', value: input.topLevelTab },
+        { label: 'active mode key', value: input.modeKey },
+        ...input.presetKeys.map((presetKey) => ({ label: 'active preset', value: presetKey })),
+    ]
+        .map((candidate) => ({
+            label: candidate.label,
+            value: candidate.value.trim().toLowerCase(),
+        }))
+        .filter((candidate) => candidate.value.length > 0);
+
+    const match = candidates.find((candidate) => normalizedPrompt.includes(candidate.value));
+    return match ? `Included because the prompt matched the ${match.label} "${match.value}".` : undefined;
+}
+
+async function loadActiveSkillBodies(
+    skillfiles: SkillfileDefinition[]
+): Promise<RunExecutionResult<LoadedSkillfileDefinition[]>> {
+    const loadedSkillfiles: LoadedSkillfileDefinition[] = [];
+
+    for (const skillfile of skillfiles) {
+        if (skillfile.bodyMarkdown && skillfile.bodyMarkdown.trim().length > 0) {
+            loadedSkillfiles.push({
+                ...skillfile,
+                bodyMarkdown: skillfile.bodyMarkdown,
+            });
+            continue;
+        }
+
+        if (!skillfile.originPath) {
+            return errRunExecution(
+                'invalid_payload',
+                `Attached skill "${skillfile.name}" is missing its origin path and cannot be loaded from disk.`
+            );
+        }
+
+        try {
+            const bodyMarkdown = await readRegistryMarkdownBody(skillfile.originPath);
+            loadedSkillfiles.push({
+                ...skillfile,
+                bodyMarkdown,
+            });
+        } catch {
+            return errRunExecution(
+                'invalid_payload',
+                `Attached skill "${skillfile.name}" could not be loaded from "${skillfile.originPath}". Refresh the registry or repair the skill package.`
+            );
+        }
+    }
+
+    return okRunExecution(loadedSkillfiles);
 }
 
 export async function buildSessionSystemPrelude(input: {
@@ -450,6 +501,8 @@ export async function buildSessionSystemPrelude(input: {
         items: resolvedRegistry.resolved.rulesets,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         activePresetKeys: presetKeys,
+        topLevelTab: input.topLevelTab,
+        modeKey: input.resolvedMode.mode.modeKey,
     });
     const alwaysRulesets = contextualRulesets.filter((ruleset) => ruleset.activationMode === 'always');
     const autoRulesets = contextualRulesets.filter((ruleset) =>
@@ -492,13 +545,45 @@ export async function buildSessionSystemPrelude(input: {
         );
     }
 
-    const activeRulesetsByAssetKey = new Map<string, RulesetDefinition>();
-    for (const ruleset of [...alwaysRulesets, ...autoRulesets, ...resolvedRules.rulesets]) {
+    const activeRulesetsByAssetKey = new Map<string, { ruleset: RulesetDefinition; inclusionReason: string }>();
+    for (const ruleset of alwaysRulesets) {
         if (!activeRulesetsByAssetKey.has(ruleset.assetKey)) {
-            activeRulesetsByAssetKey.set(ruleset.assetKey, ruleset);
+            activeRulesetsByAssetKey.set(ruleset.assetKey, {
+                ruleset,
+                inclusionReason: 'Included because this ruleset is marked always for the active mode context.',
+            });
         }
     }
-    const activeSkillfiles = await loadActiveSkillBodies(resolvedSkills.skillfiles);
+    for (const ruleset of autoRulesets) {
+        if (!activeRulesetsByAssetKey.has(ruleset.assetKey)) {
+            activeRulesetsByAssetKey.set(ruleset.assetKey, {
+                ruleset,
+                inclusionReason:
+                    describeAutoApplyRulesetReason({
+                        ruleset,
+                        prompt: input.prompt,
+                        presetKeys,
+                        topLevelTab: input.topLevelTab,
+                        modeKey: input.resolvedMode.mode.modeKey,
+                    }) ?? 'Included because this auto ruleset matched the active prompt and mode context.',
+            });
+        }
+    }
+    for (const ruleset of resolvedRules.rulesets) {
+        if (!activeRulesetsByAssetKey.has(ruleset.assetKey)) {
+            activeRulesetsByAssetKey.set(ruleset.assetKey, {
+                ruleset,
+                inclusionReason: 'Included because this manual ruleset is explicitly attached to the active session.',
+            });
+        }
+    }
+    const activeSkillfilesResult = await loadActiveSkillBodies(resolvedSkills.skillfiles);
+    if (activeSkillfilesResult.isErr()) {
+        return errRunExecution(activeSkillfilesResult.error.code, activeSkillfilesResult.error.message, {
+            ...(activeSkillfilesResult.error.action ? { action: activeSkillfilesResult.error.action } : {}),
+        });
+    }
+    const activeSkillfiles = activeSkillfilesResult.value;
     const workspacePrelude =
         workspaceContext && workspaceContext.kind !== 'detached' && input.workspaceFingerprint
             ? await buildWorkspacePreludeMessages({

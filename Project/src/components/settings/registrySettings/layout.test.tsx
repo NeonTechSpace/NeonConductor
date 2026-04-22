@@ -27,12 +27,22 @@ vi.mock('@/web/components/settings/registrySettings/controller', () => ({
             discoveredWorkspaceRules: [],
             discoveredGlobalSkills: [],
             discoveredWorkspaceSkills: [],
-            globalAssetsRoot: 'C:/registry',
+            globalModeRoot: 'C:/registry/modes',
+            globalNativeRoot: 'C:/Users/test/.neonconductor',
+            workspaceModeRoot: undefined,
+            workspaceNativeRoot: undefined,
+            globalDiagnostics: [],
+            workspaceDiagnostics: [],
         },
         registryQuery: {
             data: {
                 paths: {
-                    globalAssetsRoot: 'C:/registry',
+                    modeRoots: {
+                        globalRoot: 'C:/registry/modes',
+                    },
+                    nativeRulesSkillsRoots: {
+                        globalRoot: 'C:/Users/test/.neonconductor',
+                    },
                 },
                 resolved: {
                     rulesets: [],
@@ -44,6 +54,9 @@ vi.mock('@/web/components/settings/registrySettings/controller', () => ({
                         rulesets: [],
                         skillfiles: [],
                     },
+                },
+                diagnostics: {
+                    global: [],
                 },
             },
         },

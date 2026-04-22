@@ -56,7 +56,7 @@ modeKey: ignored
         );
         writeMarkdownFile(
             rootPath,
-            'rules-code/manual-rule.md',
+            'rules/presets/code/manual-rule.md',
             `---
 assetKey: rules/code/manual_rule
 name: Manual Rule
@@ -69,7 +69,7 @@ tags:
         );
         writeMarkdownFile(
             rootPath,
-            'skills/overview.md',
+            'skills/shared/overview/SKILL.md',
             `---
 assetKey: skills/overview
 name: Overview
@@ -81,7 +81,7 @@ tags:
         );
         writeMarkdownFile(
             rootPath,
-            'skills-code/assistant.md',
+            'skills/presets/code/assistant/SKILL.md',
             `---
 key: skills/code/assistant
 name: Assistant
@@ -92,7 +92,11 @@ tags:
 `
         );
 
-        const globalBatch = await buildDiscoveredAssets({ rootPath, scope: 'global' });
+        const globalBatch = await buildDiscoveredAssets({
+            modeRootPath: rootPath,
+            nativeRootPath: rootPath,
+            scope: 'global',
+        });
         expect(globalBatch).toMatchObject({
             modes: [
                 {
@@ -116,49 +120,54 @@ tags:
                 {
                     assetKey: 'rules/code/manual_rule',
                     presetKey: 'code',
+                    targetKind: 'preset',
+                    relativeRootPath: 'rules/presets/code/manual-rule.md',
                     name: 'Manual Rule',
                     bodyMarkdown: '# Manual rule',
                     source: 'global_file',
                     sourceKind: 'global_file',
                     scope: 'global',
-                    originPath: path.join(rootPath, 'rules-code', 'manual-rule.md'),
+                    originPath: path.join(rootPath, 'rules', 'presets', 'code', 'manual-rule.md'),
                     tags: ['code'],
                     activationMode: 'manual',
                     enabled: true,
                     precedence: 0,
                 },
             ],
-            skillfiles: [
-                {
+            skillfiles: expect.arrayContaining([
+                expect.objectContaining({
                     assetKey: 'skills/overview',
+                    targetKind: 'shared',
+                    relativeRootPath: 'skills/shared/overview/SKILL.md',
                     name: 'Overview',
-                    bodyMarkdown: '# Skill body',
                     source: 'global_file',
                     sourceKind: 'global_file',
                     scope: 'global',
-                    originPath: path.join(rootPath, 'skills', 'overview.md'),
+                    originPath: path.join(rootPath, 'skills', 'shared', 'overview', 'SKILL.md'),
                     tags: ['docs'],
                     enabled: true,
                     precedence: 0,
-                },
-                {
+                }),
+                expect.objectContaining({
                     assetKey: 'skills/code/assistant',
                     presetKey: 'code',
+                    targetKind: 'preset',
+                    relativeRootPath: 'skills/presets/code/assistant/SKILL.md',
                     name: 'Assistant',
-                    bodyMarkdown: '# Assistant skill',
                     source: 'global_file',
                     sourceKind: 'global_file',
                     scope: 'global',
-                    originPath: path.join(rootPath, 'skills-code', 'assistant.md'),
+                    originPath: path.join(rootPath, 'skills', 'presets', 'code', 'assistant', 'SKILL.md'),
                     tags: ['code'],
                     enabled: true,
                     precedence: 0,
-                },
-            ],
+                }),
+            ]),
         });
 
         const workspaceBatch = await buildDiscoveredAssets({
-            rootPath,
+            modeRootPath: rootPath,
+            nativeRootPath: rootPath,
             scope: 'workspace',
             workspaceFingerprint: 'ws_123',
         });

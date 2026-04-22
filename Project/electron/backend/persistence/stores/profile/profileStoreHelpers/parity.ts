@@ -80,14 +80,18 @@ async function copyRulesets(
         .selectFrom('rulesets')
         .select([
             'asset_key',
+            'target_kind',
             'scope',
             'workspace_fingerprint',
             'preset_key',
+            'target_top_level_tab',
+            'target_mode_key',
             'name',
             'body_markdown',
             'source',
             'source_kind',
             'origin_path',
+            'relative_root_path',
             'description',
             'tags_json',
             'activation_mode',
@@ -108,14 +112,18 @@ async function copyRulesets(
                 id: `ruleset_${randomUUID()}`,
                 profile_id: targetProfileId,
                 asset_key: row.asset_key,
+                target_kind: row.target_kind,
                 scope: row.scope,
                 workspace_fingerprint: row.workspace_fingerprint,
                 preset_key: row.preset_key,
+                target_top_level_tab: row.target_top_level_tab,
+                target_mode_key: row.target_mode_key,
                 name: row.name,
                 body_markdown: row.body_markdown,
                 source: row.source,
                 source_kind: row.source_kind,
                 origin_path: row.origin_path,
+                relative_root_path: row.relative_root_path,
                 description: row.description,
                 tags_json: row.tags_json,
                 activation_mode: row.activation_mode,
@@ -138,15 +146,18 @@ async function copySkillfiles(
         .selectFrom('skillfiles')
         .select([
             'asset_key',
+            'target_kind',
             'scope',
             'workspace_fingerprint',
             'preset_key',
+            'target_top_level_tab',
+            'target_mode_key',
             'name',
-            'body_markdown',
             'dynamic_context_sources_json',
             'source',
             'source_kind',
             'origin_path',
+            'relative_root_path',
             'description',
             'tags_json',
             'enabled',
@@ -166,21 +177,62 @@ async function copySkillfiles(
                 id: `skillfile_${randomUUID()}`,
                 profile_id: targetProfileId,
                 asset_key: row.asset_key,
+                target_kind: row.target_kind,
                 scope: row.scope,
                 workspace_fingerprint: row.workspace_fingerprint,
                 preset_key: row.preset_key,
+                target_top_level_tab: row.target_top_level_tab,
+                target_mode_key: row.target_mode_key,
                 name: row.name,
-                body_markdown: row.body_markdown,
                 dynamic_context_sources_json: row.dynamic_context_sources_json,
                 source: row.source,
                 source_kind: row.source_kind,
                 origin_path: row.origin_path,
+                relative_root_path: row.relative_root_path,
                 description: row.description,
                 tags_json: row.tags_json,
                 enabled: row.enabled,
                 precedence: row.precedence,
                 created_at: timestamp,
                 updated_at: timestamp,
+            }))
+        )
+        .execute();
+}
+
+async function copyRegistryDiscoveryDiagnostics(
+    tx: ProfileStoreDb,
+    sourceProfileId: string,
+    targetProfileId: string
+): Promise<void> {
+    const rows = await tx
+        .selectFrom('registry_discovery_diagnostics')
+        .select([
+            'id',
+            'asset_kind',
+            'scope',
+            'workspace_fingerprint',
+            'relative_path',
+            'severity',
+            'code',
+            'message',
+            'created_at',
+            'updated_at',
+        ])
+        .where('profile_id', '=', sourceProfileId)
+        .execute();
+
+    if (rows.length === 0) {
+        return;
+    }
+
+    await tx
+        .insertInto('registry_discovery_diagnostics')
+        .values(
+            rows.map((row) => ({
+                ...row,
+                id: `regdiag_${randomUUID()}`,
+                profile_id: targetProfileId,
             }))
         )
         .execute();
@@ -195,4 +247,5 @@ export async function copyProfileParityRows(input: {
     await copyModeDefinitions(input.tx, input.sourceProfileId, input.targetProfileId, input.timestamp);
     await copyRulesets(input.tx, input.sourceProfileId, input.targetProfileId, input.timestamp);
     await copySkillfiles(input.tx, input.sourceProfileId, input.targetProfileId, input.timestamp);
+    await copyRegistryDiscoveryDiagnostics(input.tx, input.sourceProfileId, input.targetProfileId);
 }

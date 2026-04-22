@@ -168,7 +168,7 @@ describe('runtime contracts: prompt layers', () => {
     it('creates, updates, exports, and deletes canonical file-backed custom modes', async () => {
         const caller = createCaller();
         const globalRegistry = await caller.registry.listResolved({ profileId });
-        const globalModesRoot = path.join(globalRegistry.paths.globalAssetsRoot, 'modes');
+        const globalModesRoot = path.join(globalRegistry.paths.modeRoots.globalRoot, 'modes');
         rmSync(globalModesRoot, { recursive: true, force: true });
         mkdirSync(globalModesRoot, { recursive: true });
 
@@ -310,7 +310,7 @@ describe('runtime contracts: prompt layers', () => {
     it('supports draft lifecycle, apply, overwrite protection, and portable import', async () => {
         const caller = createCaller();
         const globalRegistry = await caller.registry.listResolved({ profileId });
-        const globalModesRoot = path.join(globalRegistry.paths.globalAssetsRoot, 'modes');
+        const globalModesRoot = path.join(globalRegistry.paths.modeRoots.globalRoot, 'modes');
         rmSync(globalModesRoot, { recursive: true, force: true });
         mkdirSync(globalModesRoot, { recursive: true });
 
@@ -461,12 +461,12 @@ describe('runtime contracts: prompt layers', () => {
             profileId,
             workspaceFingerprint,
         });
-        const workspaceAssetsRoot = workspaceRegistry.paths.workspaceAssetsRoot;
-        if (!workspaceAssetsRoot) {
+        const workspaceModesRootBase = workspaceRegistry.paths.modeRoots.workspaceRoot;
+        if (!workspaceModesRootBase) {
             throw new Error('Expected workspace assets root.');
         }
 
-        const workspaceModesRoot = path.join(workspaceAssetsRoot, 'modes');
+        const workspaceModesRoot = path.join(workspaceModesRootBase, 'modes');
         rmSync(workspaceModesRoot, { recursive: true, force: true });
         mkdirSync(workspaceModesRoot, { recursive: true });
 

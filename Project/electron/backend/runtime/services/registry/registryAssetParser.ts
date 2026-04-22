@@ -374,13 +374,17 @@ export function parseRegistryRulesetAsset(
 ): ParsedRegistryRulesetAsset {
     const description = readString(file.parsed.attributes['description']);
     const tags = readTags(file.parsed.attributes['tags']);
+    const targetKind = file.targetKind ?? 'shared';
     return {
         assetKey: slugifyAssetKey(
             readString(file.parsed.attributes['assetKey']) ??
                 readString(file.parsed.attributes['key']) ??
                 file.assetPath
         ),
+        targetKind,
         ...(file.presetKey ? { presetKey: file.presetKey } : {}),
+        ...(file.targetMode ? { targetMode: file.targetMode } : {}),
+        relativeRootPath: file.relativeRootPath ?? file.relativePath,
         name: readString(file.parsed.attributes['name']) ?? titleCaseFromKey(file.assetPath),
         bodyMarkdown: file.parsed.bodyMarkdown,
         activationMode: readRuleActivationMode(file.parsed.attributes['activationMode']) ?? 'always',
@@ -402,15 +406,18 @@ export function parseRegistrySkillAsset(
 ): ParsedRegistrySkillAsset {
     const description = readString(file.parsed.attributes['description']);
     const tags = readTags(file.parsed.attributes['tags']);
+    const targetKind = file.targetKind ?? 'shared';
     return {
         assetKey: slugifyAssetKey(
             readString(file.parsed.attributes['assetKey']) ??
                 readString(file.parsed.attributes['key']) ??
                 file.assetPath
         ),
+        targetKind,
         ...(file.presetKey ? { presetKey: file.presetKey } : {}),
+        ...(file.targetMode ? { targetMode: file.targetMode } : {}),
+        relativeRootPath: file.relativeRootPath ?? file.relativePath,
         name: readString(file.parsed.attributes['name']) ?? titleCaseFromKey(file.assetPath),
-        bodyMarkdown: file.parsed.bodyMarkdown,
         dynamicContextSources: normalizeSkillDynamicContextSources(file.parsed.attributes['dynamicContextSources']),
         source: context.source,
         sourceKind: context.sourceKind,

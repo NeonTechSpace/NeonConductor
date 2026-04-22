@@ -138,6 +138,7 @@ async function applyProfileSettingsDelete(db: RuntimeResetDatabase, profileId: s
     await db.deleteFrom('mode_definitions').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('rulesets').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('skillfiles').where('profile_id', '=', profileId).execute();
+    await db.deleteFrom('registry_discovery_diagnostics').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('kilo_account_snapshots').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('kilo_org_snapshots').where('profile_id', '=', profileId).execute();
     await db.deleteFrom('provider_secrets').where('profile_id', '=', profileId).execute();

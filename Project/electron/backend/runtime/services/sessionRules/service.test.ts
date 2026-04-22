@@ -1,10 +1,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
     getDefaultProfileId,
-    getPersistenceStoragePaths,
     resetPersistenceForTests,
 } from '@/app/backend/persistence/db';
 import { conversationStore, sessionStore, threadStore, workspaceRootStore } from '@/app/backend/persistence/stores';
@@ -52,13 +52,13 @@ describe('sessionRules service', () => {
     it('accepts manual rules and rejects non-manual rule attachments', async () => {
         const profileId = getDefaultProfileId();
         const sessionId = await createWorkspaceSession(profileId);
-        const { globalAssetsRoot } = getPersistenceStoragePaths();
+        const nativeGlobalRoot = path.join(os.homedir(), '.neonconductor');
 
-        mkdirSync(path.join(globalAssetsRoot, 'rules-code'), { recursive: true });
+        mkdirSync(path.join(nativeGlobalRoot, 'rules', 'presets', 'code'), { recursive: true });
         writeFileSync(
-            path.join(globalAssetsRoot, 'rules-code', 'manual-rule.md'),
+            path.join(nativeGlobalRoot, 'rules', 'presets', 'code', 'phase5-session-rules-manual-rule.md'),
             `---
-key: manual_rule
+key: phase5_session_rules_manual_rule
 name: Manual Rule
 activationMode: manual
 description: Attach this rule explicitly for code sessions.
@@ -70,9 +70,9 @@ description: Attach this rule explicitly for code sessions.
             'utf8'
         );
         writeFileSync(
-            path.join(globalAssetsRoot, 'rules-code', 'always-rule.md'),
+            path.join(nativeGlobalRoot, 'rules', 'presets', 'code', 'phase5-session-rules-always-rule.md'),
             `---
-key: always_rule
+key: phase5_session_rules_always_rule
 name: Always Rule
 activationMode: always
 description: This rule should never be attached manually.
@@ -91,20 +91,22 @@ description: This rule should never be attached manually.
             sessionId,
             topLevelTab: 'agent',
             modeKey: 'code',
-            assetKeys: ['manual_rule'],
+            assetKeys: ['phase5_session_rules_manual_rule'],
         });
         expect(attachedManualRule.isOk()).toBe(true);
         if (attachedManualRule.isErr()) {
             throw new Error(attachedManualRule.error.message);
         }
-        expect(attachedManualRule.value.rulesets.map((ruleset) => ruleset.assetKey)).toEqual(['manual_rule']);
+        expect(attachedManualRule.value.rulesets.map((ruleset) => ruleset.assetKey)).toEqual([
+            'phase5_session_rules_manual_rule',
+        ]);
 
         const attachedAlwaysRule = await setAttachedRules({
             profileId,
             sessionId,
             topLevelTab: 'agent',
             modeKey: 'code',
-            assetKeys: ['always_rule'],
+            assetKeys: ['phase5_session_rules_always_rule'],
         });
         expect(attachedAlwaysRule.isErr()).toBe(true);
         if (attachedAlwaysRule.isOk()) {

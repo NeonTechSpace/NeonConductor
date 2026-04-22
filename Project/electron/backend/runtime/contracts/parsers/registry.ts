@@ -6,9 +6,11 @@ import {
     readObject,
     readOptionalString,
     readProfileId,
+    readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
     RegistryListResolvedInput,
+    RegistryReadSkillBodyInput,
     RegistryRefreshInput,
     RegistrySearchRulesInput,
     RegistrySearchSkillsInput,
@@ -53,7 +55,16 @@ export function parseRegistrySearchRulesInput(input: unknown): RegistrySearchRul
     return parseRegistrySearchSkillsInput(input);
 }
 
+export function parseRegistryReadSkillBodyInput(input: unknown): RegistryReadSkillBodyInput {
+    const source = readObject(input, 'input');
+    return {
+        profileId: readProfileId(source),
+        skillId: readString(source.skillId, 'skillId'),
+    };
+}
+
 export const registryRefreshInputSchema = createParser(parseRegistryRefreshInput);
 export const registryListResolvedInputSchema = createParser(parseRegistryListResolvedInput);
 export const registrySearchSkillsInputSchema = createParser(parseRegistrySearchSkillsInput);
 export const registrySearchRulesInputSchema = createParser(parseRegistrySearchRulesInput);
+export const registryReadSkillBodyInputSchema = createParser(parseRegistryReadSkillBodyInput);

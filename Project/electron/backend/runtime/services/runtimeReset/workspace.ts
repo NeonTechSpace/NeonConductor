@@ -288,7 +288,11 @@ async function resolveWorkspaceCounts(
     };
 }
 
-async function applyWorkspaceDelete(db: RuntimeResetDatabase, resolved: WorkspaceResolvedCounts): Promise<void> {
+async function applyWorkspaceDelete(
+    db: RuntimeResetDatabase,
+    resolved: WorkspaceResolvedCounts,
+    input: { target: Extract<RuntimeResetInput['target'], 'workspace' | 'workspace_all'>; workspaceFingerprint?: string }
+): Promise<void> {
     if (resolved.entityIds.length > 0) {
         await db.deleteFrom('runtime_events').where('entity_id', 'in', resolved.entityIds).execute();
     }
@@ -326,6 +330,16 @@ async function applyWorkspaceDelete(db: RuntimeResetDatabase, resolved: Workspac
     if (resolved.skillfileIds.length > 0) {
         await db.deleteFrom('skillfiles').where('id', 'in', resolved.skillfileIds).execute();
     }
+
+    await db
+        .deleteFrom('registry_discovery_diagnostics')
+        .where('scope', '=', 'workspace')
+        .where((eb) =>
+            input.target === 'workspace'
+                ? eb('workspace_fingerprint', '=', input.workspaceFingerprint ?? '')
+                : eb('workspace_fingerprint', 'is not', null)
+        )
+        .execute();
 }
 
 export async function planWorkspaceReset(
@@ -339,7 +353,10 @@ export async function planWorkspaceReset(
         counts: resolved.counts,
         reseedRuntimeData: false,
         apply: async (applyDb) => {
-            await applyWorkspaceDelete(applyDb, resolved);
+            await applyWorkspaceDelete(applyDb, resolved, {
+                target,
+                ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+            });
         },
     };
 }

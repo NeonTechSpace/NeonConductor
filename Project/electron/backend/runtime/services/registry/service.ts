@@ -34,6 +34,13 @@ export async function searchResolvedRulesets(input: {
     return registryResolvedQueryService.searchResolvedRulesets(input);
 }
 
+export async function readSkillBody(input: {
+    profileId: string;
+    skillId: string;
+}) {
+    return registryResolvedQueryService.readSkillBody(input);
+}
+
 export async function resolveSkillfilesByAssetKeys(input: {
     profileId: string;
     assetKeys: string[];

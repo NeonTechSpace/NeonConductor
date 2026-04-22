@@ -1,5 +1,9 @@
+import { useState } from 'react';
+
 import { MarkdownContent } from '@/web/components/content/markdown/markdownContent';
+import { Button } from '@/web/components/ui/button';
 import { summarizeSkillDynamicContext } from '@/web/lib/skillDynamicContextSummary';
+import { trpc } from '@/web/trpc/client';
 
 import type {
     ModeDefinitionRecord,
@@ -15,15 +19,26 @@ function previewMarkdown(markdown: string): string {
 }
 
 function formatScopeLabel(asset: RegistryAsset): string {
-    const presetLabel =
-        'presetKey' in asset && typeof asset.presetKey === 'string' && asset.presetKey.length > 0
-            ? ` · ${asset.presetKey}`
-            : '';
-    return `${asset.scope}${presetLabel}`;
+    return asset.scope;
+}
+
+function formatTargetFamilyLabel(asset: RulesetDefinitionRecord | SkillfileDefinitionRecord): string {
+    if (asset.targetKind === 'shared') {
+        return 'shared';
+    }
+    if (asset.targetKind === 'preset') {
+        return `preset · ${asset.presetKey ?? 'unknown'}`;
+    }
+
+    return `exact mode · ${asset.targetMode?.topLevelTab ?? 'unknown'}/${asset.targetMode?.modeKey ?? 'unknown'}`;
 }
 
 function isSkillAsset(asset: RegistryAsset): asset is SkillfileDefinitionRecord {
     return 'dynamicContextSources' in asset;
+}
+
+function isTargetedAsset(asset: RegistryAsset): asset is RulesetDefinitionRecord | SkillfileDefinitionRecord {
+    return 'targetKind' in asset;
 }
 
 function SkillDynamicContextMeta({ asset }: { asset: SkillfileDefinitionRecord }) {
@@ -56,9 +71,22 @@ export function AssetMeta({ asset }: { asset: RegistryAsset }) {
         <div className='mt-2 flex flex-wrap gap-2 text-[11px]'>
             <span className='bg-background rounded-full px-2 py-1 font-medium'>{formatScopeLabel(asset)}</span>
             <span className='bg-background rounded-full px-2 py-1 font-medium'>{asset.sourceKind}</span>
+            {isTargetedAsset(asset) ? (
+                <span className='bg-background rounded-full px-2 py-1 font-medium'>{formatTargetFamilyLabel(asset)}</span>
+            ) : null}
             {'activationMode' in asset ? (
                 <span className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>
                     {asset.activationMode}
+                </span>
+            ) : null}
+            {isTargetedAsset(asset) && asset.contextualMatchReason ? (
+                <span className='bg-primary/10 text-primary rounded-full px-2 py-1 font-medium'>
+                    matched via {asset.contextualMatchReason.replace('_', ' ')}
+                </span>
+            ) : null}
+            {isTargetedAsset(asset) && asset.shadowedVariants && asset.shadowedVariants.length > 0 ? (
+                <span className='rounded-full bg-amber-500/10 px-2 py-1 font-medium text-amber-700 dark:text-amber-300'>
+                    shadows {asset.shadowedVariants.length}
                 </span>
             ) : null}
             {asset.tags?.map((tag) => (
@@ -78,13 +106,28 @@ export function AssetCard({
     title,
     subtitle,
     bodyMarkdown,
+    profileId,
 }: {
     asset: RegistryAsset;
     title: string;
     subtitle: string;
-    bodyMarkdown: string;
+    bodyMarkdown?: string;
+    profileId: string;
 }) {
-    const preview = previewMarkdown(bodyMarkdown);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const lazySkillBodyQuery = trpc.registry.readSkillBody.useQuery(
+        {
+            profileId,
+            skillId: asset.id,
+        },
+        {
+            enabled: isExpanded && isSkillAsset(asset) && !bodyMarkdown,
+            staleTime: Number.POSITIVE_INFINITY,
+        }
+    );
+    const resolvedBodyMarkdown =
+        bodyMarkdown ?? (lazySkillBodyQuery.data?.found ? lazySkillBodyQuery.data.bodyMarkdown : undefined);
+    const preview = resolvedBodyMarkdown ? previewMarkdown(resolvedBodyMarkdown) : '';
 
     return (
         <article className='border-border bg-card rounded-3xl border p-4 shadow-sm'>
@@ -102,10 +145,43 @@ export function AssetCard({
                 </div>
             </div>
             <AssetMeta asset={asset} />
+            {isTargetedAsset(asset) && asset.relativeRootPath ? (
+                <p className='text-muted-foreground mt-3 text-xs'>{asset.relativeRootPath}</p>
+            ) : null}
+            {isTargetedAsset(asset) && asset.shadowedVariants && asset.shadowedVariants.length > 0 ? (
+                <p className='text-muted-foreground mt-2 text-xs'>
+                    Shadowed weaker variants: {asset.shadowedVariants.map((variant) => variant.relativeRootPath ?? variant.targetKind).join(', ')}
+                </p>
+            ) : null}
+            {isSkillAsset(asset) && !bodyMarkdown ? (
+                <div className='mt-3'>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        onClick={() => {
+                            setIsExpanded((current) => !current);
+                        }}>
+                        {isExpanded ? 'Hide skill body' : 'Load skill body'}
+                    </Button>
+                </div>
+            ) : null}
             {preview.length > 0 ? (
                 <div className='border-border bg-background/70 mt-3 rounded-2xl border p-3'>
                     <MarkdownContent markdown={preview} className='space-y-2' />
                 </div>
+            ) : null}
+            {isExpanded && isSkillAsset(asset) && !resolvedBodyMarkdown && lazySkillBodyQuery.isLoading ? (
+                <p className='text-muted-foreground mt-3 text-xs'>Loading skill body…</p>
+            ) : null}
+            {isExpanded &&
+            isSkillAsset(asset) &&
+            !resolvedBodyMarkdown &&
+            lazySkillBodyQuery.data &&
+            !lazySkillBodyQuery.data.found ? (
+                <p className='text-muted-foreground mt-3 text-xs'>
+                    Skill body is unavailable. Refresh the registry or repair the source package.
+                </p>
             ) : null}
             {asset.originPath ? (
                 <p className='text-muted-foreground bg-background/60 mt-3 rounded-xl px-3 py-2 text-[11px] break-all'>
@@ -123,13 +199,15 @@ export function AssetSection<TAsset extends RegistryAsset>({
     renderTitle,
     renderSubtitle,
     renderBodyMarkdown,
+    profileId,
 }: {
     title: string;
     emptyLabel: string;
     assets: TAsset[];
     renderTitle: (asset: TAsset) => string;
     renderSubtitle: (asset: TAsset) => string;
-    renderBodyMarkdown: (asset: TAsset) => string;
+    renderBodyMarkdown?: (asset: TAsset) => string | undefined;
+    profileId: string;
 }) {
     return (
         <section className='space-y-3'>
@@ -140,13 +218,19 @@ export function AssetSection<TAsset extends RegistryAsset>({
             {assets.length > 0 ? (
                 <div className='grid gap-3 xl:grid-cols-2'>
                     {assets.map((asset) => (
-                        <AssetCard
-                            key={asset.id}
-                            asset={asset}
-                            title={renderTitle(asset)}
-                            subtitle={renderSubtitle(asset)}
-                            bodyMarkdown={renderBodyMarkdown(asset)}
-                        />
+                        (() => {
+                            const bodyMarkdown = renderBodyMarkdown?.(asset);
+                            return (
+                                <AssetCard
+                                    key={asset.id}
+                                    asset={asset}
+                                    title={renderTitle(asset)}
+                                    subtitle={renderSubtitle(asset)}
+                                    {...(bodyMarkdown !== undefined ? { bodyMarkdown } : {})}
+                                    profileId={profileId}
+                                />
+                            );
+                        })()
                     ))}
                 </div>
             ) : (

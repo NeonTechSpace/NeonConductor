@@ -823,40 +823,82 @@ CREATE TABLE rulesets (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     asset_key TEXT NOT NULL,
+    target_kind TEXT NOT NULL CHECK (target_kind IN ('shared', 'preset', 'exact_mode')),
     scope TEXT NOT NULL CHECK (scope IN ('global', 'workspace', 'session')),
     workspace_fingerprint TEXT NULL,
     preset_key TEXT NULL CHECK (preset_key IN ('ask', 'code', 'debug', 'orchestrator')),
+    target_top_level_tab TEXT NULL CHECK (target_top_level_tab IS NULL OR target_top_level_tab IN ('chat', 'agent', 'orchestrator')),
+    target_mode_key TEXT NULL,
     name TEXT NOT NULL,
     body_markdown TEXT NOT NULL,
     source TEXT NOT NULL,
     source_kind TEXT NOT NULL CHECK (source_kind IN ('system_seed', 'global_file', 'workspace_file', 'session_override')),
     origin_path TEXT NULL,
+    relative_root_path TEXT NULL,
     description TEXT NULL,
     tags_json TEXT NOT NULL DEFAULT '[]',
     activation_mode TEXT NOT NULL CHECK (activation_mode IN ('always', 'auto', 'manual')),
     enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
     precedence INTEGER NOT NULL,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    CHECK (
+        (target_kind = 'shared' AND preset_key IS NULL AND target_top_level_tab IS NULL AND target_mode_key IS NULL)
+        OR
+        (target_kind = 'preset' AND preset_key IS NOT NULL AND target_top_level_tab IS NULL AND target_mode_key IS NULL)
+        OR
+        (target_kind = 'exact_mode' AND preset_key IS NULL AND target_top_level_tab IS NOT NULL AND target_mode_key IS NOT NULL)
+    )
 );
 
 CREATE TABLE skillfiles (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     asset_key TEXT NOT NULL,
+    target_kind TEXT NOT NULL CHECK (target_kind IN ('shared', 'preset', 'exact_mode')),
     scope TEXT NOT NULL CHECK (scope IN ('global', 'workspace', 'session')),
     workspace_fingerprint TEXT NULL,
     preset_key TEXT NULL CHECK (preset_key IN ('ask', 'code', 'debug', 'orchestrator')),
+    target_top_level_tab TEXT NULL CHECK (target_top_level_tab IS NULL OR target_top_level_tab IN ('chat', 'agent', 'orchestrator')),
+    target_mode_key TEXT NULL,
     name TEXT NOT NULL,
-    body_markdown TEXT NOT NULL,
     dynamic_context_sources_json TEXT NOT NULL DEFAULT '[]',
     source TEXT NOT NULL,
     source_kind TEXT NOT NULL CHECK (source_kind IN ('system_seed', 'global_file', 'workspace_file', 'session_override')),
     origin_path TEXT NULL,
+    relative_root_path TEXT NULL,
     description TEXT NULL,
     tags_json TEXT NOT NULL DEFAULT '[]',
     enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
     precedence INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+        (target_kind = 'shared' AND preset_key IS NULL AND target_top_level_tab IS NULL AND target_mode_key IS NULL)
+        OR
+        (target_kind = 'preset' AND preset_key IS NOT NULL AND target_top_level_tab IS NULL AND target_mode_key IS NULL)
+        OR
+        (target_kind = 'exact_mode' AND preset_key IS NULL AND target_top_level_tab IS NOT NULL AND target_mode_key IS NOT NULL)
+    )
+);
+
+CREATE TABLE registry_discovery_diagnostics (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    asset_kind TEXT NOT NULL CHECK (asset_kind IN ('rules', 'skills')),
+    scope TEXT NOT NULL CHECK (scope IN ('global', 'workspace')),
+    workspace_fingerprint TEXT NULL,
+    relative_path TEXT NOT NULL,
+    severity TEXT NOT NULL CHECK (severity IN ('error')),
+    code TEXT NOT NULL CHECK (
+        code IN (
+            'invalid_target_layout',
+            'invalid_target_folder',
+            'invalid_target_mode',
+            'invalid_package_layout'
+        )
+    ),
+    message TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -1718,7 +1760,16 @@ CREATE INDEX idx_mode_drafts_profile_scope
     ON mode_drafts(profile_id, scope, workspace_fingerprint, updated_at);
 
 CREATE UNIQUE INDEX idx_rulesets_profile_registry_asset
-    ON rulesets(profile_id, scope, ifnull(workspace_fingerprint, ''), asset_key);
+    ON rulesets(
+        profile_id,
+        scope,
+        ifnull(workspace_fingerprint, ''),
+        asset_key,
+        target_kind,
+        ifnull(preset_key, ''),
+        ifnull(target_top_level_tab, ''),
+        ifnull(target_mode_key, '')
+    );
 
 CREATE INDEX idx_rulesets_profile_scope
     ON rulesets(profile_id, scope, workspace_fingerprint);
@@ -1727,13 +1778,25 @@ CREATE INDEX idx_rulesets_workspace_fingerprint
     ON rulesets(workspace_fingerprint);
 
 CREATE UNIQUE INDEX idx_skillfiles_profile_registry_asset
-    ON skillfiles(profile_id, scope, ifnull(workspace_fingerprint, ''), asset_key);
+    ON skillfiles(
+        profile_id,
+        scope,
+        ifnull(workspace_fingerprint, ''),
+        asset_key,
+        target_kind,
+        ifnull(preset_key, ''),
+        ifnull(target_top_level_tab, ''),
+        ifnull(target_mode_key, '')
+    );
 
 CREATE INDEX idx_skillfiles_profile_scope
     ON skillfiles(profile_id, scope, workspace_fingerprint);
 
 CREATE INDEX idx_skillfiles_workspace_fingerprint
     ON skillfiles(workspace_fingerprint);
+
+CREATE INDEX idx_registry_discovery_diagnostics_profile_scope
+    ON registry_discovery_diagnostics(profile_id, scope, workspace_fingerprint, asset_kind, relative_path);
 
 CREATE INDEX idx_session_attached_skills_profile_session
     ON session_attached_skills(profile_id, session_id, created_at);

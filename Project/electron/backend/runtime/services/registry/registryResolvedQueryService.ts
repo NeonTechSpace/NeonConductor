@@ -1,4 +1,10 @@
-import { builtInModePromptOverrideStore, modeStore, rulesetStore, skillfileStore } from '@/app/backend/persistence/stores';
+import {
+    builtInModePromptOverrideStore,
+    modeStore,
+    registryDiscoveryDiagnosticStore,
+    rulesetStore,
+    skillfileStore,
+} from '@/app/backend/persistence/stores';
 import type {
     ModeDefinitionRecord,
     RulesetDefinitionRecord,
@@ -10,8 +16,11 @@ import {
     resolveContextualAssetDefinitions,
     resolveModeDefinitions,
 } from '@/app/backend/runtime/services/registry/resolution';
-import { resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
-import type { RegistryListResolvedResult } from '@/app/backend/runtime/services/registry/types';
+import { readRegistryMarkdownBody, resolveRegistryPaths } from '@/app/backend/runtime/services/registry/filesystem';
+import type {
+    RegistryListResolvedResult,
+    RegistryReadSkillBodyResult,
+} from '@/app/backend/runtime/services/registry/types';
 
 export interface RegistryResolvedBaseInput {
     profileId: string;
@@ -155,6 +164,8 @@ function resolveContextualAssetKeys<T extends RulesetDefinitionRecord | Skillfil
             topLevelTab: input.topLevelTab,
             modeKey: input.modeKey,
         }),
+        topLevelTab: input.topLevelTab,
+        modeKey: input.modeKey,
     });
     const itemByAssetKey = new Map(resolvedItems.map((item) => [item.assetKey, item] as const));
 
@@ -177,11 +188,22 @@ function resolveContextualAssetKeys<T extends RulesetDefinitionRecord | Skillfil
 
 export class RegistryResolvedQueryService {
     async listResolvedRegistry(input: RegistryResolvedBaseInput): Promise<RegistryListResolvedResult> {
-        const [paths, allModes, allRulesets, allSkillfiles] = await Promise.all([
+        const [paths, allModes, allRulesets, allSkillfiles, globalDiagnostics, workspaceDiagnostics] = await Promise.all([
             resolveRegistryPaths(input),
             modeStore.listByProfile(input.profileId),
             rulesetStore.listByProfile(input.profileId),
             skillfileStore.listByProfile(input.profileId),
+            registryDiscoveryDiagnosticStore.listByProfile({
+                profileId: input.profileId,
+                scope: 'global',
+            }),
+            input.workspaceFingerprint
+                ? registryDiscoveryDiagnosticStore.listByProfile({
+                      profileId: input.profileId,
+                      scope: 'workspace',
+                      workspaceFingerprint: input.workspaceFingerprint,
+                  })
+                : Promise.resolve([]),
         ]);
 
         return {
@@ -192,6 +214,10 @@ export class RegistryResolvedQueryService {
                 skillfiles: allSkillfiles,
                 ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             }),
+            diagnostics: {
+                global: globalDiagnostics,
+                ...(input.workspaceFingerprint ? { workspace: workspaceDiagnostics } : {}),
+            },
             resolved: buildResolvedRegistryView({
                 modes: allModes,
                 rulesets: allRulesets,
@@ -206,12 +232,14 @@ export class RegistryResolvedQueryService {
         const skillfiles =
             input.topLevelTab && input.modeKey
                 ? resolveContextualAssetDefinitions({
-                      items: resolved.resolved.skillfiles,
+                      items: resolved.discovered.global.skillfiles.concat(resolved.discovered.workspace?.skillfiles ?? []),
                       ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
                       activePresetKeys: getRegistryPresetKeysForMode({
                           topLevelTab: input.topLevelTab,
                           modeKey: input.modeKey,
                       }),
+                      topLevelTab: input.topLevelTab,
+                      modeKey: input.modeKey,
                   })
                 : resolved.resolved.skillfiles;
         const query = input.query?.trim().toLowerCase();
@@ -232,12 +260,14 @@ export class RegistryResolvedQueryService {
         const rulesets =
             input.topLevelTab && input.modeKey
                 ? resolveContextualAssetDefinitions({
-                      items: resolved.resolved.rulesets,
+                      items: resolved.discovered.global.rulesets.concat(resolved.discovered.workspace?.rulesets ?? []),
                       ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
                       activePresetKeys: getRegistryPresetKeysForMode({
                           topLevelTab: input.topLevelTab,
                           modeKey: input.modeKey,
                       }),
+                      topLevelTab: input.topLevelTab,
+                      modeKey: input.modeKey,
                   })
                 : resolved.resolved.rulesets;
         const query = input.query?.trim().toLowerCase();
@@ -258,7 +288,7 @@ export class RegistryResolvedQueryService {
     ): Promise<{ skillfiles: SkillfileDefinitionRecord[]; missingAssetKeys: string[] }> {
         const resolved = await this.listResolvedRegistry(input);
         const skillfiles = resolveContextualAssetKeys({
-            items: resolved.resolved.skillfiles,
+            items: resolved.discovered.global.skillfiles.concat(resolved.discovered.workspace?.skillfiles ?? []),
             assetKeys: input.assetKeys,
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             topLevelTab: input.topLevelTab,
@@ -276,7 +306,7 @@ export class RegistryResolvedQueryService {
     ): Promise<{ rulesets: RulesetDefinitionRecord[]; missingAssetKeys: string[] }> {
         const resolved = await this.listResolvedRegistry(input);
         const rulesets = resolveContextualAssetKeys({
-            items: resolved.resolved.rulesets,
+            items: resolved.discovered.global.rulesets.concat(resolved.discovered.workspace?.rulesets ?? []),
             assetKeys: input.assetKeys,
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             topLevelTab: input.topLevelTab,
@@ -304,6 +334,26 @@ export class RegistryResolvedQueryService {
             profileId: input.profileId,
             modes: resolvedModes,
         });
+    }
+
+    async readSkillBody(input: { profileId: string; skillId: string }): Promise<RegistryReadSkillBodyResult> {
+        const skillfile = await skillfileStore.findById(input.profileId, input.skillId);
+        if (!skillfile?.originPath) {
+            return { found: false };
+        }
+
+        try {
+            const bodyMarkdown = await readRegistryMarkdownBody(skillfile.originPath);
+            return {
+                found: true,
+                skillId: skillfile.id,
+                assetKey: skillfile.assetKey,
+                name: skillfile.name,
+                bodyMarkdown,
+            };
+        } catch {
+            return { found: false };
+        }
     }
 }
 

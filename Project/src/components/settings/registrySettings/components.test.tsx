@@ -1,6 +1,19 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/web/trpc/client', () => ({
+    trpc: {
+        registry: {
+            readSkillBody: {
+                useQuery: () => ({
+                    data: undefined,
+                    isLoading: false,
+                }),
+            },
+        },
+    },
+}));
 
 import { AssetCard } from '@/web/components/settings/registrySettings/components';
 
@@ -12,6 +25,7 @@ describe('registry skill asset cards', () => {
                     id: 'skill_1',
                     profileId: 'profile_default',
                     assetKey: 'skills/review',
+                    targetKind: 'shared',
                     name: 'Review',
                     bodyMarkdown: '# Review skill',
                     dynamicContextSources: [
@@ -46,6 +60,7 @@ describe('registry skill asset cards', () => {
                     source: 'workspace',
                     sourceKind: 'workspace_file',
                     scope: 'workspace',
+                    relativeRootPath: 'skills/shared/review/SKILL.md',
                     enabled: true,
                     precedence: 1,
                     createdAt: '2026-01-01T00:00:00.000Z',
@@ -54,6 +69,7 @@ describe('registry skill asset cards', () => {
                 title: 'Review',
                 subtitle: 'skills/review',
                 bodyMarkdown: '# Review skill',
+                profileId: 'profile_default',
             })
         );
 

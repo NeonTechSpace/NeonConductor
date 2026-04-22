@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { loadRegistryAssetFiles } from '@/app/backend/runtime/services/registry/filesystem';
+import { loadNativeRegistryAssetFiles } from '@/app/backend/runtime/services/registry/filesystem';
 
 describe('registry filesystem frontmatter parsing', () => {
     const tempDirectories: string[] = [];
@@ -21,7 +21,7 @@ describe('registry filesystem frontmatter parsing', () => {
         const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'neon-registry-filesystem-'));
         tempDirectories.push(tempRoot);
 
-        const skillDirectory = path.join(tempRoot, 'skills', 'review');
+        const skillDirectory = path.join(tempRoot, 'skills', 'shared', 'review');
         await mkdir(skillDirectory, { recursive: true });
         await writeFile(
             path.join(skillDirectory, 'SKILL.md'),
@@ -45,14 +45,16 @@ Inspect the repository before responding.
             'utf8'
         );
 
-        const files = await loadRegistryAssetFiles({
+        const discovery = await loadNativeRegistryAssetFiles({
             rootPath: tempRoot,
-            relativeDirectory: 'skills',
             assetKind: 'skills',
+            scope: 'global',
         });
+        const files = discovery.files;
 
         expect(files).toHaveLength(1);
         expect(files[0]?.assetPath).toBe('review');
+        expect(files[0]?.relativeRootPath).toBe('skills/shared/review/SKILL.md');
         expect(files[0]?.parsed.bodyMarkdown).toBe('# Review skill\nInspect the repository before responding.');
         expect(files[0]?.parsed.attributes['dynamicContextSources']).toEqual([
             {

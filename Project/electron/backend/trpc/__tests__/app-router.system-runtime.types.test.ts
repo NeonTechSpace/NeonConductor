@@ -157,11 +157,28 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         };
     }>();
     expectTypeOf<AppRouterOutputs['registry']['listResolved']>().toExtend<{
-        paths: { globalAssetsRoot: string; workspaceAssetsRoot?: string };
+        paths: {
+            modeRoots: { globalRoot: string; workspaceRoot?: string };
+            nativeRulesSkillsRoots: { globalRoot: string; workspaceRoot?: string };
+        };
+        diagnostics: {
+            global: Array<{ code: string; relativePath: string }>;
+            workspace?: Array<{ code: string; relativePath: string }>;
+        };
+        discovered: {
+            global: {
+                rulesets: Array<{ assetKey: string }>;
+                skillfiles: Array<{ assetKey: string }>;
+            };
+            workspace?: {
+                rulesets: Array<{ assetKey: string }>;
+                skillfiles: Array<{ assetKey: string }>;
+            };
+        };
         resolved: {
             modes: Array<{ modeKey: string; scope: 'system' | 'global' | 'workspace' | 'session' }>;
-            rulesets: Array<{ assetKey: string }>;
-            skillfiles: Array<{ assetKey: string }>;
+            rulesets: Array<{ assetKey: string; targetKind: 'shared' | 'preset' | 'exact_mode' }>;
+            skillfiles: Array<{ assetKey: string; targetKind: 'shared' | 'preset' | 'exact_mode' }>;
         };
     }>();
     expectTypeOf<AppRouterOutputs['registry']['searchSkills']>().toExtend<{

@@ -1,4 +1,5 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -14,39 +15,11 @@ function writeRegistryMarkdownFile(absolutePath: string, contents: string): void
 }
 
 function resetRegistryAssetDirectories(rootPath: string): void {
-    for (const relativeDirectory of [
-        'modes',
-        'rules',
-        'rules-ask',
-        'rules-code',
-        'rules-debug',
-        'rules-orchestrator',
-        'skills',
-        'skills-ask',
-        'skills-code',
-        'skills-debug',
-        'skills-orchestrator',
-    ]) {
-        rmSync(path.join(rootPath, relativeDirectory), { recursive: true, force: true });
-    }
+    rmSync(path.join(rootPath, 'modes'), { recursive: true, force: true });
 }
 
 function ensureRegistryAssetDirectories(rootPath: string): void {
-    for (const relativeDirectory of [
-        'modes',
-        'rules',
-        'rules-ask',
-        'rules-code',
-        'rules-debug',
-        'rules-orchestrator',
-        'skills',
-        'skills-ask',
-        'skills-code',
-        'skills-debug',
-        'skills-orchestrator',
-    ]) {
-        mkdirSync(path.join(rootPath, relativeDirectory), { recursive: true });
-    }
+    mkdirSync(path.join(rootPath, 'modes'), { recursive: true });
 }
 
 describe('registryResolvedQueryService', () => {
@@ -60,6 +33,7 @@ describe('registryResolvedQueryService', () => {
     it('projects discovered and resolved registry views from persisted assets', async () => {
         const profileId = getDefaultProfileId();
         const { globalAssetsRoot } = getPersistenceStoragePaths();
+        const nativeGlobalRoot = path.join(os.homedir(), '.neonconductor');
 
         writeRegistryMarkdownFile(
             path.join(globalAssetsRoot, 'modes', 'registry-query-6-10-code.md'),
@@ -79,7 +53,7 @@ Base instructions for the registry query mode.
 `
         );
         writeRegistryMarkdownFile(
-            path.join(globalAssetsRoot, 'rules', 'registry-query-6-10-shared-rule.md'),
+            path.join(nativeGlobalRoot, 'rules', 'shared', 'registry-query-6-10-shared-rule.md'),
             `---
 key: registry-query-6-10-shared-rule
 name: Registry Query Shared Rule
@@ -92,7 +66,7 @@ tags:
 `
         );
         writeRegistryMarkdownFile(
-            path.join(globalAssetsRoot, 'rules-code', 'registry-query-6-10-code-rule.md'),
+            path.join(nativeGlobalRoot, 'rules', 'presets', 'code', 'registry-query-6-10-code-rule.md'),
             `---
 key: registry-query-6-10-code-rule
 name: Registry Query Code Rule
@@ -105,7 +79,7 @@ tags:
 `
         );
         writeRegistryMarkdownFile(
-            path.join(globalAssetsRoot, 'skills', 'registry-query-6-10-shared-skill.md'),
+            path.join(nativeGlobalRoot, 'skills', 'shared', 'registry-query-6-10-shared-skill', 'SKILL.md'),
             `---
 key: registry-query-6-10-shared-skill
 name: Registry Query Shared Skill
@@ -117,7 +91,7 @@ tags:
 `
         );
         writeRegistryMarkdownFile(
-            path.join(globalAssetsRoot, 'skills-code', 'registry-query-6-10-code-skill.md'),
+            path.join(nativeGlobalRoot, 'skills', 'presets', 'code', 'registry-query-6-10-code-skill', 'SKILL.md'),
             `---
 key: registry-query-6-10-code-skill
 name: Registry Query Code Skill

@@ -105,9 +105,15 @@ export function RegistrySettingsScreen({
                         </p>
                         <div className='mt-3 space-y-3'>
                             <div>
-                                <p className='text-sm font-semibold'>Global files folder</p>
+                                <p className='text-sm font-semibold'>Global mode root</p>
                                 <p className='text-muted-foreground mt-1 text-xs break-all'>
-                                    {readModel.globalAssetsRoot ?? 'Loading...'}
+                                    {readModel.globalModeRoot ?? 'Loading...'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className='text-sm font-semibold'>Global native rules and skills root</p>
+                                <p className='text-muted-foreground mt-1 text-xs break-all'>
+                                    {readModel.globalNativeRoot ?? 'Loading...'}
                                 </p>
                             </div>
                             <div>
@@ -136,6 +142,16 @@ export function RegistrySettingsScreen({
                                         ? readModel.selectedWorkspaceRoot.absolutePath
                                         : 'Choose a workspace to inspect workspace-only files and refresh the local results.'}
                                 </p>
+                                {readModel.workspaceModeRoot || readModel.workspaceNativeRoot ? (
+                                    <div className='mt-2 space-y-1 text-xs'>
+                                        <p className='text-muted-foreground break-all'>
+                                            Mode root: {readModel.workspaceModeRoot ?? 'Unavailable'}
+                                        </p>
+                                        <p className='text-muted-foreground break-all'>
+                                            Native rules and skills root: {readModel.workspaceNativeRoot ?? 'Unavailable'}
+                                        </p>
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -156,6 +172,57 @@ export function RegistrySettingsScreen({
                             value={String(readModel.resolvedSkills.length)}
                             detail='Skills Neon can use right now'
                         />
+                    </div>
+                </div>
+            ) : null}
+
+            {subsection === 'diagnostics' ? (
+                <div className='grid gap-3 lg:grid-cols-2'>
+                    <div className='border-border bg-card rounded-2xl border p-4 shadow-sm'>
+                        <div className='flex items-center justify-between gap-3'>
+                            <p className='text-sm font-semibold'>Global discovery diagnostics</p>
+                            <span className='text-muted-foreground text-xs'>{readModel.globalDiagnostics.length} items</span>
+                        </div>
+                        {readModel.globalDiagnostics.length > 0 ? (
+                            <div className='mt-3 space-y-2'>
+                                {readModel.globalDiagnostics.map((diagnostic) => (
+                                    <div key={diagnostic.id} className='rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs'>
+                                        <p className='font-semibold'>
+                                            {diagnostic.assetKind} · {diagnostic.code}
+                                        </p>
+                                        <p className='text-muted-foreground mt-1 break-all'>{diagnostic.relativePath}</p>
+                                        <p className='mt-1'>{diagnostic.message}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className='text-muted-foreground mt-3 text-sm'>No global discovery problems right now.</p>
+                        )}
+                    </div>
+                    <div className='border-border bg-card rounded-2xl border p-4 shadow-sm'>
+                        <div className='flex items-center justify-between gap-3'>
+                            <p className='text-sm font-semibold'>Workspace discovery diagnostics</p>
+                            <span className='text-muted-foreground text-xs'>{readModel.workspaceDiagnostics.length} items</span>
+                        </div>
+                        {readModel.workspaceDiagnostics.length > 0 ? (
+                            <div className='mt-3 space-y-2'>
+                                {readModel.workspaceDiagnostics.map((diagnostic) => (
+                                    <div key={diagnostic.id} className='rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs'>
+                                        <p className='font-semibold'>
+                                            {diagnostic.assetKind} · {diagnostic.code}
+                                        </p>
+                                        <p className='text-muted-foreground mt-1 break-all'>{diagnostic.relativePath}</p>
+                                        <p className='mt-1'>{diagnostic.message}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className='text-muted-foreground mt-3 text-sm'>
+                                {controller.selectedWorkspaceFingerprint
+                                    ? 'No workspace discovery problems right now.'
+                                    : 'Choose a workspace to inspect workspace-local diagnostics.'}
+                            </p>
+                        )}
                     </div>
                 </div>
             ) : null}
@@ -194,7 +261,7 @@ export function RegistrySettingsScreen({
                                                 asset={skillfile}
                                                 title={skillfile.name}
                                                 subtitle={skillfile.assetKey}
-                                                bodyMarkdown={skillfile.bodyMarkdown}
+                                                profileId={profileId}
                                             />
                                         ))}
                                     </div>
@@ -213,7 +280,7 @@ export function RegistrySettingsScreen({
                         assets={readModel.resolvedSkills}
                         renderTitle={(asset) => asset.name}
                         renderSubtitle={(asset) => asset.assetKey}
-                        renderBodyMarkdown={(asset) => asset.bodyMarkdown}
+                        profileId={profileId}
                     />
                     <AssetSection
                         title='Discovered Global Skills'
@@ -221,7 +288,7 @@ export function RegistrySettingsScreen({
                         assets={readModel.discoveredGlobalSkills}
                         renderTitle={(asset) => asset.name}
                         renderSubtitle={(asset) => asset.assetKey}
-                        renderBodyMarkdown={(asset) => asset.bodyMarkdown}
+                        profileId={profileId}
                     />
                     {controller.selectedWorkspaceFingerprint ? (
                         <AssetSection
@@ -230,7 +297,7 @@ export function RegistrySettingsScreen({
                             assets={readModel.discoveredWorkspaceSkills}
                             renderTitle={(asset) => asset.name}
                             renderSubtitle={(asset) => asset.assetKey}
-                            renderBodyMarkdown={(asset) => asset.bodyMarkdown}
+                            profileId={profileId}
                         />
                     ) : null}
                 </>
@@ -245,6 +312,7 @@ export function RegistrySettingsScreen({
                         renderTitle={(asset) => asset.name}
                         renderSubtitle={(asset) => asset.assetKey}
                         renderBodyMarkdown={(asset) => asset.bodyMarkdown}
+                        profileId={profileId}
                     />
                     <AssetSection
                         title='Discovered Global Rulesets'
@@ -253,6 +321,7 @@ export function RegistrySettingsScreen({
                         renderTitle={(asset) => asset.name}
                         renderSubtitle={(asset) => asset.assetKey}
                         renderBodyMarkdown={(asset) => asset.bodyMarkdown}
+                        profileId={profileId}
                     />
                     {controller.selectedWorkspaceFingerprint ? (
                         <AssetSection
@@ -262,6 +331,7 @@ export function RegistrySettingsScreen({
                             renderTitle={(asset) => asset.name}
                             renderSubtitle={(asset) => asset.assetKey}
                             renderBodyMarkdown={(asset) => asset.bodyMarkdown}
+                            profileId={profileId}
                         />
                     ) : null}
                 </>
@@ -276,6 +346,7 @@ export function RegistrySettingsScreen({
                         renderTitle={(asset) => asset.label}
                         renderSubtitle={(asset) => `${asset.modeKey} · ${asset.assetKey}`}
                         renderBodyMarkdown={(asset) => formatModePromptMarkdown(asset.prompt)}
+                        profileId={profileId}
                     />
                     <AssetSection
                         title='Discovered Global Modes'
@@ -284,6 +355,7 @@ export function RegistrySettingsScreen({
                         renderTitle={(asset) => asset.label}
                         renderSubtitle={(asset) => asset.assetKey}
                         renderBodyMarkdown={(asset) => formatModePromptMarkdown(asset.prompt)}
+                        profileId={profileId}
                     />
                     {controller.selectedWorkspaceFingerprint ? (
                         <AssetSection
@@ -293,6 +365,7 @@ export function RegistrySettingsScreen({
                             renderTitle={(asset) => asset.label}
                             renderSubtitle={(asset) => asset.assetKey}
                             renderBodyMarkdown={(asset) => formatModePromptMarkdown(asset.prompt)}
+                            profileId={profileId}
                         />
                     ) : null}
                 </>

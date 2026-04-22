@@ -29,10 +29,22 @@ function ScopeBadge({ scope }: { scope: RulesetDefinition['scope']   }) {
     );
 }
 
-function PresetBadge({ presetKey }: { presetKey?: RulesetDefinition['presetKey']   }) {
+function TargetBadge({
+    targetKind,
+    targetMode,
+}: {
+    targetKind: RulesetDefinition['targetKind'];
+    targetMode?: RulesetDefinition['targetMode'];
+}) {
+    const label =
+        targetKind === 'shared'
+            ? 'Shared'
+            : targetKind === 'preset'
+              ? 'Preset'
+              : `Exact ${targetMode?.topLevelTab ?? 'mode'}/${targetMode?.modeKey ?? 'unknown'}`;
     return (
         <span className='bg-background text-muted-foreground rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase'>
-            {presetKey ?? 'shared'}
+            {label}
         </span>
     );
 }
@@ -161,11 +173,14 @@ export function ContextAssetsPanel({
                                 <div className='flex flex-wrap items-center gap-2'>
                                     <p className='text-sm font-medium'>{ruleset.name}</p>
                                     <ScopeBadge scope={ruleset.scope} />
-                                    <PresetBadge presetKey={ruleset.presetKey} />
+                                    <TargetBadge targetKind={ruleset.targetKind} targetMode={ruleset.targetMode} />
                                     <ActivationBadge activationMode={ruleset.activationMode} />
                                 </div>
                                 <p className='text-muted-foreground mt-1 text-xs'>
-                                    {ruleset.description ?? ruleset.assetKey}
+                                    {ruleset.description ??
+                                        (ruleset.contextualMatchReason
+                                            ? `${ruleset.assetKey} · available via ${ruleset.contextualMatchReason.replace('_', ' ')} targeting`
+                                            : ruleset.assetKey)}
                                 </p>
                             </div>
                             <Button
@@ -201,11 +216,14 @@ export function ContextAssetsPanel({
                                 <div className='flex flex-wrap items-center gap-2'>
                                     <p className='text-sm font-medium'>{skillfile.name}</p>
                                     <ScopeBadge scope={skillfile.scope} />
-                                    <PresetBadge presetKey={skillfile.presetKey} />
+                                    <TargetBadge targetKind={skillfile.targetKind} targetMode={skillfile.targetMode} />
                                     <SkillDynamicContextBadges skillfile={skillfile} />
                                 </div>
                                 <p className='text-muted-foreground mt-1 text-xs'>
-                                    {skillfile.description ?? skillfile.assetKey}
+                                    {skillfile.description ??
+                                        (skillfile.contextualMatchReason
+                                            ? `${skillfile.assetKey} · available via ${skillfile.contextualMatchReason.replace('_', ' ')} targeting`
+                                            : skillfile.assetKey)}
                                 </p>
                             </div>
                             <Button
@@ -243,11 +261,14 @@ export function ContextAssetsPanel({
                                     <div className='flex flex-wrap items-center gap-2'>
                                         <p className='text-sm font-medium'>{ruleset.name}</p>
                                         <ScopeBadge scope={ruleset.scope} />
-                                        <PresetBadge presetKey={ruleset.presetKey} />
+                                        <TargetBadge targetKind={ruleset.targetKind} targetMode={ruleset.targetMode} />
                                         <ActivationBadge activationMode={ruleset.activationMode} />
                                     </div>
                                     <p className='text-muted-foreground mt-1 text-xs'>
-                                        {ruleset.description ?? ruleset.assetKey}
+                                        {ruleset.description ??
+                                            (ruleset.contextualMatchReason
+                                                ? `${ruleset.assetKey} · available via ${ruleset.contextualMatchReason.replace('_', ' ')} targeting`
+                                                : ruleset.assetKey)}
                                     </p>
                                 </div>
                                 <Button
@@ -288,11 +309,14 @@ export function ContextAssetsPanel({
                                     <div className='flex flex-wrap items-center gap-2'>
                                         <p className='text-sm font-medium'>{skillfile.name}</p>
                                         <ScopeBadge scope={skillfile.scope} />
-                                        <PresetBadge presetKey={skillfile.presetKey} />
+                                        <TargetBadge targetKind={skillfile.targetKind} targetMode={skillfile.targetMode} />
                                         <SkillDynamicContextBadges skillfile={skillfile} />
                                     </div>
                                     <p className='text-muted-foreground mt-1 text-xs'>
-                                        {skillfile.description ?? skillfile.assetKey}
+                                        {skillfile.description ??
+                                            (skillfile.contextualMatchReason
+                                                ? `${skillfile.assetKey} · available via ${skillfile.contextualMatchReason.replace('_', ' ')} targeting`
+                                                : skillfile.assetKey)}
                                     </p>
                                 </div>
                                 <Button

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import { getPersistence } from '@/app/backend/persistence/db';
+import { registryDiscoveryDiagnosticStore } from '@/app/backend/persistence/stores';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
-import type { RegistryScope } from '@/app/backend/runtime/contracts';
+import type { RegistryDiscoveryDiagnostic, RegistryScope } from '@/app/backend/runtime/contracts';
 import type {
     ParsedRegistryModeAsset,
     ParsedRegistryRulesetAsset,
@@ -98,14 +99,25 @@ export async function replaceDiscoveredRulesets(input: {
                 id: `ruleset_${randomUUID()}`,
                 profile_id: input.profileId,
                 asset_key: ruleset.assetKey,
+                target_kind: ruleset.targetKind,
                 scope: ruleset.scope,
                 workspace_fingerprint: ruleset.workspaceFingerprint ?? null,
                 ...(ruleset.presetKey ? { preset_key: ruleset.presetKey } : {}),
+                ...(ruleset.targetMode
+                    ? {
+                          target_top_level_tab: ruleset.targetMode.topLevelTab,
+                          target_mode_key: ruleset.targetMode.modeKey,
+                      }
+                    : {
+                          target_top_level_tab: null,
+                          target_mode_key: null,
+                      }),
                 name: ruleset.name,
                 body_markdown: ruleset.bodyMarkdown,
                 source: ruleset.source,
                 source_kind: ruleset.sourceKind,
                 origin_path: ruleset.originPath,
+                relative_root_path: ruleset.relativeRootPath,
                 ...(ruleset.description ? { description: ruleset.description } : {}),
                 tags_json: JSON.stringify(ruleset.tags ?? []),
                 activation_mode: ruleset.activationMode,
@@ -150,15 +162,25 @@ export async function replaceDiscoveredSkillfiles(input: {
                 id: `skillfile_${randomUUID()}`,
                 profile_id: input.profileId,
                 asset_key: skillfile.assetKey,
+                target_kind: skillfile.targetKind,
                 scope: skillfile.scope,
                 workspace_fingerprint: skillfile.workspaceFingerprint ?? null,
                 ...(skillfile.presetKey ? { preset_key: skillfile.presetKey } : {}),
+                ...(skillfile.targetMode
+                    ? {
+                          target_top_level_tab: skillfile.targetMode.topLevelTab,
+                          target_mode_key: skillfile.targetMode.modeKey,
+                      }
+                    : {
+                          target_top_level_tab: null,
+                          target_mode_key: null,
+                      }),
                 name: skillfile.name,
-                body_markdown: skillfile.bodyMarkdown,
                 dynamic_context_sources_json: JSON.stringify(skillfile.dynamicContextSources),
                 source: skillfile.source,
                 source_kind: skillfile.sourceKind,
                 origin_path: skillfile.originPath,
+                relative_root_path: skillfile.relativeRootPath,
                 ...(skillfile.description ? { description: skillfile.description } : {}),
                 tags_json: JSON.stringify(skillfile.tags ?? []),
                 enabled: skillfile.enabled ? 1 : 0,
@@ -168,4 +190,18 @@ export async function replaceDiscoveredSkillfiles(input: {
             }))
         )
         .execute();
+}
+
+export async function replaceRegistryDiscoveryDiagnostics(input: {
+    profileId: string;
+    scope: Extract<RegistryScope, 'global' | 'workspace'>;
+    workspaceFingerprint?: string;
+    diagnostics: RegistryDiscoveryDiagnostic[];
+}): Promise<void> {
+    await registryDiscoveryDiagnosticStore.replaceForScope({
+        profileId: input.profileId,
+        scope: input.scope,
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+        diagnostics: input.diagnostics,
+    });
 }

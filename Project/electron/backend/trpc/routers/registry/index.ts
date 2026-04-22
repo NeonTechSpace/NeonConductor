@@ -1,11 +1,13 @@
 import {
     registryListResolvedInputSchema,
+    registryReadSkillBodyInputSchema,
     registryRefreshInputSchema,
     registrySearchRulesInputSchema,
     registrySearchSkillsInputSchema,
 } from '@/app/backend/runtime/contracts';
 import {
     listResolvedRegistry,
+    readSkillBody,
     refreshRegistry,
     searchResolvedRulesets,
     searchResolvedSkillfiles,
@@ -28,5 +30,8 @@ export const registryRouter = router({
         return {
             rulesets: await searchResolvedRulesets(input),
         };
+    }),
+    readSkillBody: publicProcedure.input(registryReadSkillBodyInputSchema).query(async ({ input }) => {
+        return readSkillBody(input);
     }),
 });

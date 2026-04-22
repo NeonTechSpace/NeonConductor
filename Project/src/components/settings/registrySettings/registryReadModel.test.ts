@@ -35,7 +35,14 @@ describe('buildRegistryReadModel', () => {
             selectedWorkspaceFingerprint: 'wsf_1',
             registryData: {
                 paths: {
-                    globalAssetsRoot: '/global-assets',
+                    modeRoots: {
+                        globalRoot: '/global-modes',
+                        workspaceRoot: '/workspace-one/.neonconductor',
+                    },
+                    nativeRulesSkillsRoots: {
+                        globalRoot: '/global-native',
+                        workspaceRoot: '/workspace-one/.neonconductor',
+                    },
                 },
                 resolved: {
                     modes: [
@@ -75,14 +82,15 @@ describe('buildRegistryReadModel', () => {
                             id: 'skill_1',
                             profileId: 'prof_1',
                             assetKey: 'skills/review',
+                            targetKind: 'shared',
                             name: 'Review',
-                            bodyMarkdown: '',
                             dynamicContextSources: [],
                             source: 'workspace',
                             enabled: true,
                             sourceKind: 'workspace_file',
                             precedence: 1,
                             scope: 'workspace',
+                            relativeRootPath: 'skills/shared/review/SKILL.md',
                             createdAt: '2026-01-01T00:00:00.000Z',
                             updatedAt: '2026-01-01T00:00:00.000Z',
                         },
@@ -100,12 +108,17 @@ describe('buildRegistryReadModel', () => {
                         skillfiles: [],
                     },
                 },
+                diagnostics: {
+                    global: [],
+                    workspace: [],
+                },
             },
             deferredSkillQuery: 'review',
         });
 
         expect(readModel.selectedWorkspaceRoot?.absolutePath).toBe('/workspace-one');
-        expect(readModel.globalAssetsRoot).toBe('/global-assets');
+        expect(readModel.globalModeRoot).toBe('/global-modes');
+        expect(readModel.globalNativeRoot).toBe('/global-native');
         expect(readModel.resolvedAgentModes).toHaveLength(1);
         expect(readModel.skillMatches).toHaveLength(1);
         expect(readModel.skillMatches[0]?.name).toBe('Review');

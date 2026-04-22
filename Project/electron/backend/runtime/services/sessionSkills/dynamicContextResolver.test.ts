@@ -75,6 +75,7 @@ function createSkillfile(input?: Partial<SkillfileDefinition>): SkillfileDefinit
         id: 'skill_review',
         profileId: 'profile_test',
         assetKey: 'skills/review',
+        targetKind: 'shared',
         name: 'Review',
         bodyMarkdown: '# Review skill',
         dynamicContextSources: [],

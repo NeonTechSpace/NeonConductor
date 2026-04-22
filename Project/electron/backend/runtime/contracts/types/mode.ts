@@ -9,6 +9,8 @@ import type {
     ToolCapability,
     WorkflowCapability,
     TopLevelTab,
+    RegistryAssetTargetKind,
+    RegistryExactModeTarget,
     RegistryPresetKey,
     RuntimeRequirementProfile,
 } from '@/app/backend/runtime/contracts/enums';
@@ -135,7 +137,9 @@ export interface RulesetDefinition {
     id: string;
     profileId: string;
     assetKey: string;
+    targetKind: RegistryAssetTargetKind;
     presetKey?: RegistryPresetKey;
+    targetMode?: RegistryExactModeTarget;
     scope: RegistryScope;
     workspaceFingerprint?: string;
     name: string;
@@ -144,8 +148,11 @@ export interface RulesetDefinition {
     source: string;
     sourceKind: RegistrySourceKind;
     originPath?: string;
+    relativeRootPath?: string;
     description?: string;
     tags?: string[];
+    contextualMatchReason?: RegistryAssetTargetKind;
+    shadowedVariants?: RegistryAssetShadowVariant[];
     enabled: boolean;
     precedence: number;
     createdAt: string;
@@ -174,21 +181,34 @@ export interface SkillfileDefinition {
     id: string;
     profileId: string;
     assetKey: string;
+    targetKind: RegistryAssetTargetKind;
     presetKey?: RegistryPresetKey;
+    targetMode?: RegistryExactModeTarget;
     scope: RegistryScope;
     workspaceFingerprint?: string;
     name: string;
-    bodyMarkdown: string;
+    bodyMarkdown?: string;
     dynamicContextSources: SkillDynamicContextSource[];
     source: string;
     sourceKind: RegistrySourceKind;
     originPath?: string;
+    relativeRootPath?: string;
     description?: string;
     tags?: string[];
+    contextualMatchReason?: RegistryAssetTargetKind;
+    shadowedVariants?: RegistryAssetShadowVariant[];
     enabled: boolean;
     precedence: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface RegistryAssetShadowVariant {
+    scope: Extract<RegistryScope, 'global' | 'workspace'>;
+    targetKind: RegistryAssetTargetKind;
+    presetKey?: RegistryPresetKey;
+    targetMode?: RegistryExactModeTarget;
+    relativeRootPath?: string;
 }
 
 export interface ModeListInput extends ProfileInput {

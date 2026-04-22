@@ -273,6 +273,7 @@ async function applyFullReset(db: RuntimeResetDatabase): Promise<void> {
     await db.deleteFrom('mode_definitions').execute();
     await db.deleteFrom('rulesets').execute();
     await db.deleteFrom('skillfiles').execute();
+    await db.deleteFrom('registry_discovery_diagnostics').execute();
     await db.deleteFrom('kilo_account_snapshots').execute();
     await db.deleteFrom('kilo_org_snapshots').execute();
     await db.deleteFrom('provider_secrets').execute();
