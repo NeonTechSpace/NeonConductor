@@ -2,6 +2,7 @@ import type {
     RegistryScope,
     RegistrySourceKind,
     RuleActivationMode,
+    RegistryPromotionProvenance,
     BehaviorFlag,
     ToolCapability,
     WorkflowCapability,
@@ -14,12 +15,12 @@ import type {
 import { normalizePreparedContextModeOverrides, ruleActivationModes } from '@/app/backend/runtime/contracts';
 import type { RegistryAssetFile } from '@/app/backend/runtime/services/registry/filesystem';
 import { slugifyAssetKey, titleCaseFromKey, toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
-import { normalizeSkillDynamicContextSources } from '@/app/backend/runtime/services/sessionSkills/dynamicContextSources';
 import type {
     ParsedRegistryModeAsset,
     ParsedRegistryRulesetAsset,
     ParsedRegistrySkillAsset,
 } from '@/app/backend/runtime/services/registry/registryLifecycle.types';
+import { normalizeSkillDynamicContextSources } from '@/app/backend/runtime/services/sessionSkills/dynamicContextSources';
 
 import {
     behaviorFlags as knownBehaviorFlags,
@@ -49,6 +50,52 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readPromotionProvenance(value: unknown): RegistryPromotionProvenance | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const sourceKind = value.sourceKind;
+    const sourceSessionId = value.sourceSessionId;
+    const sourceDigest = value.sourceDigest;
+    const sourceLabel = value.sourceLabel;
+    const promotedAt = value.promotedAt;
+    if (
+        (sourceKind !== 'message' && sourceKind !== 'tool_result_artifact_window') ||
+        typeof sourceSessionId !== 'string' ||
+        typeof sourceDigest !== 'string' ||
+        typeof sourceLabel !== 'string' ||
+        typeof promotedAt !== 'string'
+    ) {
+        return undefined;
+    }
+
+    const sourceMessageId = typeof value.sourceMessageId === 'string' ? value.sourceMessageId : undefined;
+    const sourceMessagePartId = typeof value.sourceMessagePartId === 'string' ? value.sourceMessagePartId : undefined;
+    const startLine = readNumber(value.startLine);
+    const lineCount = readNumber(value.lineCount);
+    const provenance: RegistryPromotionProvenance = {
+        sourceKind,
+        sourceSessionId: sourceSessionId as RegistryPromotionProvenance['sourceSessionId'],
+        sourceLabel,
+        sourceDigest,
+        promotedAt,
+    };
+    if (sourceMessageId) {
+        provenance.sourceMessageId = sourceMessageId as NonNullable<RegistryPromotionProvenance['sourceMessageId']>;
+    }
+    if (sourceMessagePartId) {
+        provenance.sourceMessagePartId = sourceMessagePartId as NonNullable<RegistryPromotionProvenance['sourceMessagePartId']>;
+    }
+    if (startLine !== undefined) {
+        provenance.startLine = startLine;
+    }
+    if (lineCount !== undefined) {
+        provenance.lineCount = lineCount;
+    }
+    return provenance;
 }
 
 function readTopLevelTab(value: unknown): TopLevelTab | undefined {
@@ -375,6 +422,7 @@ export function parseRegistryRulesetAsset(
     const description = readString(file.parsed.attributes['description']);
     const tags = readTags(file.parsed.attributes['tags']);
     const targetKind = file.targetKind ?? 'shared';
+    const promotionProvenance = readPromotionProvenance(file.parsed.attributes['neonPromotion']);
     return {
         assetKey: slugifyAssetKey(
             readString(file.parsed.attributes['assetKey']) ??
@@ -395,6 +443,7 @@ export function parseRegistryRulesetAsset(
         originPath: file.absolutePath,
         ...(description ? { description } : {}),
         ...(tags ? { tags } : {}),
+        ...(promotionProvenance ? { promotionProvenance } : {}),
         enabled: readBoolean(file.parsed.attributes['enabled']) ?? true,
         precedence: readNumber(file.parsed.attributes['precedence']) ?? 0,
     };
@@ -407,6 +456,7 @@ export function parseRegistrySkillAsset(
     const description = readString(file.parsed.attributes['description']);
     const tags = readTags(file.parsed.attributes['tags']);
     const targetKind = file.targetKind ?? 'shared';
+    const promotionProvenance = readPromotionProvenance(file.parsed.attributes['neonPromotion']);
     return {
         assetKey: slugifyAssetKey(
             readString(file.parsed.attributes['assetKey']) ??
@@ -426,6 +476,7 @@ export function parseRegistrySkillAsset(
         originPath: file.absolutePath,
         ...(description ? { description } : {}),
         ...(tags ? { tags } : {}),
+        ...(promotionProvenance ? { promotionProvenance } : {}),
         enabled: readBoolean(file.parsed.attributes['enabled']) ?? true,
         precedence: readNumber(file.parsed.attributes['precedence']) ?? 0,
     };

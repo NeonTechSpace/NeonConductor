@@ -16,6 +16,7 @@ interface MessageTimelineItemProps {
     onEditMessage?: (entry: MessageTimelineEntry) => void;
     onBranchFromMessage?: (entry: MessageTimelineEntry) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export function MessageTimelineEmptyState() {
@@ -37,6 +38,7 @@ export function MessageTimelineItem({
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
+    onPromoteMessage,
 }: MessageTimelineItemProps) {
     const [copyFeedback, setCopyFeedback] = useState<string | undefined>(undefined);
 
@@ -49,6 +51,7 @@ export function MessageTimelineItem({
                 onCopyFeedbackChange={setCopyFeedback}
                 {...(onEditMessage ? { onEditMessage } : {})}
                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
+                {...(onPromoteMessage ? { onPromoteMessage } : {})}
             />
             <div className='space-y-3'>
                 <MessageTimelineBody

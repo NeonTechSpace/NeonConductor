@@ -4,12 +4,12 @@ import { getPersistence } from '@/app/backend/persistence/db';
 import { registryDiscoveryDiagnosticStore } from '@/app/backend/persistence/stores';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { RegistryDiscoveryDiagnostic, RegistryScope } from '@/app/backend/runtime/contracts';
+import { toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
 import type {
     ParsedRegistryModeAsset,
     ParsedRegistryRulesetAsset,
     ParsedRegistrySkillAsset,
 } from '@/app/backend/runtime/services/registry/registryLifecycle.types';
-import { toSourceKind } from '@/app/backend/runtime/services/registry/filesystem';
 
 export async function replaceDiscoveredModes(input: {
     profileId: string;
@@ -120,6 +120,9 @@ export async function replaceDiscoveredRulesets(input: {
                 relative_root_path: ruleset.relativeRootPath,
                 ...(ruleset.description ? { description: ruleset.description } : {}),
                 tags_json: JSON.stringify(ruleset.tags ?? []),
+                promotion_provenance_json: ruleset.promotionProvenance
+                    ? JSON.stringify(ruleset.promotionProvenance)
+                    : null,
                 activation_mode: ruleset.activationMode,
                 enabled: ruleset.enabled ? 1 : 0,
                 precedence: ruleset.precedence,
@@ -183,6 +186,9 @@ export async function replaceDiscoveredSkillfiles(input: {
                 relative_root_path: skillfile.relativeRootPath,
                 ...(skillfile.description ? { description: skillfile.description } : {}),
                 tags_json: JSON.stringify(skillfile.tags ?? []),
+                promotion_provenance_json: skillfile.promotionProvenance
+                    ? JSON.stringify(skillfile.promotionProvenance)
+                    : null,
                 enabled: skillfile.enabled ? 1 : 0,
                 precedence: skillfile.precedence,
                 created_at: now,

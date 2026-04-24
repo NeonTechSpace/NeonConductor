@@ -5,5 +5,6 @@ export function buildConversationDialogProps(input: ShellDialogCompositionInput)
         messageEditDialogProps: input.messageEditDialogProps,
         branchWorkflowDialogProps: input.branchWorkflowDialogProps,
         toolArtifactViewerDialogProps: input.toolArtifactViewerDialogProps,
+        registryPromotionDialogProps: input.registryPromotionDialogProps,
     };
 }

@@ -1,13 +1,13 @@
 import { Search } from 'lucide-react';
 
-import { Button } from '@/web/components/ui/button';
-import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import {
     formatToolArtifactBytes,
     formatToolArtifactKindLabel,
     type ToolArtifactKind,
     type ToolArtifactPreviewStrategy,
 } from '@/web/components/conversation/messages/toolArtifactFormatting';
+import { Button } from '@/web/components/ui/button';
+import { DialogSurface } from '@/web/components/ui/dialogSurface';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -53,6 +53,7 @@ export interface ToolArtifactViewerDialogProps {
     onSelectSearchMatch: (lineNumber: number) => void;
     onPreviousPage: () => void;
     onNextPage: () => void;
+    onPromoteVisibleLines?: () => void;
     onClose: () => void;
 }
 
@@ -149,6 +150,7 @@ export function ToolArtifactViewerDialog({
     onSelectSearchMatch,
     onPreviousPage,
     onNextPage,
+    onPromoteVisibleLines,
     onClose,
 }: ToolArtifactViewerDialogProps) {
     return (
@@ -233,7 +235,12 @@ export function ToolArtifactViewerDialog({
                         ) : null}
                     </div>
 
-                    <div className='mt-5 flex justify-end'>
+                    <div className='mt-5 flex justify-end gap-2'>
+                        {artifact && onPromoteVisibleLines ? (
+                            <Button type='button' variant='outline' onClick={onPromoteVisibleLines}>
+                                Promote Visible Lines
+                            </Button>
+                        ) : null}
                         <Button type='button' variant='outline' onClick={onClose}>
                             Close
                         </Button>

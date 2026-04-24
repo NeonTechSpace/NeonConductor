@@ -149,10 +149,20 @@ describe('conversation shell composition helpers', () => {
                 onNextPage: vi.fn(),
                 onClose: vi.fn(),
             },
+            registryPromotionDialogProps: {
+                open: false,
+                busy: false,
+                overwrite: false,
+                onDraftChange: vi.fn(),
+                onOverwriteChange: vi.fn(),
+                onApply: vi.fn(),
+                onClose: vi.fn(),
+            },
         });
 
         expect(dialogProps.messageEditDialogProps.open).toBe(true);
         expect(dialogProps.branchWorkflowDialogProps.busy).toBe(true);
         expect(dialogProps.toolArtifactViewerDialogProps.open).toBe(true);
+        expect(dialogProps.registryPromotionDialogProps.open).toBe(false);
     });
 });

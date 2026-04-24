@@ -1,5 +1,7 @@
 import {
     registryListResolvedInputSchema,
+    registryApplyPromotionInputSchema,
+    registryPreparePromotionInputSchema,
     registryReadSkillBodyInputSchema,
     registryRefreshInputSchema,
     registrySearchRulesInputSchema,
@@ -7,6 +9,8 @@ import {
 } from '@/app/backend/runtime/contracts';
 import {
     listResolvedRegistry,
+    applyPromotion,
+    preparePromotion,
     readSkillBody,
     refreshRegistry,
     searchResolvedRulesets,
@@ -33,5 +37,21 @@ export const registryRouter = router({
     }),
     readSkillBody: publicProcedure.input(registryReadSkillBodyInputSchema).query(async ({ input }) => {
         return readSkillBody(input);
+    }),
+    preparePromotion: publicProcedure.input(registryPreparePromotionInputSchema).mutation(async ({ input }) => {
+        return (await preparePromotion(input)).match(
+            (value) => value,
+            (error) => {
+                throw new Error(error.message);
+            }
+        );
+    }),
+    applyPromotion: publicProcedure.input(registryApplyPromotionInputSchema).mutation(async ({ input }) => {
+        return (await applyPromotion(input)).match(
+            (value) => value,
+            (error) => {
+                throw new Error(error.message);
+            }
+        );
     }),
 });

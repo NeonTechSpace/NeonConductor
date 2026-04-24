@@ -14,6 +14,7 @@ import type {
     RegistryPresetKey,
     RuntimeRequirementProfile,
 } from '@/app/backend/runtime/contracts/enums';
+import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 import type { PreparedContextModeOverrides } from '@/app/backend/runtime/contracts/types/prompt';
 
@@ -151,6 +152,7 @@ export interface RulesetDefinition {
     relativeRootPath?: string;
     description?: string;
     tags?: string[];
+    promotionProvenance?: RegistryPromotionProvenance;
     contextualMatchReason?: RegistryAssetTargetKind;
     shadowedVariants?: RegistryAssetShadowVariant[];
     enabled: boolean;
@@ -195,12 +197,54 @@ export interface SkillfileDefinition {
     relativeRootPath?: string;
     description?: string;
     tags?: string[];
+    promotionProvenance?: RegistryPromotionProvenance;
     contextualMatchReason?: RegistryAssetTargetKind;
     shadowedVariants?: RegistryAssetShadowVariant[];
     enabled: boolean;
     precedence: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export type RegistryPromotionTarget = 'rule' | 'skill_snippet';
+
+export type RegistryPromotionSource =
+    | {
+          kind: 'message';
+          sessionId: EntityId<'sess'>;
+          messageId: EntityId<'msg'>;
+      }
+    | {
+          kind: 'tool_result_artifact_window';
+          sessionId: EntityId<'sess'>;
+          messagePartId: EntityId<'part'>;
+          startLine: number;
+          lineCount: number;
+      };
+
+export type RegistryPromotionTargeting =
+    | {
+          targetKind: 'shared';
+      }
+    | {
+          targetKind: 'preset';
+          presetKey: RegistryPresetKey;
+      }
+    | {
+          targetKind: 'exact_mode';
+          targetMode: RegistryExactModeTarget;
+      };
+
+export interface RegistryPromotionProvenance {
+    sourceKind: RegistryPromotionSource['kind'];
+    sourceSessionId: EntityId<'sess'>;
+    sourceMessageId?: EntityId<'msg'>;
+    sourceMessagePartId?: EntityId<'part'>;
+    sourceLabel: string;
+    sourceDigest: string;
+    startLine?: number;
+    lineCount?: number;
+    promotedAt: string;
 }
 
 export interface RegistryAssetShadowVariant {

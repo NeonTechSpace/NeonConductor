@@ -11,6 +11,7 @@ interface MessageFlowTurnViewProps {
     onEditMessage?: (entry: MessageFlowMessage) => void;
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export function MessageFlowEmptyState() {
@@ -30,6 +31,7 @@ export function MessageFlowTurnView({
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
+    onPromoteMessage,
 }: MessageFlowTurnViewProps) {
     return (
         <section className='space-y-6'>
@@ -42,6 +44,7 @@ export function MessageFlowTurnView({
                     {...(onEditMessage ? { onEditMessage } : {})}
                     {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                     {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
+                    {...(onPromoteMessage ? { onPromoteMessage } : {})}
                 />
             ))}
         </section>

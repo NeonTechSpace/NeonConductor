@@ -1,7 +1,10 @@
-import { Copy, GitBranch, PencilLine } from 'lucide-react';
+import { Copy, GitBranch, PencilLine, Sparkles } from 'lucide-react';
 
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { copyText } from '@/web/lib/copy';
+
+import type { EntityId } from '@/shared/contracts';
 
 import type { MouseEvent, ReactNode } from 'react';
 
@@ -48,6 +51,7 @@ interface FlowMessageActionBarProps {
     onCopyFeedbackChange: (value: string | undefined) => void;
     onEditMessage?: (entry: MessageFlowMessage) => void;
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
     isPinnedVisible?: boolean;
 }
 
@@ -64,6 +68,11 @@ export function getFlowMessageCapabilities(message: MessageFlowMessage) {
         canBranch:
             !message.isOptimistic &&
             (message.role === 'user' || (message.role === 'assistant' && hasBranchableAssistantContent)),
+        canPromote:
+            !message.isOptimistic &&
+            (message.role === 'user' || message.role === 'assistant') &&
+            typeof message.plainCopyText === 'string' &&
+            message.plainCopyText.length > 0,
     };
 }
 
@@ -90,6 +99,7 @@ export function FlowUserMessageActionBar({
     onCopyFeedbackChange,
     onEditMessage,
     onBranchFromMessage,
+    onPromoteMessage,
     isPinnedVisible = false,
 }: FlowMessageActionBarProps) {
     const capabilities = getFlowMessageCapabilities(message);
@@ -131,6 +141,19 @@ export function FlowUserMessageActionBar({
                     }}
                 />
             ) : null}
+            {capabilities.canPromote && onPromoteMessage ? (
+                <MessageActionButton
+                    label='Promote'
+                    ariaLabel='Promote message'
+                    icon={<Sparkles className='h-3.5 w-3.5' />}
+                    tabIndex={isPinnedVisible ? 0 : -1}
+                    onClick={() => {
+                        if (isEntityId(message.id, 'msg')) {
+                            onPromoteMessage(message.id);
+                        }
+                    }}
+                />
+            ) : null}
         </>
     );
 }
@@ -140,6 +163,7 @@ export function FlowAssistantMessageActionBar({
     copyFeedback,
     onCopyFeedbackChange,
     onBranchFromMessage,
+    onPromoteMessage,
 }: FlowMessageActionBarProps) {
     const capabilities = getFlowMessageCapabilities(message);
 
@@ -164,6 +188,18 @@ export function FlowAssistantMessageActionBar({
                     icon={<GitBranch className='h-3.5 w-3.5' />}
                     onClick={() => {
                         onBranchFromMessage(message);
+                    }}
+                />
+            ) : null}
+            {capabilities.canPromote && onPromoteMessage ? (
+                <MessageActionButton
+                    label='Promote'
+                    ariaLabel='Promote message'
+                    icon={<Sparkles className='h-3.5 w-3.5' />}
+                    onClick={() => {
+                        if (isEntityId(message.id, 'msg')) {
+                            onPromoteMessage(message.id);
+                        }
                     }}
                 />
             ) : null}

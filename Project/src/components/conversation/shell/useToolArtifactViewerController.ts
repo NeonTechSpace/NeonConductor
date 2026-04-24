@@ -1,9 +1,9 @@
 import { skipToken } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ToolArtifactKind, ToolArtifactPreviewStrategy } from '@/web/components/conversation/messages/toolArtifactFormatting';
 import type { ToolArtifactViewerDialogProps } from '@/web/components/conversation/panels/toolArtifactViewerDialog';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { trpc } from '@/web/trpc/client';
 
 import type { EntityId } from '@/shared/contracts';
@@ -25,6 +25,12 @@ export function getNextToolArtifactStartLine(startLine: number, lineCount: numbe
 interface UseToolArtifactViewerControllerInput {
     profileId: string;
     selectedSessionId: string | undefined;
+    onPromoteArtifactWindow?: (input: {
+        sessionId: EntityId<'sess'>;
+        messagePartId: EntityId<'part'>;
+        startLine: number;
+        lineCount: number;
+    }) => void;
 }
 
 interface ToolArtifactViewerArtifactLine {
@@ -73,6 +79,7 @@ function createEmptyDialogProps(
 export function useToolArtifactViewerController({
     profileId,
     selectedSessionId,
+    onPromoteArtifactWindow,
 }: UseToolArtifactViewerControllerInput) {
     const [selectedMessagePartId, setSelectedMessagePartId] = useState<EntityId<'part'> | undefined>(undefined);
     const [startLine, setStartLine] = useState(1);
@@ -171,6 +178,18 @@ export function useToolArtifactViewerController({
                       const lineCount = artifact?.lineCount ?? TOOL_ARTIFACT_VIEWER_PAGE_LINE_COUNT;
                       setStartLine((current) => getNextToolArtifactStartLine(current, lineCount));
                   },
+                  ...(onPromoteArtifactWindow && resolvedSessionId
+                      ? {
+                            onPromoteVisibleLines: () => {
+                                onPromoteArtifactWindow({
+                                    sessionId: resolvedSessionId,
+                                    messagePartId: selectedMessagePartId,
+                                    startLine,
+                                    lineCount: artifact?.lineCount ?? TOOL_ARTIFACT_VIEWER_PAGE_LINE_COUNT,
+                                });
+                            },
+                        }
+                      : {}),
                   onClose: handleClose,
               } satisfies ToolArtifactViewerDialogProps)
             : createEmptyDialogProps({

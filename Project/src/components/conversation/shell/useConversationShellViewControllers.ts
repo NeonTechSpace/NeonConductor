@@ -12,6 +12,7 @@ import { buildConversationPlanOrchestrator } from '@/web/components/conversation
 import { buildConversationWorkspaceProjection } from '@/web/components/conversation/shell/composition/buildConversationWorkspaceProjection';
 import { setOrchestratorLatestCache } from '@/web/components/conversation/shell/planCache';
 import type { UseConversationShellViewControllersInput } from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
+import { useRegistryPromotionController } from '@/web/components/conversation/shell/useRegistryPromotionController';
 import { useToolArtifactViewerController } from '@/web/components/conversation/shell/useToolArtifactViewerController';
 import { createConversationThread } from '@/web/components/conversation/shell/workspace/createConversationThread';
 import { isEntityId, isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
@@ -222,9 +223,19 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         mutations,
         onResolvePermission: composer.clearRunSubmitError,
     });
+    const registryPromotion = useRegistryPromotionController({
+        profileId,
+        ...(selectedSessionId && isEntityId(selectedSessionId, 'sess') ? { selectedSessionId } : {}),
+        ...(shellViewModel.selectedThread?.workspaceFingerprint
+            ? { workspaceFingerprint: shellViewModel.selectedThread.workspaceFingerprint }
+            : {}),
+        topLevelTab,
+        modeKey,
+    });
     const toolArtifactViewer = useToolArtifactViewerController({
         profileId,
         selectedSessionId,
+        onPromoteArtifactWindow: registryPromotion.openArtifactWindowPromotion,
     });
     const handleCreateThread = useEffectEvent(
         async (threadCreationInput: {
@@ -381,6 +392,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
             uiState.setSelectedRunId(undefined);
         },
         onOpenToolArtifact: toolArtifactViewer.openToolArtifact,
+        onPromoteMessage: registryPromotion.openMessagePromotion,
         setPlanningDepthSelection,
     });
 
@@ -426,6 +438,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
                 busy: mutations.branchFromMessageWithBranchWorkflowMutation.isPending,
             },
             toolArtifactViewerDialogProps: toolArtifactViewer.dialogProps,
+            registryPromotionDialogProps: registryPromotion.dialogProps,
         }),
     } as const;
 }

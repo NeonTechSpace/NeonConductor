@@ -1,9 +1,11 @@
-import { Copy } from 'lucide-react';
+import { Copy, Sparkles } from 'lucide-react';
 
 import type { MessageTimelineEntry } from '@/web/components/conversation/messages/messageTimelineModel';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { Button } from '@/web/components/ui/button';
 import { copyText } from '@/web/lib/copy';
 
+import type { EntityId } from '@/shared/contracts';
 
 interface MessageTimelineHeaderProps {
     entry: MessageTimelineEntry;
@@ -12,6 +14,7 @@ interface MessageTimelineHeaderProps {
     onCopyFeedbackChange: (value: string | undefined) => void;
     onEditMessage?: (entry: MessageTimelineEntry) => void;
     onBranchFromMessage?: (entry: MessageTimelineEntry) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export async function copyTimelineMessage(
@@ -38,6 +41,7 @@ export function MessageTimelineHeader({
     onCopyFeedbackChange,
     onEditMessage,
     onBranchFromMessage,
+    onPromoteMessage,
 }: MessageTimelineHeaderProps) {
     const canEdit =
         !entry.isOptimistic &&
@@ -45,6 +49,7 @@ export function MessageTimelineHeader({
         typeof entry.editableText === 'string' &&
         entry.editableText.length > 0;
     const canCopy = !entry.isOptimistic && typeof entry.plainCopyText === 'string' && entry.plainCopyText.length > 0;
+    const canPromote = canCopy && (entry.role === 'user' || entry.role === 'assistant');
 
     return (
         <header className='mb-2 flex items-center justify-between gap-2'>
@@ -92,6 +97,22 @@ export function MessageTimelineHeader({
                             </button>
                         ) : null}
                     </div>
+                ) : null}
+                {canPromote && onPromoteMessage ? (
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        className='h-7 px-2 text-[11px]'
+                        aria-label='Promote message'
+                        onClick={() => {
+                            if (isEntityId(entry.id, 'msg')) {
+                                onPromoteMessage(entry.id);
+                            }
+                        }}>
+                        <Sparkles className='h-3.5 w-3.5' />
+                        Promote
+                    </Button>
                 ) : null}
             </div>
         </header>

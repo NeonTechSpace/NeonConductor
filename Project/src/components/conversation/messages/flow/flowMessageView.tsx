@@ -21,6 +21,7 @@ interface FlowMessageViewProps {
     onEditMessage?: (entry: MessageFlowMessage) => void;
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export function FlowMessageView({
@@ -30,6 +31,7 @@ export function FlowMessageView({
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
+    onPromoteMessage,
 }: FlowMessageViewProps) {
     const [copyFeedback, setCopyFeedback] = useState<string | undefined>(undefined);
     const [isPinnedVisible, setIsPinnedVisible] = useState(false);
@@ -81,6 +83,7 @@ export function FlowMessageView({
                                 isPinnedVisible={isPinnedVisible}
                                 {...(onEditMessage ? { onEditMessage } : {})}
                                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
+                                {...(onPromoteMessage ? { onPromoteMessage } : {})}
                             />
                         </div>
                     </div>
@@ -105,6 +108,7 @@ export function FlowMessageView({
                     copyFeedback={copyFeedback}
                     onCopyFeedbackChange={setCopyFeedback}
                     {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
+                    {...(onPromoteMessage ? { onPromoteMessage } : {})}
                 />
             ) : null}
         </article>

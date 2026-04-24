@@ -58,6 +58,7 @@ describe('message flow rendering', () => {
                     updatedAt: '2026-03-12T09:00:01.000Z',
                 },
                 onBranchFromMessage: () => undefined,
+                onPromoteMessage: () => undefined,
             })
         );
 
@@ -100,6 +101,7 @@ describe('message flow rendering', () => {
         expect(populatedAssistantHtml).toContain('Reasoning');
         expect(populatedAssistantHtml).toContain('Copy');
         expect(populatedAssistantHtml).toContain('Branch');
+        expect(populatedAssistantHtml).toContain('Promote');
         expect(populatedAssistantHtml).not.toContain('Regenerate');
         expect(populatedAssistantHtml.indexOf('Reasoning')).toBeLessThan(populatedAssistantHtml.indexOf('Answer body'));
         expect(pendingAssistantHtml).toContain('Agent received message');

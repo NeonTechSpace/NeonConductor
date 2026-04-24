@@ -46,6 +46,7 @@ describe('ToolArtifactViewerDialog', () => {
                 onSelectSearchMatch={vi.fn()}
                 onPreviousPage={vi.fn()}
                 onNextPage={vi.fn()}
+                onPromoteVisibleLines={vi.fn()}
                 onClose={vi.fn()}
             />
         );
@@ -58,6 +59,7 @@ describe('ToolArtifactViewerDialog', () => {
         expect(html).toContain('match line 321');
         expect(html).toContain('Previous page');
         expect(html).toContain('Next page');
+        expect(html).toContain('Promote Visible Lines');
     });
 
     it('renders a clean unavailable state when the artifact is missing', () => {

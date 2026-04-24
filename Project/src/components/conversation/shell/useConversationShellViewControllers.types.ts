@@ -6,6 +6,7 @@ import { useConversationShellViewModel } from '@/web/components/conversation/hoo
 import { useConversationUiState } from '@/web/components/conversation/hooks/useConversationUiState';
 import type { BranchWorkflowDialogProps } from '@/web/components/conversation/panels/branchWorkflowDialog';
 import type { MessageEditDialogProps } from '@/web/components/conversation/panels/messageEditDialog';
+import type { RegistryPromotionDialogProps } from '@/web/components/conversation/panels/registryPromotionDialog';
 import type { ToolArtifactViewerDialogProps } from '@/web/components/conversation/panels/toolArtifactViewerDialog';
 import { useConversationMutations } from '@/web/components/conversation/shell/actions/useConversationMutations';
 import type { PlanningDepth } from '@/web/components/conversation/shell/planningDepth';
@@ -167,4 +168,5 @@ export interface ShellDialogCompositionInput {
     messageEditDialogProps: MessageEditDialogProps;
     branchWorkflowDialogProps: BranchWorkflowDialogProps;
     toolArtifactViewerDialogProps: ToolArtifactViewerDialogProps;
+    registryPromotionDialogProps: RegistryPromotionDialogProps;
 }

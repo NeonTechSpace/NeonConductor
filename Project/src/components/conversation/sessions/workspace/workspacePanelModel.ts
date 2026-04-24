@@ -228,6 +228,7 @@ export interface SessionWorkspacePanelProps {
     onEditMessage?: (entry: MessageFlowMessage) => void;
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export function buildWorkspaceHeaderModel(input: SessionWorkspacePanelProps): WorkspaceHeaderModel {

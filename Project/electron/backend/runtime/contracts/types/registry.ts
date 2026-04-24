@@ -6,6 +6,12 @@ import type {
 import type { TopLevelTab } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type {
+    RegistryPromotionProvenance,
+    RegistryPromotionSource,
+    RegistryPromotionTarget,
+    RegistryPromotionTargeting,
+} from '@/app/backend/runtime/contracts/types/mode';
 
 export interface RegistryRefreshInput extends ProfileInput {
     workspaceFingerprint?: string;
@@ -35,6 +41,59 @@ export interface RegistrySearchRulesInput extends ProfileInput {
 
 export interface RegistryReadSkillBodyInput extends ProfileInput {
     skillId: string;
+}
+
+export interface RegistryPromotionDraft {
+    target: RegistryPromotionTarget;
+    scope: 'global' | 'workspace';
+    workspaceFingerprint?: string;
+    targeting: RegistryPromotionTargeting;
+    key: string;
+    name: string;
+    description?: string;
+    tags?: string[];
+    bodyMarkdown: string;
+    activationMode?: 'always' | 'auto' | 'manual';
+}
+
+export interface RegistryPreparePromotionInput extends ProfileInput {
+    source: RegistryPromotionSource;
+    target: RegistryPromotionTarget;
+    scope: 'global' | 'workspace';
+    workspaceFingerprint?: string;
+    targeting: RegistryPromotionTargeting;
+}
+
+export interface RegistryApplyPromotionInput extends ProfileInput {
+    source: RegistryPromotionSource;
+    sourceDigest: string;
+    draft: RegistryPromotionDraft;
+    overwrite: boolean;
+}
+
+export interface RegistryPromotionSourceSummary {
+    kind: RegistryPromotionSource['kind'];
+    label: string;
+    digest: string;
+    lineCount: number;
+}
+
+export interface RegistryPreparePromotionResult {
+    source: RegistryPromotionSourceSummary;
+    draft: RegistryPromotionDraft;
+    provenance: RegistryPromotionProvenance;
+}
+
+export interface RegistryApplyPromotionResult {
+    promoted: {
+        target: RegistryPromotionTarget;
+        assetKey: string;
+        name: string;
+        scope: 'global' | 'workspace';
+        absolutePath: string;
+        relativeRootPath: string;
+    };
+    resolvedRegistry: RegistryListResolvedResult;
 }
 
 export interface RegistryModeRoots {

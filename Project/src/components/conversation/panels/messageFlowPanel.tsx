@@ -23,6 +23,7 @@ interface MessageFlowPanelProps {
     onEditMessage?: (entry: MessageFlowMessage) => void;
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export function MessageFlowPanel({
@@ -35,6 +36,7 @@ export function MessageFlowPanel({
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
+    onPromoteMessage,
 }: MessageFlowPanelProps) {
     const tanstackMessages = useConversationTanstackMessages({
         messages,
@@ -132,6 +134,7 @@ export function MessageFlowPanel({
                                 {...(onEditMessage ? { onEditMessage } : {})}
                                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                                 {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
+                                {...(onPromoteMessage ? { onPromoteMessage } : {})}
                             />
                         ))}
                     </div>

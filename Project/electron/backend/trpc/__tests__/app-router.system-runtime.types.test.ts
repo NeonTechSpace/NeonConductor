@@ -125,6 +125,25 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         query?: string;
         workspaceFingerprint?: string;
     }>();
+    expectTypeOf<AppRouterInputs['registry']['preparePromotion']>().toExtend<{
+        profileId: string;
+        source:
+            | { kind: 'message'; sessionId: string; messageId: string }
+            | { kind: 'tool_result_artifact_window'; sessionId: string; messagePartId: string; startLine: number; lineCount: number };
+        target: 'rule' | 'skill_snippet';
+        scope: 'global' | 'workspace';
+        targeting:
+            | { targetKind: 'shared' }
+            | { targetKind: 'preset'; presetKey: 'ask' | 'code' | 'debug' | 'orchestrator' }
+            | { targetKind: 'exact_mode'; targetMode: { topLevelTab: 'chat' | 'agent' | 'orchestrator'; modeKey: string } };
+        workspaceFingerprint?: string;
+    }>();
+    expectTypeOf<AppRouterInputs['registry']['applyPromotion']>().toExtend<{
+        profileId: string;
+        sourceDigest: string;
+        draft: { target: 'rule' | 'skill_snippet'; key: string; bodyMarkdown: string };
+        overwrite?: boolean;
+    }>();
 
     expectTypeOf<AppRouterOutputs['runtime']['getDiagnosticSnapshot']>().toExtend<{
         generatedAt: string;
@@ -183,6 +202,14 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
     }>();
     expectTypeOf<AppRouterOutputs['registry']['searchSkills']>().toExtend<{
         skillfiles: Array<{ name: string; tags?: string[] }>;
+    }>();
+    expectTypeOf<AppRouterOutputs['registry']['preparePromotion']>().toExtend<{
+        source: { digest: string; lineCount: number };
+        draft: { target: 'rule' | 'skill_snippet'; bodyMarkdown: string };
+        provenance: { sourceDigest: string; sourceLabel: string };
+    }>();
+    expectTypeOf<AppRouterOutputs['registry']['applyPromotion']>().toExtend<{
+        promoted: { assetKey: string; relativeRootPath: string; target: 'rule' | 'skill_snippet' };
     }>();
     expectTypeOf<AppRouterOutputs['permission']['listPending']>().toExtend<{
         requests: Array<{

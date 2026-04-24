@@ -24,6 +24,7 @@ interface MessageTimelinePanelProps {
     onEditMessage?: (entry: MessageTimelineEntry) => void;
     onBranchFromMessage?: (entry: MessageTimelineEntry) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
+    onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
 }
 
 export function MessageTimelinePanel({
@@ -36,6 +37,7 @@ export function MessageTimelinePanel({
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
+    onPromoteMessage,
 }: MessageTimelinePanelProps) {
     const tanstackMessages = useConversationTanstackMessages({
         messages,
@@ -148,6 +150,7 @@ export function MessageTimelinePanel({
                                         {...(onEditMessage ? { onEditMessage } : {})}
                                         {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                                         {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
+                                        {...(onPromoteMessage ? { onPromoteMessage } : {})}
                                     />
                                 </div>
                             );

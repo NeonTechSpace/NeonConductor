@@ -828,6 +828,7 @@ export interface RulesetsTable {
     relative_root_path: string | null;
     description: string | null;
     tags_json: string;
+    promotion_provenance_json: string | null;
     activation_mode: string;
     enabled: 0 | 1;
     precedence: number;
@@ -853,6 +854,7 @@ export interface SkillfilesTable {
     relative_root_path: string | null;
     description: string | null;
     tags_json: string;
+    promotion_provenance_json: string | null;
     enabled: 0 | 1;
     precedence: number;
     created_at: string;

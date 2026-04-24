@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { messageStore, runStore, toolResultArtifactStore } from '@/app/backend/persistence/stores';
 import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import {
     runtimeContractProfileId,
@@ -10,6 +11,7 @@ import {
     getPersistence,
     mkdirSync,
     path,
+    readFileSync,
     rmSync,
     waitForRunStatus,
     writeFileSync,
@@ -25,6 +27,207 @@ function resetRegistryAssetDirectories(input: { modeRoot: string; nativeRoot: st
 
 describe('runtime contracts: registry and attached skills', () => {
     const profileId = runtimeContractProfileId;
+
+    it('promotes reviewed transcript messages into native rules with provenance and digest validation', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Rule promotion source',
+            kind: 'local',
+            topLevelTab: 'chat',
+        });
+        const registryPaths = await caller.registry.listResolved({ profileId });
+        resetRegistryAssetDirectories({
+            modeRoot: registryPaths.paths.modeRoots.globalRoot,
+            nativeRoot: registryPaths.paths.nativeRulesSkillsRoots.globalRoot,
+        });
+
+        const run = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'extract a repeatable rule',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const message = await messageStore.createMessage({
+            profileId,
+            sessionId: created.session.id,
+            runId: run.id,
+            role: 'assistant',
+        });
+        await messageStore.createPart({
+            messageId: message.id,
+            partType: 'text',
+            payload: {
+                text: '# Promotion Candidate\n\n- Preserve digest-checked source material.\n- Keep provenance queryable.',
+            },
+        });
+
+        const prepared = await caller.registry.preparePromotion({
+            profileId,
+            source: {
+                kind: 'message',
+                sessionId: created.session.id,
+                messageId: message.id,
+            },
+            target: 'rule',
+            scope: 'global',
+            targeting: { targetKind: 'shared' },
+        });
+        expect(prepared.draft.bodyMarkdown).toContain('Preserve digest-checked source material');
+        expect(prepared.provenance.sourceMessageId).toBe(message.id);
+
+        await expect(
+            caller.registry.applyPromotion({
+                profileId,
+                source: {
+                    kind: 'message',
+                    sessionId: created.session.id,
+                    messageId: message.id,
+                },
+                sourceDigest: 'stale-digest',
+                draft: {
+                    ...prepared.draft,
+                    key: 'promoted_digest_rule',
+                    name: 'Promoted Digest Rule',
+                },
+                overwrite: false,
+            })
+        ).rejects.toThrow('source changed after review');
+
+        const applied = await caller.registry.applyPromotion({
+            profileId,
+            source: {
+                kind: 'message',
+                sessionId: created.session.id,
+                messageId: message.id,
+            },
+            sourceDigest: prepared.source.digest,
+            draft: {
+                ...prepared.draft,
+                key: 'promoted_digest_rule',
+                name: 'Promoted Digest Rule',
+                tags: ['promotion', 'provenance'],
+            },
+            overwrite: false,
+        });
+
+        expect(applied.promoted.relativeRootPath).toBe('rules/shared/promoted_digest_rule.md');
+        const promotedFile = readFileSync(applied.promoted.absolutePath, 'utf8');
+        expect(promotedFile).toContain('neonPromotion:');
+        expect(promotedFile).toContain(`sourceDigest: "${prepared.source.digest}"`);
+        expect(promotedFile).toContain('Promoted Digest Rule');
+
+        const resolved = await caller.registry.listResolved({ profileId });
+        const promotedRule = resolved.resolved.rulesets.find((ruleset) => ruleset.assetKey === 'promoted_digest_rule');
+        expect(promotedRule?.promotionProvenance?.sourceDigest).toBe(prepared.source.digest);
+        expect(promotedRule?.promotionProvenance?.sourceMessageId).toBe(message.id);
+    });
+
+    it('promotes a bounded tool artifact line window into a native skill snippet', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Artifact promotion source',
+            kind: 'local',
+            topLevelTab: 'chat',
+        });
+        const registryPaths = await caller.registry.listResolved({ profileId });
+        resetRegistryAssetDirectories({
+            modeRoot: registryPaths.paths.modeRoots.globalRoot,
+            nativeRoot: registryPaths.paths.nativeRulesSkillsRoots.globalRoot,
+        });
+
+        const rawText = ['one: ignore', 'two: promote this', 'three: promote this too', 'four: ignore'].join('\n');
+        const run = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'artifact promotion fixture',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const message = await messageStore.createMessage({
+            profileId,
+            sessionId: created.session.id,
+            runId: run.id,
+            role: 'tool',
+        });
+        const part = await messageStore.createPart({
+            messageId: message.id,
+            partType: 'tool_result',
+            payload: {
+                callId: 'call_registry_promotion',
+                toolName: 'run_command',
+                outputText: 'preview',
+                isError: false,
+                artifactized: true,
+                artifactAvailable: true,
+                artifactKind: 'command_output',
+                previewStrategy: 'head_tail',
+                totalBytes: Buffer.byteLength(rawText, 'utf8'),
+                totalLines: 4,
+            },
+        });
+        await toolResultArtifactStore.create({
+            messagePartId: part.id,
+            profileId,
+            sessionId: created.session.id,
+            runId: run.id,
+            toolName: 'run_command',
+            artifactKind: 'command_output',
+            contentType: 'text/plain',
+            rawText,
+            totalBytes: Buffer.byteLength(rawText, 'utf8'),
+            totalLines: 4,
+            previewText: 'preview',
+            previewStrategy: 'head_tail',
+            metadata: { command: 'printf fixture' },
+        });
+
+        const source = {
+            kind: 'tool_result_artifact_window' as const,
+            sessionId: created.session.id,
+            messagePartId: part.id,
+            startLine: 2,
+            lineCount: 2,
+        };
+        const prepared = await caller.registry.preparePromotion({
+            profileId,
+            source,
+            target: 'skill_snippet',
+            scope: 'global',
+            targeting: { targetKind: 'preset', presetKey: 'debug' },
+        });
+        expect(prepared.draft.bodyMarkdown).toBe('two: promote this\nthree: promote this too');
+        expect(prepared.provenance.startLine).toBe(2);
+        expect(prepared.provenance.lineCount).toBe(2);
+
+        const applied = await caller.registry.applyPromotion({
+            profileId,
+            source,
+            sourceDigest: prepared.source.digest,
+            draft: {
+                ...prepared.draft,
+                key: 'artifact_skill_window',
+                name: 'Artifact Skill Window',
+            },
+            overwrite: false,
+        });
+
+        expect(applied.promoted.relativeRootPath).toBe('skills/presets/debug/artifact_skill_window/SKILL.md');
+        const promotedFile = readFileSync(applied.promoted.absolutePath, 'utf8');
+        expect(promotedFile).toContain('two: promote this');
+        expect(promotedFile).not.toContain('one: ignore');
+        expect(promotedFile).toContain('sourceMessagePartId:');
+    });
 
     it('refreshes file-backed registry assets with precedence, search, and pruning', async () => {
         const caller = createCaller();

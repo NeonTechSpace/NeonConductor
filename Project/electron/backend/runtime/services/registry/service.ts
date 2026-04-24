@@ -2,6 +2,10 @@ import {
     registryResolvedQueryService,
 } from '@/app/backend/runtime/services/registry/registryResolvedQueryService';
 import { refreshRegistry as refreshRegistryLifecycle } from '@/app/backend/runtime/services/registry/registryRefreshLifecycle';
+import {
+    applyPromotion as applyPromotionService,
+    preparePromotion as preparePromotionService,
+} from '@/app/backend/runtime/services/registry/registryPromotionService';
 import type { RegistryRefreshResult } from '@/app/backend/runtime/services/registry/types';
 
 export async function listResolvedRegistry(input: {
@@ -39,6 +43,14 @@ export async function readSkillBody(input: {
     skillId: string;
 }) {
     return registryResolvedQueryService.readSkillBody(input);
+}
+
+export async function preparePromotion(input: Parameters<typeof preparePromotionService>[0]) {
+    return preparePromotionService(input);
+}
+
+export async function applyPromotion(input: Parameters<typeof applyPromotionService>[0]) {
+    return applyPromotionService(input);
 }
 
 export async function resolveSkillfilesByAssetKeys(input: {

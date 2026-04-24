@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { BranchWorkflowDialog } from '@/web/components/conversation/panels/branchWorkflowDialog';
 import { MessageEditDialog } from '@/web/components/conversation/panels/messageEditDialog';
+import { RegistryPromotionDialog } from '@/web/components/conversation/panels/registryPromotionDialog';
 import { ToolArtifactViewerDialog } from '@/web/components/conversation/panels/toolArtifactViewerDialog';
 import { ConversationWorkspaceSection } from '@/web/components/conversation/shell/composition/conversationWorkspaceSection';
 import {
@@ -27,6 +28,7 @@ export function ConversationShell(props: ConversationShellProps) {
             <MessageEditDialog {...controller.messageEditDialogProps} />
             <BranchWorkflowDialog {...controller.branchWorkflowDialogProps} />
             <ToolArtifactViewerDialog {...controller.toolArtifactViewerDialogProps} />
+            <RegistryPromotionDialog {...controller.registryPromotionDialogProps} />
         </main>
     );
 }

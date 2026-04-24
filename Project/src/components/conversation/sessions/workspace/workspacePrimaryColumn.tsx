@@ -81,6 +81,7 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onEditMessage'
     | 'onBranchFromMessage'
     | 'onOpenToolArtifact'
+    | 'onPromoteMessage'
 >;
 
 export function WorkspacePrimaryColumn({
@@ -152,6 +153,7 @@ export function WorkspacePrimaryColumn({
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
+    onPromoteMessage,
 }: WorkspacePrimaryColumnProps) {
     const validatedSelectedSessionId = isEntityId(selectedSessionId, 'sess') ? selectedSessionId : undefined;
     const [activePrimarySurface, setActivePrimarySurface] = useState<'transcript' | 'browser'>('transcript');
@@ -224,6 +226,7 @@ export function WorkspacePrimaryColumn({
                                 {...(onEditMessage ? { onEditMessage } : {})}
                                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                                 {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
+                                {...(onPromoteMessage ? { onPromoteMessage } : {})}
                             />
                         )}
                     </div>

@@ -10,6 +10,7 @@ import type {
     RegistrySourceKind,
     RuleActivationMode,
     SkillDynamicContextSource,
+    RegistryPromotionProvenance,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import type {
@@ -53,6 +54,7 @@ export interface ParsedRegistryMetadataAsset {
     originPath: string;
     description?: string;
     tags?: string[];
+    promotionProvenance?: RegistryPromotionProvenance;
     enabled: boolean;
     precedence: number;
 }

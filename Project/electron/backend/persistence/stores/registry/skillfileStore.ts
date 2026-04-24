@@ -1,6 +1,11 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
-import { isJsonString, isJsonUnknownArray, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+import {
+    isJsonRecord,
+    isJsonString,
+    isJsonUnknownArray,
+    parseJsonValue,
+} from '@/app/backend/persistence/stores/shared/utils';
 import type { SkillfileDefinitionRecord } from '@/app/backend/persistence/types';
 import {
     registryAssetTargetKinds,
@@ -13,6 +18,17 @@ import { normalizeSkillDynamicContextSources } from '@/app/backend/runtime/servi
 function parseTags(value: string): string[] | undefined {
     const parsed = parseJsonValue(value, [], isJsonUnknownArray).filter(isJsonString);
     return parsed.length > 0 ? parsed : undefined;
+}
+
+function parsePromotionProvenance(value: string | null): SkillfileDefinitionRecord['promotionProvenance'] {
+    if (!value) {
+        return undefined;
+    }
+
+    const parsed = parseJsonValue(value, {}, isJsonRecord);
+    return Object.keys(parsed).length > 0
+        ? (parsed as unknown as SkillfileDefinitionRecord['promotionProvenance'])
+        : undefined;
 }
 
 function parseTargetMode(row: {
@@ -55,6 +71,7 @@ function mapSkillfileDefinition(row: {
     relative_root_path: string | null;
     description: string | null;
     tags_json: string;
+    promotion_provenance_json: string | null;
     enabled: 0 | 1;
     precedence: number;
     created_at: string;
@@ -62,6 +79,7 @@ function mapSkillfileDefinition(row: {
 }): SkillfileDefinitionRecord {
     const tags = parseTags(row.tags_json);
     const targetMode = parseTargetMode(row);
+    const promotionProvenance = parsePromotionProvenance(row.promotion_provenance_json);
     return {
         id: row.id,
         profileId: row.profile_id,
@@ -83,6 +101,7 @@ function mapSkillfileDefinition(row: {
         ...(row.relative_root_path ? { relativeRootPath: row.relative_root_path } : {}),
         ...(row.description ? { description: row.description } : {}),
         ...(tags ? { tags } : {}),
+        ...(promotionProvenance ? { promotionProvenance } : {}),
         enabled: row.enabled === 1,
         precedence: row.precedence,
         createdAt: row.created_at,
@@ -113,6 +132,7 @@ export class SkillfileStore {
                 'relative_root_path',
                 'description',
                 'tags_json',
+                'promotion_provenance_json',
                 'enabled',
                 'precedence',
                 'created_at',
@@ -148,6 +168,7 @@ export class SkillfileStore {
                 'relative_root_path',
                 'description',
                 'tags_json',
+                'promotion_provenance_json',
                 'enabled',
                 'precedence',
                 'created_at',

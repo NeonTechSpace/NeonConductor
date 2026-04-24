@@ -99,6 +99,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         onEditMessage,
         onBranchFromMessage,
         onOpenToolArtifact,
+        onPromoteMessage,
     } = input;
 
     return (
@@ -192,6 +193,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                 {...(onEditMessage ? { onEditMessage } : {})}
                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                 {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
+                {...(onPromoteMessage ? { onPromoteMessage } : {})}
             />
         </WorkspaceShell>
     );
