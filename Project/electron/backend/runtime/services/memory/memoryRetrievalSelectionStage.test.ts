@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import type { MemoryDerivedSummary } from '@/app/backend/runtime/contracts';
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import type { RankedMemoryRetrievalDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
 import { selectRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSelectionStage';
 
@@ -14,6 +15,7 @@ function createMemory(overrides: Partial<MemoryRecord>): MemoryRecord {
         state: 'active',
         createdByKind: 'user',
         title: 'Memory',
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides.bodyMarkdown ?? 'Body'),
         bodyMarkdown: 'Body',
         metadata: {},
         createdAt: '2026-03-31T10:00:00.000Z',

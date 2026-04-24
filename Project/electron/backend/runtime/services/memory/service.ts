@@ -12,6 +12,10 @@ import type {
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { isAutomaticRunOutcomeMemory } from '@/app/backend/runtime/services/memory/automaticRunMemoryLifecycle';
+import {
+    renderMemoryCanonicalBodyMarkdown,
+    resolveMemoryCanonicalBody,
+} from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import { resolveCanonicalMemoryProvenance } from '@/app/backend/runtime/services/memory/memoryProvenancePolicy';
 import { memorySemanticIndexService } from '@/app/backend/runtime/services/memory/memorySemanticIndexService';
 
@@ -49,12 +53,18 @@ class MemoryService {
 
         const createdMemory = await getPersistence().db.transaction().execute(async (transaction) => {
             const created = await memoryStore.createInTransaction(transaction, {
+                ...(() => {
+                    const canonicalBody = resolveMemoryCanonicalBody(input);
+                    return {
+                        canonicalBody,
+                        bodyMarkdownProjection: renderMemoryCanonicalBodyMarkdown(canonicalBody),
+                    };
+                })(),
                 profileId: input.profileId,
                 memoryType: input.memoryType,
                 scopeKind: input.scopeKind,
                 createdByKind: input.createdByKind,
                 title: input.title,
-                bodyMarkdown: input.bodyMarkdown,
                 ...(input.summaryText ? { summaryText: input.summaryText } : {}),
                 ...(input.metadata ? { metadata: input.metadata } : {}),
                 ...(input.temporalSubjectKey ? { temporalSubjectKey: input.temporalSubjectKey } : {}),
@@ -100,6 +110,7 @@ class MemoryService {
         profileId: string;
         memoryId: EntityId<'mem'>;
         title: string;
+        canonicalBody?: RuntimeMemoryRecord['canonicalBody'];
         bodyMarkdown: string;
         summaryText?: string;
         metadata?: Record<string, unknown>;
@@ -112,7 +123,12 @@ class MemoryService {
             return errOp('invalid_input', 'Only active memory can be updated.');
         }
 
-        const updated = await memoryStore.updateEditableFields(input);
+        const canonicalBody = resolveMemoryCanonicalBody(input);
+        const updated = await memoryStore.updateEditableFields({
+            ...input,
+            canonicalBody,
+            bodyMarkdownProjection: renderMemoryCanonicalBodyMarkdown(canonicalBody),
+        });
         if (!updated) {
             return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
         }
@@ -148,12 +164,18 @@ class MemoryService {
                 previousMemoryId: input.memoryId,
                 revisionReason: input.revisionReason,
                 replacement: {
+                    ...(() => {
+                        const canonicalBody = resolveMemoryCanonicalBody(input);
+                        return {
+                            canonicalBody,
+                            bodyMarkdownProjection: renderMemoryCanonicalBodyMarkdown(canonicalBody),
+                        };
+                    })(),
                     profileId: input.profileId,
                     memoryType: existing.memoryType,
                     scopeKind: existing.scopeKind,
                     createdByKind: input.createdByKind,
                     title: input.title,
-                    bodyMarkdown: input.bodyMarkdown,
                     ...(input.summaryText ? { summaryText: input.summaryText } : {}),
                     ...(input.metadata ? { metadata: input.metadata } : {}),
                     ...(existing.workspaceFingerprint ? { workspaceFingerprint: existing.workspaceFingerprint } : {}),

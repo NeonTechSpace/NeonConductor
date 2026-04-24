@@ -16,6 +16,7 @@ import type {
     PlanPhaseVerificationOutcome,
     PlanPhaseStatus,
     PlanVariantView,
+    MemoryCanonicalBody,
     MemoryCausalLinkRecord as RuntimeMemoryCausalLinkRecord,
     MemoryConsolidationRecord as RuntimeMemoryConsolidationRecord,
     MemoryDerivedSummary as RuntimeMemoryDerivedSummary,
@@ -109,6 +110,7 @@ export interface MemoryRecord {
     state: MemoryState;
     createdByKind: MemoryCreatedByKind;
     title: string;
+    canonicalBody: MemoryCanonicalBody;
     bodyMarkdown: string;
     summaryText?: string;
     metadata: Record<string, unknown>;

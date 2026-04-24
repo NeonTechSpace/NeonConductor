@@ -6,6 +6,7 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+
 import type { RuntimeProviderId } from '@/shared/contracts';
 
 export interface MemoryRecord {
@@ -16,6 +17,7 @@ export interface MemoryRecord {
     state: MemoryState;
     createdByKind: MemoryCreatedByKind;
     title: string;
+    canonicalBody: MemoryCanonicalBody;
     bodyMarkdown: string;
     summaryText?: string;
     metadata: Record<string, unknown>;
@@ -26,6 +28,21 @@ export interface MemoryRecord {
     supersededByMemoryId?: EntityId<'mem'>;
     createdAt: string;
     updatedAt: string;
+}
+
+export const memoryCanonicalBodySectionKinds = ['summary', 'fact', 'event', 'procedure', 'note'] as const;
+export type MemoryCanonicalBodySectionKind = (typeof memoryCanonicalBodySectionKinds)[number];
+
+export interface MemoryCanonicalBodySection {
+    id: string;
+    kind: MemoryCanonicalBodySectionKind;
+    heading: string;
+    items: string[];
+}
+
+export interface MemoryCanonicalBody {
+    formatVersion: 1;
+    sections: MemoryCanonicalBodySection[];
 }
 
 export const memoryRevisionReasons = ['correction', 'refinement', 'deprecation', 'runtime_refresh'] as const;
@@ -252,6 +269,7 @@ export interface MemoryCreateInput extends ProfileInput {
     scopeKind: MemoryScopeKind;
     createdByKind: MemoryCreatedByKind;
     title: string;
+    canonicalBody?: MemoryCanonicalBody;
     bodyMarkdown: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
@@ -280,6 +298,7 @@ export type MemoryDisableInput = MemoryByIdInput;
 export interface MemorySupersedeInput extends MemoryByIdInput {
     createdByKind: MemoryCreatedByKind;
     title: string;
+    canonicalBody?: MemoryCanonicalBody;
     bodyMarkdown: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
@@ -328,6 +347,7 @@ export interface MemoryEditProposal {
     reviewAction: MemoryEditReviewAction;
     proposedState: MemoryState;
     proposedTitle: string;
+    proposedCanonicalBody: MemoryCanonicalBody;
     proposedBodyMarkdown: string;
     proposedSummaryText?: string;
     proposedMetadata: Record<string, unknown>;

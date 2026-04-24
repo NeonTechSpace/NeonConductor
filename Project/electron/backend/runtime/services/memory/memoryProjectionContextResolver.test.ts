@@ -1,9 +1,9 @@
 import os from 'node:os';
 import path from 'node:path';
-
 import { describe, expect, it, vi } from 'vitest';
 
 import type { MemoryRecord } from '@/app/backend/persistence/types';
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import {
     buildCandidateProjection,
     isMemoryRelevant,
@@ -21,6 +21,7 @@ function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
         state: 'active',
         createdByKind: 'user',
         title: 'Workspace memory',
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides?.bodyMarkdown ?? 'Body.'),
         bodyMarkdown: 'Body.',
         metadata: {},
         workspaceFingerprint: 'ws_test',

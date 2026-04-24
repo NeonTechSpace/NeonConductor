@@ -1,5 +1,3 @@
-import type { Kysely, Transaction } from 'kysely';
-
 import { getPersistence } from '@/app/backend/persistence/db';
 import type { DatabaseSchema } from '@/app/backend/persistence/schema';
 import { parseEntityId, parseEnumValue, parseJsonRecord } from '@/app/backend/persistence/stores/shared/rowParsers';
@@ -11,6 +9,7 @@ import {
     memoryStates,
     memoryTypes,
     type EntityId,
+    type MemoryCanonicalBody,
     type MemoryCreatedByKind,
     type MemoryRevisionReason,
     type MemoryScopeKind,
@@ -18,6 +17,13 @@ import {
     type MemoryType,
 } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
+import {
+    createMemoryCanonicalBodyFromMarkdown,
+    normalizeMemoryCanonicalBody,
+    renderMemoryCanonicalBodyMarkdown,
+} from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
+
+import type { Kysely, Transaction } from 'kysely';
 
 type MemoryStoreDb = Kysely<DatabaseSchema> | Transaction<DatabaseSchema>;
 
@@ -32,7 +38,8 @@ function mapMemoryRecord(row: {
     run_id: string | null;
     created_by_kind: string;
     title: string;
-    body_markdown: string;
+    canonical_body_json: string;
+    body_markdown_projection: string;
     summary_text: string | null;
     metadata_json: string;
     temporal_subject_key: string | null;
@@ -48,7 +55,8 @@ function mapMemoryRecord(row: {
         state: parseEnumValue(row.state, 'memory_records.state', memoryStates),
         createdByKind: parseEnumValue(row.created_by_kind, 'memory_records.created_by_kind', memoryCreatedByKinds),
         title: row.title,
-        bodyMarkdown: row.body_markdown,
+        canonicalBody: normalizeMemoryCanonicalBody(parseJsonRecord(row.canonical_body_json) as unknown as MemoryCanonicalBody),
+        bodyMarkdown: row.body_markdown_projection,
         metadata: parseJsonRecord(row.metadata_json),
         ...(row.workspace_fingerprint ? { workspaceFingerprint: row.workspace_fingerprint } : {}),
         ...(row.thread_id ? { threadId: parseEntityId(row.thread_id, 'memory_records.thread_id', 'thr') } : {}),
@@ -76,7 +84,9 @@ interface CreateMemoryRecordInput {
     state?: Extract<MemoryState, 'active' | 'disabled'>;
     createdByKind: MemoryCreatedByKind;
     title: string;
-    bodyMarkdown: string;
+    canonicalBody?: MemoryCanonicalBody;
+    bodyMarkdown?: string;
+    bodyMarkdownProjection?: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
     workspaceFingerprint?: string;
@@ -89,9 +99,25 @@ interface UpdateMemoryEditableFieldsInput {
     profileId: string;
     memoryId: EntityId<'mem'>;
     title: string;
-    bodyMarkdown: string;
+    canonicalBody?: MemoryCanonicalBody;
+    bodyMarkdown?: string;
+    bodyMarkdownProjection?: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
+}
+
+function resolveStoredBody(input: {
+    canonicalBody?: MemoryCanonicalBody;
+    bodyMarkdown?: string;
+    bodyMarkdownProjection?: string;
+}): { canonicalBody: MemoryCanonicalBody; bodyMarkdownProjection: string } {
+    const canonicalBody = input.canonicalBody
+        ? normalizeMemoryCanonicalBody(input.canonicalBody)
+        : createMemoryCanonicalBodyFromMarkdown(input.bodyMarkdown ?? '');
+    return {
+        canonicalBody,
+        bodyMarkdownProjection: input.bodyMarkdownProjection ?? renderMemoryCanonicalBodyMarkdown(canonicalBody),
+    };
 }
 
 export class MemoryStore {
@@ -108,6 +134,7 @@ export class MemoryStore {
         }
     ): Promise<MemoryRecord> {
         const timestamp = options?.timestamp ?? nowIso();
+        const storedBody = resolveStoredBody(input);
         const inserted = await db
             .insertInto('memory_records')
             .values({
@@ -121,7 +148,8 @@ export class MemoryStore {
                 run_id: input.runId ?? null,
                 created_by_kind: input.createdByKind,
                 title: input.title,
-                body_markdown: input.bodyMarkdown,
+                canonical_body_json: JSON.stringify(storedBody.canonicalBody),
+                body_markdown_projection: storedBody.bodyMarkdownProjection,
                 summary_text: input.summaryText ?? null,
                 metadata_json: JSON.stringify(input.metadata ?? {}),
                 temporal_subject_key: input.temporalSubjectKey ?? null,
@@ -226,11 +254,13 @@ export class MemoryStore {
     }
 
     async updateEditableFields(input: UpdateMemoryEditableFieldsInput): Promise<MemoryRecord | null> {
+        const storedBody = resolveStoredBody(input);
         const updated = await this.getDb()
             .updateTable('memory_records')
             .set({
                 title: input.title,
-                body_markdown: input.bodyMarkdown,
+                canonical_body_json: JSON.stringify(storedBody.canonicalBody),
+                body_markdown_projection: storedBody.bodyMarkdownProjection,
                 summary_text: input.summaryText ?? null,
                 metadata_json: JSON.stringify(input.metadata ?? {}),
                 updated_at: nowIso(),

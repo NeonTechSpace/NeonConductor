@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { MemoryRecord } from '@/app/backend/persistence/types';
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import {
     parseMemoryProposal,
     readParsedState,
@@ -17,6 +18,7 @@ function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
         state: 'active',
         createdByKind: 'user',
         title: 'Original title',
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides?.bodyMarkdown ?? 'Original body.'),
         bodyMarkdown: 'Original body.',
         metadata: { source: 'manual' },
         workspaceFingerprint: 'ws_test',
@@ -30,22 +32,6 @@ function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
         ...baseMemory,
         ...overrides,
     };
-
-    if (overrides && 'threadId' in overrides && overrides.threadId === undefined) {
-        delete memory.threadId;
-    }
-    if (overrides && 'runId' in overrides && overrides.runId === undefined) {
-        delete memory.runId;
-    }
-    if (overrides && 'workspaceFingerprint' in overrides && overrides.workspaceFingerprint === undefined) {
-        delete memory.workspaceFingerprint;
-    }
-    if (overrides && 'summaryText' in overrides && overrides.summaryText === undefined) {
-        delete memory.summaryText;
-    }
-    if (overrides && 'supersededByMemoryId' in overrides && overrides.supersededByMemoryId === undefined) {
-        delete memory.supersededByMemoryId;
-    }
 
     return memory;
 }
@@ -61,7 +47,8 @@ describe('memoryProjectionFileCodec', () => {
 
         const parsed = parseMemoryProposal(memory, rendered);
         expect(parsed.title).toBe('Original title');
-        expect(parsed.bodyMarkdown).toBe('Original body.');
+        expect(parsed.bodyMarkdown).toBe('## Memory Body\n\n- Original body.');
+        expect(parsed.canonicalBody.sections[0]?.kind).toBe('note');
         expect(parsed.metadata).toEqual({ source: 'manual' });
         expect(parsed.proposedState).toBe('active');
     });

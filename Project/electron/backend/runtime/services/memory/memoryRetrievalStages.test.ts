@@ -4,13 +4,14 @@ import { memoryEvidenceStore } from '@/app/backend/persistence/stores';
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import { okOp } from '@/app/backend/runtime/services/common/operationalError';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import { assembleMemoryRetrievalResult } from '@/app/backend/runtime/services/memory/memoryRetrievalAssemblyStage';
 import { collectMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalCandidateCollector';
 import { resolveMemoryRetrievalContext } from '@/app/backend/runtime/services/memory/memoryRetrievalContextResolver';
 import { loadMemoryRetrievalEvidence } from '@/app/backend/runtime/services/memory/memoryRetrievalEvidenceStage';
 import { expandMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalExpansionStage';
-import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 import type { RankedMemoryRetrievalDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
+import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 import {
     createCaller,
     createSessionInScope,
@@ -30,6 +31,7 @@ function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
         state: 'active',
         createdByKind: 'user',
         title: 'Stage memory',
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides.bodyMarkdown ?? 'Stage body.'),
         bodyMarkdown: 'Stage body.',
         metadata: {},
         createdAt: '2026-03-31T10:00:00.000Z',
@@ -142,38 +144,41 @@ describe('memory retrieval stages', () => {
             threadId: requireEntityId('thr_stage', 'thr', 'Expected thread id.'),
         });
 
-        const expandSpy = vi.spyOn(advancedMemoryDerivationService, 'expandMatchedMemories').mockResolvedValue(
-            okOp({
-                candidates: [
+        const expansionResult = okOp({
+            candidates: [
+                {
+                    memory: exactMemory,
+                    matchReason: 'derived_temporal' as const,
+                    sourceMemoryId: exactMemory.id,
+                    annotations: ['Duplicate should be filtered.'],
+                },
+                {
+                    memory: derivedOnlyMemory,
+                    matchReason: 'derived_temporal' as const,
+                    sourceMemoryId: exactMemory.id,
+                    annotations: ['Prior truth from temporal memory history.'],
+                },
+            ],
+            summaries: new Map([
+                [
+                    exactMemory.id,
                     {
-                        memory: exactMemory,
-                        matchReason: 'derived_temporal',
-                        sourceMemoryId: exactMemory.id,
-                        annotations: ['Duplicate should be filtered.'],
-                    },
-                    {
-                        memory: derivedOnlyMemory,
-                        matchReason: 'derived_temporal',
-                        sourceMemoryId: exactMemory.id,
-                        annotations: ['Prior truth from temporal memory history.'],
+                        hasTemporalHistory: true,
+                        conflictingCurrentMemoryIds: [],
+                        predecessorMemoryIds: [],
+                        graphNeighborCount: 0,
+                        linkedRunIds: [],
+                        linkedThreadIds: [],
+                        linkedWorkspaceFingerprints: [],
                     },
                 ],
-                summaries: new Map([
-                    [
-                        exactMemory.id,
-                        {
-                            hasTemporalHistory: true,
-                            conflictingCurrentMemoryIds: [],
-                            predecessorMemoryIds: [],
-                            graphNeighborCount: 0,
-                            linkedRunIds: [],
-                            linkedThreadIds: [],
-                            linkedWorkspaceFingerprints: [],
-                        },
-                    ],
-                ]),
-            })
+            ]),
+        });
+        expansionResult.match(
+            () => undefined,
+            () => undefined
         );
+        const expandSpy = vi.spyOn(advancedMemoryDerivationService, 'expandMatchedMemories').mockResolvedValue(expansionResult);
 
         try {
             const expanded = await expandMemoryRetrievalCandidates({

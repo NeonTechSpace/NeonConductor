@@ -55,6 +55,17 @@ describe('runtime contracts: memory', () => {
             scopeKind: 'global',
             createdByKind: 'user',
             title: 'Global preference',
+            canonicalBody: {
+                formatVersion: 1,
+                sections: [
+                    {
+                        id: 'naming-fact',
+                        kind: 'fact',
+                        heading: 'Naming Preference',
+                        items: ['Use explicit names.'],
+                    },
+                ],
+            },
             bodyMarkdown: 'Use explicit names.',
             metadata: {
                 source: 'manual',
@@ -62,6 +73,13 @@ describe('runtime contracts: memory', () => {
         });
         expect(globalCreated.memory.scopeKind).toBe('global');
         expect(globalCreated.memory.metadata).toEqual({ source: 'manual' });
+        expect(globalCreated.memory.canonicalBody.formatVersion).toBe(1);
+        expect(globalCreated.memory.canonicalBody.sections[0]).toMatchObject({
+            kind: 'fact',
+            heading: 'Naming Preference',
+            items: ['Use explicit names.'],
+        });
+        expect(globalCreated.memory.bodyMarkdown).toBe('## Naming Preference\n\n- Use explicit names.');
 
         const workspaceCreated = await caller.memory.create({
             profileId,
@@ -131,6 +149,7 @@ describe('runtime contracts: memory', () => {
         expect(superseded.replacement.state).toBe('active');
         expect(superseded.replacement.threadId).toBe(threadId);
         expect(superseded.replacement.metadata).toEqual({ revision: 2 });
+        expect(superseded.replacement.canonicalBody.sections[0]?.items).toEqual(['Updated thread note.']);
     });
 
     it('rejects invalid scope and provenance combinations', async () => {

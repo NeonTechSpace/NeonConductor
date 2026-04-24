@@ -4,7 +4,6 @@ import {
     memoryStates,
     memoryTypes,
 } from '@/app/backend/runtime/contracts/enums';
-import { memoryRevisionReasons } from '@/app/backend/runtime/contracts/types/memory';
 import {
     createParser,
     readArray,
@@ -16,10 +15,11 @@ import {
     readProfileId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
-import { memoryEvidenceKinds } from '@/app/backend/runtime/contracts/types/memory';
 import type {
     ApplyMemoryEditProposalInput,
     MemoryByIdInput,
+    MemoryCanonicalBody,
+    MemoryCanonicalBodySection,
     MemoryCreateInput,
     MemoryEvidenceCreateInput,
     MemoryDisableInput,
@@ -27,6 +27,11 @@ import type {
     MemoryProjectionContextInput,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts/types';
+import {
+    memoryCanonicalBodySectionKinds,
+    memoryEvidenceKinds,
+    memoryRevisionReasons,
+} from '@/app/backend/runtime/contracts/types/memory';
 
 function readMetadataRecord(value: unknown, field: string): Record<string, unknown> | undefined {
     if (value === undefined) {
@@ -34,6 +39,38 @@ function readMetadataRecord(value: unknown, field: string): Record<string, unkno
     }
 
     return readObject(value, field);
+}
+
+function readMemoryCanonicalBody(value: unknown, field: string): MemoryCanonicalBody | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    const source = readObject(value, field);
+    if (source.formatVersion !== 1) {
+        throw new Error(`Invalid "${field}.formatVersion": expected 1.`);
+    }
+
+    const sections = readArray(source.sections, `${field}.sections`).map((item, index): MemoryCanonicalBodySection => {
+        const section = readObject(item, `${field}.sections[${String(index)}]`);
+        return {
+            id: readString(section.id, `${field}.sections[${String(index)}].id`),
+            kind: readEnumValue(
+                section.kind,
+                `${field}.sections[${String(index)}].kind`,
+                memoryCanonicalBodySectionKinds
+            ),
+            heading: readString(section.heading, `${field}.sections[${String(index)}].heading`),
+            items: readArray(section.items, `${field}.sections[${String(index)}].items`).map((entry, itemIndex) =>
+                readString(entry, `${field}.sections[${String(index)}].items[${String(itemIndex)}]`)
+            ),
+        };
+    });
+
+    return {
+        formatVersion: 1,
+        sections,
+    };
 }
 
 function readMemoryEvidenceArray(value: unknown, field: string): MemoryEvidenceCreateInput[] | undefined {
@@ -79,6 +116,7 @@ export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
     const temporalSubjectKey = readOptionalString(source.temporalSubjectKey, 'temporalSubjectKey');
     const metadata = readMetadataRecord(source.metadata, 'metadata');
     const evidence = readMemoryEvidenceArray(source.evidence, 'evidence');
+    const canonicalBody = readMemoryCanonicalBody(source.canonicalBody, 'canonicalBody');
 
     return {
         profileId: readProfileId(source),
@@ -87,6 +125,7 @@ export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
         createdByKind: readEnumValue(source.createdByKind, 'createdByKind', memoryCreatedByKinds),
         title: readString(source.title, 'title'),
         bodyMarkdown: readString(source.bodyMarkdown, 'bodyMarkdown'),
+        ...(canonicalBody ? { canonicalBody } : {}),
         ...(summaryText ? { summaryText } : {}),
         ...(metadata ? { metadata } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
@@ -138,6 +177,7 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
     const metadata = readMetadataRecord(source.metadata, 'metadata');
     const evidence = readMemoryEvidenceArray(source.evidence, 'evidence');
     const revisionReason = readEnumValue(source.revisionReason, 'revisionReason', memoryRevisionReasons);
+    const canonicalBody = readMemoryCanonicalBody(source.canonicalBody, 'canonicalBody');
 
     return {
         profileId: readProfileId(source),
@@ -145,6 +185,7 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
         createdByKind: readEnumValue(source.createdByKind, 'createdByKind', memoryCreatedByKinds),
         title: readString(source.title, 'title'),
         bodyMarkdown: readString(source.bodyMarkdown, 'bodyMarkdown'),
+        ...(canonicalBody ? { canonicalBody } : {}),
         revisionReason,
         ...(summaryText ? { summaryText } : {}),
         ...(metadata ? { metadata } : {}),

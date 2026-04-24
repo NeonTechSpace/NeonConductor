@@ -80,7 +80,8 @@ export interface MemoryRecordsTable {
     run_id: string | null;
     created_by_kind: string;
     title: string;
-    body_markdown: string;
+    canonical_body_json: string;
+    body_markdown_projection: string;
     summary_text: string | null;
     metadata_json: string;
     temporal_subject_key: string | null;

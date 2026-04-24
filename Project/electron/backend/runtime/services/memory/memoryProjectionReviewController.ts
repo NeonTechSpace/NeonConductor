@@ -7,18 +7,18 @@ import type {
     ProjectedMemoryRecord,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
-import { memoryService } from '@/app/backend/runtime/services/memory/service';
+import {
+    loadRelevantProjectionSnapshot,
+} from '@/app/backend/runtime/services/memory/memoryProjectionCatalog';
 import {
     buildCandidateProjectionForTarget,
 } from '@/app/backend/runtime/services/memory/memoryProjectionContextResolver';
 import { hashContent, parseMemoryProposal } from '@/app/backend/runtime/services/memory/memoryProjectionFileCodec';
 import {
-    loadRelevantProjectionSnapshot,
-} from '@/app/backend/runtime/services/memory/memoryProjectionCatalog';
-import {
     scanProjectedMemory,
     writeProjectedMemoryFile,
 } from '@/app/backend/runtime/services/memory/memoryProjectionWriter';
+import { memoryService } from '@/app/backend/runtime/services/memory/service';
 
 export class MemoryProjectionReviewController {
     async scanProjectionEdits(
@@ -60,6 +60,7 @@ export class MemoryProjectionReviewController {
                               : 'update',
                     proposedState: parsedProposal.proposedState,
                     proposedTitle: parsedProposal.title,
+                    proposedCanonicalBody: parsedProposal.canonicalBody,
                     proposedBodyMarkdown: parsedProposal.bodyMarkdown,
                     ...(parsedProposal.summaryText ? { proposedSummaryText: parsedProposal.summaryText } : {}),
                     proposedMetadata: parsedProposal.metadata,
@@ -120,6 +121,7 @@ export class MemoryProjectionReviewController {
                 profileId: input.profileId,
                 memoryId: input.memoryId,
                 title: proposal.proposedTitle,
+                canonicalBody: proposal.proposedCanonicalBody,
                 bodyMarkdown: proposal.proposedBodyMarkdown,
                 ...(proposal.proposedSummaryText ? { summaryText: proposal.proposedSummaryText } : {}),
                 metadata: proposal.proposedMetadata,
@@ -174,6 +176,7 @@ export class MemoryProjectionReviewController {
             memoryId: input.memoryId,
             createdByKind: 'user',
             title: proposal.proposedTitle,
+            canonicalBody: proposal.proposedCanonicalBody,
             bodyMarkdown: proposal.proposedBodyMarkdown,
             ...(proposal.proposedSummaryText ? { summaryText: proposal.proposedSummaryText } : {}),
             metadata: proposal.proposedMetadata,

@@ -13,6 +13,7 @@ import {
     isAutomaticRunOutcomeMemory,
     resolveAutomaticRunMemoryDecision,
 } from '@/app/backend/runtime/services/memory/automaticRunMemoryLifecycle';
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import { requireEntityId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 function createMessageRecord(overrides: Partial<MessageRecord>): MessageRecord {
@@ -20,11 +21,11 @@ function createMessageRecord(overrides: Partial<MessageRecord>): MessageRecord {
         id: requireEntityId(overrides.id ?? 'msg_memory_auto_1', 'msg', 'Expected message id.'),
         profileId: overrides.profileId ?? 'profile_memory_auto',
         sessionId: requireEntityId(
-            String(overrides.sessionId ?? 'sess_memory_auto_1'),
+            overrides.sessionId ?? 'sess_memory_auto_1',
             'sess',
             'Expected session id.'
         ),
-        runId: requireEntityId(String(overrides.runId ?? 'run_memory_auto_1'), 'run', 'Expected run id.'),
+        runId: requireEntityId(overrides.runId ?? 'run_memory_auto_1', 'run', 'Expected run id.'),
         role: overrides.role ?? 'assistant',
         createdAt: overrides.createdAt ?? '2026-03-27T00:00:00.000Z',
         updatedAt: overrides.updatedAt ?? '2026-03-27T00:00:00.000Z',
@@ -35,7 +36,7 @@ function createMessagePartRecord(overrides: Partial<MessagePartRecord>): Message
     return {
         id: requireEntityId(overrides.id ?? 'part_memory_auto_1', 'part', 'Expected message part id.'),
         messageId: requireEntityId(
-            String(overrides.messageId ?? 'msg_memory_auto_1'),
+            overrides.messageId ?? 'msg_memory_auto_1',
             'msg',
             'Expected message id.'
         ),
@@ -57,6 +58,10 @@ function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
         state: overrides.state ?? 'active',
         createdByKind: overrides.createdByKind ?? 'system',
         title: overrides.title ?? 'Completed run: Summarize the implementation',
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(
+            overrides.bodyMarkdown ??
+                '# Run outcome\n\n- Status: completed\n- Provider/model: openai/openai/gpt-5\n- Run id: run_memory_auto_1\n- Session id: sess_memory_auto_1'
+        ),
         bodyMarkdown:
             overrides.bodyMarkdown ??
             '# Run outcome\n\n- Status: completed\n- Provider/model: openai/openai/gpt-5\n- Run id: run_memory_auto_1\n- Session id: sess_memory_auto_1',

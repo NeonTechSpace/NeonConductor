@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import type { RetrievedMemoryRecord } from '@/app/backend/runtime/contracts';
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import {
     formatRetrievedMemoryMessage,
     MAX_RETRIEVED_MEMORY_TEXT_LENGTH,
@@ -16,6 +17,7 @@ function createMemory(id: string, title: string, bodyMarkdown: string): MemoryRe
         state: 'active',
         createdByKind: 'user',
         title,
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(bodyMarkdown),
         bodyMarkdown,
         metadata: {},
         createdAt: '2026-03-31T10:00:00.000Z',

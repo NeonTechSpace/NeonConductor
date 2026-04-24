@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { MemoryRecord } from '@/app/backend/persistence/types';
-
+import { createMemoryCanonicalBodyFromMarkdown } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 
 function createMemory(overrides: Partial<MemoryRecord>): MemoryRecord {
@@ -13,6 +13,7 @@ function createMemory(overrides: Partial<MemoryRecord>): MemoryRecord {
         state: 'active',
         createdByKind: 'user',
         title: 'Memory',
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides.bodyMarkdown ?? 'Body'),
         bodyMarkdown: 'Body',
         metadata: {},
         createdAt: '2026-03-27T10:00:00.000Z',

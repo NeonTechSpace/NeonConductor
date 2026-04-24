@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto';
 
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import { memoryStates, type MemoryState } from '@/app/backend/runtime/contracts';
+import type { MemoryCanonicalBody } from '@/app/backend/runtime/contracts';
 import { readEnumValue } from '@/app/backend/runtime/contracts/parsers/helpers';
+import {
+    createMemoryCanonicalBodyFromMarkdown,
+    renderMemoryCanonicalBodyMarkdown,
+} from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 
 interface ParsedFrontmatter {
     attributes: Record<string, unknown>;
@@ -11,6 +16,7 @@ interface ParsedFrontmatter {
 
 export interface ParsedMemoryProposal {
     title: string;
+    canonicalBody: MemoryCanonicalBody;
     bodyMarkdown: string;
     summaryText?: string;
     metadata: Record<string, unknown>;
@@ -142,7 +148,7 @@ export function renderProjectedMemoryFile(memory: MemoryRecord): string {
 
     const header = frontmatterEntries.map(([key, value]) => `${key}: ${serializeFrontmatterValue(value)}`).join('\n');
 
-    return normalizeContent(`---\n${header}\n---\n${memory.bodyMarkdown.trim()}\n`);
+    return normalizeContent(`---\n${header}\n---\n${renderMemoryCanonicalBodyMarkdown(memory.canonicalBody)}\n`);
 }
 
 function readRequiredString(attributes: Record<string, unknown>, field: string): string {
@@ -220,6 +226,7 @@ export function parseMemoryProposal(memory: MemoryRecord, content: string): Pars
 
     return {
         title,
+        canonicalBody: createMemoryCanonicalBodyFromMarkdown(bodyMarkdown),
         bodyMarkdown,
         ...(summaryText ? { summaryText } : {}),
         metadata: readObject(attributes, 'metadata'),
