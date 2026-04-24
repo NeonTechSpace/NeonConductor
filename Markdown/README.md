@@ -84,6 +84,12 @@ with `vX.Y.Z-alpha.N` / `vX.Y.Z-beta.N`.
 
 ---
 
+## Engineering Start
+
+For engineering work, start with the repo-critical rules in [AGENTS.md](/AGENTS.md), then use [CONTRIBUTING.md](/Markdown/CONTRIBUTING.md) for local setup and workflow. The current architecture truth lives in [Current System Blueprint.md](/Research/Current%20System%20Blueprint.md), first-alpha sequencing lives in [First Testable Alpha Track.md](/Research/First%20Testable%20Alpha%20Track.md), and current repair-first priority lives in [Repair-First Stabilization Track.md](/Research/Repair-First%20Stabilization%20Track.md).
+
+---
+
 ## Contribute
 
 > [!CAUTION]

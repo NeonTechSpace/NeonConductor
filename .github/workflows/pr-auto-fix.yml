@@ -1,0 +1,146 @@
+name: PR Auto Fix
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+concurrency:
+  group: pr-auto-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  same-repo-autofix:
+    name: Auto-fix same-repo PR lint and format
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Create GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Checkout PR branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
+        with:
+          node-version-file: Project/.nvmrc
+          cache: pnpm
+          cache-dependency-path: Project/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm -C Project install --frozen-lockfile
+
+      - name: Prepare generated project state
+        run: pnpm -C Project prep
+
+      - name: Check formatting
+        id: format_check
+        continue-on-error: true
+        run: pnpm -C Project format:check
+
+      - name: Check lint
+        id: lint_check
+        continue-on-error: true
+        run: pnpm -C Project lint:base
+
+      - name: Apply automated fixes
+        if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
+        run: |
+          set -euo pipefail
+          pnpm -C Project format
+          pnpm -C Project lint:base -- --fix
+
+      - name: Recheck formatting after fixes
+        if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
+        run: pnpm -C Project format:check
+
+      - name: Recheck lint after fixes
+        if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
+        run: pnpm -C Project lint:base
+
+      - name: Detect auto-fix diff
+        id: diff
+        if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push automated fixes
+        if: ${{ steps.diff.outputs.has_changes == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "NeonConductor Repo Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "chore: apply automated lint and format fixes"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+
+  fork-diagnostics:
+    name: Fork PR lint and format diagnostics
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout PR merge
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
+        with:
+          node-version-file: Project/.nvmrc
+          cache: pnpm
+          cache-dependency-path: Project/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm -C Project install --frozen-lockfile
+
+      - name: Prepare generated project state
+        run: pnpm -C Project prep
+
+      - name: Check formatting
+        run: pnpm -C Project format:check
+
+      - name: Check lint
+        run: pnpm -C Project lint:base
