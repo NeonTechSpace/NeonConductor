@@ -14,8 +14,8 @@ import type {
     RegistryPresetKey,
     RuntimeRequirementProfile,
 } from '@/app/backend/runtime/contracts/enums';
-import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { PromotionProvenance, PromotionSource } from '@/app/backend/runtime/contracts/types/promotion';
 import type { PreparedContextModeOverrides } from '@/app/backend/runtime/contracts/types/prompt';
 
 export interface ModeExecutionPolicy {
@@ -208,19 +208,7 @@ export interface SkillfileDefinition {
 
 export type RegistryPromotionTarget = 'rule' | 'skill_snippet';
 
-export type RegistryPromotionSource =
-    | {
-          kind: 'message';
-          sessionId: EntityId<'sess'>;
-          messageId: EntityId<'msg'>;
-      }
-    | {
-          kind: 'tool_result_artifact_window';
-          sessionId: EntityId<'sess'>;
-          messagePartId: EntityId<'part'>;
-          startLine: number;
-          lineCount: number;
-      };
+export type RegistryPromotionSource = PromotionSource;
 
 export type RegistryPromotionTargeting =
     | {
@@ -235,17 +223,7 @@ export type RegistryPromotionTargeting =
           targetMode: RegistryExactModeTarget;
       };
 
-export interface RegistryPromotionProvenance {
-    sourceKind: RegistryPromotionSource['kind'];
-    sourceSessionId: EntityId<'sess'>;
-    sourceMessageId?: EntityId<'msg'>;
-    sourceMessagePartId?: EntityId<'part'>;
-    sourceLabel: string;
-    sourceDigest: string;
-    startLine?: number;
-    lineCount?: number;
-    promotedAt: string;
-}
+export type RegistryPromotionProvenance = PromotionProvenance;
 
 export interface RegistryAssetShadowVariant {
     scope: Extract<RegistryScope, 'global' | 'workspace'>;

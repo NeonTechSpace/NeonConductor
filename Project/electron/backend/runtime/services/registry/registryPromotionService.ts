@@ -1,9 +1,7 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { mkdir, lstat, realpath, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { getPersistence } from '@/app/backend/persistence/db';
-import { toolResultArtifactStore } from '@/app/backend/persistence/stores';
 import type {
     RegistryApplyPromotionInput,
     RegistryApplyPromotionResult,
@@ -11,42 +9,24 @@ import type {
     RegistryPreparePromotionResult,
     RegistryPromotionDraft,
     RegistryPromotionProvenance,
-    RegistryPromotionSource,
     RegistryPromotionTarget,
     RegistryPromotionTargeting,
     RuleActivationMode,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import {
+    createPromotionProvenance,
+    extractPromotionSource,
+    normalizePromotionBodyMarkdown,
+    type ExtractedPromotionSource,
+} from '@/app/backend/runtime/services/promotion/promotionSourceExtractor';
 import { resolveRegistryPaths, slugifyAssetKey } from '@/app/backend/runtime/services/registry/filesystem';
 import { refreshRegistry } from '@/app/backend/runtime/services/registry/registryRefreshLifecycle';
-
-interface ExtractedPromotionSource {
-    source: RegistryPromotionSource;
-    sourceText: string;
-    sourceLabel: string;
-    sourceDigest: string;
-    lineCount: number;
-}
 
 const promotedAssetAllowedTargets: Record<RegistryPromotionTarget, string> = {
     rule: 'Rule',
     skill_snippet: 'Skill Snippet',
 };
-
-function sha256Text(value: string): string {
-    return createHash('sha256').update(value, 'utf8').digest('hex');
-}
-
-function normalizeBodyMarkdown(value: string): string {
-    return value.replace(/\r\n?/g, '\n').trim();
-}
-
-function countLines(value: string): number {
-    if (value.length === 0) {
-        return 0;
-    }
-    return value.split('\n').length;
-}
 
 function stringifyFrontmatterValue(value: string): string {
     return JSON.stringify(value.replace(/\r\n?/g, '\n').trim());
@@ -77,24 +57,6 @@ function renderPromotionProvenanceFrontmatter(provenance: RegistryPromotionProve
         ...(provenance.lineCount !== undefined ? [`  lineCount: ${String(provenance.lineCount)}`] : []),
         `  promotedAt: ${stringifyFrontmatterValue(provenance.promotedAt)}`,
     ];
-}
-
-function createProvenance(input: ExtractedPromotionSource): RegistryPromotionProvenance {
-    return {
-        sourceKind: input.source.kind,
-        sourceSessionId: input.source.sessionId,
-        ...(input.source.kind === 'message' ? { sourceMessageId: input.source.messageId } : {}),
-        ...(input.source.kind === 'tool_result_artifact_window'
-            ? {
-                  sourceMessagePartId: input.source.messagePartId,
-                  startLine: input.source.startLine,
-                  lineCount: input.source.lineCount,
-              }
-            : {}),
-        sourceLabel: input.sourceLabel,
-        sourceDigest: input.sourceDigest,
-        promotedAt: new Date().toISOString(),
-    };
 }
 
 function defaultKeyFromSource(input: { target: RegistryPromotionTarget; source: ExtractedPromotionSource }): string {
@@ -269,104 +231,6 @@ async function writePromotedAsset(input: {
     return absolutePath;
 }
 
-async function extractMessageSource(input: {
-    profileId: string;
-    source: Extract<RegistryPromotionSource, { kind: 'message' }>;
-}): Promise<OperationalResult<ExtractedPromotionSource>> {
-    const { db } = getPersistence();
-    const message = await db
-        .selectFrom('messages')
-        .select(['id', 'role'])
-        .where('id', '=', input.source.messageId)
-        .where('profile_id', '=', input.profileId)
-        .where('session_id', '=', input.source.sessionId)
-        .executeTakeFirst();
-    if (!message) {
-        return errOp('not_found', 'The source message could not be found for this session.');
-    }
-    if (message.role !== 'user' && message.role !== 'assistant') {
-        return errOp('invalid_input', 'Only user and assistant messages can be promoted as transcript material.');
-    }
-
-    const parts = await db
-        .selectFrom('message_parts')
-        .select(['part_type', 'payload_json'])
-        .where('message_id', '=', input.source.messageId)
-        .orderBy('sequence', 'asc')
-        .execute();
-    const text = parts
-        .flatMap((part) => {
-            if (part.part_type !== 'text' && part.part_type !== 'text_file_attachment') {
-                return [];
-            }
-            const payload = JSON.parse(part.payload_json) as Record<string, unknown>;
-            const partText = typeof payload['text'] === 'string' ? normalizeBodyMarkdown(payload['text']) : '';
-            return partText.length > 0 ? [partText] : [];
-        })
-        .join('\n\n');
-    if (text.length === 0) {
-        return errOp('invalid_input', 'The source message has no promotable text content.');
-    }
-
-    return okOp({
-        source: input.source,
-        sourceText: text,
-        sourceLabel: `${message.role} message ${input.source.messageId}`,
-        sourceDigest: sha256Text(text),
-        lineCount: countLines(text),
-    });
-}
-
-async function extractArtifactWindowSource(input: {
-    profileId: string;
-    source: Extract<RegistryPromotionSource, { kind: 'tool_result_artifact_window' }>;
-}): Promise<OperationalResult<ExtractedPromotionSource>> {
-    const artifactWindow = await toolResultArtifactStore.readLineWindow({
-        messagePartId: input.source.messagePartId,
-        startLine: input.source.startLine,
-        lineCount: input.source.lineCount,
-    });
-    if (
-        !artifactWindow ||
-        artifactWindow.artifact.profileId !== input.profileId ||
-        artifactWindow.artifact.sessionId !== input.source.sessionId
-    ) {
-        return errOp('not_found', 'The source tool artifact window could not be found for this session.');
-    }
-
-    const text = normalizeBodyMarkdown(artifactWindow.lines.map((line) => line.text).join('\n'));
-    if (text.length === 0) {
-        return errOp('invalid_input', 'The selected artifact window has no promotable text content.');
-    }
-
-    return okOp({
-        source: input.source,
-        sourceText: text,
-        sourceLabel: `${artifactWindow.artifact.toolName} lines ${String(artifactWindow.startLine)}-${String(
-            artifactWindow.lines.at(-1)?.lineNumber ?? artifactWindow.startLine
-        )}`,
-        sourceDigest: sha256Text(text),
-        lineCount: countLines(text),
-    });
-}
-
-async function extractPromotionSource(input: {
-    profileId: string;
-    source: RegistryPromotionSource;
-}): Promise<OperationalResult<ExtractedPromotionSource>> {
-    if (input.source.kind === 'message') {
-        return extractMessageSource({
-            profileId: input.profileId,
-            source: input.source,
-        });
-    }
-
-    return extractArtifactWindowSource({
-        profileId: input.profileId,
-        source: input.source,
-    });
-}
-
 function buildDraft(input: RegistryPreparePromotionInput & { extracted: ExtractedPromotionSource }): RegistryPromotionDraft {
     const key = defaultKeyFromSource({
         target: input.target,
@@ -399,7 +263,7 @@ export async function preparePromotion(
     }
 
     const extracted = extractedResult.value;
-    const provenance = createProvenance(extracted);
+    const provenance = createPromotionProvenance(extracted);
     return okOp({
         source: {
             kind: extracted.source.kind,
@@ -433,7 +297,7 @@ export async function applyPromotion(
         );
     }
 
-    const bodyMarkdown = normalizeBodyMarkdown(input.draft.bodyMarkdown);
+    const bodyMarkdown = normalizePromotionBodyMarkdown(input.draft.bodyMarkdown);
     if (bodyMarkdown.length === 0) {
         return errOp('invalid_input', 'Promoted asset body cannot be empty.');
     }
@@ -446,7 +310,7 @@ export async function applyPromotion(
         targeting: input.draft.targeting,
         assetSlug,
     });
-    const provenance = createProvenance(extracted);
+    const provenance = createPromotionProvenance(extracted);
     const draft = {
         ...input.draft,
         key: assetSlug,

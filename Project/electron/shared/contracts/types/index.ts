@@ -16,6 +16,7 @@ export * from '@/shared/contracts/types/runtime';
 export type * from '@/shared/contracts/types/context';
 export * from '@/shared/contracts/types/composer';
 export * from '@/shared/contracts/types/devBrowser';
+export type * from '@/shared/contracts/types/promotion';
 export * from '@/shared/contracts/types/mcp';
 export * from '@/shared/contracts/types/observability';
 export type * from '@/shared/contracts/types/registry';

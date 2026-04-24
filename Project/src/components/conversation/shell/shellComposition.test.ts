@@ -153,6 +153,7 @@ describe('conversation shell composition helpers', () => {
                 open: false,
                 busy: false,
                 overwrite: false,
+                onTargetChange: vi.fn(),
                 onDraftChange: vi.fn(),
                 onOverwriteChange: vi.fn(),
                 onApply: vi.fn(),

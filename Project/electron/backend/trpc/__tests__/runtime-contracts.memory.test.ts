@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { memoryRevisionStore, runStore, sandboxStore } from '@/app/backend/persistence/stores';
+import {
+    memoryEvidenceStore,
+    memoryRevisionStore,
+    messageStore,
+    runStore,
+    sandboxStore,
+    toolResultArtifactStore,
+} from '@/app/backend/persistence/stores';
 import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import {
@@ -162,6 +169,198 @@ describe('runtime contracts: memory', () => {
         expect(superseded.replacement.memoryRetentionClass).toBe('task');
         expect(superseded.replacement.metadata).toEqual({ revision: 2 });
         expect(superseded.replacement.canonicalBody.sections[0]?.items).toEqual(['Updated thread note.']);
+    });
+
+    it('promotes reviewed transcript messages into durable memory with provenance and digest validation', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Memory promotion source',
+            kind: 'local',
+            topLevelTab: 'chat',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected promotion thread id.');
+        const run = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'promote a stable memory',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const message = await messageStore.createMessage({
+            profileId,
+            sessionId: created.session.id,
+            runId: run.id,
+            role: 'assistant',
+        });
+        await messageStore.createPart({
+            messageId: message.id,
+            partType: 'text',
+            payload: {
+                text: 'The user prefers reviewed memory promotions with digest checks.',
+            },
+        });
+
+        const source = {
+            kind: 'message' as const,
+            sessionId: created.session.id,
+            messageId: message.id,
+        };
+        const prepared = await caller.memory.preparePromotion({
+            profileId,
+            source,
+        });
+        expect(prepared.draft).toMatchObject({
+            target: 'memory',
+            memoryType: 'semantic',
+            scopeKind: 'thread',
+            threadId,
+            memoryRetentionClass: 'task',
+        });
+        expect(prepared.draft.bodyMarkdown).toContain('digest checks');
+        expect(prepared.provenance.sourceMessageId).toBe(message.id);
+
+        await expect(
+            caller.memory.applyPromotion({
+                profileId,
+                source,
+                sourceDigest: 'stale-digest',
+                draft: prepared.draft,
+            })
+        ).rejects.toThrow('source changed after review');
+
+        const applied = await caller.memory.applyPromotion({
+            profileId,
+            source,
+            sourceDigest: prepared.source.digest,
+            draft: {
+                ...prepared.draft,
+                title: 'Reviewed promotion preference',
+            },
+        });
+
+        expect(applied.promoted).toMatchObject({
+            target: 'memory',
+            title: 'Reviewed promotion preference',
+            scopeKind: 'thread',
+        });
+        expect(applied.memory.threadId).toBe(threadId);
+        expect(applied.memory.metadata).toMatchObject({
+            source: 'promotion',
+            promotion: {
+                sourceDigest: prepared.source.digest,
+                sourceMessageId: message.id,
+            },
+        });
+        const evidence = await memoryEvidenceStore.listByMemoryId(profileId, applied.memory.id);
+        expect(evidence).toHaveLength(1);
+        expect(evidence[0]).toMatchObject({
+            kind: 'message',
+            sourceRunId: run.id,
+            sourceMessageId: message.id,
+        });
+    });
+
+    it('promotes bounded tool artifact windows into durable memory evidence', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'detached',
+            title: 'Memory artifact promotion source',
+            kind: 'local',
+            topLevelTab: 'chat',
+        });
+        const rawText = ['skip this line', 'capture this line', 'capture this line too', 'skip final line'].join('\n');
+        const run = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'artifact memory promotion fixture',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const message = await messageStore.createMessage({
+            profileId,
+            sessionId: created.session.id,
+            runId: run.id,
+            role: 'tool',
+        });
+        const part = await messageStore.createPart({
+            messageId: message.id,
+            partType: 'tool_result',
+            payload: {
+                callId: 'call_memory_promotion',
+                toolName: 'run_command',
+                outputText: 'preview',
+                isError: false,
+                artifactized: true,
+                artifactAvailable: true,
+                artifactKind: 'command_output',
+                previewStrategy: 'head_tail',
+                totalBytes: Buffer.byteLength(rawText, 'utf8'),
+                totalLines: 4,
+            },
+        });
+        await toolResultArtifactStore.create({
+            messagePartId: part.id,
+            profileId,
+            sessionId: created.session.id,
+            runId: run.id,
+            toolName: 'run_command',
+            artifactKind: 'command_output',
+            contentType: 'text/plain',
+            rawText,
+            totalBytes: Buffer.byteLength(rawText, 'utf8'),
+            totalLines: 4,
+            previewText: 'preview',
+            previewStrategy: 'head_tail',
+            metadata: { command: 'printf fixture' },
+        });
+
+        const source = {
+            kind: 'tool_result_artifact_window' as const,
+            sessionId: created.session.id,
+            messagePartId: part.id,
+            startLine: 2,
+            lineCount: 2,
+        };
+        const prepared = await caller.memory.preparePromotion({
+            profileId,
+            source,
+        });
+        expect(prepared.draft.bodyMarkdown).toBe('capture this line\ncapture this line too');
+        expect(prepared.provenance.startLine).toBe(2);
+        expect(prepared.provenance.lineCount).toBe(2);
+
+        const applied = await caller.memory.applyPromotion({
+            profileId,
+            source,
+            sourceDigest: prepared.source.digest,
+            draft: {
+                ...prepared.draft,
+                title: 'Artifact promotion memory',
+            },
+        });
+
+        expect(applied.memory.bodyMarkdown).toContain('capture this line');
+        expect(applied.memory.bodyMarkdown).not.toContain('skip this line');
+        const evidence = await memoryEvidenceStore.listByMemoryId(profileId, applied.memory.id);
+        expect(evidence[0]).toMatchObject({
+            kind: 'tool_result_artifact',
+            sourceRunId: run.id,
+            sourceMessagePartId: part.id,
+            metadata: {
+                startLine: 2,
+                lineCount: 2,
+                sourceDigest: prepared.source.digest,
+            },
+        });
     });
 
     it('rejects invalid scope and provenance combinations', async () => {

@@ -1,13 +1,20 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-import { memoryEvidenceStore, memoryStore } from '@/app/backend/persistence/stores';
+import { memoryEvidenceStore, memoryStore, threadStore } from '@/app/backend/persistence/stores';
+import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import type {
     EntityId,
+    MemoryApplyPromotionInput,
+    MemoryApplyPromotionResult,
     MemoryCreateInput,
     MemoryDisableInput,
     MemoryListInput,
+    MemoryPreparePromotionInput,
+    MemoryPreparePromotionResult,
     MemoryRetentionClass,
     MemoryRecord as RuntimeMemoryRecord,
+    MemoryEvidenceCreateInput,
+    MemoryPromotionDraft,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
@@ -25,6 +32,30 @@ import {
     type ResolvedMemoryRetention,
 } from '@/app/backend/runtime/services/memory/memoryRetentionPolicy';
 import { memorySemanticIndexService } from '@/app/backend/runtime/services/memory/memorySemanticIndexService';
+import {
+    createPromotionProvenance,
+    extractPromotionSource,
+    normalizePromotionBodyMarkdown,
+    type ExtractedPromotionSource,
+} from '@/app/backend/runtime/services/promotion/promotionSourceExtractor';
+
+const memoryPromotionExcerptLimit = 1_200;
+
+function firstSentenceSummary(value: string): string | undefined {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length === 0) {
+        return undefined;
+    }
+    return normalized.length <= 180 ? normalized : `${normalized.slice(0, 177).trimEnd()}...`;
+}
+
+function defaultPromotionTitle(sourceLabel: string): string {
+    return `Memory from ${sourceLabel}`;
+}
+
+function truncateEvidenceExcerpt(value: string): string {
+    return value.length <= memoryPromotionExcerptLimit ? value : `${value.slice(0, memoryPromotionExcerptLimit)}...`;
+}
 
 class MemoryService {
     private async refreshDerivedIndex(profileId: string, memoryIds: EntityId<'mem'>[], reason: string): Promise<void> {
@@ -45,6 +76,162 @@ class MemoryService {
 
     async listMemories(input: MemoryListInput): Promise<MemoryRecord[]> {
         return memoryStore.listByProfile(input);
+    }
+
+    private async resolvePromotionScope(input: {
+        profileId: string;
+        sessionId: EntityId<'sess'>;
+        workspaceFingerprint?: string;
+    }): Promise<Pick<MemoryPromotionDraft, 'scopeKind' | 'workspaceFingerprint' | 'threadId'>> {
+        const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
+        if (sessionThread) {
+            return {
+                scopeKind: 'thread',
+                threadId: parseEntityId(sessionThread.thread.id, 'threads.id', 'thr'),
+                ...(sessionThread.workspaceFingerprint ? { workspaceFingerprint: sessionThread.workspaceFingerprint } : {}),
+            };
+        }
+        if (input.workspaceFingerprint) {
+            return {
+                scopeKind: 'workspace',
+                workspaceFingerprint: input.workspaceFingerprint,
+            };
+        }
+        return { scopeKind: 'global' };
+    }
+
+    private buildPromotionDraft(input: {
+        extracted: ExtractedPromotionSource;
+        scope: Pick<MemoryPromotionDraft, 'scopeKind' | 'workspaceFingerprint' | 'threadId'>;
+    }): MemoryPromotionDraft {
+        const summaryText = firstSentenceSummary(input.extracted.sourceText);
+        const draft: MemoryPromotionDraft = {
+            target: 'memory',
+            memoryType: 'semantic',
+            scopeKind: input.scope.scopeKind,
+            title: defaultPromotionTitle(input.extracted.sourceLabel),
+            bodyMarkdown: input.extracted.sourceText,
+            memoryRetentionClass: input.scope.scopeKind === 'global' ? 'profile' : 'task',
+            ...(summaryText ? { summaryText } : {}),
+            ...(input.scope.workspaceFingerprint ? { workspaceFingerprint: input.scope.workspaceFingerprint } : {}),
+            ...(input.scope.threadId ? { threadId: input.scope.threadId } : {}),
+        };
+        return draft;
+    }
+
+    async preparePromotion(input: MemoryPreparePromotionInput): Promise<OperationalResult<MemoryPreparePromotionResult>> {
+        const extractedResult = await extractPromotionSource(input);
+        if (extractedResult.isErr()) {
+            return errOp(extractedResult.error.code, extractedResult.error.message, {
+                ...(extractedResult.error.details ? { details: extractedResult.error.details } : {}),
+            });
+        }
+
+        const extracted = extractedResult.value;
+        const scope = await this.resolvePromotionScope({
+            profileId: input.profileId,
+            sessionId: input.source.sessionId,
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+        });
+        const provenance = createPromotionProvenance(extracted);
+
+        return okOp({
+            source: {
+                kind: extracted.source.kind,
+                label: extracted.sourceLabel,
+                digest: extracted.sourceDigest,
+                lineCount: extracted.lineCount,
+            },
+            draft: this.buildPromotionDraft({ extracted, scope }),
+            provenance,
+        });
+    }
+
+    private buildPromotionEvidence(input: {
+        extracted: ExtractedPromotionSource;
+        bodyMarkdown: string;
+    }): MemoryEvidenceCreateInput {
+        const metadata: Record<string, unknown> = {
+            sourceKind: input.extracted.source.kind,
+            sourceDigest: input.extracted.sourceDigest,
+        };
+        if (input.extracted.source.kind === 'tool_result_artifact_window') {
+            metadata.startLine = input.extracted.source.startLine;
+            metadata.lineCount = input.extracted.source.lineCount;
+        }
+
+        return {
+            kind: input.extracted.source.kind === 'message' ? 'message' : 'tool_result_artifact',
+            label: input.extracted.sourceLabel,
+            excerptText: truncateEvidenceExcerpt(input.bodyMarkdown),
+            ...(input.extracted.sourceRunId ? { sourceRunId: input.extracted.sourceRunId } : {}),
+            ...(input.extracted.source.kind === 'message'
+                ? { sourceMessageId: input.extracted.source.messageId }
+                : { sourceMessagePartId: input.extracted.source.messagePartId }),
+            metadata,
+        };
+    }
+
+    async applyPromotion(input: MemoryApplyPromotionInput): Promise<OperationalResult<MemoryApplyPromotionResult>> {
+        const extractedResult = await extractPromotionSource({
+            profileId: input.profileId,
+            source: input.source,
+        });
+        if (extractedResult.isErr()) {
+            return errOp(extractedResult.error.code, extractedResult.error.message);
+        }
+        const extracted = extractedResult.value;
+        if (input.sourceDigest !== extracted.sourceDigest) {
+            return errOp(
+                'invalid_input',
+                'The promotion source changed after review. Reopen promotion review before applying.'
+            );
+        }
+        const bodyMarkdown = normalizePromotionBodyMarkdown(input.draft.bodyMarkdown);
+        if (bodyMarkdown.length === 0) {
+            return errOp('invalid_input', 'Promoted memory body cannot be empty.');
+        }
+        const title = input.draft.title.trim();
+        if (title.length === 0) {
+            return errOp('invalid_input', 'Promoted memory title cannot be empty.');
+        }
+        const provenance = createPromotionProvenance(extracted);
+        const createResult = await this.createMemory({
+            profileId: input.profileId,
+            memoryType: input.draft.memoryType,
+            scopeKind: input.draft.scopeKind,
+            createdByKind: 'user',
+            title,
+            bodyMarkdown,
+            ...(input.draft.summaryText ? { summaryText: input.draft.summaryText } : {}),
+            metadata: {
+                ...(input.draft.metadata ?? {}),
+                source: 'promotion',
+                promotion: provenance,
+            },
+            ...(input.draft.memoryRetentionClass ? { memoryRetentionClass: input.draft.memoryRetentionClass } : {}),
+            ...(input.draft.retentionExpiresAt ? { retentionExpiresAt: input.draft.retentionExpiresAt } : {}),
+            ...(input.draft.retentionPinnedAt ? { retentionPinnedAt: input.draft.retentionPinnedAt } : {}),
+            ...(input.draft.workspaceFingerprint ? { workspaceFingerprint: input.draft.workspaceFingerprint } : {}),
+            ...(input.draft.threadId ? { threadId: input.draft.threadId } : {}),
+            evidence: [this.buildPromotionEvidence({ extracted, bodyMarkdown })],
+        });
+        if (createResult.isErr()) {
+            return errOp(createResult.error.code, createResult.error.message, {
+                ...(createResult.error.details ? { details: createResult.error.details } : {}),
+            });
+        }
+
+        return okOp({
+            promoted: {
+                target: 'memory',
+                memoryId: createResult.value.id,
+                title: createResult.value.title,
+                memoryType: createResult.value.memoryType,
+                scopeKind: createResult.value.scopeKind,
+            },
+            memory: createResult.value,
+        });
     }
 
     private resolveRetentionOrError(input: {

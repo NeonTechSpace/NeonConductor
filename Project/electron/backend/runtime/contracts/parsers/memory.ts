@@ -16,6 +16,7 @@ import {
     readProfileId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
+import { parsePromotionSource } from '@/app/backend/runtime/contracts/parsers/promotion';
 import type {
     ApplyMemoryEditProposalInput,
     MemoryByIdInput,
@@ -25,6 +26,9 @@ import type {
     MemoryEvidenceCreateInput,
     MemoryDisableInput,
     MemoryListInput,
+    MemoryApplyPromotionInput,
+    MemoryPreparePromotionInput,
+    MemoryPromotionDraft,
     MemoryProjectionContextInput,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts/types';
@@ -108,6 +112,36 @@ function readMemoryEvidenceArray(value: unknown, field: string): MemoryEvidenceC
     });
 }
 
+function readMemoryPromotionDraft(value: unknown): MemoryPromotionDraft {
+    const source = readObject(value, 'draft');
+    const summaryText = readOptionalString(source.summaryText, 'draft.summaryText');
+    const metadata = readMetadataRecord(source.metadata, 'draft.metadata');
+    const memoryRetentionClass =
+        source.memoryRetentionClass !== undefined
+            ? readEnumValue(source.memoryRetentionClass, 'draft.memoryRetentionClass', memoryRetentionClasses)
+            : undefined;
+    const retentionExpiresAt = readOptionalString(source.retentionExpiresAt, 'draft.retentionExpiresAt');
+    const retentionPinnedAt = readOptionalString(source.retentionPinnedAt, 'draft.retentionPinnedAt');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'draft.workspaceFingerprint');
+    const threadId =
+        source.threadId !== undefined ? readEntityId(source.threadId, 'draft.threadId', 'thr') : undefined;
+
+    return {
+        target: readEnumValue(source.target, 'draft.target', ['memory'] as const),
+        memoryType: readEnumValue(source.memoryType, 'draft.memoryType', memoryTypes),
+        scopeKind: readEnumValue(source.scopeKind, 'draft.scopeKind', ['global', 'workspace', 'thread'] as const),
+        title: readString(source.title, 'draft.title'),
+        bodyMarkdown: readString(source.bodyMarkdown, 'draft.bodyMarkdown'),
+        ...(summaryText ? { summaryText } : {}),
+        ...(metadata ? { metadata } : {}),
+        ...(memoryRetentionClass ? { memoryRetentionClass } : {}),
+        ...(retentionExpiresAt ? { retentionExpiresAt } : {}),
+        ...(retentionPinnedAt ? { retentionPinnedAt } : {}),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        ...(threadId ? { threadId } : {}),
+    };
+}
+
 export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
     const source = readObject(input, 'input');
     const summaryText = readOptionalString(source.summaryText, 'summaryText');
@@ -143,6 +177,28 @@ export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
         ...(runId ? { runId } : {}),
         ...(temporalSubjectKey ? { temporalSubjectKey } : {}),
         ...(evidence ? { evidence } : {}),
+    };
+}
+
+export function parseMemoryPreparePromotionInput(input: unknown): MemoryPreparePromotionInput {
+    const source = readObject(input, 'input');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+
+    return {
+        profileId: readProfileId(source),
+        source: parsePromotionSource(source.source),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+    };
+}
+
+export function parseMemoryApplyPromotionInput(input: unknown): MemoryApplyPromotionInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        source: parsePromotionSource(source.source),
+        sourceDigest: readString(source.sourceDigest, 'sourceDigest'),
+        draft: readMemoryPromotionDraft(source.draft),
     };
 }
 
@@ -253,6 +309,8 @@ export function parseApplyMemoryEditProposalInput(input: unknown): ApplyMemoryEd
 }
 
 export const memoryCreateInputSchema = createParser(parseMemoryCreateInput);
+export const memoryPreparePromotionInputSchema = createParser(parseMemoryPreparePromotionInput);
+export const memoryApplyPromotionInputSchema = createParser(parseMemoryApplyPromotionInput);
 export const memoryListInputSchema = createParser(parseMemoryListInput);
 export const memoryByIdInputSchema = createParser(parseMemoryByIdInput);
 export const memoryDisableInputSchema = createParser(parseMemoryDisableInput);

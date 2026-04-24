@@ -7,6 +7,11 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type {
+    PromotionProvenance,
+    PromotionSource,
+    PromotionSourceSummary,
+} from '@/app/backend/runtime/contracts/types/promotion';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
 
@@ -286,6 +291,51 @@ export interface MemoryCreateInput extends ProfileInput {
     runId?: EntityId<'run'>;
     temporalSubjectKey?: string;
     evidence?: MemoryEvidenceCreateInput[];
+}
+
+export type MemoryPromotionScopeKind = Extract<MemoryScopeKind, 'global' | 'workspace' | 'thread'>;
+
+export interface MemoryPromotionDraft {
+    target: 'memory';
+    memoryType: MemoryType;
+    scopeKind: MemoryPromotionScopeKind;
+    title: string;
+    bodyMarkdown: string;
+    summaryText?: string;
+    metadata?: Record<string, unknown>;
+    memoryRetentionClass?: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
+    workspaceFingerprint?: string;
+    threadId?: EntityId<'thr'>;
+}
+
+export interface MemoryPreparePromotionInput extends ProfileInput {
+    source: PromotionSource;
+    workspaceFingerprint?: string;
+}
+
+export interface MemoryApplyPromotionInput extends ProfileInput {
+    source: PromotionSource;
+    sourceDigest: string;
+    draft: MemoryPromotionDraft;
+}
+
+export interface MemoryPreparePromotionResult {
+    source: PromotionSourceSummary;
+    draft: MemoryPromotionDraft;
+    provenance: PromotionProvenance;
+}
+
+export interface MemoryApplyPromotionResult {
+    promoted: {
+        target: 'memory';
+        memoryId: EntityId<'mem'>;
+        title: string;
+        memoryType: MemoryType;
+        scopeKind: MemoryScopeKind;
+    };
+    memory: MemoryRecord;
 }
 
 export interface MemoryListInput extends ProfileInput {

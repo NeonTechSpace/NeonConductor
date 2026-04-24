@@ -144,6 +144,24 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         draft: { target: 'rule' | 'skill_snippet'; key: string; bodyMarkdown: string };
         overwrite?: boolean;
     }>();
+    expectTypeOf<AppRouterInputs['memory']['preparePromotion']>().toExtend<{
+        profileId: string;
+        source:
+            | { kind: 'message'; sessionId: string; messageId: string }
+            | { kind: 'tool_result_artifact_window'; sessionId: string; messagePartId: string; startLine: number; lineCount: number };
+        workspaceFingerprint?: string;
+    }>();
+    expectTypeOf<AppRouterInputs['memory']['applyPromotion']>().toExtend<{
+        profileId: string;
+        sourceDigest: string;
+        draft: {
+            target: 'memory';
+            memoryType: 'semantic' | 'episodic' | 'procedural';
+            scopeKind: 'global' | 'workspace' | 'thread';
+            title: string;
+            bodyMarkdown: string;
+        };
+    }>();
 
     expectTypeOf<AppRouterOutputs['runtime']['getDiagnosticSnapshot']>().toExtend<{
         generatedAt: string;
@@ -210,6 +228,15 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
     }>();
     expectTypeOf<AppRouterOutputs['registry']['applyPromotion']>().toExtend<{
         promoted: { assetKey: string; relativeRootPath: string; target: 'rule' | 'skill_snippet' };
+    }>();
+    expectTypeOf<AppRouterOutputs['memory']['preparePromotion']>().toExtend<{
+        source: { digest: string; lineCount: number };
+        draft: { target: 'memory'; title: string; bodyMarkdown: string };
+        provenance: { sourceDigest: string; sourceLabel: string };
+    }>();
+    expectTypeOf<AppRouterOutputs['memory']['applyPromotion']>().toExtend<{
+        promoted: { target: 'memory'; memoryId: string; title: string };
+        memory: { id: string; metadata: Record<string, unknown> };
     }>();
     expectTypeOf<AppRouterOutputs['permission']['listPending']>().toExtend<{
         requests: Array<{

@@ -5,6 +5,8 @@ import { trpc } from '@/web/trpc/client';
 
 import type {
     EntityId,
+    MemoryApplyPromotionResult,
+    MemoryPromotionDraft,
     RegistryApplyPromotionResult,
     RegistryPromotionDraft,
     RegistryPromotionSource,
@@ -20,14 +22,18 @@ interface UseRegistryPromotionControllerInput {
     modeKey: string;
 }
 
+type PromotionDraft = RegistryPromotionDraft | MemoryPromotionDraft;
+type PromotionSuccess = RegistryApplyPromotionResult['promoted'] | MemoryApplyPromotionResult['promoted'];
+type PromotionTarget = RegistryPromotionDraft['target'] | MemoryPromotionDraft['target'];
+
 interface PromotionState {
     source: RegistryPromotionSource;
     sourceSummary?: RegistryPromotionSourceSummary;
     sourceDigest?: string;
-    draft?: RegistryPromotionDraft;
+    draft?: PromotionDraft;
     overwrite: boolean;
     errorMessage?: string;
-    success?: RegistryApplyPromotionResult['promoted'];
+    success?: PromotionSuccess;
 }
 
 function createInitialTargeting(input: { topLevelTab: TopLevelTab; modeKey: string }) {
@@ -49,25 +55,44 @@ export function useRegistryPromotionController({
 }: UseRegistryPromotionControllerInput) {
     const utils = trpc.useUtils();
     const [state, setState] = useState<PromotionState | undefined>(undefined);
-    const preparePromotionMutation = trpc.registry.preparePromotion.useMutation();
-    const applyPromotionMutation = trpc.registry.applyPromotion.useMutation();
+    const prepareRegistryPromotionMutation = trpc.registry.preparePromotion.useMutation();
+    const applyRegistryPromotionMutation = trpc.registry.applyPromotion.useMutation();
+    const prepareMemoryPromotionMutation = trpc.memory.preparePromotion.useMutation();
+    const applyMemoryPromotionMutation = trpc.memory.applyPromotion.useMutation();
+    const busy =
+        prepareRegistryPromotionMutation.isPending ||
+        applyRegistryPromotionMutation.isPending ||
+        prepareMemoryPromotionMutation.isPending ||
+        applyMemoryPromotionMutation.isPending;
+
+    async function preparePromotion(source: RegistryPromotionSource, target: PromotionTarget) {
+        if (target === 'memory') {
+            return prepareMemoryPromotionMutation.mutateAsync({
+                profileId,
+                source,
+                ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+            });
+        }
+
+        const scope = workspaceFingerprint ? 'workspace' : 'global';
+        return prepareRegistryPromotionMutation.mutateAsync({
+            profileId,
+            source,
+            target,
+            scope,
+            ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+            targeting: createInitialTargeting({ topLevelTab, modeKey }),
+        });
+    }
 
     async function openPromotion(source: RegistryPromotionSource) {
-        const scope = workspaceFingerprint ? 'workspace' : 'global';
         setState({
             source,
             overwrite: false,
         });
 
         try {
-            const prepared = await preparePromotionMutation.mutateAsync({
-                profileId,
-                source,
-                target: 'rule',
-                scope,
-                ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
-                targeting: createInitialTargeting({ topLevelTab, modeKey }),
-            });
+            const prepared = await preparePromotion(source, 'rule');
             setState({
                 source,
                 sourceSummary: prepared.source,
@@ -81,6 +106,47 @@ export function useRegistryPromotionController({
                 overwrite: false,
                 errorMessage: error instanceof Error ? error.message : 'Promotion preparation failed.',
             });
+        }
+    }
+
+    async function changeTarget(target: PromotionTarget) {
+        if (!state || state.draft?.target === target) {
+            return;
+        }
+        const source = state.source;
+        setState((current) => {
+            if (!current) {
+                return current;
+            }
+            const nextState = { ...current };
+            delete nextState.errorMessage;
+            delete nextState.success;
+            delete nextState.draft;
+            return nextState;
+        });
+
+        try {
+            const prepared = await preparePromotion(source, target);
+            setState((current) =>
+                current
+                    ? {
+                          ...current,
+                          sourceSummary: prepared.source,
+                          sourceDigest: prepared.source.digest,
+                          draft: prepared.draft,
+                          overwrite: false,
+                      }
+                    : current
+            );
+        } catch (error) {
+            setState((current) =>
+                current
+                    ? {
+                          ...current,
+                          errorMessage: error instanceof Error ? error.message : 'Promotion preparation failed.',
+                      }
+                    : current
+            );
         }
     }
 
@@ -98,7 +164,23 @@ export function useRegistryPromotionController({
             return nextState;
         });
         try {
-            const result = await applyPromotionMutation.mutateAsync({
+            if (state.draft.target === 'memory') {
+                const result = await applyMemoryPromotionMutation.mutateAsync({
+                    profileId,
+                    source: state.source,
+                    sourceDigest: state.sourceDigest,
+                    draft: state.draft,
+                });
+                await Promise.all([
+                    utils.memory.list.invalidate({ profileId }),
+                    utils.memory.projectionStatus.invalidate(),
+                    utils.memory.scanProjectionEdits.invalidate(),
+                ]);
+                setSuccess(result.promoted);
+                return;
+            }
+
+            const result = await applyRegistryPromotionMutation.mutateAsync({
                 profileId,
                 source: state.source,
                 sourceDigest: state.sourceDigest,
@@ -112,18 +194,7 @@ export function useRegistryPromotionController({
                 utils.session.getAttachedRules.invalidate(),
                 utils.session.getAttachedSkills.invalidate(),
             ]);
-            setState((current) =>
-                current
-                    ? (() => {
-                          const nextState = { ...current };
-                          delete nextState.errorMessage;
-                          return {
-                              ...nextState,
-                              success: result.promoted,
-                          };
-                      })()
-                    : current
-            );
+            setSuccess(result.promoted);
         } catch (error) {
             setState((current) =>
                 current
@@ -136,8 +207,23 @@ export function useRegistryPromotionController({
         }
     }
 
+    function setSuccess(success: PromotionSuccess) {
+        setState((current) =>
+            current
+                ? (() => {
+                      const nextState = { ...current };
+                      delete nextState.errorMessage;
+                      return {
+                          ...nextState,
+                          success,
+                      };
+                  })()
+                : current
+        );
+    }
+
     function closePromotion() {
-        if (preparePromotionMutation.isPending || applyPromotionMutation.isPending) {
+        if (busy) {
             return;
         }
         setState(undefined);
@@ -168,12 +254,15 @@ export function useRegistryPromotionController({
         },
         dialogProps: {
             open: state !== undefined,
-            busy: preparePromotionMutation.isPending || applyPromotionMutation.isPending,
+            busy,
             ...(state?.sourceSummary ? { source: state.sourceSummary } : {}),
             ...(state?.draft ? { draft: state.draft } : {}),
             ...(state?.errorMessage ? { errorMessage: state.errorMessage } : {}),
             ...(state?.success ? { success: state.success } : {}),
             overwrite: state?.overwrite ?? false,
+            onTargetChange: (target) => {
+                void changeTarget(target);
+            },
             onDraftChange: (draft) => {
                 setState((current) => (current ? { ...current, draft } : current));
             },
