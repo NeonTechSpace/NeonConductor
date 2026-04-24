@@ -1,16 +1,20 @@
 import { getPersistence } from '@/app/backend/persistence/db';
-import { memoryEvidenceStore, memoryStore, threadStore } from '@/app/backend/persistence/stores';
+import { memoryEvidenceStore, memoryRevisionStore, memoryStore, threadStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import type {
     EntityId,
     MemoryApplyPromotionInput,
+    MemoryApplyReviewActionInput,
+    MemoryApplyReviewActionResult,
     MemoryApplyPromotionResult,
     MemoryCreateInput,
     MemoryDisableInput,
     MemoryListInput,
     MemoryPreparePromotionInput,
     MemoryPreparePromotionResult,
+    MemoryReviewDetailsInput,
+    MemoryReviewDetailsResult,
     MemoryRetentionClass,
     MemoryRecord as RuntimeMemoryRecord,
     MemoryEvidenceCreateInput,
@@ -76,6 +80,137 @@ class MemoryService {
 
     async listMemories(input: MemoryListInput): Promise<MemoryRecord[]> {
         return memoryStore.listByProfile(input);
+    }
+
+    private async buildReviewDetails(
+        profileId: string,
+        memory: MemoryRecord
+    ): Promise<MemoryReviewDetailsResult> {
+        const revisions = await memoryRevisionStore.listByMemoryIds(profileId, [memory.id]);
+        const revisionMemoryIds = revisions.flatMap((revision) => [
+            revision.previousMemoryId,
+            revision.replacementMemoryId,
+        ]);
+        const evidenceMemoryIds = Array.from(new Set([memory.id, ...revisionMemoryIds]));
+        const evidence = await memoryEvidenceStore.listByMemoryIds(profileId, evidenceMemoryIds);
+
+        return {
+            memory,
+            evidence,
+            revisions,
+        };
+    }
+
+    async getReviewDetails(input: MemoryReviewDetailsInput): Promise<OperationalResult<MemoryReviewDetailsResult>> {
+        const memory = await memoryStore.getById(input.profileId, input.memoryId);
+        if (!memory) {
+            return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
+        }
+
+        return okOp(await this.buildReviewDetails(input.profileId, memory));
+    }
+
+    private validateReviewTarget(input: {
+        memory: MemoryRecord;
+        expectedUpdatedAt: string;
+        actionLabel: string;
+    }): OperationalResult<MemoryRecord> {
+        if (input.memory.updatedAt !== input.expectedUpdatedAt) {
+            return errOp(
+                'invalid_input',
+                `Memory changed after review opened. Reopen review before applying ${input.actionLabel}.`
+            );
+        }
+        if (input.memory.state !== 'active') {
+            return errOp('invalid_input', `Only active memory can be ${input.actionLabel}.`);
+        }
+        return okOp(input.memory);
+    }
+
+    async applyReviewAction(
+        input: MemoryApplyReviewActionInput
+    ): Promise<OperationalResult<MemoryApplyReviewActionResult>> {
+        const existing = await memoryStore.getById(input.profileId, input.memoryId);
+        if (!existing) {
+            return errOp('not_found', `Memory "${input.memoryId}" was not found.`);
+        }
+
+        const validated = this.validateReviewTarget({
+            memory: existing,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+            actionLabel: input.action === 'forget' ? 'forgotten' : `${input.action}d`,
+        });
+        if (validated.isErr()) {
+            return errOp(validated.error.code, validated.error.message);
+        }
+
+        if (input.action === 'forget') {
+            const disabled = await this.disableMemory({
+                profileId: input.profileId,
+                memoryId: input.memoryId,
+            });
+            if (disabled.isErr()) {
+                return errOp(disabled.error.code, disabled.error.message);
+            }
+            const details = await this.buildReviewDetails(input.profileId, disabled.value);
+            return okOp({
+                action: 'forget',
+                ...details,
+            });
+        }
+
+        const title = input.title.trim();
+        if (title.length === 0) {
+            return errOp('invalid_input', 'Memory title cannot be empty.');
+        }
+        if (input.bodyMarkdown.trim().length === 0) {
+            return errOp('invalid_input', 'Memory body cannot be empty.');
+        }
+
+        if (input.action === 'update') {
+            const updated = await this.updateMemory({
+                profileId: input.profileId,
+                memoryId: input.memoryId,
+                title,
+                ...(input.canonicalBody ? { canonicalBody: input.canonicalBody } : {}),
+                bodyMarkdown: input.bodyMarkdown,
+                ...(input.summaryText ? { summaryText: input.summaryText } : {}),
+                metadata: existing.metadata,
+            });
+            if (updated.isErr()) {
+                return errOp(updated.error.code, updated.error.message, {
+                    ...(updated.error.details ? { details: updated.error.details } : {}),
+                });
+            }
+            const details = await this.buildReviewDetails(input.profileId, updated.value);
+            return okOp({
+                action: 'update',
+                ...details,
+            });
+        }
+
+        const superseded = await this.supersedeMemory({
+            profileId: input.profileId,
+            memoryId: input.memoryId,
+            createdByKind: 'user',
+            title,
+            ...(input.canonicalBody ? { canonicalBody: input.canonicalBody } : {}),
+            bodyMarkdown: input.bodyMarkdown,
+            ...(input.summaryText ? { summaryText: input.summaryText } : {}),
+            metadata: existing.metadata,
+            revisionReason: input.revisionReason,
+        });
+        if (superseded.isErr()) {
+            return errOp(superseded.error.code, superseded.error.message, {
+                ...(superseded.error.details ? { details: superseded.error.details } : {}),
+            });
+        }
+        const details = await this.buildReviewDetails(input.profileId, superseded.value.replacement);
+        return okOp({
+            action: 'supersede',
+            ...details,
+            previousMemory: superseded.value.previous,
+        });
     }
 
     private async resolvePromotionScope(input: {

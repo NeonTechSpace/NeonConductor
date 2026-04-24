@@ -1,11 +1,13 @@
 import {
     applyMemoryEditProposalInputSchema,
     memoryApplyPromotionInputSchema,
+    memoryApplyReviewActionInputSchema,
     memoryCreateInputSchema,
     memoryDisableInputSchema,
     memoryListInputSchema,
     memoryPreparePromotionInputSchema,
     memoryProjectionContextInputSchema,
+    memoryReviewDetailsInputSchema,
     memorySupersedeInputSchema,
 } from '@/app/backend/runtime/contracts';
 import { memoryProjectionService } from '@/app/backend/runtime/services/memory/projection';
@@ -37,6 +39,14 @@ export const memoryRouter = router({
     }),
     applyPromotion: publicProcedure.input(memoryApplyPromotionInputSchema).mutation(async ({ input }) => {
         const result = await memoryService.applyPromotion(input);
+        return unwrapResultOrThrow(result, toTrpcError);
+    }),
+    getReviewDetails: publicProcedure.input(memoryReviewDetailsInputSchema).query(async ({ input }) => {
+        const result = await memoryService.getReviewDetails(input);
+        return unwrapResultOrThrow(result, toTrpcError);
+    }),
+    applyReviewAction: publicProcedure.input(memoryApplyReviewActionInputSchema).mutation(async ({ input }) => {
+        const result = await memoryService.applyReviewAction(input);
         return unwrapResultOrThrow(result, toTrpcError);
     }),
     applyProjectionEdit: publicProcedure.input(applyMemoryEditProposalInputSchema).mutation(async ({ input }) => {

@@ -354,6 +354,55 @@ export interface MemoryByIdInput extends ProfileInput {
 
 export type MemoryDisableInput = MemoryByIdInput;
 
+export type MemoryReviewDetailsInput = MemoryByIdInput;
+
+export type MemoryReviewActionKind = 'update' | 'supersede' | 'forget';
+export type MemoryOperatorRevisionReason = Exclude<MemoryRevisionReason, 'runtime_refresh'>;
+
+export interface MemoryReviewDetailsResult {
+    memory: MemoryRecord;
+    evidence: MemoryEvidenceRecord[];
+    revisions: MemoryRevisionRecord[];
+}
+
+interface MemoryReviewActionBaseInput extends MemoryByIdInput {
+    expectedUpdatedAt: string;
+}
+
+export interface MemoryReviewUpdateActionInput extends MemoryReviewActionBaseInput {
+    action: 'update';
+    title: string;
+    canonicalBody?: MemoryCanonicalBody;
+    bodyMarkdown: string;
+    summaryText?: string;
+}
+
+export interface MemoryReviewSupersedeActionInput extends MemoryReviewActionBaseInput {
+    action: 'supersede';
+    revisionReason: MemoryOperatorRevisionReason;
+    title: string;
+    canonicalBody?: MemoryCanonicalBody;
+    bodyMarkdown: string;
+    summaryText?: string;
+}
+
+export interface MemoryReviewForgetActionInput extends MemoryReviewActionBaseInput {
+    action: 'forget';
+}
+
+export type MemoryApplyReviewActionInput =
+    | MemoryReviewUpdateActionInput
+    | MemoryReviewSupersedeActionInput
+    | MemoryReviewForgetActionInput;
+
+export interface MemoryApplyReviewActionResult {
+    action: MemoryReviewActionKind;
+    memory: MemoryRecord;
+    previousMemory?: MemoryRecord;
+    evidence: MemoryEvidenceRecord[];
+    revisions: MemoryRevisionRecord[];
+}
+
 export interface MemorySupersedeInput extends MemoryByIdInput {
     createdByKind: MemoryCreatedByKind;
     title: string;

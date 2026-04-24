@@ -162,6 +162,35 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
             bodyMarkdown: string;
         };
     }>();
+    expectTypeOf<AppRouterInputs['memory']['getReviewDetails']>().toExtend<{
+        profileId: string;
+        memoryId: string;
+    }>();
+    expectTypeOf<AppRouterInputs['memory']['applyReviewAction']>().toExtend<
+        | {
+              profileId: string;
+              memoryId: string;
+              expectedUpdatedAt: string;
+              action: 'update';
+              title: string;
+              bodyMarkdown: string;
+          }
+        | {
+              profileId: string;
+              memoryId: string;
+              expectedUpdatedAt: string;
+              action: 'supersede';
+              revisionReason: 'correction' | 'refinement' | 'deprecation';
+              title: string;
+              bodyMarkdown: string;
+          }
+        | {
+              profileId: string;
+              memoryId: string;
+              expectedUpdatedAt: string;
+              action: 'forget';
+          }
+    >();
 
     expectTypeOf<AppRouterOutputs['runtime']['getDiagnosticSnapshot']>().toExtend<{
         generatedAt: string;
@@ -237,6 +266,17 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
     expectTypeOf<AppRouterOutputs['memory']['applyPromotion']>().toExtend<{
         promoted: { target: 'memory'; memoryId: string; title: string };
         memory: { id: string; metadata: Record<string, unknown> };
+    }>();
+    expectTypeOf<AppRouterOutputs['memory']['getReviewDetails']>().toExtend<{
+        memory: { id: string; updatedAt: string };
+        evidence: Array<{ id: string; label: string }>;
+        revisions: Array<{ id: string; previousMemoryId: string; replacementMemoryId: string }>;
+    }>();
+    expectTypeOf<AppRouterOutputs['memory']['applyReviewAction']>().toExtend<{
+        action: 'update' | 'supersede' | 'forget';
+        memory: { id: string; state: 'active' | 'disabled' | 'superseded' };
+        evidence: Array<{ id: string }>;
+        revisions: Array<{ id: string }>;
     }>();
     expectTypeOf<AppRouterOutputs['permission']['listPending']>().toExtend<{
         requests: Array<{

@@ -19,6 +19,7 @@ import {
 import { parsePromotionSource } from '@/app/backend/runtime/contracts/parsers/promotion';
 import type {
     ApplyMemoryEditProposalInput,
+    MemoryApplyReviewActionInput,
     MemoryByIdInput,
     MemoryCanonicalBody,
     MemoryCanonicalBodySection,
@@ -30,6 +31,7 @@ import type {
     MemoryPreparePromotionInput,
     MemoryPromotionDraft,
     MemoryProjectionContextInput,
+    MemoryReviewDetailsInput,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts/types';
 import {
@@ -242,6 +244,54 @@ export function parseMemoryDisableInput(input: unknown): MemoryDisableInput {
     return parseMemoryByIdInput(input);
 }
 
+export function parseMemoryReviewDetailsInput(input: unknown): MemoryReviewDetailsInput {
+    return parseMemoryByIdInput(input);
+}
+
+export function parseMemoryApplyReviewActionInput(input: unknown): MemoryApplyReviewActionInput {
+    const source = readObject(input, 'input');
+    const base = {
+        profileId: readProfileId(source),
+        memoryId: readEntityId(source.memoryId, 'memoryId', 'mem'),
+        expectedUpdatedAt: readString(source.expectedUpdatedAt, 'expectedUpdatedAt'),
+    };
+    const action = readEnumValue(source.action, 'action', ['update', 'supersede', 'forget'] as const);
+
+    if (action === 'forget') {
+        return {
+            ...base,
+            action,
+        };
+    }
+
+    const summaryText = readOptionalString(source.summaryText, 'summaryText');
+    const canonicalBody = readMemoryCanonicalBody(source.canonicalBody, 'canonicalBody');
+    if (action === 'update') {
+        return {
+            ...base,
+            action,
+            title: readString(source.title, 'title'),
+            bodyMarkdown: readString(source.bodyMarkdown, 'bodyMarkdown'),
+            ...(canonicalBody ? { canonicalBody } : {}),
+            ...(summaryText ? { summaryText } : {}),
+        };
+    }
+
+    return {
+        ...base,
+        action,
+        title: readString(source.title, 'title'),
+        bodyMarkdown: readString(source.bodyMarkdown, 'bodyMarkdown'),
+        ...(canonicalBody ? { canonicalBody } : {}),
+        ...(summaryText ? { summaryText } : {}),
+        revisionReason: readEnumValue(source.revisionReason, 'revisionReason', [
+            'correction',
+            'refinement',
+            'deprecation',
+        ] as const),
+    };
+}
+
 export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput {
     const source = readObject(input, 'input');
     const summaryText = readOptionalString(source.summaryText, 'summaryText');
@@ -314,6 +364,8 @@ export const memoryApplyPromotionInputSchema = createParser(parseMemoryApplyProm
 export const memoryListInputSchema = createParser(parseMemoryListInput);
 export const memoryByIdInputSchema = createParser(parseMemoryByIdInput);
 export const memoryDisableInputSchema = createParser(parseMemoryDisableInput);
+export const memoryReviewDetailsInputSchema = createParser(parseMemoryReviewDetailsInput);
+export const memoryApplyReviewActionInputSchema = createParser(parseMemoryApplyReviewActionInput);
 export const memorySupersedeInputSchema = createParser(parseMemorySupersedeInput);
 export const memoryProjectionContextInputSchema = createParser(parseMemoryProjectionContextInput);
 export const applyMemoryEditProposalInputSchema = createParser(parseApplyMemoryEditProposalInput);

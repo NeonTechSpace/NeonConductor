@@ -363,6 +363,109 @@ describe('runtime contracts: memory', () => {
         });
     });
 
+    it('reviews, updates, supersedes, and soft-forgets memory records through canonical review actions', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_review_actions',
+            title: 'Memory review actions',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const run = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Memory review source run',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const createdMemory = await caller.memory.create({
+            profileId,
+            memoryType: 'semantic',
+            scopeKind: 'workspace',
+            createdByKind: 'user',
+            workspaceFingerprint: 'wsf_memory_review_actions',
+            title: 'Review target',
+            bodyMarkdown: 'Original memory body.',
+            metadata: { source: 'manual_review_fixture' },
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Review source run',
+                    sourceRunId: run.id,
+                },
+            ],
+        });
+
+        const details = await caller.memory.getReviewDetails({
+            profileId,
+            memoryId: createdMemory.memory.id,
+        });
+        expect(details.memory.title).toBe('Review target');
+        expect(details.evidence.map((evidence) => evidence.label)).toEqual(['Review source run']);
+        expect(details.revisions).toEqual([]);
+
+        await expect(
+            caller.memory.applyReviewAction({
+                profileId,
+                memoryId: createdMemory.memory.id,
+                expectedUpdatedAt: '2020-01-01T00:00:00.000Z',
+                action: 'update',
+                title: 'Stale update',
+                bodyMarkdown: 'Should not apply.',
+            })
+        ).rejects.toThrow(/changed after review opened/i);
+
+        const updated = await caller.memory.applyReviewAction({
+            profileId,
+            memoryId: createdMemory.memory.id,
+            expectedUpdatedAt: details.memory.updatedAt,
+            action: 'update',
+            title: 'Reviewed update',
+            summaryText: 'Updated summary',
+            bodyMarkdown: 'Updated memory body.',
+        });
+        expect(updated.action).toBe('update');
+        expect(updated.memory.title).toBe('Reviewed update');
+        expect(updated.memory.summaryText).toBe('Updated summary');
+        expect(updated.memory.metadata).toEqual({ source: 'manual_review_fixture' });
+        expect(updated.evidence.map((evidence) => evidence.label)).toEqual(['Review source run']);
+
+        const superseded = await caller.memory.applyReviewAction({
+            profileId,
+            memoryId: updated.memory.id,
+            expectedUpdatedAt: updated.memory.updatedAt,
+            action: 'supersede',
+            revisionReason: 'refinement',
+            title: 'Reviewed replacement',
+            bodyMarkdown: 'Replacement memory body.',
+        });
+        expect(superseded.action).toBe('supersede');
+        expect(superseded.previousMemory?.state).toBe('superseded');
+        expect(superseded.memory.title).toBe('Reviewed replacement');
+        expect(superseded.revisions[0]).toMatchObject({
+            previousMemoryId: updated.memory.id,
+            replacementMemoryId: superseded.memory.id,
+            revisionReason: 'refinement',
+        });
+
+        const forgotten = await caller.memory.applyReviewAction({
+            profileId,
+            memoryId: superseded.memory.id,
+            expectedUpdatedAt: superseded.memory.updatedAt,
+            action: 'forget',
+        });
+        expect(forgotten.action).toBe('forget');
+        expect(forgotten.memory.state).toBe('disabled');
+
+        const evidenceAfterForget = await memoryEvidenceStore.listByMemoryId(profileId, createdMemory.memory.id);
+        expect(evidenceAfterForget.map((evidence) => evidence.label)).toEqual(['Review source run']);
+    });
+
     it('rejects invalid scope and provenance combinations', async () => {
         const caller = createCaller();
         const workspaceFingerprint = 'wsf_runtime_memory_validation';

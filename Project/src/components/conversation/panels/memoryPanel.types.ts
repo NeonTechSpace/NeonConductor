@@ -2,11 +2,15 @@ import type {
     MemoryProjectionStatusResult,
     MemoryScanProjectionEditsResult,
     EntityId,
+    MemoryApplyReviewActionInput,
+    MemoryReviewActionKind,
+    MemoryReviewDetailsResult,
     RetrievedMemorySummary,
     TopLevelTab,
 } from '@/shared/contracts';
 
 export type MemoryPanelFeedbackTone = 'info' | 'error' | 'success';
+export type MemoryReviewDialogMode = 'review' | MemoryReviewActionKind;
 
 export interface MemoryPanelProps {
     profileId: string;
@@ -55,8 +59,25 @@ export interface MemoryPanelController {
     isSyncingProjection: boolean;
     isRescanningProjectionEdits: boolean;
     isApplyingProjectionEdit: boolean;
+    isReviewDetailsLoading: boolean;
+    isApplyingReviewAction: boolean;
+    reviewDialog:
+        | {
+              mode: MemoryReviewDialogMode;
+              memoryId: EntityId<'mem'>;
+              details?: MemoryReviewDetailsResult;
+          }
+        | undefined;
     onRescanProjectionEdits: () => Promise<void>;
     onSyncProjection: () => void;
+    onOpenMemoryReview: (input: { memoryId: EntityId<'mem'>; mode: MemoryReviewDialogMode }) => void;
+    onCloseMemoryReview: () => void;
+    onApplyMemoryReviewAction: (
+        input:
+            | Omit<Extract<MemoryApplyReviewActionInput, { action: 'update' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+            | Omit<Extract<MemoryApplyReviewActionInput, { action: 'supersede' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+            | Omit<Extract<MemoryApplyReviewActionInput, { action: 'forget' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+    ) => void;
     onApplyProjectionEdit: (input: {
         memoryId: EntityId<'mem'>;
         observedContentHash: string;

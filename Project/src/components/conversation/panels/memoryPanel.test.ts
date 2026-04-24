@@ -8,12 +8,14 @@ const {
     memoryListInvalidateMock,
     syncProjectionMutateMock,
     applyProjectionEditMutateMock,
+    applyReviewActionMutateMock,
 } = vi.hoisted(() => ({
     projectionStatusInvalidateMock: vi.fn(() => Promise.resolve(undefined)),
     scanProjectionEditsInvalidateMock: vi.fn(() => Promise.resolve(undefined)),
     memoryListInvalidateMock: vi.fn(() => Promise.resolve(undefined)),
     syncProjectionMutateMock: vi.fn(),
     applyProjectionEditMutateMock: vi.fn(),
+    applyReviewActionMutateMock: vi.fn(),
 }));
 
 vi.mock('@/web/trpc/client', () => ({
@@ -139,6 +141,64 @@ vi.mock('@/web/trpc/client', () => ({
                     mutate: applyProjectionEditMutateMock,
                 }),
             },
+            getReviewDetails: {
+                useQuery: () => ({
+                    data: {
+                        memory: {
+                            id: 'mem_1',
+                            profileId: 'profile_local_default',
+                            memoryType: 'procedural',
+                            scopeKind: 'thread',
+                            state: 'active',
+                            createdByKind: 'system',
+                            title: 'Editable memory',
+                            bodyMarkdown: 'Body',
+                            metadata: {
+                                source: 'runtime_run_outcome',
+                                runStatus: 'completed',
+                                runId: 'run_1',
+                            },
+                            memoryRetentionClass: 'task',
+                            threadId: 'thr_1',
+                            workspaceFingerprint: 'wsf_memory',
+                            createdAt: '2026-03-18T10:00:00.000Z',
+                            updatedAt: '2026-03-18T10:00:00.000Z',
+                        },
+                        evidence: [
+                            {
+                                id: 'mev_1',
+                                profileId: 'profile_local_default',
+                                memoryId: 'mem_1',
+                                sequence: 0,
+                                kind: 'message_part',
+                                label: 'Assistant output',
+                                excerptText: 'Recovered implementation details.',
+                                sourceMessagePartId: 'part_1',
+                                metadata: {},
+                                createdAt: '2026-03-18T10:00:00.000Z',
+                            },
+                        ],
+                        revisions: [
+                            {
+                                id: 'mrev_1',
+                                profileId: 'profile_local_default',
+                                previousMemoryId: 'mem_0',
+                                replacementMemoryId: 'mem_1',
+                                revisionReason: 'refinement',
+                                createdAt: '2026-03-18T10:00:00.000Z',
+                            },
+                        ],
+                    },
+                    isFetching: false,
+                    error: null,
+                }),
+            },
+            applyReviewAction: {
+                useMutation: () => ({
+                    isPending: false,
+                    mutate: applyReviewActionMutateMock,
+                }),
+            },
         },
     },
 }));
@@ -221,5 +281,8 @@ describe('MemoryPanel', () => {
         expect(html).toContain('Editable memory v2');
         expect(html).toContain('Apply');
         expect(html).toContain('Reject');
+        expect(html).toContain('Edit');
+        expect(html).toContain('Supersede');
+        expect(html).toContain('Forget');
     });
 });

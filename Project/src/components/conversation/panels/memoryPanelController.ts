@@ -1,11 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import type {
+    MemoryPanelController,
+    MemoryPanelProps,
+    MemoryReviewDialogMode,
+} from '@/web/components/conversation/panels/memoryPanel.types';
+import { buildMemoryPanelViewModel } from '@/web/components/conversation/panels/memoryPanelViewModel';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
-import { buildMemoryPanelViewModel } from '@/web/components/conversation/panels/memoryPanelViewModel';
-import type { MemoryPanelController, MemoryPanelProps } from '@/web/components/conversation/panels/memoryPanel.types';
-import type { EntityId } from '@/shared/contracts';
+import type { EntityId, MemoryApplyReviewActionInput } from '@/shared/contracts';
+
+type MemoryReviewActionDraft =
+    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'update' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'supersede' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'forget' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>;
 
 export async function runProjectionRescan(input: {
     refetch: () => Promise<unknown>;
@@ -24,6 +33,13 @@ export function useMemoryPanelController(input: MemoryPanelProps): MemoryPanelCo
     const [includeBroaderScopes, setIncludeBroaderScopes] = useState(true);
     const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>(undefined);
     const [feedbackTone, setFeedbackTone] = useState<'info' | 'error' | 'success'>('info');
+    const [reviewDialog, setReviewDialog] = useState<
+        | {
+              memoryId: EntityId<'mem'>;
+              mode: MemoryReviewDialogMode;
+          }
+        | undefined
+    >(undefined);
     const utils = trpc.useUtils();
 
     const queryInput = {
@@ -37,6 +53,16 @@ export function useMemoryPanelController(input: MemoryPanelProps): MemoryPanelCo
 
     const projectionStatusQuery = trpc.memory.projectionStatus.useQuery(queryInput, PROGRESSIVE_QUERY_OPTIONS);
     const scanProjectionEditsQuery = trpc.memory.scanProjectionEdits.useQuery(queryInput, PROGRESSIVE_QUERY_OPTIONS);
+    const reviewDetailsQuery = trpc.memory.getReviewDetails.useQuery(
+        {
+            profileId: input.profileId,
+            memoryId: reviewDialog?.memoryId ?? ('mem_unselected' as EntityId<'mem'>),
+        },
+        {
+            ...PROGRESSIVE_QUERY_OPTIONS,
+            enabled: reviewDialog !== undefined,
+        }
+    );
 
     const invalidateMemoryQueries = async () => {
         await Promise.all([
@@ -74,6 +100,32 @@ export function useMemoryPanelController(input: MemoryPanelProps): MemoryPanelCo
         },
     });
 
+    const applyReviewActionMutation = trpc.memory.applyReviewAction.useMutation({
+        onSuccess: async (result) => {
+            const actionLabel =
+                result.action === 'forget'
+                    ? 'forgotten'
+                    : result.action === 'supersede'
+                      ? 'superseded'
+                      : 'updated';
+            setFeedbackTone('success');
+            setFeedbackMessage(`Memory ${actionLabel}. Sync projection when you want disk files refreshed.`);
+            setReviewDialog(undefined);
+            await invalidateMemoryQueries();
+        },
+        onError: (error) => {
+            setFeedbackTone('error');
+            setFeedbackMessage(error.message);
+        },
+    });
+
+    useEffect(() => {
+        if (reviewDetailsQuery.error) {
+            setFeedbackTone('error');
+            setFeedbackMessage(reviewDetailsQuery.error.message);
+        }
+    }, [reviewDetailsQuery.error]);
+
     const viewModel = buildMemoryPanelViewModel({
         topLevelTab: input.topLevelTab,
         modeKey: input.modeKey,
@@ -110,10 +162,47 @@ export function useMemoryPanelController(input: MemoryPanelProps): MemoryPanelCo
         isSyncingProjection: syncProjectionMutation.isPending,
         isRescanningProjectionEdits: scanProjectionEditsQuery.isFetching,
         isApplyingProjectionEdit: applyProjectionEditMutation.isPending,
+        isReviewDetailsLoading: reviewDetailsQuery.isFetching,
+        isApplyingReviewAction: applyReviewActionMutation.isPending,
+        reviewDialog: reviewDialog
+            ? {
+                  ...reviewDialog,
+                  ...(reviewDetailsQuery.data ? { details: reviewDetailsQuery.data } : {}),
+              }
+            : undefined,
         onRescanProjectionEdits,
         onSyncProjection: () => {
             clearFeedback();
             syncProjectionMutation.mutate(queryInput);
+        },
+        onOpenMemoryReview: (reviewInput) => {
+            clearFeedback();
+            setReviewDialog(reviewInput);
+        },
+        onCloseMemoryReview: () => {
+            if (!applyReviewActionMutation.isPending) {
+                setReviewDialog(undefined);
+            }
+        },
+        onApplyMemoryReviewAction: (reviewInput: MemoryReviewActionDraft) => {
+            if (!reviewDialog || !reviewDetailsQuery.data) {
+                return;
+            }
+            clearFeedback();
+            const base = {
+                profileId: input.profileId,
+                memoryId: reviewDialog.memoryId,
+                expectedUpdatedAt: reviewDetailsQuery.data.memory.updatedAt,
+            };
+            if (reviewInput.action === 'forget') {
+                applyReviewActionMutation.mutate({ ...base, action: 'forget' });
+                return;
+            }
+            if (reviewInput.action === 'update') {
+                applyReviewActionMutation.mutate({ ...base, ...reviewInput });
+                return;
+            }
+            applyReviewActionMutation.mutate({ ...base, ...reviewInput });
         },
         onApplyProjectionEdit: (projectionEdit: {
             memoryId: EntityId<'mem'>;

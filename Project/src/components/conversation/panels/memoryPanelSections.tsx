@@ -1,7 +1,21 @@
+import { useEffect, useState } from 'react';
+
 import type { MemoryPanelController, MemoryPanelViewModel } from '@/web/components/conversation/panels/memoryPanel.types';
 import { Button } from '@/web/components/ui/button';
+import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
+import { DialogSurface } from '@/web/components/ui/dialogSurface';
 
-import type { ProjectedMemoryRecord, RetrievedMemoryRecord } from '@/shared/contracts';
+import type {
+    MemoryApplyReviewActionInput,
+    MemoryOperatorRevisionReason,
+    ProjectedMemoryRecord,
+    RetrievedMemoryRecord,
+} from '@/shared/contracts';
+
+type MemoryReviewActionDraft =
+    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'update' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'supersede' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'forget' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>;
 
 function SyncStateBadge({ syncState }: { syncState: ProjectedMemoryRecord['syncState'] }) {
     const label =
@@ -248,7 +262,258 @@ function ProjectedMemoryCard({
                     {projectedMemory.derivedSummary.strength.confidenceScore.toFixed(2)}.
                 </p>
             ) : null}
+            <div className='mt-3 flex flex-wrap gap-2'>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: projectedMemory.memory.id, mode: 'review' });
+                    }}>
+                    Review
+                </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: projectedMemory.memory.id, mode: 'update' });
+                    }}>
+                    Edit
+                </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: projectedMemory.memory.id, mode: 'supersede' });
+                    }}>
+                    Supersede
+                </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: projectedMemory.memory.id, mode: 'forget' });
+                    }}>
+                    Forget
+                </Button>
+            </div>
         </div>
+    );
+}
+
+function MemoryReviewDialog({ controller }: { controller: MemoryPanelController }) {
+    const dialog = controller.reviewDialog;
+    const details = dialog?.details;
+    const [title, setTitle] = useState('');
+    const [summaryText, setSummaryText] = useState('');
+    const [bodyMarkdown, setBodyMarkdown] = useState('');
+    const [revisionReason, setRevisionReason] = useState<MemoryOperatorRevisionReason>('correction');
+
+    useEffect(() => {
+        if (!details) {
+            return;
+        }
+        setTitle(details.memory.title);
+        setSummaryText(details.memory.summaryText ?? '');
+        setBodyMarkdown(details.memory.bodyMarkdown);
+        setRevisionReason('correction');
+    }, [details]);
+
+    if (!dialog) {
+        return null;
+    }
+
+    if (dialog.mode === 'forget') {
+        return (
+            <ConfirmDialog
+                open
+                title='Forget memory'
+                message={
+                    details
+                        ? `This disables "${details.memory.title}" so it no longer participates in active retrieval. Evidence and revision history are preserved.`
+                        : 'Preparing memory review...'
+                }
+                confirmLabel='Forget memory'
+                destructive
+                busy={controller.isApplyingReviewAction}
+                confirmDisabled={!details}
+                onConfirm={() => {
+                    controller.onApplyMemoryReviewAction({ action: 'forget' });
+                }}
+                onCancel={controller.onCloseMemoryReview}
+            />
+        );
+    }
+
+    const isReadOnlyReview = dialog.mode === 'review';
+    const actionLabel = dialog.mode === 'supersede' ? 'Supersede' : isReadOnlyReview ? 'Review' : 'Update';
+    const applyInput = (): MemoryReviewActionDraft =>
+        dialog.mode === 'supersede'
+            ? {
+                  action: 'supersede',
+                  revisionReason,
+                  title,
+                  summaryText,
+                  bodyMarkdown,
+              }
+            : {
+                  action: 'update',
+                  title,
+                  summaryText,
+                  bodyMarkdown,
+              };
+
+    return (
+        <DialogSurface
+            open
+            titleId='memory-review-dialog-title'
+            descriptionId='memory-review-dialog-description'
+            onClose={controller.onCloseMemoryReview}>
+            <div className='border-border bg-background w-[min(94vw,52rem)] rounded-2xl border p-5 shadow-xl'>
+                <div className='space-y-1'>
+                    <h2 id='memory-review-dialog-title' className='text-lg font-semibold'>
+                        {actionLabel} Memory
+                    </h2>
+                    <p id='memory-review-dialog-description' className='text-muted-foreground text-sm'>
+                        {details
+                            ? `${details.memory.scopeKind} · ${details.memory.memoryRetentionClass} · ${details.memory.state}`
+                            : 'Preparing memory review...'}
+                    </p>
+                </div>
+
+                {!details ? (
+                    <div className='border-border/70 bg-card/35 mt-4 rounded-xl border px-4 py-5 text-sm'>
+                        {controller.isReviewDetailsLoading ? 'Loading memory details...' : 'Memory details are unavailable.'}
+                    </div>
+                ) : (
+                    <div className='mt-4 max-h-[70vh] space-y-4 overflow-y-auto pr-1'>
+                        <div className='grid gap-3 sm:grid-cols-2'>
+                            <div className='border-border rounded-xl border px-3 py-3'>
+                                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Memory</p>
+                                <p className='text-muted-foreground mt-1 text-xs break-all'>{details.memory.id}</p>
+                                <p className='text-muted-foreground mt-1 text-xs'>
+                                    Updated {formatRetentionTimestamp(details.memory.updatedAt)}
+                                </p>
+                            </div>
+                            <div className='border-border rounded-xl border px-3 py-3'>
+                                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Provenance</p>
+                                <pre className='text-muted-foreground mt-1 max-h-24 overflow-auto text-[11px] whitespace-pre-wrap'>
+                                    {JSON.stringify(details.memory.metadata, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+
+                        {details.evidence.length > 0 ? (
+                            <div className='border-border rounded-xl border px-3 py-3'>
+                                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Evidence</p>
+                                <div className='mt-2 space-y-2'>
+                                    {details.evidence.map((evidence) => (
+                                        <p key={evidence.id} className='text-muted-foreground text-[11px]'>
+                                            {evidence.label}
+                                            {evidence.excerptText ? ` - ${evidence.excerptText}` : ''}
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {details.revisions.length > 0 ? (
+                            <div className='border-border rounded-xl border px-3 py-3'>
+                                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Revisions</p>
+                                <div className='mt-2 space-y-1'>
+                                    {details.revisions.map((revision) => (
+                                        <p key={revision.id} className='text-muted-foreground text-[11px] break-all'>
+                                            {revision.revisionReason}: {revision.previousMemoryId} {'->'}{' '}
+                                            {revision.replacementMemoryId}
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        <label className='space-y-1 text-sm font-medium'>
+                            <span>Title</span>
+                            <input
+                                className='border-border bg-background w-full rounded-md border px-2 py-2 text-sm'
+                                value={title}
+                                readOnly={isReadOnlyReview}
+                                onChange={(event) => {
+                                    setTitle(event.target.value);
+                                }}
+                            />
+                        </label>
+
+                        <label className='space-y-1 text-sm font-medium'>
+                            <span>Summary</span>
+                            <input
+                                className='border-border bg-background w-full rounded-md border px-2 py-2 text-sm'
+                                value={summaryText}
+                                readOnly={isReadOnlyReview}
+                                onChange={(event) => {
+                                    setSummaryText(event.target.value);
+                                }}
+                            />
+                        </label>
+
+                        {dialog.mode === 'supersede' ? (
+                            <label className='space-y-1 text-sm font-medium'>
+                                <span>Revision reason</span>
+                                <select
+                                    className='border-border bg-background w-full rounded-md border px-2 py-2 text-sm'
+                                    value={revisionReason}
+                                    onChange={(event) => {
+                                        setRevisionReason(
+                                            event.target.value === 'deprecation' || event.target.value === 'refinement'
+                                                ? event.target.value
+                                                : 'correction'
+                                        );
+                                    }}>
+                                    <option value='correction'>Correction</option>
+                                    <option value='refinement'>Refinement</option>
+                                    <option value='deprecation'>Deprecation</option>
+                                </select>
+                            </label>
+                        ) : null}
+
+                        <label className='space-y-1 text-sm font-medium'>
+                            <span>Body</span>
+                            <textarea
+                                className='border-border bg-background min-h-56 w-full rounded-md border p-2 font-mono text-sm'
+                                value={bodyMarkdown}
+                                readOnly={isReadOnlyReview}
+                                onChange={(event) => {
+                                    setBodyMarkdown(event.target.value);
+                                }}
+                            />
+                        </label>
+                    </div>
+                )}
+
+                <div className='mt-5 flex justify-end gap-2'>
+                    <Button type='button' variant='outline' onClick={controller.onCloseMemoryReview} disabled={controller.isApplyingReviewAction}>
+                        Close
+                    </Button>
+                    {isReadOnlyReview ? null : (
+                        <Button
+                            type='button'
+                            onClick={() => {
+                                controller.onApplyMemoryReviewAction(applyInput());
+                            }}
+                            disabled={
+                                controller.isApplyingReviewAction ||
+                                !details ||
+                                title.trim().length === 0 ||
+                                bodyMarkdown.trim().length === 0
+                            }>
+                            {controller.isApplyingReviewAction ? 'Applying...' : actionLabel}
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </DialogSurface>
     );
 }
 
@@ -321,6 +586,7 @@ export function MemoryPanelSections({ controller }: { controller: MemoryPanelCon
 
     return (
         <section className='border-border bg-card mb-3 rounded-2xl border p-3'>
+            <MemoryReviewDialog controller={controller} />
             <div className='flex flex-wrap items-start justify-between gap-3'>
                 <div>
                     <p className='text-sm font-semibold'>Memory Projection</p>
