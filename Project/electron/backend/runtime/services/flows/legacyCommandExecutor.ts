@@ -40,7 +40,7 @@ export async function executeFlowLegacyCommandStep(input: {
             : {}),
         ...(input.executionContext?.sandboxId ? { sandboxId: input.executionContext.sandboxId } : {}),
     });
-    if (resolvedWorkspace.kind === 'detached') {
+    if (resolvedWorkspace.kind !== 'workspace' && resolvedWorkspace.kind !== 'sandbox') {
         return {
             kind: 'failed',
             message: 'Flow legacy-command steps require a workspace-bound execution context.',

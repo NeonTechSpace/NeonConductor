@@ -41,7 +41,7 @@ describe('runtime contracts: planning and orchestrator', () => {
             throw new Error('Expected planning-only run start to be rejected.');
         }
         expect(blockedPlanMode.code).toBe('mode_policy_invalid');
-        expect(blockedPlanMode.message).toContain('planning-only');
+        expect(blockedPlanMode.message).toContain('planning-capable');
         expect(blockedPlanMode.action).toEqual({
             code: 'mode_invalid',
             modeKey: 'plan',
@@ -199,7 +199,7 @@ describe('runtime contracts: planning and orchestrator', () => {
         const draftGeneratedEvent = runtimeEvents.find(
             (event) => event.eventType === 'plan.draft_generated' && event.entityId === started.plan.id
         );
-        expect(draftStartedEvent?.payload.generationMode).toBe('deterministic_fallback');
+        expect(draftStartedEvent?.payload.generationMode).toBe('model');
         expect(draftGeneratedEvent?.payload.generationMode).toBe('deterministic_fallback');
         expect(draftGeneratedEvent?.payload.priorRevisionId).toBe(started.plan.currentRevisionId);
         expect(draftGeneratedEvent?.payload.revisionId).toBe(generated.plan.currentRevisionId);

@@ -16,6 +16,7 @@ import {
     type McpSetToolMutabilityInput,
     type McpUpdateServerInput,
 } from '@/app/backend/runtime/contracts';
+import { decryptSecretPayload, encryptSecretPayload } from '@/app/backend/secrets/secretPayloadCodec';
 
 interface McpServerRow {
     id: string;
@@ -325,12 +326,20 @@ export class McpStore {
         const { db } = getPersistence();
         const rows = await db
             .selectFrom('mcp_server_env_secrets')
-            .select(['env_key', 'secret_value'])
+            .select(['env_key', 'secret_payload'])
             .where('server_id', '=', serverId)
             .orderBy('env_key', 'asc')
             .execute();
 
-        return Object.fromEntries(rows.map((row) => [row.env_key, row.secret_value]));
+        const values: Record<string, string> = {};
+        for (const row of rows) {
+            const secretValue = await decryptSecretPayload(row.secret_payload);
+            if (secretValue !== null) {
+                values[row.env_key] = secretValue;
+            }
+        }
+
+        return values;
     }
 
     async setEnvSecrets(input: {
@@ -342,17 +351,18 @@ export class McpStore {
         const timestamp = nowIso();
 
         for (const value of input.values) {
+            const secretPayload = await encryptSecretPayload(value.value);
             await db
                 .insertInto('mcp_server_env_secrets')
                 .values({
                     server_id: input.serverId,
                     env_key: value.key,
-                    secret_value: value.value,
+                    secret_payload: secretPayload,
                     updated_at: timestamp,
                 })
                 .onConflict((oc) =>
                     oc.columns(['server_id', 'env_key']).doUpdateSet({
-                        secret_value: value.value,
+                        secret_payload: secretPayload,
                         updated_at: timestamp,
                     })
                 )

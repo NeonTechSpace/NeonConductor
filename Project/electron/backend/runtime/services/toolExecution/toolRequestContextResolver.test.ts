@@ -109,7 +109,7 @@ describe('toolRequestContextResolver', () => {
         });
     });
 
-    it('resolves workspace-backed file tools and rewrites relative paths', async () => {
+    it('resolves workspace-backed file tools with explicit execution-root authority', async () => {
         const definition: ResolvedToolDefinition = {
             tool: {
                 id: 'read_file',
@@ -146,21 +146,28 @@ describe('toolRequestContextResolver', () => {
             },
         });
 
-        expect(outcome).toMatchObject({
-            workspaceRequirement: 'resolved',
-            workspaceLabel: 'Workspace Alpha',
-            workspaceRootPath: 'C:/workspace-alpha',
-            executionArgs: {
-                path: expect.stringContaining('workspace-alpha'),
-            },
-        });
         if ('kind' in outcome) {
             throw new Error('Expected a resolved request context, not a failed outcome.');
         }
-        expect(outcome.resolvedWorkspacePath?.absolutePath).toContain('docs');
+        expect(outcome).toMatchObject({
+            executionRootRequirement: 'resolved',
+            workspaceLabel: 'Workspace Alpha',
+            executionRoot: {
+                kind: 'workspace',
+                absolutePath: 'C:/workspace-alpha',
+            },
+            executionArgs: {
+                path: 'docs/readme.md',
+            },
+            resolvedExecutionPath: {
+                absolutePath: expect.stringContaining('workspace-alpha'),
+                executionRootPath: expect.stringContaining('workspace-alpha'),
+            },
+        });
+        expect(outcome.resolvedExecutionPath?.absolutePath).toContain('docs');
     });
 
-    it('rewrites search_files paths through the same workspace boundary resolver', async () => {
+    it('resolves search_files paths through the execution-root boundary resolver', async () => {
         const definition: ResolvedToolDefinition = {
             tool: {
                 id: 'search_files',
@@ -203,13 +210,14 @@ describe('toolRequestContextResolver', () => {
         }
 
         expect(outcome.executionArgs).toMatchObject({
-            path: expect.stringContaining('workspace-alpha'),
+            path: 'src',
             query: 'ExampleValue',
         });
-        expect(outcome.resolvedWorkspacePath?.absolutePath).toContain('src');
+        expect(outcome.resolvedExecutionPath?.absolutePath).toContain('src');
+        expect(outcome.resolvedExecutionPath?.executionRootPath).toContain('workspace-alpha');
     });
 
-    it('rewrites write_file paths through the same workspace boundary resolver', async () => {
+    it('resolves write_file paths through the execution-root boundary resolver', async () => {
         const definition: ResolvedToolDefinition = {
             tool: {
                 id: 'write_file',
@@ -252,10 +260,11 @@ describe('toolRequestContextResolver', () => {
         }
 
         expect(outcome.executionArgs).toMatchObject({
-            path: expect.stringContaining('workspace-alpha'),
+            path: 'src/generated/example.ts',
             content: 'export const value = 1;\n',
         });
-        expect(outcome.resolvedWorkspacePath?.absolutePath).toContain('generated');
+        expect(outcome.resolvedExecutionPath?.absolutePath).toContain('generated');
+        expect(outcome.resolvedExecutionPath?.executionRootPath).toContain('workspace-alpha');
     });
 
     it('attaches shell approval context for run_command inputs', async () => {
@@ -302,10 +311,14 @@ describe('toolRequestContextResolver', () => {
         expect(outcome.shellApprovalContext).toMatchObject({
             commandText: 'echo hello world',
             approvalCandidates: [
-                expect.objectContaining({ label: 'echo hello' }),
-                expect.objectContaining({ label: 'echo' }),
+                expect.objectContaining({
+                    label: 'echo hello world',
+                    detail: 'Allow only this exact normalized command.',
+                }),
             ],
         });
+        expect(outcome.shellApprovalContext?.overrideResources).toEqual([]);
+        expect(outcome.shellApprovalContext?.commandResource).toMatch(/^tool:run_command:command:[a-f0-9]{24}$/u);
     });
 
     it('attaches exact-code approval context for execute_code inputs', async () => {

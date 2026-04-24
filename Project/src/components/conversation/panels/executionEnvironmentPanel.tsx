@@ -86,7 +86,13 @@ export function ExecutionEnvironmentPanel({
                 </div>
                 <div className='text-muted-foreground text-right text-xs [font-variant-numeric:tabular-nums]'>
                     <p>{sandboxes.length} managed</p>
-                    <p>{workspaceScope.kind === 'sandbox' ? workspaceScope.label : 'local workspace'}</p>
+                    <p>
+                        {workspaceScope.kind === 'sandbox'
+                            ? workspaceScope.label
+                            : workspaceScope.kind === 'workspace_unresolved'
+                              ? 'workspace unresolved'
+                              : 'local workspace'}
+                    </p>
                 </div>
             </div>
 
@@ -223,6 +229,12 @@ export function ExecutionEnvironmentPanel({
                         <span className='text-foreground font-medium'>{workspaceScope.label}</span> from{' '}
                         {workspaceScope.baseWorkspaceLabel}. Filesystem operations, checkpoints, and shell commands use{' '}
                         {workspaceScope.absolutePath}.
+                    </p>
+                ) : workspaceScope.kind === 'workspace_unresolved' ? (
+                    <p>
+                        Workspace root for <span className='text-foreground font-medium'>{workspaceScope.label}</span>{' '}
+                        is not registered. Filesystem operations, checkpoints, and shell commands are disabled until the
+                        workspace root is restored.
                     </p>
                 ) : (
                     <p>

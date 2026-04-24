@@ -1,7 +1,8 @@
 import type { ToolInvokeInput } from '@/app/backend/runtime/contracts';
+import { toResolvedExecutionRoot } from '@/app/backend/runtime/contracts';
 import { buildExecuteCodeApprovalContext } from '@/app/backend/runtime/services/toolExecution/executeCodeApproval';
 import { findToolById } from '@/app/backend/runtime/services/toolExecution/lookup';
-import { resolveWorkspaceToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
+import { resolveExecutionRootToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
 import { buildShellApprovalContext } from '@/app/backend/runtime/services/toolExecution/shellApproval';
 import type { ToolRequestContext } from '@/app/backend/runtime/services/toolExecution/toolExecutionLifecycle.types';
 import type { ToolExecutionPolicy, ToolInvocationOutcome } from '@/app/backend/runtime/services/toolExecution/types';
@@ -59,13 +60,13 @@ export async function resolveToolRequestContext(input: ToolInvokeInput): Promise
         });
     }
 
-    let workspaceRequirement: ToolRequestContext['workspaceRequirement'] = 'not_required';
-    let workspaceRootPath: string | undefined;
-    let workspaceLabel: string | undefined;
-    let resolvedWorkspacePath: ToolRequestContext['resolvedWorkspacePath'];
+    let executionRootRequirement: ToolRequestContext['executionRootRequirement'] = 'not_required';
+    let executionRoot: ToolRequestContext['executionRoot'];
+    let executionLabel: string | undefined;
+    let resolvedExecutionPath: ToolRequestContext['resolvedExecutionPath'];
 
     if (definition.tool.requiresWorkspace) {
-        workspaceRequirement = 'detached_scope';
+        executionRootRequirement = 'detached_scope';
 
         if (input.workspaceFingerprint) {
             const workspaceContext = await workspaceContextService.resolveExplicit({
@@ -73,41 +74,41 @@ export async function resolveToolRequestContext(input: ToolInvokeInput): Promise
                 workspaceFingerprint: input.workspaceFingerprint,
                 ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
             });
+            executionRoot = toResolvedExecutionRoot(workspaceContext);
 
-            if (workspaceContext.kind !== 'detached') {
-                workspaceRequirement = 'resolved';
-                workspaceRootPath = workspaceContext.absolutePath;
-                workspaceLabel = workspaceContext.label;
+            if (executionRoot.kind === 'workspace' || executionRoot.kind === 'sandbox') {
+                executionRootRequirement = 'resolved';
+                executionLabel = executionRoot.label;
+            } else if (executionRoot.kind === 'unresolved') {
+                executionRootRequirement = 'unresolved';
+                executionLabel = executionRoot.label;
             } else {
-                workspaceRequirement = 'workspace_unresolved';
+                executionRootRequirement = 'detached_scope';
             }
         }
     }
 
-    let executionArgs = args;
+    const executionArgs = args;
     if (
-        workspaceRequirement === 'resolved' &&
-        workspaceRootPath &&
+        executionRootRequirement === 'resolved' &&
+        executionRoot &&
+        (executionRoot.kind === 'workspace' || executionRoot.kind === 'sandbox') &&
         (definition.tool.id === 'read_file' ||
             definition.tool.id === 'list_files' ||
             definition.tool.id === 'search_files' ||
             definition.tool.id === 'write_file')
     ) {
         const requestedPath = typeof args['path'] === 'string' ? args['path'] : undefined;
-        resolvedWorkspacePath = resolveWorkspaceToolPath(
+        resolvedExecutionPath = resolveExecutionRootToolPath(
             requestedPath
                 ? {
-                      workspaceRootPath,
+                      executionRootPath: executionRoot.absolutePath,
                       targetPath: requestedPath,
                   }
                 : {
-                      workspaceRootPath,
+                      executionRootPath: executionRoot.absolutePath,
                   }
         );
-        executionArgs = {
-            ...args,
-            path: resolvedWorkspacePath.absolutePath,
-        };
     }
 
     const shellApprovalContext =
@@ -152,10 +153,10 @@ export async function resolveToolRequestContext(input: ToolInvokeInput): Promise
         definition,
         shellApprovalContext,
         executeCodeApprovalContext,
+        executionRootRequirement,
+        ...(executionRoot ? { executionRoot } : {}),
+        ...(resolvedExecutionPath ? { resolvedExecutionPath } : {}),
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-        ...(workspaceLabel ? { workspaceLabel } : {}),
-        ...(workspaceRootPath ? { workspaceRootPath } : {}),
-        workspaceRequirement,
-        ...(resolvedWorkspacePath ? { resolvedWorkspacePath } : {}),
+        ...(executionLabel ? { workspaceLabel: executionLabel } : {}),
     };
 }

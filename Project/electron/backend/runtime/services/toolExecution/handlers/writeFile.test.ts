@@ -1,12 +1,21 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { writeFileToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers/writeFile';
 
 const tempDirs: string[] = [];
+
+function workspaceContext(rootPath: string) {
+    return {
+        executionRoot: {
+            kind: 'workspace' as const,
+            label: 'Test workspace',
+            absolutePath: rootPath,
+        },
+    };
+}
 
 afterEach(() => {
     for (const tempDir of tempDirs.splice(0)) {
@@ -15,15 +24,34 @@ afterEach(() => {
 });
 
 describe('writeFileToolHandler', () => {
+    it('fails closed when called without resolved execution-root authority', async () => {
+        const result = await writeFileToolHandler({
+            path: 'notes.txt',
+            content: 'body',
+        });
+
+        expect(result.isErr()).toBe(true);
+        if (result.isOk()) {
+            throw new Error('Expected write_file to reject missing execution-root authority.');
+        }
+        expect(result.error).toEqual({
+            code: 'execution_failed',
+            message: 'Tool "write_file" requires resolved execution-root authority.',
+        });
+    });
+
     it('creates a new UTF-8 file and reports deterministic metadata', async () => {
         const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neon-write-file-create-'));
         tempDirs.push(tempDir);
         const filePath = path.join(tempDir, 'notes.txt');
 
-        const result = await writeFileToolHandler({
-            path: filePath,
-            content: 'line 1\nline 2',
-        });
+        const result = await writeFileToolHandler(
+            {
+                path: filePath,
+                content: 'line 1\nline 2',
+            },
+            workspaceContext(tempDir)
+        );
 
         expect(result.isOk()).toBe(true);
         if (result.isErr()) {
@@ -45,10 +73,13 @@ describe('writeFileToolHandler', () => {
         tempDirs.push(tempDir);
         const filePath = path.join(tempDir, 'nested', 'deeper', 'created.txt');
 
-        const result = await writeFileToolHandler({
-            path: filePath,
-            content: 'created',
-        });
+        const result = await writeFileToolHandler(
+            {
+                path: filePath,
+                content: 'created',
+            },
+            workspaceContext(tempDir)
+        );
 
         expect(result.isOk()).toBe(true);
         if (result.isErr()) {
@@ -65,10 +96,13 @@ describe('writeFileToolHandler', () => {
         const filePath = path.join(tempDir, 'existing.txt');
         writeFileSync(filePath, 'original', 'utf8');
 
-        const result = await writeFileToolHandler({
-            path: filePath,
-            content: 'replacement',
-        });
+        const result = await writeFileToolHandler(
+            {
+                path: filePath,
+                content: 'replacement',
+            },
+            workspaceContext(tempDir)
+        );
 
         expect(result.isErr()).toBe(true);
         if (result.isOk()) {
@@ -88,11 +122,14 @@ describe('writeFileToolHandler', () => {
         const filePath = path.join(tempDir, 'existing.txt');
         writeFileSync(filePath, 'original', 'utf8');
 
-        const result = await writeFileToolHandler({
-            path: filePath,
-            content: 'replacement',
-            overwrite: true,
-        });
+        const result = await writeFileToolHandler(
+            {
+                path: filePath,
+                content: 'replacement',
+                overwrite: true,
+            },
+            workspaceContext(tempDir)
+        );
 
         expect(result.isOk()).toBe(true);
         if (result.isErr()) {
@@ -107,10 +144,13 @@ describe('writeFileToolHandler', () => {
         const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neon-write-file-directory-'));
         tempDirs.push(tempDir);
 
-        const result = await writeFileToolHandler({
-            path: tempDir,
-            content: 'invalid',
-        });
+        const result = await writeFileToolHandler(
+            {
+                path: tempDir,
+                content: 'invalid',
+            },
+            workspaceContext(tempDir)
+        );
 
         expect(result.isErr()).toBe(true);
         if (result.isOk()) {

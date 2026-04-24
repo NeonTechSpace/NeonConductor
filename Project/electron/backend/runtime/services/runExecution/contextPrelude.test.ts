@@ -4,7 +4,6 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getDefaultProfileId, getPersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
-import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import {
     builtInModePromptOverrideStore,
     conversationStore,
@@ -17,9 +16,11 @@ import {
     workspaceRootStore,
 } from '@/app/backend/persistence/stores';
 import { appPromptLayerSettingsStore } from '@/app/backend/persistence/stores/runtime/appPromptLayerSettingsStore';
-import { resolveActiveMode } from '@/app/backend/runtime/services/mode/activeMode';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import type { PreparedContextContributorSpec } from '@/app/backend/runtime/services/context/preparedContextLedger';
+import { resolveActiveMode } from '@/app/backend/runtime/services/mode/activeMode';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
+
 import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 function collectContributorTextParts(result: { contributorSpecs: PreparedContextContributorSpec[] }): string[] {
@@ -214,26 +215,38 @@ Nested project instructions.
 
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
+        const skillOriginPath = path.join(workspaceRoot.absolutePath, 'attached-skill.md');
+        writeFileSync(skillOriginPath, '# Attached Skill', 'utf8');
         sqlite
             .prepare(
                 `
                     INSERT INTO rulesets (
-                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
-                        source_kind, activation_mode, enabled, precedence, created_at, updated_at
+                        id, profile_id, asset_key, target_kind, scope, workspace_fingerprint, preset_key,
+                        target_top_level_tab, target_mode_key, name, body_markdown, source, source_kind,
+                        origin_path, relative_root_path, description, tags_json, activation_mode, enabled,
+                        precedence, created_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'ruleset_shared_rule',
                 profileId,
                 'shared_rule',
+                'shared',
                 'global',
+                null,
+                null,
+                null,
                 null,
                 'Shared Rule',
                 '# Shared Rule',
                 'test',
                 'system_seed',
+                null,
+                null,
+                null,
+                '[]',
                 'manual',
                 1,
                 0,
@@ -244,22 +257,32 @@ Nested project instructions.
             .prepare(
                 `
                     INSERT INTO skillfiles (
-                        id, profile_id, asset_key, scope, workspace_fingerprint, name, body_markdown, source,
-                        source_kind, enabled, precedence, created_at, updated_at
+                        id, profile_id, asset_key, target_kind, scope, workspace_fingerprint, preset_key,
+                        target_top_level_tab, target_mode_key, name, dynamic_context_sources_json, source,
+                        source_kind, origin_path, relative_root_path, description, tags_json, enabled,
+                        precedence, created_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `
             )
             .run(
                 'skillfile_attached_skill',
                 profileId,
                 'attached_skill',
+                'shared',
                 'global',
                 null,
+                null,
+                null,
+                null,
                 'Attached Skill',
-                '# Attached Skill',
+                '[]',
                 'test',
                 'system_seed',
+                skillOriginPath,
+                null,
+                null,
+                '[]',
                 1,
                 0,
                 now,

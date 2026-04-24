@@ -29,6 +29,7 @@ import type {
     DevBrowserTarget,
     DevBrowserTargetDraft,
     DevBrowserValidation,
+    DevBrowserValidatedTargetBinding,
     SessionBuildBrowserContextPacketInput,
     SessionClearStaleBrowserContextInput,
     SessionControlDevBrowserInput,
@@ -95,7 +96,9 @@ function parseBrowserSelectionSelectorSnapshot(value: unknown, field: string): B
     const source = readObject(value, field);
     return {
         primary: readString(source.primary, `${field}.primary`),
-        path: readArray(source.path, `${field}.path`).map((item, index) => readString(item, `${field}.path[${String(index)}]`)),
+        path: readArray(source.path, `${field}.path`).map((item, index) =>
+            readString(item, `${field}.path[${String(index)}]`)
+        ),
     };
 }
 
@@ -168,9 +171,26 @@ function parseDevBrowserCurrentPage(value: unknown, field: string): DevBrowserCu
     };
 }
 
+function parseDevBrowserValidatedTargetBinding(value: unknown, field: string): DevBrowserValidatedTargetBinding {
+    const source = readObject(value, field);
+    const port = readOptionalPort(source.port, `${field}.port`);
+    return {
+        normalizedUrl: readString(source.normalizedUrl, `${field}.normalizedUrl`),
+        host: readString(source.host, `${field}.host`),
+        ...(port !== undefined ? { port } : {}),
+        resolvedAddresses: readArray(source.resolvedAddresses ?? [], `${field}.resolvedAddresses`).map((item, index) =>
+            readString(item, `${field}.resolvedAddresses[${String(index)}]`)
+        ),
+    };
+}
+
 function parseDevBrowserValidation(value: unknown, field: string): DevBrowserValidation {
     const source = readObject(value, field);
     const normalizedUrl = readOptionalString(source.normalizedUrl, `${field}.normalizedUrl`);
+    const binding =
+        source.binding !== undefined
+            ? parseDevBrowserValidatedTargetBinding(source.binding, `${field}.binding`)
+            : undefined;
     const blockedReasonCode =
         source.blockedReasonCode !== undefined
             ? readEnumValue(source.blockedReasonCode, `${field}.blockedReasonCode`, devBrowserBlockedReasonCodes)
@@ -178,11 +198,14 @@ function parseDevBrowserValidation(value: unknown, field: string): DevBrowserVal
     const blockedReasonMessage = readOptionalString(source.blockedReasonMessage, `${field}.blockedReasonMessage`);
     const attemptedUrl = readOptionalString(source.attemptedUrl, `${field}.attemptedUrl`);
     const validationSource =
-        source.source !== undefined ? readEnumValue(source.source, `${field}.source`, devBrowserValidationSources) : undefined;
+        source.source !== undefined
+            ? readEnumValue(source.source, `${field}.source`, devBrowserValidationSources)
+            : undefined;
 
     return {
         status: readEnumValue(source.status, `${field}.status`, devBrowserValidationStatuses),
         ...(normalizedUrl ? { normalizedUrl } : {}),
+        ...(binding ? { binding } : {}),
         resolvedAddresses: readArray(source.resolvedAddresses ?? [], `${field}.resolvedAddresses`).map((item, index) =>
             readString(item, `${field}.resolvedAddresses[${String(index)}]`)
         ),
@@ -211,11 +234,17 @@ export function parseDevBrowserTargetDraft(value: unknown, field: string): DevBr
 export function parseDevBrowserTarget(value: unknown, field: string): DevBrowserTarget {
     const source = readObject(value, field);
     const currentPage =
-        source.currentPage !== undefined ? parseDevBrowserCurrentPage(source.currentPage, `${field}.currentPage`) : undefined;
+        source.currentPage !== undefined
+            ? parseDevBrowserCurrentPage(source.currentPage, `${field}.currentPage`)
+            : undefined;
     return {
         ...parseDevBrowserTargetDraft(source, field),
         validation: parseDevBrowserValidation(source.validation, `${field}.validation`),
-        browserAvailability: readEnumValue(source.browserAvailability, `${field}.browserAvailability`, devBrowserAvailabilityStates),
+        browserAvailability: readEnumValue(
+            source.browserAvailability,
+            `${field}.browserAvailability`,
+            devBrowserAvailabilityStates
+        ),
         ...(currentPage ? { currentPage } : {}),
     };
 }
@@ -283,7 +312,11 @@ export function parseBrowserCommentDraft(value: unknown, field: string): Browser
         selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
         pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
         commentText: readString(source.commentText, `${field}.commentText`),
-        inclusionState: readEnumValue(source.inclusionState, `${field}.inclusionState`, browserCommentDraftInclusionStates),
+        inclusionState: readEnumValue(
+            source.inclusionState,
+            `${field}.inclusionState`,
+            browserCommentDraftInclusionStates
+        ),
         sequence: readNonNegativeNumber(source.sequence, `${field}.sequence`),
         stale: source.stale === true,
         createdAt: readString(source.createdAt, `${field}.createdAt`),
@@ -299,7 +332,11 @@ export function parseBrowserDesignerDraft(value: unknown, field: string): Browse
         id: readEntityId(source.id, `${field}.id`, 'bdsn'),
         selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
         pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
-        inclusionState: readEnumValue(source.inclusionState, `${field}.inclusionState`, browserCommentDraftInclusionStates),
+        inclusionState: readEnumValue(
+            source.inclusionState,
+            `${field}.inclusionState`,
+            browserCommentDraftInclusionStates
+        ),
         applyMode: readEnumValue(source.applyMode, `${field}.applyMode`, browserDesignerApplyModes),
         applyStatus: readEnumValue(source.applyStatus, `${field}.applyStatus`, browserDesignerApplyStatuses),
         ...(blockedReasonMessage ? { blockedReasonMessage } : {}),

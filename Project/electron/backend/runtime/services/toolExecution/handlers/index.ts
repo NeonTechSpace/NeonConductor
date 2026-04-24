@@ -1,6 +1,7 @@
 import { err, type Result } from 'neverthrow';
 
 import type { ToolRecord } from '@/app/backend/persistence/types';
+import type { ToolHandlerExecutionContext } from '@/app/backend/runtime/services/toolExecution/handlers/context';
 import { executeCodeToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers/executeCode';
 import { listFilesToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers/listFiles';
 import { readFileToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers/readFile';
@@ -12,25 +13,22 @@ import type { ToolExecutionFailure, ToolExecutionOutput } from '@/app/backend/ru
 export function invokeToolHandler(
     tool: ToolRecord,
     args: Record<string, unknown>,
-    context?: {
-        cwd?: string;
-        signal?: AbortSignal;
-    }
+    context?: ToolHandlerExecutionContext
 ): Promise<Result<ToolExecutionOutput, ToolExecutionFailure>> {
     if (tool.id === 'list_files') {
-        return listFilesToolHandler(args);
+        return listFilesToolHandler(args, context);
     }
 
     if (tool.id === 'read_file') {
-        return readFileToolHandler(args);
+        return readFileToolHandler(args, context);
     }
 
     if (tool.id === 'search_files') {
-        return searchFilesToolHandler(args);
+        return searchFilesToolHandler(args, context);
     }
 
     if (tool.id === 'write_file') {
-        return writeFileToolHandler(args);
+        return writeFileToolHandler(args, context);
     }
 
     if (tool.id === 'run_command') {

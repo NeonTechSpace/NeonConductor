@@ -17,6 +17,7 @@ import type { RunExecutionError } from '@/app/backend/runtime/services/runExecut
 import { persistRunStart } from '@/app/backend/runtime/services/runExecution/persistRunStart';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
 import { toRejectedStartResult } from '@/app/backend/runtime/services/runExecution/rejection';
+import { previewRunContractForStart } from '@/app/backend/runtime/services/runExecution/runContractPreviewService';
 import { runToTerminalState } from '@/app/backend/runtime/services/runExecution/runToTerminalState';
 import { moveRunToAbortedState } from '@/app/backend/runtime/services/runExecution/terminalState';
 import type { StartRunInput, StartRunResult } from '@/app/backend/runtime/services/runExecution/types';
@@ -74,7 +75,9 @@ function readPermissionRequestIdFromAction(action: unknown): EntityId<'perm'> | 
     return typeof requestId === 'string' && isEntityId(requestId, 'perm') ? requestId : undefined;
 }
 
-function toComposerAttachmentInput(payload: SessionAttachmentPayload): NonNullable<StartRunInput['attachments']>[number] {
+function toComposerAttachmentInput(
+    payload: SessionAttachmentPayload
+): NonNullable<StartRunInput['attachments']>[number] {
     if (payload.kind === 'text_file_attachment') {
         return {
             clientId: payload.id,
@@ -122,90 +125,6 @@ export class RunExecutionService {
                 : {}),
             ...(entry.steeringSnapshot.sandboxId ? { sandboxId: entry.steeringSnapshot.sandboxId } : {}),
             ...(attachments.length > 0 ? { attachments: attachments.map(toComposerAttachmentInput) } : {}),
-        };
-    }
-
-    private async previewRunContractInternal(input: StartRunInput, previousCompatibleContract?: RunContractPreview) {
-        const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
-        if (!sessionThread) {
-            return {
-                available: false as const,
-                reason: 'not_found' as const,
-            };
-        }
-        if (sessionThread.thread.topLevelTab !== input.topLevelTab) {
-            const error = {
-                code: 'invalid_mode',
-                message: `Thread mode "${sessionThread.thread.topLevelTab}" does not match tab "${input.topLevelTab}".`,
-                action: {
-                    code: 'mode_invalid',
-                    modeKey: input.modeKey,
-                    topLevelTab: input.topLevelTab,
-                },
-            } satisfies RunExecutionError;
-
-            return {
-                available: false as const,
-                reason: 'rejected' as const,
-                code: error.code,
-                message: error.message,
-                action: error.action,
-            };
-        }
-
-        const workspaceContext = await workspaceContextService.resolveForSession({
-            profileId: input.profileId,
-            sessionId: input.sessionId,
-            topLevelTab: input.topLevelTab,
-            allowLazySandboxCreation: input.topLevelTab !== 'chat',
-        });
-        if (!workspaceContext) {
-            return {
-                available: false as const,
-                reason: 'rejected' as const,
-                code: 'execution_target_unavailable',
-                message: 'Workspace execution target could not be resolved for this session.',
-                action: {
-                    code: 'execution_target_unavailable',
-                    target: 'workspace',
-                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                    detail: 'workspace_not_resolved',
-                },
-            };
-        }
-
-        const preparedResult = await prepareRunStart({
-            ...input,
-            ...(workspaceContext.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
-            workspaceContext,
-        });
-        if (preparedResult.isErr()) {
-            return {
-                available: false as const,
-                reason: 'rejected' as const,
-                code: preparedResult.error.code,
-                message: preparedResult.error.message,
-                ...(preparedResult.error.action ? { action: preparedResult.error.action } : {}),
-            };
-        }
-
-        const preview = prepareRunContractPreview({
-            startInput: input,
-            prepared: preparedResult.value,
-            ...(previousCompatibleContract ? { previousCompatibleContract } : {}),
-        });
-        if (!preview) {
-            return {
-                available: false as const,
-                reason: 'rejected' as const,
-                code: 'provider_request_failed',
-                message: 'Run contract preview is unavailable because the prepared context could not be resolved.',
-            };
-        }
-
-        return {
-            available: true as const,
-            preview,
         };
     }
 
@@ -291,6 +210,21 @@ export class RunExecutionService {
                 input
             );
         }
+        if (input.topLevelTab !== 'chat' && workspaceContext.kind === 'workspace_unresolved') {
+            return toRejectedStartResult(
+                {
+                    code: 'execution_target_unavailable',
+                    message: 'Workspace root is unresolved for this session.',
+                    action: {
+                        code: 'execution_target_unavailable',
+                        target: 'workspace',
+                        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                        detail: 'workspace_root_missing',
+                    },
+                },
+                input
+            );
+        }
         if (
             input.topLevelTab !== 'chat' &&
             (sessionThread.thread.executionEnvironmentMode === 'new_sandbox' ||
@@ -342,7 +276,9 @@ export class RunExecutionService {
         const runContractPreview = prepareRunContractPreview({
             startInput: input,
             prepared,
-            ...(options?.previousCompatibleContract ? { previousCompatibleContract: options.previousCompatibleContract } : {}),
+            ...(options?.previousCompatibleContract
+                ? { previousCompatibleContract: options.previousCompatibleContract }
+                : {}),
         });
         const persisted = await persistRunStart({
             input,
@@ -510,7 +446,7 @@ export class RunExecutionService {
         entry: SessionOutboxEntry
     ): Promise<{ started: true; runId: EntityId<'run'>; preview: RunContractPreview } | { started: false }> {
         const startInput = await this.loadOutboxStartInput(entry);
-        const previewResult = await this.previewRunContractInternal(startInput, entry.latestRunContract);
+        const previewResult = await previewRunContractForStart(startInput, entry.latestRunContract);
         if (!previewResult.available) {
             await sessionOutboxStore.update({
                 profileId: entry.profileId,
@@ -521,7 +457,7 @@ export class RunExecutionService {
                     previewResult.code === 'permission_required'
                         ? (readPermissionRequestIdFromAction(previewResult.action) ?? null)
                         : null,
-                pausedReason: previewResult.message ?? 'Run contract could not be re-resolved.',
+                pausedReason: previewResult.message,
             });
             return { started: false };
         }
@@ -599,7 +535,11 @@ export class RunExecutionService {
         };
     }
 
-    async getOutboxEntry(profileId: string, sessionId: EntityId<'sess'>, entryId: EntityId<'outbox'>): Promise<SessionGetOutboxEntryResult> {
+    async getOutboxEntry(
+        profileId: string,
+        sessionId: EntityId<'sess'>,
+        entryId: EntityId<'outbox'>
+    ): Promise<SessionGetOutboxEntryResult> {
         const entry = await sessionOutboxStore.getById({ profileId, sessionId, entryId });
         if (!entry) {
             return { found: false };
@@ -612,9 +552,9 @@ export class RunExecutionService {
     }
 
     async queueRun(input: StartRunInput): Promise<SessionQueueRunResult> {
-        const previewResult = await this.previewRunContractInternal(input);
+        const previewResult = await previewRunContractForStart(input);
         if (!previewResult.available) {
-            throw new InvariantError(previewResult.message ?? 'Cannot queue a run without a valid run contract preview.');
+            throw new InvariantError(previewResult.message);
         }
 
         const attachmentSummaries = await Promise.all(
@@ -664,11 +604,13 @@ export class RunExecutionService {
         }
 
         const nextBrowserContext =
-            input.browserContext === undefined ? existing.browserContext : input.browserContext ?? undefined;
+            input.browserContext === undefined ? existing.browserContext : (input.browserContext ?? undefined);
         const nextAttachments =
             input.attachments !== undefined
                 ? input.attachments
-                : (await conversationAttachmentStore.listPayloadsByOutboxEntry(input.entryId)).map(toComposerAttachmentInput);
+                : (await conversationAttachmentStore.listPayloadsByOutboxEntry(input.entryId)).map(
+                      toComposerAttachmentInput
+                  );
 
         const previewInput: StartRunInput = {
             profileId: input.profileId,
@@ -686,7 +628,7 @@ export class RunExecutionService {
             ...(nextAttachments.length > 0 ? { attachments: nextAttachments } : {}),
             ...(nextBrowserContext ? { browserContext: nextBrowserContext } : {}),
         };
-        const previewResult = await this.previewRunContractInternal(previewInput);
+        const previewResult = await previewRunContractForStart(previewInput);
         const attachmentSummaries = await Promise.all(
             nextAttachments.map((attachment) =>
                 conversationAttachmentStore.createSnapshot({
@@ -707,13 +649,16 @@ export class RunExecutionService {
             prompt: input.prompt,
             ...(input.browserContext !== undefined ? { browserContext: input.browserContext } : {}),
             latestRunContract: previewResult.available ? previewResult.preview : null,
-            state: previewResult.available ? 'queued' : previewResult.code === 'permission_required' ? 'paused_for_permission' : 'paused_for_review',
+            state: previewResult.available
+                ? 'queued'
+                : previewResult.code === 'permission_required'
+                  ? 'paused_for_permission'
+                  : 'paused_for_review',
             activePermissionRequestId:
-                !previewResult.available &&
-                previewResult.code === 'permission_required'
+                !previewResult.available && previewResult.code === 'permission_required'
                     ? (readPermissionRequestIdFromAction(previewResult.action) ?? null)
                     : null,
-            pausedReason: previewResult.available ? null : previewResult.message ?? 'Queued entry needs review.',
+            pausedReason: previewResult.available ? null : previewResult.message,
         });
         return updated ? { updated: true, entry: updated } : { updated: false, reason: 'not_found' };
     }
@@ -791,7 +736,7 @@ export class RunExecutionService {
     }
 
     async previewRunContract(input: StartRunInput): Promise<RunContractPreviewResult> {
-        return this.previewRunContractInternal(input);
+        return previewRunContractForStart(input);
     }
 
     async abortRun(
@@ -840,4 +785,3 @@ export class RunExecutionService {
 }
 
 export const runExecutionService = new RunExecutionService();
-

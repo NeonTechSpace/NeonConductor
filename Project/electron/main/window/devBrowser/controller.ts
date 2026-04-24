@@ -7,11 +7,15 @@ import type {
     BrowserSelectionReactEnrichment,
     BrowserSelectionSnapshotInput,
     DevBrowserTarget,
+    DevBrowserValidatedTargetBinding,
     DevBrowserValidationSource,
 } from '@/app/backend/runtime/contracts';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
+import {
+    normalizeDevBrowserTargetDraft,
+    validateLocalDevBrowserTarget,
+} from '@/app/backend/runtime/services/devBrowser/localTargetPolicy';
 import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrowser/service';
-import { normalizeDevBrowserTargetDraft, validateLocalDevBrowserTarget } from '@/app/backend/runtime/services/devBrowser/localTargetPolicy';
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
@@ -92,7 +96,7 @@ export class DevBrowserWindowController {
     private mountState: DevBrowserMountPayload | null = null;
     private boundProfileId: string | null = null;
     private boundSessionId: EntityId<'sess'> | null = null;
-    private allowedNavigationUrl: string | null = null;
+    private allowedNavigationBinding: DevBrowserValidatedTargetBinding | null = null;
     private syncingObservedTarget = false;
 
     constructor(window: BrowserWindow, options: DevBrowserWindowControllerOptions) {
@@ -129,7 +133,12 @@ export class DevBrowserWindowController {
 
     private attachViewEventHandlers(view: WebContentsView): void {
         view.webContents.setWindowOpenHandler((details) => {
-            void this.persistBlockedNavigation(details.url, 'popup', 'popup_blocked', 'Popup windows are blocked in the dev browser.');
+            void this.persistBlockedNavigation(
+                details.url,
+                'popup',
+                'popup_blocked',
+                'Popup windows are blocked in the dev browser.'
+            );
             return { action: 'deny' };
         });
 
@@ -164,19 +173,24 @@ export class DevBrowserWindowController {
     }
 
     private consumeAllowedNavigation(url: string): boolean {
-        if (!this.allowedNavigationUrl) {
+        if (!this.allowedNavigationBinding) {
             return false;
         }
         try {
             const normalizedUrl = new URL(url).toString();
-            if (normalizedUrl === this.allowedNavigationUrl) {
-                this.allowedNavigationUrl = null;
+            if (normalizedUrl === this.allowedNavigationBinding.normalizedUrl) {
+                this.allowedNavigationBinding = null;
                 return true;
             }
         } catch {
             return false;
         }
         return false;
+    }
+
+    private loadValidatedNavigationBinding(binding: DevBrowserValidatedTargetBinding): void {
+        this.allowedNavigationBinding = binding;
+        void this.ensureView().webContents.loadURL(binding.normalizedUrl);
     }
 
     private async persistBlockedNavigation(
@@ -230,7 +244,7 @@ export class DevBrowserWindowController {
             path: new URL(url).pathname + new URL(url).search + new URL(url).hash,
             sourceKind: currentTarget.sourceKind,
         });
-        const validation = await validateLocalDevBrowserTarget({
+        const validation = validateLocalDevBrowserTarget({
             target: normalizedDraft,
             source,
         });
@@ -245,14 +259,15 @@ export class DevBrowserWindowController {
             sessionId: this.boundSessionId,
             target: nextTarget,
         });
-        await this.emitSessionBrowserEvent(validation.status === 'allowed' ? 'navigation_allowed' : 'navigation_blocked');
+        await this.emitSessionBrowserEvent(
+            validation.status === 'allowed' ? 'navigation_allowed' : 'navigation_blocked'
+        );
 
-        if (validation.status !== 'allowed' || !validation.normalizedUrl) {
+        if (validation.status !== 'allowed' || !validation.binding) {
             return;
         }
 
-        this.allowedNavigationUrl = validation.normalizedUrl;
-        void this.ensureView().webContents.loadURL(validation.normalizedUrl);
+        this.loadValidatedNavigationBinding(validation.binding);
     }
 
     private async syncObservedTargetFromWebContents(): Promise<void> {
@@ -276,7 +291,7 @@ export class DevBrowserWindowController {
                 path: existingTarget.path,
                 sourceKind: existingTarget.sourceKind,
             });
-            const validation = await validateLocalDevBrowserTarget({
+            const validation = validateLocalDevBrowserTarget({
                 target: normalizedDraft,
                 source: 'navigation',
             });
@@ -381,12 +396,12 @@ export class DevBrowserWindowController {
                     browserAvailability: 'available',
                 },
             });
-            if (state.target.validation.status === 'allowed' && state.target.validation.normalizedUrl) {
-                this.allowedNavigationUrl = state.target.validation.normalizedUrl;
-                void view.webContents.loadURL(state.target.validation.normalizedUrl);
+            if (state.target.validation.status === 'allowed' && state.target.validation.binding) {
+                this.allowedNavigationBinding = state.target.validation.binding;
+                void view.webContents.loadURL(state.target.validation.binding.normalizedUrl);
             }
         }
-        await this.setPickerActive(state.pickerActive);
+        this.setPickerActive(state.pickerActive);
         await this.emitSessionBrowserEvent('mount_visible');
     }
 
@@ -404,12 +419,12 @@ export class DevBrowserWindowController {
         if (!this.mountState?.visible) {
             return;
         }
-        if (input.target.validation.status !== 'allowed' || !input.target.validation.normalizedUrl) {
+        if (input.target.validation.status !== 'allowed' || !input.target.validation.binding) {
             return;
         }
 
         const view = this.ensureView();
-        this.allowedNavigationUrl = input.target.validation.normalizedUrl;
+        this.allowedNavigationBinding = input.target.validation.binding;
         await sessionDevBrowserService.syncObservedTarget({
             ...input,
             target: {
@@ -417,10 +432,10 @@ export class DevBrowserWindowController {
                 browserAvailability: 'available',
             },
         });
-        void view.webContents.loadURL(input.target.validation.normalizedUrl);
+        void view.webContents.loadURL(input.target.validation.binding.normalizedUrl);
     }
 
-    async control(action: 'back' | 'forward' | 'reload'): Promise<void> {
+    control(action: 'back' | 'forward' | 'reload'): void {
         if (!this.view) {
             return;
         }
@@ -437,7 +452,7 @@ export class DevBrowserWindowController {
         }
     }
 
-    async setPickerActive(active: boolean): Promise<void> {
+    setPickerActive(active: boolean): void {
         if (!this.view) {
             return;
         }
@@ -475,7 +490,12 @@ export class DevBrowserWindowController {
     private async sanitizeReactEnrichment(
         rawEnrichment: DevBrowserSelectionPayload['reactEnrichment']
     ): Promise<BrowserSelectionReactEnrichment | undefined> {
-        if (!rawEnrichment || rawEnrichment.componentChain.length === 0 || !this.boundProfileId || !this.boundSessionId) {
+        if (
+            !rawEnrichment ||
+            rawEnrichment.componentChain.length === 0 ||
+            !this.boundProfileId ||
+            !this.boundSessionId
+        ) {
             return undefined;
         }
 
@@ -565,7 +585,9 @@ export class DevBrowserWindowController {
         await this.emitSessionBrowserEvent('selection_persisted');
     }
 
-    private async captureSelectionCrop(bounds: DevBrowserSelectionPayload['bounds']): Promise<EntityId<'att'> | undefined> {
+    private async captureSelectionCrop(
+        bounds: DevBrowserSelectionPayload['bounds']
+    ): Promise<EntityId<'att'> | undefined> {
         if (!this.boundProfileId || !this.boundSessionId || !this.view) {
             return undefined;
         }

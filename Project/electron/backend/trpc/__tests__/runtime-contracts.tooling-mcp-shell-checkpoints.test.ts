@@ -233,7 +233,7 @@ describe('runtime contracts: permissions and tooling', () => {
         expect(connected.server.envKeys).toEqual(['MCP_TEST_SECRET']);
     });
 
-    it('executes run_command with prefix-scoped approvals and bounded shell output', async () => {
+    it('executes run_command with exact-command approvals and bounded shell output', async () => {
         const caller = createCaller();
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
@@ -257,6 +257,45 @@ describe('runtime contracts: permissions and tooling', () => {
                     now,
                     now
                 );
+        };
+        const approveExactShellCommand = async (input: {
+            targetProfileId: string;
+            workspaceFingerprint: string;
+            modeKey: 'code' | 'debug';
+            command: string;
+            resolution: 'allow_workspace' | 'allow_profile';
+        }) => {
+            const ask = await caller.tool.invoke({
+                profileId: input.targetProfileId,
+                toolId: 'run_command',
+                topLevelTab: 'agent',
+                modeKey: input.modeKey,
+                workspaceFingerprint: input.workspaceFingerprint,
+                args: {
+                    command: input.command,
+                },
+            });
+            expect(ask.ok).toBe(false);
+            if (ask.ok) {
+                throw new Error(`Expected "${input.command}" to require exact shell approval.`);
+            }
+            expect(ask.error).toBe('permission_required');
+            const requestId = requireEntityId(ask.requestId, 'perm', 'Expected shell permission request id.');
+            const request = (await caller.permission.listPending()).requests.find((item) => item.id === requestId);
+            const exactResource = request?.approvalCandidates?.find(
+                (candidate) => candidate.label === input.command
+            )?.resource;
+            if (!exactResource) {
+                throw new Error(`Expected exact approval candidate for "${input.command}".`);
+            }
+
+            const resolved = await caller.permission.resolve({
+                profileId: input.targetProfileId,
+                requestId,
+                resolution: input.resolution,
+                selectedApprovalResource: exactResource,
+            });
+            expect(resolved.updated).toBe(true);
         };
 
         insertWorkspaceRoot(profileId, 'ws_run_command_general', generalWorkspacePath);
@@ -342,8 +381,8 @@ describe('runtime contracts: permissions and tooling', () => {
         expect(firstPendingRequest?.commandText).toBe('node --version');
         expect(firstPendingRequest?.approvalCandidates?.map((candidate) => candidate.label)).toEqual([
             'node --version',
-            'node',
         ]);
+        expect(firstPendingRequest?.approvalCandidates?.[0]?.detail).toBe('Allow only this exact normalized command.');
 
         const allowOnce = await caller.permission.resolve({
             profileId,
@@ -392,37 +431,85 @@ describe('runtime contracts: permissions and tooling', () => {
         const askedAgainRequest = (await caller.permission.listPending()).requests.find(
             (request) => request.id === repeatedPermissionRequestId
         );
-        const generalNodeResource = askedAgainRequest?.approvalCandidates?.find(
-            (candidate) => candidate.label === 'node'
+        const exactNodeVersionResource = askedAgainRequest?.approvalCandidates?.find(
+            (candidate) => candidate.label === 'node --version'
         )?.resource;
-        if (!generalNodeResource) {
-            throw new Error('Expected general node approval candidate.');
+        if (!exactNodeVersionResource) {
+            throw new Error('Expected exact node --version approval candidate.');
         }
 
-        const allowWorkspaceNode = await caller.permission.resolve({
+        const allowWorkspaceNodeVersion = await caller.permission.resolve({
             profileId,
             requestId: repeatedPermissionRequestId,
             resolution: 'allow_workspace',
-            selectedApprovalResource: generalNodeResource,
+            selectedApprovalResource: exactNodeVersionResource,
         });
-        expect(allowWorkspaceNode.updated).toBe(true);
+        expect(allowWorkspaceNodeVersion.updated).toBe(true);
 
-        const generalPrefixAllowed = await caller.tool.invoke({
+        const generalExactAllowed = await caller.tool.invoke({
             profileId,
             toolId: 'run_command',
             topLevelTab: 'agent',
             modeKey: 'code',
             workspaceFingerprint: 'ws_run_command_general',
             args: {
-                command: 'node -p "40+2"',
+                command: 'node --version',
             },
         });
-        expect(generalPrefixAllowed.ok).toBe(true);
-        if (!generalPrefixAllowed.ok) {
-            throw new Error('Expected executable-prefix approval to allow another node command.');
+        expect(generalExactAllowed.ok).toBe(true);
+        if (!generalExactAllowed.ok) {
+            throw new Error('Expected exact workspace approval to allow the same command.');
         }
-        expect(String(generalPrefixAllowed.output['stdout']).trim()).toBe('42');
+        expect(String(generalExactAllowed.output['stdout'])).toContain('v');
 
+        const broadenedCommandBlocked = await caller.tool.invoke({
+            profileId,
+            toolId: 'run_command',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: 'ws_run_command_general',
+            args: {
+                command: 'node --version && node -p "40+2"',
+            },
+        });
+        expect(broadenedCommandBlocked.ok).toBe(false);
+        if (broadenedCommandBlocked.ok) {
+            throw new Error('Expected exact approval for node --version to reject chained variants.');
+        }
+        expect(broadenedCommandBlocked.error).toBe('permission_required');
+
+        const arithmeticCommand = 'node -p "40+2"';
+        await approveExactShellCommand({
+            targetProfileId: profileId,
+            workspaceFingerprint: 'ws_run_command_general',
+            modeKey: 'code',
+            command: arithmeticCommand,
+            resolution: 'allow_workspace',
+        });
+        const arithmeticAllowed = await caller.tool.invoke({
+            profileId,
+            toolId: 'run_command',
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: 'ws_run_command_general',
+            args: {
+                command: arithmeticCommand,
+            },
+        });
+        expect(arithmeticAllowed.ok).toBe(true);
+        if (!arithmeticAllowed.ok) {
+            throw new Error('Expected exact workspace approval to allow arithmetic command.');
+        }
+        expect(String(arithmeticAllowed.output['stdout']).trim()).toBe('42');
+
+        const largeOutputCommand = 'node -e "process.stdout.write(\'x\'.repeat(50000))"';
+        await approveExactShellCommand({
+            targetProfileId: profileId,
+            workspaceFingerprint: 'ws_run_command_general',
+            modeKey: 'code',
+            command: largeOutputCommand,
+            resolution: 'allow_workspace',
+        });
         const largeOutput = await caller.tool.invoke({
             profileId,
             toolId: 'run_command',
@@ -430,7 +517,7 @@ describe('runtime contracts: permissions and tooling', () => {
             modeKey: 'code',
             workspaceFingerprint: 'ws_run_command_general',
             args: {
-                command: 'node -e "process.stdout.write(\'x\'.repeat(50000))"',
+                command: largeOutputCommand,
             },
         });
         expect(largeOutput.ok).toBe(true);
@@ -440,6 +527,14 @@ describe('runtime contracts: permissions and tooling', () => {
         expect(largeOutput.output['stdoutTruncated']).toBe(true);
         expect(String(largeOutput.output['stdout']).length).toBeLessThan(50_000);
 
+        const timeoutCommand = 'node -e "setTimeout(() => {}, 2000)"';
+        await approveExactShellCommand({
+            targetProfileId: profileId,
+            workspaceFingerprint: 'ws_run_command_general',
+            modeKey: 'code',
+            command: timeoutCommand,
+            resolution: 'allow_workspace',
+        });
         const timeoutOutput = await caller.tool.invoke({
             profileId,
             toolId: 'run_command',
@@ -447,7 +542,7 @@ describe('runtime contracts: permissions and tooling', () => {
             modeKey: 'code',
             workspaceFingerprint: 'ws_run_command_general',
             args: {
-                command: 'node -e "setTimeout(() => {}, 2000)"',
+                command: timeoutCommand,
                 timeoutMs: 50,
             },
         });
@@ -469,13 +564,13 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(specificAsk.ok).toBe(false);
         if (specificAsk.ok) {
-            throw new Error('Expected specific-prefix workspace to ask first.');
+            throw new Error('Expected specific workspace exact command to ask first.');
         }
         expect(specificAsk.error).toBe('permission_required');
         const specificPermissionRequestId = requireEntityId(
             specificAsk.requestId,
             'perm',
-            'Expected permission request id for specific-prefix request.'
+            'Expected permission request id for exact command request.'
         );
 
         const specificRequest = (await caller.permission.listPending()).requests.find(
@@ -520,7 +615,7 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(specificStillBlocked.ok).toBe(false);
         if (specificStillBlocked.ok) {
-            throw new Error('Expected verb-prefix approval to stay narrower than executable approval.');
+            throw new Error('Expected exact approval to stay narrower than a different command.');
         }
         expect(specificStillBlocked.error).toBe('permission_required');
 
@@ -543,7 +638,7 @@ describe('runtime contracts: permissions and tooling', () => {
             modeKey: 'code',
             workspaceFingerprint: 'ws_run_command_privacy',
             args: {
-                command: 'node --version',
+                command: 'node -p "5+5"',
             },
         });
         expect(privacyAsk.ok).toBe(false);
@@ -560,18 +655,18 @@ describe('runtime contracts: permissions and tooling', () => {
         const privacyRequest = (await caller.permission.listPending()).requests.find(
             (request) => request.id === privacyPermissionRequestId
         );
-        const privacyNodeResource = privacyRequest?.approvalCandidates?.find(
-            (candidate) => candidate.label === 'node'
+        const privacyExactResource = privacyRequest?.approvalCandidates?.find(
+            (candidate) => candidate.label === 'node -p "5+5"'
         )?.resource;
-        if (!privacyNodeResource) {
-            throw new Error('Expected general node approval candidate for privacy profile.');
+        if (!privacyExactResource) {
+            throw new Error('Expected exact command approval candidate for privacy profile.');
         }
 
         const privacyResolve = await caller.permission.resolve({
             profileId: privacyProfile.profile.id,
             requestId: privacyPermissionRequestId,
             resolution: 'allow_profile',
-            selectedApprovalResource: privacyNodeResource,
+            selectedApprovalResource: privacyExactResource,
         });
         expect(privacyResolve.updated).toBe(true);
 
@@ -587,9 +682,25 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(privacyAllowed.ok).toBe(true);
         if (!privacyAllowed.ok) {
-            throw new Error('Expected matching profile shell override to bypass privacy ask.');
+            throw new Error('Expected matching exact profile shell override to bypass privacy ask.');
         }
         expect(String(privacyAllowed.output['stdout']).trim()).toBe('10');
+
+        const privacyDifferentCommand = await caller.tool.invoke({
+            profileId: privacyProfile.profile.id,
+            toolId: 'run_command',
+            topLevelTab: 'agent',
+            modeKey: 'debug',
+            workspaceFingerprint: 'ws_run_command_privacy',
+            args: {
+                command: 'node -p "6+6"',
+            },
+        });
+        expect(privacyDifferentCommand.ok).toBe(false);
+        if (privacyDifferentCommand.ok) {
+            throw new Error('Expected exact profile approval to reject a different command.');
+        }
+        expect(privacyDifferentCommand.error).toBe('permission_required');
 
         await caller.profile.setExecutionPreset({
             profileId: yoloProfile.profile.id,
@@ -608,7 +719,7 @@ describe('runtime contracts: permissions and tooling', () => {
         });
         expect(yoloAsk.ok).toBe(false);
         if (yoloAsk.ok) {
-            throw new Error('Expected yolo preset to still ask for unseen shell prefixes.');
+            throw new Error('Expected yolo preset to still ask for unseen exact shell commands.');
         }
         expect(yoloAsk.error).toBe('permission_required');
     }, 30_000);

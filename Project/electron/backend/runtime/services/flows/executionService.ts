@@ -1,4 +1,4 @@
-import { flowStore, planStore, threadStore } from '@/app/backend/persistence/stores';
+import { flowStore } from '@/app/backend/persistence/stores';
 import type { FlowInstancePersistenceRecord, PermissionRecord } from '@/app/backend/persistence/types';
 import type {
     EntityId,
@@ -15,30 +15,21 @@ import type {
     FlowStepDefinition,
     FlowWorkflowStepDefinition,
     PlanRecordView,
-    PlanStatus,
 } from '@/app/backend/runtime/contracts';
-import {
-    abortDelegatedChildRun,
-    resolveDelegatedChildRootExecutionContext,
-    startDelegatedChildLaneRun,
-    waitForRunTerminal,
-} from '@/app/backend/runtime/services/common/delegatedChildLane';
-import {
-    errOp,
-    okOp,
-    type OperationalErrorCode,
-    type OperationalResult,
-} from '@/app/backend/runtime/services/common/operationalError';
+import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { activeFlowExecutionRegistry } from '@/app/backend/runtime/services/flows/activeExecutionRegistry';
-import { defaultFlowRuntimeOptions } from '@/app/backend/runtime/services/flows/defaultRuntimeOptions';
 import { appendFlowLifecycleEvent } from '@/app/backend/runtime/services/flows/events';
+import type {
+    FlowStepProvenance,
+    StepExecutionResult,
+} from '@/app/backend/runtime/services/flows/execution/flowExecutionTypes';
+import { executeModeRunStep } from '@/app/backend/runtime/services/flows/execution/flowModeRunStepExecutor';
+import {
+    executePlanningWorkflowStep,
+    resolvePlanningArtifact,
+} from '@/app/backend/runtime/services/flows/execution/flowPlanningWorkflowExecutor';
+import type { RequiredPlanCheckpointStatus } from '@/app/backend/runtime/services/flows/execution/flowStepHelpers';
 import { executeFlowLegacyCommandStep } from '@/app/backend/runtime/services/flows/legacyCommandExecutor';
-import { resolvePlanningCapableModeForTab } from '@/app/backend/runtime/services/flows/planningModeResolution';
-import { enterAdvancedPlanning } from '@/app/backend/runtime/services/plan/enterAdvancedPlanning';
-import type { PlanServiceErrorCode } from '@/app/backend/runtime/services/plan/errors';
-import { startPlanFlow } from '@/app/backend/runtime/services/plan/start';
-import { refreshPlanViewById } from '@/app/backend/runtime/services/plan/status';
-import { resolveModeExecution } from '@/app/backend/runtime/services/runExecution/mode';
 
 import {
     createFlowApprovalRequiredLifecycleEvent,
@@ -49,23 +40,6 @@ import {
     createFlowStepCompletedLifecycleEvent,
     createFlowStepStartedLifecycleEvent,
 } from '@/shared/flowLifecycle';
-
-type RequiredPlanCheckpointStatus = 'draft' | 'approved';
-
-type FlowStepProvenance = Partial<Pick<
-    FlowInstanceRecord,
-    | 'currentRunId'
-    | 'currentChildThreadId'
-    | 'currentChildSessionId'
-    | 'currentPlanId'
-    | 'currentPlanRevisionId'
-    | 'currentPlanPhaseId'
-    | 'currentPlanPhaseRevisionId'
->>;
-
-type StepExecutionResult =
-    | { kind: 'continue'; record: FlowInstancePersistenceRecord }
-    | { kind: 'terminal'; view: FlowInstanceView };
 
 function readCurrentStep(record: FlowInstancePersistenceRecord): FlowStepDefinition | undefined {
     return record.definitionSnapshot.steps[record.instance.currentStepIndex];
@@ -97,10 +71,7 @@ function clearCurrentStepProvenance(instance: FlowInstanceRecord): FlowInstanceR
     return nextInstance;
 }
 
-function applyCurrentStepProvenance(
-    instance: FlowInstanceRecord,
-    provenance?: FlowStepProvenance
-): FlowInstanceRecord {
+function applyCurrentStepProvenance(instance: FlowInstanceRecord, provenance?: FlowStepProvenance): FlowInstanceRecord {
     const nextInstance = clearCurrentStepProvenance(instance);
     if (!provenance) {
         return nextInstance;
@@ -146,63 +117,6 @@ function clearAwaitingApprovalState(instance: FlowInstanceRecord): FlowInstanceR
 
 function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-function wasSignalAborted(signal: AbortSignal): boolean {
-    return signal.aborted;
-}
-
-function readPlanCheckpointStatus(step: FlowWorkflowStepDefinition): RequiredPlanCheckpointStatus {
-    return step.requireApprovedPlan === false ? 'draft' : 'approved';
-}
-
-function readPlanCheckpointReason(requiredPlanStatus: RequiredPlanCheckpointStatus): string {
-    return requiredPlanStatus === 'approved'
-        ? 'Flow is waiting for the linked plan to be approved before continuing.'
-        : 'Flow is waiting for the linked plan to reach draft status before continuing.';
-}
-
-function isPlanCheckpointSatisfied(status: PlanStatus, requiredPlanStatus: RequiredPlanCheckpointStatus): boolean {
-    if (requiredPlanStatus === 'draft') {
-        return ['draft', 'approved', 'implementing', 'implemented'].includes(status);
-    }
-
-    return ['approved', 'implementing', 'implemented'].includes(status);
-}
-
-function readPlanTerminalFailureMessage(status: PlanStatus): string | null {
-    if (status === 'failed') {
-        return 'Linked planning artifact failed before the required checkpoint was reached.';
-    }
-
-    if (status === 'cancelled') {
-        return 'Linked planning artifact was cancelled before the required checkpoint was reached.';
-    }
-
-    return null;
-}
-
-function readModeRunThreadTitle(step: FlowModeRunStepDefinition): string {
-    return `Flow: ${step.label}`;
-}
-
-function readInvalidPlanCheckpointMessage(requiredPlanStatus: RequiredPlanCheckpointStatus): string {
-    return requiredPlanStatus === 'approved'
-        ? 'Flow instance cannot resume until the linked plan is approved.'
-        : 'Flow instance cannot resume until the linked plan reaches draft status.';
-}
-
-function mapPlanErrorCodeToOperational(code: PlanServiceErrorCode): OperationalErrorCode {
-    switch (code) {
-        case 'invalid_mode':
-            return 'invalid_mode';
-        case 'unsupported_tab':
-            return 'unsupported_tab';
-        case 'invalid_tab':
-            return 'invalid_input';
-        default:
-            return 'invalid_input';
-    }
 }
 
 export class FlowExecutionService {
@@ -254,9 +168,7 @@ export class FlowExecutionService {
             flowDefinitionId: input.flowDefinition.definition.id,
             definitionSnapshot: input.flowDefinition.definition,
             ...(resolvedExecutionContext ? { executionContext: resolvedExecutionContext } : {}),
-            ...(input.retrySourceFlowInstanceId
-                ? { retrySourceFlowInstanceId: input.retrySourceFlowInstanceId }
-                : {}),
+            ...(input.retrySourceFlowInstanceId ? { retrySourceFlowInstanceId: input.retrySourceFlowInstanceId } : {}),
         });
         if (!persistedInstance) {
             return errOp('flow_not_found', `Flow definition "${input.flowDefinition.definition.id}" was not found.`);
@@ -340,7 +252,10 @@ export class FlowExecutionService {
             return okOp({ found: false });
         }
         if (!['queued', 'running', 'approval_required'].includes(record.instance.status)) {
-            return errOp('invalid_input', 'Only queued, running, or approval-required flow instances can be cancelled.');
+            return errOp(
+                'invalid_input',
+                'Only queued, running, or approval-required flow instances can be cancelled.'
+            );
         }
 
         const activeExecution = activeFlowExecutionRegistry.cancel(record.instance.id);
@@ -382,9 +297,7 @@ export class FlowExecutionService {
                 definition: record.definitionSnapshot,
                 originKind: record.originKind,
                 ...(record.workspaceFingerprint ? { workspaceFingerprint: record.workspaceFingerprint } : {}),
-                ...(record.sourceBranchWorkflowId
-                    ? { sourceBranchWorkflowId: record.sourceBranchWorkflowId }
-                    : {}),
+                ...(record.sourceBranchWorkflowId ? { sourceBranchWorkflowId: record.sourceBranchWorkflowId } : {}),
             },
             ...(record.instance.executionContext ? { executionContext: record.instance.executionContext } : {}),
             retrySourceFlowInstanceId: record.instance.id,
@@ -660,177 +573,7 @@ export class FlowExecutionService {
         step: FlowModeRunStepDefinition;
         signal: AbortSignal;
     }): Promise<StepExecutionResult> {
-        if (input.signal.aborted) {
-            return {
-                kind: 'terminal',
-                view: await this.markCancelled({
-                    profileId: input.profileId,
-                    record: input.record,
-                    reason: 'Flow execution was cancelled.',
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            };
-        }
-
-        const sessionId = input.record.instance.executionContext?.sessionId;
-        if (!sessionId) {
-            return {
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: input.record,
-                    message: 'Mode-run flow steps require a session-bound execution context.',
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            };
-        }
-
-        const modeResolution = await resolveModeExecution({
-            profileId: input.profileId,
-            topLevelTab: input.step.topLevelTab,
-            modeKey: input.step.modeKey,
-            ...(input.record.instance.executionContext?.workspaceFingerprint
-                ? { workspaceFingerprint: input.record.instance.executionContext.workspaceFingerprint }
-                : {}),
-        });
-        if (modeResolution.isErr()) {
-            return {
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: input.record,
-                    message: modeResolution.error.message,
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            };
-        }
-
-        const rootContext = await resolveDelegatedChildRootExecutionContext({
-            profileId: input.profileId,
-            sessionId,
-        });
-        if (!rootContext) {
-            return {
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: input.record,
-                    message: 'Flow mode-run step could not resolve a delegated child-lane root context.',
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            };
-        }
-
-        const started = await startDelegatedChildLaneRun({
-            profileId: input.profileId,
-            owner: {
-                kind: 'flow_instance',
-                flowInstanceId: input.record.instance.id,
-            },
-            rootContext,
-            rootSessionId: sessionId,
-            childTitle: readModeRunThreadTitle(input.step),
-            prompt: input.step.promptMarkdown,
-            topLevelTab: input.step.topLevelTab,
-            modeKey: input.step.modeKey,
-            runtimeOptions: defaultFlowRuntimeOptions,
-            ...(input.record.instance.executionContext?.workspaceFingerprint
-                ? { workspaceFingerprint: input.record.instance.executionContext.workspaceFingerprint }
-                : {}),
-        });
-        if (!started.accepted) {
-            return {
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: input.record,
-                    message: started.reason,
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            };
-        }
-
-        const provenance: FlowStepProvenance = {
-            currentRunId: started.started.runId,
-            currentChildThreadId: started.started.childThreadId,
-            currentChildSessionId: started.started.childSessionId,
-        };
-        let record = await this.writeStepStarted(
-            input.profileId,
-            input.record,
-            input.stepIndex,
-            input.step,
-            provenance
-        );
-
-        const abortChildRun = (): void => {
-            void abortDelegatedChildRun(input.profileId, started.started.childSessionId);
-        };
-        input.signal.addEventListener('abort', abortChildRun, { once: true });
-
-        try {
-            const terminalStatus = await waitForRunTerminal(started.started.runId);
-            if (terminalStatus === 'completed') {
-                record = await this.writeStepCompleted({
-                    profileId: input.profileId,
-                    record,
-                    stepIndex: input.stepIndex,
-                    step: input.step,
-                    nextStepIndex: input.stepIndex + 1,
-                });
-                return {
-                    kind: 'continue',
-                    record,
-                };
-            }
-
-            if (terminalStatus === 'aborted' && wasSignalAborted(input.signal)) {
-                return {
-                    kind: 'terminal',
-                    view: await this.markCancelled({
-                        profileId: input.profileId,
-                        record,
-                        reason: 'Flow execution was cancelled.',
-                        step: input.step,
-                        stepIndex: input.stepIndex,
-                    }),
-                };
-            }
-
-            if (terminalStatus === 'error' && wasSignalAborted(input.signal)) {
-                return {
-                    kind: 'terminal',
-                    view: await this.markCancelled({
-                        profileId: input.profileId,
-                        record,
-                        reason: 'Flow execution was cancelled.',
-                        step: input.step,
-                        stepIndex: input.stepIndex,
-                    }),
-                };
-            }
-
-            return {
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record,
-                    message:
-                        terminalStatus === 'aborted'
-                            ? 'Delegated mode run was aborted before it completed.'
-                            : 'Delegated mode run ended with error.',
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            };
-        } finally {
-            input.signal.removeEventListener('abort', abortChildRun);
-        }
+        return executeModeRunStep(this, input);
     }
 
     private async executePlanningWorkflowStep(input: {
@@ -841,270 +584,21 @@ export class FlowExecutionService {
         resumePlanCheckpoint: boolean;
         expectedPlanId?: EntityId<'plan'>;
     }): Promise<OperationalResult<StepExecutionResult>> {
-        if (input.step.workflowCapability !== 'planning') {
-            return okOp({
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: input.record,
-                    message: `Workflow capability "${input.step.workflowCapability}" is not executable in Execute Flow Slice 4.`,
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            });
-        }
-
-        const requiredPlanStatus = readPlanCheckpointStatus(input.step);
-        if (
-            input.record.instance.status === 'approval_required' &&
-            input.record.instance.awaitingApprovalKind === 'plan_checkpoint'
-        ) {
-            if (!input.resumePlanCheckpoint) {
-                return errOp(
-                    'invalid_input',
-                    'Planning checkpoints require an explicit flow resume request.'
-                );
-            }
-            if (input.expectedPlanId && input.record.instance.awaitingPlanId !== input.expectedPlanId) {
-                return errOp('invalid_input', 'Flow instance is not waiting on the requested linked plan.');
-            }
-
-            const linkedPlanId = input.record.instance.awaitingPlanId ?? input.record.instance.currentPlanId;
-            if (!linkedPlanId) {
-                return errOp('invalid_input', 'Flow instance is missing the linked plan checkpoint state.');
-            }
-
-            const refreshedPlan = await refreshPlanViewById({
-                profileId: input.profileId,
-                planId: linkedPlanId,
-            });
-            if (!refreshedPlan.found) {
-                return errOp('not_found', 'Linked plan could not be found for this flow checkpoint.');
-            }
-
-            const terminalPlanMessage = readPlanTerminalFailureMessage(refreshedPlan.plan.status);
-            const provenance: FlowStepProvenance = {
-                currentPlanId: refreshedPlan.plan.id,
-                currentPlanRevisionId: refreshedPlan.plan.currentRevisionId,
-            };
-
-            if (terminalPlanMessage) {
-                return okOp({
-                    kind: 'terminal',
-                    view: await this.markFailed({
-                        profileId: input.profileId,
-                        record: input.record,
-                        message: terminalPlanMessage,
-                        step: input.step,
-                        stepIndex: input.stepIndex,
-                        provenance,
-                    }),
-                });
-            }
-
-            if (!isPlanCheckpointSatisfied(refreshedPlan.plan.status, requiredPlanStatus)) {
-                return errOp('invalid_input', readInvalidPlanCheckpointMessage(requiredPlanStatus));
-            }
-
-            const resumedRecord = await flowStore.getFlowInstanceById(input.profileId, input.record.instance.id);
-            if (!resumedRecord) {
-                throw new Error(`Persisted flow instance "${input.record.instance.id}" was not found.`);
-            }
-
-            return okOp({
-                kind: 'continue',
-                record: await this.writeStepCompleted({
-                    profileId: input.profileId,
-                    record: resumedRecord,
-                    stepIndex: input.stepIndex,
-                    step: input.step,
-                    nextStepIndex: input.stepIndex + 1,
-                    provenance,
-                }),
-            });
-        }
-
-        const planResult = await this.resolvePlanningArtifact({
-            profileId: input.profileId,
-            record: input.record,
-            step: input.step,
-        });
-        if (planResult.isErr()) {
-            return okOp({
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: input.record,
-                    message: planResult.error.message,
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                }),
-            });
-        }
-
-        const plan = planResult.value;
-        const provenance: FlowStepProvenance = {
-            currentPlanId: plan.id,
-            currentPlanRevisionId: plan.currentRevisionId,
-        };
-        const startedRecord = await this.writeStepStarted(
-            input.profileId,
-            input.record,
-            input.stepIndex,
-            input.step,
-            provenance
-        );
-
-        const terminalPlanMessage = readPlanTerminalFailureMessage(plan.status);
-        if (terminalPlanMessage) {
-            return okOp({
-                kind: 'terminal',
-                view: await this.markFailed({
-                    profileId: input.profileId,
-                    record: startedRecord,
-                    message: terminalPlanMessage,
-                    step: input.step,
-                    stepIndex: input.stepIndex,
-                    provenance,
-                }),
-            });
-        }
-
-        if (!isPlanCheckpointSatisfied(plan.status, requiredPlanStatus)) {
-            return okOp({
-                kind: 'terminal',
-                view: await this.writeApprovalRequired({
-                    profileId: input.profileId,
-                    record: startedRecord,
-                    stepIndex: input.stepIndex,
-                    step: input.step,
-                    approvalKind: 'plan_checkpoint',
-                    reason: readPlanCheckpointReason(requiredPlanStatus),
-                    planId: plan.id,
-                    planRevisionId: plan.currentRevisionId,
-                    requiredPlanStatus,
-                    provenance,
-                }),
-            });
-        }
-
-        return okOp({
-            kind: 'continue',
-            record: await this.writeStepCompleted({
-                profileId: input.profileId,
-                record: startedRecord,
-                stepIndex: input.stepIndex,
-                step: input.step,
-                nextStepIndex: input.stepIndex + 1,
-                provenance,
-            }),
-        });
+        return executePlanningWorkflowStep(this, input);
     }
 
-    private async resolvePlanningArtifact(input: {
+    resolvePlanningArtifact(input: {
         profileId: string;
         record: FlowInstancePersistenceRecord;
         step: FlowWorkflowStepDefinition;
     }): Promise<OperationalResult<PlanRecordView>> {
-        const sessionId = input.record.instance.executionContext?.sessionId;
-        if (!sessionId) {
-            return errOp('invalid_input', 'Planning workflow steps require a session-bound execution context.');
-        }
-
-        const sessionThread = await threadStore.getBySessionId(input.profileId, sessionId);
-        if (!sessionThread) {
-            return errOp('not_found', 'Planning workflow step could not find the owning session thread.');
-        }
-        if (sessionThread.thread.topLevelTab === 'chat') {
-            return errOp('invalid_input', 'Planning workflow steps require an agent or orchestrator session.');
-        }
-
-        const topLevelTab = sessionThread.thread.topLevelTab;
-        const planningDepth = input.step.planningDepth ?? 'simple';
-        const latestPlanRecord = await planStore.getLatestBySession(input.profileId, sessionId, topLevelTab);
-
-        if (input.step.reuseExistingPlan !== false && latestPlanRecord) {
-            const refreshed = await refreshPlanViewById({
-                profileId: input.profileId,
-                planId: latestPlanRecord.id,
-            });
-            if (!refreshed.found) {
-                return errOp('not_found', 'Planning workflow step could not refresh the active plan.');
-            }
-
-            if (refreshed.plan.status === 'implementing') {
-                return errOp(
-                    'invalid_input',
-                    'Planning workflow step cannot reuse a plan while implementation is active.'
-                );
-            }
-
-            if (!['implemented', 'failed', 'cancelled'].includes(refreshed.plan.status)) {
-                if (planningDepth === 'advanced' && (refreshed.plan.planningDepth ?? 'simple') === 'simple') {
-                    const upgraded = await enterAdvancedPlanning({
-                        profileId: input.profileId,
-                        planId: refreshed.plan.id,
-                    });
-                    if (upgraded.isErr()) {
-                        return errOp(mapPlanErrorCodeToOperational(upgraded.error.code), upgraded.error.message);
-                    }
-                    if (!upgraded.value.found) {
-                        return errOp('not_found', 'Planning workflow step could not upgrade the active plan.');
-                    }
-
-                    return okOp(upgraded.value.plan);
-                }
-
-                return okOp(refreshed.plan);
-            }
-        }
-
-        if (input.step.reuseExistingPlan === false && latestPlanRecord) {
-            const refreshed = await refreshPlanViewById({
-                profileId: input.profileId,
-                planId: latestPlanRecord.id,
-            });
-            if (refreshed.found && refreshed.plan.status === 'implementing') {
-                return errOp(
-                    'invalid_input',
-                    'Planning workflow step cannot start a fresh plan while implementation is active on the current plan.'
-                );
-            }
-        }
-
-        const planningMode = await resolvePlanningCapableModeForTab({
-            profileId: input.profileId,
-            topLevelTab,
-            ...(input.record.instance.executionContext?.workspaceFingerprint
-                ? { workspaceFingerprint: input.record.instance.executionContext.workspaceFingerprint }
-                : {}),
-        });
-        if (!planningMode) {
-            return errOp(
-                'invalid_mode',
-                `Planning workflow step could not resolve a planning-capable mode for "${topLevelTab}".`
-            );
-        }
-
-        const startedPlan = await startPlanFlow({
-            profileId: input.profileId,
-            sessionId,
-            topLevelTab,
-            modeKey: planningMode.modeKey,
-            prompt: input.step.promptMarkdown,
-            planningDepth,
-            ...(input.record.instance.executionContext?.workspaceFingerprint
-                ? { workspaceFingerprint: input.record.instance.executionContext.workspaceFingerprint }
-                : {}),
-        });
-        if (startedPlan.isErr()) {
-            return errOp(mapPlanErrorCodeToOperational(startedPlan.error.code), startedPlan.error.message);
-        }
-
-        return okOp(startedPlan.value.plan);
+        return resolvePlanningArtifact(this, input);
     }
 
-    private async writeStarted(profileId: string, record: FlowInstancePersistenceRecord): Promise<FlowInstancePersistenceRecord> {
+    private async writeStarted(
+        profileId: string,
+        record: FlowInstancePersistenceRecord
+    ): Promise<FlowInstancePersistenceRecord> {
         const event = createFlowStartedLifecycleEvent({
             flowDefinitionId: record.definitionSnapshot.id,
             flowInstanceId: record.instance.id,
@@ -1127,7 +621,7 @@ export class FlowExecutionService {
         );
     }
 
-    private async writeStepStarted(
+    async writeStepStarted(
         profileId: string,
         record: FlowInstancePersistenceRecord,
         stepIndex: number,
@@ -1156,7 +650,7 @@ export class FlowExecutionService {
         );
     }
 
-    private async writeStepCompleted(input: {
+    async writeStepCompleted(input: {
         profileId: string;
         record: FlowInstancePersistenceRecord;
         stepIndex: number;
@@ -1186,7 +680,7 @@ export class FlowExecutionService {
         );
     }
 
-    private async writeApprovalRequired(input: {
+    async writeApprovalRequired(input: {
         profileId: string;
         record: FlowInstancePersistenceRecord;
         stepIndex: number;
@@ -1231,9 +725,7 @@ export class FlowExecutionService {
                     ? {
                           awaitingPlanId: input.planId,
                           ...(input.planRevisionId ? { awaitingPlanRevisionId: input.planRevisionId } : {}),
-                          ...(input.requiredPlanStatus
-                              ? { awaitingRequiredPlanStatus: input.requiredPlanStatus }
-                              : {}),
+                          ...(input.requiredPlanStatus ? { awaitingRequiredPlanStatus: input.requiredPlanStatus } : {}),
                       }
                     : {}),
                 startedAt: input.record.instance.startedAt ?? event.at,
@@ -1266,7 +758,7 @@ export class FlowExecutionService {
         return this.requireFlowInstanceView(profileId, record.instance.id);
     }
 
-    private async markFailed(input: {
+    async markFailed(input: {
         profileId: string;
         record: FlowInstancePersistenceRecord;
         message: string;
@@ -1301,7 +793,7 @@ export class FlowExecutionService {
         return this.requireFlowInstanceView(input.profileId, input.record.instance.id);
     }
 
-    private async markCancelled(input: {
+    async markCancelled(input: {
         profileId: string;
         record: FlowInstancePersistenceRecord;
         reason: string;

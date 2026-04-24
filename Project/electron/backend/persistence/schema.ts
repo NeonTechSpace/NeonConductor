@@ -574,7 +574,7 @@ export interface McpServerToolsTable {
 export interface McpServerEnvSecretsTable {
     server_id: string;
     env_key: string;
-    secret_value: string;
+    secret_payload: string;
     updated_at: string;
 }
 
@@ -920,7 +920,7 @@ export interface ProviderSecretsTable {
     profile_id: string;
     provider_id: string;
     secret_kind: string;
-    secret_value: string;
+    secret_payload: string;
     updated_at: string;
 }
 

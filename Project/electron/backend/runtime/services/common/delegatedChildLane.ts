@@ -7,11 +7,7 @@ import {
     threadStore,
 } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
-import type {
-    ConversationRecord,
-    SessionSummaryRecord,
-    ThreadRecord,
-} from '@/app/backend/persistence/types';
+import type { ConversationRecord, SessionSummaryRecord, ThreadRecord } from '@/app/backend/persistence/types';
 import type {
     EntityId,
     ResolvedWorkspaceContext,
@@ -249,7 +245,7 @@ export async function resolveDelegatedChildRootExecutionContext(input: {
         topLevelTab: initialSessionThread.thread.topLevelTab,
         allowLazySandboxCreation: true,
     });
-    if (!executionTarget || executionTarget.kind === 'detached') {
+    if (!executionTarget || executionTarget.kind === 'detached' || executionTarget.kind === 'workspace_unresolved') {
         return null;
     }
     if (executionTarget.kind === 'workspace' && executionTarget.executionEnvironmentMode === 'new_sandbox') {
@@ -313,11 +309,13 @@ export async function startDelegatedChildLaneRun(input: {
         buildSessionOwnerFields(input.owner)
     );
     if (!createdSession.created) {
-        await threadStore.deleteDelegatedChildLane(buildDeletionOwnerInput({
-            profileId: input.profileId,
-            threadId: childThreadId,
-            owner: input.owner,
-        }));
+        await threadStore.deleteDelegatedChildLane(
+            buildDeletionOwnerInput({
+                profileId: input.profileId,
+                threadId: childThreadId,
+                owner: input.owner,
+            })
+        );
         return {
             accepted: false,
             reason: `Delegated child session could not be created: ${createdSession.reason}.`,
@@ -347,12 +345,14 @@ export async function startDelegatedChildLaneRun(input: {
     });
 
     if (!startedRun.accepted) {
-        await threadStore.deleteDelegatedChildLane(buildDeletionOwnerInput({
-            profileId: input.profileId,
-            threadId: childThreadId,
-            sessionId: createdSession.session.id,
-            owner: input.owner,
-        }));
+        await threadStore.deleteDelegatedChildLane(
+            buildDeletionOwnerInput({
+                profileId: input.profileId,
+                threadId: childThreadId,
+                sessionId: createdSession.session.id,
+                owner: input.owner,
+            })
+        );
         return {
             accepted: false,
             reason: startedRun.reason,

@@ -1,5 +1,5 @@
-import { formatInteger, methodLabel } from '@/web/components/settings/providerSettings/helpers';
 import type { ExecutionTargetExplanationModel } from '@/web/components/conversation/shell/workspace/runTargetSelection';
+import { formatInteger, methodLabel } from '@/web/components/settings/providerSettings/helpers';
 
 import type { ProviderUsageSummary, RunRecord } from '@/app/backend/persistence/types';
 
@@ -9,6 +9,12 @@ interface WorkspaceStatusPanelProps {
     workspaceScope:
         | {
               kind: 'detached';
+          }
+        | {
+              kind: 'workspace_unresolved';
+              label: string;
+              workspaceFingerprint: string;
+              executionEnvironmentMode: 'local' | 'new_sandbox';
           }
         | {
               kind: 'workspace';
@@ -106,9 +112,11 @@ export function WorkspaceStatusPanel({
                         ? `${executionPreset} preset · detached chat has no file authority`
                         : workspaceScope.kind === 'sandbox'
                           ? `${executionPreset} preset · managed sandbox · ${workspaceScope.absolutePath}`
-                          : workspaceScope.executionEnvironmentMode === 'new_sandbox'
-                            ? `${executionPreset} preset · queued managed sandbox from ${workspaceScope.absolutePath}`
-                            : `${executionPreset} preset · local workspace · ${workspaceScope.absolutePath}`
+                          : workspaceScope.kind === 'workspace_unresolved'
+                            ? `${executionPreset} preset · workspace root unresolved · filesystem authority disabled`
+                            : workspaceScope.executionEnvironmentMode === 'new_sandbox'
+                              ? `${executionPreset} preset · queued managed sandbox from ${workspaceScope.absolutePath}`
+                              : `${executionPreset} preset · local workspace · ${workspaceScope.absolutePath}`
                 }
             />
             <StatusCard

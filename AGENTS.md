@@ -3,7 +3,7 @@
 ## Project Stage
 
 - NeonConductor is in active alpha development.
-- `Research/Repair-First Stabilization Track.md` currently takes precedence over normal first-alpha feature work.
+- `Research/Repair-First Stabilization Track.md` is closed; normal first-alpha feature work may continue while `check:repair-first` remains clear.
 - Prefer the best long-term architecture over temporary compatibility.
 - Breaking changes are allowed when they remove bad patterns, collapse unnecessary complexity, or establish cleaner boundaries.
 - Do not preserve unstable APIs, weak abstractions, or legacy behavior just to avoid churn.
@@ -12,9 +12,9 @@
 ## Repair-First Priority
 
 - Check `Research/Repair-First Stabilization Track.md` before starting new feature work.
-- Do not add feature scope while unresolved `P0` or `P1` repair-first items remain unless the user explicitly approves the override.
-- Security, fail-closed runtime boundaries, code-health tooling, verification, and documentation updates that support repair-first work are allowed.
-- Keep ordinary first-alpha roadmap work subordinate to repair-first acceptance criteria until the repair track is closed.
+- If `check:repair-first` regresses or new unresolved `P0` or `P1` repair-first items are opened, do not add unrelated feature scope unless the user explicitly approves the override.
+- Security, fail-closed runtime boundaries, code-health tooling, verification, and documentation updates that preserve the repair-first baseline are always allowed.
+- Keep ordinary first-alpha roadmap work unblocked only while the repair-first baseline remains clear.
 
 ## Core Delivery Rules
 
@@ -98,7 +98,7 @@
 - Keep it concise enough to resist context rot, but complete enough that another AI can act safely without access to `Research`.
 - Human contributor workflow, release flow, and local setup live in `Markdown/CONTRIBUTING.md`.
 - Historical and architectural explanation lives in `Research`.
-- Repair-first priority, backlog, and acceptance criteria live in `Research/Repair-First Stabilization Track.md` while that track is active.
+- The closed repair-first baseline and regression criteria live in `Research/Repair-First Stabilization Track.md`.
 - Feature-affecting and subsystem-boundary changes must update `Research/Current System Blueprint.md`.
 - Frontend/backend ownership changes must update the blueprint relation maps.
 - Removals and deferments must be reflected in the blueprint immediately, not later.

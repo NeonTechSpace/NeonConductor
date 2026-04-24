@@ -5,6 +5,7 @@ import { parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParse
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { ProviderSecretKindRecord, ProviderSecretRecord } from '@/app/backend/persistence/types';
 import { providerIds, providerSecretKinds, type RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import { decryptSecretPayload, encryptSecretPayload } from '@/app/backend/secrets/secretPayloadCodec';
 
 function mapProviderSecret(row: {
     id: string;
@@ -57,13 +58,13 @@ export class ProviderSecretStore {
         const { db } = getPersistence();
         const row = await db
             .selectFrom('provider_secrets')
-            .select('secret_value')
+            .select('secret_payload')
             .where('profile_id', '=', profileId)
             .where('provider_id', '=', providerId)
             .where('secret_kind', '=', secretKind)
             .executeTakeFirst();
 
-        return row?.secret_value ?? null;
+        return row ? decryptSecretPayload(row.secret_payload) : null;
     }
 
     async upsertValue(input: {
@@ -75,6 +76,7 @@ export class ProviderSecretStore {
         const { db } = getPersistence();
         const updatedAt = nowIso();
         const id = `provider_secret_${randomUUID()}`;
+        const secretPayload = await encryptSecretPayload(input.secretValue);
 
         await db
             .insertInto('provider_secrets')
@@ -83,12 +85,12 @@ export class ProviderSecretStore {
                 profile_id: input.profileId,
                 provider_id: input.providerId,
                 secret_kind: input.secretKind,
-                secret_value: input.secretValue,
+                secret_payload: secretPayload,
                 updated_at: updatedAt,
             })
             .onConflict((oc) =>
                 oc.columns(['profile_id', 'provider_id', 'secret_kind']).doUpdateSet({
-                    secret_value: input.secretValue,
+                    secret_payload: secretPayload,
                     updated_at: updatedAt,
                 })
             )

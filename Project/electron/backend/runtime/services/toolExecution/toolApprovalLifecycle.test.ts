@@ -87,12 +87,12 @@ describe('toolApprovalLifecycle', () => {
                 shellApprovalContext: {
                     commandText: 'git status',
                     commandResource: 'tool:run_command:command:abc123',
-                    overrideResources: ['tool:run_command:prefix:git'],
+                    overrideResources: [],
                     approvalCandidates: [
                         {
-                            label: 'git',
-                            resource: 'tool:run_command:prefix:git',
-                            detail: 'Allow commands that start with "git".',
+                            label: 'git status',
+                            resource: 'tool:run_command:command:abc123',
+                            detail: 'Allow only this exact normalized command.',
                         },
                     ],
                 },
@@ -106,11 +106,11 @@ describe('toolApprovalLifecycle', () => {
         expect(resolveToolDecisionMock).toHaveBeenCalledWith(
             expect.objectContaining({
                 resource: 'tool:run_command:command:abc123',
-                resourceCandidates: ['tool:run_command:prefix:git'],
                 onceResource: 'tool:run_command:command:abc123',
                 commandText: 'git status',
             })
         );
+        expect(resolveToolDecisionMock.mock.calls[0]?.[0]).not.toHaveProperty('resourceCandidates');
         expect(buildBlockedToolOutcomeMock).not.toHaveBeenCalled();
         expect(result).toEqual({
             kind: 'allow',
@@ -131,9 +131,9 @@ describe('toolApprovalLifecycle', () => {
             commandText: 'git status',
             approvalCandidates: [
                 {
-                    label: 'git',
-                    resource: 'tool:run_command:prefix:git',
-                    detail: 'Allow commands that start with "git".',
+                    label: 'git status',
+                    resource: 'tool:run_command:command:abc123',
+                    detail: 'Allow only this exact normalized command.',
                 },
             ],
             message: 'Need approval',
@@ -178,12 +178,12 @@ describe('toolApprovalLifecycle', () => {
                 shellApprovalContext: {
                     commandText: 'git status',
                     commandResource: 'tool:run_command:command:abc123',
-                    overrideResources: ['tool:run_command:prefix:git'],
+                    overrideResources: [],
                     approvalCandidates: [
                         {
-                            label: 'git',
-                            resource: 'tool:run_command:prefix:git',
-                            detail: 'Allow commands that start with "git".',
+                            label: 'git status',
+                            resource: 'tool:run_command:command:abc123',
+                            detail: 'Allow only this exact normalized command.',
                         },
                     ],
                 },

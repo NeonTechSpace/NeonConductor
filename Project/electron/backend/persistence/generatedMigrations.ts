@@ -229,7 +229,7 @@ CREATE TABLE provider_secrets (
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     provider_id TEXT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
     secret_kind TEXT NOT NULL,
-    secret_value TEXT NOT NULL,
+    secret_payload TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 
@@ -1479,7 +1479,7 @@ CREATE TABLE mcp_server_tools (
 CREATE TABLE mcp_server_env_secrets (
     server_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
     env_key TEXT NOT NULL,
-    secret_value TEXT NOT NULL,
+    secret_payload TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (server_id, env_key)
 );

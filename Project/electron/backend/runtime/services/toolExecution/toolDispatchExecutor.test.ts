@@ -82,7 +82,12 @@ describe('dispatchToolInvocation', () => {
     }
 
     it('preserves policy metadata for native tool success', async () => {
-        invokeToolHandlerMock.mockResolvedValue(createHandledOkResult({ text: 'native output' }));
+        const nativeResult = createHandledOkResult({ text: 'native output' });
+        nativeResult.match(
+            () => undefined,
+            () => undefined
+        );
+        invokeToolHandlerMock.mockResolvedValue(nativeResult);
 
         const outcome = await dispatchToolInvocation({
             context: {
@@ -91,8 +96,13 @@ describe('dispatchToolInvocation', () => {
                 definition: buildNativeToolDefinition(),
                 executionArgs: { path: 'README.md' },
                 shellApprovalContext: null,
-                workspaceRequirement: 'resolved',
-                workspaceRootPath: '/workspace/project',
+                executionRootRequirement: 'resolved',
+                executionRoot: {
+                    kind: 'workspace',
+                    workspaceFingerprint: 'ws_alpha',
+                    label: 'Test workspace',
+                    absolutePath: '/workspace/project',
+                },
             },
             allowed: {
                 kind: 'allow',
@@ -117,30 +127,40 @@ describe('dispatchToolInvocation', () => {
         expect(invokeToolHandlerMock).toHaveBeenCalledWith(
             expect.objectContaining({ id: 'read_file' }),
             { path: 'README.md' },
-            { cwd: '/workspace/project' }
+            {
+                cwd: '/workspace/project',
+                executionRoot: {
+                    kind: 'workspace',
+                    label: 'Test workspace',
+                    absolutePath: '/workspace/project',
+                },
+            }
         );
     });
 
     it('strips supported artifact candidates from native tool output while preserving the semantic preview payload', async () => {
-        invokeToolHandlerMock.mockResolvedValue(
-            createHandledOkResult({
-                path: 'README.md',
-                content: 'preview body',
-                truncated: true,
-                artifactCandidate: {
-                    kind: 'file_read',
-                    contentType: 'text/plain',
-                    rawText: 'full file body',
-                    metadata: {
-                        path: 'README.md',
-                        byteLength: 50_000,
-                        lineCount: 100,
-                        omittedBytes: 38_000,
-                        previewTruncated: true,
-                    },
+        const nativeResult = createHandledOkResult({
+            path: 'README.md',
+            content: 'preview body',
+            truncated: true,
+            artifactCandidate: {
+                kind: 'file_read',
+                contentType: 'text/plain',
+                rawText: 'full file body',
+                metadata: {
+                    path: 'README.md',
+                    byteLength: 50_000,
+                    lineCount: 100,
+                    omittedBytes: 38_000,
+                    previewTruncated: true,
                 },
-            })
+            },
+        });
+        nativeResult.match(
+            () => undefined,
+            () => undefined
         );
+        invokeToolHandlerMock.mockResolvedValue(nativeResult);
 
         const outcome = await dispatchToolInvocation({
             context: {
@@ -191,12 +211,15 @@ describe('dispatchToolInvocation', () => {
     });
 
     it('preserves policy metadata for native tool failure', async () => {
-        invokeToolHandlerMock.mockResolvedValue(
-            createHandledErrResult({
-                code: 'execution_failed',
-                message: 'native failure',
-            })
+        const nativeResult = createHandledErrResult({
+            code: 'execution_failed',
+            message: 'native failure',
+        });
+        nativeResult.match(
+            () => undefined,
+            () => undefined
         );
+        invokeToolHandlerMock.mockResolvedValue(nativeResult);
 
         const outcome = await dispatchToolInvocation({
             context: {
@@ -232,7 +255,12 @@ describe('dispatchToolInvocation', () => {
     });
 
     it('preserves policy metadata for MCP tool success', async () => {
-        mcpInvokeToolMock.mockResolvedValue(createHandledOkResult({ content: ['mcp output'] }));
+        const mcpResult = createHandledOkResult({ content: ['mcp output'] });
+        mcpResult.match(
+            () => undefined,
+            () => undefined
+        );
+        mcpInvokeToolMock.mockResolvedValue(mcpResult);
 
         const outcome = await dispatchToolInvocation({
             context: {
@@ -270,12 +298,15 @@ describe('dispatchToolInvocation', () => {
     });
 
     it('maps MCP execution errors to failed outcomes while preserving policy metadata', async () => {
-        mcpInvokeToolMock.mockResolvedValue(
-            createHandledErrResult({
-                code: 'request_failed',
-                message: 'mcp failure',
-            })
+        const mcpResult = createHandledErrResult({
+            code: 'request_failed',
+            message: 'mcp failure',
+        });
+        mcpResult.match(
+            () => undefined,
+            () => undefined
         );
+        mcpInvokeToolMock.mockResolvedValue(mcpResult);
 
         const outcome = await dispatchToolInvocation({
             context: {

@@ -1,1451 +1,112 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import type { DatabaseSchema } from '@/app/backend/persistence/schema';
-import { planPhaseStore } from '@/app/backend/persistence/stores/runtime/planPhaseStore';
-import { planPhaseVerificationStore } from '@/app/backend/persistence/stores/runtime/planPhaseVerificationStore';
-import { runtimeEventStore } from '@/app/backend/persistence/stores/runtime/runtimeEventStore';
-import { parseEntityId, parseEnumValue, parseJsonRecord } from '@/app/backend/persistence/stores/shared/rowParsers';
 import {
-    isJsonRecord,
-    isJsonUnknownArray,
-    nowIso,
-    parseJsonValue,
-} from '@/app/backend/persistence/stores/shared/utils';
+    cancellablePlanStatuses,
+    isOpenFollowUp,
+    mapPlanAdvancedSnapshotRecord,
+    mapPlanEvidenceAttachmentRecord,
+    mapPlanFollowUpRecord,
+    mapPlanItemRecord,
+    mapPlanResearchBatchRecord,
+    mapPlanResearchWorkerRecord,
+    mapPlanRevisionItemRecord,
+    mapPlanRevisionRecord,
+    mapPlanVariantRecord,
+    parsePlanAnswers,
+    parsePlanQuestions,
+    toPlanAdvancedSnapshotView,
+} from '@/app/backend/persistence/stores/runtime/plan/planStoreInternals';
 import type {
-    PlanItemRecord,
-    PlanFollowUpRecord,
-    PlanPhaseRecord,
-    PlanPhaseRevisionItemRecord,
-    PlanPhaseRevisionRecord,
-    PlanPhaseVerificationDiscrepancyRecord,
-    PlanPhaseVerificationRecord,
+    PlanFollowUpRow,
+    PlanRecordRow,
+    PlanResearchBatchRow,
+    PlanResearchWorkerRow,
+    PlanRevisionAdvancedSnapshotRow,
+    PlanRevisionRow,
+    PlanStoreDb,
+    PlanVariantRow,
+} from '@/app/backend/persistence/stores/runtime/plan/planStoreInternals';
+import {
+    getProjectionById,
+    resetItemsForFreshImplementation,
+    markImplementing,
+    markImplemented,
+    markFailed,
+    setItemStatus,
+} from '@/app/backend/persistence/stores/runtime/plan/planStoreProjectionMethods';
+import {
+    createVariant,
+    activateVariant,
+    resumeFromRevision,
+    raiseFollowUp,
+    resolveFollowUp,
+} from '@/app/backend/persistence/stores/runtime/plan/planStoreRecoveryMethods';
+import {
+    startResearchBatch,
+    abortResearchBatch,
+    markResearchWorkerRunning,
+    recordResearchWorkerCompletion,
+    recordResearchWorkerFailure,
+} from '@/app/backend/persistence/stores/runtime/plan/planStoreResearchMethods';
+import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
+import { isJsonRecord, nowIso, parseJsonValue } from '@/app/backend/persistence/stores/shared/utils';
+import type {
     PlanEvidenceAttachmentRecord,
-    PlanResearchBatchRecord,
-    PlanResearchWorkerRecord,
-    PlanRevisionAdvancedSnapshotRecord,
+    PlanFollowUpRecord,
+    PlanItemRecord,
     PlanQuestionRecord,
     PlanRecord,
+    PlanResearchBatchRecord,
+    PlanResearchWorkerRecord,
     PlanRevisionItemRecord,
     PlanRevisionRecord,
     PlanVariantRecord,
-    PlanViewProjection,
-    RuntimeEventRecordV1,
 } from '@/app/backend/persistence/types';
-import {
-    planItemStatuses,
-    planStatuses,
-    topLevelTabs,
-} from '@/app/backend/runtime/contracts';
+import { planStatuses, topLevelTabs } from '@/app/backend/runtime/contracts';
 import type {
     EntityId,
     PlanAdvancedSnapshotInput,
-    PlanAdvancedSnapshotView,
     PlanPlanningDepth,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { hasUnansweredRequiredQuestions } from '@/app/backend/runtime/services/plan/intake';
 
-import type { Kysely, Transaction } from 'kysely';
-
-type PlanStoreDb = Kysely<DatabaseSchema> | Transaction<DatabaseSchema>;
-
-function isPlanQuestionRecord(value: unknown): value is PlanQuestionRecord {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        return false;
-    }
-
-    const record: Record<string, unknown> = {};
-    for (const [key, entryValue] of Object.entries(value)) {
-        record[key] = entryValue;
-    }
-    const id = record['id'];
-    const question = record['question'];
-    const category = record['category'];
-    const required = record['required'];
-    const placeholderText = record['placeholderText'];
-    const helpText = record['helpText'];
-    return (
-        typeof id === 'string' &&
-        typeof question === 'string' &&
-        (category === 'goal' ||
-            category === 'deliverable' ||
-            category === 'constraints' ||
-            category === 'environment' ||
-            category === 'validation' ||
-            category === 'missing_context') &&
-        typeof required === 'boolean' &&
-        (placeholderText === undefined || typeof placeholderText === 'string') &&
-        (helpText === undefined || typeof helpText === 'string')
-    );
-}
-
-type PlanRecordRow = {
-    id: string;
-    profile_id: string;
-    session_id: string;
-    top_level_tab: string;
-    mode_key: string;
-    planning_depth: string;
-    status: string;
-    source_prompt: string;
-    summary_markdown: string;
-    questions_json: string;
-    answers_json: string;
-    current_revision_id: string;
-    current_variant_id: string;
-    approved_revision_id: string | null;
-    approved_variant_id: string | null;
-    workspace_fingerprint: string | null;
-    implementation_run_id: string | null;
-    orchestrator_run_id: string | null;
-    approved_at: string | null;
-    implemented_at: string | null;
-    created_at: string;
-    updated_at: string;
-};
-
-type PlanRevisionRow = {
-    id: string;
-    plan_id: string;
-    variant_id: string;
-    revision_number: number;
-    summary_markdown: string;
-    created_by_kind: string;
-    created_at: string;
-    previous_revision_id: string | null;
-    superseded_at: string | null;
-};
-
-type PlanRevisionAdvancedSnapshotRow = {
-    plan_revision_id: string;
-    evidence_markdown: string;
-    observations_markdown: string;
-    root_cause_markdown: string;
-    phases_json: string;
-    created_at: string;
-};
-
-type PlanResearchBatchRow = {
-    id: string;
-    plan_id: string;
-    plan_revision_id: string;
-    variant_id: string;
-    prompt_markdown: string;
-    requested_worker_count: number;
-    recommended_worker_count: number;
-    hard_max_worker_count: number;
-    status: string;
-    created_at: string;
-    completed_at: string | null;
-    aborted_at: string | null;
-};
-
-type PlanResearchWorkerRow = {
-    id: string;
-    batch_id: string;
-    sequence: number;
-    label: string;
-    prompt_markdown: string;
-    status: string;
-    child_thread_id: string | null;
-    child_session_id: string | null;
-    active_run_id: string | null;
-    run_id: string | null;
-    result_summary_markdown: string | null;
-    result_details_markdown: string | null;
-    error_message: string | null;
-    created_at: string;
-    completed_at: string | null;
-    aborted_at: string | null;
-};
-
-type PlanEvidenceAttachmentRow = {
-    id: string;
-    plan_revision_id: string;
-    source_kind: string;
-    research_batch_id: string;
-    research_worker_id: string;
-    label: string;
-    summary_markdown: string;
-    details_markdown: string;
-    child_thread_id: string | null;
-    child_session_id: string | null;
-    created_at: string;
-};
-
-type PlanVariantRow = {
-    id: string;
-    plan_id: string;
-    name: string;
-    created_from_revision_id: string | null;
-    created_at: string;
-    archived_at: string | null;
-};
-
-type PlanFollowUpRow = {
-    id: string;
-    plan_id: string;
-    variant_id: string;
-    source_revision_id: string | null;
-    kind: string;
-    status: string;
-    prompt_markdown: string;
-    response_markdown: string | null;
-    created_by_kind: string;
-    created_at: string;
-    resolved_at: string | null;
-    dismissed_at: string | null;
-};
-
-type PlanRecoveryBannerProjection = {
-    tone: 'info' | 'warning' | 'destructive';
-    title: string;
-    message: string;
-    actions: Array<{
-        kind: 'resume_editing' | 'resolve_follow_up' | 'switch_to_approved_variant';
-        label: string;
-        revisionId?: EntityId<'prev'>;
-        variantId?: EntityId<'pvar'>;
-        followUpId?: EntityId<'pfu'>;
-    }>;
-};
-
-function parsePlanAnswers(row: { answers_json: string }): Record<string, string> {
-    const rawAnswers = parseJsonRecord(row.answers_json);
-    const answers: Record<string, string> = {};
-    for (const [key, value] of Object.entries(rawAnswers)) {
-        if (typeof value === 'string') {
-            answers[key] = value;
-        }
-    }
-    return answers;
-}
-
-function parsePlanQuestions(row: { questions_json: string }): PlanQuestionRecord[] {
-    const rawQuestions = parseJsonValue(row.questions_json, [], isJsonUnknownArray);
-    return rawQuestions.filter(isPlanQuestionRecord);
-}
-
-function mapPlanRevisionRecord(row: PlanRevisionRow): PlanRevisionRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_revisions.id', 'prev'),
-        planId: parseEntityId(row.plan_id, 'plan_revisions.plan_id', 'plan'),
-        variantId: parseEntityId(row.variant_id, 'plan_revisions.variant_id', 'pvar'),
-        revisionNumber: row.revision_number,
-        summaryMarkdown: row.summary_markdown,
-        createdByKind: row.created_by_kind === 'start' ? 'start' : 'revise',
-        createdAt: row.created_at,
-        ...(row.previous_revision_id
-            ? { previousRevisionId: parseEntityId(row.previous_revision_id, 'plan_revisions.previous_revision_id', 'prev') }
-            : {}),
-        ...(row.superseded_at ? { supersededAt: row.superseded_at } : {}),
-    };
-}
-
-function mapPlanRevisionItemRecord(row: {
-    id: string;
-    plan_revision_id: string;
-    sequence: number;
-    description: string;
-    created_at: string;
-}): PlanRevisionItemRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_revision_items.id', 'step'),
-        planRevisionId: parseEntityId(row.plan_revision_id, 'plan_revision_items.plan_revision_id', 'prev'),
-        sequence: row.sequence,
-        description: row.description,
-        createdAt: row.created_at,
-    };
-}
-
-function mapPlanItemRecord(row: {
-    id: string;
-    plan_id: string;
-    sequence: number;
-    description: string;
-    status: string;
-    run_id: string | null;
-    error_message: string | null;
-    created_at: string;
-    updated_at: string;
-}): PlanItemRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_items.id', 'step'),
-        planId: parseEntityId(row.plan_id, 'plan_items.plan_id', 'plan'),
-        sequence: row.sequence,
-        description: row.description,
-        status: parseEnumValue(row.status, 'plan_items.status', planItemStatuses),
-        ...(row.run_id ? { runId: parseEntityId(row.run_id, 'plan_items.run_id', 'run') } : {}),
-        ...(row.error_message ? { errorMessage: row.error_message } : {}),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-    };
-}
-
-function mapPlanVariantRecord(row: PlanVariantRow): PlanVariantRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_variants.id', 'pvar'),
-        planId: parseEntityId(row.plan_id, 'plan_variants.plan_id', 'plan'),
-        name: row.name,
-        ...(row.created_from_revision_id
-            ? {
-                  createdFromRevisionId: parseEntityId(
-                      row.created_from_revision_id,
-                      'plan_variants.created_from_revision_id',
-                      'prev'
-                  ),
-              }
-            : {}),
-        createdAt: row.created_at,
-        ...(row.archived_at ? { archivedAt: row.archived_at } : {}),
-    };
-}
-
-function mapPlanFollowUpRecord(row: PlanFollowUpRow): PlanFollowUpRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_follow_ups.id', 'pfu'),
-        planId: parseEntityId(row.plan_id, 'plan_follow_ups.plan_id', 'plan'),
-        variantId: parseEntityId(row.variant_id, 'plan_follow_ups.variant_id', 'pvar'),
-        ...(row.source_revision_id
-            ? {
-                  sourceRevisionId: parseEntityId(
-                      row.source_revision_id,
-                      'plan_follow_ups.source_revision_id',
-                      'prev'
-                  ),
-              }
-            : {}),
-        kind: row.kind === 'missing_file' ? 'missing_file' : 'missing_context',
-        status: row.status === 'resolved' ? 'resolved' : row.status === 'dismissed' ? 'dismissed' : 'open',
-        promptMarkdown: row.prompt_markdown,
-        ...(row.response_markdown ? { responseMarkdown: row.response_markdown } : {}),
-        createdByKind: row.created_by_kind === 'system' ? 'system' : 'user',
-        createdAt: row.created_at,
-        ...(row.resolved_at ? { resolvedAt: row.resolved_at } : {}),
-        ...(row.dismissed_at ? { dismissedAt: row.dismissed_at } : {}),
-    };
-}
-
-function mapPlanResearchBatchRecord(row: PlanResearchBatchRow): PlanResearchBatchRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_research_batches.id', 'prb'),
-        planId: parseEntityId(row.plan_id, 'plan_research_batches.plan_id', 'plan'),
-        planRevisionId: parseEntityId(row.plan_revision_id, 'plan_research_batches.plan_revision_id', 'prev'),
-        variantId: parseEntityId(row.variant_id, 'plan_research_batches.variant_id', 'pvar'),
-        promptMarkdown: row.prompt_markdown,
-        requestedWorkerCount: row.requested_worker_count,
-        recommendedWorkerCount: row.recommended_worker_count,
-        hardMaxWorkerCount: row.hard_max_worker_count,
-        status: row.status === 'completed' ? 'completed' : row.status === 'failed' ? 'failed' : row.status === 'aborted' ? 'aborted' : 'running',
-        createdAt: row.created_at,
-        ...(row.completed_at ? { completedAt: row.completed_at } : {}),
-        ...(row.aborted_at ? { abortedAt: row.aborted_at } : {}),
-    };
-}
-
-function mapPlanResearchWorkerRecord(row: PlanResearchWorkerRow): PlanResearchWorkerRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_research_workers.id', 'prw'),
-        batchId: parseEntityId(row.batch_id, 'plan_research_workers.batch_id', 'prb'),
-        sequence: row.sequence,
-        label: row.label,
-        promptMarkdown: row.prompt_markdown,
-        status: row.status === 'running'
-            ? 'running'
-            : row.status === 'completed'
-              ? 'completed'
-              : row.status === 'failed'
-                ? 'failed'
-                : row.status === 'aborted'
-                  ? 'aborted'
-                  : 'queued',
-        ...(row.child_thread_id ? { childThreadId: parseEntityId(row.child_thread_id, 'plan_research_workers.child_thread_id', 'thr') } : {}),
-        ...(row.child_session_id ? { childSessionId: parseEntityId(row.child_session_id, 'plan_research_workers.child_session_id', 'sess') } : {}),
-        ...(row.active_run_id ? { activeRunId: parseEntityId(row.active_run_id, 'plan_research_workers.active_run_id', 'run') } : {}),
-        ...(row.run_id ? { runId: parseEntityId(row.run_id, 'plan_research_workers.run_id', 'run') } : {}),
-        ...(row.result_summary_markdown ? { resultSummaryMarkdown: row.result_summary_markdown } : {}),
-        ...(row.result_details_markdown ? { resultDetailsMarkdown: row.result_details_markdown } : {}),
-        ...(row.error_message ? { errorMessage: row.error_message } : {}),
-        createdAt: row.created_at,
-        ...(row.completed_at ? { completedAt: row.completed_at } : {}),
-        ...(row.aborted_at ? { abortedAt: row.aborted_at } : {}),
-    };
-}
-
-function mapPlanEvidenceAttachmentRecord(row: PlanEvidenceAttachmentRow): PlanEvidenceAttachmentRecord {
-    return {
-        id: parseEntityId(row.id, 'plan_revision_evidence_attachments.id', 'pea'),
-        planRevisionId: parseEntityId(row.plan_revision_id, 'plan_revision_evidence_attachments.plan_revision_id', 'prev'),
-        sourceKind: row.source_kind === 'planner_worker' ? 'planner_worker' : 'planner_worker',
-        researchBatchId: parseEntityId(row.research_batch_id, 'plan_revision_evidence_attachments.research_batch_id', 'prb'),
-        researchWorkerId: parseEntityId(row.research_worker_id, 'plan_revision_evidence_attachments.research_worker_id', 'prw'),
-        label: row.label,
-        summaryMarkdown: row.summary_markdown,
-        detailsMarkdown: row.details_markdown,
-        ...(row.child_thread_id ? { childThreadId: parseEntityId(row.child_thread_id, 'plan_revision_evidence_attachments.child_thread_id', 'thr') } : {}),
-        ...(row.child_session_id ? { childSessionId: parseEntityId(row.child_session_id, 'plan_revision_evidence_attachments.child_session_id', 'sess') } : {}),
-        createdAt: row.created_at,
-    };
-}
-
-function isPlanPhaseOutlineRecord(
-    value: unknown
-): value is PlanAdvancedSnapshotView['phases'][number] {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        return false;
-    }
-
-    const record = value as Record<string, unknown>;
-    return (
-        typeof record['id'] === 'string' &&
-        typeof record['sequence'] === 'number' &&
-        Number.isInteger(record['sequence']) &&
-        record['sequence'] > 0 &&
-        typeof record['title'] === 'string' &&
-        typeof record['goalMarkdown'] === 'string' &&
-        typeof record['exitCriteriaMarkdown'] === 'string'
-    );
-}
-
-function mapPlanAdvancedSnapshotRecord(row: PlanRevisionAdvancedSnapshotRow): PlanRevisionAdvancedSnapshotRecord {
-    let parsedPhases: unknown;
-    try {
-        parsedPhases = JSON.parse(row.phases_json);
-    } catch {
-        throw new Error(
-            `Invalid plan revision advanced snapshot phases JSON for revision ${row.plan_revision_id}.`
-        );
-    }
-
-    if (!isJsonUnknownArray(parsedPhases)) {
-        throw new Error(
-            `Invalid plan revision advanced snapshot phases JSON for revision ${row.plan_revision_id}: expected array.`
-        );
-    }
-
-    const phases = parsedPhases;
-    const normalizedPhases = phases.map((phase, index) => {
-        if (!isPlanPhaseOutlineRecord(phase)) {
-            throw new Error(
-                `Invalid plan revision advanced snapshot phase at index ${String(index)} for revision ${row.plan_revision_id}.`
-            );
-        }
-
-        return {
-            id: phase.id,
-            sequence: phase.sequence,
-            title: phase.title,
-            goalMarkdown: phase.goalMarkdown,
-            exitCriteriaMarkdown: phase.exitCriteriaMarkdown,
-        };
-    });
-
-    return {
-        planRevisionId: parseEntityId(row.plan_revision_id, 'plan_revision_advanced_snapshots.plan_revision_id', 'prev'),
-        evidenceMarkdown: row.evidence_markdown,
-        observationsMarkdown: row.observations_markdown,
-        rootCauseMarkdown: row.root_cause_markdown,
-        phases: normalizedPhases,
-        createdAt: row.created_at,
-    };
-}
-
-function toPlanAdvancedSnapshotView(snapshot: PlanRevisionAdvancedSnapshotRecord | null): PlanAdvancedSnapshotView | undefined {
-    if (!snapshot) {
-        return undefined;
-    }
-
-    return {
-        evidenceMarkdown: snapshot.evidenceMarkdown,
-        observationsMarkdown: snapshot.observationsMarkdown,
-        rootCauseMarkdown: snapshot.rootCauseMarkdown,
-        phases: snapshot.phases,
-        createdAt: snapshot.createdAt,
-    };
-}
-
-function isOpenFollowUp(followUp: PlanFollowUpRecord): boolean {
-    return followUp.status === 'open';
-}
-
-function dedupeById<T extends { id: string }>(entries: T[]): T[] {
-    const seen = new Set<string>();
-    return entries.filter((entry) => {
-        if (seen.has(entry.id)) {
-            return false;
-        }
-        seen.add(entry.id);
-        return true;
-    });
-}
-
-function sortHistoryEntries(entries: PlanHistoryEntry[]): PlanHistoryEntry[] {
-    const sortedEntries = entries.slice();
-    sortedEntries.sort((left, right) => {
-        if (left.createdAt === right.createdAt) {
-            return right.id.localeCompare(left.id);
-        }
-        return right.createdAt.localeCompare(left.createdAt);
-    });
-    return sortedEntries;
-}
-
-type PlanHistoryEntry = PlanViewProjection['history'][number];
-
-function buildPlanHistoryEntries(input: {
-    plan: PlanRecord;
-    variants: PlanVariantRecord[];
-    followUps: PlanFollowUpRecord[];
-    events: RuntimeEventRecordV1[];
-}): PlanHistoryEntry[] {
-    const variantById = new Map(input.variants.map((variant) => [variant.id, variant]));
-    const entries: PlanHistoryEntry[] = [];
-
-    function resolveVariantName(variantId?: EntityId<'pvar'>): string | undefined {
-        return variantId ? variantById.get(variantId)?.name : undefined;
-    }
-
-    function buildHistoryEntry(
-        base: Pick<PlanHistoryEntry, 'id' | 'kind' | 'title' | 'detail' | 'createdAt'>,
-        optionals?: {
-            revisionId?: EntityId<'prev'>;
-            revisionNumber?: number;
-            variantId?: EntityId<'pvar'>;
-            variantName?: string;
-            followUpId?: EntityId<'pfu'>;
-            followUpKind?: 'missing_context' | 'missing_file';
-            actions?: PlanHistoryEntry['actions'];
-        }
-    ): PlanHistoryEntry {
-        return {
-            ...base,
-            ...(optionals?.revisionId ? { revisionId: optionals.revisionId } : {}),
-            ...(optionals?.revisionNumber !== undefined ? { revisionNumber: optionals.revisionNumber } : {}),
-            ...(optionals?.variantId ? { variantId: optionals.variantId } : {}),
-            ...(optionals?.variantName ? { variantName: optionals.variantName } : {}),
-            ...(optionals?.followUpId ? { followUpId: optionals.followUpId } : {}),
-            ...(optionals?.followUpKind ? { followUpKind: optionals.followUpKind } : {}),
-            ...(optionals?.actions ? { actions: optionals.actions } : {}),
-        };
-    }
-
-    for (const event of input.events) {
-        switch (event.eventType) {
-            case 'plan.started':
-                entries.push(
-                    buildHistoryEntry(
-                        {
-                            id: event.eventId,
-                            kind: 'plan_started',
-                            title: 'Plan started',
-                            detail:
-                                typeof event.payload['revisionNumber'] === 'number'
-                                    ? `Started with revision ${String(event.payload['revisionNumber'])}.`
-                                    : 'Started a new plan.',
-                            createdAt: event.createdAt,
-                        },
-                        {
-                            ...(typeof event.payload['revisionId'] === 'string'
-                                ? { revisionId: event.payload['revisionId'] as EntityId<'prev'> }
-                                : {}),
-                            ...(typeof event.payload['revisionNumber'] === 'number'
-                                ? { revisionNumber: event.payload['revisionNumber'] }
-                                : {}),
-                            variantId:
-                                typeof event.payload['variantId'] === 'string'
-                                    ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                    : input.plan.currentVariantId,
-                            variantName:
-                                typeof event.payload['variantName'] === 'string'
-                                    ? event.payload['variantName']
-                                    : resolveVariantName(
-                                          typeof event.payload['variantId'] === 'string'
-                                              ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                              : input.plan.currentVariantId
-                                      ) ?? 'current',
-                        }
-                    )
-                );
-                break;
-            case 'plan.revised':
-                entries.push(
-                    buildHistoryEntry(
-                        {
-                            id: event.eventId,
-                            kind: 'revision_created',
-                            title:
-                                typeof event.payload['revisionNumber'] === 'number'
-                                    ? `Revision ${String(event.payload['revisionNumber'])} created`
-                                    : 'Revision created',
-                            detail: 'Saved a new draft revision.',
-                            createdAt: event.createdAt,
-                        },
-                        {
-                            ...(typeof event.payload['revisionId'] === 'string'
-                                ? { revisionId: event.payload['revisionId'] as EntityId<'prev'> }
-                                : {}),
-                            ...(typeof event.payload['revisionNumber'] === 'number'
-                                ? { revisionNumber: event.payload['revisionNumber'] }
-                                : {}),
-                            variantId:
-                                typeof event.payload['variantId'] === 'string'
-                                    ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                    : input.plan.currentVariantId,
-                            variantName:
-                                typeof event.payload['variantName'] === 'string'
-                                    ? event.payload['variantName']
-                                    : resolveVariantName(
-                                          typeof event.payload['variantId'] === 'string'
-                                              ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                              : input.plan.currentVariantId
-                                      ) ?? 'current',
-                            ...(typeof event.payload['revisionId'] === 'string'
-                                ? {
-                                      actions: [
-                                          {
-                                              kind: 'resume_from_here',
-                                              label: 'Resume From Here',
-                                              revisionId: event.payload['revisionId'] as EntityId<'prev'>,
-                                          },
-                                          {
-                                              kind: 'branch_from_here',
-                                              label: 'Branch From Here',
-                                              revisionId: event.payload['revisionId'] as EntityId<'prev'>,
-                                          },
-                                      ],
-                                  }
-                                : {}),
-                        }
-                    )
-                );
-                break;
-            case 'plan.approved':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'revision_approved',
-                    title:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? `Revision ${String(event.payload['revisionNumber'])} approved`
-                            : 'Revision approved',
-                    detail: 'Approved for implementation.',
-                    createdAt: event.createdAt,
-                    revisionId:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? (event.payload['revisionId'] as EntityId<'prev'>)
-                            : input.plan.approvedRevisionId,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number' ? event.payload['revisionNumber'] : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : input.plan.approvedVariantId,
-                    variantName:
-                        typeof event.payload['variantName'] === 'string'
-                            ? event.payload['variantName']
-                            : resolveVariantName(
-                                  typeof event.payload['variantId'] === 'string'
-                                      ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                      : input.plan.approvedVariantId ?? undefined
-                              ),
-                });
-                break;
-            case 'plan.cancelled':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'plan_cancelled',
-                    title: 'Plan cancelled',
-                    detail:
-                        typeof event.payload['previousStatus'] === 'string'
-                            ? `Cancelled from ${event.payload['previousStatus']}.`
-                            : 'Cancelled the plan.',
-                    createdAt: event.createdAt,
-                    revisionId:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? (event.payload['revisionId'] as EntityId<'prev'>)
-                            : input.plan.currentRevisionId,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number' ? event.payload['revisionNumber'] : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : input.plan.currentVariantId,
-                    variantName: resolveVariantName(
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : input.plan.currentVariantId
-                    ) ?? 'current',
-                });
-                break;
-            case 'plan.variant_created':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'variant_created',
-                    title: 'Variant created',
-                    detail:
-                        typeof event.payload['sourceRevisionNumber'] === 'number'
-                            ? `Forked from revision ${String(event.payload['sourceRevisionNumber'])}.`
-                            : 'Forked a new branch variant.',
-                    createdAt: event.createdAt,
-                    revisionId:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? (event.payload['revisionId'] as EntityId<'prev'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number' ? event.payload['revisionNumber'] : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantName'] === 'string'
-                            ? event.payload['variantName']
-                            : resolveVariantName(
-                                  typeof event.payload['variantId'] === 'string'
-                                      ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                      : undefined
-                              ),
-                    actions:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? [
-                                  {
-                                      kind: 'branch_from_here',
-                                      label: 'Branch From Here',
-                                      revisionId: event.payload['revisionId'] as EntityId<'prev'>,
-                                  },
-                              ]
-                            : undefined,
-                });
-                break;
-            case 'plan.variant_activated':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'variant_activated',
-                    title: 'Variant activated',
-                    detail: 'Switched the active draft to this branch.',
-                    createdAt: event.createdAt,
-                    revisionId:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? (event.payload['revisionId'] as EntityId<'prev'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number' ? event.payload['revisionNumber'] : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantName'] === 'string'
-                            ? event.payload['variantName']
-                            : resolveVariantName(
-                                  typeof event.payload['variantId'] === 'string'
-                                      ? (event.payload['variantId'] as EntityId<'pvar'>)
-                                      : undefined
-                              ),
-                    actions:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? [
-                                  {
-                                      kind: 'resume_from_here',
-                                      label: 'Resume From Here',
-                                      revisionId: event.payload['revisionId'] as EntityId<'prev'>,
-                                  },
-                              ]
-                            : undefined,
-                });
-                break;
-            case 'plan.resumed':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'plan_resumed',
-                    title: 'Plan resumed',
-                    detail: 'Created a new head revision from historical context.',
-                    createdAt: event.createdAt,
-                    revisionId:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? (event.payload['revisionId'] as EntityId<'prev'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number' ? event.payload['revisionNumber'] : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantName'] === 'string'
-                            ? event.payload['variantName']
-                            : undefined,
-                    actions:
-                        typeof event.payload['revisionId'] === 'string'
-                            ? [
-                                  {
-                                      kind: 'resume_from_here',
-                                      label: 'Resume From Here',
-                                      revisionId: event.payload['revisionId'] as EntityId<'prev'>,
-                                  },
-                              ]
-                            : undefined,
-                });
-                break;
-            case 'plan.follow_up_raised':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'follow_up_raised',
-                    title: 'Follow-up raised',
-                    detail:
-                        typeof event.payload['kind'] === 'string'
-                            ? `Open ${event.payload['kind'].replace('_', ' ')} follow-up.`
-                            : 'Open follow-up created.',
-                    createdAt: event.createdAt,
-                    followUpId:
-                        typeof event.payload['followUpId'] === 'string'
-                            ? (event.payload['followUpId'] as EntityId<'pfu'>)
-                            : undefined,
-                    followUpKind:
-                        event.payload['kind'] === 'missing_file' ? 'missing_file' : 'missing_context',
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantName'] === 'string'
-                            ? event.payload['variantName']
-                            : undefined,
-                    actions:
-                        typeof event.payload['followUpId'] === 'string'
-                            ? [
-                                  {
-                                      kind: 'view_follow_up',
-                                      label: 'View Follow-Up',
-                                      followUpId: event.payload['followUpId'] as EntityId<'pfu'>,
-                                  },
-                              ]
-                            : undefined,
-                });
-                break;
-            case 'plan.follow_up_resolved':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'follow_up_resolved',
-                    title:
-                        event.payload['status'] === 'dismissed' ? 'Follow-up dismissed' : 'Follow-up resolved',
-                    detail:
-                        typeof event.payload['responseMarkdown'] === 'string'
-                            ? event.payload['responseMarkdown']
-                            : 'Follow-up state updated.',
-                    createdAt: event.createdAt,
-                    followUpId:
-                        typeof event.payload['followUpId'] === 'string'
-                            ? (event.payload['followUpId'] as EntityId<'pfu'>)
-                            : undefined,
-                    followUpKind:
-                        event.payload['kind'] === 'missing_file' ? 'missing_file' : 'missing_context',
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantName'] === 'string'
-                            ? event.payload['variantName']
-                            : undefined,
-                    actions:
-                        typeof event.payload['followUpId'] === 'string'
-                            ? [
-                                  {
-                                      kind: 'view_follow_up',
-                                      label: 'View Follow-Up',
-                                      followUpId: event.payload['followUpId'] as EntityId<'pfu'>,
-                                  },
-                              ]
-                            : undefined,
-                });
-                break;
-            case 'plan.phase.expanded':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_expanded',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase expanded: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase expanded: ${event.payload['title']}`
-                            : 'Phase expanded',
-                    detail:
-                        typeof event.payload['phaseSequence'] === 'number'
-                            ? `Opened detailed work for roadmap phase ${String(event.payload['phaseSequence'])}.`
-                            : 'Opened a detailed phase lane.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                    revisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'prev'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantId'] === 'string'
-                            ? resolveVariantName(event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                });
-                break;
-            case 'plan.phase.revised':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_revision_created',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase revised: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase revised: ${event.payload['title']}`
-                            : 'Phase revised',
-                    detail:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? `Saved phase revision ${String(event.payload['revisionNumber'])}.`
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                              ? `Saved phase revision ${String(event.payload['phaseRevisionNumber'])}.`
-                            : 'Saved a new phase revision.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantId'] === 'string'
-                            ? resolveVariantName(event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                });
-                break;
-            case 'plan.phase.approved':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_approved',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase approved: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase approved: ${event.payload['title']}`
-                            : 'Phase approved',
-                    detail: 'Approved the current detailed phase for execution.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                    variantId:
-                        typeof event.payload['variantId'] === 'string'
-                            ? (event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                    variantName:
-                        typeof event.payload['variantId'] === 'string'
-                            ? resolveVariantName(event.payload['variantId'] as EntityId<'pvar'>)
-                            : undefined,
-                });
-                break;
-            case 'plan.phase.implementation.started':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_implementation_started',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase implementation started: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase implementation started: ${event.payload['title']}`
-                            : 'Phase implementation started',
-                    detail:
-                        typeof event.payload['mode'] === 'string'
-                            ? `Started via ${event.payload['mode']}.`
-                            : 'Started phase execution.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                });
-                break;
-            case 'plan.phase.implementation.completed':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_implementation_completed',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase implementation completed: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase implementation completed: ${event.payload['title']}`
-                            : 'Phase implementation completed',
-                    detail: 'The detailed phase completed successfully.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                });
-                break;
-            case 'plan.phase.implementation.failed':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_implementation_failed',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase implementation failed: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase implementation failed: ${event.payload['title']}`
-                            : 'Phase implementation failed',
-                    detail:
-                        typeof event.payload['errorMessage'] === 'string'
-                            ? event.payload['errorMessage']
-                            : typeof event.payload['failureKind'] === 'string'
-                              ? `Execution stopped with ${event.payload['failureKind']}.`
-                            : 'Execution stopped before completion.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                });
-                break;
-            case 'plan.phase.cancelled':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_cancelled',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase cancelled: ${event.payload['phaseTitle']}`
-                            : typeof event.payload['title'] === 'string'
-                              ? `Phase cancelled: ${event.payload['title']}`
-                            : 'Phase cancelled',
-                    detail:
-                        typeof event.payload['previousStatus'] === 'string'
-                            ? `Cancelled from ${event.payload['previousStatus']}.`
-                            : 'Cancelled the detailed phase lane.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    revisionNumber:
-                        typeof event.payload['revisionNumber'] === 'number'
-                            ? event.payload['revisionNumber']
-                            : typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? event.payload['phaseTitle']
-                            : typeof event.payload['title'] === 'string'
-                              ? event.payload['title']
-                              : undefined,
-                });
-                break;
-            case 'plan.phase.verification.recorded':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_verification_recorded',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase verified: ${event.payload['phaseTitle']}`
-                            : 'Phase verified',
-                    detail:
-                        event.payload['outcome'] === 'failed'
-                            ? typeof event.payload['discrepancyCount'] === 'number'
-                                ? `Verification failed with ${String(event.payload['discrepancyCount'])} discrepancies.`
-                                : 'Verification failed.'
-                            : 'Verification passed.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string' ? event.payload['phaseTitle'] : undefined,
-                    phaseRevisionNumber:
-                        typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    verificationId:
-                        typeof event.payload['verificationId'] === 'string'
-                            ? (event.payload['verificationId'] as EntityId<'ppv'>)
-                            : undefined,
-                    verificationOutcome:
-                        event.payload['outcome'] === 'failed' ? 'failed' : event.payload['outcome'] === 'passed' ? 'passed' : undefined,
-                    discrepancyCount:
-                        typeof event.payload['discrepancyCount'] === 'number'
-                            ? event.payload['discrepancyCount']
-                            : undefined,
-                });
-                break;
-            case 'plan.phase.replan.started':
-                entries.push({
-                    id: event.eventId,
-                    kind: 'phase_replan_started',
-                    title:
-                        typeof event.payload['phaseTitle'] === 'string'
-                            ? `Phase replan started: ${event.payload['phaseTitle']}`
-                            : 'Phase replan started',
-                    detail: 'Opened a new draft from the failed verification without rewriting implemented history.',
-                    createdAt: event.createdAt,
-                    phaseId:
-                        typeof event.payload['phaseId'] === 'string'
-                            ? (event.payload['phaseId'] as EntityId<'pph'>)
-                            : undefined,
-                    phaseRevisionId:
-                        typeof event.payload['phaseRevisionId'] === 'string'
-                            ? (event.payload['phaseRevisionId'] as EntityId<'pprv'>)
-                            : undefined,
-                    phaseSequence:
-                        typeof event.payload['phaseSequence'] === 'number' ? event.payload['phaseSequence'] : undefined,
-                    phaseTitle:
-                        typeof event.payload['phaseTitle'] === 'string' ? event.payload['phaseTitle'] : undefined,
-                    phaseRevisionNumber:
-                        typeof event.payload['phaseRevisionNumber'] === 'number'
-                            ? event.payload['phaseRevisionNumber']
-                            : undefined,
-                    sourceVerificationId:
-                        typeof event.payload['sourceVerificationId'] === 'string'
-                            ? (event.payload['sourceVerificationId'] as EntityId<'ppv'>)
-                            : undefined,
-                });
-                break;
-            default:
-                break;
-        }
-    }
-
-    if (input.plan.status === 'implemented' || input.plan.status === 'failed') {
-        entries.push({
-            id: `${input.plan.id}:${input.plan.status}`,
-            kind: input.plan.status === 'implemented' ? 'implementation_completed' : 'implementation_failed',
-            title: input.plan.status === 'implemented' ? 'Implementation completed' : 'Implementation failed',
-            detail:
-                input.plan.status === 'implemented'
-                    ? 'The approved plan completed implementation.'
-                    : 'The approved plan failed during implementation.',
-            createdAt: input.plan.implementedAt ?? input.plan.updatedAt,
-            revisionId: input.plan.approvedRevisionId ?? input.plan.currentRevisionId,
-            revisionNumber: input.plan.approvedRevisionNumber ?? input.plan.currentRevisionNumber,
-            variantId: input.plan.approvedVariantId ?? input.plan.currentVariantId,
-            variantName:
-                (input.plan.approvedVariantId ? resolveVariantName(input.plan.approvedVariantId) : undefined) ??
-                resolveVariantName(input.plan.currentVariantId) ??
-                'current',
-        });
-    }
-
-    return sortHistoryEntries(dedupeById(entries));
-}
-
-function buildRecoveryBanner(input: {
-    plan: PlanRecord;
-    followUps: PlanFollowUpRecord[];
-    variants: PlanVariantRecord[];
-}): PlanRecoveryBannerProjection | undefined {
-    const currentVariant = input.variants.find((variant) => variant.id === input.plan.currentVariantId);
-    const approvedVariant = input.plan.approvedVariantId
-        ? input.variants.find((variant) => variant.id === input.plan.approvedVariantId)
-        : undefined;
-    const openFollowUps = input.followUps.filter(isOpenFollowUp);
-
-    if (openFollowUps.length > 0) {
-        return {
-            tone: 'warning',
-            title: 'Open follow-ups need attention',
-            message: 'Resolve or dismiss the open follow-up items before approving the current draft.',
-            actions: openFollowUps.slice(0, 2).map((followUp) => ({
-                kind: 'resolve_follow_up' as const,
-                label: 'Resolve Follow-Up',
-                followUpId: followUp.id,
-            })),
-        };
-    }
-
-    if (input.plan.status === 'failed') {
-        return {
-            tone: 'destructive',
-            title: 'Plan implementation failed',
-            message: 'Resume editing or branch from a prior revision to recover.',
-            actions: [
-                {
-                    kind: 'resume_editing' as const,
-                    label: 'Resume Editing',
-                    revisionId: input.plan.currentRevisionId,
-                },
-                ...(input.plan.approvedVariantId
-                    ? [
-                          {
-                              kind: 'switch_to_approved_variant' as const,
-                              label: 'Switch To Approved Variant',
-                              variantId: input.plan.approvedVariantId,
-                          },
-                      ]
-                    : []),
-            ],
-        };
-    }
-
-    if (input.plan.status === 'cancelled') {
-        return {
-            tone: 'info',
-            title: 'Plan is cancelled',
-            message: 'You can resume editing or switch back to the last approved variant if needed.',
-            actions: [
-                {
-                    kind: 'resume_editing' as const,
-                    label: 'Resume Editing',
-                    revisionId: input.plan.currentRevisionId,
-                },
-                ...(input.plan.approvedVariantId
-                    ? [
-                          {
-                              kind: 'switch_to_approved_variant' as const,
-                              label: 'Switch To Approved Variant',
-                              variantId: input.plan.approvedVariantId,
-                          },
-                      ]
-                    : []),
-            ],
-        };
-    }
-
-    if (input.plan.approvedVariantId && input.plan.currentVariantId !== input.plan.approvedVariantId) {
-        return {
-            tone: 'warning',
-            title: 'Current draft differs from the approved variant',
-            message: `You are editing ${currentVariant?.name ?? 'a branch'} while ${approvedVariant?.name ?? 'the approved variant'} remains the last approved path.`,
-            actions: [
-                {
-                    kind: 'switch_to_approved_variant' as const,
-                    label: 'Switch To Approved Variant',
-                    variantId: input.plan.approvedVariantId,
-                },
-            ],
-        };
-    }
-
-    return undefined;
-}
-
-function buildPlanViewProjection(input: {
-    plan: PlanRecord;
-    items: PlanItemRecord[];
-    revisions: PlanRevisionRecord[];
-    variants: PlanVariantRecord[];
-    followUps: PlanFollowUpRecord[];
-    phases: PlanPhaseRecord[];
-    phaseRevisions: PlanPhaseRevisionRecord[];
-    phaseRevisionItems: PlanPhaseRevisionItemRecord[];
-    phaseVerifications: PlanPhaseVerificationRecord[];
-    phaseVerificationDiscrepancies: PlanPhaseVerificationDiscrepancyRecord[];
-    researchBatches: PlanResearchBatchRecord[];
-    researchWorkers: PlanResearchWorkerRecord[];
-    evidenceAttachments: PlanEvidenceAttachmentRecord[];
-    history: PlanHistoryEntry[];
-    recoveryBanner?: PlanRecoveryBannerProjection;
-}): PlanViewProjection {
-    const latestRevisionByVariant = new Map<EntityId<'pvar'>, PlanRevisionRecord>();
-    for (const revision of input.revisions) {
-        const existing = latestRevisionByVariant.get(revision.variantId);
-        if (!existing || existing.revisionNumber < revision.revisionNumber) {
-            latestRevisionByVariant.set(revision.variantId, revision);
-        }
-    }
-
-    const projection: PlanViewProjection = {
-        plan: input.plan,
-        items: input.items,
-        variants: input.variants.map((variant) => {
-            const headRevision = latestRevisionByVariant.get(variant.id);
-            const isCurrent = variant.id === input.plan.currentVariantId;
-            const isApproved = variant.id === input.plan.approvedVariantId;
-            return {
-                id: variant.id,
-                name: variant.name,
-                ...(variant.createdFromRevisionId ? { createdFromRevisionId: variant.createdFromRevisionId } : {}),
-                currentRevisionId: headRevision?.id ?? input.plan.currentRevisionId,
-                currentRevisionNumber: headRevision?.revisionNumber ?? input.plan.currentRevisionNumber,
-                isCurrent,
-                isApproved,
-                createdAt: variant.createdAt,
-                ...(variant.archivedAt ? { archivedAt: variant.archivedAt } : {}),
-            };
-        }),
-        followUps: input.followUps.map((followUp) => ({
-            id: followUp.id,
-            planId: followUp.planId,
-            variantId: followUp.variantId,
-            ...(followUp.sourceRevisionId ? { sourceRevisionId: followUp.sourceRevisionId } : {}),
-            kind: followUp.kind,
-            status: followUp.status,
-            promptMarkdown: followUp.promptMarkdown,
-            ...(followUp.responseMarkdown ? { responseMarkdown: followUp.responseMarkdown } : {}),
-            createdByKind: followUp.createdByKind,
-            createdAt: followUp.createdAt,
-            ...(followUp.resolvedAt ? { resolvedAt: followUp.resolvedAt } : {}),
-            ...(followUp.dismissedAt ? { dismissedAt: followUp.dismissedAt } : {}),
-        })),
-        phases: input.phases,
-        phaseRevisions: input.phaseRevisions,
-        phaseRevisionItems: input.phaseRevisionItems,
-        phaseVerifications: input.phaseVerifications,
-        phaseVerificationDiscrepancies: input.phaseVerificationDiscrepancies,
-        researchBatches: input.researchBatches,
-        researchWorkers: input.researchWorkers,
-        evidenceAttachments: input.evidenceAttachments,
-        history: input.history,
-    };
-
-    if (input.recoveryBanner) {
-        projection.recoveryBanner = input.recoveryBanner;
-    }
-
-    return projection;
-}
-
-const cancellablePlanStatuses = new Set<PlanRecord['status']>(['awaiting_answers', 'draft', 'approved', 'failed']);
+import type { Kysely } from 'kysely';
 
 export class PlanStore {
-    private getDb(): Kysely<DatabaseSchema> {
+    readonly startResearchBatch = startResearchBatch;
+    readonly abortResearchBatch = abortResearchBatch;
+    readonly markResearchWorkerRunning = markResearchWorkerRunning;
+    readonly recordResearchWorkerCompletion = recordResearchWorkerCompletion;
+    readonly recordResearchWorkerFailure = recordResearchWorkerFailure;
+    readonly createVariant = createVariant;
+    readonly activateVariant = activateVariant;
+    readonly resumeFromRevision = resumeFromRevision;
+    readonly raiseFollowUp = raiseFollowUp;
+    readonly resolveFollowUp = resolveFollowUp;
+    readonly getProjectionById = getProjectionById;
+    readonly resetItemsForFreshImplementation = resetItemsForFreshImplementation;
+    readonly markImplementing = markImplementing;
+    readonly markImplemented = markImplemented;
+    readonly markFailed = markFailed;
+    readonly setItemStatus = setItemStatus;
+
+    getDb(): Kysely<DatabaseSchema> {
         return getPersistence().db;
     }
 
-    private async getPlanRecordRowById(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRecordRow | null> {
+    async getPlanRecordRowById(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRecordRow | null> {
         return (await db.selectFrom('plan_records').selectAll().where('id', '=', planId).executeTakeFirst()) ?? null;
     }
 
-    private async getPlanRevisionRowById(
-        db: PlanStoreDb,
-        revisionId: EntityId<'prev'>
-    ): Promise<PlanRevisionRow | null> {
+    async getPlanRevisionRowById(db: PlanStoreDb, revisionId: EntityId<'prev'>): Promise<PlanRevisionRow | null> {
         return (
             (await db.selectFrom('plan_revisions').selectAll().where('id', '=', revisionId).executeTakeFirst()) ?? null
         );
     }
 
-    private async getPlanRevisionAdvancedSnapshotRowByRevisionId(
+    async getPlanRevisionAdvancedSnapshotRowByRevisionId(
         db: PlanStoreDb,
         revisionId: EntityId<'prev'>
     ): Promise<PlanRevisionAdvancedSnapshotRow | null> {
@@ -1458,10 +119,7 @@ export class PlanStore {
         );
     }
 
-    private async hydratePlanRevisionRecord(
-        db: PlanStoreDb,
-        row: PlanRevisionRow
-    ): Promise<PlanRevisionRecord> {
+    async hydratePlanRevisionRecord(db: PlanStoreDb, row: PlanRevisionRow): Promise<PlanRevisionRecord> {
         const snapshotRow = await this.getPlanRevisionAdvancedSnapshotRowByRevisionId(
             db,
             parseEntityId(row.id, 'plan_revisions.id', 'prev')
@@ -1473,25 +131,19 @@ export class PlanStore {
         };
     }
 
-    private async getPlanVariantRowById(
-        db: PlanStoreDb,
-        variantId: EntityId<'pvar'>
-    ): Promise<PlanVariantRow | null> {
+    async getPlanVariantRowById(db: PlanStoreDb, variantId: EntityId<'pvar'>): Promise<PlanVariantRow | null> {
         return (
             (await db.selectFrom('plan_variants').selectAll().where('id', '=', variantId).executeTakeFirst()) ?? null
         );
     }
 
-    private async getPlanFollowUpRowById(
-        db: PlanStoreDb,
-        followUpId: EntityId<'pfu'>
-    ): Promise<PlanFollowUpRow | null> {
+    async getPlanFollowUpRowById(db: PlanStoreDb, followUpId: EntityId<'pfu'>): Promise<PlanFollowUpRow | null> {
         return (
             (await db.selectFrom('plan_follow_ups').selectAll().where('id', '=', followUpId).executeTakeFirst()) ?? null
         );
     }
 
-    private async getVariantHeadRevisionRow(
+    async getVariantHeadRevisionRow(
         db: PlanStoreDb,
         planId: EntityId<'plan'>,
         variantId: EntityId<'pvar'>
@@ -1507,7 +159,7 @@ export class PlanStore {
         );
     }
 
-    private async getLatestRevisionRowForPlan(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRevisionRow | null> {
+    async getLatestRevisionRowForPlan(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRevisionRow | null> {
         return (
             (await db
                 .selectFrom('plan_revisions')
@@ -1518,10 +170,7 @@ export class PlanStore {
         );
     }
 
-    private async listRevisionItemsInDb(
-        db: PlanStoreDb,
-        planRevisionId: EntityId<'prev'>
-    ): Promise<PlanRevisionItemRecord[]> {
+    async listRevisionItemsInDb(db: PlanStoreDb, planRevisionId: EntityId<'prev'>): Promise<PlanRevisionItemRecord[]> {
         const rows = await db
             .selectFrom('plan_revision_items')
             .selectAll()
@@ -1532,20 +181,24 @@ export class PlanStore {
         return rows.map(mapPlanRevisionItemRecord);
     }
 
-    private async getPlanResearchBatchRowById(db: PlanStoreDb, batchId: EntityId<'prb'>): Promise<PlanResearchBatchRow | null> {
-        return (await db.selectFrom('plan_research_batches').selectAll().where('id', '=', batchId).executeTakeFirst()) ?? null;
+    async getPlanResearchBatchRowById(db: PlanStoreDb, batchId: EntityId<'prb'>): Promise<PlanResearchBatchRow | null> {
+        return (
+            (await db.selectFrom('plan_research_batches').selectAll().where('id', '=', batchId).executeTakeFirst()) ??
+            null
+        );
     }
 
-    private async getPlanResearchWorkerRowById(
+    async getPlanResearchWorkerRowById(
         db: PlanStoreDb,
         workerId: EntityId<'prw'>
     ): Promise<PlanResearchWorkerRow | null> {
         return (
-            (await db.selectFrom('plan_research_workers').selectAll().where('id', '=', workerId).executeTakeFirst()) ?? null
+            (await db.selectFrom('plan_research_workers').selectAll().where('id', '=', workerId).executeTakeFirst()) ??
+            null
         );
     }
 
-    private async listResearchBatchesInDb(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanResearchBatchRecord[]> {
+    async listResearchBatchesInDb(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanResearchBatchRecord[]> {
         const rows = await db
             .selectFrom('plan_research_batches')
             .selectAll()
@@ -1556,10 +209,7 @@ export class PlanStore {
         return rows.map(mapPlanResearchBatchRecord);
     }
 
-    private async listResearchWorkersInDb(
-        db: PlanStoreDb,
-        batchIds: string[]
-    ): Promise<PlanResearchWorkerRecord[]> {
+    async listResearchWorkersInDb(db: PlanStoreDb, batchIds: string[]): Promise<PlanResearchWorkerRecord[]> {
         if (batchIds.length === 0) {
             return [];
         }
@@ -1574,7 +224,7 @@ export class PlanStore {
         return rows.map(mapPlanResearchWorkerRecord);
     }
 
-    private async listEvidenceAttachmentsInDb(
+    async listEvidenceAttachmentsInDb(
         db: PlanStoreDb,
         planRevisionId: EntityId<'prev'>
     ): Promise<PlanEvidenceAttachmentRecord[]> {
@@ -1588,7 +238,7 @@ export class PlanStore {
         return rows.map(mapPlanEvidenceAttachmentRecord);
     }
 
-    private async getActiveResearchBatchRowForRevision(
+    async getActiveResearchBatchRowForRevision(
         db: PlanStoreDb,
         planRevisionId: EntityId<'prev'>
     ): Promise<PlanResearchBatchRow | null> {
@@ -1603,7 +253,7 @@ export class PlanStore {
         );
     }
 
-    private async hydratePlanRecord(db: PlanStoreDb, row: PlanRecordRow): Promise<PlanRecord> {
+    async hydratePlanRecord(db: PlanStoreDb, row: PlanRecordRow): Promise<PlanRecord> {
         const currentRevisionRow = await this.getPlanRevisionRowById(
             db,
             parseEntityId(row.current_revision_id, 'plan_records.current_revision_id', 'prev')
@@ -1649,7 +299,7 @@ export class PlanStore {
                           'plan_records.approved_revision_id',
                           'prev'
                       ),
-                }
+                  }
                 : {}),
             ...(approvedRevision ? { approvedRevisionNumber: approvedRevision.revisionNumber } : {}),
             ...(row.approved_variant_id
@@ -1687,7 +337,7 @@ export class PlanStore {
         };
     }
 
-    private async insertRevisionInTransaction(
+    async insertRevisionInTransaction(
         db: PlanStoreDb,
         input: {
             planId: EntityId<'plan'>;
@@ -1765,7 +415,7 @@ export class PlanStore {
         }
     }
 
-    private async copyResearchAttachmentsBetweenRevisionsInTransaction(
+    async copyResearchAttachmentsBetweenRevisionsInTransaction(
         db: PlanStoreDb,
         input: {
             sourceRevisionId: EntityId<'prev'>;
@@ -1798,7 +448,7 @@ export class PlanStore {
             .execute();
     }
 
-    private async settleResearchBatchStatusInTransaction(
+    async settleResearchBatchStatusInTransaction(
         db: PlanStoreDb,
         batchId: EntityId<'prb'>,
         timestamp: string
@@ -1837,7 +487,7 @@ export class PlanStore {
             .execute();
     }
 
-    private async replaceLiveItemsInTransaction(
+    async replaceLiveItemsInTransaction(
         db: PlanStoreDb,
         planId: EntityId<'plan'>,
         descriptions: string[],
@@ -2098,12 +748,11 @@ export class PlanStore {
         );
     }
 
-    async resolveApprovedRevisionSnapshot(input: {
-        planId: EntityId<'plan'>;
-    }): Promise<
-        | { revision: PlanRevisionRecord; items: PlanRevisionItemRecord[]; advancedSnapshot?: PlanRevisionRecord['advancedSnapshot'] }
-        | null
-    > {
+    async resolveApprovedRevisionSnapshot(input: { planId: EntityId<'plan'> }): Promise<{
+        revision: PlanRevisionRecord;
+        items: PlanRevisionItemRecord[];
+        advancedSnapshot?: PlanRevisionRecord['advancedSnapshot'];
+    } | null> {
         const revision = await this.getApprovedRevision(input.planId);
         if (!revision) {
             return null;
@@ -2234,8 +883,7 @@ export class PlanStore {
                 .set({
                     current_revision_id: nextRevisionId,
                     summary_markdown: summaryMarkdown,
-                    status:
-                        isAdvancedPlan && existing.status === 'awaiting_answers' ? 'awaiting_answers' : 'draft',
+                    status: isAdvancedPlan && existing.status === 'awaiting_answers' ? 'awaiting_answers' : 'draft',
                     updated_at: now,
                 })
                 .where('id', '=', planId)
@@ -2425,849 +1073,7 @@ export class PlanStore {
         return this.getByIdFromDb(db, parseEntityId(cancelledPlanId, 'plan_records.id', 'plan'));
     }
 
-    async startResearchBatch(input: {
-        planId: EntityId<'plan'>;
-        planRevisionId: EntityId<'prev'>;
-        variantId: EntityId<'pvar'>;
-        promptMarkdown: string;
-        requestedWorkerCount: number;
-        recommendedWorkerCount: number;
-        hardMaxWorkerCount: number;
-        workers: Array<{
-            sequence: number;
-            label: string;
-            promptMarkdown: string;
-        }>;
-    }): Promise<PlanResearchBatchRecord | null> {
-        const db = this.getDb();
-        const batchId = createEntityId('prb');
-        const now = nowIso();
-
-        const createdBatchId = await db.transaction().execute(async (transaction) => {
-            const existing = await this.getPlanRecordRowById(transaction, input.planId);
-            if (!existing) {
-                return null;
-            }
-
-            if (existing.current_revision_id !== input.planRevisionId) {
-                return null;
-            }
-
-            const activeBatch = await this.getActiveResearchBatchRowForRevision(transaction, input.planRevisionId);
-            if (activeBatch) {
-                return null;
-            }
-
-            await transaction
-                .insertInto('plan_research_batches')
-                .values({
-                    id: batchId,
-                    plan_id: input.planId,
-                    plan_revision_id: input.planRevisionId,
-                    variant_id: input.variantId,
-                    prompt_markdown: input.promptMarkdown,
-                    requested_worker_count: input.requestedWorkerCount,
-                    recommended_worker_count: input.recommendedWorkerCount,
-                    hard_max_worker_count: input.hardMaxWorkerCount,
-                    status: 'running',
-                    created_at: now,
-                    completed_at: null,
-                    aborted_at: null,
-                })
-                .execute();
-
-            await transaction
-                .insertInto('plan_research_workers')
-                .values(
-                    input.workers.map((worker) => ({
-                        id: createEntityId('prw'),
-                        batch_id: batchId,
-                        sequence: worker.sequence,
-                        label: worker.label,
-                        prompt_markdown: worker.promptMarkdown,
-                        status: 'queued',
-                        child_thread_id: null,
-                        child_session_id: null,
-                        active_run_id: null,
-                        run_id: null,
-                        result_summary_markdown: null,
-                        result_details_markdown: null,
-                        error_message: null,
-                        created_at: now,
-                        completed_at: null,
-                        aborted_at: null,
-                    }))
-                )
-                .execute();
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', input.planId)
-                .execute();
-
-            return batchId;
-        });
-
-        if (!createdBatchId) {
-            return null;
-        }
-
-        return this.getResearchBatchById(createdBatchId);
-    }
-
-    async abortResearchBatch(planId: EntityId<'plan'>, researchBatchId: EntityId<'prb'>): Promise<PlanResearchBatchRecord | null> {
-        const db = this.getDb();
-        const abortedBatchId = await db.transaction().execute(async (transaction) => {
-            const batchRow = await this.getPlanResearchBatchRowById(transaction, researchBatchId);
-            if (!batchRow || batchRow.plan_id !== planId || batchRow.status !== 'running') {
-                return null;
-            }
-
-            const now = nowIso();
-
-            await transaction
-                .updateTable('plan_research_workers')
-                .set({
-                    status: 'aborted',
-                    aborted_at: now,
-                })
-                .where('batch_id', '=', researchBatchId)
-                .where('status', 'in', ['queued', 'running'])
-                .execute();
-
-            await transaction
-                .updateTable('plan_research_batches')
-                .set({
-                    status: 'aborted',
-                    aborted_at: now,
-                })
-                .where('id', '=', researchBatchId)
-                .execute();
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', planId)
-                .execute();
-
-            return researchBatchId;
-        });
-
-        if (!abortedBatchId) {
-            return null;
-        }
-
-        return this.getResearchBatchById(abortedBatchId);
-    }
-
-    async markResearchWorkerRunning(input: {
-        researchBatchId: EntityId<'prb'>;
-        researchWorkerId: EntityId<'prw'>;
-        childThreadId: EntityId<'thr'>;
-        childSessionId: EntityId<'sess'>;
-        activeRunId: EntityId<'run'>;
-    }): Promise<PlanResearchWorkerRecord | null> {
-        const db = this.getDb();
-        const runningWorkerId = await db.transaction().execute(async (transaction) => {
-            const batchRow = await this.getPlanResearchBatchRowById(transaction, input.researchBatchId);
-            if (!batchRow || batchRow.status !== 'running') {
-                return null;
-            }
-
-            const workerRow = await this.getPlanResearchWorkerRowById(transaction, input.researchWorkerId);
-            if (!workerRow || workerRow.batch_id !== input.researchBatchId) {
-                return null;
-            }
-
-            const now = nowIso();
-            const updatedWorker = await transaction
-                .updateTable('plan_research_workers')
-                .set({
-                    status: 'running',
-                    child_thread_id: input.childThreadId,
-                    child_session_id: input.childSessionId,
-                    active_run_id: input.activeRunId,
-                    run_id: null,
-                    error_message: null,
-                    completed_at: null,
-                    aborted_at: null,
-                })
-                .where('id', '=', input.researchWorkerId)
-                .where('status', '=', 'queued')
-                .returning('id')
-                .executeTakeFirst();
-            if (!updatedWorker) {
-                return null;
-            }
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', batchRow.plan_id)
-                .execute();
-
-            return input.researchWorkerId;
-        });
-
-        if (!runningWorkerId) {
-            return null;
-        }
-
-        return this.getResearchWorkerById(runningWorkerId);
-    }
-
-    async recordResearchWorkerCompletion(input: {
-        researchBatchId: EntityId<'prb'>;
-        researchWorkerId: EntityId<'prw'>;
-        resultSummaryMarkdown: string;
-        resultDetailsMarkdown: string;
-        childThreadId?: EntityId<'thr'>;
-        childSessionId?: EntityId<'sess'>;
-        activeRunId?: EntityId<'run'>;
-        runId?: EntityId<'run'>;
-    }): Promise<PlanResearchWorkerRecord | null> {
-        const db = this.getDb();
-        const completedWorkerId = await db.transaction().execute(async (transaction) => {
-            const batchRow = await this.getPlanResearchBatchRowById(transaction, input.researchBatchId);
-            if (!batchRow || batchRow.status === 'aborted') {
-                return null;
-            }
-
-            const workerRow = await this.getPlanResearchWorkerRowById(transaction, input.researchWorkerId);
-            if (!workerRow || workerRow.batch_id !== input.researchBatchId) {
-                return null;
-            }
-
-            const now = nowIso();
-            const updatedWorker = await transaction
-                .updateTable('plan_research_workers')
-                .set({
-                    status: 'completed',
-                    ...(input.childThreadId ? { child_thread_id: input.childThreadId } : {}),
-                    ...(input.childSessionId ? { child_session_id: input.childSessionId } : {}),
-                    ...(input.activeRunId ? { active_run_id: input.activeRunId } : {}),
-                    ...(input.runId ? { run_id: input.runId } : {}),
-                    result_summary_markdown: input.resultSummaryMarkdown,
-                    result_details_markdown: input.resultDetailsMarkdown,
-                    error_message: null,
-                    completed_at: now,
-                    aborted_at: null,
-                })
-                .where('id', '=', input.researchWorkerId)
-                .where('status', 'in', ['queued', 'running'])
-                .returning('id')
-                .executeTakeFirst();
-            if (!updatedWorker) {
-                return null;
-            }
-
-            await transaction
-                .insertInto('plan_revision_evidence_attachments')
-                .values({
-                    id: createEntityId('pea'),
-                    plan_revision_id: parseEntityId(batchRow.plan_revision_id, 'plan_research_batches.plan_revision_id', 'prev'),
-                    source_kind: 'planner_worker',
-                    research_batch_id: input.researchBatchId,
-                    research_worker_id: input.researchWorkerId,
-                    label: workerRow.label,
-                    summary_markdown: input.resultSummaryMarkdown,
-                    details_markdown: input.resultDetailsMarkdown,
-                    ...(input.childThreadId ? { child_thread_id: input.childThreadId } : { child_thread_id: null }),
-                    ...(input.childSessionId ? { child_session_id: input.childSessionId } : { child_session_id: null }),
-                    created_at: now,
-                })
-                .execute();
-
-            await this.settleResearchBatchStatusInTransaction(transaction, input.researchBatchId, now);
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', batchRow.plan_id)
-                .execute();
-
-            return input.researchWorkerId;
-        });
-
-        if (!completedWorkerId) {
-            return null;
-        }
-
-        return this.getResearchWorkerById(completedWorkerId);
-    }
-
-    async recordResearchWorkerFailure(input: {
-        researchBatchId: EntityId<'prb'>;
-        researchWorkerId: EntityId<'prw'>;
-        errorMessage: string;
-        childThreadId?: EntityId<'thr'>;
-        childSessionId?: EntityId<'sess'>;
-        activeRunId?: EntityId<'run'>;
-        runId?: EntityId<'run'>;
-    }): Promise<PlanResearchWorkerRecord | null> {
-        const db = this.getDb();
-        const failedWorkerId = await db.transaction().execute(async (transaction) => {
-            const batchRow = await this.getPlanResearchBatchRowById(transaction, input.researchBatchId);
-            if (!batchRow || batchRow.status === 'aborted') {
-                return null;
-            }
-
-            const workerRow = await this.getPlanResearchWorkerRowById(transaction, input.researchWorkerId);
-            if (!workerRow || workerRow.batch_id !== input.researchBatchId) {
-                return null;
-            }
-
-            const now = nowIso();
-            const updatedWorker = await transaction
-                .updateTable('plan_research_workers')
-                .set({
-                    status: 'failed',
-                    ...(input.childThreadId ? { child_thread_id: input.childThreadId } : {}),
-                    ...(input.childSessionId ? { child_session_id: input.childSessionId } : {}),
-                    ...(input.activeRunId ? { active_run_id: input.activeRunId } : {}),
-                    ...(input.runId ? { run_id: input.runId } : {}),
-                    error_message: input.errorMessage,
-                    result_summary_markdown: null,
-                    result_details_markdown: null,
-                    completed_at: now,
-                    aborted_at: null,
-                })
-                .where('id', '=', input.researchWorkerId)
-                .where('status', 'in', ['queued', 'running'])
-                .returning('id')
-                .executeTakeFirst();
-            if (!updatedWorker) {
-                return null;
-            }
-
-            await this.settleResearchBatchStatusInTransaction(transaction, input.researchBatchId, now);
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', batchRow.plan_id)
-                .execute();
-
-            return input.researchWorkerId;
-        });
-
-        if (!failedWorkerId) {
-            return null;
-        }
-
-        return this.getResearchWorkerById(failedWorkerId);
-    }
-
-    async createVariant(planId: EntityId<'plan'>, sourceRevisionId: EntityId<'prev'>): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const createdPlanId = await db.transaction().execute(async (transaction) => {
-            const existing = await this.getPlanRecordRowById(transaction, planId);
-            if (!existing) {
-                return null;
-            }
-
-            const sourceRevision = await this.getPlanRevisionRowById(transaction, sourceRevisionId);
-            if (!sourceRevision || sourceRevision.plan_id !== planId) {
-                return null;
-            }
-            const sourceRevisionAdvancedSnapshot = await this.getPlanRevisionAdvancedSnapshotRowByRevisionId(
-                transaction,
-                sourceRevisionId
-            );
-
-            const sourceRevisionItems = await this.listRevisionItemsInDb(transaction, sourceRevisionId);
-            const variantRows = await transaction
-                .selectFrom('plan_variants')
-                .selectAll()
-                .where('plan_id', '=', planId)
-                .orderBy('created_at', 'asc')
-                .execute();
-            const variantName = `variant-${String(variantRows.length + 1)}`;
-            const variantId = createEntityId('pvar');
-            const now = nowIso();
-            const latestRevision = await this.getLatestRevisionRowForPlan(transaction, planId);
-            const nextRevisionNumber = (latestRevision?.revision_number ?? 0) + 1;
-            const nextRevisionId = createEntityId('prev');
-
-            await transaction
-                .insertInto('plan_variants')
-                .values({
-                    id: variantId,
-                    plan_id: planId,
-                    name: variantName,
-                    created_from_revision_id: sourceRevisionId,
-                    created_at: now,
-                    archived_at: null,
-                })
-                .execute();
-
-            await this.insertRevisionInTransaction(transaction, {
-                planId,
-                variantId,
-                revisionId: nextRevisionId,
-                revisionNumber: nextRevisionNumber,
-                summaryMarkdown: sourceRevision.summary_markdown,
-                createdByKind: 'revise',
-                previousRevisionId: sourceRevisionId,
-                itemDescriptions: sourceRevisionItems.map((item) => item.description),
-                timestamp: now,
-                copyResearchAttachmentsFromRevisionId: sourceRevisionId,
-                ...(sourceRevisionAdvancedSnapshot
-                    ? { advancedSnapshot: mapPlanAdvancedSnapshotRecord(sourceRevisionAdvancedSnapshot) }
-                    : {}),
-            });
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    current_revision_id: nextRevisionId,
-                    current_variant_id: variantId,
-                    summary_markdown: sourceRevision.summary_markdown,
-                    status: 'draft',
-                    updated_at: now,
-                })
-                .where('id', '=', planId)
-                .execute();
-
-            await this.replaceLiveItemsInTransaction(
-                transaction,
-                planId,
-                sourceRevisionItems.map((item) => item.description),
-                now
-            );
-
-            return planId;
-        });
-
-        if (!createdPlanId) {
-            return null;
-        }
-
-        return this.getByIdFromDb(db, createdPlanId);
-    }
-
-    async activateVariant(planId: EntityId<'plan'>, variantId: EntityId<'pvar'>): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const activatedPlanId = await db.transaction().execute(async (transaction) => {
-            const existing = await this.getPlanRecordRowById(transaction, planId);
-            if (!existing) {
-                return null;
-            }
-
-            const variantRow = await this.getPlanVariantRowById(transaction, variantId);
-            if (!variantRow || variantRow.plan_id !== planId) {
-                return null;
-            }
-
-            const headRevision = await this.getVariantHeadRevisionRow(transaction, planId, variantId);
-            if (!headRevision) {
-                return null;
-            }
-            const headRevisionItems = await this.listRevisionItemsInDb(
-                transaction,
-                parseEntityId(headRevision.id, 'plan_revisions.id', 'prev')
-            );
-
-            const now = nowIso();
-            const nextStatus =
-                existing.approved_revision_id &&
-                existing.approved_variant_id === variantId &&
-                existing.approved_revision_id === headRevision.id
-                    ? 'approved'
-                    : 'draft';
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    current_revision_id: headRevision.id,
-                    current_variant_id: variantId,
-                    summary_markdown: headRevision.summary_markdown,
-                    status: nextStatus,
-                    updated_at: now,
-                })
-                .where('id', '=', planId)
-                .execute();
-
-            await this.replaceLiveItemsInTransaction(
-                transaction,
-                planId,
-                headRevisionItems.map((item) => item.description),
-                now
-            );
-
-            return planId;
-        });
-
-        if (!activatedPlanId) {
-            return null;
-        }
-
-        return this.getByIdFromDb(db, activatedPlanId);
-    }
-
-    async resumeFromRevision(
-        planId: EntityId<'plan'>,
-        sourceRevisionId: EntityId<'prev'>,
-        variantId?: EntityId<'pvar'>
-    ): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const resumedPlanId = await db.transaction().execute(async (transaction) => {
-            const existing = await this.getPlanRecordRowById(transaction, planId);
-            if (!existing) {
-                return null;
-            }
-
-            const sourceRevision = await this.getPlanRevisionRowById(transaction, sourceRevisionId);
-            if (!sourceRevision || sourceRevision.plan_id !== planId) {
-                return null;
-            }
-            const sourceRevisionAdvancedSnapshot = await this.getPlanRevisionAdvancedSnapshotRowByRevisionId(
-                transaction,
-                sourceRevisionId
-            );
-
-            const targetVariantId = variantId ?? parseEntityId(existing.current_variant_id, 'plan_records.current_variant_id', 'pvar');
-            const targetVariant = await this.getPlanVariantRowById(transaction, targetVariantId);
-            if (!targetVariant || targetVariant.plan_id !== planId) {
-                return null;
-            }
-
-            const sourceRevisionItems = await this.listRevisionItemsInDb(transaction, sourceRevisionId);
-            const latestRevision = await this.getLatestRevisionRowForPlan(transaction, planId);
-            const nextRevisionNumber = (latestRevision?.revision_number ?? 0) + 1;
-            const nextRevisionId = createEntityId('prev');
-            const now = nowIso();
-            const targetVariantHead = await this.getVariantHeadRevisionRow(transaction, planId, targetVariantId);
-            if (!targetVariantHead) {
-                return null;
-            }
-
-            await transaction
-                .updateTable('plan_revisions')
-                .set({
-                    superseded_at: now,
-                })
-                .where('id', '=', targetVariantHead.id)
-                .where('superseded_at', 'is', null)
-                .execute();
-
-            await this.insertRevisionInTransaction(transaction, {
-                planId,
-                variantId: targetVariantId,
-                revisionId: nextRevisionId,
-                revisionNumber: nextRevisionNumber,
-                summaryMarkdown: sourceRevision.summary_markdown,
-                createdByKind: 'revise',
-                previousRevisionId: parseEntityId(targetVariantHead.id, 'plan_revisions.id', 'prev'),
-                itemDescriptions: sourceRevisionItems.map((item) => item.description),
-                timestamp: now,
-                copyResearchAttachmentsFromRevisionId: sourceRevisionId,
-                ...(sourceRevisionAdvancedSnapshot
-                    ? { advancedSnapshot: mapPlanAdvancedSnapshotRecord(sourceRevisionAdvancedSnapshot) }
-                    : {}),
-            });
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    current_revision_id: nextRevisionId,
-                    current_variant_id: targetVariantId,
-                    summary_markdown: sourceRevision.summary_markdown,
-                    status: 'draft',
-                    updated_at: now,
-                })
-                .where('id', '=', planId)
-                .execute();
-
-            await this.replaceLiveItemsInTransaction(
-                transaction,
-                planId,
-                sourceRevisionItems.map((item) => item.description),
-                now
-            );
-
-            return planId;
-        });
-
-        if (!resumedPlanId) {
-            return null;
-        }
-
-        return this.getByIdFromDb(db, resumedPlanId);
-    }
-
-    async raiseFollowUp(input: {
-        planId: EntityId<'plan'>;
-        kind: 'missing_context' | 'missing_file';
-        promptMarkdown: string;
-        sourceRevisionId?: EntityId<'prev'>;
-    }): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const raisedPlanId = await db.transaction().execute(async (transaction) => {
-            const existing = await this.getPlanRecordRowById(transaction, input.planId);
-            if (!existing) {
-                return null;
-            }
-
-            const variantId = parseEntityId(existing.current_variant_id, 'plan_records.current_variant_id', 'pvar');
-            const sourceRevisionId =
-                input.sourceRevisionId ?? parseEntityId(existing.current_revision_id, 'plan_records.current_revision_id', 'prev');
-            const now = nowIso();
-
-            await transaction
-                .insertInto('plan_follow_ups')
-                .values({
-                    id: createEntityId('pfu'),
-                    plan_id: input.planId,
-                    variant_id: variantId,
-                    source_revision_id: sourceRevisionId,
-                    kind: input.kind,
-                    status: 'open',
-                    prompt_markdown: input.promptMarkdown,
-                    response_markdown: null,
-                    created_by_kind: 'user',
-                    created_at: now,
-                    resolved_at: null,
-                    dismissed_at: null,
-                })
-                .execute();
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', input.planId)
-                .execute();
-
-            return input.planId;
-        });
-
-        if (!raisedPlanId) {
-            return null;
-        }
-
-        return this.getByIdFromDb(db, raisedPlanId);
-    }
-
-    async resolveFollowUp(input: {
-        planId: EntityId<'plan'>;
-        followUpId: EntityId<'pfu'>;
-        status: 'resolved' | 'dismissed';
-        responseMarkdown?: string;
-    }): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const resolvedPlanId = await db.transaction().execute(async (transaction) => {
-            const existing = await this.getPlanRecordRowById(transaction, input.planId);
-            if (!existing) {
-                return null;
-            }
-
-            const followUpRow = await this.getPlanFollowUpRowById(transaction, input.followUpId);
-            if (!followUpRow || followUpRow.plan_id !== input.planId || followUpRow.status !== 'open') {
-                return null;
-            }
-
-            const now = nowIso();
-            await transaction
-                .updateTable('plan_follow_ups')
-                .set({
-                    status: input.status,
-                    response_markdown: input.responseMarkdown ?? null,
-                    resolved_at: input.status === 'resolved' ? now : null,
-                    dismissed_at: input.status === 'dismissed' ? now : null,
-                })
-                .where('id', '=', input.followUpId)
-                .execute();
-
-            await transaction
-                .updateTable('plan_records')
-                .set({
-                    updated_at: now,
-                })
-                .where('id', '=', input.planId)
-                .execute();
-
-            return input.planId;
-        });
-
-        if (!resolvedPlanId) {
-            return null;
-        }
-
-        return this.getByIdFromDb(db, resolvedPlanId);
-    }
-
-    async getProjectionById(profileId: string, planId: EntityId<'plan'>): Promise<PlanViewProjection | null> {
-        const db = this.getDb();
-        const plan = await this.getById(profileId, planId);
-        if (!plan) {
-            return null;
-        }
-
-        const [items, revisions, variants, followUps, phaseProjection, researchBatches, evidenceAttachments, events] =
-            await Promise.all(
-            [
-                this.listItems(planId),
-                this.listRevisions(planId),
-                this.listVariants(planId),
-                this.listFollowUps(planId),
-                planPhaseStore.listProjectionData(planId),
-                this.listResearchBatchesInDb(db, planId),
-                this.listEvidenceAttachmentsInDb(db, plan.currentRevisionId),
-                runtimeEventStore.listByEntity({
-                    entityType: 'plan',
-                    entityId: planId,
-                    limit: 1000,
-                }),
-            ]
-        );
-
-        const researchWorkers = researchBatches.length
-            ? await this.listResearchWorkersInDb(db, researchBatches.map((batch) => batch.id))
-            : [];
-        const verificationProjection = phaseProjection.phases.length
-            ? await planPhaseVerificationStore.listProjectionData(planId)
-            : { phaseVerifications: [], phaseVerificationDiscrepancies: [] };
-
-        const history = buildPlanHistoryEntries({
-            plan,
-            variants,
-            followUps,
-            events,
-        });
-
-        const recoveryBanner = buildRecoveryBanner({
-            plan,
-            variants,
-            followUps,
-        });
-
-        return buildPlanViewProjection({
-            plan,
-            items,
-            revisions,
-            variants,
-            followUps,
-            phases: phaseProjection.phases,
-            phaseRevisions: phaseProjection.phaseRevisions,
-            phaseRevisionItems: phaseProjection.phaseRevisionItems,
-            phaseVerifications: verificationProjection.phaseVerifications,
-            phaseVerificationDiscrepancies: verificationProjection.phaseVerificationDiscrepancies,
-            researchBatches,
-            researchWorkers,
-            evidenceAttachments,
-            history,
-            ...(recoveryBanner ? { recoveryBanner } : {}),
-        });
-    }
-
-    async resetItemsForFreshImplementation(planId: EntityId<'plan'>): Promise<PlanItemRecord[]> {
-        const now = nowIso();
-
-        await this.getDb()
-            .updateTable('plan_items')
-            .set({
-                status: 'pending',
-                run_id: null,
-                error_message: null,
-                updated_at: now,
-            })
-            .where('plan_id', '=', planId)
-            .execute();
-
-        return this.listItems(planId);
-    }
-
-    async markImplementing(
-        planId: EntityId<'plan'>,
-        implementationRunId?: EntityId<'run'>,
-        orchestratorRunId?: EntityId<'orch'>
-    ): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const now = nowIso();
-        const updated = await db
-            .updateTable('plan_records')
-            .set({
-                status: 'implementing',
-                implementation_run_id: implementationRunId ?? null,
-                orchestrator_run_id: orchestratorRunId ?? null,
-                updated_at: now,
-            })
-            .where('id', '=', planId)
-            .returningAll()
-            .executeTakeFirst();
-
-        return updated ? this.hydratePlanRecord(db, updated) : null;
-    }
-
-    async markImplemented(planId: EntityId<'plan'>): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const now = nowIso();
-        const updated = await db
-            .updateTable('plan_records')
-            .set({
-                status: 'implemented',
-                implemented_at: now,
-                updated_at: now,
-            })
-            .where('id', '=', planId)
-            .returningAll()
-            .executeTakeFirst();
-
-        return updated ? this.hydratePlanRecord(db, updated) : null;
-    }
-
-    async markFailed(planId: EntityId<'plan'>): Promise<PlanRecord | null> {
-        const db = this.getDb();
-        const now = nowIso();
-        const updated = await db
-            .updateTable('plan_records')
-            .set({
-                status: 'failed',
-                updated_at: now,
-            })
-            .where('id', '=', planId)
-            .returningAll()
-            .executeTakeFirst();
-
-        return updated ? this.hydratePlanRecord(db, updated) : null;
-    }
-
-    async setItemStatus(
-        itemId: EntityId<'step'>,
-        status: PlanItemRecord['status'],
-        runId?: EntityId<'run'>,
-        errorMessage?: string
-    ): Promise<PlanItemRecord | null> {
-        const now = nowIso();
-        const updated = await this.getDb()
-            .updateTable('plan_items')
-            .set({
-                status,
-                run_id: runId ?? null,
-                error_message: errorMessage ?? null,
-                updated_at: now,
-            })
-            .where('id', '=', itemId)
-            .returningAll()
-            .executeTakeFirst();
-
-        return updated ? mapPlanItemRecord(updated) : null;
-    }
-
-    private async getByIdFromDb(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRecord | null> {
+    async getByIdFromDb(db: PlanStoreDb, planId: EntityId<'plan'>): Promise<PlanRecord | null> {
         const row = await this.getPlanRecordRowById(db, planId);
         return row ? this.hydratePlanRecord(db, row) : null;
     }

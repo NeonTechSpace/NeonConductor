@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { getPersistenceStoragePaths } from '@/app/backend/persistence/db';
+import { encryptSecretPayload } from '@/app/backend/secrets/secretPayloadCodec';
 import {
     createCaller,
     createSessionInScope,
@@ -466,14 +467,15 @@ describe('runtime contracts: core flows', () => {
                 now,
                 now
             );
+        const otherProfileSecretPayload = await encryptSecretPayload('openai-other-key');
         sqlite
             .prepare(
                 `
-                    INSERT INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at)
+                    INSERT INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_payload, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 `
             )
-            .run('provider_secret_profile_other', otherProfileId, 'openai', 'api_key', 'openai-other-key', now);
+            .run('provider_secret_profile_other', otherProfileId, 'openai', 'api_key', otherProfileSecretPayload, now);
 
         const dryRun = await caller.runtime.reset({
             target: 'profile_settings',
@@ -512,14 +514,15 @@ describe('runtime contracts: core flows', () => {
         const { sqlite } = getPersistence();
         const now = new Date().toISOString();
 
+        const defaultProfileSecretPayload = await encryptSecretPayload('kilo-default-key');
         sqlite
             .prepare(
                 `
-                    INSERT INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at)
+                    INSERT INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_payload, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 `
             )
-            .run('provider_secret_profile_default', profileId, 'kilo', 'api_key', 'kilo-default-key', now);
+            .run('provider_secret_profile_default', profileId, 'kilo', 'api_key', defaultProfileSecretPayload, now);
 
         const dryRun = await caller.runtime.reset({
             target: 'full',
@@ -602,14 +605,15 @@ describe('runtime contracts: core flows', () => {
             if (!threadWorkspaceFingerprint.workspaceFingerprint) {
                 throw new Error('Expected factory reset thread to be workspace-bound.');
             }
+            const factoryResetSecretPayload = await encryptSecretPayload('kilo-default-key');
             sqlite
                 .prepare(
                     `
-                        INSERT INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at)
+                        INSERT INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_payload, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?)
                     `
                 )
-                .run('provider_secret_factory_reset', profileId, 'kilo', 'api_key', 'kilo-default-key', now);
+                .run('provider_secret_factory_reset', profileId, 'kilo', 'api_key', factoryResetSecretPayload, now);
             sqlite
                 .prepare(
                     `

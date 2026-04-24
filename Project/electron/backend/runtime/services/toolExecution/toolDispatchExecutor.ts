@@ -2,12 +2,12 @@ import { err, ok } from 'neverthrow';
 
 import { mcpService } from '@/app/backend/runtime/services/mcp/service';
 import { invokeToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers';
-import type { ToolExecutionArtifactCandidate } from '@/app/backend/runtime/services/toolExecution/types';
 import type {
     AllowedToolInvocation,
     ToolDispatchExecutionResult,
     ToolRequestContext,
 } from '@/app/backend/runtime/services/toolExecution/toolExecutionLifecycle.types';
+import type { ToolExecutionArtifactCandidate } from '@/app/backend/runtime/services/toolExecution/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -49,7 +49,16 @@ export async function dispatchToolInvocation(input: {
                   return ok(output.value);
               })()
             : await invokeToolHandler(context.definition.tool, context.executionArgs, {
-                  ...(context.workspaceRootPath ? { cwd: context.workspaceRootPath } : {}),
+                  ...(context.executionRoot?.kind === 'workspace' || context.executionRoot?.kind === 'sandbox'
+                      ? {
+                            cwd: context.executionRoot.absolutePath,
+                            executionRoot: {
+                                kind: context.executionRoot.kind,
+                                label: context.executionRoot.label,
+                                absolutePath: context.executionRoot.absolutePath,
+                            },
+                        }
+                      : {}),
               });
 
     if (execution.isErr()) {

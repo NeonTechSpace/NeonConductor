@@ -23,6 +23,7 @@ export const devBrowserBlockedReasonCodes = [
     'resolution_failed',
     'host_not_local',
     'mixed_resolution',
+    'dns_hostname_not_pinned',
     'redirect_not_local',
     'popup_blocked',
     'navigation_blocked',
@@ -35,7 +36,11 @@ export type DevBrowserEnrichmentMode = (typeof devBrowserEnrichmentModes)[number
 export const browserCommentDraftInclusionStates = ['included', 'excluded'] as const;
 export type BrowserCommentDraftInclusionState = (typeof browserCommentDraftInclusionStates)[number];
 
-export const browserSelectionSourceAnchorStatuses = ['workspace_relative', 'outside_current_workspace', 'unresolved'] as const;
+export const browserSelectionSourceAnchorStatuses = [
+    'workspace_relative',
+    'outside_current_workspace',
+    'unresolved',
+] as const;
 export type BrowserSelectionSourceAnchorStatus = (typeof browserSelectionSourceAnchorStatuses)[number];
 
 export const browserSelectionReactSourceKinds = ['provider', 'fiber_zero_config'] as const;
@@ -103,18 +108,31 @@ export type BrowserDesignerStylePropertyKey = (typeof browserDesignerStyleProper
 export const devBrowserControlActions = ['back', 'forward', 'reload'] as const;
 export type DevBrowserControlAction = (typeof devBrowserControlActions)[number];
 
-export const browserContextSummaryDesignerApplyIntentStatuses = ['none', 'preview_only', 'apply_with_agent', 'mixed'] as const;
+export const browserContextSummaryDesignerApplyIntentStatuses = [
+    'none',
+    'preview_only',
+    'apply_with_agent',
+    'mixed',
+] as const;
 export type BrowserContextSummaryDesignerApplyIntentStatus =
     (typeof browserContextSummaryDesignerApplyIntentStatuses)[number];
 
 export interface DevBrowserValidation {
     status: DevBrowserValidationStatus;
     normalizedUrl?: string;
+    binding?: DevBrowserValidatedTargetBinding;
     resolvedAddresses: string[];
     blockedReasonCode?: DevBrowserBlockedReasonCode;
     blockedReasonMessage?: string;
     attemptedUrl?: string;
     source?: DevBrowserValidationSource;
+}
+
+export interface DevBrowserValidatedTargetBinding {
+    normalizedUrl: string;
+    host: string;
+    port?: number;
+    resolvedAddresses: string[];
 }
 
 export interface DevBrowserCurrentPage {

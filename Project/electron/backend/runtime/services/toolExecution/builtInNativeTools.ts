@@ -38,7 +38,7 @@ export const builtInNativeToolDefinitions: BuiltInNativeToolDefinition[] = [
     {
         id: 'run_command',
         label: 'Run Command',
-        defaultDescription: 'Run a command in a sandboxed shell.',
+        defaultDescription: 'Run a command in the resolved execution target under tool policy and approval.',
         permissionPolicy: 'ask',
         mutability: 'mutating',
     },

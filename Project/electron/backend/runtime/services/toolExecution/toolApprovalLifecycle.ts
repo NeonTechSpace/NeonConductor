@@ -17,6 +17,10 @@ export async function resolveToolApprovalDecision(input: {
         context.executeCodeApprovalContext?.codeResource ??
         context.shellApprovalContext?.commandResource ??
         context.definition.resource;
+    const executionRootPath =
+        context.executionRoot?.kind === 'workspace' || context.executionRoot?.kind === 'sandbox'
+            ? context.executionRoot.absolutePath
+            : context.workspaceRootPath;
     const decision = await resolveToolDecision({
         profileId: request.profileId,
         topLevelTab: request.topLevelTab,
@@ -63,7 +67,7 @@ export async function resolveToolApprovalDecision(input: {
                   : `Tool "${toolId}" is denied by current safety policy.`,
         askMessage:
             toolId === 'run_command'
-                ? `Shell approval is required before running "${context.shellApprovalContext?.commandText ?? ''}"${context.workspaceRootPath ? ` in ${context.workspaceRootPath}` : ''}.`
+                ? `Shell approval is required before running "${context.shellApprovalContext?.commandText ?? ''}"${executionRootPath ? ` in ${executionRootPath}` : ''}.`
                 : toolId === 'execute_code'
                   ? `JavaScript execution approval is required before running execute_code (SHA-256 prefix ${context.executeCodeApprovalContext?.codeDigest ?? 'unknown'}).`
                   : `Tool "${toolId}" requires permission approval.`,

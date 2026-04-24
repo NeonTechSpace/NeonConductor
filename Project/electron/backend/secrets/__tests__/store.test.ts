@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getDefaultProfileId, resetPersistenceForTests } from '@/app/backend/persistence/db';
+import { resetPersistenceForTests } from '@/app/backend/persistence/db';
 
 const originalNodeEnv = process.env['NODE_ENV'];
 const originalVitestFlag = process.env['VITEST'];
@@ -50,12 +50,10 @@ describe('secret store', () => {
         });
     });
 
-    it('uses database-backed provider secrets outside test runtime injection', async () => {
-        process.env['NODE_ENV'] = 'production';
-        delete process.env['VITEST'];
-
+    it('uses encrypted database-backed provider secrets outside explicit test injection', async () => {
         vi.resetModules();
-        const { resetPersistenceForTests } = await import('@/app/backend/persistence/db');
+        const { getDefaultProfileId, getPersistence, resetPersistenceForTests } =
+            await import('@/app/backend/persistence/db');
         const { providerSecretStore } = await import('@/app/backend/persistence/stores');
         const { getSecretStore, getSecretStoreInfo, initializeSecretStore } =
             await import('@/app/backend/secrets/store');
@@ -63,9 +61,12 @@ describe('secret store', () => {
         resetPersistenceForTests();
         initializeSecretStore();
 
-        expect(getSecretStoreInfo()).toEqual({
-            backend: 'database',
-            available: true,
+        await vi.waitFor(() => {
+            expect(getSecretStoreInfo()).toEqual({
+                backend: 'encrypted-database',
+                available: true,
+                payloadCodec: 'test',
+            });
         });
 
         const secretStore = getSecretStore();
@@ -79,7 +80,47 @@ describe('secret store', () => {
         await expect(secretStore.getValue(profileId, 'openai', 'api_key')).resolves.toBe('database-token');
         await expect(providerSecretStore.getValue(profileId, 'openai', 'api_key')).resolves.toBe('database-token');
 
+        const row = getPersistence()
+            .sqlite.prepare('SELECT secret_payload FROM provider_secrets WHERE profile_id = ?')
+            .get(profileId) as { secret_payload: string } | undefined;
+        expect(row?.secret_payload).toBeDefined();
+        expect(row?.secret_payload).not.toBe('database-token');
+        expect(row?.secret_payload).not.toContain('database-token');
+
         await secretStore.deleteValue(profileId, 'openai', 'api_key');
         await expect(providerSecretStore.getValue(profileId, 'openai', 'api_key')).resolves.toBeNull();
+    });
+
+    it('fails closed when encrypted database payload encryption is unavailable', async () => {
+        vi.resetModules();
+        const { getDefaultProfileId, resetPersistenceForTests } = await import('@/app/backend/persistence/db');
+        const { configureSecretPayloadCodec } = await import('@/app/backend/secrets/secretPayloadCodec');
+        const { getSecretStore, getSecretStoreInfo, initializeSecretStore } =
+            await import('@/app/backend/secrets/store');
+        resetPersistenceForTests();
+        configureSecretPayloadCodec({
+            backend: 'electron-safe-storage',
+            encrypt: () => Promise.reject(new Error('codec unavailable')),
+            decrypt: () => Promise.reject(new Error('codec unavailable')),
+            isAvailable: () => Promise.resolve(false),
+        });
+        initializeSecretStore();
+
+        await vi.waitFor(() => {
+            expect(getSecretStoreInfo()).toEqual({
+                backend: 'encrypted-database',
+                available: false,
+                payloadCodec: 'electron-safe-storage',
+            });
+        });
+
+        await expect(
+            getSecretStore().setValue({
+                profileId: getDefaultProfileId(),
+                providerId: 'openai',
+                secretKind: 'api_key',
+                secretValue: 'must-not-write',
+            })
+        ).rejects.toThrow('codec unavailable');
     });
 });

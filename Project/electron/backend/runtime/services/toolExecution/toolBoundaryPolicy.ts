@@ -19,7 +19,11 @@ export async function resolveToolBoundaryDecision(input: {
     const { context, request } = input;
     const toolId = context.definition.tool.id;
 
-    if (context.workspaceRequirement === 'detached_scope') {
+    const rootRequirement =
+        context.executionRootRequirement ??
+        (context.workspaceRequirement === 'workspace_unresolved' ? 'unresolved' : context.workspaceRequirement);
+
+    if (rootRequirement === 'detached_scope') {
         return buildDeniedToolOutcome({
             profileId: request.profileId,
             toolId,
@@ -35,7 +39,7 @@ export async function resolveToolBoundaryDecision(input: {
         });
     }
 
-    if (context.workspaceRequirement === 'workspace_unresolved') {
+    if (rootRequirement === 'unresolved') {
         return buildDeniedToolOutcome({
             profileId: request.profileId,
             toolId,
@@ -51,16 +55,22 @@ export async function resolveToolBoundaryDecision(input: {
         });
     }
 
-    if (!context.resolvedWorkspacePath || !context.workspaceLabel) {
+    const resolvedPath =
+        context.resolvedExecutionPath ??
+        (context.resolvedWorkspacePath
+            ? {
+                  absolutePath: context.resolvedWorkspacePath.absolutePath,
+                  executionRootPath: context.resolvedWorkspacePath.workspaceRootPath,
+              }
+            : undefined);
+
+    if (!resolvedPath || !context.workspaceLabel) {
         return null;
     }
 
     if (
         !context.definition.tool.allowsExternalPaths &&
-        !isPathInsideWorkspace(
-            context.resolvedWorkspacePath.absolutePath,
-            context.resolvedWorkspacePath.workspaceRootPath
-        )
+        !isPathInsideWorkspace(resolvedPath.absolutePath, resolvedPath.executionRootPath)
     ) {
         const decision = await resolveToolDecision({
             profileId: request.profileId,
@@ -96,10 +106,7 @@ export async function resolveToolBoundaryDecision(input: {
 
     if (
         !context.definition.tool.allowsIgnoredPaths &&
-        isIgnoredWorkspacePath(
-            context.resolvedWorkspacePath.absolutePath,
-            context.resolvedWorkspacePath.workspaceRootPath
-        )
+        isIgnoredWorkspacePath(resolvedPath.absolutePath, resolvedPath.executionRootPath)
     ) {
         const decision = await resolveToolDecision({
             profileId: request.profileId,

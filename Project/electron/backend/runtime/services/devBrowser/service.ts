@@ -12,7 +12,10 @@ import type {
     SessionBuildBrowserContextPacketResult,
     SessionDevBrowserState,
 } from '@/app/backend/runtime/contracts';
-import { buildBrowserContextSummary, resolveBrowserContextEnrichmentMode } from '@/app/backend/runtime/services/devBrowser/browserContext';
+import {
+    buildBrowserContextSummary,
+    resolveBrowserContextEnrichmentMode,
+} from '@/app/backend/runtime/services/devBrowser/browserContext';
 import {
     normalizeDevBrowserTargetDraft,
     validateLocalDevBrowserTarget,
@@ -56,7 +59,8 @@ function buildPacketFromState(input: {
         return {
             available: false,
             reason: 'missing_context',
-            message: 'Stage at least one browser comment or designer preview before sending or queueing browser context.',
+            message:
+                'Stage at least one browser comment or designer preview before sending or queueing browser context.',
         };
     }
 
@@ -127,7 +131,9 @@ function buildPacketFromState(input: {
             .map((selection) => selection.cropAttachmentId)
             .filter((attachmentId): attachmentId is EntityId<'att'> => attachmentId !== undefined),
         designerDrafts: packetDesignerDrafts,
-        enrichmentMode: resolveBrowserContextEnrichmentMode(packetSelections.map((selection) => selection.enrichmentMode)),
+        enrichmentMode: resolveBrowserContextEnrichmentMode(
+            packetSelections.map((selection) => selection.enrichmentMode)
+        ),
     };
     const summary: BrowserContextSummary = buildBrowserContextSummary(packet);
 
@@ -155,13 +161,15 @@ async function resolveDesignerApplyStatus(input: {
     if (!sourceAnchor || sourceAnchor.status === 'unresolved') {
         return {
             status: 'blocked_missing_source_anchor',
-            blockedReasonMessage: 'This selection does not have a workspace source anchor yet, so code apply is unavailable.',
+            blockedReasonMessage:
+                'This selection does not have a workspace source anchor yet, so code apply is unavailable.',
         };
     }
     if (sourceAnchor.status === 'outside_current_workspace') {
         return {
             status: 'blocked_outside_current_workspace',
-            blockedReasonMessage: 'This selection resolves outside the current workspace, so apply-through-agent is blocked.',
+            blockedReasonMessage:
+                'This selection resolves outside the current workspace, so apply-through-agent is blocked.',
         };
     }
     return { status: 'eligible' };
@@ -178,7 +186,7 @@ export class SessionDevBrowserService {
         target: DevBrowserTargetDraft;
     }): Promise<SessionDevBrowserState> {
         const normalizedTarget = normalizeDevBrowserTargetDraft(input.target);
-        const validation = await validateLocalDevBrowserTarget({
+        const validation = validateLocalDevBrowserTarget({
             target: normalizedTarget,
             source: 'input',
         });
@@ -345,7 +353,10 @@ export class SessionDevBrowserService {
         commentDraftIds?: EntityId<'bcmt'>[];
     }): Promise<SessionBuildBrowserContextPacketResult> {
         const state = await sessionDevBrowserStore.getState(input.profileId, input.sessionId);
-        return buildPacketFromState({ state, ...(input.commentDraftIds ? { commentDraftIds: input.commentDraftIds } : {}) });
+        return buildPacketFromState({
+            state,
+            ...(input.commentDraftIds ? { commentDraftIds: input.commentDraftIds } : {}),
+        });
     }
 }
 

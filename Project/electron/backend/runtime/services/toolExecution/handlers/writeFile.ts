@@ -1,14 +1,13 @@
-import { Buffer } from 'node:buffer';
-import { mkdir, stat, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { err, ok, type Result } from 'neverthrow';
+import { Buffer } from 'node:buffer';
+import { stat, writeFile } from 'node:fs/promises';
 
+import { readBooleanArg, readStringArg } from '@/app/backend/runtime/services/toolExecution/args';
 import {
-    readBooleanArg,
-    readStringArg,
-    resolveAbsoluteToolPath,
-} from '@/app/backend/runtime/services/toolExecution/args';
+    requireFileToolExecutionRoot,
+    type ToolHandlerExecutionContext,
+} from '@/app/backend/runtime/services/toolExecution/handlers/context';
+import { resolveCanonicalWriteToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
 import type { ToolExecutionFailure, ToolExecutionOutput } from '@/app/backend/runtime/services/toolExecution/types';
 
 function countLines(text: string): number {
@@ -19,21 +18,9 @@ function countLines(text: string): number {
     return text.split(/\r\n|\r|\n/u).length;
 }
 
-async function pathExists(targetPath: string): Promise<boolean> {
-    try {
-        await stat(targetPath);
-        return true;
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return false;
-        }
-
-        throw error;
-    }
-}
-
 export async function writeFileToolHandler(
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    context?: ToolHandlerExecutionContext
 ): Promise<Result<ToolExecutionOutput, ToolExecutionFailure>> {
     const fileArg = readStringArg(args, 'path');
     if (!fileArg) {
@@ -52,20 +39,27 @@ export async function writeFileToolHandler(
     }
     const content = contentValue;
 
-    const targetPathResult = resolveAbsoluteToolPath(fileArg);
+    const executionRoot = requireFileToolExecutionRoot(context);
+    if (!executionRoot) {
+        return err({
+            code: 'execution_failed',
+            message: 'Tool "write_file" requires resolved execution-root authority.',
+        });
+    }
+
+    const targetPathResult = await resolveCanonicalWriteToolPath({
+        executionRoot,
+        targetPath: fileArg,
+    });
     if (targetPathResult.isErr()) {
         return err(targetPathResult.error);
     }
 
-    const targetPath = targetPathResult.value;
+    const targetPath = targetPathResult.value.absolutePath;
     const overwrite = readBooleanArg(args, 'overwrite', false);
     const contentBuffer = Buffer.from(content, 'utf8');
-    const parentDirectory = path.dirname(targetPath);
 
     try {
-        const parentDirectoryExisted = await pathExists(parentDirectory);
-        await mkdir(parentDirectory, { recursive: true });
-
         const existingTarget = await stat(targetPath).catch((error: unknown) => {
             if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
                 return null;
@@ -98,7 +92,7 @@ export async function writeFileToolHandler(
             byteLength: contentBuffer.byteLength,
             lineCount: countLines(content),
             overwroteExisting: existingTarget !== null,
-            createdParentDirectories: !parentDirectoryExisted,
+            createdParentDirectories: targetPathResult.value.createdParentDirectories,
         });
     } catch (error) {
         return err({

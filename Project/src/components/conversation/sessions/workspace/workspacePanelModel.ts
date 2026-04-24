@@ -72,6 +72,12 @@ export type WorkspaceScope =
           kind: 'detached';
       }
     | {
+          kind: 'workspace_unresolved';
+          label: string;
+          workspaceFingerprint: string;
+          executionEnvironmentMode: 'local' | 'new_sandbox';
+      }
+    | {
           kind: 'workspace';
           label: string;
           absolutePath: string;
@@ -225,7 +231,8 @@ export interface SessionWorkspacePanelProps {
 }
 
 export function buildWorkspaceHeaderModel(input: SessionWorkspacePanelProps): WorkspaceHeaderModel {
-    const selectedSession = input.sessions.find((session) => session.id === input.selectedSessionId) ?? input.sessions[0];
+    const selectedSession =
+        input.sessions.find((session) => session.id === input.selectedSessionId) ?? input.sessions[0];
     const selectedRun = input.runs.find((run) => run.id === input.selectedRunId) ?? input.runs[0];
     const compactConnectionLabel = input.selectedProviderStatus
         ? `${input.selectedProviderStatus.label} · ${input.selectedProviderStatus.authState.replaceAll('_', ' ')}`
@@ -266,9 +273,7 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                     workspaceScope: input.workspaceScope,
                     provider: input.selectedProviderStatus,
                     modelLabel: input.selectedModelLabel,
-                    ...(input.selectedTargetExplanation
-                        ? { targetExplanation: input.selectedTargetExplanation }
-                        : {}),
+                    ...(input.selectedTargetExplanation ? { targetExplanation: input.selectedTargetExplanation } : {}),
                     usageSummary: input.selectedUsageSummary,
                     routingBadge: input.routingBadge,
                     registrySummary: input.registrySummary,

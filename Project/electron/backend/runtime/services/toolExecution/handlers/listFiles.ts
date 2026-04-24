@@ -2,12 +2,12 @@ import { err, ok, type Result } from 'neverthrow';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import { readBooleanArg, readNumberArg, readStringArg } from '@/app/backend/runtime/services/toolExecution/args';
 import {
-    readBooleanArg,
-    readNumberArg,
-    readStringArg,
-    resolveAbsoluteToolPath,
-} from '@/app/backend/runtime/services/toolExecution/args';
+    requireFileToolExecutionRoot,
+    type ToolHandlerExecutionContext,
+} from '@/app/backend/runtime/services/toolExecution/handlers/context';
+import { resolveCanonicalReadToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
 import { createDirectoryListingExecutionOutput } from '@/app/backend/runtime/services/toolExecution/toolOutputCompressionPolicy';
 import type {
     ToolExecutionFailure,
@@ -16,14 +16,27 @@ import type {
 } from '@/app/backend/runtime/services/toolExecution/types';
 
 export async function listFilesToolHandler(
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    context?: ToolHandlerExecutionContext
 ): Promise<Result<ToolExecutionOutput, ToolExecutionFailure>> {
-    const rootPathResult = resolveAbsoluteToolPath(readStringArg(args, 'path'));
+    const executionRoot = requireFileToolExecutionRoot(context);
+    if (!executionRoot) {
+        return err({
+            code: 'execution_failed',
+            message: 'Tool "list_files" requires resolved execution-root authority.',
+        });
+    }
+
+    const pathArg = readStringArg(args, 'path');
+    const rootPathResult = await resolveCanonicalReadToolPath({
+        executionRoot,
+        ...(pathArg ? { targetPath: pathArg } : {}),
+    });
     if (rootPathResult.isErr()) {
         return err(rootPathResult.error);
     }
 
-    const rootPath = rootPathResult.value;
+    const rootPath = rootPathResult.value.absolutePath;
     const includeHidden = readBooleanArg(args, 'includeHidden', false);
     const recursive = readBooleanArg(args, 'recursive', false);
     const maxEntries = Math.max(1, Math.floor(readNumberArg(args, 'maxEntries', 200)));

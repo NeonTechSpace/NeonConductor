@@ -18,10 +18,10 @@ async function resolveWorkspaceBoundContext(input: {
     const workspaceRoot = await workspaceRootStore.getByFingerprint(input.profileId, input.workspaceFingerprint);
     if (!workspaceRoot) {
         return {
-            kind: 'workspace',
+            kind: 'workspace_unresolved',
             workspaceFingerprint: input.workspaceFingerprint,
             label: input.workspaceFingerprint,
-            absolutePath: 'Unresolved workspace root',
+            reason: 'workspace_root_missing',
             executionEnvironmentMode:
                 input.thread.executionEnvironmentMode === 'sandbox' ? 'local' : input.thread.executionEnvironmentMode,
         };
@@ -147,10 +147,10 @@ export class WorkspaceContextService {
         const workspaceRoot = await workspaceRootStore.getByFingerprint(input.profileId, input.workspaceFingerprint);
         if (!workspaceRoot) {
             return {
-                kind: 'workspace',
+                kind: 'workspace_unresolved',
                 workspaceFingerprint: input.workspaceFingerprint,
                 label: input.workspaceFingerprint,
-                absolutePath: 'Unresolved workspace root',
+                reason: 'workspace_root_missing',
                 executionEnvironmentMode: 'local',
             };
         }

@@ -5,6 +5,12 @@ export type ExecutionEnvironmentScope =
           kind: 'detached';
       }
     | {
+          kind: 'workspace_unresolved';
+          label: string;
+          workspaceFingerprint: string;
+          executionEnvironmentMode: 'local' | 'new_sandbox';
+      }
+    | {
           kind: 'workspace';
           label: string;
           absolutePath: string;
@@ -28,6 +34,10 @@ export interface ExecutionEnvironmentDraftState {
 export function getExecutionEnvironmentScopeKey(input: ExecutionEnvironmentScope): string {
     if (input.kind === 'detached') {
         return 'detached';
+    }
+
+    if (input.kind === 'workspace_unresolved') {
+        return `workspace-unresolved:${input.workspaceFingerprint}:${input.executionEnvironmentMode}`;
     }
 
     if (input.kind === 'sandbox') {
@@ -54,7 +64,7 @@ export function resolveExecutionEnvironmentDraftState(input: {
         };
     }
 
-    if (input.workspaceScope.kind === 'workspace') {
+    if (input.workspaceScope.kind === 'workspace' || input.workspaceScope.kind === 'workspace_unresolved') {
         return {
             scopeKey,
             draftMode: input.workspaceScope.executionEnvironmentMode,

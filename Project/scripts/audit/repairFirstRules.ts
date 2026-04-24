@@ -236,14 +236,45 @@ function collectHardSourceSizeFindings(rootDir: string): RepairFirstFinding[] {
 function collectKnownArchitectureFindings(rootDir: string): RepairFirstFinding[] {
     const findings: RepairFirstFinding[] = [];
     const planStore = readProjectFile(rootDir, 'electron/backend/persistence/stores/runtime/planStore.ts');
-    if (planStore && planStore.content.includes('class PlanStore')) {
+    const planInternals = readProjectFile(
+        rootDir,
+        'electron/backend/persistence/stores/runtime/plan/planStoreInternals.ts'
+    );
+    const planResearchMethods = readProjectFile(
+        rootDir,
+        'electron/backend/persistence/stores/runtime/plan/planStoreResearchMethods.ts'
+    );
+    const planRecoveryMethods = readProjectFile(
+        rootDir,
+        'electron/backend/persistence/stores/runtime/plan/planStoreRecoveryMethods.ts'
+    );
+    const planProjectionMethods = readProjectFile(
+        rootDir,
+        'electron/backend/persistence/stores/runtime/plan/planStoreProjectionMethods.ts'
+    );
+    const planStoreStillOwnsSplitConcerns =
+        planStore &&
+        (/^\s+async startResearchBatch\(/m.test(planStore.content) ||
+            /^\s+async createVariant\(/m.test(planStore.content) ||
+            /^\s+async getProjectionById\(/m.test(planStore.content) ||
+            /^\s+async markImplemented\(/m.test(planStore.content));
+    if (
+        planStore &&
+        (!planInternals ||
+            !planResearchMethods ||
+            !planRecoveryMethods ||
+            !planProjectionMethods ||
+            Boolean(planStoreStillOwnsSplitConcerns))
+    ) {
         findings.push(
             buildFinding({
                 id: 'p1-plan-store-split',
                 priority: 'P1',
                 title: 'planStore still owns too many planning persistence concerns',
                 file: planStore,
-                needle: 'class PlanStore',
+                needle: planStoreStillOwnsSplitConcerns
+                    ? 'async startResearchBatch'
+                    : 'plan/planStoreResearchMethods.ts',
                 message:
                     'Split plan creation, revisions, research workers, evidence, variants, follow-ups, projections, and lifecycle transitions into focused owners.',
             })

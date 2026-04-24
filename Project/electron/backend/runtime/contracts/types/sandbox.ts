@@ -20,6 +20,13 @@ export type ResolvedWorkspaceContext =
           kind: 'detached';
       }
     | {
+          kind: 'workspace_unresolved';
+          workspaceFingerprint: string;
+          label: string;
+          reason: 'workspace_root_missing';
+          executionEnvironmentMode: Extract<ExecutionEnvironmentMode, 'local' | 'new_sandbox'>;
+      }
+    | {
           kind: 'workspace';
           workspaceFingerprint: string;
           label: string;
@@ -38,6 +45,8 @@ export type ResolvedWorkspaceContext =
               absolutePath: string;
           };
       };
+
+export type ResolvedWorkspaceExecutionContext = Extract<ResolvedWorkspaceContext, { kind: 'workspace' | 'sandbox' }>;
 
 export interface SandboxListInput extends ProfileInput {
     workspaceFingerprint?: string;

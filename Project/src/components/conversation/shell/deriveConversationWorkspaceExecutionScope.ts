@@ -12,6 +12,12 @@ export type WorkspaceExecutionScope =
           kind: 'detached';
       }
     | {
+          kind: 'workspace_unresolved';
+          label: string;
+          workspaceFingerprint: string;
+          executionEnvironmentMode: Extract<ThreadListRecord['executionEnvironmentMode'], 'local' | 'new_sandbox'>;
+      }
+    | {
           kind: 'sandbox';
           label: string;
           absolutePath: string;
@@ -53,15 +59,27 @@ export function deriveConversationWorkspaceExecutionScope(input: {
             label: selectedManagedSandbox.label,
             absolutePath: selectedManagedSandbox.absolutePath,
             baseWorkspaceLabel: selectedWorkspaceRoot?.label ?? input.selectedThread.workspaceFingerprint,
-            baseWorkspacePath: selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
+            baseWorkspacePath: selectedWorkspaceRoot?.absolutePath ?? '',
             sandboxId: selectedManagedSandbox.id,
+        };
+    }
+
+    if (!selectedWorkspaceRoot) {
+        return {
+            kind: 'workspace_unresolved',
+            label: input.selectedThread.workspaceFingerprint,
+            workspaceFingerprint: input.selectedThread.workspaceFingerprint,
+            executionEnvironmentMode:
+                input.selectedThread.executionEnvironmentMode === 'sandbox'
+                    ? 'local'
+                    : input.selectedThread.executionEnvironmentMode,
         };
     }
 
     return {
         kind: 'workspace',
-        label: selectedWorkspaceRoot?.label ?? input.selectedThread.workspaceFingerprint,
-        absolutePath: selectedWorkspaceRoot?.absolutePath ?? 'Unresolved workspace root',
+        label: selectedWorkspaceRoot.label,
+        absolutePath: selectedWorkspaceRoot.absolutePath,
         executionEnvironmentMode:
             input.selectedThread.executionEnvironmentMode === 'sandbox'
                 ? 'local'

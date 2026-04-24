@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { encryptSecretPayload } from '@/app/backend/secrets/secretPayloadCodec';
 import {
     createCaller,
     getPersistence,
@@ -159,19 +160,40 @@ describe('runtime contracts: provider selection defaults', () => {
             );
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_payload, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
             )
-            .run('secret_openai_api_key', profileId, 'openai', 'api_key', 'openai-api-key-keep', now);
+            .run(
+                'secret_openai_api_key',
+                profileId,
+                'openai',
+                'api_key',
+                await encryptSecretPayload('openai-api-key-keep'),
+                now
+            );
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_payload, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
             )
-            .run('secret_openai_access_token', profileId, 'openai', 'access_token', 'legacy-access-token', now);
+            .run(
+                'secret_openai_access_token',
+                profileId,
+                'openai',
+                'access_token',
+                await encryptSecretPayload('legacy-access-token'),
+                now
+            );
         sqlite
             .prepare(
-                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_value, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+                `INSERT OR REPLACE INTO provider_secrets (id, profile_id, provider_id, secret_kind, secret_payload, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
             )
-            .run('secret_openai_refresh_token', profileId, 'openai', 'refresh_token', 'legacy-refresh-token', now);
+            .run(
+                'secret_openai_refresh_token',
+                profileId,
+                'openai',
+                'refresh_token',
+                await encryptSecretPayload('legacy-refresh-token'),
+                now
+            );
         sqlite
             .prepare(
                 `INSERT OR REPLACE INTO settings (id, profile_id, key, value_json, updated_at) VALUES (?, ?, ?, ?, ?)`

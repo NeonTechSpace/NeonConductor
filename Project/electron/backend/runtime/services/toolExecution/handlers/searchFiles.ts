@@ -1,16 +1,15 @@
+import { err, ok, type Result } from 'neverthrow';
 import { Buffer } from 'node:buffer';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import readline from 'node:readline';
 
-import { err, ok, type Result } from 'neverthrow';
-
 import { vendoredRipgrepResolver } from '@/app/backend/runtime/services/environment/vendoredRipgrepResolver';
+import { readBooleanArg, readNumberArg, readStringArg } from '@/app/backend/runtime/services/toolExecution/args';
 import {
-    readBooleanArg,
-    readNumberArg,
-    readStringArg,
-    resolveAbsoluteToolPath,
-} from '@/app/backend/runtime/services/toolExecution/args';
+    requireFileToolExecutionRoot,
+    type ToolHandlerExecutionContext,
+} from '@/app/backend/runtime/services/toolExecution/handlers/context';
+import { resolveCanonicalReadToolPath } from '@/app/backend/runtime/services/toolExecution/safety';
 import { createSearchFilesExecutionOutput } from '@/app/backend/runtime/services/toolExecution/toolOutputCompressionPolicy';
 import type {
     SearchFilesMatch,
@@ -101,7 +100,8 @@ function buildSearchMatches(event: RipgrepMatchEvent): SearchFilesMatch[] {
 }
 
 export async function searchFilesToolHandler(
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    context?: ToolHandlerExecutionContext
 ): Promise<Result<ToolExecutionOutput, ToolExecutionFailure>> {
     const query = readStringArg(args, 'query');
     if (!query) {
@@ -111,12 +111,24 @@ export async function searchFilesToolHandler(
         });
     }
 
-    const searchedPathResult = resolveAbsoluteToolPath(readStringArg(args, 'path'));
+    const executionRoot = requireFileToolExecutionRoot(context);
+    if (!executionRoot) {
+        return err({
+            code: 'execution_failed',
+            message: 'Tool "search_files" requires resolved execution-root authority.',
+        });
+    }
+
+    const pathArg = readStringArg(args, 'path');
+    const searchedPathResult = await resolveCanonicalReadToolPath({
+        executionRoot,
+        ...(pathArg ? { targetPath: pathArg } : {}),
+    });
     if (searchedPathResult.isErr()) {
         return err(searchedPathResult.error);
     }
 
-    const searchedPath = searchedPathResult.value;
+    const searchedPath = searchedPathResult.value.absolutePath;
     const caseSensitive = readBooleanArg(args, 'caseSensitive', false);
     const maxMatches = resolveMaxMatches(args);
     const ripgrep = await vendoredRipgrepResolver.resolve();
@@ -162,12 +174,15 @@ export async function searchFilesToolHandler(
 
             settled = true;
             lineReader.close();
-            resolve(
-                err({
-                    code: 'execution_failed',
-                    message,
-                })
+            const result: Result<ToolExecutionOutput, ToolExecutionFailure> = err({
+                code: 'execution_failed',
+                message,
+            });
+            result.match(
+                () => undefined,
+                () => undefined
             );
+            resolve(result);
         };
 
         const closeWithSuccess = () => {
@@ -185,12 +200,15 @@ export async function searchFilesToolHandler(
                 matches,
                 truncated,
             });
-            resolve(
-                ok({
-                    ...executionOutput.output,
-                    artifactCandidate: executionOutput.artifactCandidate,
-                })
+            const result: Result<ToolExecutionOutput, ToolExecutionFailure> = ok({
+                ...executionOutput.output,
+                artifactCandidate: executionOutput.artifactCandidate,
+            });
+            result.match(
+                () => undefined,
+                () => undefined
             );
+            resolve(result);
         };
 
         const lineReader = readline.createInterface({

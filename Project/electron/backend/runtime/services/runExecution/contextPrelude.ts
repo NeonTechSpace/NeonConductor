@@ -1,6 +1,15 @@
 import { sessionAttachedRuleStore, sessionAttachedSkillStore } from '@/app/backend/persistence/stores';
+import type {
+    PreparedContextModeOverrides,
+    PreparedContextProfileDefaults,
+    ResolvedWorkspaceExecutionContext,
+} from '@/app/backend/runtime/contracts';
 import type { WorkspaceEnvironmentSnapshot } from '@/app/backend/runtime/contracts/types/runtime';
-import { buildWorkspaceEnvironmentGuidance, workspaceEnvironmentService } from '@/app/backend/runtime/services/environment/service';
+import type { PreparedContextContributorSpec } from '@/app/backend/runtime/services/context/preparedContextLedger';
+import {
+    buildWorkspaceEnvironmentGuidance,
+    workspaceEnvironmentService,
+} from '@/app/backend/runtime/services/environment/service';
 import {
     resolveProjectInstructionDocuments,
     type ProjectInstructionDocument,
@@ -22,19 +31,9 @@ import {
 import type { RunContextMessage, RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
 import { getWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
-import type { PreparedContextContributorSpec } from '@/app/backend/runtime/services/context/preparedContextLedger';
-import type {
-    PreparedContextModeOverrides,
-    PreparedContextProfileDefaults,
-} from '@/app/backend/runtime/contracts';
 
 import { getRegistryPresetKeysForMode, type ModeDefinition } from '@/shared/contracts';
-import type {
-    RegistryPresetKey,
-    RulesetDefinition,
-    SkillfileDefinition,
-    TopLevelTab,
-} from '@/shared/contracts';
+import type { RegistryPresetKey, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/shared/contracts';
 
 type LoadedSkillfileDefinition = SkillfileDefinition & { bodyMarkdown: string };
 
@@ -70,12 +69,7 @@ function createContributorSpec(input: {
     };
 }
 
-function buildWorkspacePrelude(input: {
-    workspaceContext: Exclude<
-        Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>,
-        null | { kind: 'detached' }
-    >;
-}): RunContextMessage {
+function buildWorkspacePrelude(input: { workspaceContext: ResolvedWorkspaceExecutionContext }): RunContextMessage {
     if (input.workspaceContext.kind === 'sandbox') {
         return createSystemMessage(
             'Execution environment',
@@ -100,10 +94,7 @@ function buildWorkspacePrelude(input: {
 async function buildWorkspacePreludeMessages(input: {
     profileId: string;
     workspaceFingerprint: string;
-    workspaceContext: Exclude<
-        Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>,
-        null | { kind: 'detached' }
-    >;
+    workspaceContext: ResolvedWorkspaceExecutionContext;
     workspaceEnvironmentSnapshot?: WorkspaceEnvironmentSnapshot;
     runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
 }): Promise<RunContextMessage[]> {
@@ -342,7 +333,7 @@ function buildAgentPreludeContributorSpecs(input: {
 
 function extractPreludeLabel(message: RunContextMessage): string {
     const firstTextPart = message.parts.find((part) => part.type === 'text');
-    if (!firstTextPart || firstTextPart.type !== 'text') {
+    if (!firstTextPart) {
         return 'Prepared context';
     }
 
@@ -492,7 +483,7 @@ export async function buildSessionSystemPrelude(input: {
               })
             : null);
     const projectInstructions =
-        workspaceContext && workspaceContext.kind !== 'detached'
+        workspaceContext && (workspaceContext.kind === 'workspace' || workspaceContext.kind === 'sandbox')
             ? await resolveProjectInstructionDocuments({
                   workspaceRootPath: workspaceContext.absolutePath,
               })
@@ -585,7 +576,9 @@ export async function buildSessionSystemPrelude(input: {
     }
     const activeSkillfiles = activeSkillfilesResult.value;
     const workspacePrelude =
-        workspaceContext && workspaceContext.kind !== 'detached' && input.workspaceFingerprint
+        workspaceContext &&
+        (workspaceContext.kind === 'workspace' || workspaceContext.kind === 'sandbox') &&
+        input.workspaceFingerprint
             ? await buildWorkspacePreludeMessages({
                   profileId: input.profileId,
                   workspaceFingerprint: input.workspaceFingerprint,
@@ -599,26 +592,23 @@ export async function buildSessionSystemPrelude(input: {
               })
             : undefined;
 
-    return okRunExecution(
-        {
-            contributorSpecs: buildAgentPreludeContributorSpecs({
-                appGlobalInstructions: promptLayerSettings.appGlobalInstructions,
-                profileGlobalInstructions: promptLayerSettings.profileGlobalInstructions,
-                topLevelInstructions: promptLayerSettings.topLevelInstructions[input.topLevelTab],
-                mode: input.resolvedMode.mode,
-                rulesets: Array.from(activeRulesetsByAssetKey.values()),
-                projectInstructions,
-                skillfiles: activeSkillfiles,
-                ...(workspacePrelude ? { workspacePrelude } : {}),
-                ...(workspaceContext && workspaceContext.kind !== 'detached'
-                    ? { workspaceContextLabel: workspaceContext.label }
-                    : {}),
-            }),
-            preparedContextProfileDefaults: promptLayerSettings.preparedContextProfileDefaults,
-            modePromptLayerOverrides: input.resolvedMode.mode.promptLayerOverrides,
-            attachedSkillfiles: activeSkillfiles,
-            ...(workspaceContext ? { resolvedWorkspaceContext: workspaceContext } : {}),
-        }
-    );
+    return okRunExecution({
+        contributorSpecs: buildAgentPreludeContributorSpecs({
+            appGlobalInstructions: promptLayerSettings.appGlobalInstructions,
+            profileGlobalInstructions: promptLayerSettings.profileGlobalInstructions,
+            topLevelInstructions: promptLayerSettings.topLevelInstructions[input.topLevelTab],
+            mode: input.resolvedMode.mode,
+            rulesets: Array.from(activeRulesetsByAssetKey.values()),
+            projectInstructions,
+            skillfiles: activeSkillfiles,
+            ...(workspacePrelude ? { workspacePrelude } : {}),
+            ...(workspaceContext && (workspaceContext.kind === 'workspace' || workspaceContext.kind === 'sandbox')
+                ? { workspaceContextLabel: workspaceContext.label }
+                : {}),
+        }),
+        preparedContextProfileDefaults: promptLayerSettings.preparedContextProfileDefaults,
+        modePromptLayerOverrides: input.resolvedMode.mode.promptLayerOverrides,
+        attachedSkillfiles: activeSkillfiles,
+        ...(workspaceContext ? { resolvedWorkspaceContext: workspaceContext } : {}),
+    });
 }
-

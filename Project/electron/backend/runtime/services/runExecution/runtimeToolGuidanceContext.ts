@@ -1,6 +1,6 @@
-import { resolveSupportedPlatform } from '@/app/backend/runtime/services/environment/workspaceCommandAvailabilityService';
 import { workspaceEnvironmentService } from '@/app/backend/runtime/services/environment/service';
 import { vendoredRipgrepResolver } from '@/app/backend/runtime/services/environment/vendoredRipgrepResolver';
+import { resolveSupportedPlatform } from '@/app/backend/runtime/services/environment/workspaceCommandAvailabilityService';
 import { workspaceShellResolver } from '@/app/backend/runtime/services/environment/workspaceShellResolver';
 import type { RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
 import { getWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
@@ -52,7 +52,11 @@ async function buildRuntimeToolGuidanceContext(input: {
     workspaceContext?: ResolvedWorkspaceContext;
 }): Promise<RuntimeToolGuidanceContext> {
     let workspaceEnvironmentSnapshot: RuntimeToolGuidanceContext['workspaceEnvironmentSnapshot'];
-    if (input.workspaceFingerprint && input.workspaceContext && input.workspaceContext.kind !== 'detached') {
+    if (
+        input.workspaceFingerprint &&
+        input.workspaceContext &&
+        (input.workspaceContext.kind === 'workspace' || input.workspaceContext.kind === 'sandbox')
+    ) {
         const workspacePreference = await getWorkspacePreference(input.profileId, input.workspaceFingerprint);
         const inspectionResult = await workspaceEnvironmentService.inspectWorkspaceEnvironment({
             workspaceRootPath: input.workspaceContext.absolutePath,

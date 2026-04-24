@@ -1,5 +1,6 @@
 import { providerSecretStore } from '@/app/backend/persistence/stores';
 import type { ProviderSecretKind, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import { getSecretPayloadCodecAvailability, type SecretPayloadCodec } from '@/app/backend/secrets/secretPayloadCodec';
 import { appLog } from '@/app/main/logging';
 
 export interface ProviderSecretStoreBackend {
@@ -14,8 +15,9 @@ export interface ProviderSecretStoreBackend {
 }
 
 export interface SecretStoreInfo {
-    backend: 'database' | 'memory';
+    backend: 'encrypted-database' | 'memory';
     available: boolean;
+    payloadCodec?: SecretPayloadCodec['backend'];
 }
 
 function buildSecretMapKey(profileId: string, providerId: RuntimeProviderId, secretKind: ProviderSecretKind): string {
@@ -99,15 +101,25 @@ export function initializeSecretStore(nextStore?: ProviderSecretStoreBackend): P
     }
 
     store = new DatabaseSecretStore();
-    storeInfo = {
-        backend: 'database',
-        available: true,
-    };
-    appLog.info({
-        tag: 'secrets.store',
-        message: 'Initialized database-backed secret store.',
-        backend: storeInfo.backend,
+    void getSecretPayloadCodecAvailability().then((availability) => {
+        storeInfo = {
+            backend: 'encrypted-database',
+            available: availability.available,
+            payloadCodec: availability.backend,
+        };
+        appLog.info({
+            tag: 'secrets.store',
+            message: availability.available
+                ? 'Initialized encrypted database-backed secret store.'
+                : 'Encrypted database-backed secret store is unavailable.',
+            backend: storeInfo.backend,
+            payloadCodec: storeInfo.payloadCodec,
+        });
     });
+    storeInfo = {
+        backend: 'encrypted-database',
+        available: false,
+    };
 
     return store;
 }

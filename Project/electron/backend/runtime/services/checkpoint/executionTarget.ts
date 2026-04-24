@@ -1,7 +1,12 @@
 import path from 'node:path';
 
 import { sessionStore, threadStore } from '@/app/backend/persistence/stores';
-import type { CheckpointRollbackPreview, EntityId, ResolvedWorkspaceContext } from '@/app/backend/runtime/contracts';
+import type {
+    CheckpointRollbackPreview,
+    EntityId,
+    ResolvedWorkspaceContext,
+    ResolvedWorkspaceExecutionContext,
+} from '@/app/backend/runtime/contracts';
 import { isEntityId } from '@/app/backend/runtime/contracts';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
@@ -14,8 +19,6 @@ export interface CheckpointExecutionTarget {
     sandboxId?: EntityId<'sb'>;
 }
 
-const unresolvedWorkspacePath = 'Unresolved workspace root';
-
 function toPathKey(absolutePath: string): string {
     return process.platform === 'win32' ? absolutePath.toLowerCase() : absolutePath;
 }
@@ -26,8 +29,8 @@ export function normalizeExecutionTargetPath(absolutePath: string): string {
 
 export function isResolvedWorkspaceExecutionContext(
     workspaceContext: ResolvedWorkspaceContext
-): workspaceContext is Extract<ResolvedWorkspaceContext, { kind: 'workspace' | 'sandbox' }> {
-    return workspaceContext.kind !== 'detached' && workspaceContext.absolutePath !== unresolvedWorkspacePath;
+): workspaceContext is ResolvedWorkspaceExecutionContext {
+    return workspaceContext.kind === 'workspace' || workspaceContext.kind === 'sandbox';
 }
 
 export function resolveCheckpointExecutionTarget(

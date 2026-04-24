@@ -1,4 +1,3 @@
-import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
 import type {
@@ -96,18 +95,29 @@ function blockedValidation(input: {
     };
 }
 
-function allowedValidation(normalizedUrl: string, resolvedAddresses: string[]): DevBrowserValidation {
+function allowedValidation(input: {
+    normalizedUrl: string;
+    host: string;
+    port?: number;
+    resolvedAddresses: string[];
+}): DevBrowserValidation {
     return {
         status: 'allowed',
-        normalizedUrl,
-        resolvedAddresses,
+        normalizedUrl: input.normalizedUrl,
+        binding: {
+            normalizedUrl: input.normalizedUrl,
+            host: input.host,
+            ...(input.port !== undefined ? { port: input.port } : {}),
+            resolvedAddresses: input.resolvedAddresses,
+        },
+        resolvedAddresses: input.resolvedAddresses,
     };
 }
 
-export async function validateLocalDevBrowserTarget(input: {
+export function validateLocalDevBrowserTarget(input: {
     target: DevBrowserTargetDraft;
     source: DevBrowserValidationSource;
-}): Promise<DevBrowserValidation> {
+}): DevBrowserValidation {
     const attemptedPath = normalizePath(input.target.path);
     let normalizedUrl: string;
     let url: URL;
@@ -161,20 +171,14 @@ export async function validateLocalDevBrowserTarget(input: {
     } else if (isIP(resolvedHostname) !== 0) {
         resolvedAddresses.add(resolvedHostname);
     } else {
-        try {
-            const records = await lookup(resolvedHostname, { all: true, verbatim: true });
-            for (const record of records) {
-                resolvedAddresses.add(record.address);
-            }
-        } catch {
-            return blockedValidation({
-                code: 'resolution_failed',
-                message: 'The dev browser target host could not be resolved.',
-                source: input.source,
-                normalizedUrl,
-                attemptedUrl: normalizedUrl,
-            });
-        }
+        return blockedValidation({
+            code: 'dns_hostname_not_pinned',
+            message:
+                'The dev browser blocks DNS hostnames unless they can be safely pinned. Use localhost or an explicit local/private IP address.',
+            source: input.source,
+            normalizedUrl,
+            attemptedUrl: normalizedUrl,
+        });
     }
 
     const addresses = Array.from(resolvedAddresses).sort();
@@ -210,7 +214,12 @@ export async function validateLocalDevBrowserTarget(input: {
         });
     }
 
-    return allowedValidation(normalizedUrl, addresses);
+    return allowedValidation({
+        normalizedUrl,
+        host: resolvedHostname,
+        ...(url.port ? { port: Number.parseInt(url.port, 10) } : {}),
+        resolvedAddresses: addresses,
+    });
 }
 
 export function normalizeDevBrowserTargetDraft(target: DevBrowserTargetDraft): DevBrowserTargetDraft {

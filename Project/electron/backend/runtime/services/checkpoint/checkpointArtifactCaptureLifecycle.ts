@@ -122,8 +122,11 @@ export async function captureRunDiffArtifact(input: {
                   workspaceLabel: input.workspaceContext.label,
               })
             : unsupportedArtifact({
-                  workspaceRootPath: 'Unresolved workspace root',
-                  workspaceLabel: 'Detached workspace',
+                  workspaceRootPath: '',
+                  workspaceLabel:
+                      input.workspaceContext.kind === 'workspace_unresolved'
+                          ? input.workspaceContext.label
+                          : 'Detached workspace',
                   reason: 'workspace_unresolved',
                   detail: 'Workspace root could not be resolved for this run.',
               });

@@ -1,3 +1,4 @@
+import type { ResolvedExecutionRoot } from '@/app/backend/runtime/contracts';
 import type { ExecuteCodeApprovalContext } from '@/app/backend/runtime/services/toolExecution/executeCodeApproval';
 import type { ShellApprovalContext } from '@/app/backend/runtime/services/toolExecution/shellApproval';
 import type {
@@ -12,6 +13,11 @@ export interface ToolResolvedWorkspacePath {
     workspaceRootPath: string;
 }
 
+export interface ToolResolvedExecutionPath {
+    absolutePath: string;
+    executionRootPath: string;
+}
+
 export interface ToolRequestContext {
     at: string;
     args: Record<string, unknown>;
@@ -19,10 +25,13 @@ export interface ToolRequestContext {
     definition: ResolvedToolDefinition;
     shellApprovalContext: ShellApprovalContext | null;
     executeCodeApprovalContext?: ExecuteCodeApprovalContext | null;
+    executionRoot?: ResolvedExecutionRoot;
+    executionRootRequirement?: 'not_required' | 'resolved' | 'detached_scope' | 'unresolved';
+    resolvedExecutionPath?: ToolResolvedExecutionPath;
     workspaceFingerprint?: string;
     workspaceLabel?: string;
     workspaceRootPath?: string;
-    workspaceRequirement: 'not_required' | 'resolved' | 'detached_scope' | 'workspace_unresolved';
+    workspaceRequirement?: 'not_required' | 'resolved' | 'detached_scope' | 'workspace_unresolved';
     resolvedWorkspacePath?: ToolResolvedWorkspacePath;
 }
 
