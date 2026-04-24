@@ -22,6 +22,7 @@ export interface MemoryRetrievalStageInput {
 }
 
 export type MemoryRetrievalTier = 'exact' | 'structured' | 'derived' | 'graph' | 'semantic' | 'prompt';
+export type MemoryRetrievalTemporalIntent = 'current' | 'history' | 'conflict';
 export type MemoryRetrievalDecisionFamily =
     | 'exact_run'
     | 'exact_thread'
@@ -140,7 +141,7 @@ export interface MemoryRetrievalEvidenceStageResult {
 export interface MemoryRetrievalSelectionStageInput {
     decisions: RankedMemoryRetrievalDecision[];
     derivedSummaryByMemoryId: Map<string, MemoryDerivedSummary>;
-    temporalIntent: 'current' | 'history' | 'conflict';
+    temporalIntent: MemoryRetrievalTemporalIntent;
 }
 
 export interface MemoryRetrievalSelectionStageResult {
@@ -164,9 +165,19 @@ export interface MemoryRetrievalGraphStageInput {
     activeMemories: MemoryRecord[];
     decisions: RankedMemoryRetrievalDecision[];
     derivedSummaryByMemoryId: Map<string, MemoryDerivedSummary>;
-    temporalIntent: 'current' | 'history' | 'conflict';
+    temporalIntent: MemoryRetrievalTemporalIntent;
 }
 
 export interface MemoryRetrievalGraphStageResult {
     graphCandidates: MemoryRetrievalGraphCandidate[];
+}
+
+export interface MemoryRetrievalQualityRerankStageInput {
+    decisions: RankedMemoryRetrievalDecision[];
+    derivedSummaryByMemoryId: Map<string, MemoryDerivedSummary>;
+    temporalIntent: MemoryRetrievalTemporalIntent;
+}
+
+export interface MemoryRetrievalQualityRerankStageResult {
+    decisions: RankedMemoryRetrievalDecision[];
 }

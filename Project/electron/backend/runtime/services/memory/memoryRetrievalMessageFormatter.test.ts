@@ -57,6 +57,7 @@ describe('formatRetrievedMemoryMessage', () => {
         }
 
         expect(formatted.injectedTextLength).toBeLessThanOrEqual(MAX_RETRIEVED_MEMORY_TEXT_LENGTH);
+        expect(formatted.includedMemoryIds).toEqual(['mem_1', 'mem_2', 'mem_3']);
         const text = JSON.stringify(formatted.message);
         expect(text.includes('Memory 1')).toBe(true);
         expect(text.includes('Memory 5')).toBe(false);

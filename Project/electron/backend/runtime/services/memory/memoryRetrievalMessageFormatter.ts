@@ -1,9 +1,8 @@
-import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
-import type { RankedMemoryRetrievalDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
-import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
-
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import type { RetrievedMemoryRecord } from '@/app/backend/runtime/contracts';
+import type { RankedMemoryRetrievalDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
+import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
+import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 
 export const MAX_RETRIEVED_MEMORY_TEXT_LENGTH = 3_500;
 export const MAX_SELECTED_RETRIEVED_MEMORY_RECORDS = 4;
@@ -24,9 +23,6 @@ function formatMemoryBody(memory: MemoryRecord): string {
     const boundedLength = MEMORY_ENTRY_TEXT_LIMIT;
     if (candidate.length <= boundedLength) {
         return candidate;
-    }
-    if (boundedLength <= 3) {
-        return candidate.slice(0, boundedLength);
     }
 
     return `${candidate.slice(0, boundedLength - 3)}...`;
@@ -104,8 +100,10 @@ export function formatRetrievedMemoryMessage(
 ): {
     message: RunContextMessage;
     injectedTextLength: number;
+    includedMemoryIds: string[];
 } | null {
     const lines: string[] = ['Retrieved memory', ''];
+    const includedMemoryIds: string[] = [];
 
     for (const record of records) {
         const memory = memoriesById.get(record.memoryId);
@@ -125,6 +123,7 @@ export function formatRetrievedMemoryMessage(
         }
 
         lines.push(entryText);
+        includedMemoryIds.push(record.memoryId);
     }
 
     const text = lines.join('\n').trim();
@@ -135,5 +134,6 @@ export function formatRetrievedMemoryMessage(
     return {
         message: createTextMessage('system', text),
         injectedTextLength: text.length,
+        includedMemoryIds,
     };
 }

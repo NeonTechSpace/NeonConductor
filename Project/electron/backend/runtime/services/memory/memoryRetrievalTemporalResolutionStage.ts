@@ -1,9 +1,10 @@
-import { buildRankedRetrievedMemoryDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 import type {
+    MemoryRetrievalTemporalIntent,
     MemoryRetrievalTemporalResolutionStageInput,
     MemoryRetrievalTemporalResolutionStageResult,
     RankedMemoryRetrievalDecision,
 } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
+import { buildRankedRetrievedMemoryDecision } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
 
 const HISTORY_PROMPT_TERMS = ['before', 'change', 'changed', 'corrected', 'earlier', 'history', 'old', 'older', 'previous', 'prior', 'replaced'];
 const CONFLICT_PROMPT_TERMS = ['both', 'conflict', 'contradiction', 'contradictory', 'disagree', 'disagreement', 'inconsistent'];
@@ -13,7 +14,7 @@ function normalizePrompt(value: string): string {
 }
 
 function readTemporalIntent(prompt: string): MemoryRetrievalTemporalResolutionStageInput['prompt'] extends string
-    ? 'current' | 'history' | 'conflict'
+    ? MemoryRetrievalTemporalIntent
     : never {
     const normalizedPrompt = normalizePrompt(prompt);
     if (CONFLICT_PROMPT_TERMS.some((term) => normalizedPrompt.includes(term))) {
@@ -48,7 +49,7 @@ function buildPromotionDecision(input: {
 
 export function resolveTemporalMemoryCandidates(
     input: MemoryRetrievalTemporalResolutionStageInput
-): MemoryRetrievalTemporalResolutionStageResult & { temporalIntent: 'current' | 'history' | 'conflict' } {
+): MemoryRetrievalTemporalResolutionStageResult & { temporalIntent: MemoryRetrievalTemporalIntent } {
     const temporalIntent = readTemporalIntent(input.prompt);
     const activeMemoriesById = new Map(input.activeMemories.map((memory) => [memory.id, memory] as const));
     const decisionsByMemoryId = new Map(input.decisions.map((decision) => [decision.memory.id, decision] as const));
@@ -62,8 +63,8 @@ export function resolveTemporalMemoryCandidates(
 
         if (derivedSummary.conflictingCurrentMemoryIds.length > 0) {
             for (const conflictingMemoryId of derivedSummary.conflictingCurrentMemoryIds) {
-                if (decisionsByMemoryId.has(conflictingMemoryId)) {
-                    const existingDecision = decisionsByMemoryId.get(conflictingMemoryId)!;
+                const existingDecision = decisionsByMemoryId.get(conflictingMemoryId);
+                if (existingDecision) {
                     if (!existingDecision.selectionExemptionReason) {
                         existingDecision.selectionExemptionReason = 'conflict';
                     }

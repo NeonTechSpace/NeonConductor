@@ -1,3 +1,4 @@
+import type { MemoryDerivedSummary, RetrievedMemorySummary } from '@/app/backend/runtime/contracts';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { assembleMemoryRetrievalResult } from '@/app/backend/runtime/services/memory/memoryRetrievalAssemblyStage';
 import { collectMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalCandidateCollector';
@@ -6,14 +7,13 @@ import { loadMemoryRetrievalEvidence } from '@/app/backend/runtime/services/memo
 import { expandMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalExpansionStage';
 import { collectGraphExpandedMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalGraphExpansionStage';
 import type { MemoryRetrievalStageInput } from '@/app/backend/runtime/services/memory/memoryRetrievalPipelineTypes';
+import { rerankMemoryRetrievalQuality } from '@/app/backend/runtime/services/memory/memoryRetrievalQualityRerankStage';
 import { rankRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalRankingPolicy';
-import { collectSemanticMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSemanticStage';
 import { selectRetrievedMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSelectionStage';
+import { collectSemanticMemoryRetrievalCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalSemanticStage';
 import { resolveTemporalMemoryCandidates } from '@/app/backend/runtime/services/memory/memoryRetrievalTemporalResolutionStage';
-import { appLog } from '@/app/main/logging';
-
-import type { RetrievedMemorySummary } from '@/app/backend/runtime/contracts';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
+import { appLog } from '@/app/main/logging';
 
 export type RetrieveRelevantMemoryInput = MemoryRetrievalStageInput;
 
@@ -53,7 +53,7 @@ export class MemoryRetrievalService {
         );
         const initialDerivedSummaryByMemoryId = initialDerivedSummaryResult.isOk()
             ? initialDerivedSummaryResult.value
-            : new Map();
+            : new Map<string, MemoryDerivedSummary>();
         if (initialDerivedSummaryResult.isErr()) {
             appLog.warn({
                 tag: 'memory.retrieval.temporal_resolution',
@@ -107,8 +107,13 @@ export class MemoryRetrievalService {
                 detail: finalDerivedSummaryResult.error.message,
             });
         }
-        const selectedCandidates = selectRetrievedMemoryCandidates({
+        const qualityRerankedCandidates = rerankMemoryRetrievalQuality({
             decisions: resolvedCandidates.decisions,
+            derivedSummaryByMemoryId,
+            temporalIntent: resolvedCandidates.temporalIntent,
+        });
+        const selectedCandidates = selectRetrievedMemoryCandidates({
+            decisions: qualityRerankedCandidates.decisions,
             derivedSummaryByMemoryId,
             temporalIntent: resolvedCandidates.temporalIntent,
         }).decisions;

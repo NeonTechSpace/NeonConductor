@@ -287,6 +287,40 @@ describe('memory retrieval stages', () => {
         }
     });
 
+    it('keeps assembled summaries aligned with records that actually fit the injected message', async () => {
+        const overflowingDecision = createRankedDecision({
+            memory: createMemoryRecord({
+                id: requireEntityId('mem_overflowing_title', 'mem', 'Expected overflowing memory id.'),
+                title: 'Overflow '.repeat(520),
+                bodyMarkdown: 'This entry should not fit because the title alone exhausts the retrieval budget.',
+                scopeKind: 'global',
+            }),
+            matchReason: 'prompt',
+            tier: 'prompt',
+        });
+        const fittingDecision = createRankedDecision({
+            memory: createMemoryRecord({
+                id: requireEntityId('mem_fitting_summary', 'mem', 'Expected fitting memory id.'),
+                title: 'Fitting memory',
+                bodyMarkdown: 'This entry fits the retrieved-memory budget.',
+                scopeKind: 'global',
+            }),
+            matchReason: 'prompt',
+            tier: 'prompt',
+        });
+
+        const assembled = await assembleMemoryRetrievalResult({
+            profileId,
+            decisions: [overflowingDecision, fittingDecision],
+            evidenceByMemoryId: new Map(),
+            derivedSummaryByMemoryId: new Map(),
+        });
+
+        expect(assembled.records.map((record) => record.memoryId)).toEqual(['mem_fitting_summary']);
+        expect(assembled.summary?.records.map((record) => record.memoryId)).toEqual(['mem_fitting_summary']);
+        expect(JSON.stringify(assembled.messages)).not.toContain('mem_overflowing_title');
+    });
+
     it('fails soft when the evidence-loading stage cannot read evidence', async () => {
         const evidenceSpy = vi
             .spyOn(memoryEvidenceStore, 'listByMemoryIds')
