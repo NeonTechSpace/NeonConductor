@@ -5,12 +5,14 @@ import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { MemoryRecord } from '@/app/backend/persistence/types';
 import {
     memoryCreatedByKinds,
+    memoryRetentionClasses,
     memoryScopeKinds,
     memoryStates,
     memoryTypes,
     type EntityId,
     type MemoryCanonicalBody,
     type MemoryCreatedByKind,
+    type MemoryRetentionClass,
     type MemoryRevisionReason,
     type MemoryScopeKind,
     type MemoryState,
@@ -22,6 +24,10 @@ import {
     normalizeMemoryCanonicalBody,
     renderMemoryCanonicalBodyMarkdown,
 } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
+import {
+    defaultRetentionSupersedenceRationale,
+    resolveMemoryRetention,
+} from '@/app/backend/runtime/services/memory/memoryRetentionPolicy';
 
 import type { Kysely, Transaction } from 'kysely';
 
@@ -42,6 +48,10 @@ function mapMemoryRecord(row: {
     body_markdown_projection: string;
     summary_text: string | null;
     metadata_json: string;
+    retention_class: string;
+    retention_expires_at: string | null;
+    retention_pinned_at: string | null;
+    retention_supersedence_rationale: string | null;
     temporal_subject_key: string | null;
     superseded_by_memory_id: string | null;
     created_at: string;
@@ -58,6 +68,16 @@ function mapMemoryRecord(row: {
         canonicalBody: normalizeMemoryCanonicalBody(parseJsonRecord(row.canonical_body_json) as unknown as MemoryCanonicalBody),
         bodyMarkdown: row.body_markdown_projection,
         metadata: parseJsonRecord(row.metadata_json),
+        memoryRetentionClass: parseEnumValue(
+            row.retention_class,
+            'memory_records.retention_class',
+            memoryRetentionClasses
+        ),
+        ...(row.retention_expires_at ? { retentionExpiresAt: row.retention_expires_at } : {}),
+        ...(row.retention_pinned_at ? { retentionPinnedAt: row.retention_pinned_at } : {}),
+        ...(row.retention_supersedence_rationale
+            ? { retentionSupersedenceRationale: row.retention_supersedence_rationale }
+            : {}),
         ...(row.workspace_fingerprint ? { workspaceFingerprint: row.workspace_fingerprint } : {}),
         ...(row.thread_id ? { threadId: parseEntityId(row.thread_id, 'memory_records.thread_id', 'thr') } : {}),
         ...(row.run_id ? { runId: parseEntityId(row.run_id, 'memory_records.run_id', 'run') } : {}),
@@ -89,6 +109,10 @@ interface CreateMemoryRecordInput {
     bodyMarkdownProjection?: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
+    memoryRetentionClass?: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
+    retentionSupersedenceRationale?: string;
     workspaceFingerprint?: string;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;
@@ -104,6 +128,10 @@ interface UpdateMemoryEditableFieldsInput {
     bodyMarkdownProjection?: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
+    memoryRetentionClass?: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
+    retentionSupersedenceRationale?: string;
 }
 
 function resolveStoredBody(input: {
@@ -135,6 +163,14 @@ export class MemoryStore {
     ): Promise<MemoryRecord> {
         const timestamp = options?.timestamp ?? nowIso();
         const storedBody = resolveStoredBody(input);
+        const retention = resolveMemoryRetention({
+            scopeKind: input.scopeKind,
+            createdByKind: input.createdByKind,
+            ...(input.memoryRetentionClass ? { memoryRetentionClass: input.memoryRetentionClass } : {}),
+            ...(input.retentionExpiresAt ? { retentionExpiresAt: input.retentionExpiresAt } : {}),
+            ...(input.retentionPinnedAt ? { retentionPinnedAt: input.retentionPinnedAt } : {}),
+            now: timestamp,
+        });
         const inserted = await db
             .insertInto('memory_records')
             .values({
@@ -152,6 +188,10 @@ export class MemoryStore {
                 body_markdown_projection: storedBody.bodyMarkdownProjection,
                 summary_text: input.summaryText ?? null,
                 metadata_json: JSON.stringify(input.metadata ?? {}),
+                retention_class: retention.memoryRetentionClass,
+                retention_expires_at: retention.retentionExpiresAt ?? null,
+                retention_pinned_at: retention.retentionPinnedAt ?? null,
+                retention_supersedence_rationale: input.retentionSupersedenceRationale ?? null,
                 temporal_subject_key: input.temporalSubjectKey ?? null,
                 superseded_by_memory_id: null,
                 created_at: timestamp,
@@ -197,6 +237,7 @@ export class MemoryStore {
         memoryType?: MemoryType;
         scopeKind?: MemoryScopeKind;
         state?: MemoryState;
+        memoryRetentionClass?: MemoryRetentionClass;
         workspaceFingerprint?: string;
         threadId?: EntityId<'thr'>;
         runId?: EntityId<'run'>;
@@ -211,6 +252,9 @@ export class MemoryStore {
         }
         if (input.state) {
             query = query.where('state', '=', input.state);
+        }
+        if (input.memoryRetentionClass) {
+            query = query.where('retention_class', '=', input.memoryRetentionClass);
         }
         if (input.workspaceFingerprint) {
             query = query.where('workspace_fingerprint', '=', input.workspaceFingerprint);
@@ -263,6 +307,12 @@ export class MemoryStore {
                 body_markdown_projection: storedBody.bodyMarkdownProjection,
                 summary_text: input.summaryText ?? null,
                 metadata_json: JSON.stringify(input.metadata ?? {}),
+                ...(input.memoryRetentionClass ? { retention_class: input.memoryRetentionClass } : {}),
+                ...(input.retentionExpiresAt !== undefined ? { retention_expires_at: input.retentionExpiresAt } : {}),
+                ...(input.retentionPinnedAt !== undefined ? { retention_pinned_at: input.retentionPinnedAt } : {}),
+                ...(input.retentionSupersedenceRationale !== undefined
+                    ? { retention_supersedence_rationale: input.retentionSupersedenceRationale }
+                    : {}),
                 updated_at: nowIso(),
             })
             .where('profile_id', '=', input.profileId)
@@ -277,6 +327,7 @@ export class MemoryStore {
         profileId: string;
         previousMemoryId: EntityId<'mem'>;
         revisionReason: MemoryRevisionReason;
+        retentionSupersedenceRationale?: string;
         replacement: CreateMemoryRecordInput;
     }): Promise<{ previous: MemoryRecord; replacement: MemoryRecord } | null> {
         return this.getDb().transaction().execute(async (transaction) =>
@@ -290,6 +341,7 @@ export class MemoryStore {
             profileId: string;
             previousMemoryId: EntityId<'mem'>;
             revisionReason: MemoryRevisionReason;
+            retentionSupersedenceRationale?: string;
             replacement: CreateMemoryRecordInput;
         }
     ): Promise<{ previous: MemoryRecord; replacement: MemoryRecord } | null> {
@@ -316,6 +368,9 @@ export class MemoryStore {
             .set({
                 state: 'superseded',
                 superseded_by_memory_id: replacementId,
+                retention_supersedence_rationale:
+                    input.retentionSupersedenceRationale ??
+                    defaultRetentionSupersedenceRationale(input.revisionReason),
                 updated_at: timestamp,
             })
             .where('profile_id', '=', input.profileId)

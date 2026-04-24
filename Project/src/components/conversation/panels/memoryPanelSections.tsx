@@ -1,6 +1,6 @@
+import type { MemoryPanelController, MemoryPanelViewModel } from '@/web/components/conversation/panels/memoryPanel.types';
 import { Button } from '@/web/components/ui/button';
 
-import type { MemoryPanelController, MemoryPanelViewModel } from '@/web/components/conversation/panels/memoryPanel.types';
 import type { ProjectedMemoryRecord, RetrievedMemoryRecord } from '@/shared/contracts';
 
 function SyncStateBadge({ syncState }: { syncState: ProjectedMemoryRecord['syncState'] }) {
@@ -36,10 +36,14 @@ function ScopeBadge({ label }: { label: string }) {
     );
 }
 
+function formatRetentionTimestamp(timestamp: string): string {
+    return new Date(timestamp).toLocaleString();
+}
+
 function DerivedSummaryBadges({
     derivedSummary,
 }: {
-    derivedSummary?: RetrievedMemoryRecord['derivedSummary'] | ProjectedMemoryRecord['derivedSummary'];
+    derivedSummary?: RetrievedMemoryRecord['derivedSummary'];
 }) {
     if (!derivedSummary) {
         return null;
@@ -64,7 +68,7 @@ function MemoryProjectionRoots({ viewModel }: { viewModel: MemoryPanelViewModel 
             <div className='border-border bg-background/60 rounded-xl border px-3 py-3'>
                 <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Global root</p>
                 <p className='text-muted-foreground mt-1 text-xs break-all'>
-                    {viewModel.projectionRoots.globalMemoryRoot ?? 'Loading…'}
+                    {viewModel.projectionRoots.globalMemoryRoot}
                 </p>
             </div>
             <div className='border-border bg-background/60 rounded-xl border px-3 py-3'>
@@ -178,7 +182,9 @@ function ProjectedMemoryCard({
                 <SyncStateBadge syncState={projectedMemory.syncState} />
                 <ScopeBadge label={projectedMemory.memory.memoryType} />
                 <ScopeBadge label={projectedMemory.memory.scopeKind} />
+                <ScopeBadge label={projectedMemory.memory.memoryRetentionClass} />
                 <ScopeBadge label={projectedMemory.projectionTarget} />
+                {projectedMemory.memory.retentionPinnedAt ? <ScopeBadge label='pinned' /> : null}
                 {projectedMemory.memory.createdByKind === 'system' ? <ScopeBadge label='system' /> : null}
                 {controller.viewModel.retrievedMemoryIdSet.has(projectedMemory.memory.id) ? (
                     <ScopeBadge label='retrieved' />
@@ -190,6 +196,21 @@ function ProjectedMemoryCard({
                 {consolidationMetadata ? <ScopeBadge label='consolidated' /> : null}
             </div>
             <p className='text-muted-foreground mt-1 text-xs'>{projectedMemory.memory.summaryText ?? projectedMemory.memory.id}</p>
+            {projectedMemory.memory.retentionExpiresAt ? (
+                <p className='text-muted-foreground mt-1 text-[11px]'>
+                    Expires {formatRetentionTimestamp(projectedMemory.memory.retentionExpiresAt)}
+                </p>
+            ) : null}
+            {projectedMemory.memory.retentionPinnedAt ? (
+                <p className='text-muted-foreground mt-1 text-[11px]'>
+                    Pinned {formatRetentionTimestamp(projectedMemory.memory.retentionPinnedAt)}
+                </p>
+            ) : null}
+            {projectedMemory.memory.retentionSupersedenceRationale ? (
+                <p className='text-muted-foreground mt-1 text-[11px]'>
+                    Supersedence: {projectedMemory.memory.retentionSupersedenceRationale}
+                </p>
+            ) : null}
             {runtimeMetadata ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>
                     Automatic memory from {runtimeMetadata.runStatus === 'completed' ? 'completed' : 'failed'} run{' '}
@@ -245,6 +266,7 @@ function ProposalCard({
                 <ScopeBadge label={proposal.reviewAction} />
                 <ScopeBadge label={proposal.memory.memoryType} />
                 <ScopeBadge label={proposal.memory.scopeKind} />
+                <ScopeBadge label={proposal.memory.memoryRetentionClass} />
             </div>
             <p className='text-muted-foreground mt-1 text-xs'>{proposal.proposedSummaryText ?? proposal.memory.id}</p>
             <p className='text-muted-foreground mt-2 text-[11px] break-all'>{proposal.absolutePath}</p>

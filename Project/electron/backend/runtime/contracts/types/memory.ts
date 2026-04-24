@@ -1,5 +1,6 @@
 import type {
     MemoryCreatedByKind,
+    MemoryRetentionClass,
     MemoryScopeKind,
     MemoryState,
     MemoryType,
@@ -21,6 +22,10 @@ export interface MemoryRecord {
     bodyMarkdown: string;
     summaryText?: string;
     metadata: Record<string, unknown>;
+    memoryRetentionClass: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
+    retentionSupersedenceRationale?: string;
     workspaceFingerprint?: string;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;
@@ -273,6 +278,9 @@ export interface MemoryCreateInput extends ProfileInput {
     bodyMarkdown: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
+    memoryRetentionClass?: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
     workspaceFingerprint?: string;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;
@@ -284,6 +292,7 @@ export interface MemoryListInput extends ProfileInput {
     memoryType?: MemoryType;
     scopeKind?: MemoryScopeKind;
     state?: MemoryState;
+    memoryRetentionClass?: MemoryRetentionClass;
     workspaceFingerprint?: string;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;
@@ -302,6 +311,10 @@ export interface MemorySupersedeInput extends MemoryByIdInput {
     bodyMarkdown: string;
     summaryText?: string;
     metadata?: Record<string, unknown>;
+    memoryRetentionClass?: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
+    retentionSupersedenceRationale?: string;
     revisionReason: MemoryRevisionReason;
     evidence?: MemoryEvidenceCreateInput[];
 }

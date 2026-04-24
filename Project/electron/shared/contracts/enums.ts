@@ -168,6 +168,9 @@ export type MemoryState = (typeof memoryStates)[number];
 export const memoryCreatedByKinds = ['user', 'system'] as const;
 export type MemoryCreatedByKind = (typeof memoryCreatedByKinds)[number];
 
+export const memoryRetentionClasses = ['ephemeral', 'task', 'workspace', 'profile', 'pinned'] as const;
+export type MemoryRetentionClass = (typeof memoryRetentionClasses)[number];
+
 export const contextLimitSources = ['override', 'discovery', 'static', 'unknown', 'mixed'] as const;
 export type ContextLimitSource = (typeof contextLimitSources)[number];
 

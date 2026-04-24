@@ -81,6 +81,8 @@ function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
                 toolCallCount: 1,
                 toolErrorCount: 0,
             },
+        memoryRetentionClass: overrides.memoryRetentionClass ?? 'ephemeral',
+        retentionExpiresAt: overrides.retentionExpiresAt ?? '2026-04-10T00:00:00.000Z',
         workspaceFingerprint: overrides.workspaceFingerprint ?? 'wsf_memory_auto',
         threadId: overrides.threadId ?? requireEntityId('thr_memory_auto_1', 'thr', 'Expected thread id.'),
         runId: overrides.runId ?? requireEntityId('run_memory_auto_1', 'run', 'Expected run id.'),

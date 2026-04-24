@@ -1,5 +1,6 @@
 import {
     memoryCreatedByKinds,
+    memoryRetentionClasses,
     memoryScopeKinds,
     memoryStates,
     memoryTypes,
@@ -117,6 +118,12 @@ export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
     const metadata = readMetadataRecord(source.metadata, 'metadata');
     const evidence = readMemoryEvidenceArray(source.evidence, 'evidence');
     const canonicalBody = readMemoryCanonicalBody(source.canonicalBody, 'canonicalBody');
+    const memoryRetentionClass =
+        source.memoryRetentionClass !== undefined
+            ? readEnumValue(source.memoryRetentionClass, 'memoryRetentionClass', memoryRetentionClasses)
+            : undefined;
+    const retentionExpiresAt = readOptionalString(source.retentionExpiresAt, 'retentionExpiresAt');
+    const retentionPinnedAt = readOptionalString(source.retentionPinnedAt, 'retentionPinnedAt');
 
     return {
         profileId: readProfileId(source),
@@ -128,6 +135,9 @@ export function parseMemoryCreateInput(input: unknown): MemoryCreateInput {
         ...(canonicalBody ? { canonicalBody } : {}),
         ...(summaryText ? { summaryText } : {}),
         ...(metadata ? { metadata } : {}),
+        ...(memoryRetentionClass ? { memoryRetentionClass } : {}),
+        ...(retentionExpiresAt ? { retentionExpiresAt } : {}),
+        ...(retentionPinnedAt ? { retentionPinnedAt } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
         ...(threadId ? { threadId } : {}),
         ...(runId ? { runId } : {}),
@@ -143,6 +153,10 @@ export function parseMemoryListInput(input: unknown): MemoryListInput {
     const scopeKind =
         source.scopeKind !== undefined ? readEnumValue(source.scopeKind, 'scopeKind', memoryScopeKinds) : undefined;
     const state = source.state !== undefined ? readEnumValue(source.state, 'state', memoryStates) : undefined;
+    const memoryRetentionClass =
+        source.memoryRetentionClass !== undefined
+            ? readEnumValue(source.memoryRetentionClass, 'memoryRetentionClass', memoryRetentionClasses)
+            : undefined;
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
     const threadId = source.threadId !== undefined ? readEntityId(source.threadId, 'threadId', 'thr') : undefined;
     const runId = source.runId !== undefined ? readEntityId(source.runId, 'runId', 'run') : undefined;
@@ -152,6 +166,7 @@ export function parseMemoryListInput(input: unknown): MemoryListInput {
         ...(memoryType ? { memoryType } : {}),
         ...(scopeKind ? { scopeKind } : {}),
         ...(state ? { state } : {}),
+        ...(memoryRetentionClass ? { memoryRetentionClass } : {}),
         ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
         ...(threadId ? { threadId } : {}),
         ...(runId ? { runId } : {}),
@@ -178,6 +193,16 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
     const evidence = readMemoryEvidenceArray(source.evidence, 'evidence');
     const revisionReason = readEnumValue(source.revisionReason, 'revisionReason', memoryRevisionReasons);
     const canonicalBody = readMemoryCanonicalBody(source.canonicalBody, 'canonicalBody');
+    const memoryRetentionClass =
+        source.memoryRetentionClass !== undefined
+            ? readEnumValue(source.memoryRetentionClass, 'memoryRetentionClass', memoryRetentionClasses)
+            : undefined;
+    const retentionExpiresAt = readOptionalString(source.retentionExpiresAt, 'retentionExpiresAt');
+    const retentionPinnedAt = readOptionalString(source.retentionPinnedAt, 'retentionPinnedAt');
+    const retentionSupersedenceRationale = readOptionalString(
+        source.retentionSupersedenceRationale,
+        'retentionSupersedenceRationale'
+    );
 
     return {
         profileId: readProfileId(source),
@@ -189,6 +214,10 @@ export function parseMemorySupersedeInput(input: unknown): MemorySupersedeInput 
         revisionReason,
         ...(summaryText ? { summaryText } : {}),
         ...(metadata ? { metadata } : {}),
+        ...(memoryRetentionClass ? { memoryRetentionClass } : {}),
+        ...(retentionExpiresAt ? { retentionExpiresAt } : {}),
+        ...(retentionPinnedAt ? { retentionPinnedAt } : {}),
+        ...(retentionSupersedenceRationale ? { retentionSupersedenceRationale } : {}),
         ...(evidence ? { evidence } : {}),
     };
 }

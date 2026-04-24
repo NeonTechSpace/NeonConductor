@@ -6,6 +6,7 @@ import type {
     MemoryCreateInput,
     MemoryDisableInput,
     MemoryListInput,
+    MemoryRetentionClass,
     MemoryRecord as RuntimeMemoryRecord,
     MemorySupersedeInput,
 } from '@/app/backend/runtime/contracts';
@@ -17,6 +18,12 @@ import {
     resolveMemoryCanonicalBody,
 } from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 import { resolveCanonicalMemoryProvenance } from '@/app/backend/runtime/services/memory/memoryProvenancePolicy';
+import {
+    defaultRetentionSupersedenceRationale,
+    resolveMemoryRetention,
+    resolveReplacementMemoryRetention,
+    type ResolvedMemoryRetention,
+} from '@/app/backend/runtime/services/memory/memoryRetentionPolicy';
 import { memorySemanticIndexService } from '@/app/backend/runtime/services/memory/memorySemanticIndexService';
 
 class MemoryService {
@@ -40,6 +47,20 @@ class MemoryService {
         return memoryStore.listByProfile(input);
     }
 
+    private resolveRetentionOrError(input: {
+        scopeKind: RuntimeMemoryRecord['scopeKind'];
+        createdByKind: RuntimeMemoryRecord['createdByKind'];
+        memoryRetentionClass?: MemoryRetentionClass;
+        retentionExpiresAt?: string;
+        retentionPinnedAt?: string;
+    }): OperationalResult<ResolvedMemoryRetention> {
+        try {
+            return okOp(resolveMemoryRetention(input));
+        } catch (error) {
+            return errOp('invalid_input', error instanceof Error ? error.message : 'Invalid memory retention policy.');
+        }
+    }
+
     async createMemory(input: MemoryCreateInput): Promise<OperationalResult<MemoryRecord>> {
         const resolvedProvenance = await resolveCanonicalMemoryProvenance(input);
         if (resolvedProvenance.isErr()) {
@@ -49,6 +70,10 @@ class MemoryService {
                     ? { retryable: resolvedProvenance.error.retryable }
                     : {}),
             });
+        }
+        const resolvedRetention = this.resolveRetentionOrError(input);
+        if (resolvedRetention.isErr()) {
+            return errOp(resolvedRetention.error.code, resolvedRetention.error.message);
         }
 
         const createdMemory = await getPersistence().db.transaction().execute(async (transaction) => {
@@ -65,6 +90,7 @@ class MemoryService {
                 scopeKind: input.scopeKind,
                 createdByKind: input.createdByKind,
                 title: input.title,
+                ...resolvedRetention.value,
                 ...(input.summaryText ? { summaryText: input.summaryText } : {}),
                 ...(input.metadata ? { metadata: input.metadata } : {}),
                 ...(input.temporalSubjectKey ? { temporalSubjectKey: input.temporalSubjectKey } : {}),
@@ -157,12 +183,33 @@ class MemoryService {
                 );
             }
         }
+        const previousRetention: ResolvedMemoryRetention = {
+            memoryRetentionClass: existing.memoryRetentionClass,
+            ...(existing.retentionExpiresAt ? { retentionExpiresAt: existing.retentionExpiresAt } : {}),
+            ...(existing.retentionPinnedAt ? { retentionPinnedAt: existing.retentionPinnedAt } : {}),
+        };
+        let replacementRetention: ResolvedMemoryRetention;
+        try {
+            replacementRetention = resolveReplacementMemoryRetention({
+                previous: previousRetention,
+                scopeKind: existing.scopeKind,
+                createdByKind: input.createdByKind,
+                ...(input.memoryRetentionClass ? { memoryRetentionClass: input.memoryRetentionClass } : {}),
+                ...(input.retentionExpiresAt ? { retentionExpiresAt: input.retentionExpiresAt } : {}),
+                ...(input.retentionPinnedAt ? { retentionPinnedAt: input.retentionPinnedAt } : {}),
+            });
+        } catch (error) {
+            return errOp('invalid_input', error instanceof Error ? error.message : 'Invalid memory retention policy.');
+        }
 
         const superseded = await getPersistence().db.transaction().execute(async (transaction) => {
             const result = await memoryStore.supersedeInTransaction(transaction, {
                 profileId: input.profileId,
                 previousMemoryId: input.memoryId,
                 revisionReason: input.revisionReason,
+                retentionSupersedenceRationale:
+                    input.retentionSupersedenceRationale ??
+                    defaultRetentionSupersedenceRationale(input.revisionReason),
                 replacement: {
                     ...(() => {
                         const canonicalBody = resolveMemoryCanonicalBody(input);
@@ -176,6 +223,7 @@ class MemoryService {
                     scopeKind: existing.scopeKind,
                     createdByKind: input.createdByKind,
                     title: input.title,
+                    ...replacementRetention,
                     ...(input.summaryText ? { summaryText: input.summaryText } : {}),
                     ...(input.metadata ? { metadata: input.metadata } : {}),
                     ...(existing.workspaceFingerprint ? { workspaceFingerprint: existing.workspaceFingerprint } : {}),

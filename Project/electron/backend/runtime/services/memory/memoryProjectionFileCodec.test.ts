@@ -21,6 +21,7 @@ function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
         canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides?.bodyMarkdown ?? 'Original body.'),
         bodyMarkdown: 'Original body.',
         metadata: { source: 'manual' },
+        memoryRetentionClass: 'task',
         workspaceFingerprint: 'ws_test',
         threadId: requireEntityId('thr_test', 'thr', 'Expected thread id.'),
         runId: requireEntityId('run_test', 'run', 'Expected run id.'),
@@ -43,6 +44,7 @@ describe('memoryProjectionFileCodec', () => {
 
         expect(rendered).toContain('id: "mem_test"');
         expect(rendered).toContain('state: "active"');
+        expect(rendered).toContain('memoryRetentionClass: "task"');
         expect(rendered).toContain('metadata: {"source":"manual"}');
 
         const parsed = parseMemoryProposal(memory, rendered);

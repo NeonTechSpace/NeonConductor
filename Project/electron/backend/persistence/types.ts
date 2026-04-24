@@ -25,6 +25,7 @@ import type {
     MemoryGraphEdgeRecord as RuntimeMemoryGraphEdgeRecord,
     MemoryRevisionRecord as RuntimeMemoryRevisionRecord,
     MemoryCreatedByKind,
+    MemoryRetentionClass,
     MemoryTemporalFactRecord as RuntimeMemoryTemporalFactRecord,
     MemoryScopeKind,
     MemoryState,
@@ -114,6 +115,10 @@ export interface MemoryRecord {
     bodyMarkdown: string;
     summaryText?: string;
     metadata: Record<string, unknown>;
+    memoryRetentionClass: MemoryRetentionClass;
+    retentionExpiresAt?: string;
+    retentionPinnedAt?: string;
+    retentionSupersedenceRationale?: string;
     workspaceFingerprint?: string;
     threadId?: EntityId<'thr'>;
     runId?: EntityId<'run'>;

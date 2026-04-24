@@ -5,8 +5,8 @@ import { memoryEvidenceStore, memoryStore, runStore } from '@/app/backend/persis
 import { createDefaultPreparedContextModeOverrides, type ModeDefinition } from '@/app/backend/runtime/contracts';
 import { errOp } from '@/app/backend/runtime/services/common/operationalError';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
-import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import { memorySemanticIndexService } from '@/app/backend/runtime/services/memory/memorySemanticIndexService';
+import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import { memoryService } from '@/app/backend/runtime/services/memory/service';
 import { buildRunContext } from '@/app/backend/runtime/services/runExecution/contextBuilder';
 import {
@@ -334,6 +334,7 @@ describe('memoryRetrievalService', () => {
             `scopeKind: "thread"\n` +
             `state: "active"\n` +
             `title: "Projection safety memory edited"\n` +
+            `memoryRetentionClass: "task"\n` +
             `threadId: "${threadId}"\n` +
             `workspaceFingerprint: "wsf_memory_retrieval_projection_safety"\n` +
             `metadata: {"edited":true}\n` +

@@ -130,6 +130,7 @@ export function renderProjectedMemoryFile(memory: MemoryRecord): string {
         ['scopeKind', memory.scopeKind],
         ['state', memory.state],
         ['title', memory.title],
+        ['memoryRetentionClass', memory.memoryRetentionClass],
         ['metadata', memory.metadata],
     ];
 
@@ -144,6 +145,15 @@ export function renderProjectedMemoryFile(memory: MemoryRecord): string {
     }
     if (memory.runId) {
         frontmatterEntries.push(['runId', memory.runId]);
+    }
+    if (memory.retentionExpiresAt) {
+        frontmatterEntries.push(['retentionExpiresAt', memory.retentionExpiresAt]);
+    }
+    if (memory.retentionPinnedAt) {
+        frontmatterEntries.push(['retentionPinnedAt', memory.retentionPinnedAt]);
+    }
+    if (memory.retentionSupersedenceRationale) {
+        frontmatterEntries.push(['retentionSupersedenceRationale', memory.retentionSupersedenceRationale]);
     }
 
     const header = frontmatterEntries.map(([key, value]) => `${key}: ${serializeFrontmatterValue(value)}`).join('\n');
@@ -216,6 +226,10 @@ export function parseMemoryProposal(memory: MemoryRecord, content: string): Pars
     readExactValue(attributes, 'workspaceFingerprint', memory.workspaceFingerprint);
     readExactValue(attributes, 'threadId', memory.threadId);
     readExactValue(attributes, 'runId', memory.runId);
+    readExactValue(attributes, 'memoryRetentionClass', memory.memoryRetentionClass);
+    readExactValue(attributes, 'retentionExpiresAt', memory.retentionExpiresAt);
+    readExactValue(attributes, 'retentionPinnedAt', memory.retentionPinnedAt);
+    readExactValue(attributes, 'retentionSupersedenceRationale', memory.retentionSupersedenceRationale);
 
     const title = readRequiredString(attributes, 'title');
     const bodyMarkdown = parsed.bodyMarkdown.trim();

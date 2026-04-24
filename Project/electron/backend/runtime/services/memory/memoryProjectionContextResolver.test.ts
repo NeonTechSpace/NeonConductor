@@ -24,6 +24,7 @@ function createMemory(overrides?: Partial<MemoryRecord>): MemoryRecord {
         canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides?.bodyMarkdown ?? 'Body.'),
         bodyMarkdown: 'Body.',
         metadata: {},
+        memoryRetentionClass: 'workspace',
         workspaceFingerprint: 'ws_test',
         createdAt: '2026-03-27T10:00:00.000Z',
         updatedAt: '2026-03-27T10:10:00.000Z',

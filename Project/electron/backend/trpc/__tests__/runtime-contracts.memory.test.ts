@@ -73,6 +73,7 @@ describe('runtime contracts: memory', () => {
         });
         expect(globalCreated.memory.scopeKind).toBe('global');
         expect(globalCreated.memory.metadata).toEqual({ source: 'manual' });
+        expect(globalCreated.memory.memoryRetentionClass).toBe('profile');
         expect(globalCreated.memory.canonicalBody.formatVersion).toBe(1);
         expect(globalCreated.memory.canonicalBody.sections[0]).toMatchObject({
             kind: 'fact',
@@ -91,6 +92,7 @@ describe('runtime contracts: memory', () => {
             bodyMarkdown: 'This workspace prefers deterministic steps.',
         });
         expect(workspaceCreated.memory.workspaceFingerprint).toBe(workspaceFingerprint);
+        expect(workspaceCreated.memory.memoryRetentionClass).toBe('workspace');
 
         const threadCreated = await caller.memory.create({
             profileId,
@@ -103,6 +105,7 @@ describe('runtime contracts: memory', () => {
         });
         expect(threadCreated.memory.threadId).toBe(threadId);
         expect(threadCreated.memory.workspaceFingerprint).toBe(workspaceFingerprint);
+        expect(threadCreated.memory.memoryRetentionClass).toBe('task');
 
         const runCreated = await caller.memory.create({
             profileId,
@@ -116,6 +119,8 @@ describe('runtime contracts: memory', () => {
         expect(runCreated.memory.runId).toBe(run.id);
         expect(runCreated.memory.threadId).toBe(threadId);
         expect(runCreated.memory.workspaceFingerprint).toBe(workspaceFingerprint);
+        expect(runCreated.memory.memoryRetentionClass).toBe('ephemeral');
+        expect(Date.parse(runCreated.memory.retentionExpiresAt ?? '')).toBeGreaterThan(Date.parse(runCreated.memory.createdAt));
 
         const listed = await caller.memory.list({ profileId });
         expect(listed.memories).toHaveLength(4);
@@ -126,6 +131,11 @@ describe('runtime contracts: memory', () => {
             runId: run.id,
         });
         expect(filtered.memories.map((memory) => memory.id)).toEqual([runCreated.memory.id]);
+        const retentionFiltered = await caller.memory.list({
+            profileId,
+            memoryRetentionClass: 'ephemeral',
+        });
+        expect(retentionFiltered.memories.map((memory) => memory.id)).toEqual([runCreated.memory.id]);
 
         const disabled = await caller.memory.disable({
             profileId,
@@ -146,8 +156,10 @@ describe('runtime contracts: memory', () => {
         });
         expect(superseded.previous.state).toBe('superseded');
         expect(superseded.previous.supersededByMemoryId).toBe(superseded.replacement.id);
+        expect(superseded.previous.retentionSupersedenceRationale).toBe('Superseded by refinement revision.');
         expect(superseded.replacement.state).toBe('active');
         expect(superseded.replacement.threadId).toBe(threadId);
+        expect(superseded.replacement.memoryRetentionClass).toBe('task');
         expect(superseded.replacement.metadata).toEqual({ revision: 2 });
         expect(superseded.replacement.canonicalBody.sections[0]?.items).toEqual(['Updated thread note.']);
     });
@@ -634,7 +646,7 @@ describe('runtime contracts: memory', () => {
 
         writeFileSync(
             projectedMemory.absolutePath,
-            `---\nid: "${editableMemory.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "active"\ntitle: "Editable memory v2"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":2}\n---\nUpdated projection body.\n`,
+            `---\nid: "${editableMemory.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "active"\ntitle: "Editable memory v2"\nmemoryRetentionClass: "task"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":2}\n---\nUpdated projection body.\n`,
             'utf8'
         );
 
@@ -665,7 +677,7 @@ describe('runtime contracts: memory', () => {
 
         writeFileSync(
             projectedMemory.absolutePath,
-            `---\nid: "${applied.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "active"\ntitle: "Editable memory rejected"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":3}\n---\nRejected projection body.\n`,
+            `---\nid: "${applied.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "active"\ntitle: "Editable memory rejected"\nmemoryRetentionClass: "task"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":3}\n---\nRejected projection body.\n`,
             'utf8'
         );
 
@@ -741,7 +753,7 @@ describe('runtime contracts: memory', () => {
 
         writeFileSync(
             projectedMemory.absolutePath,
-            `---\nid: "${editableMemory.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "superseded"\ntitle: "Supersede projection memory v2"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":2}\n---\nSuperseded projection body.\n`,
+            `---\nid: "${editableMemory.memory.id}"\nmemoryType: "procedural"\nscopeKind: "thread"\nstate: "superseded"\ntitle: "Supersede projection memory v2"\nmemoryRetentionClass: "task"\nthreadId: "${threadId}"\nworkspaceFingerprint: "${workspaceFingerprint}"\nmetadata: {"source":"projection","revision":2}\n---\nSuperseded projection body.\n`,
             'utf8'
         );
 
@@ -815,6 +827,7 @@ describe('runtime contracts: memory', () => {
             `scopeKind: "thread"\n` +
             `state: "active"\n` +
             `title: "Sync preserve edited"\n` +
+            `memoryRetentionClass: "task"\n` +
             `threadId: "${threadId}"\n` +
             `workspaceFingerprint: "${workspaceFingerprint}"\n` +
             `metadata: {"edited":true}\n` +

@@ -18,6 +18,7 @@ function createMemory(overrides: Partial<MemoryRecord>): MemoryRecord {
         canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides.bodyMarkdown ?? 'Body'),
         bodyMarkdown: 'Body',
         metadata: {},
+        memoryRetentionClass: 'profile',
         createdAt: '2026-03-31T10:00:00.000Z',
         updatedAt: '2026-03-31T10:00:00.000Z',
         ...overrides,

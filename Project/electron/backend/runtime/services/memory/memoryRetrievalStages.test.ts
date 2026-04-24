@@ -34,6 +34,7 @@ function createMemoryRecord(overrides: Partial<MemoryRecord>): MemoryRecord {
         canonicalBody: createMemoryCanonicalBodyFromMarkdown(overrides.bodyMarkdown ?? 'Stage body.'),
         bodyMarkdown: 'Stage body.',
         metadata: {},
+        memoryRetentionClass: 'task',
         createdAt: '2026-03-31T10:00:00.000Z',
         updatedAt: '2026-03-31T10:00:00.000Z',
         ...overrides,

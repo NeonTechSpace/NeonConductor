@@ -20,6 +20,7 @@ function createMemory(id: string, title: string, bodyMarkdown: string): MemoryRe
         canonicalBody: createMemoryCanonicalBodyFromMarkdown(bodyMarkdown),
         bodyMarkdown,
         metadata: {},
+        memoryRetentionClass: 'profile',
         createdAt: '2026-03-31T10:00:00.000Z',
         updatedAt: '2026-03-31T10:00:00.000Z',
     };

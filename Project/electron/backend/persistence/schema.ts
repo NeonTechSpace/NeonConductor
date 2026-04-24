@@ -84,6 +84,10 @@ export interface MemoryRecordsTable {
     body_markdown_projection: string;
     summary_text: string | null;
     metadata_json: string;
+    retention_class: 'ephemeral' | 'task' | 'workspace' | 'profile' | 'pinned';
+    retention_expires_at: string | null;
+    retention_pinned_at: string | null;
+    retention_supersedence_rationale: string | null;
     temporal_subject_key: string | null;
     superseded_by_memory_id: string | null;
     created_at: string;
