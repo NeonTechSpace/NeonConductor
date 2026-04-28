@@ -486,9 +486,13 @@ describe('session workspace panel layout', () => {
     });
 
     it('builds a workspace shell projection from panel inputs', () => {
-        const projection = buildWorkspaceShellProjection(sessionWorkspacePanelProps);
+        const projection = buildWorkspaceShellProjection({
+            ...sessionWorkspacePanelProps,
+            cloudSessionsPanel: createElement('div', undefined, 'cloud sessions'),
+        });
         const queuedReviewSection = projection.inspector.sections.find((section) => section.id === 'selected-outbox-entry');
         const executionReceiptSection = projection.inspector.sections.find((section) => section.id === 'execution-receipt');
+        const cloudSessionsSection = projection.inspector.sections.find((section) => section.id === 'cloud-sessions');
         const queuedReviewMarkup = queuedReviewSection
             ? renderToStaticMarkup(queuedReviewSection.content as ReturnType<typeof createElement>)
             : '';
@@ -500,11 +504,13 @@ describe('session workspace panel layout', () => {
         expect(projection.header.selectedRun?.id).toBe('run_default');
         expect(projection.inspector.sections.map((section) => section.id)).toEqual([
             'workspace-status',
+            'cloud-sessions',
             'run-changes',
             'execution-receipt',
             'selected-outbox-entry',
             'pending-permissions',
         ]);
+        expect(cloudSessionsSection?.label).toBe('Cloud sessions');
         expect(queuedReviewMarkup).toContain('Browser context: 3 comments · 2 elements');
         expect(executionReceiptMarkup).toContain('Browser context: 3 comments · 2 elements');
     });

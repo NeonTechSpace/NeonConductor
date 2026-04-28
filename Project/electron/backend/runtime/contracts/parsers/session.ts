@@ -1,4 +1,11 @@
-import { sessionEditModes, sessionKinds, topLevelTabs } from '@/app/backend/runtime/contracts/enums';
+import {
+    cloudSessionAuthorityStates,
+    cloudSessionRecordKinds,
+    cloudSessionSyncStates,
+    sessionEditModes,
+    sessionKinds,
+    topLevelTabs,
+} from '@/app/backend/runtime/contracts/enums';
 import { parseBrowserContextPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import {
     readArray,
@@ -21,13 +28,17 @@ import type {
     SessionBranchFromMessageInput,
     SessionBranchFromMessageWithBranchWorkflowInput,
     SessionByIdInput,
+    SessionCloudSessionByIdInput,
     SessionCreateInput,
     SessionEditInput,
+    SessionForkCloudSessionInput,
     SessionGetExecutionReceiptInput,
     SessionGetAttachmentInput,
     SessionGetAttachedRulesInput,
     SessionGetMessageMediaInput,
     SessionGetAttachedSkillsInput,
+    SessionImportCloudSessionInput,
+    SessionListCloudSessionsInput,
     SessionListMessagesInput,
     SessionListOutboxInput,
     SessionListRunsInput,
@@ -216,6 +227,68 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
 
 export function parseSessionListRunsInput(input: unknown): SessionListRunsInput {
     return parseSessionByIdInput(input);
+}
+
+export function parseSessionListCloudSessionsInput(input: unknown): SessionListCloudSessionsInput {
+    const source = readObject(input, 'input');
+    const query = readOptionalString(source.query, 'query')?.trim();
+    const scopeMode =
+        source.scopeMode !== undefined
+            ? readEnumValue(source.scopeMode, 'scopeMode', ['current', 'all'] as const)
+            : undefined;
+    const recordKind =
+        source.recordKind !== undefined
+            ? readEnumValue(source.recordKind, 'recordKind', [...cloudSessionRecordKinds, 'all'] as const)
+            : undefined;
+    const authorityState =
+        source.authorityState !== undefined
+            ? readEnumValue(source.authorityState, 'authorityState', [...cloudSessionAuthorityStates, 'all'] as const)
+            : undefined;
+    const syncState =
+        source.syncState !== undefined
+            ? readEnumValue(source.syncState, 'syncState', [...cloudSessionSyncStates, 'all'] as const)
+            : undefined;
+
+    return {
+        profileId: readProfileId(source),
+        ...(query ? { query } : {}),
+        ...(scopeMode ? { scopeMode } : {}),
+        ...(recordKind ? { recordKind } : {}),
+        ...(authorityState ? { authorityState } : {}),
+        ...(syncState ? { syncState } : {}),
+    };
+}
+
+function parseSessionCloudSessionByIdInput(input: unknown): SessionCloudSessionByIdInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        cloudSessionId: readEntityId(source.cloudSessionId, 'cloudSessionId', 'csess'),
+    };
+}
+
+export function parseSessionImportCloudSessionInput(input: unknown): SessionImportCloudSessionInput {
+    const source = readObject(input, 'input');
+    const remoteSessionId = readString(source.remoteSessionId, 'remoteSessionId').trim();
+    if (remoteSessionId.length === 0) {
+        throw new Error('Invalid "remoteSessionId": expected non-empty string.');
+    }
+
+    return {
+        profileId: readProfileId(source),
+        threadId: readEntityId(source.threadId, 'threadId', 'thr'),
+        remoteSessionId,
+    };
+}
+
+export function parseSessionForkCloudSessionInput(input: unknown): SessionForkCloudSessionInput {
+    const source = readObject(input, 'input');
+
+    return {
+        ...parseSessionCloudSessionByIdInput(input),
+        threadId: readEntityId(source.threadId, 'threadId', 'thr'),
+    };
 }
 
 export function parseSessionListOutboxInput(input: unknown): SessionListOutboxInput {
@@ -414,6 +487,10 @@ export function parseSessionGetExecutionReceiptInput(input: unknown): SessionGet
 
 export const sessionCreateInputSchema = createParser(parseSessionCreateInput);
 export const sessionByIdInputSchema = createParser(parseSessionByIdInput);
+export const sessionListCloudSessionsInputSchema = createParser(parseSessionListCloudSessionsInput);
+export const sessionImportCloudSessionInputSchema = createParser(parseSessionImportCloudSessionInput);
+export const sessionForkCloudSessionInputSchema = createParser(parseSessionForkCloudSessionInput);
+export const sessionContinueCloudSessionInputSchema = sessionForkCloudSessionInputSchema;
 export const sessionRevertInputSchema = createParser(parseSessionRevertInput);
 export const sessionStartRunInputSchema = createParser(parseSessionStartRunInput);
 export const sessionListRunsInputSchema = createParser(parseSessionListRunsInput);

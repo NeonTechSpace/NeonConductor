@@ -92,6 +92,7 @@ export type SessionAttachmentPayload =
 
 export interface CloudSessionSummary {
     id: EntityId<'csess'>;
+    profileId: string;
     providerId: 'kilo';
     recordKind: CloudSessionRecordKind;
     authorityState: CloudSessionAuthorityState;
@@ -107,6 +108,7 @@ export interface CloudSessionSummary {
     lastSyncedAt?: string;
     lastSyncErrorCode?: string;
     lastSyncErrorMessage?: string;
+    metadata: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
 }
@@ -203,6 +205,33 @@ export interface SessionBranchFromMessageWithBranchWorkflowInput extends Session
 
 export type SessionListRunsInput = SessionByIdInput;
 export type SessionListOutboxInput = SessionByIdInput;
+
+export interface SessionListCloudSessionsInput extends ProfileInput {
+    query?: string;
+    scopeMode?: 'current' | 'all';
+    recordKind?: CloudSessionRecordKind | 'all';
+    authorityState?: CloudSessionAuthorityState | 'all';
+    syncState?: CloudSessionSyncState | 'all';
+}
+
+export interface SessionCloudSessionByIdInput extends ProfileInput {
+    cloudSessionId: EntityId<'csess'>;
+}
+
+export interface SessionImportCloudSessionInput extends ProfileInput {
+    threadId: EntityId<'thr'>;
+    remoteSessionId: string;
+}
+
+export interface SessionForkCloudSessionInput extends SessionCloudSessionByIdInput {
+    threadId: EntityId<'thr'>;
+}
+
+export type SessionContinueCloudSessionInput = SessionForkCloudSessionInput;
+
+export interface SessionListCloudSessionsResult {
+    cloudSessions: CloudSessionSummary[];
+}
 
 export interface SessionListMessagesInput extends SessionByIdInput {
     runId?: EntityId<'run'>;

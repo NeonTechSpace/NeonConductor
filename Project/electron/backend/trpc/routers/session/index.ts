@@ -5,6 +5,7 @@ import {
     sessionBranchFromMessageInputSchema,
     sessionBranchFromMessageWithBranchWorkflowInputSchema,
     sessionClearStaleBrowserContextInputSchema,
+    sessionContinueCloudSessionInputSchema,
     sessionControlDevBrowserInputSchema,
     sessionByIdInputSchema,
     sessionCreateInputSchema,
@@ -16,8 +17,11 @@ import {
     sessionGetExecutionReceiptInputSchema,
     sessionGetAttachmentInputSchema,
     sessionGetAttachedSkillsInputSchema,
+    sessionForkCloudSessionInputSchema,
     sessionDevBrowserStateInputSchema,
     sessionGetMessageMediaInputSchema,
+    sessionImportCloudSessionInputSchema,
+    sessionListCloudSessionsInputSchema,
     sessionListOutboxInputSchema,
     sessionListMessagesInputSchema,
     sessionListRunsInputSchema,
@@ -40,6 +44,7 @@ import {
     type SessionAttachedRulesResult,
     type SessionAttachedSkillsResult,
 } from '@/app/backend/runtime/contracts';
+import { cloudSessionService } from '@/app/backend/runtime/services/cloudSessions/service';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
 import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrowser/service';
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
@@ -92,6 +97,78 @@ export const sessionRouter = router({
     }),
     list: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
         return { sessions: await sessionStore.list(input.profileId) };
+    }),
+    listCloudSessions: publicProcedure.input(sessionListCloudSessionsInputSchema).query(async ({ input }) => {
+        return cloudSessionService.list(input);
+    }),
+    importCloudSession: publicProcedure.input(sessionImportCloudSessionInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await cloudSessionService.importById(input);
+        if (result.ok) {
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: result.session.id,
+                    eventType: 'session.cloud.imported',
+                    payload: {
+                        session: result.session,
+                        cloudSession: result.cloudSession,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.importCloudSession',
+                    }),
+                })
+            );
+        }
+        return result;
+    }),
+    forkCloudSession: publicProcedure.input(sessionForkCloudSessionInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await cloudSessionService.fork(input);
+        if (result.ok) {
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: result.session.id,
+                    eventType: 'session.cloud.forked',
+                    payload: {
+                        session: result.session,
+                        cloudSession: result.cloudSession,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.forkCloudSession',
+                    }),
+                })
+            );
+        }
+        return result;
+    }),
+    continueCloudSession: publicProcedure.input(sessionContinueCloudSessionInputSchema).mutation(async ({ input, ctx }) => {
+        const result = await cloudSessionService.continue(input);
+        if (result.ok) {
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: result.session.id,
+                    eventType: 'session.cloud.continued',
+                    payload: {
+                        session: result.session,
+                        cloudSession: result.cloudSession,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.continueCloudSession',
+                    }),
+                })
+            );
+        }
+        return result;
     }),
     status: publicProcedure.input(sessionByIdInputSchema).query(async ({ input }) => {
         return sessionStore.status(input.profileId, input.sessionId);

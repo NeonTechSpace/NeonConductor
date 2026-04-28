@@ -219,6 +219,35 @@ describe('persistence stores: runtime domain', () => {
         }
         expect(failedSync.value.syncState).toBe('failed');
         expect(failedSync.value.lastSyncErrorMessage).toBe('Remote session unavailable.');
+
+        const forked = await sessionStore.create(profileId, thread.value.id, 'local', {
+            cloudSession: {
+                remoteSessionId: 'remote_session_alpha',
+                organizationId: 'org_alpha',
+                title: 'Remote Alpha Fork',
+            },
+            cloudSessionAuthorityState: 'forked',
+        });
+        expect(forked.created).toBe(true);
+        if (!forked.created) {
+            throw new Error(forked.reason);
+        }
+        expect(forked.session.kind).toBe('local');
+        expect(forked.session.cloudSession?.authorityState).toBe('forked');
+        expect(forked.session.cloudSession?.remoteSessionId).toBe('remote_session_alpha');
+        expect(forked.session.cloudSession?.id).not.toBe(snapshot.id);
+
+        const cloudRecords = await cloudSessionStore.list({
+            profileId,
+            remoteScopeKey: 'org_alpha',
+            query: 'remote_session_alpha',
+        });
+        expect(cloudRecords.filter((record) => record.remoteSessionId === 'remote_session_alpha')).toHaveLength(3);
+        expect(cloudRecords.map((record) => record.recordKind).sort()).toEqual([
+            'local_binding',
+            'local_binding',
+            'remote_snapshot',
+        ]);
     });
 
     it('supports memory record persistence, filters, and lifecycle transitions', async () => {

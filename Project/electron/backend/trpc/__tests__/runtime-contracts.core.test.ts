@@ -2,6 +2,8 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { getPersistenceStoragePaths } from '@/app/backend/persistence/db';
+import { accountSnapshotStore, cloudSessionStore, providerAuthStore } from '@/app/backend/persistence/stores';
+import { writeProviderSecretValue } from '@/app/backend/providers/auth/providerSecrets';
 import { encryptSecretPayload } from '@/app/backend/secrets/secretPayloadCodec';
 import {
     createCaller,
@@ -321,6 +323,112 @@ describe('runtime contracts: core flows', () => {
         expect(started).toMatchObject({
             accepted: false,
             reason: 'rejected',
+            code: 'cloud_session_not_runnable',
+        });
+    });
+
+    it('lists local cloud-session records and supports fork plus continue-state bindings', async () => {
+        const caller = createCaller();
+        await providerAuthStore.upsert({
+            profileId,
+            providerId: 'kilo',
+            authMethod: 'oauth_device',
+            authState: 'authenticated',
+            accountId: 'acct_cloud_contract',
+            organizationId: 'org_cloud_contract',
+        });
+        await accountSnapshotStore.upsertAccount({
+            profileId,
+            accountId: 'acct_cloud_contract',
+            displayName: 'Cloud Contract',
+            emailMasked: 'cloud@example.test',
+            authState: 'authenticated',
+        });
+        await accountSnapshotStore.replaceOrganizations({
+            profileId,
+            organizations: [
+                {
+                    organizationId: 'org_cloud_contract',
+                    name: 'Cloud Contract Org',
+                    isActive: true,
+                },
+            ],
+        });
+        await writeProviderSecretValue({
+            profileId,
+            providerId: 'kilo',
+            secretKind: 'access_token',
+            value: 'test-access-token',
+        });
+
+        const threadResult = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'chat',
+            scope: 'detached',
+            title: 'Cloud session actions',
+        });
+        const threadId = requireEntityId(threadResult.thread.id, 'thr', 'Expected cloud session actions thread id.');
+        const snapshot = await cloudSessionStore.upsertRemoteSnapshot({
+            profileId,
+            remoteSessionId: 'remote_session_action_contract',
+            organizationId: 'org_cloud_contract',
+            title: 'Action Contract',
+            metadata: { source: 'test' },
+        });
+
+        const listed = await caller.session.listCloudSessions({
+            profileId,
+            scopeMode: 'current',
+            query: 'Action',
+        });
+        expect(listed.cloudSessions.map((record) => record.id)).toContain(snapshot.id);
+        expect(listed.cloudSessions[0]?.metadata).toEqual({ source: 'test' });
+
+        const forked = await caller.session.forkCloudSession({
+            profileId,
+            threadId,
+            cloudSessionId: snapshot.id,
+        });
+        expect(forked).toMatchObject({
+            ok: true,
+            message: 'Created a local fork with Kilo cloud-session provenance.',
+        });
+        if (!forked.ok) {
+            throw new Error(forked.message);
+        }
+        expect(forked.session.kind).toBe('local');
+        expect(forked.cloudSession.authorityState).toBe('forked');
+        expect(forked.cloudSession.localSessionId).toBe(forked.session.id);
+
+        const continued = await caller.session.continueCloudSession({
+            profileId,
+            threadId,
+            cloudSessionId: snapshot.id,
+        });
+        expect(continued).toMatchObject({
+            ok: true,
+            message:
+                'Prepared a continued Kilo cloud-session binding. Remote execution remains disabled until Slice 7D lands.',
+        });
+        if (!continued.ok) {
+            throw new Error(continued.message);
+        }
+        expect(continued.session.kind).toBe('cloud');
+        expect(continued.cloudSession.authorityState).toBe('continued');
+        expect(continued.cloudSession.localSessionId).toBe(continued.session.id);
+
+        const preview = await caller.session.previewRunContract({
+            profileId,
+            sessionId: continued.session.id,
+            prompt: 'Continued cloud state should still fail closed.',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'kilo',
+            modelId: 'kilo/k1',
+        });
+        expect(preview).toMatchObject({
+            available: false,
             code: 'cloud_session_not_runnable',
         });
     });

@@ -2,6 +2,7 @@ import type { useConversationShellComposer } from '@/web/components/conversation
 import type { useConversationShellEditFlow } from '@/web/components/conversation/hooks/useConversationShellEditFlow';
 import type { useConversationShellSessionActions } from '@/web/components/conversation/hooks/useConversationShellSessionActions';
 import type { useConversationShellViewModel } from '@/web/components/conversation/hooks/useConversationShellViewModel';
+import { CloudSessionsPanel } from '@/web/components/conversation/panels/cloudSessionsPanel';
 import { ContextAssetsPanel } from '@/web/components/conversation/panels/contextAssetsPanel';
 import { DiffCheckpointPanel } from '@/web/components/conversation/panels/diffCheckpointPanel';
 import { ExecutionEnvironmentPanel } from '@/web/components/conversation/panels/executionEnvironmentPanel';
@@ -17,6 +18,8 @@ import type { PlanningDepth } from '@/web/components/conversation/shell/planning
 import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
+
+import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
 import type {
     BrowserContextPacket,
@@ -79,6 +82,7 @@ interface BuildConversationWorkspaceProjectionInput {
     onOpenToolArtifact: NonNullable<SessionWorkspacePanelProps['onOpenToolArtifact']>;
     onPromoteMessage: NonNullable<SessionWorkspacePanelProps['onPromoteMessage']>;
     setPlanningDepthSelection: (nextPlanningDepth: PlanningDepth) => void;
+    onCloudSessionCreated: (input: { session: SessionSummaryRecord; thread?: ThreadListRecord }) => void;
 }
 
 export function buildConversationWorkspaceProjection(
@@ -196,6 +200,16 @@ export function buildConversationWorkspaceProjection(
             />
         ) : undefined;
 
+    const cloudSessionsPanel =
+        selectedThread && isEntityId(selectedThread.id, 'thr') ? (
+            <CloudSessionsPanel
+                profileId={input.profileId}
+                threadId={selectedThread.id}
+                {...(isEntityId(input.selectedSessionId, 'sess') ? { selectedSessionId: input.selectedSessionId } : {})}
+                onSelectSession={input.sessionActions.onSelectSession}
+                onCloudSessionCreated={input.onCloudSessionCreated}
+            />
+        ) : undefined;
     const memoryPanel = selectedThread ? (
         <MemoryPanel
             profileId={input.profileId}
@@ -347,6 +361,7 @@ export function buildConversationWorkspaceProjection(
         executionEnvironmentPanel,
         ...(modeExecutionPanel ? { modeExecutionPanel } : {}),
         ...(contextAssetsPanel ? { contextAssetsPanel } : {}),
+        ...(cloudSessionsPanel ? { cloudSessionsPanel } : {}),
         ...(memoryPanel ? { memoryPanel } : {}),
         ...(diffCheckpointPanel ? { diffCheckpointPanel } : {}),
         promptResetKey: input.composer.promptResetKey,

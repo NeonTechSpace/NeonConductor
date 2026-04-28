@@ -178,6 +178,7 @@ export interface SessionWorkspacePanelProps {
     isCompactingContext?: boolean;
     executionEnvironmentPanel?: ReactNode;
     modeExecutionPanel?: ReactNode;
+    cloudSessionsPanel?: ReactNode;
     contextAssetsPanel?: ReactNode;
     memoryPanel?: ReactNode;
     diffCheckpointPanel?: ReactNode;
@@ -298,6 +299,16 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                           label: 'Plan and orchestration',
                           description: 'Plan approval, root orchestration strategy, and delegated worker lane status.',
                           content: input.modeExecutionPanel,
+                      } satisfies WorkspaceInspectorSection,
+                  ]
+                : []),
+            ...(input.cloudSessionsPanel
+                ? [
+                      {
+                          id: 'cloud-sessions',
+                          label: 'Cloud sessions',
+                          description: 'Kilo cloud-session records, import, fork, and continue-state actions.',
+                          content: input.cloudSessionsPanel,
                       } satisfies WorkspaceInspectorSection,
                   ]
                 : []),

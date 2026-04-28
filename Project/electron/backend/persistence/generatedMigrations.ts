@@ -379,7 +379,6 @@ CREATE TABLE cloud_session_records (
     metadata_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    UNIQUE (profile_id, provider_id, remote_scope_key, remote_session_id),
     UNIQUE (local_session_id),
     CHECK (
         (record_kind = 'remote_snapshot' AND local_session_id IS NULL)
@@ -1669,6 +1668,10 @@ CREATE INDEX idx_cloud_session_records_profile_state_updated_at
 
 CREATE INDEX idx_cloud_session_records_profile_local_session
     ON cloud_session_records(profile_id, local_session_id);
+
+CREATE UNIQUE INDEX idx_cloud_session_records_unique_remote_snapshot
+    ON cloud_session_records(profile_id, provider_id, remote_scope_key, remote_session_id)
+    WHERE record_kind = 'remote_snapshot';
 
 CREATE INDEX idx_sessions_delegated_orchestrator_run_id
     ON sessions(delegated_from_orchestrator_run_id);

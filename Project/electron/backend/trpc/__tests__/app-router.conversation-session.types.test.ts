@@ -26,6 +26,7 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         kind: 'local' | 'sandbox' | 'cloud';
         cloudSession?: {
             id: string;
+            profileId: string;
             providerId: 'kilo';
             recordKind: 'remote_snapshot' | 'local_binding';
             authorityState: 'remote_only' | 'mirrored' | 'imported' | 'forked' | 'continued';
@@ -33,7 +34,44 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
             remoteSessionId: string;
             remoteScopeKey: string;
             localSessionId?: string;
+            metadata: Record<string, unknown>;
         };
+    }>();
+    expectTypeOf<AppRouterInputs['session']['listCloudSessions']>().toExtend<{
+        profileId: string;
+        query?: string;
+        scopeMode?: 'current' | 'all';
+        recordKind?: 'remote_snapshot' | 'local_binding' | 'all';
+        authorityState?: 'remote_only' | 'mirrored' | 'imported' | 'forked' | 'continued' | 'all';
+        syncState?: 'not_synced' | 'synced' | 'stale' | 'failed' | 'all';
+    }>();
+    expectTypeOf<AppRouterOutputs['session']['listCloudSessions']>().toExtend<{
+        cloudSessions: Array<{
+            id: string;
+            profileId: string;
+            providerId: 'kilo';
+            recordKind: 'remote_snapshot' | 'local_binding';
+            authorityState: 'remote_only' | 'mirrored' | 'imported' | 'forked' | 'continued';
+            syncState: 'not_synced' | 'synced' | 'stale' | 'failed';
+            remoteSessionId: string;
+            remoteScopeKey: string;
+            metadata: Record<string, unknown>;
+        }>;
+    }>();
+    expectTypeOf<AppRouterInputs['session']['importCloudSession']>().toExtend<{
+        profileId: string;
+        threadId: string;
+        remoteSessionId: string;
+    }>();
+    expectTypeOf<AppRouterInputs['session']['forkCloudSession']>().toExtend<{
+        profileId: string;
+        threadId: string;
+        cloudSessionId: string;
+    }>();
+    expectTypeOf<AppRouterInputs['session']['continueCloudSession']>().toExtend<{
+        profileId: string;
+        threadId: string;
+        cloudSessionId: string;
     }>();
 
     expectTypeOf<AppRouterInputs['conversation']['listBuckets']>().toExtend<{

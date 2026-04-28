@@ -6,7 +6,13 @@ import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { CloudSessionSummaryRecord, SessionSummaryRecord } from '@/app/backend/persistence/types';
 import { runStatuses, sessionKinds } from '@/app/backend/runtime/contracts';
-import type { CloudSessionCreateMetadata, EntityId, RunStatus, SessionKind } from '@/app/backend/runtime/contracts';
+import type {
+    CloudSessionAuthorityState,
+    CloudSessionCreateMetadata,
+    EntityId,
+    RunStatus,
+    SessionKind,
+} from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
@@ -173,6 +179,7 @@ export class SessionStore {
             delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
             delegatedFromFlowInstanceId?: string;
             cloudSession?: CloudSessionCreateMetadata;
+            cloudSessionAuthorityState?: Exclude<CloudSessionAuthorityState, 'remote_only'>;
         }
     ): Promise<
         | { created: false; reason: 'thread_not_found' | 'cloud_metadata_required' | 'cloud_binding_failed' }
@@ -222,10 +229,11 @@ export class SessionStore {
                 .executeTakeFirstOrThrow();
 
             let cloudSession: CloudSessionSummaryRecord | undefined;
-            if (resolvedKind === 'cloud' && options?.cloudSession) {
+            if (options?.cloudSession) {
                 const bindingResult = await cloudSessionStore.createLocalBinding(transaction, {
                     profileId,
                     localSessionId: parseEntityId(inserted.id, 'sessions.id', 'sess'),
+                    ...(options.cloudSessionAuthorityState ? { authorityState: options.cloudSessionAuthorityState } : {}),
                     ...options.cloudSession,
                 });
                 if (bindingResult.isErr()) {

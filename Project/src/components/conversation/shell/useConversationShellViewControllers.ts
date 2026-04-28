@@ -394,6 +394,15 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         onOpenToolArtifact: toolArtifactViewer.openToolArtifact,
         onPromoteMessage: registryPromotion.openMessagePromotion,
         setPlanningDepthSelection,
+        onCloudSessionCreated: ({ session, thread }: { session: SessionSummaryRecord; thread?: ThreadListRecord }) => {
+            applySessionWorkspaceUpdate({
+                session,
+                ...(thread ? { thread } : {}),
+            });
+            composer.clearRunSubmitError();
+            composer.resetComposer();
+            setFocusComposerRequestKey((current: number) => current + 1);
+        },
     });
 
     return {

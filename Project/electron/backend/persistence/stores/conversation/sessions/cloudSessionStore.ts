@@ -4,6 +4,7 @@ import { parseEntityId, parseEnumValue, parseJsonRecord } from '@/app/backend/pe
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type { CloudSessionSummaryRecord } from '@/app/backend/persistence/types';
 import {
+    type CloudSessionAuthorityState,
     cloudSessionAuthorityStates,
     cloudSessionRecordKinds,
     cloudSessionSyncStates,
@@ -31,6 +32,16 @@ interface CloudSessionUpsertInput {
 
 interface CloudSessionBindingInput extends CloudSessionUpsertInput {
     localSessionId: NonNullable<CloudSessionSummaryRecord['localSessionId']>;
+    authorityState?: Exclude<CloudSessionAuthorityState, 'remote_only'>;
+}
+
+interface CloudSessionListInput {
+    profileId: string;
+    query?: string;
+    remoteScopeKey?: string;
+    recordKind?: CloudSessionSummaryRecord['recordKind'];
+    authorityState?: CloudSessionSummaryRecord['authorityState'];
+    syncState?: CloudSessionSummaryRecord['syncState'];
 }
 
 interface CloudSessionSyncResultInput {
@@ -103,7 +114,7 @@ function buildRemoteSnapshotValues(input: CloudSessionUpsertInput, timestamp: st
 }
 
 export class CloudSessionStore {
-    private async getById(profileId: string, id: CloudSessionSummaryRecord['id']): Promise<CloudSessionSummaryRecord | null> {
+    async getById(profileId: string, id: CloudSessionSummaryRecord['id']): Promise<CloudSessionSummaryRecord | null> {
         const { db } = getPersistence();
         const row = await db
             .selectFrom('cloud_session_records')
@@ -119,11 +130,20 @@ export class CloudSessionStore {
         const { db } = getPersistence();
         const timestamp = nowIso();
         const values = buildRemoteSnapshotValues(input, timestamp);
-        await db
-            .insertInto('cloud_session_records')
-            .values(values)
-            .onConflict((oc) =>
-                oc.columns(['profile_id', 'provider_id', 'remote_scope_key', 'remote_session_id']).doUpdateSet({
+        const existing = await db
+            .selectFrom('cloud_session_records')
+            .select('id')
+            .where('profile_id', '=', input.profileId)
+            .where('provider_id', '=', 'kilo')
+            .where('record_kind', '=', 'remote_snapshot')
+            .where('remote_scope_key', '=', values.remote_scope_key)
+            .where('remote_session_id', '=', input.remoteSessionId)
+            .executeTakeFirst();
+
+        if (existing) {
+            await db
+                .updateTable('cloud_session_records')
+                .set({
                     record_kind: 'remote_snapshot',
                     authority_state: 'remote_only',
                     sync_state: 'synced',
@@ -138,14 +158,19 @@ export class CloudSessionStore {
                     metadata_json: values.metadata_json,
                     updated_at: timestamp,
                 })
-            )
-            .execute();
+                .where('id', '=', existing.id)
+                .where('profile_id', '=', input.profileId)
+                .execute();
+        } else {
+            await db.insertInto('cloud_session_records').values(values).execute();
+        }
 
         const row = await db
             .selectFrom('cloud_session_records')
             .selectAll()
             .where('profile_id', '=', input.profileId)
             .where('provider_id', '=', 'kilo')
+            .where('record_kind', '=', 'remote_snapshot')
             .where('remote_scope_key', '=', values.remote_scope_key)
             .where('remote_session_id', '=', input.remoteSessionId)
             .executeTakeFirst();
@@ -170,23 +195,33 @@ export class CloudSessionStore {
         if (!session) {
             return errOp('not_found', 'Cloud session binding target session was not found.');
         }
-        if (session.kind !== 'cloud') {
-            return errOp('invalid_payload', 'Cloud session bindings require a cloud session.');
+        const authorityState = input.authorityState ?? 'mirrored';
+        if (authorityState === 'forked' && session.kind === 'cloud') {
+            return errOp('invalid_payload', 'Forked cloud-session bindings require a local or sandbox session.');
+        }
+        if (authorityState !== 'forked' && session.kind !== 'cloud') {
+            return errOp('invalid_payload', 'Imported and continued cloud-session bindings require a cloud session.');
         }
 
         const values: CloudSessionInsert = {
             ...buildRemoteSnapshotValues(input, timestamp),
             record_kind: 'local_binding',
-            authority_state: 'mirrored',
+            authority_state: authorityState,
             local_session_id: input.localSessionId,
         };
-        await transaction
-            .insertInto('cloud_session_records')
-            .values(values)
-            .onConflict((oc) =>
-                oc.columns(['profile_id', 'provider_id', 'remote_scope_key', 'remote_session_id']).doUpdateSet({
+        const existing = await transaction
+            .selectFrom('cloud_session_records')
+            .select('id')
+            .where('profile_id', '=', input.profileId)
+            .where('local_session_id', '=', input.localSessionId)
+            .executeTakeFirst();
+
+        if (existing) {
+            await transaction
+                .updateTable('cloud_session_records')
+                .set({
                     record_kind: 'local_binding',
-                    authority_state: 'mirrored',
+                    authority_state: authorityState,
                     sync_state: 'synced',
                     local_session_id: values.local_session_id,
                     account_id: values.account_id,
@@ -200,8 +235,12 @@ export class CloudSessionStore {
                     metadata_json: values.metadata_json,
                     updated_at: timestamp,
                 })
-            )
-            .execute();
+                .where('profile_id', '=', input.profileId)
+                .where('id', '=', existing.id)
+                .execute();
+        } else {
+            await transaction.insertInto('cloud_session_records').values(values).execute();
+        }
 
         const row = await transaction
             .selectFrom('cloud_session_records')
@@ -245,14 +284,47 @@ export class CloudSessionStore {
     }
 
     async listByProfile(profileId: string): Promise<CloudSessionSummaryRecord[]> {
+        return this.list({ profileId });
+    }
+
+    async list(input: CloudSessionListInput): Promise<CloudSessionSummaryRecord[]> {
         const { db } = getPersistence();
-        const rows = await db
+        let query = db
             .selectFrom('cloud_session_records')
             .selectAll()
-            .where('profile_id', '=', profileId)
-            .orderBy('updated_at', 'desc')
-            .execute();
-        return rows.map(mapCloudSession);
+            .where('profile_id', '=', input.profileId);
+        if (input.remoteScopeKey) {
+            query = query.where('remote_scope_key', '=', input.remoteScopeKey);
+        }
+        if (input.recordKind) {
+            query = query.where('record_kind', '=', input.recordKind);
+        }
+        if (input.authorityState) {
+            query = query.where('authority_state', '=', input.authorityState);
+        }
+        if (input.syncState) {
+            query = query.where('sync_state', '=', input.syncState);
+        }
+        const rows = await query.orderBy('updated_at', 'desc').execute();
+        const normalizedQuery = input.query?.trim().toLowerCase();
+        if (!normalizedQuery) {
+            return rows.map(mapCloudSession);
+        }
+        return rows
+            .map(mapCloudSession)
+            .filter((record) =>
+                [
+                    record.title ?? '',
+                    record.remoteSessionId,
+                    record.remoteScopeKey,
+                    record.localSessionId ?? '',
+                    record.accountId ?? '',
+                    record.organizationId ?? '',
+                ]
+                    .join(' ')
+                    .toLowerCase()
+                    .includes(normalizedQuery)
+            );
     }
 
     async markSyncResult(input: CloudSessionSyncResultInput): Promise<OperationalResult<CloudSessionSummaryRecord>> {
