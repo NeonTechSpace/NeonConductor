@@ -7,6 +7,7 @@ const {
     getModelRoutingPreferenceUseQuery,
     listModelProvidersUseQuery,
     getAccountContextUseQuery,
+    getCloudSessionPrerequisitesUseQuery,
     getUsageSummaryUseQuery,
     getOpenAISubscriptionUsageUseQuery,
     getOpenAISubscriptionRateLimitsUseQuery,
@@ -17,6 +18,7 @@ const {
     getModelRoutingPreferenceUseQuery: vi.fn(),
     listModelProvidersUseQuery: vi.fn(),
     getAccountContextUseQuery: vi.fn(),
+    getCloudSessionPrerequisitesUseQuery: vi.fn(),
     getUsageSummaryUseQuery: vi.fn(),
     getOpenAISubscriptionUsageUseQuery: vi.fn(),
     getOpenAISubscriptionRateLimitsUseQuery: vi.fn(),
@@ -43,6 +45,7 @@ vi.mock('@/web/trpc/client', () => ({
             getModelRoutingPreference: { useQuery: getModelRoutingPreferenceUseQuery },
             listModelProviders: { useQuery: listModelProvidersUseQuery },
             getAccountContext: { useQuery: getAccountContextUseQuery },
+            getCloudSessionPrerequisites: { useQuery: getCloudSessionPrerequisitesUseQuery },
             getUsageSummary: { useQuery: getUsageSummaryUseQuery },
             getOpenAISubscriptionUsage: { useQuery: getOpenAISubscriptionUsageUseQuery },
             getOpenAISubscriptionRateLimits: { useQuery: getOpenAISubscriptionRateLimitsUseQuery },
@@ -124,6 +127,7 @@ describe('useProviderSettingsQueries', () => {
         getModelRoutingPreferenceUseQuery.mockReturnValue({ data: undefined });
         listModelProvidersUseQuery.mockReturnValue({ data: { providers: [] } });
         getAccountContextUseQuery.mockReturnValue({ data: undefined });
+        getCloudSessionPrerequisitesUseQuery.mockReturnValue({ data: undefined });
         getUsageSummaryUseQuery.mockReturnValue({ data: { summaries: [] } });
         getOpenAISubscriptionUsageUseQuery.mockReturnValue({ data: undefined });
         getOpenAISubscriptionRateLimitsUseQuery.mockReturnValue({ data: undefined });

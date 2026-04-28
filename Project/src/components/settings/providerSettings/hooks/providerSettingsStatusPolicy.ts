@@ -50,6 +50,10 @@ export function getOrganizationUpdatedStatusMessage(): string {
     return 'Kilo organization updated.';
 }
 
+export function getAccountContextRefreshedStatusMessage(): string {
+    return 'Kilo account context refreshed.';
+}
+
 export function getAuthFlowStartedStatusMessage(methodLabel: string): string {
     return `${methodLabel} flow started.`;
 }

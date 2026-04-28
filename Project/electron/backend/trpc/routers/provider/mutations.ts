@@ -4,6 +4,7 @@ import {
     providerClearAuthInputSchema,
     providerCompleteAuthInputSchema,
     providerPollAuthInputSchema,
+    providerRefreshAccountContextInputSchema,
     providerRefreshAuthInputSchema,
     providerSetApiKeyInputSchema,
     providerSetDefaultInputSchema,
@@ -314,6 +315,18 @@ export const providerMutationProcedures = {
             ...(readback.provider ? { provider: readback.provider } : {}),
         });
     }),
+    refreshAccountContext: publicProcedure
+        .input(providerRefreshAccountContextInputSchema)
+        .mutation(async ({ input }) => {
+            const result = await providerManagementService.refreshAccountContext(input.profileId, input.providerId);
+            if (result.isErr()) {
+                throwWithCode(result.error.code, result.error.message);
+            }
+
+            return {
+                prerequisites: result.value,
+            };
+        }),
     setModelRoutingPreference: publicProcedure
         .input(providerSetModelRoutingPreferenceInputSchema)
         .mutation(async ({ input }) => {

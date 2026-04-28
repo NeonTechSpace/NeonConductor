@@ -15,6 +15,7 @@ describe('settingsRoutePrefetch', () => {
         const listModelsPrefetch = vi.fn().mockResolvedValue(undefined);
         const authStatePrefetch = vi.fn().mockResolvedValue(undefined);
         const accountContextPrefetch = vi.fn().mockResolvedValue(undefined);
+        const cloudSessionPrerequisitesPrefetch = vi.fn().mockResolvedValue(undefined);
         const profileListPrefetch = vi.fn().mockResolvedValue(undefined);
         const promptSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
         const globalSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
@@ -37,6 +38,7 @@ describe('settingsRoutePrefetch', () => {
                     listModels: { prefetch: listModelsPrefetch },
                     getAuthState: { prefetch: authStatePrefetch },
                     getAccountContext: { prefetch: accountContextPrefetch },
+                    getCloudSessionPrerequisites: { prefetch: cloudSessionPrerequisitesPrefetch },
                 },
                 profile: {
                     list: {
@@ -78,6 +80,10 @@ describe('settingsRoutePrefetch', () => {
             profileId: 'profile_default',
             providerId: 'kilo',
         });
+        expect(cloudSessionPrerequisitesPrefetch).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            providerId: 'kilo',
+        });
         expect(promptSettingsPrefetch).toHaveBeenCalledWith({
             profileId: 'profile_default',
         });
@@ -92,6 +98,7 @@ describe('settingsRoutePrefetch', () => {
         const listModelsPrefetch = vi.fn().mockResolvedValue(undefined);
         const authStatePrefetch = vi.fn().mockResolvedValue(undefined);
         const accountContextPrefetch = vi.fn().mockResolvedValue(undefined);
+        const cloudSessionPrerequisitesPrefetch = vi.fn().mockResolvedValue(undefined);
         const profileListPrefetch = vi.fn().mockResolvedValue(undefined);
         const promptSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
         const globalSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
@@ -121,6 +128,7 @@ describe('settingsRoutePrefetch', () => {
                         listModels: { prefetch: listModelsPrefetch },
                         getAuthState: { prefetch: authStatePrefetch },
                         getAccountContext: { prefetch: accountContextPrefetch },
+                        getCloudSessionPrerequisites: { prefetch: cloudSessionPrerequisitesPrefetch },
                     },
                     profile: {
                         list: {
@@ -158,6 +166,7 @@ describe('settingsRoutePrefetch', () => {
         const listModelsPrefetch = vi.fn().mockResolvedValue(undefined);
         const authStatePrefetch = vi.fn().mockResolvedValue(undefined);
         const accountContextPrefetch = vi.fn().mockResolvedValue(undefined);
+        const cloudSessionPrerequisitesPrefetch = vi.fn().mockResolvedValue(undefined);
         const profileListPrefetch = vi.fn().mockResolvedValue(undefined);
         const promptSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
         const globalSettingsPrefetch = vi.fn().mockResolvedValue(undefined);
@@ -187,6 +196,7 @@ describe('settingsRoutePrefetch', () => {
                         listModels: { prefetch: listModelsPrefetch },
                         getAuthState: { prefetch: authStatePrefetch },
                         getAccountContext: { prefetch: accountContextPrefetch },
+                        getCloudSessionPrerequisites: { prefetch: cloudSessionPrerequisitesPrefetch },
                     },
                     profile: {
                         list: {

@@ -1,12 +1,11 @@
-import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
-
-import { prefetchProviderSettingsData } from '@/web/components/settings/providerSettings/providerSettingsPrefetch';
 import {
     useProviderSettingsSurfaceState,
     type ProviderSettingsControllerOptions,
     type ProviderSettingsSurfaceState,
 } from '@/web/components/settings/providerSettings/hooks/useProviderSettingsSurfaceState';
+import { prefetchProviderSettingsData } from '@/web/components/settings/providerSettings/providerSettingsPrefetch';
 import type { ActiveAuthFlow } from '@/web/components/settings/providerSettings/types';
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
 
@@ -78,14 +77,18 @@ export interface ProviderSettingsControllerState {
         routingDraft: ProviderSettingsSurfaceState['kiloRoutingDraft'];
         modelProviders: ProviderSettingsSurfaceState['queries']['kiloModelProviders'];
         accountContext: ProviderSettingsSurfaceState['queries']['kiloAccountContext'];
+        cloudSessionPrerequisites: ProviderSettingsSurfaceState['queries']['kiloCloudSessionPrerequisites'];
         isLoadingRoutingPreference: boolean;
         isLoadingModelProviders: boolean;
+        isLoadingCloudSessionPrerequisites: boolean;
         isSavingRoutingPreference: boolean;
         isSavingOrganization: boolean;
+        isRefreshingAccountContext: boolean;
         changeRoutingMode: (value: 'dynamic' | 'pinned') => Promise<void>;
         changeRoutingSort: (value: 'default' | 'price' | 'throughput' | 'latency') => Promise<void>;
         changePinnedProvider: (value: string) => Promise<void>;
         changeOrganization: (value?: string) => Promise<void>;
+        refreshAccountContext: () => Promise<void>;
     };
 }
 
@@ -164,14 +167,18 @@ export function buildProviderSettingsControllerState(
             routingDraft: surfaceState.kiloRoutingDraft,
             modelProviders: surfaceState.queries.kiloModelProviders,
             accountContext: surfaceState.queries.kiloAccountContext,
+            cloudSessionPrerequisites: surfaceState.queries.kiloCloudSessionPrerequisites,
             isLoadingRoutingPreference: surfaceState.queries.kiloRoutingPreferenceQuery.isLoading,
             isLoadingModelProviders: surfaceState.queries.kiloModelProvidersQuery.isLoading,
+            isLoadingCloudSessionPrerequisites: surfaceState.queries.kiloCloudSessionPrerequisitesQuery.isLoading,
             isSavingRoutingPreference: surfaceState.mutations.setModelRoutingPreferenceMutation.isPending,
             isSavingOrganization: surfaceState.mutations.setOrganizationMutation.isPending,
+            isRefreshingAccountContext: surfaceState.mutations.refreshAccountContextMutation.isPending,
             changeRoutingMode: wrapFailClosedAction(surfaceState.actions.changeRoutingMode),
             changeRoutingSort: wrapFailClosedAction(surfaceState.actions.changeRoutingSort),
             changePinnedProvider: wrapFailClosedAction(surfaceState.actions.changePinnedProvider),
             changeOrganization: wrapFailClosedAction(surfaceState.actions.changeOrganization),
+            refreshAccountContext: wrapFailClosedAction(surfaceState.actions.refreshKiloAccountContext),
         },
     };
 }

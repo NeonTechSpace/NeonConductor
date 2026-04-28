@@ -3,6 +3,7 @@ import {
     providerByIdInputSchema,
     providerGetCredentialInputSchema,
     providerGetAccountContextInputSchema,
+    providerGetCloudSessionPrerequisitesInputSchema,
     providerGetConnectionProfileInputSchema,
     providerGetExecutionPreferenceInputSchema,
     providerGetModelRoutingPreferenceInputSchema,
@@ -127,6 +128,21 @@ export const providerQueryProcedures = {
 
         return result.value;
     }),
+    getCloudSessionPrerequisites: publicProcedure
+        .input(providerGetCloudSessionPrerequisitesInputSchema)
+        .query(async ({ input }) => {
+            const result = await providerManagementService.getCloudSessionPrerequisites(
+                input.profileId,
+                input.providerId
+            );
+            if (result.isErr()) {
+                throwWithCode(result.error.code, result.error.message);
+            }
+
+            return {
+                prerequisites: result.value,
+            };
+        }),
     getConnectionProfile: publicProcedure.input(providerGetConnectionProfileInputSchema).query(async ({ input }) => {
         const connectionProfileResult = await providerManagementService.getConnectionProfile(
             input.profileId,

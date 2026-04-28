@@ -356,6 +356,25 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         authState: { authState: string; tokenExpiresAt?: string };
         kiloAccountContext?: { balance?: { amount: number; currency: string; updatedAt: string } };
     }>();
+    expectTypeOf<AppRouterInputs['provider']['getCloudSessionPrerequisites']>().toExtend<{
+        profileId: string;
+        providerId: 'kilo';
+    }>();
+    expectTypeOf<AppRouterOutputs['provider']['getCloudSessionPrerequisites']>().toExtend<{
+        prerequisites: {
+            profileId: string;
+            providerId: 'kilo';
+            blockers: Array<
+                'auth_required' | 'credential_required' | 'account_context_required' | 'organization_unavailable'
+            >;
+            canBrowseRemoteSessions: boolean;
+            canContinueRemoteSessions: boolean;
+        };
+    }>();
+    expectTypeOf<AppRouterInputs['provider']['refreshAccountContext']>().toExtend<{
+        profileId: string;
+        providerId: 'kilo';
+    }>();
     expectTypeOf<AppRouterInputs['provider']['getConnectionProfile']>().toExtend<{
         profileId: string;
         providerId: string;

@@ -14,8 +14,8 @@ const {
         error: null,
     });
     type MutationConfig = {
-        onSuccess?: (...args: any[]) => void;
-        onError?: (...args: any[]) => void;
+        onSuccess?: (...args: unknown[]) => void;
+        onError?: (...args: unknown[]) => void;
     };
 
     const createUseMutationMock = (mutationName: string) => {
@@ -45,6 +45,7 @@ const {
                 setExecutionPreference: createUseMutationMock('setExecutionPreference'),
                 setModelRoutingPreference: createUseMutationMock('setModelRoutingPreference'),
                 setOrganization: createUseMutationMock('setOrganization'),
+                refreshAccountContext: createUseMutationMock('refreshAccountContext'),
                 startAuth: createUseMutationMock('startAuth'),
                 pollAuth: createUseMutationMock('pollAuth'),
                 cancelAuth: createUseMutationMock('cancelAuth'),
@@ -54,6 +55,7 @@ const {
                 getOpenAISubscriptionUsage: { invalidate: createInvalidateMock() },
                 getOpenAISubscriptionRateLimits: { invalidate: createInvalidateMock() },
                 getAccountContext: { invalidate: createInvalidateMock() },
+                getCloudSessionPrerequisites: { invalidate: createInvalidateMock(), setData: createSetDataMock() },
             },
             runtime: {
                 getShellBootstrap: { invalidate: createInvalidateMock() },
@@ -73,6 +75,7 @@ const {
                 getOpenAISubscriptionUsage: { invalidate: createInvalidateMock() },
                 getOpenAISubscriptionRateLimits: { invalidate: createInvalidateMock() },
                 getAccountContext: { invalidate: createInvalidateMock() },
+                getCloudSessionPrerequisites: { invalidate: createInvalidateMock(), setData: createSetDataMock() },
                 setDefault: undefined,
                 setApiKey: undefined,
             },
@@ -98,6 +101,7 @@ vi.mock('@/web/trpc/client', () => ({
             setExecutionPreference: trpcMocks.provider.setExecutionPreference,
             setModelRoutingPreference: trpcMocks.provider.setModelRoutingPreference,
             setOrganization: trpcMocks.provider.setOrganization,
+            refreshAccountContext: trpcMocks.provider.refreshAccountContext,
             startAuth: trpcMocks.provider.startAuth,
             pollAuth: trpcMocks.provider.pollAuth,
             cancelAuth: trpcMocks.provider.cancelAuth,
@@ -107,6 +111,7 @@ vi.mock('@/web/trpc/client', () => ({
             getOpenAISubscriptionUsage: trpcMocks.provider.getOpenAISubscriptionUsage,
             getOpenAISubscriptionRateLimits: trpcMocks.provider.getOpenAISubscriptionRateLimits,
             getAccountContext: trpcMocks.provider.getAccountContext,
+            getCloudSessionPrerequisites: trpcMocks.provider.getCloudSessionPrerequisites,
         },
         runtime: {
             getShellBootstrap: trpcMocks.runtime.getShellBootstrap,
@@ -140,14 +145,19 @@ function renderCoordinator(input: {
 }
 
 function getMutationConfig(name: keyof typeof trpcMocks.mutationConfigs) {
-    return trpcMocks.mutationConfigs[name]!;
+    const config = trpcMocks.mutationConfigs[name];
+    if (!config) {
+        throw new Error(`Missing mutation config for "${name}".`);
+    }
+
+    return config;
 }
 
 describe('useProviderSettingsMutationCoordinator', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         for (const key of Object.keys(trpcMocks.mutationConfigs)) {
-            delete trpcMocks.mutationConfigs[key];
+            Reflect.deleteProperty(trpcMocks.mutationConfigs, key);
         }
     });
 
@@ -271,6 +281,10 @@ describe('useProviderSettingsMutationCoordinator', () => {
             profileId: 'profile_default',
             providerId: 'kilo',
         });
+        expect(utilsMock.provider.getCloudSessionPrerequisites.invalidate).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            providerId: 'kilo',
+        });
         expect(utilsMock.provider.getCredentialSummary.invalidate).toHaveBeenCalledWith({
             profileId: 'profile_default',
             providerId: 'kilo',
@@ -349,5 +363,50 @@ describe('useProviderSettingsMutationCoordinator', () => {
         );
 
         expect(setStatusMessage).toHaveBeenCalledWith('Kilo organization updated.');
+        expect(utilsMock.provider.getCloudSessionPrerequisites.invalidate).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            providerId: 'kilo',
+        });
+    });
+
+    it('updates Kilo cloud-session readiness cache after account-context refresh', () => {
+        const setStatusMessage = vi.fn();
+        renderCoordinator({
+            profileId: 'profile_default',
+            selectedProviderId: 'kilo',
+            setStatusMessage,
+            setActiveAuthFlow: vi.fn(),
+        });
+
+        const result = {
+            prerequisites: {
+                profileId: 'profile_default',
+                providerId: 'kilo' as const,
+                authState: 'authenticated',
+                hasStoredCredential: true,
+                accountContext: {
+                    profileId: 'profile_default',
+                    displayName: 'Neon User',
+                    emailMasked: 'n***@example.com',
+                    authState: 'authenticated',
+                    organizations: [],
+                    updatedAt: '2026-04-28T12:00:00.000Z',
+                },
+                blockers: [],
+                canBrowseRemoteSessions: true,
+                canContinueRemoteSessions: true,
+            },
+        };
+
+        getMutationConfig('refreshAccountContext').onSuccess?.(result, undefined);
+
+        expect(setStatusMessage).toHaveBeenCalledWith('Kilo account context refreshed.');
+        expect(utilsMock.provider.getCloudSessionPrerequisites.setData).toHaveBeenCalledWith(
+            {
+                profileId: 'profile_default',
+                providerId: 'kilo',
+            },
+            result
+        );
     });
 });

@@ -20,6 +20,9 @@ interface ProviderSettingsPrefetchInput {
             getAccountContext: {
                 prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
             };
+            getCloudSessionPrerequisites: {
+                prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
+            };
             getOpenAISubscriptionUsage: {
                 prefetch: (input: { profileId: string }) => Promise<void>;
             };
@@ -51,6 +54,12 @@ export function prefetchProviderSettingsData(input: ProviderSettingsPrefetchInpu
     if (input.providerId === 'kilo') {
         tasks.push(
             input.trpcUtils.provider.getAccountContext.prefetch({
+                profileId: input.profileId,
+                providerId: 'kilo',
+            })
+        );
+        tasks.push(
+            input.trpcUtils.provider.getCloudSessionPrerequisites.prefetch({
                 profileId: input.profileId,
                 providerId: 'kilo',
             })

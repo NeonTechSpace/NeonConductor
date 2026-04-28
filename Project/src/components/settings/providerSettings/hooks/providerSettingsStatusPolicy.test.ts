@@ -6,6 +6,7 @@ import {
     getAuthFlowCompletedStatusMessage,
     getAuthFlowStartedStatusMessage,
     getAuthFlowWaitingStatusMessage,
+    getAccountContextRefreshedStatusMessage,
     getCatalogSyncFailureStatusMessage,
     getCatalogSyncSuccessStatusMessage,
     getConnectionProfileUpdatedStatusMessage,
@@ -39,6 +40,7 @@ describe('provider settings status policy', () => {
         );
         expect(getExecutionPreferenceStatusMessage('standard_http')).toBe('Standard HTTP restored for OpenAI runs.');
         expect(getOrganizationUpdatedStatusMessage()).toBe('Kilo organization updated.');
+        expect(getAccountContextRefreshedStatusMessage()).toBe('Kilo account context refreshed.');
         expect(getAuthFlowStartedStatusMessage('OAuth device')).toBe('OAuth device flow started.');
         expect(getAuthFlowWaitingStatusMessage()).toBe('Waiting for authorization confirmation...');
         expect(getAuthFlowCompletedStatusMessage('complete', 'authenticated')).toBe(

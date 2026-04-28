@@ -1,9 +1,27 @@
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import { KiloCloudSessionReadinessSection } from '@/web/components/settings/kiloSettingsSections';
 import {
     shouldAttemptKiloInitialCatalogBootstrap,
     shouldResetKiloInitialCatalogBootstrapAttempt,
 } from '@/web/components/settings/providerSettings/hooks/useKiloInitialCatalogBootstrap';
+import type { KiloSettingsControllerState } from '@/web/components/settings/providerSettings/hooks/useKiloSettingsController';
+import { PrivacyContext } from '@/web/lib/privacy/privacyContext';
+
+function renderWithPrivacy(element: Parameters<typeof renderToStaticMarkup>[0]) {
+    return renderToStaticMarkup(
+        <PrivacyContext.Provider
+            value={{
+                enabled: false,
+                setEnabled: () => {},
+                toggleEnabled: () => {},
+                redactValue: (value) => value,
+            }}>
+            {element}
+        </PrivacyContext.Provider>
+    );
+}
 
 describe('Kilo initial catalog bootstrap contract', () => {
     it('attempts one automatic sync for an authenticated empty catalog and does not retry for the same mounted identity', () => {
@@ -85,5 +103,46 @@ describe('Kilo initial catalog bootstrap contract', () => {
                 hasAttemptedBootstrap: false,
             })
         ).toBe(false);
+    });
+
+    it('renders Kilo cloud-session readiness and blocker states', () => {
+        const controller = {
+            effectiveAuthState: 'authenticated',
+            kilo: {
+                isRefreshingAccountContext: false,
+                isLoadingCloudSessionPrerequisites: false,
+                refreshAccountContext: async () => {},
+                cloudSessionPrerequisites: {
+                    profileId: 'profile_default',
+                    providerId: 'kilo',
+                    authState: 'authenticated',
+                    hasStoredCredential: true,
+                    accountContext: {
+                        profileId: 'profile_default',
+                        accountId: 'acct_123',
+                        displayName: 'Neon User',
+                        emailMasked: 'n***@example.com',
+                        authState: 'authenticated',
+                        organizations: [],
+                        updatedAt: '2026-04-28T12:00:00.000Z',
+                    },
+                    scope: {
+                        scopeKind: 'account',
+                        remoteScopeKey: 'acct_123',
+                        accountId: 'acct_123',
+                    },
+                    blockers: ['organization_unavailable'],
+                    canBrowseRemoteSessions: false,
+                    canContinueRemoteSessions: false,
+                },
+            },
+        } as unknown as KiloSettingsControllerState;
+
+        const html = renderWithPrivacy(<KiloCloudSessionReadinessSection controller={controller} />);
+
+        expect(html).toContain('Cloud Sessions');
+        expect(html).toContain('Blocked');
+        expect(html).toContain('Available');
+        expect(html).toContain('The selected organization is not present in the latest Kilo account snapshot.');
     });
 });

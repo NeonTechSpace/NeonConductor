@@ -10,8 +10,8 @@ import type {
     ProviderSpecialistDefaultModeKey,
     ProviderSpecialistDefaultTopLevelTab,
 } from '@/app/backend/runtime/contracts/specialistDefaults';
-import type { WorkflowRoutingTargetKey } from '@/app/backend/runtime/contracts/workflowRouting';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { WorkflowRoutingTargetKey } from '@/app/backend/runtime/contracts/workflowRouting';
 
 export interface MarketplacePackage {
     id: string;
@@ -129,6 +129,38 @@ export type ProviderCancelAuthInput = ProviderFlowInput;
 export type ProviderRefreshAuthInput = ProviderByIdInput;
 
 export type ProviderGetAccountContextInput = ProviderByIdInput;
+
+export interface ProviderGetCloudSessionPrerequisitesInput extends ProfileInput {
+    providerId: 'kilo';
+}
+
+export type ProviderRefreshAccountContextInput = ProviderGetCloudSessionPrerequisitesInput;
+
+export type KiloCloudSessionPrerequisiteBlocker =
+    | 'auth_required'
+    | 'credential_required'
+    | 'account_context_required'
+    | 'organization_unavailable';
+
+export interface KiloCloudSessionScope {
+    scopeKind: 'account' | 'organization';
+    remoteScopeKey: string;
+    accountId?: string;
+    organizationId?: string;
+    organizationName?: string;
+}
+
+export interface KiloCloudSessionPrerequisites {
+    profileId: string;
+    providerId: 'kilo';
+    authState: string;
+    hasStoredCredential: boolean;
+    accountContext: KiloAccountContext;
+    scope?: KiloCloudSessionScope;
+    blockers: KiloCloudSessionPrerequisiteBlocker[];
+    canBrowseRemoteSessions: boolean;
+    canContinueRemoteSessions: boolean;
+}
 
 export type ProviderGetConnectionProfileInput = ProviderByIdInput;
 

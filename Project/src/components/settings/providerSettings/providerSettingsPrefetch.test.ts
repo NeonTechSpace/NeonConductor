@@ -9,6 +9,7 @@ describe('providerSettingsPrefetch', () => {
         const connectionProfilePrefetch = vi.fn().mockResolvedValue(undefined);
         const usageSummaryPrefetch = vi.fn().mockResolvedValue(undefined);
         const kiloAccountContextPrefetch = vi.fn().mockResolvedValue(undefined);
+        const kiloCloudPrerequisitesPrefetch = vi.fn().mockResolvedValue(undefined);
         const openAiUsagePrefetch = vi.fn().mockResolvedValue(undefined);
         const openAiRateLimitsPrefetch = vi.fn().mockResolvedValue(undefined);
 
@@ -22,6 +23,7 @@ describe('providerSettingsPrefetch', () => {
                     getConnectionProfile: { prefetch: connectionProfilePrefetch },
                     getUsageSummary: { prefetch: usageSummaryPrefetch },
                     getAccountContext: { prefetch: kiloAccountContextPrefetch },
+                    getCloudSessionPrerequisites: { prefetch: kiloCloudPrerequisitesPrefetch },
                     getOpenAISubscriptionUsage: { prefetch: openAiUsagePrefetch },
                     getOpenAISubscriptionRateLimits: { prefetch: openAiRateLimitsPrefetch },
                 },
@@ -45,5 +47,6 @@ describe('providerSettingsPrefetch', () => {
         expect(openAiUsagePrefetch).toHaveBeenCalledOnce();
         expect(openAiRateLimitsPrefetch).toHaveBeenCalledOnce();
         expect(kiloAccountContextPrefetch).not.toHaveBeenCalled();
+        expect(kiloCloudPrerequisitesPrefetch).not.toHaveBeenCalled();
     });
 });

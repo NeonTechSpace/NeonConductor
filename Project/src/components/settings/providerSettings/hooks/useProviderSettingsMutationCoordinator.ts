@@ -5,6 +5,7 @@ import {
     getAuthFlowCompletedStatusMessage,
     getAuthFlowStartedStatusMessage,
     getAuthFlowWaitingStatusMessage,
+    getAccountContextRefreshedStatusMessage,
     getCatalogSyncFailureStatusMessage,
     getCatalogSyncSuccessStatusMessage,
     getConnectionProfileUpdatedStatusMessage,
@@ -79,6 +80,21 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
                 utils.provider.getCredentialValue.invalidate({
                     profileId: input.profileId,
                     providerId,
+                }),
+            ]);
+        });
+    };
+
+    const invalidateKiloAccountQueries = () => {
+        launchBackgroundTask(async () => {
+            await Promise.all([
+                utils.provider.getAccountContext.invalidate({
+                    profileId: input.profileId,
+                    providerId: 'kilo',
+                }),
+                utils.provider.getCloudSessionPrerequisites.invalidate({
+                    profileId: input.profileId,
+                    providerId: 'kilo',
                 }),
             ]);
         });
@@ -222,7 +238,22 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
                 models: result.models,
                 ...(result.provider ? { provider: result.provider } : {}),
             });
+            invalidateKiloAccountQueries();
             invalidateShellBootstrap();
+        },
+    });
+
+    const refreshAccountContextMutation = trpc.provider.refreshAccountContext.useMutation({
+        onSuccess: (result) => {
+            input.setStatusMessage(getAccountContextRefreshedStatusMessage());
+            utils.provider.getCloudSessionPrerequisites.setData(
+                {
+                    profileId: input.profileId,
+                    providerId: 'kilo',
+                },
+                result
+            );
+            invalidateKiloAccountQueries();
         },
     });
 
@@ -280,6 +311,10 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
                             profileId: input.profileId,
                             providerId: 'kilo',
                         }),
+                        utils.provider.getCloudSessionPrerequisites.invalidate({
+                            profileId: input.profileId,
+                            providerId: 'kilo',
+                        }),
                         syncCatalogMutation.mutateAsync({
                             profileId: input.profileId,
                             providerId: 'kilo',
@@ -316,6 +351,7 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
         syncCatalogMutation,
         setModelRoutingPreferenceMutation,
         setOrganizationMutation,
+        refreshAccountContextMutation,
         openExternalUrlMutation,
         startAuthMutation,
         pollAuthMutation,

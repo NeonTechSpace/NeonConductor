@@ -6,7 +6,10 @@ import { KiloAccountSection } from '@/web/components/settings/providerSettings/k
 import { KiloRoutingSection } from '@/web/components/settings/providerSettings/kiloRoutingSection';
 import { ProviderSpecialistDefaultsSection } from '@/web/components/settings/providerSettings/specialistDefaultsSection';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
+import { Button } from '@/web/components/ui/button';
 import { SensitiveValue } from '@/web/components/ui/sensitiveValue';
+
+import type { KiloCloudSessionPrerequisiteBlocker } from '@/shared/contracts';
 
 function formatBalance(amount: number | undefined, currency: string | undefined): string {
     if (amount === undefined || !currency) {
@@ -30,6 +33,91 @@ function SummaryCard(input: {
             <div className='mt-2 text-sm font-medium'>{input.value}</div>
             {input.meta ? <p className='text-muted-foreground mt-2 text-xs'>{input.meta}</p> : null}
         </article>
+    );
+}
+
+const cloudSessionBlockerCopy: Record<KiloCloudSessionPrerequisiteBlocker, string> = {
+    auth_required: 'Sign in to Kilo before browsing cloud sessions.',
+    credential_required: 'A stored Kilo credential is required for remote session access.',
+    account_context_required: 'Refresh account context so Neon can resolve the remote account scope.',
+    organization_unavailable: 'The selected organization is not present in the latest Kilo account snapshot.',
+};
+
+export function KiloCloudSessionReadinessSection({
+    controller,
+}: {
+    controller: KiloSettingsControllerState;
+}) {
+    const prerequisites = controller.kilo.cloudSessionPrerequisites;
+    const scope = prerequisites?.scope;
+    const blockers = prerequisites?.blockers ?? [];
+
+    return (
+        <section className='border-border bg-background rounded-xl border p-4'>
+            <div className='flex flex-wrap items-start justify-between gap-3'>
+                <div>
+                    <p className='text-sm font-semibold'>Cloud Sessions</p>
+                    <p className='text-muted-foreground mt-1 text-xs'>
+                        Account readiness for future Kilo cloud-session browsing and continuation.
+                    </p>
+                </div>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    disabled={controller.kilo.isRefreshingAccountContext}
+                    onClick={() => {
+                        void controller.kilo.refreshAccountContext();
+                    }}>
+                    {controller.kilo.isRefreshingAccountContext ? 'Refreshing...' : 'Refresh'}
+                </Button>
+            </div>
+
+            {controller.kilo.isLoadingCloudSessionPrerequisites ? (
+                <p className='text-muted-foreground mt-4 text-xs'>Loading cloud-session readiness...</p>
+            ) : (
+                <div className='mt-4 grid gap-3 md:grid-cols-3'>
+                    <SummaryCard
+                        label='Readiness'
+                        value={prerequisites?.canBrowseRemoteSessions ? 'Ready' : 'Blocked'}
+                        meta={
+                            prerequisites?.canContinueRemoteSessions
+                                ? 'Browse and continue prerequisites are satisfied.'
+                                : 'Resolve blockers before remote cloud-session actions.'
+                        }
+                    />
+                    <SummaryCard
+                        label='Credential'
+                        value={prerequisites?.hasStoredCredential ? 'Available' : 'Missing'}
+                        meta={`Auth ${prerequisites?.authState ?? controller.effectiveAuthState}`}
+                    />
+                    <SummaryCard
+                        label='Remote Scope'
+                        value={
+                            scope?.scopeKind === 'organization' ? (
+                                <SensitiveValue value={scope.organizationName} category='organization' />
+                            ) : scope?.scopeKind === 'account' ? (
+                                'Account'
+                            ) : (
+                                '-'
+                            )
+                        }
+                        meta={scope?.remoteScopeKey ? `Key ${scope.remoteScopeKey}` : 'No remote scope resolved'}
+                    />
+                </div>
+            )}
+
+            {blockers.length > 0 ? (
+                <div className='border-border bg-card mt-4 rounded-xl border p-3'>
+                    <p className='text-xs font-semibold tracking-[0.12em] uppercase'>Blockers</p>
+                    <ul className='text-muted-foreground mt-2 space-y-1 text-xs'>
+                        {blockers.map((blocker) => (
+                            <li key={blocker}>{cloudSessionBlockerCopy[blocker]}</li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+        </section>
     );
 }
 
@@ -144,6 +232,7 @@ export function KiloAccountAccessScreen({
                             void controller.kilo.changeOrganization(value);
                         }}
                     />
+                    <KiloCloudSessionReadinessSection controller={controller} />
                 </div>
 
                 <div className='space-y-4'>

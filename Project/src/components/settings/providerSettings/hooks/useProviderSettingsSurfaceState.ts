@@ -145,6 +145,9 @@ export function useProviderSettingsSurfaceState(profileId: string, options?: Pro
             setOrganizationMutation: {
                 mutateAsync: ignoreMutationResult(mutations.setOrganizationMutation.mutateAsync),
             },
+            refreshAccountContextMutation: {
+                mutateAsync: ignoreMutationResult(mutations.refreshAccountContextMutation.mutateAsync),
+            },
             setApiKeyMutation: {
                 mutateAsync: ignoreMutationResult(mutations.setApiKeyMutation.mutateAsync),
             },

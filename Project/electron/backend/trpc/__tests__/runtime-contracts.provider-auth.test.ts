@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { getPersistence } from '@/app/backend/persistence/db';
 import {
     createCaller,
     registerRuntimeContractHooks,
@@ -198,6 +199,123 @@ describe('runtime contracts: provider auth flows', () => {
         expect(accountContext.kiloAccountContext?.organizations.some((organization) => organization.isActive)).toBe(
             true
         );
+
+        const prerequisites = await caller.provider.getCloudSessionPrerequisites({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(prerequisites.prerequisites).toMatchObject({
+            providerId: 'kilo',
+            hasStoredCredential: true,
+            blockers: [],
+            canBrowseRemoteSessions: true,
+            canContinueRemoteSessions: true,
+            scope: {
+                scopeKind: 'organization',
+                remoteScopeKey: 'org_kilo',
+                organizationId: 'org_kilo',
+            },
+        });
+
+        const refreshed = await caller.provider.refreshAccountContext({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(refreshed.prerequisites.canBrowseRemoteSessions).toBe(true);
+    });
+
+    it('blocks kilo cloud-session prerequisites when authentication or selected organization state is incomplete', async () => {
+        const caller = createCaller();
+
+        const loggedOut = await caller.provider.getCloudSessionPrerequisites({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(loggedOut.prerequisites.blockers).toEqual(
+            expect.arrayContaining(['auth_required', 'credential_required', 'account_context_required'])
+        );
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((url: string, init?: RequestInit) => {
+                const headers = (init?.headers ?? {}) as Record<string, string>;
+                const organizationId = headers['X-KiloCode-OrganizationId'] ?? null;
+
+                if (url.endsWith('/api/profile')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                id: 'acct_missing_org',
+                                displayName: 'Neon User',
+                                emailMasked: 'n***@example.com',
+                                organizations: [
+                                    {
+                                        organization_id: 'org_available',
+                                        name: 'Available Org',
+                                        is_active: organizationId !== 'org_missing',
+                                        entitlement: {},
+                                    },
+                                ],
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/profile/balance')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {
+                                balance: 2,
+                                currency: 'USD',
+                            },
+                        }),
+                    });
+                }
+
+                if (url.endsWith('/api/defaults') || url.endsWith('/api/organizations/org_missing/defaults')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        statusText: 'OK',
+                        json: () => ({
+                            data: {},
+                        }),
+                    });
+                }
+
+                return Promise.resolve({
+                    ok: false,
+                    status: 404,
+                    statusText: 'Not Found',
+                    json: () => ({}),
+                });
+            })
+        );
+
+        const configured = await caller.provider.setApiKey({
+            profileId,
+            providerId: 'kilo',
+            apiKey: 'kilo-api-key',
+        });
+        expect(configured.success).toBe(true);
+
+        const { sqlite } = getPersistence();
+        sqlite
+            .prepare(`UPDATE provider_auth_states SET auth_state = ?, account_id = ?, organization_id = ? WHERE profile_id = ? AND provider_id = ?`)
+            .run('authenticated', 'acct_missing_org', 'org_missing', profileId, 'kilo');
+
+        const refreshed = await caller.provider.refreshAccountContext({
+            profileId,
+            providerId: 'kilo',
+        });
+        expect(refreshed.prerequisites.blockers).toContain('organization_unavailable');
+        expect(refreshed.prerequisites.canBrowseRemoteSessions).toBe(false);
     });
 
     it('persists kilo identity from nested user payloads even when defaults sync fails', async () => {

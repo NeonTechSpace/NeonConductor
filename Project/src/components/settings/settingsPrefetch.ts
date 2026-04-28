@@ -17,6 +17,9 @@ interface SettingsPrefetchInput {
             getAccountContext: {
                 prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
             };
+            getCloudSessionPrerequisites: {
+                prefetch: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
+            };
         };
         profile: {
             list: {
@@ -61,6 +64,10 @@ export function prefetchSettingsData(input: SettingsPrefetchInput): void {
         input.trpcUtils.provider.listModels.prefetch({ profileId: input.profileId, providerId: 'kilo' }),
         input.trpcUtils.provider.getAuthState.prefetch({ profileId: input.profileId, providerId: 'kilo' }),
         input.trpcUtils.provider.getAccountContext.prefetch({ profileId: input.profileId, providerId: 'kilo' }),
+        input.trpcUtils.provider.getCloudSessionPrerequisites.prefetch({
+            profileId: input.profileId,
+            providerId: 'kilo',
+        }),
         input.trpcUtils.profile.list.prefetch(undefined),
         input.trpcUtils.prompt.getSettings.prefetch({ profileId: input.profileId }),
         input.trpcUtils.context.getGlobalSettings.prefetch(undefined),

@@ -18,6 +18,7 @@ import type {
     ProviderClearAuthInput,
     ProviderCompleteAuthInput,
     ProviderGetCredentialInput,
+    ProviderGetCloudSessionPrerequisitesInput,
     ProviderGetExecutionPreferenceInput,
     ProviderGetConnectionProfileInput,
     ProviderGetAccountContextInput,
@@ -26,6 +27,7 @@ import type {
     ProviderListModelsInput,
     ProviderListProvidersInput,
     ProviderPollAuthInput,
+    ProviderRefreshAccountContextInput,
     ProviderRefreshAuthInput,
     ProviderSetConnectionProfileInput,
     ProviderSetExecutionPreferenceInput,
@@ -200,6 +202,29 @@ export function parseProviderGetAccountContextInput(input: unknown): ProviderGet
     return parseProviderByIdInput(input);
 }
 
+function parseKiloProviderByIdInput(input: unknown, feature: string): ProviderGetCloudSessionPrerequisitesInput {
+    const source = readObject(input, 'input');
+    const providerId = readProviderId(source.providerId, 'providerId');
+    if (providerId !== 'kilo') {
+        throw new Error(`Invalid "providerId": ${feature} is supported only for "kilo".`);
+    }
+
+    return {
+        profileId: readProfileId(source),
+        providerId,
+    };
+}
+
+export function parseProviderGetCloudSessionPrerequisitesInput(
+    input: unknown
+): ProviderGetCloudSessionPrerequisitesInput {
+    return parseKiloProviderByIdInput(input, 'cloud session prerequisites');
+}
+
+export function parseProviderRefreshAccountContextInput(input: unknown): ProviderRefreshAccountContextInput {
+    return parseKiloProviderByIdInput(input, 'account context refresh');
+}
+
 export function parseProviderSetOrganizationInput(input: unknown): ProviderSetOrganizationInput {
     const source = readObject(input, 'input');
     const providerId = readProviderId(source.providerId, 'providerId');
@@ -346,6 +371,10 @@ export const providerCompleteAuthInputSchema = createParser(parseProviderComplet
 export const providerCancelAuthInputSchema = createParser(parseProviderCancelAuthInput);
 export const providerRefreshAuthInputSchema = createParser(parseProviderRefreshAuthInput);
 export const providerGetAccountContextInputSchema = createParser(parseProviderGetAccountContextInput);
+export const providerGetCloudSessionPrerequisitesInputSchema = createParser(
+    parseProviderGetCloudSessionPrerequisitesInput
+);
+export const providerRefreshAccountContextInputSchema = createParser(parseProviderRefreshAccountContextInput);
 export const providerGetConnectionProfileInputSchema = createParser(parseProviderGetConnectionProfileInput);
 export const providerGetExecutionPreferenceInputSchema = createParser(parseProviderGetExecutionPreferenceInput);
 export const providerSetConnectionProfileInputSchema = createParser(parseProviderSetConnectionProfileInput);

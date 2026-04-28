@@ -30,6 +30,7 @@ export function useProviderSettingsMutationModel(input: UseProviderSettingsMutat
             mutations.syncCatalogMutation,
             mutations.setModelRoutingPreferenceMutation,
             mutations.setOrganizationMutation,
+            mutations.refreshAccountContextMutation,
             mutations.startAuthMutation,
             mutations.pollAuthMutation,
             mutations.cancelAuthMutation,

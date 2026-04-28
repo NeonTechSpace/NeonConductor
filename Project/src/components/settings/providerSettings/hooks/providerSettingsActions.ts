@@ -66,6 +66,9 @@ export function createProviderSettingsActions(input: {
                 organizationId?: string | null;
             }) => Promise<void>;
         };
+        refreshAccountContextMutation: {
+            mutateAsync: (input: { profileId: string; providerId: 'kilo' }) => Promise<void>;
+        };
         setApiKeyMutation: {
             mutateAsync: (input: { profileId: string; providerId: RuntimeProviderId; apiKey: string }) => Promise<void>;
         };
@@ -231,6 +234,16 @@ export function createProviderSettingsActions(input: {
                 profileId: input.profileId,
                 providerId: 'kilo',
                 ...(organizationId ? { organizationId } : { organizationId: null }),
+            });
+        },
+        refreshKiloAccountContext: async () => {
+            if (input.selectedProviderId !== 'kilo') {
+                return;
+            }
+
+            await input.mutations.refreshAccountContextMutation.mutateAsync({
+                profileId: input.profileId,
+                providerId: 'kilo',
             });
         },
         saveApiKey: async (apiKeyInput: string) => {

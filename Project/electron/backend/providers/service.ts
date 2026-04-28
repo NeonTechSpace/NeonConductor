@@ -1,6 +1,10 @@
 import type { ProviderAuthStateRecord, ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { AuthExecutionResult } from '@/app/backend/providers/auth/errors';
 import type { ProviderAccountContextResult, PollAuthResult, StartAuthResult } from '@/app/backend/providers/auth/types';
+import {
+    getKiloCloudSessionPrerequisites,
+    refreshKiloAccountContext,
+} from '@/app/backend/providers/cloudSessions/kiloCloudSessionPrerequisites';
 import { providerEmbeddingCatalogService } from '@/app/backend/providers/embeddingCatalog/service';
 import { providerAuthExecutionService } from '@/app/backend/providers/providerAuthExecutionService';
 import { getConnectionProfileState } from '@/app/backend/providers/service/endpointProfiles';
@@ -65,6 +69,7 @@ import type {
     ProviderSyncResult,
 } from '@/app/backend/providers/service/types';
 import type {
+    KiloCloudSessionPrerequisites,
     KiloModelRoutingPreference,
     ProviderAuthMethod,
     ProviderGetModelRoutingPreferenceInput,
@@ -335,6 +340,24 @@ class ProviderManagementService {
     ): Promise<AuthExecutionResult<ProviderAccountContextResult>> {
         const result = await setProviderOrganization(profileId, providerId, organizationId);
         return result.map((value) => value.accountContext);
+    }
+
+    async getCloudSessionPrerequisites(
+        profileId: string,
+        providerId: 'kilo'
+    ): Promise<ProviderServiceResult<KiloCloudSessionPrerequisites>> {
+        void providerId;
+        await this.ensureNormalizedProviderProfileState(profileId);
+        return getKiloCloudSessionPrerequisites(profileId);
+    }
+
+    async refreshAccountContext(
+        profileId: string,
+        providerId: 'kilo'
+    ): Promise<ProviderServiceResult<KiloCloudSessionPrerequisites>> {
+        void providerId;
+        await this.ensureNormalizedProviderProfileState(profileId);
+        return refreshKiloAccountContext(profileId);
     }
 
     async syncCatalog(

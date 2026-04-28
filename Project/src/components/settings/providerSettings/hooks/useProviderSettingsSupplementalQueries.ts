@@ -69,6 +69,17 @@ export function useProviderSettingsSupplementalQueries(input: UseProviderSetting
         }
     );
 
+    const kiloCloudSessionPrerequisitesQuery = trpc.provider.getCloudSessionPrerequisites.useQuery(
+        {
+            profileId: input.profileId,
+            providerId: 'kilo',
+        },
+        {
+            enabled: selectedProviderId === 'kilo',
+            ...PROGRESSIVE_QUERY_OPTIONS,
+        }
+    );
+
     const usageSummaryQuery = trpc.provider.getUsageSummary.useQuery(
         {
             profileId: input.profileId,
@@ -107,6 +118,7 @@ export function useProviderSettingsSupplementalQueries(input: UseProviderSetting
         kiloRoutingPreferenceQuery,
         kiloModelProvidersQuery,
         accountContextQuery,
+        kiloCloudSessionPrerequisitesQuery,
         usageSummaryQuery,
         openAISubscriptionUsageQuery,
         openAISubscriptionRateLimitsQuery,
@@ -116,6 +128,7 @@ export function useProviderSettingsSupplementalQueries(input: UseProviderSetting
         kiloModelProviders: kiloModelProvidersQuery.data?.providers ?? [],
         kiloAccountContext:
             accountContextQuery.data?.providerId === 'kilo' ? accountContextQuery.data.kiloAccountContext : undefined,
+        kiloCloudSessionPrerequisites: kiloCloudSessionPrerequisitesQuery.data?.prerequisites,
         selectedProviderUsageSummary: usageSummaryQuery.data?.summaries.find(
             (summary) => summary.providerId === selectedProviderId
         ),
