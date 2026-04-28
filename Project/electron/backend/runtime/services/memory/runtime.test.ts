@@ -11,6 +11,7 @@ import {
 } from '@/app/backend/persistence/stores';
 import { okOp } from '@/app/backend/runtime/services/common/operationalError';
 import * as plainTextGeneration from '@/app/backend/runtime/services/common/plainTextGeneration';
+import { memoryConsolidationService } from '@/app/backend/runtime/services/memory/memoryConsolidationService';
 import { memoryRuntimeService } from '@/app/backend/runtime/services/memory/runtime';
 import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
 import {
@@ -23,6 +24,15 @@ import {
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
 registerRuntimeContractHooks();
+
+function createHandledOkOp<T>(value: T) {
+    const result = okOp(value);
+    result.match(
+        () => undefined,
+        () => undefined
+    );
+    return result;
+}
 
 describe('memoryRuntimeService', () => {
     const profileId = runtimeContractProfileId;
@@ -111,23 +121,25 @@ describe('memoryRuntimeService', () => {
         if (firstCapture.isErr()) {
             throw new Error(firstCapture.error.message);
         }
+        const firstMemory = firstCapture.value.memory;
+        if (!firstMemory) {
+            throw new Error('Expected first automatic memory.');
+        }
         expect(firstCapture.value.action).toBe('created');
-        expect(firstCapture.value.memory?.scopeKind).toBe('run');
-        expect(firstCapture.value.memory?.memoryType).toBe('episodic');
-        expect(firstCapture.value.memory?.createdByKind).toBe('system');
-        expect(firstCapture.value.memory?.runId).toBe(run.id);
-        expect(firstCapture.value.memory?.threadId).toBe(threadId);
-        expect(firstCapture.value.memory?.metadata).toMatchObject({
+        expect(firstMemory.scopeKind).toBe('run');
+        expect(firstMemory.memoryType).toBe('episodic');
+        expect(firstMemory.createdByKind).toBe('system');
+        expect(firstMemory.runId).toBe(run.id);
+        expect(firstMemory.threadId).toBe(threadId);
+        expect(firstMemory.metadata).toMatchObject({
             source: 'runtime_run_outcome',
             runStatus: 'completed',
             runId: run.id,
             sessionId: created.session.id,
             threadId,
         });
-        expect(firstCapture.value.memory?.bodyMarkdown).toContain(
-            'Finished the implementation and verified the tests.'
-        );
-        const firstEvidence = await memoryEvidenceStore.listByMemoryId(profileId, firstCapture.value.memory!.id);
+        expect(firstMemory.bodyMarkdown).toContain('Finished the implementation and verified the tests.');
+        const firstEvidence = await memoryEvidenceStore.listByMemoryId(profileId, firstMemory.id);
         expect(firstEvidence.map((evidence) => evidence.kind)).toEqual(['run', 'message_part', 'tool_result_artifact']);
 
         const secondCapture = await memoryRuntimeService.captureFinishedRunMemory({
@@ -205,12 +217,14 @@ describe('memoryRuntimeService', () => {
         }
         expect(refreshedCapture.value.action).toBe('superseded');
         expect(refreshedCapture.value.previousMemory?.id).toBe(initialCapture.value.memory.id);
-        expect(refreshedCapture.value.memory?.bodyMarkdown).toContain('total 96 tokens');
-        const replacementEvidence = await memoryEvidenceStore.listByMemoryId(profileId, refreshedCapture.value.memory!.id);
-        const previousEvidence = await memoryEvidenceStore.listByMemoryId(
-            profileId,
-            refreshedCapture.value.previousMemory!.id
-        );
+        const refreshedMemory = refreshedCapture.value.memory;
+        const previousMemory = refreshedCapture.value.previousMemory;
+        if (!refreshedMemory || !previousMemory) {
+            throw new Error('Expected refreshed and previous automatic memory.');
+        }
+        expect(refreshedMemory.bodyMarkdown).toContain('total 96 tokens');
+        const replacementEvidence = await memoryEvidenceStore.listByMemoryId(profileId, refreshedMemory.id);
+        const previousEvidence = await memoryEvidenceStore.listByMemoryId(profileId, previousMemory.id);
         expect(replacementEvidence.length).toBeGreaterThan(0);
         expect(previousEvidence.length).toBeGreaterThan(0);
 
@@ -297,16 +311,18 @@ describe('memoryRuntimeService', () => {
             },
         });
         const generationSpy = vi.spyOn(plainTextGeneration, 'generatePlainTextFromMessages');
-        generationSpy.mockResolvedValue(
-            okOp(
-                JSON.stringify({
-                    targetMemoryType: 'procedural',
-                    title: 'Preferred deployment workflow',
-                    summaryText: 'Repeated run outcomes converge on one workflow.',
-                    bodyMarkdown: 'Always validate the deployment workflow before publishing.',
-                    temporalSubjectKey: 'subject::preferred-deployment-workflow',
-                    confidenceLabel: 'high',
-                })
+        generationSpy.mockImplementation(() =>
+            Promise.resolve(
+                createHandledOkOp(
+                    JSON.stringify({
+                        targetMemoryType: 'procedural',
+                        title: 'Preferred deployment workflow',
+                        summaryText: 'Repeated run outcomes converge on one workflow.',
+                        bodyMarkdown: 'Always validate the deployment workflow before publishing.',
+                        temporalSubjectKey: 'subject::preferred-deployment-workflow',
+                        confidenceLabel: 'high',
+                    })
+                )
             )
         );
 
@@ -353,11 +369,199 @@ describe('memoryRuntimeService', () => {
                 scopeKind: 'thread',
             })).filter((memory) => memory.metadata['source'] === 'memory_consolidation');
             expect(consolidatedMemories).toHaveLength(1);
-            expect(consolidatedMemories[0]?.createdByKind).toBe('system');
-            expect(consolidatedMemories[0]?.threadId).toBe(threadId);
-            expect(consolidatedMemories[0]?.temporalSubjectKey).toBe('subject::preferred-deployment-workflow');
-            const evidence = await memoryEvidenceStore.listByMemoryId(profileId, consolidatedMemories[0]!.id);
+            const [consolidatedMemory] = consolidatedMemories;
+            if (!consolidatedMemory) {
+                throw new Error('Expected materialized consolidated memory.');
+            }
+            expect(consolidatedMemory.createdByKind).toBe('system');
+            expect(consolidatedMemory.threadId).toBe(threadId);
+            expect(consolidatedMemory.temporalSubjectKey).toBe('subject::preferred-deployment-workflow');
+            const evidence = await memoryEvidenceStore.listByMemoryId(profileId, consolidatedMemory.id);
             expect(evidence.length).toBeGreaterThanOrEqual(2);
+        } finally {
+            generationSpy.mockRestore();
+            utilitySpy.mockRestore();
+        }
+    });
+
+    it('excludes inactive sources from consolidation clusters and does not reuse disabled materialized memory', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_runtime_consolidation_active_sources',
+            title: 'Memory runtime active-source consolidation',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected active-source consolidation thread id.');
+        const utilitySpy = vi.spyOn(utilityModelService, 'getUtilityModelPreference').mockResolvedValue({
+            selection: {
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+            },
+        });
+        const generationSpy = vi.spyOn(plainTextGeneration, 'generatePlainTextFromMessages');
+        generationSpy.mockImplementation(() =>
+            Promise.resolve(
+                createHandledOkOp(
+                    JSON.stringify({
+                        targetMemoryType: 'procedural',
+                        title: 'Active source workflow',
+                        summaryText: 'Only active source memories should drive this consolidation.',
+                        bodyMarkdown: 'Use only active source memories when consolidating repeated run outcomes.',
+                        temporalSubjectKey: 'subject::active-source-workflow',
+                        confidenceLabel: 'high',
+                    })
+                )
+            )
+        );
+
+        try {
+            const firstRun = await runStore.create({
+                profileId,
+                sessionId: created.session.id,
+                prompt: 'Capture active source workflow.',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+                authMethod: 'api_key',
+                runtimeOptions: defaultRuntimeOptions,
+                cache: { applied: false },
+                transport: {},
+            });
+            const secondRun = await runStore.create({
+                profileId,
+                sessionId: created.session.id,
+                prompt: 'Capture refreshed source workflow.',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+                authMethod: 'api_key',
+                runtimeOptions: defaultRuntimeOptions,
+                cache: { applied: false },
+                transport: {},
+            });
+            const disabledRun = await runStore.create({
+                profileId,
+                sessionId: created.session.id,
+                prompt: 'Capture disabled source workflow.',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5',
+                authMethod: 'api_key',
+                runtimeOptions: defaultRuntimeOptions,
+                cache: { applied: false },
+                transport: {},
+            });
+            const firstSource = await caller.memory.create({
+                profileId,
+                memoryType: 'episodic',
+                scopeKind: 'run',
+                createdByKind: 'system',
+                runId: firstRun.id,
+                temporalSubjectKey: 'subject::active-source-workflow',
+                title: 'First active workflow source',
+                bodyMarkdown: 'First active source body.',
+                evidence: [
+                    {
+                        kind: 'run',
+                        label: 'First source evidence A',
+                        sourceRunId: firstRun.id,
+                    },
+                    {
+                        kind: 'run',
+                        label: 'First source evidence B',
+                        sourceRunId: firstRun.id,
+                    },
+                ],
+            });
+            const staleSource = await caller.memory.create({
+                profileId,
+                memoryType: 'episodic',
+                scopeKind: 'run',
+                createdByKind: 'system',
+                runId: secondRun.id,
+                temporalSubjectKey: 'subject::active-source-workflow',
+                title: 'Stale workflow source',
+                bodyMarkdown: 'Stale source body.',
+                evidence: [
+                    {
+                        kind: 'run',
+                        label: 'Stale source evidence A',
+                        sourceRunId: secondRun.id,
+                    },
+                    {
+                        kind: 'run',
+                        label: 'Stale source evidence B',
+                        sourceRunId: secondRun.id,
+                    },
+                ],
+            });
+            const refreshedSource = await caller.memory.supersede({
+                profileId,
+                memoryId: staleSource.memory.id,
+                createdByKind: 'system',
+                title: 'Refreshed workflow source',
+                bodyMarkdown: 'Refreshed source body.',
+                revisionReason: 'refinement',
+                evidence: [
+                    {
+                        kind: 'run',
+                        label: 'Refreshed source evidence A',
+                        sourceRunId: secondRun.id,
+                    },
+                    {
+                        kind: 'run',
+                        label: 'Refreshed source evidence B',
+                        sourceRunId: secondRun.id,
+                    },
+                ],
+            });
+            const disabledSource = await memoryStore.create({
+                profileId,
+                memoryType: 'episodic',
+                scopeKind: 'run',
+                state: 'disabled',
+                createdByKind: 'system',
+                runId: disabledRun.id,
+                threadId,
+                workspaceFingerprint: 'wsf_memory_runtime_consolidation_active_sources',
+                temporalSubjectKey: 'subject::active-source-workflow',
+                title: 'Disabled workflow source',
+                bodyMarkdown: 'Disabled source body.',
+            });
+
+            const firstRecord = await memoryConsolidationService.consolidateFromRunMemory({
+                profileId,
+                memoryId: refreshedSource.replacement.id,
+            });
+            expect(firstRecord?.state).toBe('materialized');
+            expect(firstRecord?.materializedMemoryId).toBeDefined();
+            const firstMaterializedMemory = firstRecord?.materializedMemoryId
+                ? await memoryStore.getById(profileId, firstRecord.materializedMemoryId)
+                : null;
+            const clusterMemoryIds = firstMaterializedMemory?.metadata['clusterMemoryIds'];
+            expect(Array.isArray(clusterMemoryIds)).toBe(true);
+            if (!Array.isArray(clusterMemoryIds) || !firstRecord?.materializedMemoryId) {
+                throw new Error('Expected materialized consolidation metadata.');
+            }
+            expect(clusterMemoryIds).toEqual(
+                expect.arrayContaining([firstSource.memory.id, refreshedSource.replacement.id])
+            );
+            expect(clusterMemoryIds).not.toContain(staleSource.memory.id);
+            expect(clusterMemoryIds).not.toContain(disabledSource.id);
+
+            const disabledMaterialized = await memoryStore.disable(profileId, firstRecord.materializedMemoryId);
+            expect(disabledMaterialized?.state).toBe('disabled');
+
+            const secondRecord = await memoryConsolidationService.consolidateFromRunMemory({
+                profileId,
+                memoryId: refreshedSource.replacement.id,
+            });
+            expect(secondRecord?.state).toBe('materialized');
+            expect(secondRecord?.materializedMemoryId).toBeDefined();
+            expect(secondRecord?.materializedMemoryId).not.toBe(firstRecord.materializedMemoryId);
+            const secondMaterializedMemory = secondRecord?.materializedMemoryId
+                ? await memoryStore.getById(profileId, secondRecord.materializedMemoryId)
+                : null;
+            expect(secondMaterializedMemory?.state).toBe('active');
         } finally {
             generationSpy.mockRestore();
             utilitySpy.mockRestore();

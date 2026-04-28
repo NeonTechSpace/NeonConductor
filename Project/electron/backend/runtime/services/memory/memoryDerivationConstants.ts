@@ -1,0 +1,1 @@
+export const MEMORY_DERIVATION_VERSION = 3;

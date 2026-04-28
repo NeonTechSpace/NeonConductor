@@ -16,6 +16,7 @@ const ALWAYS_ALLOWED_EDGE_KINDS = new Set<MemoryGraphEdgeKind>([
     'revision_successor',
     'same_run',
     'evidence_overlap',
+    'consolidation_source',
 ]);
 const MAX_GRAPH_EXPANSION_DEPTH = 2;
 const MAX_GRAPH_EXPANDED_CANDIDATES = 6;
@@ -58,6 +59,8 @@ function describeEdgeKind(edgeKind: MemoryGraphEdgeKind): string {
             return 'same workspace';
         case 'evidence_overlap':
             return 'overlapping source evidence';
+        case 'consolidation_source':
+            return 'consolidation source';
     }
 }
 
@@ -121,7 +124,9 @@ export async function collectGraphExpandedMemoryRetrievalCandidates(
             input.profileId,
             candidateMemories.map((memory) => memory.id)
         );
-        const candidateSummaryByMemoryId = candidateSummaryResult.isOk() ? candidateSummaryResult.value : new Map();
+        const candidateSummaryByMemoryId = candidateSummaryResult.isOk()
+            ? candidateSummaryResult.value
+            : new Map<string, MemoryDerivedSummary>();
 
         const graphCandidatesByMemoryId = new Map<EntityId<'mem'>, MemoryRetrievalGraphCandidate>();
         for (const anchor of anchorDecisions) {
@@ -170,7 +175,7 @@ export async function collectGraphExpandedMemoryRetrievalCandidates(
                         hopCount: nextHopCount,
                         anchor,
                         candidateMemory,
-                        candidateSummary: resolvedCandidateSummary,
+                        ...(resolvedCandidateSummary ? { candidateSummary: resolvedCandidateSummary } : {}),
                     });
                     const existingCandidate = graphCandidatesByMemoryId.get(candidateMemory.id);
                     const annotations = [`Graph expansion via ${describeEdgeKind(edge.edgeKind)} from ${anchor.memory.title}.`];

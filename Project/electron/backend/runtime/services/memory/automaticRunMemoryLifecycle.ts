@@ -8,6 +8,10 @@ import type {
     ToolResultArtifactRecord,
 } from '@/app/backend/persistence/types';
 import type { MemoryEvidenceCreateInput, RuntimeProviderId } from '@/app/backend/runtime/contracts';
+import {
+    renderMemoryCanonicalBodyMarkdown,
+    resolveMemoryCanonicalBody,
+} from '@/app/backend/runtime/services/memory/memoryCanonicalBody';
 
 type FinishedRunStatus = 'completed' | 'error';
 export type AutomaticRunMemoryAction = 'created' | 'superseded' | 'noop' | 'skipped';
@@ -194,8 +198,9 @@ function buildToolResultEvidenceExcerpt(part: MessagePartRecord): string | undef
         return truncateEvidenceExcerpt(outputText);
     }
 
+    const toolName = readToolName(part);
     const segments = [
-        ...(readToolName(part) ? [`tool ${readToolName(part)}`] : []),
+        ...(toolName ? [`tool ${toolName}`] : []),
         ...(readToolError(part) ? ['reported an error'] : ['completed without persisted artifact']),
     ];
 
@@ -413,6 +418,17 @@ function areEvidenceEqual(left: MemoryEvidenceCreateInput[], right: MemoryEviden
     return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function normalizeBodyMarkdownForComparison(bodyMarkdown: string): string {
+    return renderMemoryCanonicalBodyMarkdown(resolveMemoryCanonicalBody({ bodyMarkdown }));
+}
+
+function areBodyMarkdownEqual(storedBodyMarkdown: string, nextBodyMarkdown: string): boolean {
+    return (
+        storedBodyMarkdown === nextBodyMarkdown ||
+        storedBodyMarkdown === normalizeBodyMarkdownForComparison(nextBodyMarkdown)
+    );
+}
+
 function toEvidenceCreateInput(record: MemoryEvidenceRecord): MemoryEvidenceCreateInput {
     return {
         kind: record.kind,
@@ -496,7 +512,7 @@ export function resolveAutomaticRunMemoryDecision(snapshot: AutomaticRunMemorySn
 
     if (
         snapshot.activeAutomaticMemory.title === snapshot.title &&
-        snapshot.activeAutomaticMemory.bodyMarkdown === snapshot.bodyMarkdown &&
+        areBodyMarkdownEqual(snapshot.activeAutomaticMemory.bodyMarkdown, snapshot.bodyMarkdown) &&
         snapshot.activeAutomaticMemory.summaryText === snapshot.summaryText &&
         areMetadataEqual(snapshot.activeAutomaticMemory.metadata, snapshot.metadata) &&
         areEvidenceEqual(snapshot.activeAutomaticMemoryEvidence, snapshot.evidence)

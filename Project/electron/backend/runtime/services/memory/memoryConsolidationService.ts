@@ -3,10 +3,10 @@ import { createHash } from 'node:crypto';
 import { memoryConsolidationStore, memoryEvidenceStore, memoryStore } from '@/app/backend/persistence/stores';
 import type { MemoryEvidenceRecord } from '@/app/backend/persistence/types';
 import type { EntityId, MemoryConsolidationRecord, MemoryEvidenceCreateInput, MemoryRecord as RuntimeMemoryRecord } from '@/app/backend/runtime/contracts';
-import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
-import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
 import { generatePlainTextFromMessages } from '@/app/backend/runtime/services/common/plainTextGeneration';
 import { memoryService } from '@/app/backend/runtime/services/memory/service';
+import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
+import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 import { appLog } from '@/app/main/logging';
 
@@ -25,7 +25,7 @@ interface ConsolidationCandidateOutput {
     targetMemoryType: 'semantic' | 'procedural';
     title: string;
     bodyMarkdown: string;
-    summaryText?: string;
+    summaryText: string;
     temporalSubjectKey: string;
     confidenceLabel: 'low' | 'medium' | 'high';
 }
@@ -75,8 +75,30 @@ function tryParseJsonObject(value: string): Record<string, unknown> | null {
 }
 
 function readPromptSection(memory: RuntimeMemoryRecord): string {
-    const promptSection = memory.bodyMarkdown.match(/## Prompt\s+([\s\S]*?)(?:\n## |\s*$)/);
-    return promptSection?.[1] ? truncateText(promptSection[1], 180) : '';
+    const promptHeadingIndex = memory.bodyMarkdown.indexOf('## Prompt');
+    if (promptHeadingIndex < 0) {
+        return '';
+    }
+
+    const afterPromptHeading = memory.bodyMarkdown.slice(promptHeadingIndex + '## Prompt'.length).trimStart();
+    const nextHeadingIndex = afterPromptHeading.search(/\n#{1,6}\s+/);
+    const rawPromptSection =
+        nextHeadingIndex >= 0 ? afterPromptHeading.slice(0, nextHeadingIndex) : afterPromptHeading;
+    const promptLines: string[] = [];
+    for (const line of rawPromptSection.split(/\r?\n/)) {
+        const normalizedLine = normalizePattern(line.replace(/^#+\s*/, ''));
+        if (
+            normalizedLine === 'assistant output' ||
+            normalizedLine === 'tool summary' ||
+            normalizedLine === 'usage' ||
+            normalizedLine === 'failure detail'
+        ) {
+            break;
+        }
+        promptLines.push(line);
+    }
+
+    return truncateText(promptLines.join('\n'), 180);
 }
 
 function readToolPattern(memory: RuntimeMemoryRecord): string {
@@ -109,7 +131,7 @@ function buildSourceDigest(input: { candidate: ConsolidationCandidateOutput; mem
             JSON.stringify({
                 targetMemoryType: input.candidate.targetMemoryType,
                 title: normalizeWhitespace(input.candidate.title),
-                summaryText: normalizeWhitespace(input.candidate.summaryText ?? ''),
+                summaryText: normalizeWhitespace(input.candidate.summaryText),
                 bodyMarkdown: normalizeWhitespace(input.candidate.bodyMarkdown),
                 temporalSubjectKey: normalizeWhitespace(input.candidate.temporalSubjectKey),
                 memoryIds: [...input.memoryIds].sort(),
@@ -187,18 +209,32 @@ function parseConsolidationOutput(rawText: string): ConsolidationCandidateOutput
         (targetMemoryType !== 'semantic' && targetMemoryType !== 'procedural') ||
         typeof title !== 'string' ||
         typeof bodyMarkdown !== 'string' ||
+        typeof summaryText !== 'string' ||
         typeof temporalSubjectKey !== 'string' ||
         (confidenceLabel !== 'low' && confidenceLabel !== 'medium' && confidenceLabel !== 'high')
     ) {
         return null;
     }
 
+    const normalizedTitle = title.trim();
+    const normalizedBodyMarkdown = bodyMarkdown.trim();
+    const normalizedSummaryText = summaryText.trim();
+    const normalizedTemporalSubjectKey = temporalSubjectKey.trim();
+    if (
+        normalizedTitle.length === 0 ||
+        normalizedBodyMarkdown.length === 0 ||
+        normalizedSummaryText.length === 0 ||
+        normalizedTemporalSubjectKey.length === 0
+    ) {
+        return null;
+    }
+
     return {
         targetMemoryType,
-        title: title.trim(),
-        bodyMarkdown: bodyMarkdown.trim(),
-        ...(typeof summaryText === 'string' && summaryText.trim().length > 0 ? { summaryText: summaryText.trim() } : {}),
-        temporalSubjectKey: temporalSubjectKey.trim(),
+        title: normalizedTitle,
+        bodyMarkdown: normalizedBodyMarkdown,
+        summaryText: normalizedSummaryText,
+        temporalSubjectKey: normalizedTemporalSubjectKey,
         confidenceLabel,
     };
 }
@@ -209,7 +245,8 @@ export class MemoryConsolidationService {
             profileId: memory.profileId,
             memoryType: 'episodic',
             scopeKind: 'run',
-        })).filter((candidate) => candidate.state === 'active' || candidate.state === 'superseded');
+            state: 'active',
+        }));
 
         const threadCandidates = memory.threadId
             ? episodicRunMemories
@@ -276,7 +313,9 @@ export class MemoryConsolidationService {
                 if (left.evidenceCount !== right.evidenceCount) {
                     return right.evidenceCount - left.evidenceCount;
                 }
-                return right.memories[0]!.updatedAt.localeCompare(left.memories[0]!.updatedAt);
+                const leftUpdatedAt = left.memories[0]?.updatedAt ?? '';
+                const rightUpdatedAt = right.memories[0]?.updatedAt ?? '';
+                return rightUpdatedAt.localeCompare(leftUpdatedAt);
             })[0];
 
         if (!bestCluster) {
@@ -303,13 +342,18 @@ export class MemoryConsolidationService {
     }
 
     private async synthesizeCluster(cluster: ConsolidationCluster): Promise<ConsolidationCandidateOutput | null> {
-        const utilityPreference = await utilityModelService.getUtilityModelPreference(cluster.memories[0]!.profileId);
+        const firstMemory = cluster.memories[0];
+        if (!firstMemory) {
+            return null;
+        }
+
+        const utilityPreference = await utilityModelService.getUtilityModelPreference(firstMemory.profileId);
         if (!utilityPreference.selection) {
             return null;
         }
 
         const generated = await generatePlainTextFromMessages({
-            profileId: cluster.memories[0]!.profileId,
+            profileId: firstMemory.profileId,
             providerId: utilityPreference.selection.providerId,
             modelId: utilityPreference.selection.modelId,
             messages: buildConsolidationMessages(cluster),
@@ -320,6 +364,23 @@ export class MemoryConsolidationService {
         }
 
         return parseConsolidationOutput(generated.value);
+    }
+
+    private canMaterializeCandidate(input: {
+        candidate: ConsolidationCandidateOutput;
+        cluster: ConsolidationCluster;
+        sourceMemory: RuntimeMemoryRecord;
+    }): boolean {
+        if (input.candidate.confidenceLabel !== 'high') {
+            return false;
+        }
+        if (input.cluster.scopeKind === 'thread' && !input.sourceMemory.threadId) {
+            return false;
+        }
+        if (input.cluster.scopeKind === 'workspace' && !input.sourceMemory.workspaceFingerprint) {
+            return false;
+        }
+        return true;
     }
 
     private async findExistingConsolidatedMemory(input: {
@@ -356,7 +417,12 @@ export class MemoryConsolidationService {
         memoryId: EntityId<'mem'>;
     }): Promise<MemoryConsolidationRecord | null> {
         const sourceMemory = await memoryStore.getById(input.profileId, input.memoryId);
-        if (!sourceMemory || sourceMemory.memoryType !== 'episodic' || sourceMemory.scopeKind !== 'run') {
+        if (
+            !sourceMemory ||
+            sourceMemory.memoryType !== 'episodic' ||
+            sourceMemory.scopeKind !== 'run' ||
+            sourceMemory.state !== 'active'
+        ) {
             return null;
         }
 
@@ -366,7 +432,7 @@ export class MemoryConsolidationService {
         }
 
         const synthesized = await this.synthesizeCluster(cluster);
-        if (!synthesized || synthesized.confidenceLabel === 'low') {
+        if (!synthesized || !this.canMaterializeCandidate({ candidate: synthesized, cluster, sourceMemory })) {
             return memoryConsolidationStore.upsert({
                 profileId: input.profileId,
                 subjectKey: cluster.subjectKey,
@@ -375,7 +441,7 @@ export class MemoryConsolidationService {
                 sourceConsolidation: 'episodic_pattern',
                 state: 'rejected',
                 candidateTitle: synthesized?.title ?? 'Rejected consolidation',
-                ...(synthesized?.summaryText ? { candidateSummaryText: synthesized.summaryText } : {}),
+                ...(synthesized ? { candidateSummaryText: synthesized.summaryText } : {}),
                 candidateBodyMarkdown: synthesized?.bodyMarkdown ?? 'Low-confidence consolidation candidate.',
                 evidenceMemoryIds: cluster.memories.map((memory) => memory.id),
                 sourceDigest: synthesized
@@ -398,20 +464,23 @@ export class MemoryConsolidationService {
             scopeKind: cluster.scopeKind,
         });
         if (latestRecord?.sourceDigest === sourceDigest && latestRecord.materializedMemoryId) {
-            return memoryConsolidationStore.upsert({
-                profileId: input.profileId,
-                subjectKey: synthesized.temporalSubjectKey || cluster.subjectKey,
-                targetMemoryType: synthesized.targetMemoryType,
-                scopeKind: cluster.scopeKind,
-                sourceConsolidation: 'episodic_pattern',
-                state: 'materialized',
-                candidateTitle: synthesized.title,
-                ...(synthesized.summaryText ? { candidateSummaryText: synthesized.summaryText } : {}),
-                candidateBodyMarkdown: synthesized.bodyMarkdown,
-                evidenceMemoryIds: cluster.memories.map((memory) => memory.id),
-                materializedMemoryId: latestRecord.materializedMemoryId,
-                sourceDigest,
-            });
+            const latestMaterializedMemory = await memoryStore.getById(input.profileId, latestRecord.materializedMemoryId);
+            if (latestMaterializedMemory?.state === 'active') {
+                return memoryConsolidationStore.upsert({
+                    profileId: input.profileId,
+                    subjectKey: synthesized.temporalSubjectKey || cluster.subjectKey,
+                    targetMemoryType: synthesized.targetMemoryType,
+                    scopeKind: cluster.scopeKind,
+                    sourceConsolidation: 'episodic_pattern',
+                    state: 'materialized',
+                    candidateTitle: synthesized.title,
+                    candidateSummaryText: synthesized.summaryText,
+                    candidateBodyMarkdown: synthesized.bodyMarkdown,
+                    evidenceMemoryIds: cluster.memories.map((memory) => memory.id),
+                    materializedMemoryId: latestRecord.materializedMemoryId,
+                    sourceDigest,
+                });
+            }
         }
 
         const evidence = buildEvidenceCreateInputs(cluster);
@@ -431,7 +500,7 @@ export class MemoryConsolidationService {
             sourceConsolidation: 'episodic_pattern',
             state: 'candidate',
             candidateTitle: synthesized.title,
-            ...(synthesized.summaryText ? { candidateSummaryText: synthesized.summaryText } : {}),
+            candidateSummaryText: synthesized.summaryText,
             candidateBodyMarkdown: synthesized.bodyMarkdown,
             evidenceMemoryIds: cluster.memories.map((memory) => memory.id),
             sourceDigest,
@@ -445,45 +514,42 @@ export class MemoryConsolidationService {
             targetMemoryType: synthesized.targetMemoryType,
         } satisfies Record<string, unknown>;
 
-        let materializedMemory: RuntimeMemoryRecord | null = null;
-        if (existingConsolidatedMemory) {
-            const superseded = await memoryService.supersedeMemory({
-                profileId: input.profileId,
-                memoryId: existingConsolidatedMemory.id,
-                createdByKind: 'system',
-                title: synthesized.title,
-                bodyMarkdown: synthesized.bodyMarkdown,
-                ...(synthesized.summaryText ? { summaryText: synthesized.summaryText } : {}),
-                metadata,
-                revisionReason: 'refinement',
-                evidence,
-            });
-            if (superseded.isErr()) {
-                return null;
-            }
-            materializedMemory = superseded.value.replacement;
-        } else {
-            const created = await memoryService.createMemory({
-                profileId: input.profileId,
-                memoryType: synthesized.targetMemoryType,
-                scopeKind: cluster.scopeKind,
-                createdByKind: 'system',
-                title: synthesized.title,
-                bodyMarkdown: synthesized.bodyMarkdown,
-                ...(synthesized.summaryText ? { summaryText: synthesized.summaryText } : {}),
-                metadata,
-                ...(cluster.scopeKind === 'thread' && sourceMemory.threadId ? { threadId: sourceMemory.threadId } : {}),
-                ...(cluster.scopeKind === 'workspace' && sourceMemory.workspaceFingerprint
-                    ? { workspaceFingerprint: sourceMemory.workspaceFingerprint }
-                    : {}),
-                temporalSubjectKey: synthesized.temporalSubjectKey || cluster.subjectKey,
-                evidence,
-            });
-            if (created.isErr()) {
-                return null;
-            }
-            materializedMemory = created.value;
-        }
+        const materializedMemory = existingConsolidatedMemory
+            ? await (async (): Promise<RuntimeMemoryRecord | null> => {
+                  const superseded = await memoryService.supersedeMemory({
+                      profileId: input.profileId,
+                      memoryId: existingConsolidatedMemory.id,
+                      createdByKind: 'system',
+                      title: synthesized.title,
+                      bodyMarkdown: synthesized.bodyMarkdown,
+                      summaryText: synthesized.summaryText,
+                      metadata,
+                      revisionReason: 'refinement',
+                      evidence,
+                  });
+                  return superseded.isOk() ? superseded.value.replacement : null;
+              })()
+            : await (async (): Promise<RuntimeMemoryRecord | null> => {
+                  const created = await memoryService.createMemory({
+                      profileId: input.profileId,
+                      memoryType: synthesized.targetMemoryType,
+                      scopeKind: cluster.scopeKind,
+                      createdByKind: 'system',
+                      title: synthesized.title,
+                      bodyMarkdown: synthesized.bodyMarkdown,
+                      summaryText: synthesized.summaryText,
+                      metadata,
+                      ...(cluster.scopeKind === 'thread' && sourceMemory.threadId
+                          ? { threadId: sourceMemory.threadId }
+                          : {}),
+                      ...(cluster.scopeKind === 'workspace' && sourceMemory.workspaceFingerprint
+                          ? { workspaceFingerprint: sourceMemory.workspaceFingerprint }
+                          : {}),
+                      temporalSubjectKey: synthesized.temporalSubjectKey || cluster.subjectKey,
+                      evidence,
+                  });
+                  return created.isOk() ? created.value : null;
+              })();
 
         if (!materializedMemory) {
             return null;
@@ -497,7 +563,7 @@ export class MemoryConsolidationService {
             sourceConsolidation: 'episodic_pattern',
             state: 'materialized',
             candidateTitle: synthesized.title,
-            ...(synthesized.summaryText ? { candidateSummaryText: synthesized.summaryText } : {}),
+            candidateSummaryText: synthesized.summaryText,
             candidateBodyMarkdown: synthesized.bodyMarkdown,
             evidenceMemoryIds: cluster.memories.map((memory) => memory.id),
             materializedMemoryId: materializedMemory.id,

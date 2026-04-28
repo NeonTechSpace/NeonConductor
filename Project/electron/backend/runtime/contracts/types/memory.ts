@@ -204,6 +204,7 @@ export const memoryGraphEdgeKinds = [
     'revision_predecessor',
     'revision_successor',
     'evidence_overlap',
+    'consolidation_source',
 ] as const;
 export type MemoryGraphEdgeKind = (typeof memoryGraphEdgeKinds)[number];
 

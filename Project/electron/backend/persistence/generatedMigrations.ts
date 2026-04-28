@@ -1077,7 +1077,8 @@ CREATE TABLE memory_graph_edges (
             'same_workspace',
             'revision_predecessor',
             'revision_successor',
-            'evidence_overlap'
+            'evidence_overlap',
+            'consolidation_source'
         )
     ),
     weight REAL NOT NULL CHECK (weight > 0 AND weight <= 1),

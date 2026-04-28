@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { memoryDerivedStore, memoryRetrievalUsageStore, runStore } from '@/app/backend/persistence/stores';
+import { memoryDerivedStore, memoryRetrievalUsageStore, memoryStore, runStore } from '@/app/backend/persistence/stores';
 import { advancedMemoryDerivationService } from '@/app/backend/runtime/services/memory/advancedDerivation';
 import { memoryRetrievalService } from '@/app/backend/runtime/services/memory/retrieval';
 import {
@@ -399,5 +399,144 @@ describe('advancedMemoryDerivationService', () => {
         expect(replacementSummary?.strength?.evidenceCount).toBeGreaterThan(0);
         expect(replacementSummary?.strength?.reuseCount).toBeGreaterThan(0);
         expect(replacementSummary?.strength?.confidenceScore).toBeGreaterThan(0);
+    });
+
+    it('derives consolidation-source graph edges only from active validated metadata sources', async () => {
+        const caller = createCaller();
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_advanced_consolidation_graph',
+            title: 'Advanced consolidation graph thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const threadId = requireEntityId(created.thread.id, 'thr', 'Expected consolidation graph thread id.');
+        const firstRun = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Capture first consolidation source.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const secondRun = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Capture second consolidation source.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const disabledRun = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Capture disabled consolidation source.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+
+        const firstSource = await caller.memory.create({
+            profileId,
+            memoryType: 'episodic',
+            scopeKind: 'run',
+            createdByKind: 'system',
+            runId: firstRun.id,
+            temporalSubjectKey: 'subject::advanced-consolidation-source',
+            title: 'First consolidation source',
+            bodyMarkdown: 'First active source memory.',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'First source evidence',
+                    sourceRunId: firstRun.id,
+                },
+            ],
+        });
+        const secondSource = await caller.memory.create({
+            profileId,
+            memoryType: 'episodic',
+            scopeKind: 'run',
+            createdByKind: 'system',
+            runId: secondRun.id,
+            temporalSubjectKey: 'subject::advanced-consolidation-source',
+            title: 'Second consolidation source',
+            bodyMarkdown: 'Second active source memory.',
+            evidence: [
+                {
+                    kind: 'run',
+                    label: 'Second source evidence',
+                    sourceRunId: secondRun.id,
+                },
+            ],
+        });
+        const disabledSource = await memoryStore.create({
+            profileId,
+            memoryType: 'episodic',
+            scopeKind: 'run',
+            state: 'disabled',
+            createdByKind: 'system',
+            runId: disabledRun.id,
+            threadId,
+            workspaceFingerprint: 'wsf_memory_advanced_consolidation_graph',
+            temporalSubjectKey: 'subject::advanced-consolidation-source',
+            title: 'Disabled consolidation source',
+            bodyMarkdown: 'Disabled source memory.',
+        });
+        const consolidated = await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'system',
+            threadId,
+            workspaceFingerprint: 'wsf_memory_advanced_consolidation_graph',
+            temporalSubjectKey: 'subject::advanced-consolidated-memory',
+            title: 'Advanced consolidated workflow',
+            bodyMarkdown: 'Use the consolidated workflow.',
+            metadata: {
+                source: 'memory_consolidation',
+                clusterMemoryIds: [firstSource.memory.id, secondSource.memory.id, disabledSource.id, 'not_a_memory'],
+            },
+        });
+
+        const rebuilt = await advancedMemoryDerivationService.rebuildProfile(profileId);
+        expect(rebuilt.isOk()).toBe(true);
+
+        const consolidatedEdges = await memoryDerivedStore.listGraphEdgesBySourceMemoryIds(profileId, [
+            consolidated.memory.id,
+        ]);
+        expect(
+            consolidatedEdges.some(
+                (edge) => edge.edgeKind === 'consolidation_source' && edge.targetMemoryId === firstSource.memory.id
+            )
+        ).toBe(true);
+        expect(
+            consolidatedEdges.some(
+                (edge) => edge.edgeKind === 'consolidation_source' && edge.targetMemoryId === secondSource.memory.id
+            )
+        ).toBe(true);
+        expect(
+            consolidatedEdges.some(
+                (edge) => edge.edgeKind === 'consolidation_source' && edge.targetMemoryId === disabledSource.id
+            )
+        ).toBe(false);
+
+        const firstSourceEdges = await memoryDerivedStore.listGraphEdgesBySourceMemoryIds(profileId, [
+            firstSource.memory.id,
+        ]);
+        expect(
+            firstSourceEdges.some(
+                (edge) => edge.edgeKind === 'consolidation_source' && edge.targetMemoryId === consolidated.memory.id
+            )
+        ).toBe(true);
     });
 });

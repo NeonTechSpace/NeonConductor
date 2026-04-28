@@ -738,4 +738,106 @@ describe('memoryRetrievalService', () => {
         expect(graphExpandedIndex).toBeGreaterThanOrEqual(0);
         expect(promptIndex === -1 || graphExpandedIndex < promptIndex).toBe(true);
     });
+
+    it('uses consolidation-source graph expansion without selecting inactive source memories', async () => {
+        const caller = createCaller();
+        const current = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_retrieval_consolidation_source',
+            title: 'Consolidation source retrieval thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const sourceSession = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_memory_retrieval_consolidation_source_other',
+            title: 'Consolidation source retrieval other thread',
+            kind: 'local',
+            topLevelTab: 'agent',
+        });
+        const currentThreadId = requireEntityId(current.thread.id, 'thr', 'Expected consolidation retrieval thread id.');
+        const sourceThreadId = requireEntityId(
+            sourceSession.thread.id,
+            'thr',
+            'Expected consolidation source thread id.'
+        );
+        const activeRun = await runStore.create({
+            profileId,
+            sessionId: sourceSession.session.id,
+            prompt: 'Capture source run details.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const inactiveRun = await runStore.create({
+            profileId,
+            sessionId: sourceSession.session.id,
+            prompt: 'Capture inactive source run details.',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            authMethod: 'api_key',
+            runtimeOptions: defaultRuntimeOptions,
+            cache: { applied: false },
+            transport: {},
+        });
+        const activeSource = await caller.memory.create({
+            profileId,
+            memoryType: 'episodic',
+            scopeKind: 'run',
+            createdByKind: 'system',
+            runId: activeRun.id,
+            title: 'Source run detail',
+            bodyMarkdown: 'Captured details from a previous automated run.',
+        });
+        const inactiveSource = await memoryStore.create({
+            profileId,
+            memoryType: 'episodic',
+            scopeKind: 'run',
+            state: 'disabled',
+            createdByKind: 'system',
+            runId: inactiveRun.id,
+            threadId: sourceThreadId,
+            workspaceFingerprint: 'wsf_memory_retrieval_consolidation_source_other',
+            title: 'Inactive source run detail',
+            bodyMarkdown: 'This disabled source must not be selected.',
+        });
+        await caller.memory.create({
+            profileId,
+            memoryType: 'procedural',
+            scopeKind: 'thread',
+            createdByKind: 'system',
+            threadId: currentThreadId,
+            workspaceFingerprint: 'wsf_memory_retrieval_consolidation_source',
+            temporalSubjectKey: 'subject::consolidated-release-protocol',
+            title: 'Consolidated release protocol',
+            bodyMarkdown: 'Use the consolidated release protocol before publishing.',
+            metadata: {
+                source: 'memory_consolidation',
+                clusterMemoryIds: [activeSource.memory.id, inactiveSource.id],
+            },
+        });
+        const rebuilt = await advancedMemoryDerivationService.rebuildProfile(profileId);
+        expect(rebuilt.isOk()).toBe(true);
+
+        const retrieved = await memoryRetrievalService.retrieveRelevantMemory({
+            profileId,
+            sessionId: current.session.id,
+            topLevelTab: 'agent',
+            modeKey: 'code',
+            workspaceFingerprint: 'wsf_memory_retrieval_consolidation_source',
+            prompt: 'Use the consolidated release protocol before publishing.',
+        });
+
+        const activeSourceRecord = retrieved.summary?.records.find(
+            (record) => record.memoryId === activeSource.memory.id
+        );
+        expect(activeSourceRecord?.matchReason).toBe('graph_expanded');
+        expect(activeSourceRecord?.annotations?.some((annotation) => annotation.includes('consolidation source'))).toBe(
+            true
+        );
+        expect(retrieved.summary?.records.some((record) => record.memoryId === inactiveSource.id)).toBe(false);
+    });
 });
