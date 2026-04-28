@@ -42,6 +42,7 @@ export { providerCatalogStore } from '@/app/backend/persistence/stores/provider/
 export { providerEmbeddingCatalogStore } from '@/app/backend/persistence/stores/provider/providerEmbeddingCatalogStore';
 export { providerStore } from '@/app/backend/persistence/stores/provider/providerStore';
 export { runStore } from '@/app/backend/persistence/stores/conversation/runs/runStore';
+export { cloudSessionRunStore } from '@/app/backend/persistence/stores/conversation/runs/cloudSessionRunStore';
 export { executionReceiptStore } from '@/app/backend/persistence/stores/conversation/runs/executionReceiptStore';
 export { runUsageStore } from '@/app/backend/persistence/stores/conversation/runs/runUsageStore';
 export { rulesetStore } from '@/app/backend/persistence/stores/registry/rulesetStore';

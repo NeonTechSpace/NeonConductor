@@ -419,6 +419,7 @@ CREATE TABLE runs (
             'openai_chat_completions',
             'openai_realtime_websocket',
             'kilo_gateway',
+            'kilo_cloud_session',
             'provider_native',
             'anthropic_messages',
             'google_generativeai'
@@ -447,6 +448,23 @@ CREATE TABLE run_usage (
     cost_microunits INTEGER NULL,
     billed_via TEXT NOT NULL,
     recorded_at TEXT NOT NULL
+);
+
+CREATE TABLE cloud_session_run_records (
+    run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    cloud_session_id TEXT NOT NULL REFERENCES cloud_session_records(id) ON DELETE CASCADE,
+    remote_session_id TEXT NOT NULL,
+    remote_scope_key TEXT NOT NULL,
+    remote_run_id TEXT NULL,
+    remote_ticket_id TEXT NULL,
+    harness_state TEXT NOT NULL CHECK (harness_state IN ('preparing', 'streaming', 'completed', 'failed', 'aborted')),
+    error_code TEXT NULL,
+    error_message TEXT NULL,
+    metadata_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 CREATE TABLE messages (
@@ -1696,6 +1714,12 @@ CREATE INDEX idx_runs_session_id_created_at
 
 CREATE INDEX idx_run_usage_provider_recorded_at
     ON run_usage(provider_id, recorded_at DESC);
+
+CREATE INDEX idx_cloud_session_run_records_profile_session
+    ON cloud_session_run_records(profile_id, session_id, updated_at DESC);
+
+CREATE INDEX idx_cloud_session_run_records_cloud_session
+    ON cloud_session_run_records(cloud_session_id, updated_at DESC);
 
 CREATE INDEX idx_messages_profile_session_created_at
     ON messages(profile_id, session_id, created_at ASC);

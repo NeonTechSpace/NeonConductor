@@ -107,6 +107,7 @@ function parseSelectedTransport(value: string | null): ProviderRuntimeTransportF
         value === 'openai_chat_completions' ||
         value === 'openai_realtime_websocket' ||
         value === 'kilo_gateway' ||
+        value === 'kilo_cloud_session' ||
         value === 'provider_native' ||
         value === 'anthropic_messages' ||
         value === 'google_generativeai'

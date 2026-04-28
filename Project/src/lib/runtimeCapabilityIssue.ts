@@ -91,6 +91,10 @@ export function formatRuntimeCapabilityIssue(input: {
                 : 'This model cannot accept image attachments.';
         case 'mode_invalid':
             return fallbackMessage;
+        case 'cloud_session_contract_unavailable':
+            return input.surface === 'run_rejection'
+                ? 'Kilo Cloud runs execute in the Kilo-owned cloud harness. The prepare and stream contract is not configured yet.'
+                : fallbackMessage;
         case 'provider_native_unsupported':
             return input.surface === 'run_rejection'
                 ? 'Selected model requires a provider-native runtime path that is unavailable.'

@@ -26,6 +26,7 @@ export type OperationalErrorCode =
     | 'provider_request_failed'
     | 'provider_request_unavailable'
     | 'cloud_session_not_runnable'
+    | 'cloud_session_contract_unavailable'
     | 'provider_secret_missing'
     | 'refresh_token_missing'
     | 'request_failed'

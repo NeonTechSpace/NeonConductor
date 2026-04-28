@@ -180,7 +180,8 @@ export function CloudSessionsPanel({
                     <div>
                         <p className='font-semibold'>Kilo Cloud Sessions</p>
                         <p className='text-muted-foreground mt-1 text-xs'>
-                            Browse local cloud-session records and create explicit import, fork, or continue bindings.
+                            Browse local cloud-session records. Continued cloud runs execute in the Kilo-owned cloud
+                            harness; Neon records local provenance.
                         </p>
                     </div>
                     <span className='border-border bg-card rounded-full border px-2.5 py-1 text-xs'>

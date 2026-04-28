@@ -21,6 +21,7 @@ export type RunExecutionErrorCode =
     | 'provider_first_output_timeout'
     | 'provider_request_failed'
     | 'cloud_session_not_runnable'
+    | 'cloud_session_contract_unavailable'
     | 'provider_request_unavailable';
 
 export interface RunExecutionError {

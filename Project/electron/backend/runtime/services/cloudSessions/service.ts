@@ -201,7 +201,8 @@ export class CloudSessionService {
             session: created.session,
             cloudSession,
             ...(await this.readThread(input.profileId, created.session.threadId)),
-            message: 'Imported the Kilo cloud session. Remote continuation remains disabled until Slice 7D lands.',
+            message:
+                'Imported the Kilo cloud session. Remote runs use the Kilo-owned cloud harness when its prepare and stream contract is configured.',
         };
     }
 
@@ -282,7 +283,8 @@ export class CloudSessionService {
             session: created.session,
             cloudSession,
             ...(await this.readThread(input.profileId, created.session.threadId)),
-            message: 'Prepared a continued Kilo cloud-session binding. Remote execution remains disabled until Slice 7D lands.',
+            message:
+                'Prepared a continued Kilo cloud-session binding. Remote execution stays in the Kilo-owned cloud harness; Neon records local provenance.',
         };
     }
 

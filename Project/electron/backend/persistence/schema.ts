@@ -255,6 +255,23 @@ export interface RunsTable {
     updated_at: string;
 }
 
+export interface CloudSessionRunRecordsTable {
+    run_id: string;
+    profile_id: string;
+    session_id: string;
+    cloud_session_id: string;
+    remote_session_id: string;
+    remote_scope_key: string;
+    remote_run_id: string | null;
+    remote_ticket_id: string | null;
+    harness_state: string;
+    error_code: string | null;
+    error_message: string | null;
+    metadata_json: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface MessagesTable {
     id: string;
     profile_id: string;
@@ -1341,6 +1358,7 @@ export interface DatabaseSchema {
     memory_graph_edges: MemoryGraphEdgesTable;
     memory_retrieval_usage_records: MemoryRetrievalUsageRecordsTable;
     runs: RunsTable;
+    cloud_session_run_records: CloudSessionRunRecordsTable;
     messages: MessagesTable;
     message_parts: MessagePartsTable;
     message_media: MessageMediaTable;

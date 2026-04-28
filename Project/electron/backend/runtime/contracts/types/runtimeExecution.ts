@@ -48,6 +48,11 @@ export type RuntimeCompatibilityIssue =
           sessionId?: string;
       }
     | {
+          code: 'cloud_session_contract_unavailable';
+          sessionId?: string;
+          detail?: 'kilo_harness_contract_missing' | 'scope_mismatch' | 'auth_required' | 'binding_missing' | 'generic';
+      }
+    | {
           code: 'provider_native_unsupported';
           providerId?: RuntimeProviderId;
           modelId?: string;

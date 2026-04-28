@@ -22,7 +22,7 @@ export type ProviderToolProtocol =
     | 'provider_native'
     | 'anthropic_messages'
     | 'google_generativeai';
-export type ProviderRuntimeTransportFamily = ProviderToolProtocol | 'openai_realtime_websocket';
+export type ProviderRuntimeTransportFamily = ProviderToolProtocol | 'openai_realtime_websocket' | 'kilo_cloud_session';
 
 export type ProviderApiFamily =
     | 'openai_compatible'

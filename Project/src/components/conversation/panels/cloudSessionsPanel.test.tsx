@@ -100,6 +100,7 @@ describe('CloudSessionsPanel', () => {
         );
 
         expect(html).toContain('Kilo Cloud Sessions');
+        expect(html).toContain('Kilo-owned cloud harness');
         expect(html).toContain('Scope org_cloud_test');
         expect(html).toContain('Import By Remote ID');
         expect(html).toContain('Remote Alpha');

@@ -14,6 +14,7 @@ import { withCorrelationContext } from '@/app/backend/runtime/services/common/lo
 import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
 import { prepareRunContractPreview } from '@/app/backend/runtime/services/runContract/service';
 import type { RunExecutionError } from '@/app/backend/runtime/services/runExecution/errors';
+import { resolveKiloCloudRunGate } from '@/app/backend/runtime/services/runExecution/kiloCloudRunGate';
 import { persistRunStart } from '@/app/backend/runtime/services/runExecution/persistRunStart';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
 import { toRejectedStartResult } from '@/app/backend/runtime/services/runExecution/rejection';
@@ -155,13 +156,19 @@ export class RunExecutionService {
             };
         }
         if (runnable.session.kind === 'cloud') {
+            const gate = await resolveKiloCloudRunGate(input);
+            if (!gate.ok) {
+                return toRejectedStartResult(gate.error, input);
+            }
             return toRejectedStartResult(
                 {
-                    code: 'cloud_session_not_runnable',
-                    message: 'Cloud sessions cannot start local runs until Kilo Cloud continue support lands.',
+                    code: 'cloud_session_contract_unavailable',
+                    message:
+                        'Kilo Cloud remote execution must run in the Kilo-owned cloud harness. The prepare and stream contract is not configured yet.',
                     action: {
-                        code: 'cloud_session_not_runnable',
+                        code: 'cloud_session_contract_unavailable',
                         sessionId: input.sessionId,
+                        detail: 'kilo_harness_contract_missing',
                     },
                 },
                 input

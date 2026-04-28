@@ -298,7 +298,7 @@ describe('runtime contracts: core flows', () => {
         const preview = await caller.session.previewRunContract({
             profileId,
             sessionId: created.session.id,
-            prompt: 'Preview should fail for cloud sessions.',
+            prompt: 'Preview should fail closed for Kilo Cloud sessions.',
             topLevelTab: 'chat',
             modeKey: 'chat',
             runtimeOptions: defaultRuntimeOptions,
@@ -307,13 +307,17 @@ describe('runtime contracts: core flows', () => {
         });
         expect(preview).toMatchObject({
             available: false,
-            code: 'cloud_session_not_runnable',
+            code: 'cloud_session_contract_unavailable',
+            action: {
+                code: 'cloud_session_contract_unavailable',
+                detail: 'auth_required',
+            },
         });
 
         const started = await caller.session.startRun({
             profileId,
             sessionId: created.session.id,
-            prompt: 'Start should fail for cloud sessions.',
+            prompt: 'Start should fail closed for Kilo Cloud sessions.',
             topLevelTab: 'chat',
             modeKey: 'chat',
             runtimeOptions: defaultRuntimeOptions,
@@ -323,7 +327,11 @@ describe('runtime contracts: core flows', () => {
         expect(started).toMatchObject({
             accepted: false,
             reason: 'rejected',
-            code: 'cloud_session_not_runnable',
+            code: 'cloud_session_contract_unavailable',
+            action: {
+                code: 'cloud_session_contract_unavailable',
+                detail: 'auth_required',
+            },
         });
     });
 
@@ -408,7 +416,7 @@ describe('runtime contracts: core flows', () => {
         expect(continued).toMatchObject({
             ok: true,
             message:
-                'Prepared a continued Kilo cloud-session binding. Remote execution remains disabled until Slice 7D lands.',
+                'Prepared a continued Kilo cloud-session binding. Remote execution stays in the Kilo-owned cloud harness; Neon records local provenance.',
         });
         if (!continued.ok) {
             throw new Error(continued.message);
@@ -429,7 +437,11 @@ describe('runtime contracts: core flows', () => {
         });
         expect(preview).toMatchObject({
             available: false,
-            code: 'cloud_session_not_runnable',
+            code: 'cloud_session_contract_unavailable',
+            action: {
+                code: 'cloud_session_contract_unavailable',
+                detail: 'kilo_harness_contract_missing',
+            },
         });
     });
 

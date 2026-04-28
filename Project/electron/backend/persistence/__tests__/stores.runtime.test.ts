@@ -5,6 +5,7 @@ import {
     accountSnapshotStore,
     appPromptLayerSettingsStore,
     builtInModePromptOverrideStore,
+    cloudSessionRunStore,
     cloudSessionStore,
     conversationStore,
     getPersistence,
@@ -248,6 +249,108 @@ describe('persistence stores: runtime domain', () => {
             'local_binding',
             'remote_snapshot',
         ]);
+    });
+
+    it('persists non-secret Kilo cloud-run provenance', async () => {
+        const profileId = getDefaultProfileId();
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'detached',
+            title: 'Cloud Run Provenance',
+        });
+        expect(conversation.isOk()).toBe(true);
+        if (conversation.isErr()) {
+            throw new Error(conversation.error.message);
+        }
+        const thread = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            topLevelTab: 'chat',
+            title: 'Cloud Run Provenance',
+        });
+        expect(thread.isOk()).toBe(true);
+        if (thread.isErr()) {
+            throw new Error(thread.error.message);
+        }
+        const created = await sessionStore.create(profileId, thread.value.id, 'cloud', {
+            cloudSession: {
+                remoteSessionId: 'remote_session_provenance',
+                remoteScopeKey: 'org_provenance',
+                organizationId: 'org_provenance',
+                title: 'Remote Provenance',
+            },
+            cloudSessionAuthorityState: 'continued',
+        });
+        expect(created.created).toBe(true);
+        if (!created.created || !created.session.cloudSession) {
+            throw new Error('Expected cloud session to be created.');
+        }
+        const run = await runStore.create({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Run in Kilo cloud harness',
+            providerId: 'kilo',
+            modelId: 'kilo/k1',
+            authMethod: 'oauth_device',
+            runtimeOptions: {
+                reasoning: {
+                    effort: 'medium',
+                    summary: 'auto',
+                    includeEncrypted: false,
+                },
+                cache: {
+                    strategy: 'auto',
+                },
+                transport: {
+                    family: 'auto',
+                },
+            },
+            cache: {
+                applied: false,
+                reason: 'cloud_session_remote_harness',
+            },
+            transport: {
+                selected: 'kilo_cloud_session',
+            },
+        });
+
+        const provenance = await cloudSessionRunStore.create({
+            runId: run.id,
+            profileId,
+            sessionId: created.session.id,
+            cloudSessionId: created.session.cloudSession.id,
+            remoteSessionId: created.session.cloudSession.remoteSessionId,
+            remoteScopeKey: created.session.cloudSession.remoteScopeKey,
+            remoteRunId: 'remote_run_provenance',
+            remoteTicketId: 'ticket_non_secret_identifier',
+            harnessState: 'preparing',
+            metadata: {
+                owner: 'kilo_cloud_harness',
+            },
+        });
+
+        expect(provenance).toMatchObject({
+            runId: run.id,
+            cloudSessionId: created.session.cloudSession.id,
+            harnessState: 'preparing',
+            remoteRunId: 'remote_run_provenance',
+            metadata: {
+                owner: 'kilo_cloud_harness',
+            },
+        });
+        const updated = await cloudSessionRunStore.updateState({
+            runId: run.id,
+            harnessState: 'failed',
+            errorCode: 'contract_unavailable',
+            errorMessage: 'Kilo Cloud contract unavailable.',
+        });
+        expect(updated).toMatchObject({
+            harnessState: 'failed',
+            errorCode: 'contract_unavailable',
+        });
+        await expect(cloudSessionRunStore.getByRunId(run.id)).resolves.toMatchObject({
+            remoteTicketId: 'ticket_non_secret_identifier',
+        });
     });
 
     it('supports memory record persistence, filters, and lifecycle transitions', async () => {
