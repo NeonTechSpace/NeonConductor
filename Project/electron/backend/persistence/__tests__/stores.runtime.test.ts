@@ -5,6 +5,7 @@ import {
     accountSnapshotStore,
     appPromptLayerSettingsStore,
     builtInModePromptOverrideStore,
+    cloudSessionStore,
     conversationStore,
     getPersistence,
     getDefaultProfileId,
@@ -24,8 +25,8 @@ import {
     threadStore,
     toolStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
-import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
+import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
 
 registerPersistenceStoreHooks();
 
@@ -143,6 +144,81 @@ describe('persistence stores: runtime domain', () => {
 
         const denied = await permissionStore.resolve(created.id, 'deny');
         expect(denied?.decision).toBe('denied');
+    });
+
+    it('supports cloud session snapshots and local bindings without making them local runtime authority', async () => {
+        const profileId = getDefaultProfileId();
+        const conversation = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'detached',
+            title: 'Cloud Session Bucket',
+        });
+        expect(conversation.isOk()).toBe(true);
+        if (conversation.isErr()) {
+            throw new Error(conversation.error.message);
+        }
+
+        const thread = await threadStore.create({
+            profileId,
+            conversationId: conversation.value.id,
+            title: 'Cloud Session Thread',
+            topLevelTab: 'chat',
+        });
+        expect(thread.isOk()).toBe(true);
+        if (thread.isErr()) {
+            throw new Error(thread.error.message);
+        }
+
+        const snapshot = await cloudSessionStore.upsertRemoteSnapshot({
+            profileId,
+            remoteSessionId: 'remote_session_alpha',
+            organizationId: 'org_alpha',
+            title: 'Remote Alpha',
+            metadata: { source: 'test' },
+        });
+        expect(snapshot.recordKind).toBe('remote_snapshot');
+        expect(snapshot.authorityState).toBe('remote_only');
+        expect(snapshot.syncState).toBe('synced');
+
+        const missingMetadata = await sessionStore.create(profileId, thread.value.id, 'cloud');
+        expect(missingMetadata).toEqual({ created: false, reason: 'cloud_metadata_required' });
+
+        const created = await sessionStore.create(profileId, thread.value.id, 'cloud', {
+            cloudSession: {
+                remoteSessionId: 'remote_session_alpha',
+                organizationId: 'org_alpha',
+                title: 'Remote Alpha',
+            },
+        });
+        expect(created.created).toBe(true);
+        if (!created.created) {
+            throw new Error(created.reason);
+        }
+        expect(created.session.kind).toBe('cloud');
+        expect(created.session.sandboxId).toBeUndefined();
+        expect(created.session.cloudSession?.recordKind).toBe('local_binding');
+        expect(created.session.cloudSession?.localSessionId).toBe(created.session.id);
+        expect(created.session.cloudSession?.authorityState).toBe('mirrored');
+
+        const listed = await sessionStore.list(profileId);
+        expect(listed.find((session) => session.id === created.session.id)?.cloudSession?.remoteSessionId).toBe(
+            'remote_session_alpha'
+        );
+        expect(await sessionStore.setSandboxBinding({ profileId, sessionId: created.session.id, sandboxId: 'sb_test' })).toBeNull();
+
+        const failedSync = await cloudSessionStore.markSyncResult({
+            profileId,
+            id: created.session.cloudSession?.id ?? snapshot.id,
+            syncState: 'failed',
+            lastSyncErrorCode: 'remote_unavailable',
+            lastSyncErrorMessage: 'Remote session unavailable.',
+        });
+        expect(failedSync.isOk()).toBe(true);
+        if (failedSync.isErr()) {
+            throw new Error(failedSync.error.message);
+        }
+        expect(failedSync.value.syncState).toBe('failed');
+        expect(failedSync.value.lastSyncErrorMessage).toBe('Remote session unavailable.');
     });
 
     it('supports memory record persistence, filters, and lifecycle transitions', async () => {

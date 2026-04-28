@@ -1,11 +1,12 @@
 import { getPersistence } from '@/app/backend/persistence/db';
 import type { RunsTable, SessionsTable } from '@/app/backend/persistence/schema';
+import { cloudSessionStore } from '@/app/backend/persistence/stores/conversation/sessions/cloudSessionStore';
 import { threadStore } from '@/app/backend/persistence/stores/conversation/threads/threadStore';
 import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
-import type { SessionSummaryRecord } from '@/app/backend/persistence/types';
+import type { CloudSessionSummaryRecord, SessionSummaryRecord } from '@/app/backend/persistence/types';
 import { runStatuses, sessionKinds } from '@/app/backend/runtime/contracts';
-import type { EntityId, RunStatus, SessionKind } from '@/app/backend/runtime/contracts';
+import type { CloudSessionCreateMetadata, EntityId, RunStatus, SessionKind } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
@@ -28,7 +29,11 @@ function parseRunStatus(value: string): RunStatus {
     throw new DataCorruptionError(`Invalid session run status in persistence row: "${value}".`);
 }
 
-function mapSessionSummary(row: SessionRow, turnCount: number): SessionSummaryRecord {
+function mapSessionSummary(
+    row: SessionRow,
+    turnCount: number,
+    cloudSession?: CloudSessionSummaryRecord
+): SessionSummaryRecord {
     return {
         id: parseEntityId(row.id, 'sessions.id', 'sess'),
         profileId: row.profile_id,
@@ -59,6 +64,7 @@ function mapSessionSummary(row: SessionRow, turnCount: number): SessionSummaryRe
             : {}),
         runStatus: parseRunStatus(row.run_status),
         turnCount,
+        ...(cloudSession ? { cloudSession } : {}),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -166,50 +172,83 @@ export class SessionStore {
             delegatedFromOrchestratorRunId?: EntityId<'orch'>;
             delegatedFromPlanResearchBatchId?: EntityId<'prb'>;
             delegatedFromFlowInstanceId?: string;
+            cloudSession?: CloudSessionCreateMetadata;
         }
-    ): Promise<{ created: false; reason: 'thread_not_found' } | { created: true; session: SessionSummaryRecord }> {
+    ): Promise<
+        | { created: false; reason: 'thread_not_found' | 'cloud_metadata_required' | 'cloud_binding_failed' }
+        | { created: true; session: SessionSummaryRecord }
+    > {
         const { db } = getPersistence();
         const now = nowIso();
-        const thread = await db
-            .selectFrom('threads')
-            .select(['id', 'conversation_id', 'sandbox_id', 'execution_environment_mode'])
-            .where('id', '=', threadId)
-            .where('profile_id', '=', profileId)
-            .executeTakeFirst();
-        if (!thread) {
-            return { created: false, reason: 'thread_not_found' };
+        if (kind === 'cloud' && !options?.cloudSession) {
+            return { created: false, reason: 'cloud_metadata_required' };
         }
 
-        const resolvedKind =
-            kind === 'cloud'
-                ? kind
-                : thread.sandbox_id || thread.execution_environment_mode === 'sandbox'
-                  ? 'sandbox'
-                  : 'local';
-        const inserted = await db
-            .insertInto('sessions')
-            .values({
-                id: createEntityId('sess'),
-                profile_id: profileId,
-                conversation_id: thread.conversation_id,
-                thread_id: thread.id,
-                kind: resolvedKind,
-                sandbox_id: thread.sandbox_id,
-                delegated_from_orchestrator_run_id: options?.delegatedFromOrchestratorRunId ?? null,
-                delegated_from_plan_research_batch_id: options?.delegatedFromPlanResearchBatchId ?? null,
-                delegated_from_flow_instance_id: options?.delegatedFromFlowInstanceId ?? null,
-                run_status: 'idle',
-                pending_completion_run_id: null,
-                created_at: now,
-                updated_at: now,
-            })
-            .returningAll()
-            .executeTakeFirstOrThrow();
+        const created = await db.transaction().execute(async (transaction) => {
+            const thread = await transaction
+                .selectFrom('threads')
+                .select(['id', 'conversation_id', 'sandbox_id', 'execution_environment_mode'])
+                .where('id', '=', threadId)
+                .where('profile_id', '=', profileId)
+                .executeTakeFirst();
+            if (!thread) {
+                return { created: false as const, reason: 'thread_not_found' as const };
+            }
 
-        await threadStore.touchByThread(profileId, thread.id);
+            const resolvedKind =
+                kind === 'cloud'
+                    ? kind
+                    : thread.sandbox_id || thread.execution_environment_mode === 'sandbox'
+                      ? 'sandbox'
+                      : 'local';
+            const inserted = await transaction
+                .insertInto('sessions')
+                .values({
+                    id: createEntityId('sess'),
+                    profile_id: profileId,
+                    conversation_id: thread.conversation_id,
+                    thread_id: thread.id,
+                    kind: resolvedKind,
+                    sandbox_id: resolvedKind === 'cloud' ? null : thread.sandbox_id,
+                    delegated_from_orchestrator_run_id: options?.delegatedFromOrchestratorRunId ?? null,
+                    delegated_from_plan_research_batch_id: options?.delegatedFromPlanResearchBatchId ?? null,
+                    delegated_from_flow_instance_id: options?.delegatedFromFlowInstanceId ?? null,
+                    run_status: 'idle',
+                    pending_completion_run_id: null,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .returningAll()
+                .executeTakeFirstOrThrow();
+
+            let cloudSession: CloudSessionSummaryRecord | undefined;
+            if (resolvedKind === 'cloud' && options?.cloudSession) {
+                const bindingResult = await cloudSessionStore.createLocalBinding(transaction, {
+                    profileId,
+                    localSessionId: parseEntityId(inserted.id, 'sessions.id', 'sess'),
+                    ...options.cloudSession,
+                });
+                if (bindingResult.isErr()) {
+                    return { created: false as const, reason: 'cloud_binding_failed' as const };
+                }
+                cloudSession = bindingResult.value;
+            }
+
+            return {
+                created: true as const,
+                threadId: thread.id,
+                session: mapSessionSummary(inserted, 0, cloudSession),
+            };
+        });
+
+        if (!created.created) {
+            return created;
+        }
+
+        await threadStore.touchByThread(profileId, created.threadId);
         return {
             created: true,
-            session: mapSessionSummary(inserted, 0),
+            session: created.session,
         };
     }
 
@@ -235,7 +274,21 @@ export class SessionStore {
             .orderBy('sessions.updated_at', 'desc')
             .execute();
 
-        return rows.map((row) => mapSessionSummary(row, row.turn_count ?? 0));
+        const cloudSessions = await cloudSessionStore.listBySessionIds(
+            profileId,
+            rows.map((row) => parseEntityId(row.id, 'sessions.id', 'sess'))
+        );
+        const cloudSessionBySessionId = new Map(cloudSessions.flatMap((cloudSession) =>
+            cloudSession.localSessionId ? [[cloudSession.localSessionId, cloudSession] as const] : []
+        ));
+
+        return rows.map((row) =>
+            mapSessionSummary(
+                row,
+                row.turn_count ?? 0,
+                cloudSessionBySessionId.get(parseEntityId(row.id, 'sessions.id', 'sess'))
+            )
+        );
     }
 
     async status(
@@ -254,9 +307,16 @@ export class SessionStore {
             return { found: false };
         }
 
+        const mappedSession = mapSessionSummary(
+            session,
+            session.turn_count ?? 0,
+            (await cloudSessionStore.getBySessionId(profileId, parseEntityId(session.id, 'sessions.id', 'sess'))) ??
+                undefined
+        );
+
         return {
             found: true,
-            session: mapSessionSummary(session, session.turn_count ?? 0),
+            session: mappedSession,
             activeRunId: session.pending_completion_run_id
                 ? parseEntityId(session.pending_completion_run_id, 'sessions.pending_completion_run_id', 'run')
                 : null,
@@ -341,6 +401,7 @@ export class SessionStore {
             })
             .where('id', '=', input.sessionId)
             .where('profile_id', '=', input.profileId)
+            .where('kind', '!=', 'cloud')
             .returningAll()
             .executeTakeFirst();
 

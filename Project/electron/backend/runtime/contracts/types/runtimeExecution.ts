@@ -44,6 +44,10 @@ export type RuntimeCompatibilityIssue =
           topLevelTab?: TopLevelTab;
       }
     | {
+          code: 'cloud_session_not_runnable';
+          sessionId?: string;
+      }
+    | {
           code: 'provider_native_unsupported';
           providerId?: RuntimeProviderId;
           modelId?: string;

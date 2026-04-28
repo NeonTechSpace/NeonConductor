@@ -55,6 +55,29 @@ export interface SessionsTable {
     updated_at: string;
 }
 
+export interface CloudSessionRecordsTable {
+    id: string;
+    profile_id: string;
+    provider_id: 'kilo';
+    record_kind: string;
+    authority_state: string;
+    sync_state: string;
+    remote_session_id: string;
+    remote_scope_key: string;
+    local_session_id: string | null;
+    account_id: string | null;
+    organization_id: string | null;
+    title: string | null;
+    remote_created_at: string | null;
+    remote_updated_at: string | null;
+    last_synced_at: string | null;
+    last_sync_error_code: string | null;
+    last_sync_error_message: string | null;
+    metadata_json: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface SessionAttachedSkillsTable {
     session_id: string;
     profile_id: string;
@@ -1305,6 +1328,7 @@ export interface DatabaseSchema {
     providers: ProvidersTable;
     provider_models: ProviderModelsTable;
     sessions: SessionsTable;
+    cloud_session_records: CloudSessionRecordsTable;
     session_attached_skills: SessionAttachedSkillsTable;
     session_attached_rules: SessionAttachedRulesTable;
     memory_records: MemoryRecordsTable;

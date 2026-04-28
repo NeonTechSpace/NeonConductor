@@ -347,6 +347,41 @@ CREATE TABLE sessions (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE cloud_session_records (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    provider_id TEXT NOT NULL CHECK (provider_id = 'kilo'),
+    record_kind TEXT NOT NULL CHECK (record_kind IN ('remote_snapshot', 'local_binding')),
+    authority_state TEXT NOT NULL CHECK (authority_state IN ('remote_only', 'mirrored', 'imported', 'forked', 'continued')),
+    sync_state TEXT NOT NULL CHECK (sync_state IN ('not_synced', 'synced', 'stale', 'failed')),
+    remote_session_id TEXT NOT NULL,
+    remote_scope_key TEXT NOT NULL,
+    local_session_id TEXT NULL REFERENCES sessions(id) ON DELETE SET NULL,
+    account_id TEXT NULL,
+    organization_id TEXT NULL,
+    title TEXT NULL,
+    remote_created_at TEXT NULL,
+    remote_updated_at TEXT NULL,
+    last_synced_at TEXT NULL,
+    last_sync_error_code TEXT NULL,
+    last_sync_error_message TEXT NULL,
+    metadata_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (profile_id, provider_id, remote_scope_key, remote_session_id),
+    UNIQUE (local_session_id),
+    CHECK (
+        (record_kind = 'remote_snapshot' AND local_session_id IS NULL)
+        OR
+        (record_kind = 'local_binding' AND local_session_id IS NOT NULL)
+    ),
+    CHECK (
+        (sync_state = 'failed' AND last_sync_error_message IS NOT NULL)
+        OR
+        (sync_state <> 'failed')
+    )
+);
+
 CREATE TABLE runs (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -1614,6 +1649,15 @@ CREATE INDEX idx_sessions_profile_conversation_updated_at
 
 CREATE INDEX idx_sessions_profile_thread_updated_at
     ON sessions(profile_id, thread_id, updated_at DESC);
+
+CREATE INDEX idx_cloud_session_records_profile_updated_at
+    ON cloud_session_records(profile_id, updated_at DESC);
+
+CREATE INDEX idx_cloud_session_records_profile_state_updated_at
+    ON cloud_session_records(profile_id, authority_state, sync_state, updated_at DESC);
+
+CREATE INDEX idx_cloud_session_records_profile_local_session
+    ON cloud_session_records(profile_id, local_session_id);
 
 CREATE INDEX idx_sessions_delegated_orchestrator_run_id
     ON sessions(delegated_from_orchestrator_run_id);

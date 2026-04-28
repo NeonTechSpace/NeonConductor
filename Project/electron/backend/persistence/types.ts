@@ -36,6 +36,9 @@ import type {
     EntityId,
     ExecutionEnvironmentMode,
     ExecutionPreset,
+    CloudSessionAuthorityState,
+    CloudSessionRecordKind,
+    CloudSessionSyncState,
     KiloDynamicSort,
     KiloRoutingMode,
     KiloAccountContext,
@@ -85,6 +88,30 @@ export interface SessionSummaryRecord {
     delegatedFromFlowInstanceId?: string;
     runStatus: RunStatus;
     turnCount: number;
+    cloudSession?: CloudSessionSummaryRecord;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CloudSessionSummaryRecord {
+    id: EntityId<'csess'>;
+    profileId: string;
+    providerId: 'kilo';
+    recordKind: CloudSessionRecordKind;
+    authorityState: CloudSessionAuthorityState;
+    syncState: CloudSessionSyncState;
+    remoteSessionId: string;
+    remoteScopeKey: string;
+    localSessionId?: EntityId<'sess'>;
+    accountId?: string;
+    organizationId?: string;
+    title?: string;
+    remoteCreatedAt?: string;
+    remoteUpdatedAt?: string;
+    lastSyncedAt?: string;
+    lastSyncErrorCode?: string;
+    lastSyncErrorMessage?: string;
+    metadata: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
 }

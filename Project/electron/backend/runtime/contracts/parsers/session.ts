@@ -1,4 +1,5 @@
 import { sessionEditModes, sessionKinds, topLevelTabs } from '@/app/backend/runtime/contracts/enums';
+import { parseBrowserContextPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import {
     readArray,
     createParser,
@@ -12,8 +13,8 @@ import {
     readProviderId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
-import { parseBrowserContextPacket } from '@/app/backend/runtime/contracts/parsers/devBrowser';
 import type {
+    CloudSessionCreateMetadata,
     ComposerAttachmentInput,
     ComposerImageAttachmentInput,
     ComposerTextFileAttachmentInput,
@@ -96,11 +97,63 @@ function readPositiveInteger(value: unknown, field: string): number {
 
 export function parseSessionCreateInput(input: unknown): SessionCreateInput {
     const source = readObject(input, 'input');
+    const kind = readEnumValue(source.kind, 'kind', sessionKinds);
 
-    return {
+    const base = {
         profileId: readProfileId(source),
         threadId: readEntityId(source.threadId, 'threadId', 'thr'),
-        kind: readEnumValue(source.kind, 'kind', sessionKinds),
+    };
+
+    if (kind !== 'cloud') {
+        if (source.cloudSession !== undefined) {
+            throw new Error('Invalid "cloudSession": only cloud sessions may include cloud metadata.');
+        }
+        return {
+            ...base,
+            kind,
+        };
+    }
+
+    if (source.cloudSession === undefined) {
+        return {
+            ...base,
+            kind,
+        };
+    }
+
+    return {
+        ...base,
+        kind,
+        cloudSession: parseCloudSessionCreateMetadata(source.cloudSession, 'cloudSession'),
+    };
+}
+
+function parseCloudSessionCreateMetadata(value: unknown, field: string): CloudSessionCreateMetadata {
+    const source = readObject(value, field);
+    const providerId = readOptionalString(source.providerId, `${field}.providerId`);
+    if (providerId !== undefined && providerId !== 'kilo') {
+        throw new Error(`Invalid "${field}.providerId": expected "kilo".`);
+    }
+    const remoteSessionId = readString(source.remoteSessionId, `${field}.remoteSessionId`).trim();
+    if (remoteSessionId.length === 0) {
+        throw new Error(`Invalid "${field}.remoteSessionId": expected non-empty string.`);
+    }
+    const remoteScopeKey = readOptionalString(source.remoteScopeKey, `${field}.remoteScopeKey`)?.trim();
+    const accountId = readOptionalString(source.accountId, `${field}.accountId`)?.trim();
+    const organizationId = readOptionalString(source.organizationId, `${field}.organizationId`)?.trim();
+    const title = readOptionalString(source.title, `${field}.title`)?.trim();
+    const remoteCreatedAt = readOptionalString(source.remoteCreatedAt, `${field}.remoteCreatedAt`)?.trim();
+    const remoteUpdatedAt = readOptionalString(source.remoteUpdatedAt, `${field}.remoteUpdatedAt`)?.trim();
+
+    return {
+        ...(providerId ? { providerId } : {}),
+        remoteSessionId,
+        ...(remoteScopeKey ? { remoteScopeKey } : {}),
+        ...(accountId ? { accountId } : {}),
+        ...(organizationId ? { organizationId } : {}),
+        ...(title ? { title } : {}),
+        ...(remoteCreatedAt ? { remoteCreatedAt } : {}),
+        ...(remoteUpdatedAt ? { remoteUpdatedAt } : {}),
     };
 }
 

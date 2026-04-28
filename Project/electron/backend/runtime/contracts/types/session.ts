@@ -7,6 +7,9 @@ import type {
     RuntimeCacheStrategy,
     RuntimeRequestedTransportFamily,
     SessionKind,
+    CloudSessionAuthorityState,
+    CloudSessionRecordKind,
+    CloudSessionSyncState,
     TopLevelTab,
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
@@ -87,10 +90,50 @@ export type SessionAttachmentPayload =
           text: string;
       } & SessionAttachmentSummary);
 
-export interface SessionCreateInput extends ProfileInput {
-    threadId: EntityId<'thr'>;
-    kind: SessionKind;
+export interface CloudSessionSummary {
+    id: EntityId<'csess'>;
+    providerId: 'kilo';
+    recordKind: CloudSessionRecordKind;
+    authorityState: CloudSessionAuthorityState;
+    syncState: CloudSessionSyncState;
+    remoteSessionId: string;
+    remoteScopeKey: string;
+    localSessionId?: EntityId<'sess'>;
+    accountId?: string;
+    organizationId?: string;
+    title?: string;
+    remoteCreatedAt?: string;
+    remoteUpdatedAt?: string;
+    lastSyncedAt?: string;
+    lastSyncErrorCode?: string;
+    lastSyncErrorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
 }
+
+export interface CloudSessionCreateMetadata {
+    providerId?: 'kilo';
+    remoteSessionId: string;
+    remoteScopeKey?: string;
+    accountId?: string;
+    organizationId?: string;
+    title?: string;
+    remoteCreatedAt?: string;
+    remoteUpdatedAt?: string;
+}
+
+interface BaseSessionCreateInput extends ProfileInput {
+    threadId: EntityId<'thr'>;
+}
+
+export type SessionCreateInput =
+    | (BaseSessionCreateInput & {
+          kind: Exclude<SessionKind, 'cloud'>;
+      })
+    | (BaseSessionCreateInput & {
+          kind: 'cloud';
+          cloudSession?: CloudSessionCreateMetadata;
+      });
 
 export interface SessionByIdInput extends ProfileInput {
     sessionId: EntityId<'sess'>;
@@ -165,7 +208,7 @@ export interface SessionListMessagesInput extends SessionByIdInput {
     runId?: EntityId<'run'>;
 }
 
-export interface SessionQueueRunInput extends SessionStartRunInput {}
+export type SessionQueueRunInput = SessionStartRunInput;
 
 export interface SessionOutboxEntryInput extends SessionByIdInput {
     entryId: EntityId<'outbox'>;

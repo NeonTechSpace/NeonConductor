@@ -2,6 +2,7 @@ import { isEntityId } from '@/web/components/conversation/shell/workspace/helper
 import { isRecord, readBoolean, readLiteral, readNumber, readString } from '@/web/lib/runtime/eventPatches/readers/shared';
 
 import type {
+    CloudSessionSummaryRecord,
     ConversationRecord,
     SessionSummaryRecord,
     TagRecord,
@@ -83,6 +84,7 @@ export function readSessionSummaryRecord(value: unknown): SessionSummaryRecord |
     const updatedAt = readString(value['updatedAt']);
     const sandboxId = readString(value['sandboxId']);
     const delegatedFromOrchestratorRunId = readString(value['delegatedFromOrchestratorRunId']);
+    const cloudSession = readCloudSessionSummaryRecord(value['cloudSession']);
     if (
         !id ||
         !isEntityId(id, 'sess') ||
@@ -110,6 +112,78 @@ export function readSessionSummaryRecord(value: unknown): SessionSummaryRecord |
             : {}),
         runStatus,
         turnCount,
+        ...(cloudSession ? { cloudSession } : {}),
+        createdAt,
+        updatedAt,
+    };
+}
+
+function readCloudSessionSummaryRecord(value: unknown): CloudSessionSummaryRecord | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = readString(value['id']);
+    const profileId = readString(value['profileId']);
+    const providerId = readLiteral(value['providerId'], ['kilo'] as const);
+    const recordKind = readLiteral(value['recordKind'], ['remote_snapshot', 'local_binding'] as const);
+    const authorityState = readLiteral(value['authorityState'], [
+        'remote_only',
+        'mirrored',
+        'imported',
+        'forked',
+        'continued',
+    ] as const);
+    const syncState = readLiteral(value['syncState'], ['not_synced', 'synced', 'stale', 'failed'] as const);
+    const remoteSessionId = readString(value['remoteSessionId']);
+    const remoteScopeKey = readString(value['remoteScopeKey']);
+    const createdAt = readString(value['createdAt']);
+    const updatedAt = readString(value['updatedAt']);
+    if (
+        !id ||
+        !isEntityId(id, 'csess') ||
+        !profileId ||
+        !providerId ||
+        !recordKind ||
+        !authorityState ||
+        !syncState ||
+        !remoteSessionId ||
+        !remoteScopeKey ||
+        !createdAt ||
+        !updatedAt
+    ) {
+        return undefined;
+    }
+
+    const localSessionId = readString(value['localSessionId']);
+    const accountId = readString(value['accountId']);
+    const organizationId = readString(value['organizationId']);
+    const title = readString(value['title']);
+    const remoteCreatedAt = readString(value['remoteCreatedAt']);
+    const remoteUpdatedAt = readString(value['remoteUpdatedAt']);
+    const lastSyncedAt = readString(value['lastSyncedAt']);
+    const lastSyncErrorCode = readString(value['lastSyncErrorCode']);
+    const lastSyncErrorMessage = readString(value['lastSyncErrorMessage']);
+
+    return {
+        id,
+        profileId,
+        providerId,
+        recordKind,
+        authorityState,
+        syncState,
+        remoteSessionId,
+        remoteScopeKey,
+        ...(localSessionId && isEntityId(localSessionId, 'sess') ? { localSessionId } : {}),
+        ...(accountId ? { accountId } : {}),
+        ...(organizationId ? { organizationId } : {}),
+        ...(title ? { title } : {}),
+        ...(remoteCreatedAt ? { remoteCreatedAt } : {}),
+        ...(remoteUpdatedAt ? { remoteUpdatedAt } : {}),
+        ...(lastSyncedAt ? { lastSyncedAt } : {}),
+        ...(lastSyncErrorCode ? { lastSyncErrorCode } : {}),
+        ...(lastSyncErrorMessage ? { lastSyncErrorMessage } : {}),
+        metadata: {},
         createdAt,
         updatedAt,
     };

@@ -154,6 +154,19 @@ export class RunExecutionService {
                 reason: runnable.reason,
             };
         }
+        if (runnable.session.kind === 'cloud') {
+            return toRejectedStartResult(
+                {
+                    code: 'cloud_session_not_runnable',
+                    message: 'Cloud sessions cannot start local runs until Kilo Cloud continue support lands.',
+                    action: {
+                        code: 'cloud_session_not_runnable',
+                        sessionId: input.sessionId,
+                    },
+                },
+                input
+            );
+        }
 
         const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
         if (!sessionThread) {

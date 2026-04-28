@@ -52,6 +52,7 @@ export { sessionAttachedSkillStore } from '@/app/backend/persistence/stores/conv
 export { sessionContextCompactionStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionContextCompactionStore';
 export { sessionContextCompactionPreparationStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionContextCompactionPreparationStore';
 export { sessionDevBrowserStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionDevBrowserStore';
+export { cloudSessionStore } from '@/app/backend/persistence/stores/conversation/sessions/cloudSessionStore';
 export { sessionStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionStore';
 export { sessionOutboxStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionOutboxStore';
 export { settingsStore } from '@/app/backend/persistence/stores/profile/settingsStore';

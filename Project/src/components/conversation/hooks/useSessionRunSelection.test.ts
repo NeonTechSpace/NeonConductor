@@ -203,6 +203,41 @@ describe('useSessionRunSelection', () => {
         expect(result.partsByMessageId.get('msg_primary')?.map((part) => part.id)).toEqual(['part_primary']);
     });
 
+    it('preserves cloud session projection metadata in thread session selection', () => {
+        const result = useSessionRunSelection({
+            selectedThreadId: 'thr_primary',
+            selectedSessionId: undefined,
+            selectedRunId: undefined,
+            allSessions: [
+                createSession({
+                    id: 'sess_cloud',
+                    threadId: 'thr_primary',
+                    kind: 'cloud',
+                    cloudSession: {
+                        id: 'csess_primary',
+                        profileId: 'profile_default',
+                        providerId: 'kilo',
+                        recordKind: 'local_binding',
+                        authorityState: 'mirrored',
+                        syncState: 'synced',
+                        remoteSessionId: 'remote_primary',
+                        remoteScopeKey: 'org_primary',
+                        localSessionId: 'sess_cloud',
+                        metadata: {},
+                        createdAt: '2026-03-10T10:00:00.000Z',
+                        updatedAt: '2026-03-10T10:00:00.000Z',
+                    },
+                }),
+            ],
+            allRuns: [],
+            allMessages: [],
+            allMessageParts: [],
+        });
+
+        expect(result.sessions[0]?.cloudSession?.remoteSessionId).toBe('remote_primary');
+        expect(result.selection.resolvedSessionId).toBe('sess_cloud');
+    });
+
     it('keeps session-scoped messages when the selected session has no runs', () => {
         const result = useSessionRunSelection({
             selectedThreadId: 'thr_primary',

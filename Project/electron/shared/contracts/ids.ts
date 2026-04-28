@@ -24,6 +24,7 @@ export type EntityIdPrefix =
     | 'rcpt'
     | 'tag'
     | 'sess'
+    | 'csess'
     | 'perm'
     | 'ckpt'
     | 'cpr'

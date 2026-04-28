@@ -252,6 +252,79 @@ describe('runtime contracts: core flows', () => {
         ).rejects.toThrow('modeKey');
     });
 
+    it('creates cloud session bindings but rejects local run execution for them', async () => {
+        const caller = createCaller();
+        const threadResult = await caller.conversation.createThread({
+            profileId,
+            topLevelTab: 'chat',
+            scope: 'detached',
+            title: 'Cloud session runtime boundary',
+        });
+        const threadId = requireEntityId(
+            threadResult.thread.id,
+            'thr',
+            'Expected cloud session thread id with "thr_" prefix.'
+        );
+
+        const missingMetadata = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'cloud',
+        });
+        expect(missingMetadata).toEqual({
+            created: false,
+            reason: 'cloud_metadata_required',
+        });
+
+        const created = await caller.session.create({
+            profileId,
+            threadId,
+            kind: 'cloud',
+            cloudSession: {
+                remoteSessionId: 'remote_session_runtime_boundary',
+                organizationId: 'org_runtime_boundary',
+                title: 'Runtime Boundary',
+            },
+        });
+        expect(created.created).toBe(true);
+        if (!created.created) {
+            throw new Error(created.reason);
+        }
+        expect(created.session.kind).toBe('cloud');
+        expect(created.session.cloudSession?.remoteSessionId).toBe('remote_session_runtime_boundary');
+
+        const preview = await caller.session.previewRunContract({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Preview should fail for cloud sessions.',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(preview).toMatchObject({
+            available: false,
+            code: 'cloud_session_not_runnable',
+        });
+
+        const started = await caller.session.startRun({
+            profileId,
+            sessionId: created.session.id,
+            prompt: 'Start should fail for cloud sessions.',
+            topLevelTab: 'chat',
+            modeKey: 'chat',
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(started).toMatchObject({
+            accepted: false,
+            reason: 'rejected',
+            code: 'cloud_session_not_runnable',
+        });
+    });
+
     it('supports workspace-scoped runtime reset dry-run and apply', async () => {
         const caller = createCaller();
         const { sqlite } = getPersistence();

@@ -41,6 +41,7 @@ import {
     type SessionAttachedSkillsResult,
 } from '@/app/backend/runtime/contracts';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
+import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrowser/service';
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { runtimeStatusEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
@@ -49,14 +50,15 @@ import { sessionEditService } from '@/app/backend/runtime/services/sessionEdit/s
 import { sessionHistoryService } from '@/app/backend/runtime/services/sessionHistory/service';
 import { getAttachedRules, setAttachedRules } from '@/app/backend/runtime/services/sessionRules/service';
 import { getAttachedSkills, setAttachedSkills } from '@/app/backend/runtime/services/sessionSkills/service';
-import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrowser/service';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError, unwrapResultOrThrow } from '@/app/backend/trpc/trpcErrorMap';
 import { getDevBrowserController } from '@/app/main/window/devBrowser/registry';
 
 export const sessionRouter = router({
     create: publicProcedure.input(sessionCreateInputSchema).mutation(async ({ input, ctx }) => {
-        const session = await sessionStore.create(input.profileId, input.threadId, input.kind);
+        const session = await sessionStore.create(input.profileId, input.threadId, input.kind, {
+            ...(input.kind === 'cloud' && input.cloudSession ? { cloudSession: input.cloudSession } : {}),
+        });
         if (!session.created) {
             return {
                 created: false as const,
@@ -293,7 +295,7 @@ export const sessionRouter = router({
         const state = await sessionDevBrowserService.getState(input.profileId, input.sessionId);
         const controller = getDevBrowserController(ctx.win);
         if (controller) {
-            await controller.control(input.action);
+            controller.control(input.action);
         }
         await runtimeEventLogService.append(
             runtimeStatusEvent({
@@ -318,7 +320,7 @@ export const sessionRouter = router({
     setDevBrowserPicker: publicProcedure.input(sessionSetDevBrowserPickerInputSchema).mutation(async ({ input, ctx }) => {
         const state = await sessionDevBrowserService.setPickerActive(input);
         if (ctx.win) {
-            await getDevBrowserController(ctx.win)?.setPickerActive(input.active);
+            getDevBrowserController(ctx.win)?.setPickerActive(input.active);
         }
         await runtimeEventLogService.append(
             runtimeUpsertEvent({

@@ -1,4 +1,4 @@
-import { threadStore } from '@/app/backend/persistence/stores';
+import { sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import { prepareRunContractPreview } from '@/app/backend/runtime/services/runContract/service';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
 import type { StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
@@ -10,6 +10,20 @@ export async function previewRunContractForStart(
     input: StartRunInput,
     previousCompatibleContract?: RunContractPreview
 ) {
+    const sessionStatus = await sessionStore.status(input.profileId, input.sessionId);
+    if (sessionStatus.found && sessionStatus.session.kind === 'cloud') {
+        return {
+            available: false as const,
+            reason: 'rejected' as const,
+            code: 'cloud_session_not_runnable',
+            message: 'Cloud sessions cannot preview local runs until Kilo Cloud continue support lands.',
+            action: {
+                code: 'cloud_session_not_runnable',
+                sessionId: input.sessionId,
+            },
+        };
+    }
+
     const sessionThread = await threadStore.getBySessionId(input.profileId, input.sessionId);
     if (!sessionThread) {
         return {

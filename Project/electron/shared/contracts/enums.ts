@@ -7,6 +7,15 @@ export type ConversationScope = (typeof conversationScopes)[number];
 export const sessionKinds = ['local', 'sandbox', 'cloud'] as const;
 export type SessionKind = (typeof sessionKinds)[number];
 
+export const cloudSessionRecordKinds = ['remote_snapshot', 'local_binding'] as const;
+export type CloudSessionRecordKind = (typeof cloudSessionRecordKinds)[number];
+
+export const cloudSessionAuthorityStates = ['remote_only', 'mirrored', 'imported', 'forked', 'continued'] as const;
+export type CloudSessionAuthorityState = (typeof cloudSessionAuthorityStates)[number];
+
+export const cloudSessionSyncStates = ['not_synced', 'synced', 'stale', 'failed'] as const;
+export type CloudSessionSyncState = (typeof cloudSessionSyncStates)[number];
+
 export const executionEnvironmentModes = ['local', 'new_sandbox', 'sandbox'] as const;
 export type ExecutionEnvironmentMode = (typeof executionEnvironmentModes)[number];
 

@@ -7,6 +7,33 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         profileId: string;
         threadId: string;
         kind: 'local' | 'sandbox' | 'cloud';
+        cloudSession?: {
+            providerId?: 'kilo';
+            remoteSessionId: string;
+            remoteScopeKey?: string;
+            accountId?: string;
+            organizationId?: string;
+            title?: string;
+            remoteCreatedAt?: string;
+            remoteUpdatedAt?: string;
+        };
+    }>();
+    expectTypeOf<Extract<AppRouterOutputs['session']['create'], { created: false }>>().toExtend<{
+        created: false;
+        reason: 'thread_not_found' | 'cloud_metadata_required' | 'cloud_binding_failed';
+    }>();
+    expectTypeOf<Extract<AppRouterOutputs['session']['create'], { created: true }>['session']>().toExtend<{
+        kind: 'local' | 'sandbox' | 'cloud';
+        cloudSession?: {
+            id: string;
+            providerId: 'kilo';
+            recordKind: 'remote_snapshot' | 'local_binding';
+            authorityState: 'remote_only' | 'mirrored' | 'imported' | 'forked' | 'continued';
+            syncState: 'not_synced' | 'synced' | 'stale' | 'failed';
+            remoteSessionId: string;
+            remoteScopeKey: string;
+            localSessionId?: string;
+        };
     }>();
 
     expectTypeOf<AppRouterInputs['conversation']['listBuckets']>().toExtend<{

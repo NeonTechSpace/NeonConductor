@@ -20,6 +20,7 @@ export type RunExecutionErrorCode =
     | 'provider_model_missing'
     | 'provider_first_output_timeout'
     | 'provider_request_failed'
+    | 'cloud_session_not_runnable'
     | 'provider_request_unavailable';
 
 export interface RunExecutionError {
