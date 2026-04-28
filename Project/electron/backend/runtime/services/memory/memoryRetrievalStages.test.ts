@@ -280,6 +280,10 @@ describe('memory retrieval stages', () => {
 
             expect(assembled.records.map((record) => record.title)).toEqual(['Assembled memory']);
             expect(assembled.summary?.records[0]?.matchReason).toBe('exact_global');
+            expect(assembled.summary?.records[0]?.explanation).toMatchObject({
+                selectedSourceLabel: 'Exact global',
+                selectionReason: 'Global scope matched this memory directly.',
+            });
             expect(assembled.summary?.records[0]?.supportingEvidence).toEqual([]);
             expect(assembled.messages).toHaveLength(1);
         } finally {

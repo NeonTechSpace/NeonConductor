@@ -1,11 +1,5 @@
 import type { MemoryRecord } from '@/app/backend/persistence/types';
-import type { EntityId, RetrievedMemoryMatchReason } from '@/app/backend/runtime/contracts';
-
-export interface RetrievedMemoryExplanation {
-    selectedSourceLabel: string;
-    selectionReason: string;
-    rankingReason: string;
-}
+import type { EntityId, RetrievedMemoryExplanation, RetrievedMemoryMatchReason } from '@/app/backend/runtime/contracts';
 
 export interface RetrievedMemoryDecision {
     memory: MemoryRecord;

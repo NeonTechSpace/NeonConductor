@@ -34,6 +34,11 @@ function createRecord(memoryId: string, order: number): RetrievedMemoryRecord {
         scopeKind: 'global',
         matchReason: 'prompt',
         order,
+        explanation: {
+            selectedSourceLabel: 'Prompt match',
+            selectionReason: 'Prompt terms matched 1 searchable terms.',
+            rankingReason: 'Prompt matches are ranked after explicit scope and structured matches.',
+        },
         supportingEvidence: [],
     };
 }
@@ -61,5 +66,6 @@ describe('formatRetrievedMemoryMessage', () => {
         const text = JSON.stringify(formatted.message);
         expect(text.includes('Memory 1')).toBe(true);
         expect(text.includes('Memory 5')).toBe(false);
+        expect(text.includes('Prompt terms matched')).toBe(false);
     });
 });

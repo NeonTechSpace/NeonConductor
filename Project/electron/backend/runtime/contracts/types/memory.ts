@@ -256,6 +256,12 @@ export type RetrievedMemoryMatchReason =
     | 'semantic'
     | 'prompt';
 
+export interface RetrievedMemoryExplanation {
+    selectedSourceLabel: string;
+    selectionReason: string;
+    rankingReason: string;
+}
+
 export interface RetrievedMemoryRecord {
     memoryId: EntityId<'mem'>;
     title: string;
@@ -266,6 +272,7 @@ export interface RetrievedMemoryRecord {
     sourceMemoryId?: EntityId<'mem'>;
     annotations?: string[];
     derivedSummary?: MemoryDerivedSummary;
+    explanation: RetrievedMemoryExplanation;
     supportingEvidence: MemoryEvidenceSummary[];
 }
 

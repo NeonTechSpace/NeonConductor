@@ -26,6 +26,7 @@ export async function assembleMemoryRetrievalResult(
             scopeKind: candidate.memory.scopeKind,
             matchReason: candidate.matchReason,
             order: index + 1,
+            explanation: candidate.explanation,
             supportingEvidence,
             ...(candidate.sourceMemoryId ? { sourceMemoryId: candidate.sourceMemoryId } : {}),
             ...(candidate.annotations && candidate.annotations.length > 0

@@ -95,7 +95,7 @@ function MemoryProjectionRoots({ viewModel }: { viewModel: MemoryPanelViewModel 
     );
 }
 
-function RetrievedMemoryCard({ record }: { record: RetrievedMemoryRecord }) {
+function RetrievedMemoryCard({ controller, record }: { controller: MemoryPanelController; record: RetrievedMemoryRecord }) {
     const hasConflictingCurrentTruth = record.derivedSummary
         ? record.derivedSummary.conflictingCurrentMemoryIds.length > 0
         : false;
@@ -116,6 +116,11 @@ function RetrievedMemoryCard({ record }: { record: RetrievedMemoryRecord }) {
             {record.annotations && record.annotations.length > 0 ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>{record.annotations.join(' ')}</p>
             ) : null}
+            <div className='border-border/70 bg-card/35 mt-2 rounded-lg border px-3 py-2'>
+                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>{record.explanation.selectedSourceLabel}</p>
+                <p className='text-muted-foreground mt-1 text-[11px]'>{record.explanation.selectionReason}</p>
+                <p className='text-muted-foreground mt-1 text-[11px]'>{record.explanation.rankingReason}</p>
+            </div>
             {hasConflictingCurrentTruth ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>
                     Conflicting current truth detected for this temporal subject.
@@ -149,6 +154,35 @@ function RetrievedMemoryCard({ record }: { record: RetrievedMemoryRecord }) {
                     ))}
                 </div>
             ) : null}
+            <div className='mt-3 flex flex-wrap gap-2'>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: record.memoryId, mode: 'review' });
+                    }}>
+                    Review
+                </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: record.memoryId, mode: 'supersede' });
+                    }}>
+                    Supersede
+                </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => {
+                        controller.onOpenMemoryReview({ memoryId: record.memoryId, mode: 'forget' });
+                    }}>
+                    Forget
+                </Button>
+            </div>
         </div>
     );
 }
@@ -650,7 +684,7 @@ export function MemoryPanelSections({ controller }: { controller: MemoryPanelCon
                 {viewModel.retrievedSection.records.length > 0 ? (
                     <div className='space-y-2'>
                         {viewModel.retrievedSection.records.map((record) => (
-                            <RetrievedMemoryCard key={record.memoryId} record={record} />
+                            <RetrievedMemoryCard key={record.memoryId} controller={controller} record={record} />
                         ))}
                     </div>
                 ) : (

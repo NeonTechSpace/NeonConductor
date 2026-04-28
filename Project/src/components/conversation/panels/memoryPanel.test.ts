@@ -237,6 +237,11 @@ describe('MemoryPanel', () => {
                             scopeKind: 'thread',
                             matchReason: 'exact_thread',
                             order: 1,
+                            explanation: {
+                                selectedSourceLabel: 'Exact thread',
+                                selectionReason: 'The current thread matched this memory directly.',
+                                rankingReason: 'Exact scope outranks broader matches.',
+                            },
                             supportingEvidence: [
                                 {
                                     id: 'mev_1',
@@ -272,6 +277,9 @@ describe('MemoryPanel', () => {
         expect(html).toContain('system');
         expect(html).toContain('completed run');
         expect(html).toContain('exact_thread');
+        expect(html).toContain('Exact thread');
+        expect(html).toContain('The current thread matched this memory directly.');
+        expect(html).toContain('Exact scope outranks broader matches.');
         expect(html).toContain('Evidence: Assistant output - Recovered implementation details.');
         expect(html).toContain('retrieved');
         expect(html).toContain('history');
@@ -282,6 +290,7 @@ describe('MemoryPanel', () => {
         expect(html).toContain('Apply');
         expect(html).toContain('Reject');
         expect(html).toContain('Edit');
+        expect(html).toContain('Review');
         expect(html).toContain('Supersede');
         expect(html).toContain('Forget');
     });
