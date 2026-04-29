@@ -32,4 +32,13 @@ describe('electronApi', () => {
         expect(runtimeApi.dialog).toBe(electronApi.dialog);
     });
 
+    it('fails with an actionable diagnostic when Electron runs as Node', async () => {
+        vi.doMock('electron', () => ({
+            default: 'C:\\Program Files\\Electron\\electron.exe',
+        }));
+
+        await expect(import('./electronApi')).rejects.toThrow(
+            'Electron main-process API is unavailable. If ELECTRON_RUN_AS_NODE=1 is inherited from the caller environment'
+        );
+    });
 });

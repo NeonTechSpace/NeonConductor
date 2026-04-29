@@ -4,6 +4,8 @@ import { createRequire } from 'node:module';
 type ElectronRuntimeApi = typeof import('electron');
 
 const requireFromElectronApi = createRequire(import.meta.url);
+export const ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE =
+    'Electron main-process API is unavailable. If ELECTRON_RUN_AS_NODE=1 is inherited from the caller environment, Electron runs as Node and the electron package resolves to the launcher path instead of the desktop runtime API. Use `pnpm run launch:desktop` for built desktop validation.';
 
 function isElectronRuntimeApi(value: unknown): value is ElectronRuntimeApi {
     if (typeof value !== 'object' || value === null) {
@@ -59,7 +61,7 @@ function resolveElectronRuntimeApi(moduleValue: unknown): ElectronRuntimeApi {
         return requiredDefaultExport;
     }
 
-    return moduleValue as ElectronRuntimeApi;
+    throw new Error(ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE);
 }
 
 const electronApi = resolveElectronRuntimeApi(electronModule);

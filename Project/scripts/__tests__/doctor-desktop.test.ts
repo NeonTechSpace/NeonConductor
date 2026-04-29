@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     assertSandboxedPreloadBundles,
+    inspectDesktopDoctorEnvironment,
     parseDesktopDoctorScope,
     preloadBundleUsesUnsupportedModuleSyntax,
     resolveDesktopDoctorPaths,
@@ -139,5 +140,27 @@ describe('doctor-desktop', () => {
             false
         );
     });
-});
 
+    it('reports inherited Electron Node-mode without mutating the environment', () => {
+        const env = {
+            ELECTRON_RUN_AS_NODE: '1',
+            PATH: 'C:\\Tools',
+        };
+
+        expect(inspectDesktopDoctorEnvironment(env)).toEqual({
+            inheritedElectronRunAsNode: true,
+            launchCommand: 'pnpm run launch:desktop',
+            message:
+                'ELECTRON_RUN_AS_NODE=1 is inherited; use `pnpm run launch:desktop` for live Electron validation so the child environment is sanitized.',
+        });
+        expect(env.ELECTRON_RUN_AS_NODE).toBe('1');
+    });
+
+    it('reports a clean Electron launch environment when Node-mode is absent', () => {
+        expect(inspectDesktopDoctorEnvironment({ PATH: 'C:\\Tools' })).toEqual({
+            inheritedElectronRunAsNode: false,
+            launchCommand: 'pnpm run launch:desktop',
+            message: null,
+        });
+    });
+});

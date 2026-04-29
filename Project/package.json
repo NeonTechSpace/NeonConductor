@@ -35,6 +35,7 @@
         "check:repair-first": "tsx scripts/audit-repair-first.ts --check --worklist",
         "doctor:desktop": "tsx scripts/doctor-desktop.ts",
         "doctor:desktop:dev": "tsx scripts/doctor-desktop.ts --scope=development",
+        "launch:desktop": "tsx scripts/launch-electron.ts",
         "vendor:node": "tsx scripts/vendor-node.ts",
         "vendor:node:win": "tsx scripts/vendor-node.ts --target=win32-x64",
         "vendor:node:mac": "tsx scripts/vendor-node.ts --target=darwin-arm64 --target=darwin-x64",

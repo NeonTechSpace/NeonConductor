@@ -9,6 +9,7 @@
 - Use `pnpm -C Project check` when you want the full check set, including the build.
 - Use `pnpm -C Project audit:agents:worklist:new` when you want the current actionable agent review queue.
 - Use `pnpm -C Project doctor:desktop` for packaged-storage checks and `pnpm -C Project doctor:desktop:dev` for isolated development storage.
+- Use `pnpm -C Project build:app` followed by `pnpm -C Project launch:desktop` for built Electron validation; `launch:desktop` sanitizes inherited Electron Node-mode environment.
 - `jj status` is the best first status command when the workspace is managed by `jj`; Git may look detached by design.
 
 ## Branch Flow

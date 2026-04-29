@@ -45,6 +45,12 @@ export interface SandboxedPreloadBundleCheck {
     usesUnsupportedModuleSyntax: boolean;
 }
 
+export interface DesktopDoctorEnvironmentCheck {
+    inheritedElectronRunAsNode: boolean;
+    launchCommand: 'pnpm run launch:desktop';
+    message: string | null;
+}
+
 export function parseDesktopDoctorScope(argv: string[] = process.argv.slice(2)): DesktopDoctorScope {
     const scopeArgument = argv.find((argument) => argument.startsWith('--scope='));
     if (!scopeArgument) {
@@ -201,11 +207,23 @@ export function assertSandboxedPreloadBundles(mainDirname: string): SandboxedPre
     return bundleChecks;
 }
 
+export function inspectDesktopDoctorEnvironment(env: NodeJS.ProcessEnv = process.env): DesktopDoctorEnvironmentCheck {
+    const inheritedElectronRunAsNode = env.ELECTRON_RUN_AS_NODE === '1';
+    return {
+        inheritedElectronRunAsNode,
+        launchCommand: 'pnpm run launch:desktop',
+        message: inheritedElectronRunAsNode
+            ? 'ELECTRON_RUN_AS_NODE=1 is inherited; use `pnpm run launch:desktop` for live Electron validation so the child environment is sanitized.'
+            : null,
+    };
+}
+
 export function runDesktopDoctor(scope = parseDesktopDoctorScope()): void {
     const packageJson = readPackageJson();
     const desktopPaths = resolveDesktopDoctorPaths(scope);
     const distElectronRoot = path.join(process.cwd(), 'dist-electron');
     const preloadBundleChecks = existsSync(distElectronRoot) ? assertSandboxedPreloadBundles(distElectronRoot) : null;
+    const environmentCheck = inspectDesktopDoctorEnvironment();
     if (!existsSync(desktopPaths.dbPath)) {
         scriptLog.info({
             tag: 'doctor.desktop',
@@ -213,6 +231,7 @@ export function runDesktopDoctor(scope = parseDesktopDoctorScope()): void {
             nodeVersion: process.version,
             electronVersion: packageJson.devDependencies?.['electron'] ?? 'unknown',
             ...desktopPaths,
+            environmentCheck,
             hasDesktopBuild: preloadBundleChecks !== null,
             preloadBundleChecks,
         });
@@ -232,6 +251,7 @@ export function runDesktopDoctor(scope = parseDesktopDoctorScope()): void {
             nodeVersion: process.version,
             electronVersion: packageJson.devDependencies?.['electron'] ?? 'unknown',
             ...desktopPaths,
+            environmentCheck,
             hasDesktopBuild: preloadBundleChecks !== null,
             preloadBundleChecks,
             hasProviderSecretsTable: tableExists(database, 'provider_secrets'),
