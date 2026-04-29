@@ -1,6 +1,6 @@
-import { BrowserWindow } from 'electron';
 import path from 'node:path';
 
+import { BrowserWindow, type BrowserWindowType } from '@/app/main/runtime/electronApi';
 import { attachDevelopmentShortcuts } from '@/app/main/window/devtoolsShortcuts';
 import { attachNavigationGuards } from '@/app/main/window/navigationGuards';
 import { resolveMainWindowPreloadPath } from '@/app/main/window/preloadPaths';
@@ -11,7 +11,7 @@ export interface MainWindowOptions {
     mainDirname: string;
 }
 
-export function createMainWindow(options: MainWindowOptions): BrowserWindow {
+export function createMainWindow(options: MainWindowOptions): BrowserWindowType {
     const { isDev, devServerUrl, mainDirname } = options;
 
     const win = new BrowserWindow({

@@ -11,6 +11,13 @@ vi.mock('electron', () => ({
     app: {
         quit: appQuitSpy,
     },
+    BrowserWindow: vi.fn(),
+    Menu: {},
+    dialog: {},
+    ipcMain: {},
+    session: {},
+    shell: {},
+    WebContentsView: vi.fn(),
 }));
 
 vi.mock('@/app/main/logging', () => ({

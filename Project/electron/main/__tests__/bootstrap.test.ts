@@ -10,8 +10,15 @@ const {
     appSetAppUserModelIdSpy,
     appSetPathSpy,
     dialogShowOpenDialogSpy,
+    dialogShowErrorBoxSpy,
     ipcMainHandleSpy,
+    ipcMainOnSpy,
     ipcMainRemoveHandlerSpy,
+    ipcMainRemoveAllListenersSpy,
+    sessionOnHeadersReceivedSpy,
+    shellOpenExternalSpy,
+    shellOpenPathSpy,
+    webContentsViewSpy,
     setApplicationMenuSpy,
     initializePersistenceSpy,
     closePersistenceSpy,
@@ -25,6 +32,9 @@ const {
     attachCspHeadersSpy,
     createMainWindowSpy,
     createSplashWindowSpy,
+    registerDevBrowserWindowSpy,
+    syncDevBrowserMountSpy,
+    handleDevBrowserSelectionFromWebContentsSpy,
     registerBootWindowsSpy,
     reportMainBootStatusSpy,
     createIPCHandlerInputSpy,
@@ -50,8 +60,15 @@ const {
         appSetAppUserModelIdSpy: vi.fn(),
         appSetPathSpy: vi.fn(),
         dialogShowOpenDialogSpy: vi.fn(() => Promise.resolve({ canceled: true, filePaths: [] })),
+        dialogShowErrorBoxSpy: vi.fn(),
         ipcMainHandleSpy: vi.fn(),
+        ipcMainOnSpy: vi.fn(),
         ipcMainRemoveHandlerSpy: vi.fn(),
+        ipcMainRemoveAllListenersSpy: vi.fn(),
+        sessionOnHeadersReceivedSpy: vi.fn(),
+        shellOpenExternalSpy: vi.fn(() => Promise.resolve()),
+        shellOpenPathSpy: vi.fn(() => Promise.resolve('')),
+        webContentsViewSpy: vi.fn(),
         setApplicationMenuSpy: vi.fn(),
         initializePersistenceSpy: vi.fn(),
         closePersistenceSpy: vi.fn(),
@@ -68,6 +85,9 @@ const {
         attachCspHeadersSpy: vi.fn(),
         createMainWindowSpy: vi.fn(() => ({ id: 'window-main' })),
         createSplashWindowSpy: vi.fn(() => ({ id: 'window-splash' })),
+        registerDevBrowserWindowSpy: vi.fn(),
+        syncDevBrowserMountSpy: vi.fn(() => Promise.resolve({ ok: true })),
+        handleDevBrowserSelectionFromWebContentsSpy: vi.fn(() => Promise.resolve()),
         registerBootWindowsSpy: vi.fn(),
         reportMainBootStatusSpy: vi.fn(),
         createIPCHandlerInputSpy: vi.fn((input: unknown) => input),
@@ -121,14 +141,29 @@ vi.mock('electron', () => ({
     },
     dialog: {
         showOpenDialog: dialogShowOpenDialogSpy,
+        showErrorBox: dialogShowErrorBoxSpy,
     },
     ipcMain: {
         handle: ipcMainHandleSpy,
+        on: ipcMainOnSpy,
         removeHandler: ipcMainRemoveHandlerSpy,
+        removeAllListeners: ipcMainRemoveAllListenersSpy,
     },
+    session: {
+        defaultSession: {
+            webRequest: {
+                onHeadersReceived: sessionOnHeadersReceivedSpy,
+            },
+        },
+    },
+    shell: {
+        openExternal: shellOpenExternalSpy,
+        openPath: shellOpenPathSpy,
+    },
+    WebContentsView: webContentsViewSpy,
 }));
 
-vi.mock('electron-trpc-experimental/main', () => ({
+vi.mock('@/app/main/runtime/electronTrpcMain', () => ({
     createIPCHandler: (input: unknown) => {
         const ipcHandler = {
             attachWindow: attachWindowSpy,
@@ -184,6 +219,12 @@ vi.mock('@/app/main/window/factory', () => ({
 
 vi.mock('@/app/main/window/splash', () => ({
     createSplashWindow: createSplashWindowSpy,
+}));
+
+vi.mock('@/app/main/window/devBrowser/registry', () => ({
+    registerDevBrowserWindow: registerDevBrowserWindowSpy,
+    syncDevBrowserMount: syncDevBrowserMountSpy,
+    handleDevBrowserSelectionFromWebContents: handleDevBrowserSelectionFromWebContentsSpy,
 }));
 
 vi.mock('@/app/main/window/bootCoordinator', () => ({

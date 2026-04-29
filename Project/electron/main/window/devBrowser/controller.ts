@@ -1,4 +1,3 @@
-import { BrowserWindow, WebContentsView } from 'electron';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 
@@ -19,6 +18,11 @@ import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrow
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { appLog } from '@/app/main/logging';
+import {
+    WebContentsView,
+    type BrowserWindowType,
+    type WebContentsViewType,
+} from '@/app/main/runtime/electronApi';
 import { resolveDevBrowserViewPreloadPath } from '@/app/main/window/preloadPaths';
 import type {
     DevBrowserDesignerPreviewPayload,
@@ -90,16 +94,16 @@ export interface DevBrowserWindowControllerOptions {
 }
 
 export class DevBrowserWindowController {
-    private readonly window: BrowserWindow;
+    private readonly window: BrowserWindowType;
     private readonly options: DevBrowserWindowControllerOptions;
-    private view: WebContentsView | null = null;
+    private view: WebContentsViewType | null = null;
     private mountState: DevBrowserMountPayload | null = null;
     private boundProfileId: string | null = null;
     private boundSessionId: EntityId<'sess'> | null = null;
     private allowedNavigationBinding: DevBrowserValidatedTargetBinding | null = null;
     private syncingObservedTarget = false;
 
-    constructor(window: BrowserWindow, options: DevBrowserWindowControllerOptions) {
+    constructor(window: BrowserWindowType, options: DevBrowserWindowControllerOptions) {
         this.window = window;
         this.options = options;
     }
@@ -108,7 +112,7 @@ export class DevBrowserWindowController {
         return this.view?.webContents.id ?? null;
     }
 
-    private ensureView(): WebContentsView {
+    private ensureView(): WebContentsViewType {
         if (this.view) {
             return this.view;
         }
@@ -131,7 +135,7 @@ export class DevBrowserWindowController {
         return view;
     }
 
-    private attachViewEventHandlers(view: WebContentsView): void {
+    private attachViewEventHandlers(view: WebContentsViewType): void {
         view.webContents.setWindowOpenHandler((details) => {
             void this.persistBlockedNavigation(
                 details.url,

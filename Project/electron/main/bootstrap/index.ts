@@ -1,12 +1,19 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain, type OpenDialogOptions } from 'electron';
-import { createIPCHandler, type CreateContextOptions } from 'electron-trpc-experimental/main';
-
 import { closePersistence, initializePersistence } from '@/app/backend/persistence/db';
 import { getSecretStoreInfo, initializeSecretStore } from '@/app/backend/secrets/store';
 import type { Context } from '@/app/backend/trpc/context';
 import type { AppRouter } from '@/app/backend/trpc/router';
 import { registerWindowStateBridge } from '@/app/backend/trpc/routers/system/windowControls';
 import { appLog, flushAppLogger, initAppLogger } from '@/app/main/logging';
+import {
+    app,
+    BrowserWindow,
+    Menu,
+    dialog,
+    ipcMain,
+    type BrowserWindowType,
+    type OpenDialogOptions,
+} from '@/app/main/runtime/electronApi';
+import { createIPCHandler, type CreateContextOptions } from '@/app/main/runtime/electronTrpcMain';
 import { devServerUrl, getMainDirname, isDev } from '@/app/main/runtime/env';
 import { resolveDesktopStorage, resolveDesktopStoragePaths } from '@/app/main/runtime/storage';
 import { attachCspHeaders } from '@/app/main/security/cspHeaders';
@@ -47,7 +54,7 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
         app.setPath('userData', initialStorage.userDataPath);
     }
 
-    let mainWindow: BrowserWindow | null = null;
+    let mainWindow: BrowserWindowType | null = null;
     let ipcHandler: ReturnType<typeof createIPCHandler> | null = null;
     const runtimeWindowOptions = {
         isDev,
@@ -66,7 +73,7 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
         ...(devServerUrl ? { devServerUrl } : {}),
     };
 
-    function createBootManagedMainWindow(): BrowserWindow {
+    function createBootManagedMainWindow(): BrowserWindowType {
         const nextMainWindow = createMainWindow(runtimeWindowOptions);
         const splashWindow = createSplashWindow(splashWindowOptions);
         registerBootWindows({
@@ -178,7 +185,13 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
         return syncDevBrowserMount(BrowserWindow.fromWebContents(event.sender), payload);
     });
     ipcMain.on(DEV_BROWSER_SELECTION_CHANNEL, (event, payload: unknown) => {
-        void handleDevBrowserSelectionFromWebContents(event.sender.id, payload);
+        handleDevBrowserSelectionFromWebContents(event.sender.id, payload).catch((error: unknown) => {
+            appLog.warn({
+                tag: 'dev_browser',
+                message: 'Failed to process dev browser selection payload.',
+                ...(error instanceof Error ? { error: error.message } : { error: String(error) }),
+            });
+        });
     });
     reportMainBootStatus({
         stage: 'renderer_connecting',

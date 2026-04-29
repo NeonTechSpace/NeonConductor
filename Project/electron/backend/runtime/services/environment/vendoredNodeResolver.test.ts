@@ -1,7 +1,6 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { appState } = vi.hoisted(() => ({
@@ -18,6 +17,13 @@ vi.mock('electron', () => ({
             return appState.isPackaged;
         },
     },
+    BrowserWindow: vi.fn(),
+    Menu: {},
+    dialog: {},
+    ipcMain: {},
+    session: {},
+    shell: {},
+    WebContentsView: vi.fn(),
 }));
 
 import { VendoredNodeResolver } from '@/app/backend/runtime/services/environment/vendoredNodeResolver';

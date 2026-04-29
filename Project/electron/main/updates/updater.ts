@@ -3,11 +3,11 @@
  * Uses GitHub Pages feed metadata while keeping all interaction in renderer UI.
  */
 
-import { app, BrowserWindow } from 'electron';
 import Store from 'electron-store';
 import electronUpdater, { type ProgressInfo } from 'electron-updater';
 
 import { appLog } from '@/app/main/logging';
+import { app, BrowserWindow, type BrowserWindowType } from '@/app/main/runtime/electronApi';
 
 import { launchBackgroundTask } from '@/shared/async/launchBackgroundTask';
 
@@ -50,7 +50,7 @@ interface ActiveUpdateRequest {
 const DEFAULT_CHANNEL: UpdateChannel = 'stable';
 const PAGES_FEED_BASE_URL = 'https://neonsy.github.io/NeonConductor/updates';
 
-let mainWindow: BrowserWindow | null = null;
+let mainWindow: BrowserWindowType | null = null;
 let initialized = false;
 let currentChannel: UpdateChannel = DEFAULT_CHANNEL;
 let activeRequest: ActiveUpdateRequest | null = null;
@@ -78,7 +78,7 @@ function isUpdateChannel(value: unknown): value is UpdateChannel {
     return value === 'stable' || value === 'beta' || value === 'alpha';
 }
 
-function getWindow(): BrowserWindow | null {
+function getWindow(): BrowserWindowType | null {
     if (mainWindow && !mainWindow.isDestroyed()) {
         return mainWindow;
     }

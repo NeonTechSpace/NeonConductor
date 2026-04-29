@@ -1,5 +1,4 @@
-import { session } from 'electron';
-
+import { session } from '@/app/main/runtime/electronApi';
 import { getCspHeader } from '@/app/main/security/cspPolicy';
 
 export interface CspHeaderOptions {

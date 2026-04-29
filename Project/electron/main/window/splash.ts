@@ -1,8 +1,8 @@
-import { BrowserWindow } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { resolveRuntimeAssetPath } from '@/app/main/runtime/assets';
+import { BrowserWindow, type BrowserWindowType } from '@/app/main/runtime/electronApi';
 import { resolveSplashWindowPreloadPath } from '@/app/main/window/preloadPaths';
 import {
     INITIAL_BOOT_STATUS_SNAPSHOT,
@@ -74,7 +74,7 @@ function ensureTrailingSlash(value: string): string {
     return value.endsWith('/') ? value : `${value}/`;
 }
 
-function sendSplashStatus(window: BrowserWindow, status: BootStatusSnapshot): void {
+function sendSplashStatus(window: BrowserWindowType, status: BootStatusSnapshot): void {
     if (window.isDestroyed()) {
         return;
     }
@@ -83,7 +83,7 @@ function sendSplashStatus(window: BrowserWindow, status: BootStatusSnapshot): vo
     window.webContents.send(SPLASH_BOOT_STATUS_CHANNEL, status);
 }
 
-export function updateSplashWindowStatus(splashWindow: BrowserWindow, status: BootStatusSnapshot): Promise<void> {
+export function updateSplashWindowStatus(splashWindow: BrowserWindowType, status: BootStatusSnapshot): Promise<void> {
     sendSplashStatus(splashWindow, status);
     return Promise.resolve();
 }
@@ -106,7 +106,7 @@ export function buildSplashBootstrapPayload(input: {
     };
 }
 
-export function createSplashWindow(options: SplashWindowOptions): BrowserWindow {
+export function createSplashWindow(options: SplashWindowOptions): BrowserWindowType {
     const assetPath = resolveSplashAssetPath({
         appPath: options.appPath,
         isPackaged: options.isPackaged,

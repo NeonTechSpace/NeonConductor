@@ -1,8 +1,9 @@
-import { app } from 'electron';
 import { log, type DrainContext, type WideEvent } from 'evlog';
 import { createDrainPipeline, type PipelineDrainFn } from 'evlog/pipeline';
 import { appendFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+
+import { app } from '@/app/main/runtime/electronApi';
 
 const LOG_SUBDIRECTORY = 'logs';
 

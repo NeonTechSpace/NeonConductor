@@ -14,6 +14,7 @@ describe('doctor-desktop', () => {
     const previousUserDataPath = process.env['NEONCONDUCTOR_USER_DATA_PATH'];
     const previousRuntimeNamespace = process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'];
     const previousPersistenceChannel = process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'];
+    const previousAppData = process.env['APPDATA'];
     const temporaryDirectories: string[] = [];
 
     afterEach(() => {
@@ -33,6 +34,12 @@ describe('doctor-desktop', () => {
             delete process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'];
         } else {
             process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'] = previousPersistenceChannel;
+        }
+
+        if (previousAppData === undefined) {
+            delete process.env['APPDATA'];
+        } else {
+            process.env['APPDATA'] = previousAppData;
         }
 
         for (const temporaryDirectory of temporaryDirectories.splice(0)) {
@@ -66,8 +73,10 @@ describe('doctor-desktop', () => {
     });
 
     it('resolves development storage under an isolated dev userData root', () => {
-        const packagedUserDataPath = 'C:\\Users\\Neon\\AppData\\Roaming\\neon-conductor';
-        process.env['NEONCONDUCTOR_USER_DATA_PATH'] = packagedUserDataPath;
+        const appDataPath = 'C:\\Users\\Neon\\AppData\\Roaming';
+        const packagedUserDataPath = path.join(appDataPath, 'neon-conductor');
+        delete process.env['NEONCONDUCTOR_USER_DATA_PATH'];
+        process.env['APPDATA'] = appDataPath;
         process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'] = 'alpha';
 
         const desktopPaths = resolveDesktopDoctorPaths('development');

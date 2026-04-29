@@ -2,7 +2,6 @@
  * System router for application-level operations.
  * Handles window management and other system tasks.
  */
-import { shell } from 'electron';
 
 import { windowStateSubscriptionInputSchema } from '@/app/backend/runtime/contracts';
 import { readObject, readString } from '@/app/backend/runtime/contracts/parsers/helpers';
@@ -18,6 +17,7 @@ import {
     toggleMaximizeWindow,
 } from '@/app/backend/trpc/routers/system/windowControls';
 import type { WindowStateEvent } from '@/app/backend/trpc/routers/system/windowControls';
+import { shell } from '@/app/main/runtime/electronApi';
 import { isSafeExternalUrl } from '@/app/main/security/urlPolicy';
 
 function waitForNextWindowStateEvent(cursor: number, signal: AbortSignal): Promise<WindowStateEvent | null> {

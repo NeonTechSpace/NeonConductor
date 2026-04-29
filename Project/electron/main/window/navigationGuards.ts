@@ -1,16 +1,13 @@
-import { shell } from 'electron';
-
 import { appLog } from '@/app/main/logging';
+import { shell, type BrowserWindowType } from '@/app/main/runtime/electronApi';
 import { isAppNavigation, isSafeExternalUrl } from '@/app/main/security/urlPolicy';
-
-import type { BrowserWindow } from 'electron';
 
 export interface NavigationGuardOptions {
     isDev: boolean;
     devServerUrl?: string;
 }
 
-export function attachNavigationGuards(win: BrowserWindow, options: NavigationGuardOptions): void {
+export function attachNavigationGuards(win: BrowserWindowType, options: NavigationGuardOptions): void {
     const { isDev, devServerUrl } = options;
 
     // Security: intercept target="_blank" and window.open() to use OS browser

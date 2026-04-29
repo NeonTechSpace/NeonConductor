@@ -1,7 +1,6 @@
-import { app, dialog } from 'electron';
-
 import { closePersistence } from '@/app/backend/persistence/db';
 import { appLog, flushAppLogger } from '@/app/main/logging';
+import { app, dialog } from '@/app/main/runtime/electronApi';
 import { resolveDesktopStoragePaths, resolveRuntimeNamespaceFromEnv } from '@/app/main/runtime/storage';
 
 function getErrorMessage(error: unknown): string {

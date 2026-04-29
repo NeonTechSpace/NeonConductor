@@ -1,9 +1,8 @@
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 
-import { app } from 'electron';
-
 import { resolveRuntimeAssetPath } from '@/app/main/runtime/assets';
+import { app } from '@/app/main/runtime/electronApi';
 
 import {
     resolveVendoredRipgrepTargetKey,
@@ -28,13 +27,11 @@ export interface ResolvedVendoredRipgrep {
 }
 
 function readDefaultRuntimeContext(): VendoredRipgrepRuntimeContext {
-    const electronApp = typeof app === 'object' && app !== null ? app : undefined;
-    const appPath = typeof electronApp?.getAppPath === 'function' ? electronApp.getAppPath() : process.cwd();
     return {
         platform: process.platform,
         arch: process.arch,
-        isPackaged: electronApp?.isPackaged ?? false,
-        appPath,
+        isPackaged: app.isPackaged,
+        appPath: app.getAppPath(),
         resourcesPath: process.resourcesPath,
     };
 }

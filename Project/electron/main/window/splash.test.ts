@@ -2,7 +2,17 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { browserWindowSpy, splashWindowMock } = vi.hoisted(() => {
+const {
+    appMock,
+    browserWindowSpy,
+    dialogMock,
+    ipcMainMock,
+    menuMock,
+    sessionMock,
+    shellMock,
+    splashWindowMock,
+    webContentsViewSpy,
+} = vi.hoisted(() => {
     const splashWindowMock = {
         id: 101,
         isDestroyed: vi.fn(() => false),
@@ -18,15 +28,29 @@ const { browserWindowSpy, splashWindowMock } = vi.hoisted(() => {
     };
 
     return {
+        appMock: {},
         browserWindowSpy: vi.fn(function BrowserWindowMock() {
             return splashWindowMock;
         }),
+        dialogMock: {},
+        ipcMainMock: {},
+        menuMock: {},
+        sessionMock: {},
+        shellMock: {},
         splashWindowMock,
+        webContentsViewSpy: vi.fn(),
     };
 });
 
 vi.mock('electron', () => ({
+    app: appMock,
     BrowserWindow: browserWindowSpy,
+    Menu: menuMock,
+    dialog: dialogMock,
+    ipcMain: ipcMainMock,
+    session: sessionMock,
+    shell: shellMock,
+    WebContentsView: webContentsViewSpy,
 }));
 
 import {

@@ -1,6 +1,5 @@
-import { app, type BrowserWindow } from 'electron';
-
 import { appLog } from '@/app/main/logging';
+import { app, type BrowserWindowType } from '@/app/main/runtime/electronApi';
 import { updateSplashWindowStatus } from '@/app/main/window/splash';
 import {
     BOOT_FORCE_SHOW_MS,
@@ -14,8 +13,8 @@ import {
 } from '@/app/shared/splashContract';
 
 interface BootWindowState {
-    mainWindow: BrowserWindow | null;
-    splashWindow: BrowserWindow | null;
+    mainWindow: BrowserWindowType | null;
+    splashWindow: BrowserWindowType | null;
     warningTimer: ReturnType<typeof setTimeout> | null;
     forceTimer: ReturnType<typeof setTimeout> | null;
     handoffCompleted: boolean;
@@ -215,7 +214,7 @@ function resetBootWindowState(): void {
     bootWindowState.latestStatusDisplaySignature = '';
 }
 
-function isSameWindow(left: BrowserWindow | null, right: BrowserWindow | null): boolean {
+function isSameWindow(left: BrowserWindowType | null, right: BrowserWindowType | null): boolean {
     if (!left || !right) {
         return false;
     }
@@ -317,7 +316,7 @@ export function reportMainBootStatus(input: Omit<BootStatusUpdateInput, 'source'
 }
 
 export function reportRendererBootStatus(
-    window: BrowserWindow | null,
+    window: BrowserWindowType | null,
     input: Omit<BootStatusUpdateInput, 'source'>
 ): { accepted: boolean } {
     if (!window || (bootWindowState.mainWindow && !isSameWindow(window, bootWindowState.mainWindow))) {
@@ -333,8 +332,8 @@ export function reportRendererBootStatus(
 }
 
 export function registerBootWindows(input: {
-    mainWindow: BrowserWindow;
-    splashWindow: BrowserWindow;
+    mainWindow: BrowserWindowType;
+    splashWindow: BrowserWindowType;
     warningMs?: number;
     forceShowMs?: number;
 }): void {
@@ -374,7 +373,7 @@ export function registerBootWindows(input: {
     startBootTimers(input.warningMs ?? BOOT_STUCK_WARNING_MS, input.forceShowMs ?? BOOT_FORCE_SHOW_MS);
 }
 
-export function completeBootWindowHandoff(window: BrowserWindow | null): { success: boolean } {
+export function completeBootWindowHandoff(window: BrowserWindowType | null): { success: boolean } {
     if (!window) {
         return { success: false };
     }

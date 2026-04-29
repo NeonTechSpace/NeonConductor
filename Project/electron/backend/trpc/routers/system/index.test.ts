@@ -5,10 +5,17 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('electron', () => ({
+    app: {},
+    BrowserWindow: vi.fn(),
+    Menu: {},
+    dialog: {},
+    ipcMain: {},
+    session: {},
     shell: {
         openExternal: mocks.openExternal,
         openPath: vi.fn(),
     },
+    WebContentsView: vi.fn(),
 }));
 
 import { systemRouter } from '@/app/backend/trpc/routers/system';
