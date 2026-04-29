@@ -11,6 +11,12 @@ import type {
     SessionListCloudSessionsInput,
 } from '@/app/backend/runtime/contracts';
 
+import {
+    buildCloudSessionTransitionMetadata,
+    canContinueCloudSessionAuthorityState,
+    sanitizeCloudSessionProvenanceMetadata,
+} from '@/shared/contracts/cloudSessionAuthority';
+
 type CloudSessionActionFailureReason =
     | 'thread_not_found'
     | 'cloud_session_not_found'
@@ -19,6 +25,7 @@ type CloudSessionActionFailureReason =
     | 'remote_session_unavailable'
     | 'invalid_remote_payload'
     | 'scope_mismatch'
+    | 'invalid_authority_transition'
     | 'cloud_binding_failed';
 
 export type CloudSessionActionResult =
@@ -176,6 +183,12 @@ export class CloudSessionService {
             ...(scope.accountId ? { accountId: scope.accountId } : {}),
             ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
             ...sanitized,
+            metadata: {
+                ...sanitized.metadata,
+                ...buildCloudSessionTransitionMetadata({
+                    action: 'import',
+                }),
+            },
         });
 
         await cloudSessionStore.upsertRemoteSnapshot({
@@ -217,7 +230,11 @@ export class CloudSessionService {
         }
 
         const created = await sessionStore.create(input.profileId, input.threadId, 'local', {
-            cloudSession: this.copyCloudMetadata(source, { forkedFromCloudSessionId: source.id }),
+            cloudSession: this.copyCloudMetadata(source, {
+                action: 'fork',
+                sourceCloudSessionId: source.id,
+                sourceAuthorityState: source.authorityState,
+            }),
             cloudSessionAuthorityState: 'forked',
         });
         if (!created.created) {
@@ -250,6 +267,13 @@ export class CloudSessionService {
                 message: 'The cloud session record was not found.',
             };
         }
+        if (!canContinueCloudSessionAuthorityState(source.authorityState)) {
+            return {
+                ok: false,
+                reason: 'invalid_authority_transition',
+                message: 'Local cloud-session forks cannot be continued as Kilo-owned remote sessions.',
+            };
+        }
         if (accessContext.isErr()) {
             return {
                 ok: false,
@@ -266,7 +290,11 @@ export class CloudSessionService {
         }
 
         const created = await sessionStore.create(input.profileId, input.threadId, 'cloud', {
-            cloudSession: this.copyCloudMetadata(source, { continuedFromCloudSessionId: source.id }),
+            cloudSession: this.copyCloudMetadata(source, {
+                action: 'continue',
+                sourceCloudSessionId: source.id,
+                sourceAuthorityState: source.authorityState,
+            }),
             cloudSessionAuthorityState: 'continued',
         });
         if (!created.created) {
@@ -288,7 +316,14 @@ export class CloudSessionService {
         };
     }
 
-    private copyCloudMetadata(source: CloudSessionSummaryRecord, extraMetadata: Record<string, unknown>) {
+    private copyCloudMetadata(
+        source: CloudSessionSummaryRecord,
+        transition: {
+            action: 'fork' | 'continue';
+            sourceCloudSessionId: string;
+            sourceAuthorityState: CloudSessionSummaryRecord['authorityState'];
+        }
+    ) {
         return buildScopeMetadata({
             remoteSessionId: source.remoteSessionId,
             remoteScopeKey: source.remoteScopeKey,
@@ -298,8 +333,8 @@ export class CloudSessionService {
             ...(source.remoteCreatedAt ? { remoteCreatedAt: source.remoteCreatedAt } : {}),
             ...(source.remoteUpdatedAt ? { remoteUpdatedAt: source.remoteUpdatedAt } : {}),
             metadata: {
-                ...source.metadata,
-                ...extraMetadata,
+                ...sanitizeCloudSessionProvenanceMetadata(source.metadata),
+                ...buildCloudSessionTransitionMetadata(transition),
             },
         });
     }

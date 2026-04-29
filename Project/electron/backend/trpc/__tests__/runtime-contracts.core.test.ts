@@ -381,7 +381,14 @@ describe('runtime contracts: core flows', () => {
             remoteSessionId: 'remote_session_action_contract',
             organizationId: 'org_cloud_contract',
             title: 'Action Contract',
-            metadata: { source: 'test' },
+            metadata: {
+                source: 'test',
+                forkedFromCloudSessionId: 'legacy_fork_marker',
+                continuedFromCloudSessionId: 'legacy_continue_marker',
+                cloudSessionTransition: {
+                    action: 'fork',
+                },
+            },
         });
 
         const listed = await caller.session.listCloudSessions({
@@ -390,7 +397,7 @@ describe('runtime contracts: core flows', () => {
             query: 'Action',
         });
         expect(listed.cloudSessions.map((record) => record.id)).toContain(snapshot.id);
-        expect(listed.cloudSessions[0]?.metadata).toEqual({ source: 'test' });
+        expect(listed.cloudSessions[0]?.metadata).toMatchObject({ source: 'test' });
 
         const forked = await caller.session.forkCloudSession({
             profileId,
@@ -407,6 +414,24 @@ describe('runtime contracts: core flows', () => {
         expect(forked.session.kind).toBe('local');
         expect(forked.cloudSession.authorityState).toBe('forked');
         expect(forked.cloudSession.localSessionId).toBe(forked.session.id);
+        expect(forked.cloudSession.metadata).toEqual({
+            source: 'test',
+            cloudSessionTransition: {
+                action: 'fork',
+                sourceCloudSessionId: snapshot.id,
+                sourceAuthorityState: 'remote_only',
+            },
+        });
+
+        const rejectedForkContinue = await caller.session.continueCloudSession({
+            profileId,
+            threadId,
+            cloudSessionId: forked.cloudSession.id,
+        });
+        expect(rejectedForkContinue).toMatchObject({
+            ok: false,
+            reason: 'invalid_authority_transition',
+        });
 
         const continued = await caller.session.continueCloudSession({
             profileId,
@@ -424,6 +449,14 @@ describe('runtime contracts: core flows', () => {
         expect(continued.session.kind).toBe('cloud');
         expect(continued.cloudSession.authorityState).toBe('continued');
         expect(continued.cloudSession.localSessionId).toBe(continued.session.id);
+        expect(continued.cloudSession.metadata).toEqual({
+            source: 'test',
+            cloudSessionTransition: {
+                action: 'continue',
+                sourceCloudSessionId: snapshot.id,
+                sourceAuthorityState: 'remote_only',
+            },
+        });
 
         const preview = await caller.session.previewRunContract({
             profileId,

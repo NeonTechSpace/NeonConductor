@@ -5,6 +5,8 @@ import { resolveKiloCloudSessionAccessContext } from '@/app/backend/providers/cl
 import type { RunExecutionError } from '@/app/backend/runtime/services/runExecution/errors';
 import type { StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 
+import { canRunKiloCloudHarnessAuthorityState } from '@/shared/contracts/cloudSessionAuthority';
+
 interface KiloCloudRunGateSuccess {
     cloudSession: CloudSessionSummaryRecord;
 }
@@ -68,7 +70,11 @@ export async function resolveKiloCloudRunGate(input: StartRunInput): Promise<Kil
         };
     }
 
-    if (!cloudSession || cloudSession.recordKind !== 'local_binding' || cloudSession.authorityState === 'forked') {
+    if (
+        !cloudSession ||
+        cloudSession.recordKind !== 'local_binding' ||
+        !canRunKiloCloudHarnessAuthorityState(cloudSession.authorityState)
+    ) {
         return {
             ok: false,
             error: contractUnavailableError({

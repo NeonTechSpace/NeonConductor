@@ -67,6 +67,21 @@ vi.mock('@/web/trpc/client', () => ({
                                 createdAt: '2026-04-28T09:00:00.000Z',
                                 updatedAt: '2026-04-28T09:00:00.000Z',
                             },
+                            {
+                                id: 'csess_forked',
+                                profileId: 'profile_default',
+                                providerId: 'kilo',
+                                recordKind: 'local_binding',
+                                authorityState: 'forked',
+                                syncState: 'synced',
+                                remoteSessionId: 'remote_session_gamma',
+                                remoteScopeKey: 'org_cloud_test',
+                                localSessionId: 'sess_cloud_forked',
+                                title: 'Remote Gamma',
+                                metadata: {},
+                                createdAt: '2026-04-28T09:00:00.000Z',
+                                updatedAt: '2026-04-28T09:00:00.000Z',
+                            },
                         ],
                     },
                     isLoading: false,
@@ -104,9 +119,11 @@ describe('CloudSessionsPanel', () => {
         expect(html).toContain('Scope org_cloud_test');
         expect(html).toContain('Import By Remote ID');
         expect(html).toContain('Remote Alpha');
-        expect(html).toContain('remote only');
+        expect(html).toContain('Remote only');
         expect(html).toContain('Remote Beta');
-        expect(html).toContain('continued');
+        expect(html).toContain('Continued');
+        expect(html).toContain('Remote Gamma');
+        expect(html).toContain('Local fork');
         expect(html).toContain('Selected');
         expect(html).toContain('Fork');
         expect(html).toContain('Continue');

@@ -370,9 +370,9 @@ CREATE TABLE cloud_session_records (
     updated_at TEXT NOT NULL,
     UNIQUE (local_session_id),
     CHECK (
-        (record_kind = 'remote_snapshot' AND local_session_id IS NULL)
+        (record_kind = 'remote_snapshot' AND authority_state = 'remote_only' AND local_session_id IS NULL)
         OR
-        (record_kind = 'local_binding' AND local_session_id IS NOT NULL)
+        (record_kind = 'local_binding' AND authority_state IN ('mirrored', 'imported', 'forked', 'continued') AND local_session_id IS NOT NULL)
     ),
     CHECK (
         (sync_state = 'failed' AND last_sync_error_message IS NOT NULL)

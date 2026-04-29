@@ -207,6 +207,50 @@ describe('persistence stores: runtime domain', () => {
         );
         expect(await sessionStore.setSandboxBinding({ profileId, sessionId: created.session.id, sandboxId: 'sb_test' })).toBeNull();
 
+        const now = new Date().toISOString();
+        const { sqlite } = getPersistence();
+        expect(() =>
+            sqlite
+                .prepare(
+                    `
+                        INSERT INTO cloud_session_records (
+                            id, profile_id, provider_id, record_kind, authority_state, sync_state,
+                            remote_session_id, remote_scope_key, local_session_id, metadata_json,
+                            created_at, updated_at
+                        )
+                        VALUES (?, ?, 'kilo', 'remote_snapshot', 'imported', 'synced', ?, ?, NULL, '{}', ?, ?)
+                    `
+                )
+                .run('csess_invalid_remote_snapshot_authority', profileId, 'remote_invalid_authority', 'org_alpha', now, now)
+        ).toThrow();
+        const localTarget = await sessionStore.create(profileId, thread.value.id, 'local');
+        expect(localTarget.created).toBe(true);
+        if (!localTarget.created) {
+            throw new Error(localTarget.reason);
+        }
+        expect(() =>
+            sqlite
+                .prepare(
+                    `
+                        INSERT INTO cloud_session_records (
+                            id, profile_id, provider_id, record_kind, authority_state, sync_state,
+                            remote_session_id, remote_scope_key, local_session_id, metadata_json,
+                            created_at, updated_at
+                        )
+                        VALUES (?, ?, 'kilo', 'local_binding', 'remote_only', 'synced', ?, ?, ?, '{}', ?, ?)
+                    `
+                )
+                .run(
+                    'csess_invalid_local_binding_authority',
+                    profileId,
+                    'remote_invalid_local_authority',
+                    'org_alpha',
+                    localTarget.session.id,
+                    now,
+                    now
+                )
+        ).toThrow();
+
         const failedSync = await cloudSessionStore.markSyncResult({
             profileId,
             id: created.session.cloudSession?.id ?? snapshot.id,

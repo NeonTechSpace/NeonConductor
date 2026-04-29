@@ -6,7 +6,11 @@ import { trpc } from '@/web/trpc/client';
 
 import type { CloudSessionSummaryRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
-import type { EntityId } from '@/shared/contracts';
+import {
+    canContinueCloudSessionAuthorityState,
+    formatCloudSessionAuthorityState,
+    type EntityId,
+} from '@/shared/contracts';
 
 interface CloudSessionsPanelProps {
     profileId: string;
@@ -26,7 +30,7 @@ type CloudSessionMutationResult = {
 };
 
 function formatAuthorityState(value: CloudSessionSummaryRecord['authorityState']): string {
-    return value.replaceAll('_', ' ');
+    return formatCloudSessionAuthorityState(value);
 }
 
 function formatSyncState(value: CloudSessionSummaryRecord['syncState']): string {
@@ -55,6 +59,7 @@ function CloudSessionRecordRow(input: {
 }) {
     const title = input.record.title ?? input.record.remoteSessionId;
     const localSessionId = input.record.localSessionId;
+    const canContinueRecord = input.canContinue && canContinueCloudSessionAuthorityState(input.record.authorityState);
 
     return (
         <article className='border-border/70 bg-background/80 space-y-3 rounded-xl border p-3'>
@@ -109,7 +114,7 @@ function CloudSessionRecordRow(input: {
                     size='sm'
                     variant='outline'
                     className='h-8 rounded-full'
-                    disabled={input.busy || !input.canContinue}
+                    disabled={input.busy || !canContinueRecord}
                     onClick={() => {
                         input.onContinue(input.record);
                     }}>
