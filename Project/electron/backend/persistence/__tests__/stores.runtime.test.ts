@@ -180,6 +180,10 @@ describe('persistence stores: runtime domain', () => {
         expect(snapshot.recordKind).toBe('remote_snapshot');
         expect(snapshot.authorityState).toBe('remote_only');
         expect(snapshot.syncState).toBe('synced');
+        expect(snapshot.syncBackExpectation).toEqual({
+            state: 'not_applicable',
+            reason: 'remote_snapshot_only',
+        });
 
         const missingMetadata = await sessionStore.create(profileId, thread.value.id, 'cloud');
         expect(missingMetadata).toEqual({ created: false, reason: 'cloud_metadata_required' });
@@ -200,6 +204,10 @@ describe('persistence stores: runtime domain', () => {
         expect(created.session.cloudSession?.recordKind).toBe('local_binding');
         expect(created.session.cloudSession?.localSessionId).toBe(created.session.id);
         expect(created.session.cloudSession?.authorityState).toBe('mirrored');
+        expect(created.session.cloudSession?.syncBackExpectation).toEqual({
+            state: 'not_available',
+            reason: 'kilo_owned_remote_workspace',
+        });
 
         const listed = await sessionStore.list(profileId);
         expect(listed.find((session) => session.id === created.session.id)?.cloudSession?.remoteSessionId).toBe(
@@ -279,6 +287,10 @@ describe('persistence stores: runtime domain', () => {
         }
         expect(forked.session.kind).toBe('local');
         expect(forked.session.cloudSession?.authorityState).toBe('forked');
+        expect(forked.session.cloudSession?.syncBackExpectation).toEqual({
+            state: 'not_applicable',
+            reason: 'local_fork',
+        });
         expect(forked.session.cloudSession?.remoteSessionId).toBe('remote_session_alpha');
         expect(forked.session.cloudSession?.id).not.toBe(snapshot.id);
 

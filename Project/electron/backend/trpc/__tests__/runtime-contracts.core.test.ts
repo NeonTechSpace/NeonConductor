@@ -398,6 +398,10 @@ describe('runtime contracts: core flows', () => {
         });
         expect(listed.cloudSessions.map((record) => record.id)).toContain(snapshot.id);
         expect(listed.cloudSessions[0]?.metadata).toMatchObject({ source: 'test' });
+        expect(listed.cloudSessions.find((record) => record.id === snapshot.id)?.syncBackExpectation).toEqual({
+            state: 'not_applicable',
+            reason: 'remote_snapshot_only',
+        });
 
         const forked = await caller.session.forkCloudSession({
             profileId,
@@ -414,6 +418,10 @@ describe('runtime contracts: core flows', () => {
         expect(forked.session.kind).toBe('local');
         expect(forked.cloudSession.authorityState).toBe('forked');
         expect(forked.cloudSession.localSessionId).toBe(forked.session.id);
+        expect(forked.cloudSession.syncBackExpectation).toEqual({
+            state: 'not_applicable',
+            reason: 'local_fork',
+        });
         expect(forked.cloudSession.metadata).toEqual({
             source: 'test',
             cloudSessionTransition: {
@@ -449,6 +457,10 @@ describe('runtime contracts: core flows', () => {
         expect(continued.session.kind).toBe('cloud');
         expect(continued.cloudSession.authorityState).toBe('continued');
         expect(continued.cloudSession.localSessionId).toBe(continued.session.id);
+        expect(continued.cloudSession.syncBackExpectation).toEqual({
+            state: 'not_available',
+            reason: 'kilo_owned_remote_workspace',
+        });
         expect(continued.cloudSession.metadata).toEqual({
             source: 'test',
             cloudSessionTransition: {

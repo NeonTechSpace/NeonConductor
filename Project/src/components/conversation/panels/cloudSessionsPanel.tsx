@@ -9,6 +9,7 @@ import type { CloudSessionSummaryRecord, SessionSummaryRecord, ThreadListRecord 
 import {
     canContinueCloudSessionAuthorityState,
     formatCloudSessionAuthorityState,
+    formatCloudSessionSyncBackExpectation,
     type EntityId,
 } from '@/shared/contracts';
 
@@ -33,8 +34,8 @@ function formatAuthorityState(value: CloudSessionSummaryRecord['authorityState']
     return formatCloudSessionAuthorityState(value);
 }
 
-function formatSyncState(value: CloudSessionSummaryRecord['syncState']): string {
-    return value.replaceAll('_', ' ');
+function formatRemoteRecordSyncState(value: CloudSessionSummaryRecord['syncState']): string {
+    return `Remote record ${value.replaceAll('_', ' ')}`;
 }
 
 function formatRemoteDate(value: string | undefined): string {
@@ -74,13 +75,14 @@ function CloudSessionRecordRow(input: {
                         {formatAuthorityState(input.record.authorityState)}
                     </span>
                     <span className='text-muted-foreground text-[11px] capitalize'>
-                        {formatSyncState(input.record.syncState)}
+                        {formatRemoteRecordSyncState(input.record.syncState)}
                     </span>
                 </div>
             </div>
             <div className='text-muted-foreground grid gap-1 text-xs'>
                 <span>Scope {input.record.remoteScopeKey}</span>
                 {localSessionId ? <span>Local {localSessionId}</span> : <span>Remote snapshot only</span>}
+                <span>{formatCloudSessionSyncBackExpectation(input.record.syncBackExpectation)}</span>
             </div>
             <div className='flex flex-wrap gap-2'>
                 {localSessionId ? (
@@ -186,7 +188,7 @@ export function CloudSessionsPanel({
                         <p className='font-semibold'>Kilo Cloud Sessions</p>
                         <p className='text-muted-foreground mt-1 text-xs'>
                             Browse local cloud-session records. Continued cloud runs execute in the Kilo-owned cloud
-                            harness; Neon records local provenance.
+                            harness; remote workspace sync-back is not available in this alpha build.
                         </p>
                     </div>
                     <span className='border-border bg-card rounded-full border px-2.5 py-1 text-xs'>

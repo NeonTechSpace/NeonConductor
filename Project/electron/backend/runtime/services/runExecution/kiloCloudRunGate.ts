@@ -7,6 +7,9 @@ import type { StartRunInput } from '@/app/backend/runtime/services/runExecution/
 
 import { canRunKiloCloudHarnessAuthorityState } from '@/shared/contracts/cloudSessionAuthority';
 
+export const KILO_CLOUD_HARNESS_CONTRACT_UNAVAILABLE_MESSAGE =
+    'Kilo Cloud remote execution must run in the Kilo-owned cloud harness. The prepare and stream contract is not configured yet, and Neon will not create local checkpoints, diffs, or sync-back for the remote workspace.';
+
 interface KiloCloudRunGateSuccess {
     cloudSession: CloudSessionSummaryRecord;
 }

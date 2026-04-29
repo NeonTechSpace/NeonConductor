@@ -13,6 +13,8 @@ import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 
+import { resolveCloudSessionSyncBackExpectation } from '@/shared/contracts/cloudSessionAuthority';
+
 import type { Insertable, Selectable, Transaction } from 'kysely';
 
 type CloudSessionRow = Selectable<CloudSessionRecordsTable>;
@@ -58,17 +60,21 @@ function resolveRemoteScopeKey(input: { remoteScopeKey?: string; organizationId?
 }
 
 function mapCloudSession(row: CloudSessionRow): CloudSessionSummaryRecord {
+    const recordKind = parseEnumValue(row.record_kind, 'cloud_session_records.record_kind', cloudSessionRecordKinds);
+    const authorityState = parseEnumValue(
+        row.authority_state,
+        'cloud_session_records.authority_state',
+        cloudSessionAuthorityStates
+    );
+
     return {
         id: parseEntityId(row.id, 'cloud_session_records.id', 'csess'),
         profileId: row.profile_id,
         providerId: 'kilo',
-        recordKind: parseEnumValue(row.record_kind, 'cloud_session_records.record_kind', cloudSessionRecordKinds),
-        authorityState: parseEnumValue(
-            row.authority_state,
-            'cloud_session_records.authority_state',
-            cloudSessionAuthorityStates
-        ),
+        recordKind,
+        authorityState,
         syncState: parseEnumValue(row.sync_state, 'cloud_session_records.sync_state', cloudSessionSyncStates),
+        syncBackExpectation: resolveCloudSessionSyncBackExpectation({ recordKind, authorityState }),
         remoteSessionId: row.remote_session_id,
         remoteScopeKey: row.remote_scope_key,
         ...(row.local_session_id

@@ -31,6 +31,10 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
             recordKind: 'remote_snapshot' | 'local_binding';
             authorityState: 'remote_only' | 'mirrored' | 'imported' | 'forked' | 'continued';
             syncState: 'not_synced' | 'synced' | 'stale' | 'failed';
+            syncBackExpectation: {
+                state: 'not_applicable' | 'not_available';
+                reason: 'remote_snapshot_only' | 'local_fork' | 'kilo_owned_remote_workspace';
+            };
             remoteSessionId: string;
             remoteScopeKey: string;
             localSessionId?: string;
@@ -53,6 +57,10 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
             recordKind: 'remote_snapshot' | 'local_binding';
             authorityState: 'remote_only' | 'mirrored' | 'imported' | 'forked' | 'continued';
             syncState: 'not_synced' | 'synced' | 'stale' | 'failed';
+            syncBackExpectation: {
+                state: 'not_applicable' | 'not_available';
+                reason: 'remote_snapshot_only' | 'local_fork' | 'kilo_owned_remote_workspace';
+            };
             remoteSessionId: string;
             remoteScopeKey: string;
             metadata: Record<string, unknown>;

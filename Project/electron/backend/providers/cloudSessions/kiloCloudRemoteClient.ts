@@ -201,7 +201,7 @@ class DisabledKiloCloudRemoteClient implements KiloCloudRemoteClient {
             error: {
                 code: 'contract_unavailable',
                 message:
-                    'Kilo Cloud remote execution is waiting for the Kilo-owned prepare and stream contract. Neon will not emulate the remote harness locally.',
+                    'Kilo Cloud remote execution is waiting for the Kilo-owned prepare and stream contract. Neon will not emulate the remote harness locally or create local sync-back for the remote workspace.',
             },
         };
     }

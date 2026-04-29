@@ -1,6 +1,9 @@
 import { sessionStore, threadStore } from '@/app/backend/persistence/stores';
 import { prepareRunContractPreview } from '@/app/backend/runtime/services/runContract/service';
-import { resolveKiloCloudRunGate } from '@/app/backend/runtime/services/runExecution/kiloCloudRunGate';
+import {
+    KILO_CLOUD_HARNESS_CONTRACT_UNAVAILABLE_MESSAGE,
+    resolveKiloCloudRunGate,
+} from '@/app/backend/runtime/services/runExecution/kiloCloudRunGate';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
 import type { StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
@@ -27,8 +30,7 @@ export async function previewRunContractForStart(
             available: false as const,
             reason: 'rejected' as const,
             code: 'cloud_session_contract_unavailable',
-            message:
-                'Kilo Cloud remote execution must run in the Kilo-owned cloud harness. The prepare and stream contract is not configured yet.',
+            message: KILO_CLOUD_HARNESS_CONTRACT_UNAVAILABLE_MESSAGE,
             action: {
                 code: 'cloud_session_contract_unavailable',
                 sessionId: input.sessionId,

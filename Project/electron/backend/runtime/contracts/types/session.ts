@@ -37,6 +37,8 @@ import type {
 import type { RulesetDefinition, SkillfileDefinition } from '@/app/backend/runtime/contracts/types/mode';
 import type { RunContractPreview, SessionOutboxEntry, ExecutionReceipt } from '@/app/backend/runtime/contracts/types/runContract';
 
+import type { CloudSessionSyncBackExpectation } from '@/shared/contracts/cloudSessionAuthority';
+
 export const composerImageAttachmentMimeTypes = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type ComposerImageAttachmentMimeType = (typeof composerImageAttachmentMimeTypes)[number];
 export const composerTextFileAttachmentEncodings = ['utf-8', 'utf-8-bom'] as const;
@@ -161,6 +163,7 @@ export interface CloudSessionSummary {
     recordKind: CloudSessionRecordKind;
     authorityState: CloudSessionAuthorityState;
     syncState: CloudSessionSyncState;
+    syncBackExpectation: CloudSessionSyncBackExpectation;
     remoteSessionId: string;
     remoteScopeKey: string;
     localSessionId?: EntityId<'sess'>;

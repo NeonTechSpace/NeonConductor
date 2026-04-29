@@ -9,7 +9,7 @@ import type {
     ThreadRecord,
 } from '@/app/backend/persistence/types';
 
-import { executionEnvironmentModes, topLevelTabs } from '@/shared/contracts';
+import { executionEnvironmentModes, resolveCloudSessionSyncBackExpectation, topLevelTabs } from '@/shared/contracts';
 
 const conversationScopes = ['detached', 'workspace'] as const;
 
@@ -172,6 +172,7 @@ function readCloudSessionSummaryRecord(value: unknown): CloudSessionSummaryRecor
         recordKind,
         authorityState,
         syncState,
+        syncBackExpectation: resolveCloudSessionSyncBackExpectation({ recordKind, authorityState }),
         remoteSessionId,
         remoteScopeKey,
         ...(localSessionId && isEntityId(localSessionId, 'sess') ? { localSessionId } : {}),

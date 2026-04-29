@@ -39,6 +39,7 @@ import type {
     CloudSessionAuthorityState,
     CloudSessionRecordKind,
     CloudSessionSyncState,
+    CloudSessionSyncBackExpectation,
     KiloDynamicSort,
     KiloRoutingMode,
     KiloAccountContext,
@@ -100,6 +101,7 @@ export interface CloudSessionSummaryRecord {
     recordKind: CloudSessionRecordKind;
     authorityState: CloudSessionAuthorityState;
     syncState: CloudSessionSyncState;
+    syncBackExpectation: CloudSessionSyncBackExpectation;
     remoteSessionId: string;
     remoteScopeKey: string;
     localSessionId?: EntityId<'sess'>;

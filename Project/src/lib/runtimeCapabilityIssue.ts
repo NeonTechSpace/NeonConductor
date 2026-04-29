@@ -93,7 +93,7 @@ export function formatRuntimeCapabilityIssue(input: {
             return fallbackMessage;
         case 'cloud_session_contract_unavailable':
             return input.surface === 'run_rejection'
-                ? 'Kilo Cloud runs execute in the Kilo-owned cloud harness. The prepare and stream contract is not configured yet.'
+                ? 'Kilo Cloud runs execute in the Kilo-owned cloud harness. The prepare and stream contract is not configured yet, and Neon will not create local checkpoints, diffs, or sync-back for the remote workspace.'
                 : fallbackMessage;
         case 'provider_native_unsupported':
             return input.surface === 'run_rejection'

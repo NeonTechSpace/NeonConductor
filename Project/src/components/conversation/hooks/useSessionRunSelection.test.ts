@@ -220,6 +220,10 @@ describe('useSessionRunSelection', () => {
                         recordKind: 'local_binding',
                         authorityState: 'mirrored',
                         syncState: 'synced',
+                        syncBackExpectation: {
+                            state: 'not_available',
+                            reason: 'kilo_owned_remote_workspace',
+                        },
                         remoteSessionId: 'remote_primary',
                         remoteScopeKey: 'org_primary',
                         localSessionId: 'sess_cloud',
