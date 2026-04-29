@@ -144,7 +144,17 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
                   byteSize: number;
                   encoding: 'utf-8' | 'utf-8-bom';
               }
+            | {
+                  clientId: string;
+                  kind: 'document_attachment';
+                  documentArtifactId: string;
+                  fileName: string;
+                  mimeType: 'application/pdf';
+                  sha256: string;
+                  byteSize: number;
+              }
         >;
+        browserContext?: unknown;
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
         modeKey: string;
         workspaceFingerprint?: string;

@@ -29,6 +29,7 @@ import type {
     RunStatus,
     RetrievedMemorySummary,
     RunContractPreview,
+    RunContractDocumentSummary,
     TopLevelTab,
     RunStartRejectionAction,
     ResolvedWorkspaceContext,
@@ -133,6 +134,7 @@ export interface RunContext {
     messages: RunContextMessage[];
     digest: string;
     preparedContext: PreparedContextSummary;
+    documentContexts?: RunContractDocumentSummary[];
     retrievedMemory?: RetrievedMemorySummary;
 }
 

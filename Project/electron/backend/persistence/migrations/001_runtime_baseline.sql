@@ -487,12 +487,49 @@ CREATE TABLE message_media (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE document_artifacts (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL CHECK (mime_type = 'application/pdf'),
+    sha256 TEXT NOT NULL,
+    byte_size INTEGER NOT NULL CHECK (byte_size > 0),
+    storage_relative_path TEXT NOT NULL,
+    page_count INTEGER NULL CHECK (page_count IS NULL OR page_count > 0),
+    extraction_state TEXT NOT NULL CHECK (extraction_state IN ('pending', 'extracted', 'empty', 'failed')),
+    lifecycle_state TEXT NOT NULL CHECK (lifecycle_state IN ('draft', 'attached', 'deleted')),
+    extracted_text_byte_size INTEGER NOT NULL DEFAULT 0 CHECK (extracted_text_byte_size >= 0),
+    extracted_text_token_count INTEGER NOT NULL DEFAULT 0 CHECK (extracted_text_token_count >= 0),
+    error_code TEXT NULL,
+    error_message TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+        (extraction_state IN ('pending', 'extracted', 'empty') AND error_code IS NULL AND error_message IS NULL)
+        OR
+        (extraction_state = 'failed' AND error_code IS NOT NULL AND error_message IS NOT NULL)
+    )
+);
+
+CREATE TABLE document_artifact_pages (
+    document_artifact_id TEXT NOT NULL REFERENCES document_artifacts(id) ON DELETE CASCADE,
+    page_number INTEGER NOT NULL CHECK (page_number > 0),
+    text_content TEXT NOT NULL,
+    text_sha256 TEXT NULL,
+    text_byte_size INTEGER NOT NULL CHECK (text_byte_size >= 0),
+    estimated_token_count INTEGER NOT NULL CHECK (estimated_token_count >= 0),
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (document_artifact_id, page_number)
+);
+
 CREATE TABLE conversation_attachments (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     session_id TEXT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     message_part_id TEXT NULL UNIQUE REFERENCES message_parts(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('image_attachment', 'text_file_attachment')),
+    kind TEXT NOT NULL CHECK (kind IN ('image_attachment', 'text_file_attachment', 'document_attachment')),
+    document_artifact_id TEXT NULL REFERENCES document_artifacts(id) ON DELETE RESTRICT,
     file_name TEXT NULL,
     mime_type TEXT NOT NULL,
     sha256 TEXT NOT NULL,
@@ -505,9 +542,11 @@ CREATE TABLE conversation_attachments (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     CHECK (
-        (kind = 'image_attachment' AND bytes_blob IS NOT NULL AND text_content IS NULL AND width IS NOT NULL AND height IS NOT NULL AND width > 0 AND height > 0)
+        (kind = 'image_attachment' AND document_artifact_id IS NULL AND bytes_blob IS NOT NULL AND text_content IS NULL AND width IS NOT NULL AND height IS NOT NULL AND width > 0 AND height > 0)
         OR
-        (kind = 'text_file_attachment' AND bytes_blob IS NULL AND text_content IS NOT NULL AND width IS NULL AND height IS NULL AND encoding IS NOT NULL)
+        (kind = 'text_file_attachment' AND document_artifact_id IS NULL AND bytes_blob IS NULL AND text_content IS NOT NULL AND width IS NULL AND height IS NULL AND encoding IS NOT NULL)
+        OR
+        (kind = 'document_attachment' AND document_artifact_id IS NOT NULL AND bytes_blob IS NULL AND text_content IS NULL AND width IS NULL AND height IS NULL AND encoding IS NULL)
     )
 );
 
@@ -1725,11 +1764,20 @@ CREATE UNIQUE INDEX idx_message_parts_message_sequence
 CREATE INDEX idx_message_media_part_id
     ON message_media(message_part_id);
 
+CREATE INDEX idx_document_artifacts_profile_session
+    ON document_artifacts(profile_id, session_id, created_at ASC);
+
+CREATE INDEX idx_document_artifacts_lifecycle_updated_at
+    ON document_artifacts(lifecycle_state, updated_at ASC);
+
 CREATE INDEX idx_conversation_attachments_session_created_at
     ON conversation_attachments(session_id, created_at ASC);
 
 CREATE INDEX idx_conversation_attachments_message_part_id
     ON conversation_attachments(message_part_id);
+
+CREATE INDEX idx_conversation_attachments_document_artifact_id
+    ON conversation_attachments(document_artifact_id);
 
 CREATE INDEX idx_session_dev_browser_selections_session_created_at
     ON session_dev_browser_selections(session_id, created_at ASC);

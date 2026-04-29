@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
+    createPendingDocument,
+    prepareComposerDocumentPayload,
+    type ComposerPendingDocument,
+} from '@/web/components/conversation/hooks/composerDocumentAttachments';
+import {
     type PreparedComposerImageAttachment,
     createPendingImage,
     prepareComposerImageAttachment,
@@ -119,6 +124,7 @@ export function useConversationShellComposer<
 >(input: UseConversationShellComposerInput<TPlanStartResult, TRunStartAcceptedResult, TRunStartRejectedResult>) {
     const [pendingImages, setPendingImages] = useState<ComposerPendingImage[]>([]);
     const [pendingTextFiles, setPendingTextFiles] = useState<ComposerPendingTextFile[]>([]);
+    const [pendingDocuments, setPendingDocuments] = useState<ComposerPendingDocument[]>([]);
     const [optimisticUserMessage, setOptimisticUserMessage] = useState<OptimisticConversationUserMessage | undefined>(
         undefined
     );
@@ -129,8 +135,11 @@ export function useConversationShellComposer<
         { staleTime: 30_000 }
     );
     const fileReadGuardPolicy = fileReadGuardQuery.data?.policy ?? resolveFileReadGuardPolicy(undefined);
+    const prepareDocumentAttachmentMutation = trpc.session.prepareDocumentAttachment.useMutation();
+    const discardDocumentAttachmentMutation = trpc.session.discardDocumentAttachment.useMutation();
     const pendingImagesRef = useRef<ComposerPendingImage[]>([]);
     const pendingTextFilesRef = useRef<ComposerPendingTextFile[]>([]);
+    const pendingDocumentsRef = useRef<ComposerPendingDocument[]>([]);
     const promptRef = useRef('');
 
     useEffect(() => {
@@ -151,6 +160,11 @@ export function useConversationShellComposer<
         setPendingTextFiles(nextFiles);
     }
 
+    function replacePendingDocuments(nextDocuments: ComposerPendingDocument[]) {
+        pendingDocumentsRef.current = nextDocuments;
+        setPendingDocuments(nextDocuments);
+    }
+
     function updatePendingImages(updater: (current: ComposerPendingImage[]) => ComposerPendingImage[]) {
         const nextImages = updater(pendingImagesRef.current);
         replacePendingImages(nextImages);
@@ -166,6 +180,26 @@ export function useConversationShellComposer<
 
     function clearPendingTextFiles() {
         replacePendingTextFiles([]);
+    }
+
+    function discardPendingDocument(document: ComposerPendingDocument) {
+        if (!document.document || typeof input.selectedSessionId !== 'string' || !isEntityId(input.selectedSessionId, 'sess')) {
+            return;
+        }
+        void discardDocumentAttachmentMutation.mutateAsync({
+            profileId: input.profileId,
+            sessionId: input.selectedSessionId,
+            documentArtifactId: document.document.id,
+        });
+    }
+
+    function clearPendingDocuments(options?: { discardDrafts?: boolean }) {
+        if (options?.discardDrafts) {
+            for (const document of pendingDocumentsRef.current) {
+                discardPendingDocument(document);
+            }
+        }
+        replacePendingDocuments([]);
     }
 
     function failImageAttachment(message: string) {
@@ -244,6 +278,74 @@ export function useConversationShellComposer<
         }
     }
 
+    async function prepareDocument(file: File, clientId: string) {
+        if (typeof input.selectedSessionId !== 'string' || !isEntityId(input.selectedSessionId, 'sess')) {
+            const message = 'Select a session before attaching PDFs.';
+            replacePendingDocuments(
+                pendingDocumentsRef.current.map((candidate) =>
+                    candidate.clientId === clientId
+                        ? {
+                              ...candidate,
+                              status: 'failed',
+                              errorMessage: message,
+                          }
+                        : candidate
+                )
+            );
+            failImageAttachment(message);
+            return;
+        }
+
+        const preparedPayload = await prepareComposerDocumentPayload(file, clientId, fileReadGuardPolicy);
+        if (preparedPayload.isErr()) {
+            replacePendingDocuments(
+                pendingDocumentsRef.current.map((candidate) =>
+                    candidate.clientId === clientId
+                        ? {
+                              ...candidate,
+                              status: 'failed',
+                              errorMessage: preparedPayload.error.message,
+                          }
+                        : candidate
+                )
+            );
+            failImageAttachment(preparedPayload.error.message);
+            return;
+        }
+
+        const prepared = await prepareDocumentAttachmentMutation.mutateAsync({
+            profileId: input.profileId,
+            sessionId: input.selectedSessionId,
+            ...preparedPayload.value,
+        });
+        replacePendingDocuments(
+            pendingDocumentsRef.current.map((candidate) => {
+                if (candidate.clientId !== clientId) {
+                    return candidate;
+                }
+                if (!prepared.prepared) {
+                    return {
+                        ...candidate,
+                        status: 'failed',
+                        errorMessage: prepared.message,
+                        ...(prepared.document ? { document: prepared.document } : {}),
+                    };
+                }
+                return {
+                    clientId,
+                    fileName: prepared.attachment.fileName,
+                    status: 'ready',
+                    byteSize: prepared.attachment.byteSize,
+                    attachment: prepared.attachment,
+                    document: prepared.document,
+                };
+            })
+        );
+        if (!prepared.prepared) {
+            failImageAttachment(prepared.message);
+        }
+    }
+
     function onAddFiles(inputFiles: FileList | File[]) {
         setRunSubmitError(undefined);
 
@@ -257,10 +359,6 @@ export function useConversationShellComposer<
                 policy: fileReadGuardPolicy,
             });
             if (decision.allowed) {
-                if (decision.fileKind === 'pdf') {
-                    blockedFiles.push(`"${file.name}" is allowed by the file read policy, but PDF attachment ingestion is not enabled yet.`);
-                    return [];
-                }
                 return [{ file, fileKind: decision.fileKind }];
             }
             blockedFiles.push(formatFileReadGuardDecisionMessage(file.name, decision));
@@ -276,8 +374,11 @@ export function useConversationShellComposer<
         const textFiles = allowedFiles
             .filter((candidate) => candidate.fileKind === 'text')
             .map((candidate) => candidate.file);
-        if (imageFiles.length === 0 && textFiles.length === 0) {
-            failImageAttachment('Only screenshots/images and UTF-8 text/code files can be attached to a prompt.');
+        const documentFiles = allowedFiles
+            .filter((candidate) => candidate.fileKind === 'pdf')
+            .map((candidate) => candidate.file);
+        if (imageFiles.length === 0 && textFiles.length === 0 && documentFiles.length === 0) {
+            failImageAttachment('Only screenshots/images, PDFs, and UTF-8 text/code files can be attached to a prompt.');
             return;
         }
 
@@ -316,6 +417,27 @@ export function useConversationShellComposer<
                 void prepareTextFile(sourceFile, pendingFile.clientId);
             });
         }
+
+        if (documentFiles.length > 0) {
+            const availableSlots = Math.max(0, 3 - pendingDocumentsRef.current.length);
+            if (availableSlots === 0) {
+                failImageAttachment('You can attach up to 3 PDFs per message.');
+                return;
+            }
+            const acceptedDocumentFiles = documentFiles.slice(0, availableSlots);
+            if (acceptedDocumentFiles.length < documentFiles.length) {
+                failImageAttachment('Only the first 3 PDFs were kept.');
+            }
+            const nextPendingDocuments = acceptedDocumentFiles.map((file) => createPendingDocument(file));
+            replacePendingDocuments([...pendingDocumentsRef.current, ...nextPendingDocuments]);
+            nextPendingDocuments.forEach((pendingDocument, index) => {
+                const sourceFile = acceptedDocumentFiles[index];
+                if (!sourceFile) {
+                    return;
+                }
+                void prepareDocument(sourceFile, pendingDocument.clientId);
+            });
+        }
     }
 
     function removePendingImage(clientId: string) {
@@ -348,9 +470,16 @@ export function useConversationShellComposer<
     const readyAttachments = [
         ...pendingImages.flatMap((image) => (image.status === 'ready' && image.attachment ? [image.attachment] : [])),
         ...pendingTextFiles.flatMap((file) => (file.status === 'ready' && file.attachment ? [file.attachment] : [])),
+        ...pendingDocuments.flatMap((document) =>
+            document.status === 'ready' && document.attachment ? [document.attachment] : []
+        ),
     ];
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
     const hasBlockingPendingTextFiles = pendingTextFiles.some((file) => file.status === 'reading');
+    const hasBlockingPendingDocuments = pendingDocuments.some((document) => document.status !== 'ready');
+    const hasReadyImageAttachments = readyAttachments.some(
+        (attachment) => attachment.kind === undefined || attachment.kind === 'image_attachment'
+    );
 
     function createOptimisticUserMessage(
         sessionId: OptimisticConversationUserMessage['sessionId'],
@@ -369,10 +498,12 @@ export function useConversationShellComposer<
     return {
         pendingImages,
         pendingTextFiles,
+        pendingDocuments,
         optimisticUserMessage,
         promptResetKey,
         hasBlockingPendingImages,
         hasBlockingPendingTextFiles,
+        hasBlockingPendingDocuments,
         runSubmitError,
         setRunSubmitError,
         clearRunSubmitError: () => {
@@ -383,6 +514,7 @@ export function useConversationShellComposer<
             setPromptResetKey((current) => current + 1);
             clearPendingImages();
             clearPendingTextFiles();
+            clearPendingDocuments({ discardDrafts: true });
             setRunSubmitError(undefined);
         },
         onPromptEdited: () => {
@@ -393,6 +525,13 @@ export function useConversationShellComposer<
         onRemovePendingTextFile: (clientId: string) => {
             replacePendingTextFiles(pendingTextFilesRef.current.filter((candidate) => candidate.clientId !== clientId));
         },
+        onRemovePendingDocument: (clientId: string) => {
+            const removed = pendingDocumentsRef.current.find((candidate) => candidate.clientId === clientId);
+            if (removed) {
+                discardPendingDocument(removed);
+            }
+            replacePendingDocuments(pendingDocumentsRef.current.filter((candidate) => candidate.clientId !== clientId));
+        },
         onRetryPendingImage: retryPendingImage,
         onQueuePrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
             promptRef.current = prompt;
@@ -402,11 +541,11 @@ export function useConversationShellComposer<
             if (!hasSubmittableComposerContent) {
                 return;
             }
-            if (hasBlockingPendingImages || hasBlockingPendingTextFiles) {
+            if (hasBlockingPendingImages || hasBlockingPendingTextFiles || hasBlockingPendingDocuments) {
                 failImageAttachment('Wait until all attached files are ready, or remove the failed ones.');
                 return;
             }
-            if (readyAttachments.some((attachment) => attachment.kind !== 'text_file_attachment') && !input.canAttachImages) {
+            if (hasReadyImageAttachments && !input.canAttachImages) {
                 failImageAttachment(
                     input.imageAttachmentBlockedReason ?? 'Select a vision-capable run target to attach images.'
                 );
@@ -442,6 +581,7 @@ export function useConversationShellComposer<
                     setPromptResetKey((current) => current + 1);
                     clearPendingImages();
                     clearPendingTextFiles();
+                    clearPendingDocuments();
                 })
                 .catch((error: unknown) => {
                     setRunSubmitError(error instanceof Error ? error.message : String(error));
@@ -455,11 +595,11 @@ export function useConversationShellComposer<
             if (!hasSubmittableComposerContent) {
                 return;
             }
-            if (hasBlockingPendingImages || hasBlockingPendingTextFiles) {
+            if (hasBlockingPendingImages || hasBlockingPendingTextFiles || hasBlockingPendingDocuments) {
                 failImageAttachment('Wait until all attached files are ready, or remove the failed ones.');
                 return;
             }
-            if (readyAttachments.length > 0 && !input.canAttachImages) {
+            if (hasReadyImageAttachments && !input.canAttachImages) {
                 failImageAttachment(
                     input.imageAttachmentBlockedReason ?? 'Select a vision-capable run target to attach images.'
                 );
@@ -494,6 +634,7 @@ export function useConversationShellComposer<
                     setPromptResetKey((current) => current + 1);
                     clearPendingImages();
                     clearPendingTextFiles();
+                    clearPendingDocuments();
                 },
                 onPlanStarted: (result) => {
                     input.onPlanStarted(result);

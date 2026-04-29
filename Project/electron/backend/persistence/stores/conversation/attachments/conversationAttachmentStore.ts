@@ -1,4 +1,5 @@
 import { getPersistence } from '@/app/backend/persistence/db';
+import { documentArtifactStore } from '@/app/backend/persistence/stores/conversation/attachments/documentArtifactStore';
 import { parseEntityId, parseEnumValue } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type {
@@ -22,6 +23,7 @@ function mapAttachmentSummary(row: {
     mime_type: string;
     sha256: string;
     byte_size: number;
+    document_artifact_id: string | null;
     width: number | null;
     height: number | null;
     encoding: string | null;
@@ -30,6 +32,7 @@ function mapAttachmentSummary(row: {
     const kind = parseEnumValue(row.kind, 'conversation_attachments.kind', [
         'image_attachment',
         'text_file_attachment',
+        'document_attachment',
     ] as const);
     return {
         id: parseEntityId(row.id, 'conversation_attachments.id', 'att'),
@@ -38,6 +41,15 @@ function mapAttachmentSummary(row: {
         mimeType: row.mime_type,
         sha256: row.sha256,
         byteSize: row.byte_size,
+        ...(row.document_artifact_id
+            ? {
+                  documentArtifactId: parseEntityId(
+                      row.document_artifact_id,
+                      'conversation_attachments.document_artifact_id',
+                      'doc'
+                  ),
+              }
+            : {}),
         ...(row.width !== null ? { width: row.width } : {}),
         ...(row.height !== null ? { height: row.height } : {}),
         ...(row.encoding
@@ -53,20 +65,23 @@ function mapAttachmentSummary(row: {
     };
 }
 
-function mapAttachmentPayload(row: {
+async function mapAttachmentPayload(row: {
     id: string;
     kind: string;
     file_name: string | null;
     mime_type: string;
     sha256: string;
     byte_size: number;
+    profile_id: string;
+    session_id: string | null;
+    document_artifact_id: string | null;
     width: number | null;
     height: number | null;
     encoding: string | null;
     bytes_blob: Uint8Array | null;
     text_content: string | null;
     created_at: string;
-}): SessionAttachmentPayload {
+}): Promise<SessionAttachmentPayload> {
     const summary = mapAttachmentSummary(row);
     if (summary.kind === 'image_attachment') {
         if (!row.bytes_blob || summary.width === undefined || summary.height === undefined) {
@@ -76,6 +91,32 @@ function mapAttachmentPayload(row: {
             ...summary,
             kind: 'image_attachment',
             bytesBase64: Buffer.from(toUint8Array(row.bytes_blob)).toString('base64'),
+        };
+    }
+    if (summary.kind === 'document_attachment') {
+        if (!summary.documentArtifactId || !row.session_id) {
+            throw new DataCorruptionError('Document attachment payload is missing its document artifact reference.');
+        }
+        const documentArtifact = await documentArtifactStore.getById({
+            profileId: row.profile_id,
+            sessionId: parseEntityId(row.session_id, 'conversation_attachments.session_id', 'sess'),
+            documentArtifactId: summary.documentArtifactId,
+        });
+        if (!documentArtifact) {
+            throw new DataCorruptionError('Document attachment referenced a missing document artifact.');
+        }
+        return {
+            ...summary,
+            kind: 'document_attachment',
+            fileName: documentArtifact.fileName,
+            mimeType: documentArtifact.mimeType,
+            sha256: documentArtifact.sha256,
+            byteSize: documentArtifact.byteSize,
+            ...(documentArtifact.pageCount !== undefined ? { pageCount: documentArtifact.pageCount } : {}),
+            extractionState: documentArtifact.extractionState,
+            extractedTextByteSize: documentArtifact.extractedTextByteSize,
+            extractedTextTokenCount: documentArtifact.extractedTextTokenCount,
+            documentArtifact,
         };
     }
     if (!row.text_content || !summary.encoding) {
@@ -99,6 +140,60 @@ export class ConversationAttachmentStore {
         const now = nowIso();
         const attachmentId = createEntityId('att');
 
+        if (input.attachment.kind === 'document_attachment') {
+            const documentArtifact = await documentArtifactStore.getById({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                documentArtifactId: input.attachment.documentArtifactId,
+            });
+            if (!documentArtifact || documentArtifact.lifecycleState === 'deleted') {
+                throw new DataCorruptionError('Document attachment references a missing or deleted document artifact.');
+            }
+            const inserted = await db
+                .insertInto('conversation_attachments')
+                .values({
+                    id: attachmentId,
+                    profile_id: input.profileId,
+                    session_id: input.sessionId,
+                    message_part_id: input.messagePartId ?? null,
+                    kind: 'document_attachment',
+                    document_artifact_id: documentArtifact.id,
+                    file_name: documentArtifact.fileName,
+                    mime_type: documentArtifact.mimeType,
+                    sha256: documentArtifact.sha256,
+                    byte_size: documentArtifact.byteSize,
+                    width: null,
+                    height: null,
+                    encoding: null,
+                    bytes_blob: null,
+                    text_content: null,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .returning([
+                    'id',
+                    'kind',
+                    'document_artifact_id',
+                    'file_name',
+                    'mime_type',
+                    'sha256',
+                    'byte_size',
+                    'width',
+                    'height',
+                    'encoding',
+                    'created_at',
+                ])
+                .executeTakeFirstOrThrow();
+            await documentArtifactStore.markAttached(documentArtifact.id);
+            return {
+                ...mapAttachmentSummary(inserted),
+                ...(documentArtifact.pageCount !== undefined ? { pageCount: documentArtifact.pageCount } : {}),
+                extractionState: documentArtifact.extractionState,
+                extractedTextByteSize: documentArtifact.extractedTextByteSize,
+                extractedTextTokenCount: documentArtifact.extractedTextTokenCount,
+            };
+        }
+
         if (input.attachment.kind === 'text_file_attachment') {
             const inserted = await db
                 .insertInto('conversation_attachments')
@@ -108,6 +203,7 @@ export class ConversationAttachmentStore {
                     session_id: input.sessionId,
                     message_part_id: input.messagePartId ?? null,
                     kind: 'text_file_attachment',
+                    document_artifact_id: null,
                     file_name: input.attachment.fileName,
                     mime_type: input.attachment.mimeType,
                     sha256: input.attachment.sha256,
@@ -123,6 +219,7 @@ export class ConversationAttachmentStore {
                 .returning([
                     'id',
                     'kind',
+                    'document_artifact_id',
                     'file_name',
                     'mime_type',
                     'sha256',
@@ -144,6 +241,7 @@ export class ConversationAttachmentStore {
                 session_id: input.sessionId,
                 message_part_id: input.messagePartId ?? null,
                 kind: 'image_attachment',
+                document_artifact_id: null,
                 file_name: input.attachment.fileName ?? null,
                 mime_type: input.attachment.mimeType,
                 sha256: input.attachment.sha256,
@@ -159,6 +257,7 @@ export class ConversationAttachmentStore {
             .returning([
                 'id',
                 'kind',
+                'document_artifact_id',
                 'file_name',
                 'mime_type',
                 'sha256',
@@ -179,7 +278,10 @@ export class ConversationAttachmentStore {
             .selectFrom('conversation_attachments')
             .select([
                 'id',
+                'profile_id',
+                'session_id',
                 'kind',
+                'document_artifact_id',
                 'file_name',
                 'mime_type',
                 'sha256',
@@ -195,7 +297,7 @@ export class ConversationAttachmentStore {
             .where('profile_id', '=', profileId)
             .executeTakeFirst();
 
-        return row ? mapAttachmentPayload(row) : null;
+        return row ? await mapAttachmentPayload(row) : null;
     }
 
     async getPayload(attachmentId: EntityId<'att'>): Promise<SessionAttachmentPayload | null> {
@@ -204,7 +306,10 @@ export class ConversationAttachmentStore {
             .selectFrom('conversation_attachments')
             .select([
                 'id',
+                'profile_id',
+                'session_id',
                 'kind',
+                'document_artifact_id',
                 'file_name',
                 'mime_type',
                 'sha256',
@@ -219,7 +324,7 @@ export class ConversationAttachmentStore {
             .where('id', '=', attachmentId)
             .executeTakeFirst();
 
-        return row ? mapAttachmentPayload(row) : null;
+        return row ? await mapAttachmentPayload(row) : null;
     }
 
     async listPayloadsByOutboxEntry(entryId: EntityId<'outbox'>): Promise<SessionAttachmentPayload[]> {
@@ -229,7 +334,10 @@ export class ConversationAttachmentStore {
             .innerJoin('conversation_attachments', 'conversation_attachments.id', 'session_outbox_entry_attachments.attachment_id')
             .select([
                 'conversation_attachments.id as id',
+                'conversation_attachments.profile_id as profile_id',
+                'conversation_attachments.session_id as session_id',
                 'conversation_attachments.kind as kind',
+                'conversation_attachments.document_artifact_id as document_artifact_id',
                 'conversation_attachments.file_name as file_name',
                 'conversation_attachments.mime_type as mime_type',
                 'conversation_attachments.sha256 as sha256',
@@ -246,7 +354,7 @@ export class ConversationAttachmentStore {
             .orderBy('session_outbox_entry_attachments.sequence', 'asc')
             .execute();
 
-        return rows.map((row) => mapAttachmentPayload(row));
+        return Promise.all(rows.map((row) => mapAttachmentPayload(row)));
     }
 
     async replaceOutboxEntryAttachments(input: {

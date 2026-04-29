@@ -76,6 +76,22 @@ export type RuntimeCompatibilityIssue =
           reason?: string;
           fileKind?: string;
           extension?: string;
+      }
+    | {
+          code: 'document_attachment_invalid';
+          reason?:
+              | 'document_limit_exceeded'
+              | 'document_not_found'
+              | 'document_missing'
+              | 'document_deleted'
+              | 'document_sha_mismatch'
+              | 'document_size_mismatch'
+              | 'document_not_extracted'
+              | 'document_extraction_pending'
+              | 'document_extraction_failed'
+              | 'document_empty'
+              | 'document_payload_mismatch';
+          documentArtifactId?: string;
       };
 
 export type RunStartRejectionAction = RuntimeCompatibilityIssue;

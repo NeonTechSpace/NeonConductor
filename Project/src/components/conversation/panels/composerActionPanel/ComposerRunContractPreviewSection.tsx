@@ -16,6 +16,30 @@ function renderTrustSummary(preview: RunContractPreview): string {
     return `${String(trustedInstructions)} trusted, ${String(userInputs)} user, ${String(workspaceContent)} workspace, ${String(promotedFacts)} promoted`;
 }
 
+function formatDocumentSelection(preview: RunContractPreview): string {
+    const documents = preview.documentSummary ?? [];
+    if (documents.length === 0) {
+        return 'No PDF document context selected.';
+    }
+
+    const selectedTokens = documents.reduce((total, document) => total + document.selectedTokenCount, 0);
+    const omittedPages = documents.reduce((total, document) => total + document.omittedPageCount, 0);
+    return `${String(documents.length)} PDF${documents.length === 1 ? '' : 's'} · ${String(selectedTokens)} selected tokens · ${String(omittedPages)} omitted pages`;
+}
+
+function formatDocumentPageRanges(document: NonNullable<RunContractPreview['documentSummary']>[number]): string {
+    if (document.selectedPageRanges.length === 0) {
+        return document.blockedReason ? document.blockedReason.replaceAll('_', ' ') : 'No pages selected';
+    }
+    return document.selectedPageRanges
+        .map((range) =>
+            range.startPage === range.endPage
+                ? `p. ${String(range.startPage)}`
+                : `pp. ${String(range.startPage)}-${String(range.endPage)}`
+        )
+        .join(', ');
+}
+
 export function ComposerRunContractPreviewSection(input: ComposerRunContractPreviewSectionProps) {
     const browserContextSummary = input.preview?.browserContextSummary ?? input.browserContextSummary;
 
@@ -72,8 +96,25 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                             {input.preview.attachmentSummary.imageAttachmentCount > 0
                                 ? `, ${String(input.preview.attachmentSummary.imageAttachmentCount)} images`
                                 : ''}
+                            {(input.preview.attachmentSummary.documentAttachmentCount ?? 0) > 0
+                                ? `, ${String(input.preview.attachmentSummary.documentAttachmentCount)} PDFs`
+                                : ''}
                         </p>
                     </div>
+                    {(input.preview.documentSummary?.length ?? 0) > 0 ? (
+                        <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                            <p className='text-muted-foreground'>PDF Documents</p>
+                            <p className='font-medium'>{formatDocumentSelection(input.preview)}</p>
+                            <div className='mt-2 space-y-1'>
+                                {input.preview.documentSummary?.map((document) => (
+                                    <p key={document.documentArtifactId} className='text-muted-foreground'>
+                                        {document.fileName}: {formatDocumentPageRanges(document)} ·{' '}
+                                        {String(document.selectedTokenCount)} tokens selected
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
                     {browserContextSummary ? (
                         <div className='rounded-xl border px-3 py-2'>
                             <p className='text-muted-foreground'>Browser Context</p>

@@ -1,8 +1,8 @@
 
 import { buildMessageCopyPayloads } from '@/web/components/conversation/messages/messageCopy';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ToolArtifactKind, ToolArtifactPreviewStrategy } from '@/web/components/conversation/messages/toolArtifactFormatting';
+import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 
 import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
 import { readImageMimeType } from '@/app/shared/imageMimeType';
@@ -124,6 +124,22 @@ function readTextFileAttachmentPayload(part: MessagePartRecord): string | null {
     return [`Attached text file: ${fileName}`, `MIME type: ${mimeType}`, `Encoding: ${encoding}`, '', text].join('\n');
 }
 
+function readDocumentAttachmentPayload(part: MessagePartRecord): string | null {
+    const fileName = typeof part.payload['fileName'] === 'string' ? part.payload['fileName'] : 'document.pdf';
+    const mimeType = typeof part.payload['mimeType'] === 'string' ? part.payload['mimeType'] : 'application/pdf';
+    const pageCount = typeof part.payload['pageCount'] === 'number' ? part.payload['pageCount'] : undefined;
+    const byteSize = typeof part.payload['byteSize'] === 'number' ? part.payload['byteSize'] : undefined;
+    const extractionState =
+        typeof part.payload['extractionState'] === 'string' ? part.payload['extractionState'].replaceAll('_', ' ') : 'unknown';
+    return [
+        `Attached PDF document: ${fileName}`,
+        `MIME type: ${mimeType}`,
+        ...(pageCount !== undefined ? [`Pages: ${String(pageCount)}`] : []),
+        ...(byteSize !== undefined ? [`Size: ${(byteSize / 1024).toFixed(1)} KB`] : []),
+        `Extraction: ${extractionState}`,
+    ].join('\n');
+}
+
 function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[]): ConversationTanstackRenderPart[] {
     const projected: ConversationTanstackRenderPart[] = [];
 
@@ -163,6 +179,20 @@ function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[])
 
         if (part.partType === 'text_file_attachment') {
             const text = readTextFileAttachmentPayload(part);
+            if (!text) {
+                continue;
+            }
+
+            projected.push({
+                key: part.id,
+                kind: 'text',
+                text,
+            });
+            continue;
+        }
+
+        if (part.partType === 'document_attachment') {
+            const text = readDocumentAttachmentPayload(part);
             if (!text) {
                 continue;
             }

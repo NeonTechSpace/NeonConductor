@@ -105,6 +105,10 @@ export function formatRuntimeCapabilityIssue(input: {
             }
 
             return input.surface === 'run_rejection' ? `Run failed: ${fallbackMessage}` : fallbackMessage;
+        case 'document_attachment_invalid':
+            return input.surface === 'run_rejection'
+                ? 'A PDF attachment is not ready for model context. Remove it or attach a text-extractable PDF.'
+                : fallbackMessage;
         default:
             return input.surface === 'run_rejection' ? `Run failed: ${fallbackMessage}` : fallbackMessage;
     }

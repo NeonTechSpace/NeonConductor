@@ -1,3 +1,6 @@
+import { skipToken } from '@tanstack/react-query';
+import { useDeferredValue, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+
 import { buildComposerControlsReadModel } from '@/web/components/conversation/panels/composerActionPanel/buildComposerControlsReadModel';
 import { buildComposerSubmissionPolicy } from '@/web/components/conversation/panels/composerActionPanel/buildComposerSubmissionPolicy';
 import { ComposerContextSummarySection } from '@/web/components/conversation/panels/composerActionPanel/ComposerContextSummarySection';
@@ -16,13 +19,11 @@ import { useComposerContextCardController } from '@/web/components/conversation/
 import { useComposerDraftController } from '@/web/components/conversation/panels/composerActionPanel/useComposerDraftController';
 import { useComposerSlashCommandController } from '@/web/components/conversation/panels/composerActionPanel/useComposerSlashCommandController';
 import { shouldInterceptSlashSubmit } from '@/web/components/conversation/panels/composerSlashCommands';
-import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { ImageLightboxModal } from '@/web/components/conversation/panels/imageLightboxModal';
+import { isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
-import { skipToken } from '@tanstack/react-query';
-import { useDeferredValue, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 export { shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
 export { handleComposerSlashAcceptance } from '@/web/components/conversation/panels/composerActionPanel/useComposerSlashCommandController';
@@ -53,6 +54,7 @@ function ComposerActionPanelDraftBoundary({
     profileId,
     pendingImages,
     pendingTextFiles,
+    pendingDocuments,
     readyComposerAttachments,
     hasBlockingPendingAttachments,
     disabled,
@@ -103,6 +105,7 @@ function ComposerActionPanelDraftBoundary({
     onAddFiles,
     onRemovePendingImage,
     onRemovePendingTextFile,
+    onRemovePendingDocument,
     onRetryPendingImage,
     onQueuePrompt,
     onSubmitPrompt,
@@ -160,6 +163,7 @@ function ComposerActionPanelDraftBoundary({
     const submissionPolicy = buildComposerSubmissionPolicy({
         pendingImages,
         pendingTextFiles,
+        pendingDocuments,
         canAttachImages,
         runErrorMessage,
         maxImageAttachmentsPerMessage,
@@ -266,6 +270,7 @@ function ComposerActionPanelDraftBoundary({
                         imageAttachmentBlockedReason={imageAttachmentBlockedReason}
                         pendingImages={pendingImages}
                         pendingTextFiles={pendingTextFiles}
+                        pendingDocuments={pendingDocuments}
                         composerErrorMessage={submissionPolicy.composerErrorMessage}
                         composerErrorTone={composerErrorTone}
                         draftPrompt={draftController.draftPrompt}
@@ -333,6 +338,7 @@ function ComposerActionPanelDraftBoundary({
                         formatImageBytes={formatImageBytes}
                         formatAttachmentBytes={formatAttachmentBytes}
                         onRemovePendingTextFile={onRemovePendingTextFile}
+                        onRemovePendingDocument={onRemovePendingDocument}
                     />
                     <ComposerRunControlsBar
                         composerControlsDisabled={controlsReadModel.composerControlsDisabled}
@@ -348,11 +354,14 @@ function ComposerActionPanelDraftBoundary({
                         selectedReasoningEffort={controlsReadModel.selectedReasoningEffort}
                         availableReasoningEfforts={controlsReadModel.availableReasoningEfforts}
                         reasoningControlDisabled={controlsReadModel.reasoningControlDisabled}
-                        canAttachImages={canAttachImages}
                         routingBadge={routingBadge}
                         compactConnectionLabel={controlsReadModel.compactConnectionLabel}
                         modelOptions={modelOptions}
-                        submitButtonLabel={submissionPolicy.hasBlockingPendingImages ? 'Images preparing…' : 'Start Run'}
+                        submitButtonLabel={
+                            hasBlockingPendingAttachments || submissionPolicy.hasBlockingPendingImages
+                                ? 'Files preparing...'
+                                : 'Start Run'
+                        }
                         queueButtonLabel='Queue'
                         onProfileChange={onProfileChange}
                         onProviderChange={onProviderChange}

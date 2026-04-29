@@ -1,6 +1,7 @@
+import type { PendingDocumentCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingDocumentsList';
+import type { PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
-import type { PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 
 import type {
     BrowserContextPacket,
@@ -16,6 +17,7 @@ import type {
 } from '@/shared/contracts';
 
 export type PendingImageView = PendingImageCardView;
+export type PendingDocumentView = PendingDocumentCardView;
 
 export interface PendingTextFileView {
     clientId: string;
@@ -38,6 +40,7 @@ export interface ComposerActionPanelProps {
     profileId: string;
     pendingImages: PendingImageView[];
     pendingTextFiles: PendingTextFileView[];
+    pendingDocuments: PendingDocumentView[];
     readyComposerAttachments: ComposerAttachmentInput[];
     hasBlockingPendingAttachments: boolean;
     disabled: boolean;
@@ -93,6 +96,7 @@ export interface ComposerActionPanelProps {
     onAddFiles: (files: FileList | File[]) => void;
     onRemovePendingImage: (clientId: string) => void;
     onRemovePendingTextFile: (clientId: string) => void;
+    onRemovePendingDocument: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
     onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
     onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;

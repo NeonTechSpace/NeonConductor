@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { prepareComposerDocumentPayload } from '@/web/components/conversation/hooks/composerDocumentAttachments';
 import { prepareComposerImageAttachment } from '@/web/components/conversation/hooks/composerImageAttachments';
 import { prepareComposerTextFileAttachment } from '@/web/components/conversation/hooks/composerTextFileAttachments';
 import { Button } from '@/web/components/ui/button';
@@ -57,6 +58,9 @@ function formatBrowserContextSummary(entry: SessionOutboxEntry): string {
 }
 
 function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
+    if (attachment.kind === 'document_attachment') {
+        return `${attachment.fileName} · ${(attachment.byteSize / 1024).toFixed(1)} KB · PDF`;
+    }
     if (attachment.kind === 'text_file_attachment') {
         return `${attachment.fileName} · ${(attachment.byteSize / 1024).toFixed(1)} KB · text`;
     }
@@ -64,6 +68,21 @@ function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
 }
 
 function toDraftAttachment(payload: SessionAttachmentPayload): ComposerAttachmentInput {
+    if (payload.kind === 'document_attachment') {
+        return {
+            clientId: payload.id,
+            kind: 'document_attachment',
+            documentArtifactId: payload.documentArtifact.id,
+            fileName: payload.documentArtifact.fileName,
+            mimeType: payload.documentArtifact.mimeType,
+            sha256: payload.documentArtifact.sha256,
+            byteSize: payload.documentArtifact.byteSize,
+            ...(payload.documentArtifact.pageCount !== undefined ? { pageCount: payload.documentArtifact.pageCount } : {}),
+            extractionState: payload.documentArtifact.extractionState,
+            extractedTextByteSize: payload.documentArtifact.extractedTextByteSize,
+            extractedTextTokenCount: payload.documentArtifact.extractedTextTokenCount,
+        };
+    }
     if (payload.kind === 'text_file_attachment') {
         return {
             clientId: payload.id,
@@ -165,6 +184,7 @@ export function SessionOutboxPanel({
         PROGRESSIVE_QUERY_OPTIONS
     );
     const fileReadGuardPolicy = fileReadGuardQuery.data?.policy ?? resolveFileReadGuardPolicy(undefined);
+    const prepareDocumentAttachmentMutation = trpc.session.prepareDocumentAttachment.useMutation();
 
     useEffect(() => {
         setIsEditing(false);
@@ -215,6 +235,36 @@ export function SessionOutboxPanel({
                     continue;
                 }
                 nextAttachments.push(prepared.value.attachment);
+                continue;
+            }
+            if (decision.fileKind === 'pdf') {
+                if (!selectedEntry) {
+                    errors.push('Select a queued entry before attaching PDFs.');
+                    continue;
+                }
+                const draftDocumentAttachmentCount = [
+                    ...draftAttachments,
+                    ...nextAttachments,
+                ].filter((attachment) => attachment.kind === 'document_attachment').length;
+                if (draftDocumentAttachmentCount >= 3) {
+                    errors.push('You can attach up to 3 PDFs per queued prompt.');
+                    continue;
+                }
+                const preparedPayload = await prepareComposerDocumentPayload(file, clientId, fileReadGuardPolicy);
+                if (preparedPayload.isErr()) {
+                    errors.push(preparedPayload.error.message);
+                    continue;
+                }
+                const prepared = await prepareDocumentAttachmentMutation.mutateAsync({
+                    profileId: selectedEntry.profileId,
+                    sessionId: selectedEntry.sessionId,
+                    ...preparedPayload.value,
+                });
+                if (!prepared.prepared) {
+                    errors.push(prepared.message);
+                    continue;
+                }
+                nextAttachments.push(prepared.attachment);
                 continue;
             }
             if (decision.fileKind !== 'text') {
@@ -436,7 +486,7 @@ export function SessionOutboxPanel({
                         type='file'
                         className='hidden'
                         multiple
-                        accept='image/*,.txt,.md,.markdown,.json,.yml,.yaml,.toml,.ini,.conf,.env,.xml,.html,.htm,.css,.scss,.less,.js,.jsx,.ts,.tsx,.mjs,.cjs,.py,.rb,.go,.rs,.java,.kt,.c,.cc,.cpp,.h,.hpp,.cs,.php,.sql,.sh,.ps1,.bat,.cmd,.graphql,.gql,.dockerfile'
+                        accept='image/*,application/pdf,.pdf,.txt,.md,.markdown,.json,.yml,.yaml,.toml,.ini,.conf,.env,.xml,.html,.htm,.css,.scss,.less,.js,.jsx,.ts,.tsx,.mjs,.cjs,.py,.rb,.go,.rs,.java,.kt,.c,.cc,.cpp,.h,.hpp,.cs,.php,.sql,.sh,.ps1,.bat,.cmd,.graphql,.gql,.dockerfile'
                         onChange={(event) => {
                             if (!event.target.files) {
                                 return;

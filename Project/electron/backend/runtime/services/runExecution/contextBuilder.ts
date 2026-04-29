@@ -1,7 +1,7 @@
-import type { OperationalErrorCode } from '@/app/backend/runtime/services/common/operationalError';
 import type { WorkspaceEnvironmentSnapshot } from '@/app/backend/runtime/contracts/types/runtime';
-import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
+import type { OperationalErrorCode } from '@/app/backend/runtime/services/common/operationalError';
 import { buildPreparedContextDigest } from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
+import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
 import { appendBrowserContextMessage } from '@/app/backend/runtime/services/runExecution/browserContextMessage';
 import { buildSessionSystemPrelude } from '@/app/backend/runtime/services/runExecution/contextPrelude';
 import {
@@ -117,6 +117,7 @@ export async function buildRunContext(input: {
         messages: messagesWithBrowserContext,
         digest: buildPreparedContextDigest(messagesWithBrowserContext),
         preparedContext: preparedContext.value.preparedContext,
+        ...(preparedContext.value.documentContexts ? { documentContexts: preparedContext.value.documentContexts } : {}),
         ...(preparedContext.value.retrievedMemory ? { retrievedMemory: preparedContext.value.retrievedMemory } : {}),
     });
 }

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 import {
     buildWorkspaceShellProjection,
     type SessionWorkspacePanelProps,
@@ -5,7 +7,6 @@ import {
 import { WorkspacePrimaryColumn } from '@/web/components/conversation/sessions/workspace/workspacePrimaryColumn';
 import { WorkspaceSelectionHeader } from '@/web/components/conversation/sessions/workspace/workspaceSelectionHeader';
 import { WorkspaceShell } from '@/web/components/conversation/sessions/workspace/workspaceShell';
-import { useEffect, useState } from 'react';
 
 export type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 
@@ -43,6 +44,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         optimisticUserMessage,
         pendingImages,
         pendingTextFiles,
+        pendingDocuments,
         readyComposerAttachments,
         hasBlockingPendingAttachments,
         isStartingRun,
@@ -88,6 +90,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         onAddFiles,
         onRemovePendingImage,
         onRemovePendingTextFile,
+        onRemovePendingDocument,
         onRetryPendingImage,
         onQueuePrompt,
         onSubmitPrompt,
@@ -130,6 +133,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                 runs={runs}
                 pendingImages={pendingImages}
                 pendingTextFiles={pendingTextFiles}
+                pendingDocuments={pendingDocuments}
                 readyComposerAttachments={readyComposerAttachments}
                 hasBlockingPendingAttachments={hasBlockingPendingAttachments}
                 isStartingRun={isStartingRun}
@@ -179,6 +183,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                 onAddFiles={onAddFiles}
                 onRemovePendingImage={onRemovePendingImage}
                 onRemovePendingTextFile={onRemovePendingTextFile}
+                onRemovePendingDocument={onRemovePendingDocument}
                 onRetryPendingImage={onRetryPendingImage}
                 {...(onQueuePrompt ? { onQueuePrompt } : {})}
                 onSubmitPrompt={onSubmitPrompt}

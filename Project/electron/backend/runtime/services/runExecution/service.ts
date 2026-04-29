@@ -12,6 +12,7 @@ import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/typ
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { withCorrelationContext } from '@/app/backend/runtime/services/common/logContext';
 import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
+import { documentArtifactService } from '@/app/backend/runtime/services/documentArtifacts/service';
 import { fileReadGuardService } from '@/app/backend/runtime/services/fileReadGuard/service';
 import { prepareRunContractPreview } from '@/app/backend/runtime/services/runContract/service';
 import type { RunExecutionError } from '@/app/backend/runtime/services/runExecution/errors';
@@ -80,6 +81,22 @@ function readPermissionRequestIdFromAction(action: unknown): EntityId<'perm'> | 
 function toComposerAttachmentInput(
     payload: SessionAttachmentPayload
 ): NonNullable<StartRunInput['attachments']>[number] {
+    if (payload.kind === 'document_attachment') {
+        return {
+            clientId: payload.id,
+            kind: 'document_attachment',
+            documentArtifactId: payload.documentArtifact.id,
+            fileName: payload.documentArtifact.fileName,
+            mimeType: payload.documentArtifact.mimeType,
+            sha256: payload.documentArtifact.sha256,
+            byteSize: payload.documentArtifact.byteSize,
+            ...(payload.documentArtifact.pageCount !== undefined ? { pageCount: payload.documentArtifact.pageCount } : {}),
+            extractionState: payload.documentArtifact.extractionState,
+            extractedTextByteSize: payload.documentArtifact.extractedTextByteSize,
+            extractedTextTokenCount: payload.documentArtifact.extractedTextTokenCount,
+        };
+    }
+
     if (payload.kind === 'text_file_attachment') {
         return {
             clientId: payload.id,
@@ -136,7 +153,25 @@ export class RunExecutionService {
             ...(input.attachments ? { attachments: input.attachments } : {}),
         });
         if (guardResult.isOk()) {
-            return null;
+            const documentValidation = await documentArtifactService.validateComposerAttachments({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                ...(input.attachments ? { attachments: input.attachments } : {}),
+            });
+            if (documentValidation.isOk()) {
+                return null;
+            }
+            return {
+                code: 'invalid_payload',
+                message: documentValidation.error.message,
+                action: {
+                    code: 'document_attachment_invalid',
+                    reason: documentValidation.error.code,
+                    ...(documentValidation.error.documentArtifactId
+                        ? { documentArtifactId: documentValidation.error.documentArtifactId }
+                        : {}),
+                },
+            };
         }
         return {
             code: guardResult.error.code,

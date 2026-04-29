@@ -24,8 +24,8 @@ vi.mock('@/app/backend/runtime/services/runExecution/protocol', () => ({
     resolveRuntimeProtocol: resolveRuntimeProtocolMock,
 }));
 
-import { prepareRunnableCandidate } from '@/app/backend/runtime/services/runExecution/compatibility';
 import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
+import { prepareRunnableCandidate } from '@/app/backend/runtime/services/runExecution/compatibility';
 
 function createModeDefinition() {
     return {
@@ -223,5 +223,67 @@ describe('prepareRunnableCandidate', () => {
             modelId: 'openai/gpt-5-no-vision',
         });
         expect(resolveRuntimeProtocolMock).not.toHaveBeenCalled();
+    });
+
+    it('does not require vision support for text-first PDF document attachments', async () => {
+        providerStoreMock.getModelReadState.mockResolvedValue(
+            createModelReadState({
+                supportsVision: false,
+            })
+        );
+        resolveRuntimeProtocolMock.mockResolvedValue({
+            isOk: () => true,
+            isErr: () => false,
+            value: {
+                runtime: createModelCapabilities({ supportsVision: false }).runtime,
+                transport: {
+                    requested: 'auto',
+                    selected: 'openai_responses',
+                    degraded: false,
+                },
+            },
+        });
+
+        const result = await prepareRunnableCandidate({
+            profileId: 'profile_default',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5-no-vision',
+            topLevelTab: 'chat',
+            mode: createModeDefinition(),
+            runtimeOptions: {
+                reasoning: {
+                    effort: 'medium',
+                    summary: 'auto',
+                    includeEncrypted: false,
+                },
+                cache: {
+                    strategy: 'auto',
+                },
+                transport: {
+                    family: 'auto',
+                },
+            },
+            attachments: [
+                {
+                    clientId: 'doc-test',
+                    kind: 'document_attachment',
+                    documentArtifactId: 'doc_test',
+                    fileName: 'brief.pdf',
+                    mimeType: 'application/pdf',
+                    sha256: 'sha',
+                    byteSize: 1024,
+                    extractionState: 'extracted',
+                    extractedTextByteSize: 256,
+                    extractedTextTokenCount: 64,
+                },
+            ],
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error(result.error.message);
+        }
+        expect(result.value.kind).not.toBe('incompatible');
+        expect(resolveRuntimeProtocolMock).toHaveBeenCalled();
     });
 });

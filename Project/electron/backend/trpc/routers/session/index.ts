@@ -12,10 +12,12 @@ import {
     sessionCreateBrowserCommentDraftInputSchema,
     sessionDeleteBrowserCommentDraftInputSchema,
     sessionDeleteBrowserDesignerDraftInputSchema,
+    sessionDiscardDocumentAttachmentInputSchema,
     sessionEditInputSchema,
     sessionGetAttachedRulesInputSchema,
     sessionGetExecutionReceiptInputSchema,
     sessionGetAttachmentInputSchema,
+    sessionGetDocumentArtifactInputSchema,
     sessionGetAttachedSkillsInputSchema,
     sessionForkCloudSessionInputSchema,
     sessionDevBrowserStateInputSchema,
@@ -29,6 +31,7 @@ import {
     sessionMoveOutboxEntryInputSchema,
     sessionOutboxEntryInputSchema,
     sessionPersistBrowserSelectionInputSchema,
+    sessionPrepareDocumentAttachmentInputSchema,
     sessionQueueRunInputSchema,
     sessionRevertInputSchema,
     sessionSetBrowserCommentDraftInclusionInputSchema,
@@ -47,6 +50,7 @@ import {
 import { cloudSessionService } from '@/app/backend/runtime/services/cloudSessions/service';
 import { eventMetadata } from '@/app/backend/runtime/services/common/logContext';
 import { sessionDevBrowserService } from '@/app/backend/runtime/services/devBrowser/service';
+import { documentArtifactService } from '@/app/backend/runtime/services/documentArtifacts/service';
 import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 import { runtimeStatusEvent, runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
@@ -336,6 +340,20 @@ export const sessionRouter = router({
 
         return attachment === null ? { found: false as const } : { found: true as const, ...attachment };
     }),
+    prepareDocumentAttachment: publicProcedure
+        .input(sessionPrepareDocumentAttachmentInputSchema)
+        .mutation(async ({ input }) => {
+            return documentArtifactService.prepareAttachment(input);
+        }),
+    getDocumentArtifact: publicProcedure.input(sessionGetDocumentArtifactInputSchema).query(async ({ input }) => {
+        const document = await documentArtifactService.getDocument(input);
+        return document === null ? { found: false as const } : { found: true as const, document };
+    }),
+    discardDocumentAttachment: publicProcedure
+        .input(sessionDiscardDocumentAttachmentInputSchema)
+        .mutation(async ({ input }) => {
+            return documentArtifactService.discardDraft(input);
+        }),
     getDevBrowserState: publicProcedure.input(sessionDevBrowserStateInputSchema).query(async ({ input }) => {
         return sessionDevBrowserService.getState(input.profileId, input.sessionId);
     }),

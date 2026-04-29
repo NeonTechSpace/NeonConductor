@@ -23,6 +23,7 @@ import {
 import type {
     CloudSessionCreateMetadata,
     ComposerAttachmentInput,
+    ComposerDocumentAttachmentInput,
     ComposerImageAttachmentInput,
     ComposerTextFileAttachmentInput,
     SessionBranchFromMessageInput,
@@ -35,6 +36,7 @@ import type {
     SessionGetExecutionReceiptInput,
     SessionGetAttachmentInput,
     SessionGetAttachedRulesInput,
+    SessionGetDocumentArtifactInput,
     SessionGetMessageMediaInput,
     SessionGetAttachedSkillsInput,
     SessionImportCloudSessionInput,
@@ -44,14 +46,17 @@ import type {
     SessionListRunsInput,
     SessionMoveOutboxEntryInput,
     SessionOutboxEntryInput,
+    SessionPrepareDocumentAttachmentInput,
     SessionQueueRunInput,
     SessionRevertInput,
+    SessionDiscardDocumentAttachmentInput,
     SessionUpdateOutboxEntryInput,
     SessionSetAttachedRulesInput,
     SessionSetAttachedSkillsInput,
     SessionStartRunInput,
 } from '@/app/backend/runtime/contracts/types';
 import { composerImageAttachmentMimeTypes } from '@/app/backend/runtime/contracts/types/session';
+import { composerDocumentAttachmentMimeTypes } from '@/app/backend/runtime/contracts/types/session';
 import { composerTextFileAttachmentEncodings } from '@/app/backend/runtime/contracts/types/session';
 
 function parseComposerImageAttachmentInput(value: unknown, field: string): ComposerImageAttachmentInput {
@@ -85,6 +90,34 @@ function parseComposerTextFileAttachmentInput(value: unknown, field: string): Co
     };
 }
 
+function parseComposerDocumentAttachmentInput(value: unknown, field: string): ComposerDocumentAttachmentInput {
+    const source = readObject(value, field);
+
+    return {
+        clientId: readString(source.clientId, `${field}.clientId`),
+        kind: 'document_attachment',
+        documentArtifactId: readEntityId(source.documentArtifactId, `${field}.documentArtifactId`, 'doc'),
+        fileName: readString(source.fileName, `${field}.fileName`),
+        mimeType: readEnumValue(source.mimeType, `${field}.mimeType`, composerDocumentAttachmentMimeTypes),
+        sha256: readString(source.sha256, `${field}.sha256`),
+        byteSize: readPositiveInteger(source.byteSize, `${field}.byteSize`),
+        ...(typeof source.pageCount === 'number'
+            ? { pageCount: readPositiveInteger(source.pageCount, `${field}.pageCount`) }
+            : {}),
+        extractionState: readEnumValue(source.extractionState, `${field}.extractionState`, [
+            'pending',
+            'extracted',
+            'empty',
+            'failed',
+        ] as const),
+        extractedTextByteSize: readNonNegativeInteger(source.extractedTextByteSize, `${field}.extractedTextByteSize`),
+        extractedTextTokenCount: readNonNegativeInteger(
+            source.extractedTextTokenCount,
+            `${field}.extractedTextTokenCount`
+        ),
+    };
+}
+
 function parseComposerAttachmentInput(value: unknown, field: string): ComposerAttachmentInput {
     const source = readObject(value, field);
     const rawKind = source.kind;
@@ -94,6 +127,9 @@ function parseComposerAttachmentInput(value: unknown, field: string): ComposerAt
     }
     if (kind === 'text_file_attachment') {
         return parseComposerTextFileAttachmentInput(source, field);
+    }
+    if (kind === 'document_attachment') {
+        return parseComposerDocumentAttachmentInput(source, field);
     }
     throw new Error(`Invalid "${field}.kind": expected supported attachment kind.`);
 }
@@ -137,6 +173,14 @@ export function parseSessionCreateInput(input: unknown): SessionCreateInput {
         kind,
         cloudSession: parseCloudSessionCreateMetadata(source.cloudSession, 'cloudSession'),
     };
+}
+
+function readNonNegativeInteger(value: unknown, field: string): number {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+        throw new Error(`Invalid "${field}": expected non-negative integer.`);
+    }
+
+    return value;
 }
 
 function parseCloudSessionCreateMetadata(value: unknown, field: string): CloudSessionCreateMetadata {
@@ -324,6 +368,32 @@ export function parseSessionGetAttachmentInput(input: unknown): SessionGetAttach
     };
 }
 
+export function parseSessionPrepareDocumentAttachmentInput(input: unknown): SessionPrepareDocumentAttachmentInput {
+    const source = readObject(input, 'input');
+    const base = parseSessionByIdInput(input);
+    return {
+        ...base,
+        clientId: readString(source.clientId, 'clientId'),
+        fileName: readString(source.fileName, 'fileName'),
+        mimeType: readEnumValue(source.mimeType, 'mimeType', composerDocumentAttachmentMimeTypes),
+        byteSize: readPositiveInteger(source.byteSize, 'byteSize'),
+        sha256: readString(source.sha256, 'sha256'),
+        bytesBase64: readString(source.bytesBase64, 'bytesBase64'),
+    };
+}
+
+export function parseSessionGetDocumentArtifactInput(input: unknown): SessionGetDocumentArtifactInput {
+    const source = readObject(input, 'input');
+    return {
+        ...parseSessionByIdInput(input),
+        documentArtifactId: readEntityId(source.documentArtifactId, 'documentArtifactId', 'doc'),
+    };
+}
+
+export function parseSessionDiscardDocumentAttachmentInput(input: unknown): SessionDiscardDocumentAttachmentInput {
+    return parseSessionGetDocumentArtifactInput(input);
+}
+
 function parseSessionRegistryContextInput(input: unknown): SessionGetAttachedSkillsInput {
     const source = readObject(input, 'input');
 
@@ -498,6 +568,9 @@ export const sessionListOutboxInputSchema = createParser(parseSessionListOutboxI
 export const sessionListMessagesInputSchema = createParser(parseSessionListMessagesInput);
 export const sessionGetMessageMediaInputSchema = createParser(parseSessionGetMessageMediaInput);
 export const sessionGetAttachmentInputSchema = createParser(parseSessionGetAttachmentInput);
+export const sessionPrepareDocumentAttachmentInputSchema = createParser(parseSessionPrepareDocumentAttachmentInput);
+export const sessionGetDocumentArtifactInputSchema = createParser(parseSessionGetDocumentArtifactInput);
+export const sessionDiscardDocumentAttachmentInputSchema = createParser(parseSessionDiscardDocumentAttachmentInput);
 export const sessionQueueRunInputSchema = createParser(parseSessionQueueRunInput);
 export const sessionOutboxEntryInputSchema = createParser(parseSessionOutboxEntryInput);
 export const sessionMoveOutboxEntryInputSchema = createParser(parseSessionMoveOutboxEntryInput);

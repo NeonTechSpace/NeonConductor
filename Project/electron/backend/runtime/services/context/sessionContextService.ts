@@ -2,49 +2,54 @@ import type { SessionContextCompactionRecord } from '@/app/backend/persistence/t
 import type {
     CompactSessionResult,
     ComposerAttachmentInput,
+    ComposerDocumentAttachmentInput,
     PreparedContextSummary,
     ResolvedContextPolicy,
     ResolvedContextState,
+    RunContractDocumentSummary,
     RetrievedMemorySummary,
     TokenCountEstimate,
 } from '@/app/backend/runtime/contracts';
 import type { EntityId } from '@/app/backend/runtime/contracts';
-import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
-import { contextPolicyService } from '@/app/backend/runtime/services/context/policyService';
-import { contextCompactionPreparationCoordinator } from '@/app/backend/runtime/services/context/contextCompactionPreparationCoordinator';
-import { applyPersistedCompaction, loadSessionReplaySnapshot } from '@/app/backend/runtime/services/context/sessionReplayLoader';
 import {
-    buildPreparedContextDigest,
-    buildPreparedContextMessages,
-} from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
-import { assessContextBudget, estimatePreparedContextMessages } from '@/app/backend/runtime/services/context/sessionContextBudgetEvaluator';
+    type PreparedContextModeOverrides,
+    type PreparedContextProfileDefaults,
+    type SkillfileDefinition,
+} from '@/app/backend/runtime/contracts';
+import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
 import { compactLoadedSessionContext } from '@/app/backend/runtime/services/context/contextCompactionLifecycle';
-import { loadRetrievedMemoryInjection } from '@/app/backend/runtime/services/context/retrievedMemoryInjection';
-import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
+import { contextCompactionPreparationCoordinator } from '@/app/backend/runtime/services/context/contextCompactionPreparationCoordinator';
+import {
+    resolveExecutionTargetContextPreview,
+} from '@/app/backend/runtime/services/context/executionTargetContextPreviewService';
+import { contextPolicyService } from '@/app/backend/runtime/services/context/policyService';
 import {
     buildPreparedContextDigestSummary,
     resolvePreparedContextLedger,
     type PreparedContextContributorSpec,
 } from '@/app/backend/runtime/services/context/preparedContextLedger';
 import {
-    resolveExecutionTargetContextPreview,
-} from '@/app/backend/runtime/services/context/executionTargetContextPreviewService';
+    buildPreparedContextDigest,
+    buildPreparedContextMessages,
+} from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
+import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
+import { loadRetrievedMemoryInjection } from '@/app/backend/runtime/services/context/retrievedMemoryInjection';
+import { assessContextBudget, estimatePreparedContextMessages } from '@/app/backend/runtime/services/context/sessionContextBudgetEvaluator';
+import { applyPersistedCompaction, loadSessionReplaySnapshot } from '@/app/backend/runtime/services/context/sessionReplayLoader';
+import { documentArtifactService } from '@/app/backend/runtime/services/documentArtifacts/service';
+import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
 import {
     appendDynamicContributors,
     resolveDynamicSkillContextContributors,
 } from '@/app/backend/runtime/services/sessionSkills/dynamicContextResolver';
-import type { RunContextMessage } from '@/app/backend/runtime/services/runExecution/types';
-import {
-    type PreparedContextModeOverrides,
-    type PreparedContextProfileDefaults,
-    type SkillfileDefinition,
-} from '@/app/backend/runtime/contracts';
+
 import type { ResolvedWorkspaceContext } from '@/shared/contracts';
 
 export interface PreparedSessionContext {
     messages: RunContextMessage[];
     digest: string;
     preparedContext: PreparedContextSummary;
+    documentContexts?: RunContractDocumentSummary[];
     estimate?: TokenCountEstimate;
     policy: ResolvedContextPolicy;
     compaction?: SessionContextCompactionRecord;
@@ -87,13 +92,13 @@ function createEmptyPreparedContextSummary(input: {
 
 function buildRetrievedMemoryContributorSpecs(messages: RunContextMessage[]): PreparedContextContributorSpec[] {
     return messages.map((message, index) => ({
-        id: `retrieved_memory:${index}`,
+        id: `retrieved_memory:${String(index)}`,
         kind: 'retrieved_memory',
         group: 'retrieved_memory',
         label: 'Retrieved memory',
         source: {
             kind: 'memory',
-            key: `retrieved_memory:${index}`,
+            key: `retrieved_memory:${String(index)}`,
             label: 'Retrieved memory',
         },
         messages: [message],
@@ -125,6 +130,18 @@ function buildCompactionContributorSpec(
             inclusionReason: 'Included because session compaction replay is active.',
         },
     ];
+}
+
+function hasImageAttachments(attachments: ComposerAttachmentInput[] | undefined): boolean {
+    return (attachments ?? []).some((attachment) => attachment.kind === undefined || attachment.kind === 'image_attachment');
+}
+
+function getDocumentAttachments(
+    attachments: ComposerAttachmentInput[] | undefined
+): ComposerDocumentAttachmentInput[] {
+    return (attachments ?? []).filter(
+        (attachment): attachment is ComposerDocumentAttachmentInput => attachment.kind === 'document_attachment'
+    );
 }
 
 class SessionContextService {
@@ -263,9 +280,25 @@ class SessionContextService {
             profileId: input.profileId,
             providerId: input.providerId,
             modelId: input.modelId,
-            hasMultimodalContent:
-                replaySnapshot.hasMultimodalContent || Boolean(input.attachments && input.attachments.length > 0),
+            hasMultimodalContent: replaySnapshot.hasMultimodalContent || hasImageAttachments(input.attachments),
         });
+        const documentContextResult = await documentArtifactService.resolveRunContexts({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            ...(policy.thresholdTokens ? { thresholdTokens: policy.thresholdTokens } : {}),
+            attachments: getDocumentAttachments(input.attachments),
+        });
+        if (documentContextResult.isErr()) {
+            return errOp('invalid_payload', documentContextResult.error.message, {
+                details: {
+                    code: documentContextResult.error.code,
+                    ...(documentContextResult.error.documentArtifactId
+                        ? { documentArtifactId: documentContextResult.error.documentArtifactId }
+                        : {}),
+                },
+            });
+        }
+        const documentContexts = documentContextResult.value;
         const retrievedMemoryResult = await loadRetrievedMemoryInjection({
             profileId: input.profileId,
             sessionId: input.sessionId,
@@ -321,6 +354,7 @@ class SessionContextService {
             replayMessages: persistedReplay.replayMessages,
             prompt: input.prompt,
             ...(input.attachments ? { attachments: input.attachments } : {}),
+            ...(documentContexts.length > 0 ? { documentContexts } : {}),
             ...(persistedReplay.summaryMessage ? { summaryMessage: persistedReplay.summaryMessage } : {}),
         });
         let preparedEstimate = await estimatePreparedContextMessages({
@@ -393,6 +427,7 @@ class SessionContextService {
                     replayMessages: compactedReplay.replayMessages,
                     prompt: input.prompt,
                     ...(input.attachments ? { attachments: input.attachments } : {}),
+                    ...(documentContexts.length > 0 ? { documentContexts } : {}),
                     ...(compactedReplay.summaryMessage ? { summaryMessage: compactedReplay.summaryMessage } : {}),
                 });
                 preparedEstimate = await estimatePreparedContextMessages({
@@ -448,6 +483,9 @@ class SessionContextService {
             messages: finalMessages,
             digest,
             preparedContext,
+            ...(documentContexts.length > 0
+                ? { documentContexts: documentContexts.map((documentContext) => documentContext.summary) }
+                : {}),
             ...(preparedEstimate.estimate ? { estimate: preparedEstimate.estimate } : {}),
             policy,
             ...(compaction ? { compaction } : {}),

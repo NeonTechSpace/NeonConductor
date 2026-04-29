@@ -75,6 +75,23 @@ function extractReplayParts(parts: MessagePartRecord[]): RunContextPart[] {
             continue;
         }
 
+        if (part.partType === 'document_attachment') {
+            const fileName = typeof part.payload['fileName'] === 'string' ? part.payload['fileName'] : 'document.pdf';
+            const mimeType = typeof part.payload['mimeType'] === 'string' ? part.payload['mimeType'] : 'application/pdf';
+            const pageCount = typeof part.payload['pageCount'] === 'number' ? part.payload['pageCount'] : undefined;
+            const text = [
+                `Attached PDF document: ${fileName}`,
+                `MIME type: ${mimeType}`,
+                ...(pageCount !== undefined ? [`Pages: ${String(pageCount)}`] : []),
+                'Document content was supplied as bounded extracted text during the original run.',
+            ].join('\n');
+            const textPart = createTextPart(text);
+            if (textPart) {
+                replayParts.push(textPart);
+            }
+            continue;
+        }
+
         if (part.partType === 'reasoning' || part.partType === 'reasoning_summary') {
             const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
             const reasoningPart = createReasoningTextPart({

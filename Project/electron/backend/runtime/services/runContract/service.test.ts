@@ -209,4 +209,62 @@ describe('runContract service', () => {
             true
         );
     });
+
+    it('includes PDF document attachment counts and selected context summaries', () => {
+        const prepared = createPreparedRunStart();
+        const runContext = prepared.runContext;
+        if (!runContext) {
+            throw new Error('Expected prepared test run to include run context.');
+        }
+        prepared.runContext = {
+            ...runContext,
+            documentContexts: [
+                {
+                    documentArtifactId: 'doc_contract',
+                    fileName: 'contract.pdf',
+                    mimeType: 'application/pdf',
+                    byteSize: 4096,
+                    pageCount: 3,
+                    extractionState: 'extracted',
+                    contextMode: 'selected_text',
+                    countingState: 'exact_text_estimate',
+                    selectedPageRanges: [{ startPage: 1, endPage: 2 }],
+                    selectedTokenCount: 500,
+                    selectedTextByteSize: 1800,
+                    omittedPageCount: 1,
+                },
+            ],
+        };
+
+        const preview = prepareRunContractPreview({
+            startInput: {
+                ...createStartRunInput('Use the attached PDF.'),
+                attachments: [
+                    {
+                        clientId: 'doc-client',
+                        kind: 'document_attachment',
+                        documentArtifactId: 'doc_contract',
+                        fileName: 'contract.pdf',
+                        mimeType: 'application/pdf',
+                        sha256: 'sha-contract',
+                        byteSize: 4096,
+                        pageCount: 3,
+                        extractionState: 'extracted',
+                        extractedTextByteSize: 1800,
+                        extractedTextTokenCount: 500,
+                    },
+                ],
+            },
+            prepared,
+        });
+
+        expect(preview?.attachmentSummary.documentAttachmentCount).toBe(1);
+        expect(preview?.attachmentSummary.documentAttachmentByteSize).toBe(4096);
+        expect(preview?.documentSummary?.[0]).toMatchObject({
+            documentArtifactId: 'doc_contract',
+            selectedPageRanges: [{ startPage: 1, endPage: 2 }],
+            selectedTokenCount: 500,
+            omittedPageCount: 1,
+        });
+    });
 });

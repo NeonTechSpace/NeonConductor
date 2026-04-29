@@ -41,6 +41,16 @@ export const composerImageAttachmentMimeTypes = ['image/jpeg', 'image/png', 'ima
 export type ComposerImageAttachmentMimeType = (typeof composerImageAttachmentMimeTypes)[number];
 export const composerTextFileAttachmentEncodings = ['utf-8', 'utf-8-bom'] as const;
 export type ComposerTextFileAttachmentEncoding = (typeof composerTextFileAttachmentEncodings)[number];
+export const composerDocumentAttachmentMimeTypes = ['application/pdf'] as const;
+export type ComposerDocumentAttachmentMimeType = (typeof composerDocumentAttachmentMimeTypes)[number];
+export const documentExtractionStates = ['pending', 'extracted', 'empty', 'failed'] as const;
+export type DocumentExtractionState = (typeof documentExtractionStates)[number];
+export const documentArtifactLifecycleStates = ['draft', 'attached', 'deleted'] as const;
+export type DocumentArtifactLifecycleState = (typeof documentArtifactLifecycleStates)[number];
+export const documentContextModes = ['artifact_only', 'selected_text'] as const;
+export type DocumentContextMode = (typeof documentContextModes)[number];
+export const documentCountingStates = ['exact_text_estimate', 'unavailable'] as const;
+export type DocumentCountingState = (typeof documentCountingStates)[number];
 
 export interface ComposerImageAttachmentInput {
     clientId: string;
@@ -65,7 +75,52 @@ export interface ComposerTextFileAttachmentInput {
     encoding: ComposerTextFileAttachmentEncoding;
 }
 
-export type ComposerAttachmentInput = ComposerImageAttachmentInput | ComposerTextFileAttachmentInput;
+export interface ComposerDocumentAttachmentInput {
+    clientId: string;
+    kind: 'document_attachment';
+    documentArtifactId: EntityId<'doc'>;
+    fileName: string;
+    mimeType: ComposerDocumentAttachmentMimeType;
+    sha256: string;
+    byteSize: number;
+    pageCount?: number;
+    extractionState: DocumentExtractionState;
+    extractedTextByteSize: number;
+    extractedTextTokenCount: number;
+}
+
+export type ComposerAttachmentInput =
+    | ComposerImageAttachmentInput
+    | ComposerTextFileAttachmentInput
+    | ComposerDocumentAttachmentInput;
+
+export interface DocumentArtifactPageSummary {
+    pageNumber: number;
+    textByteSize: number;
+    estimatedTokenCount: number;
+    textSha256?: string;
+    hasText: boolean;
+}
+
+export interface DocumentArtifactSummary {
+    id: EntityId<'doc'>;
+    profileId: string;
+    sessionId: EntityId<'sess'>;
+    fileName: string;
+    mimeType: ComposerDocumentAttachmentMimeType;
+    sha256: string;
+    byteSize: number;
+    pageCount?: number;
+    extractionState: DocumentExtractionState;
+    lifecycleState: DocumentArtifactLifecycleState;
+    extractedTextByteSize: number;
+    extractedTextTokenCount: number;
+    errorCode?: string;
+    errorMessage?: string;
+    pages: DocumentArtifactPageSummary[];
+    createdAt: string;
+    updatedAt: string;
+}
 
 export interface SessionAttachmentSummary {
     id: EntityId<'att'>;
@@ -77,6 +132,11 @@ export interface SessionAttachmentSummary {
     width?: number;
     height?: number;
     encoding?: ComposerTextFileAttachmentEncoding;
+    documentArtifactId?: EntityId<'doc'>;
+    pageCount?: number;
+    extractionState?: DocumentExtractionState;
+    extractedTextByteSize?: number;
+    extractedTextTokenCount?: number;
     createdAt: string;
 }
 
@@ -88,6 +148,10 @@ export type SessionAttachmentPayload =
     | ({
           kind: 'text_file_attachment';
           text: string;
+      } & SessionAttachmentSummary)
+    | ({
+          kind: 'document_attachment';
+          documentArtifact: DocumentArtifactSummary;
       } & SessionAttachmentSummary);
 
 export interface CloudSessionSummary {
@@ -299,6 +363,21 @@ export interface SessionGetAttachmentInput extends ProfileInput {
     attachmentId: EntityId<'att'>;
 }
 
+export interface SessionPrepareDocumentAttachmentInput extends SessionByIdInput {
+    clientId: string;
+    fileName: string;
+    mimeType: ComposerDocumentAttachmentMimeType;
+    byteSize: number;
+    sha256: string;
+    bytesBase64: string;
+}
+
+export interface SessionGetDocumentArtifactInput extends SessionByIdInput {
+    documentArtifactId: EntityId<'doc'>;
+}
+
+export type SessionDiscardDocumentAttachmentInput = SessionGetDocumentArtifactInput;
+
 export interface SessionMessageMediaPayload {
     mimeType: ComposerImageAttachmentMimeType;
     bytes: Uint8Array;
@@ -332,6 +411,37 @@ export type SessionGetAttachmentResult =
     | ({
           found: true;
       } & SessionAttachmentPayload);
+
+export type SessionPrepareDocumentAttachmentResult =
+    | {
+          prepared: true;
+          attachment: ComposerDocumentAttachmentInput;
+          document: DocumentArtifactSummary;
+      }
+    | {
+          prepared: false;
+          code: 'file_read_guard_blocked' | 'document_limit_exceeded' | 'invalid_pdf_payload' | 'document_extraction_failed';
+          message: string;
+          document?: DocumentArtifactSummary;
+      };
+
+export type SessionGetDocumentArtifactResult =
+    | {
+          found: false;
+      }
+    | {
+          found: true;
+          document: DocumentArtifactSummary;
+      };
+
+export type SessionDiscardDocumentAttachmentResult =
+    | {
+          discarded: true;
+      }
+    | {
+          discarded: false;
+          reason: 'not_found' | 'already_attached';
+      };
 
 export interface SessionListOutboxResult {
     entries: SessionOutboxEntry[];

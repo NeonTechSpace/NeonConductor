@@ -267,6 +267,7 @@ export function buildConversationWorkspaceProjection(
         permissionWorkspaces: input.shellViewModel.permissionWorkspaces,
         pendingImages: input.composer.pendingImages,
         pendingTextFiles: input.composer.pendingTextFiles,
+        pendingDocuments: input.composer.pendingDocuments,
         readyComposerAttachments: [
             ...input.composer.pendingImages.flatMap((image) =>
                 image.status === 'ready' && image.attachment ? [image.attachment] : []
@@ -274,10 +275,14 @@ export function buildConversationWorkspaceProjection(
             ...input.composer.pendingTextFiles.flatMap((file) =>
                 file.status === 'ready' && file.attachment ? [file.attachment] : []
             ),
+            ...input.composer.pendingDocuments.flatMap((document) =>
+                document.status === 'ready' && document.attachment ? [document.attachment] : []
+            ),
         ],
         hasBlockingPendingAttachments:
             input.composer.pendingImages.some((image) => image.status !== 'ready') ||
-            input.composer.pendingTextFiles.some((file) => file.status === 'reading'),
+            input.composer.pendingTextFiles.some((file) => file.status === 'reading') ||
+            input.composer.pendingDocuments.some((document) => document.status !== 'ready'),
         isCreatingSession: input.mutations.createSessionMutation.isPending,
         isStartingRun: input.mutations.startRunMutation.isPending || input.mutations.planStartMutation.isPending,
         isResolvingPermission: input.mutations.resolvePermissionMutation.isPending,
@@ -380,6 +385,7 @@ export function buildConversationWorkspaceProjection(
         onAddFiles: input.composer.onAddFiles,
         onRemovePendingImage: input.composer.onRemovePendingImage,
         onRemovePendingTextFile: input.composer.onRemovePendingTextFile,
+        onRemovePendingDocument: input.composer.onRemovePendingDocument,
         onRetryPendingImage: input.composer.onRetryPendingImage,
         ...(!input.isPlanningComposerMode ? { onQueuePrompt: input.composer.onQueuePrompt } : {}),
         onSubmitPrompt: input.composer.onSubmitPrompt,

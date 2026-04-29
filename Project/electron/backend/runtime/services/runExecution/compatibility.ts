@@ -62,7 +62,7 @@ interface PrepareRunnableCandidateInput {
 }
 
 function hasImageAttachments(attachments: ComposerAttachmentInput[] | undefined): boolean {
-    return (attachments ?? []).some((attachment) => attachment.kind !== 'text_file_attachment');
+    return (attachments ?? []).some((attachment) => attachment.kind === undefined || attachment.kind === 'image_attachment');
 }
 
 function buildInvalidPersistedModelError(input: {

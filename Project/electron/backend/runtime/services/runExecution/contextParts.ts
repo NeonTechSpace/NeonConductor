@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 
 import type { ProviderRuntimePart } from '@/app/backend/providers/types';
+import type { DocumentRunContext } from '@/app/backend/runtime/services/documentArtifacts/service';
 import type { RunContextMessage, RunContextPart } from '@/app/backend/runtime/services/runExecution/types';
 
 import type { ComposerAttachmentInput, ComposerImageAttachmentInput, ComposerTextFileAttachmentInput } from '@/shared/contracts';
@@ -158,6 +159,7 @@ export function appendPromptMessage(input: {
     messages: RunContextMessage[];
     prompt: string;
     attachments?: ComposerAttachmentInput[];
+    documentContexts?: DocumentRunContext[];
 }): RunContextMessage[] {
     const parts: RunContextPart[] = [];
     const promptPart = createTextPart(input.prompt);
@@ -166,7 +168,7 @@ export function appendPromptMessage(input: {
     }
 
     for (const attachment of input.attachments ?? []) {
-        if (attachment.kind !== 'text_file_attachment') {
+        if (attachment.kind === 'image_attachment' || attachment.kind === undefined) {
             parts.push({
                 type: 'image',
                 dataUrl: `data:${attachment.mimeType};base64,${attachment.bytesBase64}`,
@@ -178,9 +180,27 @@ export function appendPromptMessage(input: {
             continue;
         }
 
+        if (attachment.kind === 'document_attachment') {
+            continue;
+        }
+
+        const textAttachment = asTextFileAttachment(attachment);
+        if (!textAttachment) {
+            continue;
+        }
         parts.push({
             type: 'text',
-            text: formatTextFileAttachmentForPrompt(attachment),
+            text: formatTextFileAttachmentForPrompt(textAttachment),
+        });
+    }
+
+    for (const documentContext of input.documentContexts ?? []) {
+        if (!documentContext.contextText) {
+            continue;
+        }
+        parts.push({
+            type: 'text',
+            text: documentContext.contextText,
         });
     }
 
@@ -236,6 +256,10 @@ function formatTextFileAttachmentForPrompt(attachment: ComposerTextFileAttachmen
         '',
         normalizedText,
     ].join('\n');
+}
+
+function asTextFileAttachment(attachment: ComposerAttachmentInput): ComposerTextFileAttachmentInput | null {
+    return attachment.kind === 'text_file_attachment' ? attachment : null;
 }
 
 export function hashablePartContent(part: RunContextPart): string {

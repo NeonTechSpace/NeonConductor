@@ -21,6 +21,7 @@ export type EntityIdPrefix =
     | 'part'
     | 'media'
     | 'att'
+    | 'doc'
     | 'rcpt'
     | 'tag'
     | 'sess'

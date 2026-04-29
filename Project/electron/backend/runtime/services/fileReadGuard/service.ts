@@ -104,11 +104,15 @@ export class FileReadGuardService {
             const fileName =
                 attachment.kind === 'text_file_attachment'
                     ? attachment.fileName
-                    : (attachment.fileName ?? `${attachment.clientId}${imageExtensionForMime(attachment.mimeType)}`);
+                    : attachment.kind === 'document_attachment'
+                      ? attachment.fileName
+                      : (attachment.fileName ?? `${attachment.clientId}${imageExtensionForMime(attachment.mimeType)}`);
             const byteSize =
                 attachment.kind === 'text_file_attachment'
                     ? attachment.byteSize
-                    : (attachment.byteSize ?? 0);
+                    : attachment.kind === 'document_attachment'
+                      ? attachment.byteSize
+                      : (attachment.byteSize ?? 0);
             const fileInput = {
                 profileId: input.profileId,
                 fileNameOrPath: fileName,

@@ -6,6 +6,7 @@ function createPolicyInput(overrides: Partial<Parameters<typeof buildComposerSub
     return {
         pendingImages: [],
         pendingTextFiles: [],
+        pendingDocuments: [],
         canAttachImages: true,
         maxImageAttachmentsPerMessage: 4,
         draftPrompt: 'ship it',
@@ -25,8 +26,12 @@ describe('buildComposerSubmissionPolicy', () => {
         );
 
         expect(policy.canSubmit).toBe(false);
-        expect(policy.composerFooterMessage).toBe('Attach up to 4 images plus UTF-8 text/code files, or send text-only.');
-        expect(policy.attachmentStatusMessage).toBe('Attach up to 4 images plus UTF-8 text/code files, or send text-only.');
+        expect(policy.composerFooterMessage).toBe(
+            'Attach up to 4 images plus PDFs or UTF-8 text/code files, or send text-only.'
+        );
+        expect(policy.attachmentStatusMessage).toBe(
+            'Attach up to 4 images plus PDFs or UTF-8 text/code files, or send text-only.'
+        );
     });
 
     it('prefers slash-command errors over run errors', () => {

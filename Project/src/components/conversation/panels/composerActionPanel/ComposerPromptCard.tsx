@@ -1,3 +1,7 @@
+import {
+    PendingDocumentsList,
+    type PendingDocumentCardView,
+} from '@/web/components/conversation/panels/composerActionPanel/pendingDocumentsList';
 import { PendingImagesGrid, type PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 import {
     PendingTextFilesList,
@@ -14,6 +18,7 @@ interface ComposerPromptCardProps {
     imageAttachmentBlockedReason: string | undefined;
     pendingImages: PendingImageCardView[];
     pendingTextFiles: PendingTextFileCardView[];
+    pendingDocuments: PendingDocumentCardView[];
     composerErrorMessage: string | undefined;
     composerErrorTone: 'destructive' | 'muted';
     draftPrompt: string;
@@ -34,6 +39,7 @@ interface ComposerPromptCardProps {
     formatImageBytes: (value?: number) => string | undefined;
     formatAttachmentBytes: (value?: number) => string | undefined;
     onRemovePendingTextFile: (clientId: string) => void;
+    onRemovePendingDocument: (clientId: string) => void;
 }
 
 export function ComposerPromptCard({
@@ -42,6 +48,7 @@ export function ComposerPromptCard({
     imageAttachmentBlockedReason,
     pendingImages,
     pendingTextFiles,
+    pendingDocuments,
     composerErrorMessage,
     composerErrorTone,
     draftPrompt,
@@ -62,6 +69,7 @@ export function ComposerPromptCard({
     formatImageBytes,
     formatAttachmentBytes,
     onRemovePendingTextFile,
+    onRemovePendingDocument,
 }: ComposerPromptCardProps) {
     return (
         <div
@@ -72,7 +80,7 @@ export function ComposerPromptCard({
             <input
                 ref={fileInputRef}
                 type='file'
-                accept='image/jpeg,image/png,image/webp,text/*,.txt,.md,.markdown,.json,.yml,.yaml,.toml,.ini,.conf,.env,.xml,.html,.htm,.css,.scss,.less,.js,.jsx,.ts,.tsx,.mjs,.cjs,.py,.rb,.go,.rs,.java,.kt,.c,.cc,.cpp,.h,.hpp,.cs,.php,.sql,.sh,.ps1,.bat,.cmd,.graphql,.gql'
+                accept='image/jpeg,image/png,image/webp,application/pdf,.pdf,text/*,.txt,.md,.markdown,.json,.yml,.yaml,.toml,.ini,.conf,.env,.xml,.html,.htm,.css,.scss,.less,.js,.jsx,.ts,.tsx,.mjs,.cjs,.py,.rb,.go,.rs,.java,.kt,.c,.cc,.cpp,.h,.hpp,.cs,.php,.sql,.sh,.ps1,.bat,.cmd,.graphql,.gql'
                 multiple
                 className='hidden'
                 onChange={onFileInputChange}
@@ -106,6 +114,11 @@ export function ComposerPromptCard({
                     onRemovePendingTextFile={onRemovePendingTextFile}
                     formatByteSize={formatAttachmentBytes}
                 />
+                <PendingDocumentsList
+                    pendingDocuments={pendingDocuments}
+                    onRemovePendingDocument={onRemovePendingDocument}
+                    formatByteSize={formatAttachmentBytes}
+                />
                 <textarea
                     ref={promptTextareaRef}
                     aria-label='Prompt'
@@ -127,7 +140,7 @@ export function ComposerPromptCard({
                 />
                 {isDragActive ? (
                     <div className='bg-primary/10 text-primary pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold backdrop-blur-sm'>
-                        Drop screenshots or UTF-8 text/code files to attach them
+                        Drop screenshots, PDFs, or UTF-8 text/code files to attach them
                     </div>
                 ) : null}
             </div>

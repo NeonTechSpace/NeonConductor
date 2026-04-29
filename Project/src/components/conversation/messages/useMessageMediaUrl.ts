@@ -8,8 +8,9 @@ import {
 import { SECONDARY_QUERY_OPTIONS } from '@/web/lib/query/secondaryQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
-import type { EntityId, SessionMessageMediaPayload } from '@/shared/contracts';
 import { readImageMimeType } from '@/app/shared/imageMimeType';
+
+import type { EntityId, SessionMessageMediaPayload } from '@/shared/contracts';
 
 function isIndexedRecord(value: unknown): value is Record<PropertyKey, unknown> {
     return typeof value === 'object' && value !== null;
@@ -86,7 +87,7 @@ function toAttachmentMediaPayload(
     value:
         | {
               found: boolean;
-              kind?: 'image_attachment' | 'text_file_attachment';
+              kind?: 'image_attachment' | 'text_file_attachment' | 'document_attachment';
               mimeType?: string;
               bytesBase64?: string;
               byteSize?: number;

@@ -23,6 +23,7 @@ export interface PersistenceStoragePaths {
     globalAssetsRoot: string;
     managedSandboxesRoot: string;
     toolArtifactsRoot: string;
+    documentArtifactsRoot: string;
     logsRoot: string;
 }
 
@@ -188,6 +189,7 @@ export function getPersistenceStoragePaths(): PersistenceStoragePaths {
         globalAssetsRoot: path.join(runtimeRoot, 'assets'),
         managedSandboxesRoot: path.join(runtimeRoot, 'sandboxes'),
         toolArtifactsRoot: path.join(runtimeRoot, 'tool-artifacts'),
+        documentArtifactsRoot: path.join(runtimeRoot, 'document-artifacts'),
         logsRoot: path.join(userDataRoot, 'logs'),
     };
 }

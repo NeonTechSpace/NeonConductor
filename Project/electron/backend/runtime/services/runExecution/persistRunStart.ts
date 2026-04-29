@@ -12,8 +12,12 @@ import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/serv
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 
-import type { EntityId } from '@/shared/contracts';
+import type { ComposerAttachmentInput, ComposerTextFileAttachmentInput, EntityId } from '@/shared/contracts';
 import { createAssistantStatusPartPayload } from '@/shared/contracts/types/messagePart';
+
+function asTextFileAttachment(attachment: ComposerAttachmentInput): ComposerTextFileAttachmentInput | null {
+    return attachment.kind === 'text_file_attachment' ? attachment : null;
+}
 
 async function appendBrowserContextTranscriptParts(input: {
     runId: EntityId<'run'>;
@@ -129,7 +133,7 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
     }
 
     for (const attachment of input.input.attachments ?? []) {
-        if (attachment.kind !== 'text_file_attachment') {
+        if (attachment.kind === 'image_attachment' || attachment.kind === undefined) {
             const attachmentSummary = await conversationAttachmentStore.createSnapshot({
                 profileId: input.input.profileId,
                 sessionId: input.input.sessionId,
@@ -161,22 +165,62 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
             continue;
         }
 
+        if (attachment.kind === 'document_attachment') {
+            const attachmentSummary = await conversationAttachmentStore.createSnapshot({
+                profileId: input.input.profileId,
+                sessionId: input.input.sessionId,
+                attachment,
+            });
+            const documentPart = await messageStore.appendPart({
+                messageId: userMessage.id,
+                partType: 'document_attachment',
+                payload: {
+                    attachmentId: attachmentSummary.id,
+                    documentArtifactId: attachment.documentArtifactId,
+                    fileName: attachment.fileName,
+                    mimeType: attachment.mimeType,
+                    sha256: attachment.sha256,
+                    byteSize: attachment.byteSize,
+                    ...(attachment.pageCount !== undefined ? { pageCount: attachment.pageCount } : {}),
+                    extractionState: attachment.extractionState,
+                    extractedTextByteSize: attachment.extractedTextByteSize,
+                    extractedTextTokenCount: attachment.extractedTextTokenCount,
+                },
+            });
+            await conversationAttachmentStore.attachToMessagePart({
+                attachmentId: attachmentSummary.id,
+                messagePartId: documentPart.id,
+            });
+            await emitMessagePartAppendedEvent({
+                runId: run.id,
+                profileId: input.input.profileId,
+                sessionId: input.input.sessionId,
+                messageId: userMessage.id,
+                part: documentPart,
+            });
+            continue;
+        }
+
+        const textAttachment = asTextFileAttachment(attachment);
+        if (!textAttachment) {
+            continue;
+        }
         const attachmentSummary = await conversationAttachmentStore.createSnapshot({
             profileId: input.input.profileId,
             sessionId: input.input.sessionId,
-            attachment,
+            attachment: textAttachment,
         });
         const textFilePart = await messageStore.appendPart({
             messageId: userMessage.id,
             partType: 'text_file_attachment',
             payload: {
                 attachmentId: attachmentSummary.id,
-                fileName: attachment.fileName,
-                mimeType: attachment.mimeType,
-                text: attachment.text,
-                sha256: attachment.sha256,
-                byteSize: attachment.byteSize,
-                encoding: attachment.encoding,
+                fileName: textAttachment.fileName,
+                mimeType: textAttachment.mimeType,
+                text: textAttachment.text,
+                sha256: textAttachment.sha256,
+                byteSize: textAttachment.byteSize,
+                encoding: textAttachment.encoding,
             },
         });
         await conversationAttachmentStore.attachToMessagePart({

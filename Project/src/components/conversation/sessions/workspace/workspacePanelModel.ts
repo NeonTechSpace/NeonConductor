@@ -67,6 +67,18 @@ export interface PendingTextFileView {
     };
 }
 
+export interface PendingDocumentView {
+    clientId: string;
+    fileName: string;
+    status: 'preparing' | 'ready' | 'failed';
+    byteSize?: number;
+    pageCount?: number;
+    extractedTextTokenCount?: number;
+    extractionState?: 'pending' | 'extracted' | 'empty' | 'failed';
+    errorMessage?: string;
+    attachment?: Extract<ComposerAttachmentInput, { kind: 'document_attachment' }>;
+}
+
 export type WorkspaceScope =
     | {
           kind: 'detached';
@@ -136,6 +148,7 @@ export interface SessionWorkspacePanelProps {
     >;
     pendingImages: PendingImageView[];
     pendingTextFiles: PendingTextFileView[];
+    pendingDocuments: PendingDocumentView[];
     readyComposerAttachments: ComposerAttachmentInput[];
     hasBlockingPendingAttachments: boolean;
     isCreatingSession: boolean;
@@ -199,6 +212,7 @@ export interface SessionWorkspacePanelProps {
     onAddFiles: (files: FileList | File[]) => void;
     onRemovePendingImage: (clientId: string) => void;
     onRemovePendingTextFile: (clientId: string) => void;
+    onRemovePendingDocument: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
     onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
     onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;

@@ -1,4 +1,4 @@
-import { ImagePlus } from 'lucide-react';
+import { Paperclip } from 'lucide-react';
 
 import { readRuntimeProviderId } from '@/web/components/conversation/panels/composerActionPanel/composerProviderId';
 import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
@@ -22,7 +22,6 @@ interface ComposerRunControlsBarProps {
     selectedReasoningEffort: RuntimeReasoningEffort;
     availableReasoningEfforts: Array<{ value: RuntimeReasoningEffort; label: string }>;
     reasoningControlDisabled: boolean;
-    canAttachImages: boolean;
     routingBadge: string | undefined;
     compactConnectionLabel: string | undefined;
     modelOptions: ModelPickerOption[];
@@ -51,7 +50,6 @@ export function ComposerRunControlsBar({
     selectedReasoningEffort,
     availableReasoningEfforts,
     reasoningControlDisabled,
-    canAttachImages,
     routingBadge,
     compactConnectionLabel,
     modelOptions,
@@ -148,16 +146,16 @@ export function ComposerRunControlsBar({
                         ))}
                     </select>
                 </label>
-                        <Button
-                            type='button'
-                            size='sm'
-                            variant='outline'
-                            className='min-h-10 rounded-full'
-                            disabled={composerControlsDisabled || !canAttachImages}
-                            onClick={onOpenFilePicker}>
-                            <ImagePlus className='h-4 w-4' />
-                            Attach
-                        </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    className='min-h-10 rounded-full'
+                    disabled={composerControlsDisabled}
+                    onClick={onOpenFilePicker}>
+                    <Paperclip className='h-4 w-4' />
+                    Attach
+                </Button>
                 <div className='ml-auto'>
                     <Button
                         type='button'

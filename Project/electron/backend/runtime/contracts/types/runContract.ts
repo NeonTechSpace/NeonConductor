@@ -8,7 +8,12 @@ import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { PreparedContextSummary } from '@/app/backend/runtime/contracts/types/context';
 import type { BrowserContextPacket, BrowserContextSummary } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { FileReadGuardDecisionReason } from '@/app/backend/runtime/contracts/types/fileReadGuard';
-import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts/types/session';
+import type {
+    DocumentContextMode,
+    DocumentCountingState,
+    DocumentExtractionState,
+    RuntimeRunOptions,
+} from '@/app/backend/runtime/contracts/types/session';
 
 export interface SteeringSnapshot {
     profileId: string;
@@ -32,10 +37,33 @@ export interface RunContractAttachmentSummary {
     totalCount: number;
     imageAttachmentCount: number;
     textFileAttachmentCount: number;
+    documentAttachmentCount?: number;
+    documentAttachmentByteSize?: number;
     totalByteSize: number;
     readGuardAllowedCount?: number;
     readGuardBlockedCount?: number;
     readGuardDecisionReasons?: Partial<Record<FileReadGuardDecisionReason, number>>;
+}
+
+export interface RunContractDocumentPageRange {
+    startPage: number;
+    endPage: number;
+}
+
+export interface RunContractDocumentSummary {
+    documentArtifactId: EntityId<'doc'>;
+    fileName: string;
+    mimeType: 'application/pdf';
+    byteSize: number;
+    pageCount?: number;
+    extractionState: DocumentExtractionState;
+    contextMode: DocumentContextMode;
+    countingState: DocumentCountingState;
+    selectedPageRanges: RunContractDocumentPageRange[];
+    selectedTokenCount: number;
+    selectedTextByteSize: number;
+    omittedPageCount: number;
+    blockedReason?: 'pending_extraction' | 'extraction_failed' | 'no_extractable_text';
 }
 
 export interface RunContractDynamicExpansionSummary {
@@ -72,6 +100,7 @@ export interface RunContractPreview {
     trustSummary: RunContractTrustSummary;
     dynamicExpansionSummary: RunContractDynamicExpansionSummary;
     attachmentSummary: RunContractAttachmentSummary;
+    documentSummary?: RunContractDocumentSummary[];
     browserContextSummary?: BrowserContextSummary;
     diffFromLastCompatible?: RunContractDiffSummary;
 }

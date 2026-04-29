@@ -27,6 +27,18 @@ vi.mock('@/web/trpc/client', () => ({
                     isFetching: false,
                 }),
             },
+            prepareDocumentAttachment: {
+                useMutation: () => ({
+                    mutateAsync: vi.fn(),
+                }),
+            },
+        },
+        profile: {
+            getFileReadGuardSettings: {
+                useQuery: () => ({
+                    data: undefined,
+                }),
+            },
         },
     },
 }));
@@ -109,6 +121,7 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
     pendingPermissions: [],
     pendingImages: [],
     pendingTextFiles: [],
+    pendingDocuments: [],
     readyComposerAttachments: [],
     hasBlockingPendingAttachments: false,
     isCreatingSession: false,
@@ -467,6 +480,7 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
     onAddFiles: vi.fn(),
     onRemovePendingImage: vi.fn(),
     onRemovePendingTextFile: vi.fn(),
+    onRemovePendingDocument: vi.fn(),
     onRetryPendingImage: vi.fn(),
     onSubmitPrompt: vi.fn(),
     onResolvePermission: vi.fn(),

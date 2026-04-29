@@ -309,6 +309,7 @@ export interface ConversationAttachmentsTable {
     session_id: string | null;
     message_part_id: string | null;
     kind: string;
+    document_artifact_id: string | null;
     file_name: string | null;
     mime_type: string;
     sha256: string;
@@ -320,6 +321,36 @@ export interface ConversationAttachmentsTable {
     text_content: string | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface DocumentArtifactsTable {
+    id: string;
+    profile_id: string;
+    session_id: string;
+    file_name: string;
+    mime_type: 'application/pdf';
+    sha256: string;
+    byte_size: number;
+    storage_relative_path: string;
+    page_count: number | null;
+    extraction_state: 'pending' | 'extracted' | 'empty' | 'failed';
+    lifecycle_state: 'draft' | 'attached' | 'deleted';
+    extracted_text_byte_size: number;
+    extracted_text_token_count: number;
+    error_code: string | null;
+    error_message: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DocumentArtifactPagesTable {
+    document_artifact_id: string;
+    page_number: number;
+    text_content: string;
+    text_sha256: string | null;
+    text_byte_size: number;
+    estimated_token_count: number;
+    created_at: string;
 }
 
 export interface SessionDevBrowserStateTable {
@@ -1362,6 +1393,8 @@ export interface DatabaseSchema {
     messages: MessagesTable;
     message_parts: MessagePartsTable;
     message_media: MessageMediaTable;
+    document_artifacts: DocumentArtifactsTable;
+    document_artifact_pages: DocumentArtifactPagesTable;
     conversation_attachments: ConversationAttachmentsTable;
     session_dev_browser_state: SessionDevBrowserStateTable;
     session_dev_browser_selections: SessionDevBrowserSelectionsTable;

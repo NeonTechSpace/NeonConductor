@@ -1,4 +1,5 @@
 import { skipToken } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import { ComposerActionPanel } from '@/web/components/conversation/panels/composerActionPanel';
 import { DevBrowserPanel } from '@/web/components/conversation/panels/devBrowserPanel';
@@ -9,7 +10,6 @@ import { isEntityId } from '@/web/components/conversation/shell/workspace/helper
 import { Button } from '@/web/components/ui/button';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
-import { useState } from 'react';
 
 type WorkspacePrimaryColumnProps = Pick<
     SessionWorkspacePanelProps,
@@ -25,6 +25,7 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'optimisticUserMessage'
     | 'pendingImages'
     | 'pendingTextFiles'
+    | 'pendingDocuments'
     | 'readyComposerAttachments'
     | 'hasBlockingPendingAttachments'
     | 'isStartingRun'
@@ -69,6 +70,7 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onAddFiles'
     | 'onRemovePendingImage'
     | 'onRemovePendingTextFile'
+    | 'onRemovePendingDocument'
     | 'onRetryPendingImage'
     | 'onQueuePrompt'
     | 'onSubmitPrompt'
@@ -97,6 +99,7 @@ export function WorkspacePrimaryColumn({
     optimisticUserMessage,
     pendingImages,
     pendingTextFiles,
+    pendingDocuments,
     readyComposerAttachments,
     hasBlockingPendingAttachments,
     isStartingRun,
@@ -141,6 +144,7 @@ export function WorkspacePrimaryColumn({
     onAddFiles,
     onRemovePendingImage,
     onRemovePendingTextFile,
+    onRemovePendingDocument,
     onRetryPendingImage,
     onQueuePrompt,
     onSubmitPrompt,
@@ -258,6 +262,7 @@ export function WorkspacePrimaryColumn({
                     profileId={profileId}
                     pendingImages={pendingImages}
                     pendingTextFiles={pendingTextFiles}
+                    pendingDocuments={pendingDocuments}
                     readyComposerAttachments={readyComposerAttachments}
                     hasBlockingPendingAttachments={hasBlockingPendingAttachments}
                     disabled={false}
@@ -309,6 +314,7 @@ export function WorkspacePrimaryColumn({
                     onAddFiles={onAddFiles}
                     onRemovePendingImage={onRemovePendingImage}
                     onRemovePendingTextFile={onRemovePendingTextFile}
+                    onRemovePendingDocument={onRemovePendingDocument}
                     onRetryPendingImage={onRetryPendingImage}
                     {...(onQueuePrompt ? { onQueuePrompt } : {})}
                     onSubmitPrompt={onSubmitPrompt}

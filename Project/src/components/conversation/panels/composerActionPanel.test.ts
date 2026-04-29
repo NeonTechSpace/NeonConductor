@@ -168,12 +168,15 @@ function createContextState(
 function createComposerActionPanelProps(
     input: Omit<Partial<ComponentProps<typeof ComposerActionPanel>>, 'profileId'>
 ): ComponentProps<typeof ComposerActionPanel> {
-    const { pendingTextFiles, onAddFiles, onRemovePendingTextFile, ...rest } = input;
+    const { pendingTextFiles, pendingDocuments, onAddFiles, onRemovePendingTextFile, onRemovePendingDocument, ...rest } =
+        input;
     return Object.assign({}, rest, {
         profileId: 'profile_default',
         pendingTextFiles: pendingTextFiles ?? [],
+        pendingDocuments: pendingDocuments ?? [],
         onAddFiles: onAddFiles ?? (() => {}),
         onRemovePendingTextFile: onRemovePendingTextFile ?? (() => {}),
+        onRemovePendingDocument: onRemovePendingDocument ?? (() => {}),
     }) as ComponentProps<typeof ComposerActionPanel>;
 }
 

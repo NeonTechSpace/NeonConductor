@@ -33,18 +33,35 @@ function createInstructionAuthorityCounts(): Record<PreparedContextInstructionAu
 }
 
 function buildAttachmentSummary(attachments: ComposerAttachmentInput[] | undefined): RunContractPreview['attachmentSummary'] {
-    const imageAttachments = (attachments ?? []).filter((attachment) => attachment.kind !== 'text_file_attachment');
+    const allAttachments = attachments ?? [];
+    const imageAttachments = (attachments ?? []).filter(
+        (attachment) => attachment.kind === undefined || attachment.kind === 'image_attachment'
+    );
     const textFileAttachments = (attachments ?? []).filter((attachment) => attachment.kind === 'text_file_attachment');
+    const documentAttachments = (attachments ?? []).filter(
+        (attachment): attachment is Extract<ComposerAttachmentInput, { kind: 'document_attachment' }> =>
+            attachment.kind === 'document_attachment'
+    );
+    const attachmentByteSize = (attachment: ComposerAttachmentInput): number =>
+        attachment.kind === 'image_attachment' || attachment.kind === undefined
+            ? (attachment.byteSize ?? 0)
+            : (attachment.byteSize ?? 0);
 
     return {
-        totalCount: (attachments ?? []).length,
+        totalCount: allAttachments.length,
         imageAttachmentCount: imageAttachments.length,
         textFileAttachmentCount: textFileAttachments.length,
-        totalByteSize: (attachments ?? []).reduce(
-            (total, attachment) => total + (attachment.kind === 'text_file_attachment' ? attachment.byteSize : (attachment.byteSize ?? 0)),
-            0
-        ),
-        readGuardAllowedCount: (attachments ?? []).length,
+        ...(documentAttachments.length > 0 ? { documentAttachmentCount: documentAttachments.length } : {}),
+        ...(documentAttachments.length > 0
+            ? {
+                  documentAttachmentByteSize: documentAttachments.reduce(
+                      (total, attachment) => total + attachment.byteSize,
+                      0
+                  ),
+              }
+            : {}),
+        totalByteSize: allAttachments.reduce((total, attachment) => total + attachmentByteSize(attachment), 0),
+        readGuardAllowedCount: allAttachments.length,
         readGuardBlockedCount: 0,
     };
 }
@@ -223,6 +240,7 @@ export function prepareRunContractPreview(input: {
         }),
         dynamicExpansionSummary: buildDynamicExpansionSummary(preparedContext.contributors),
         attachmentSummary: buildAttachmentSummary(input.startInput.attachments),
+        ...(input.prepared.runContext?.documentContexts ? { documentSummary: input.prepared.runContext.documentContexts } : {}),
         ...(input.startInput.browserContext
             ? { browserContextSummary: buildBrowserContextSummary(input.startInput.browserContext) }
             : {}),
