@@ -65,6 +65,8 @@ describe('electron main build config', () => {
         expect(mainChunk.code).not.toContain('iconv-lite');
         expect(mainChunk.code).not.toContain('safer-buffer');
         expect(mainChunk.code).not.toContain('require("buffer")');
+        expect(mainChunk.code).not.toContain('require("process")');
+        expect(mainChunk.code).not.toContain('ke("process")');
         expect(
             mainChunk.code
                 .split(/\r?\n/u)

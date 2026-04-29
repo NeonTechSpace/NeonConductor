@@ -1,11 +1,68 @@
 import * as electronModule from 'electron';
+import { createRequire } from 'node:module';
 
 type ElectronRuntimeApi = typeof import('electron');
 
-const electronModuleRecord: typeof electronModule & { default?: ElectronRuntimeApi } = electronModule;
-const electronApi: ElectronRuntimeApi = Object.prototype.hasOwnProperty.call(electronModuleRecord, 'default')
-    ? (electronModuleRecord.default ?? electronModuleRecord)
-    : electronModuleRecord;
+const requireFromElectronApi = createRequire(import.meta.url);
+
+function isElectronRuntimeApi(value: unknown): value is ElectronRuntimeApi {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+
+    const candidate = value as Partial<ElectronRuntimeApi>;
+    return (
+        Object.prototype.hasOwnProperty.call(candidate, 'app') &&
+        Object.prototype.hasOwnProperty.call(candidate, 'BrowserWindow') &&
+        Object.prototype.hasOwnProperty.call(candidate, 'dialog') &&
+        Object.prototype.hasOwnProperty.call(candidate, 'ipcMain') &&
+        candidate.app !== undefined &&
+        candidate.BrowserWindow !== undefined &&
+        candidate.dialog !== undefined &&
+        candidate.ipcMain !== undefined
+    );
+}
+
+function getDefaultExport(value: unknown): unknown {
+    if (typeof value !== 'object' || value === null) {
+        return undefined;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(value, 'default')) {
+        return undefined;
+    }
+
+    return (value as { default?: unknown }).default;
+}
+
+function requireElectronModule(): unknown {
+    return requireFromElectronApi('electron');
+}
+
+function resolveElectronRuntimeApi(moduleValue: unknown): ElectronRuntimeApi {
+    if (isElectronRuntimeApi(moduleValue)) {
+        return moduleValue;
+    }
+
+    const defaultExport = getDefaultExport(moduleValue);
+    if (isElectronRuntimeApi(defaultExport)) {
+        return defaultExport;
+    }
+
+    const requiredModule = requireElectronModule();
+    if (isElectronRuntimeApi(requiredModule)) {
+        return requiredModule;
+    }
+
+    const requiredDefaultExport = getDefaultExport(requiredModule);
+    if (isElectronRuntimeApi(requiredDefaultExport)) {
+        return requiredDefaultExport;
+    }
+
+    return moduleValue as ElectronRuntimeApi;
+}
+
+const electronApi = resolveElectronRuntimeApi(electronModule);
 
 export const app = electronApi.app;
 export const BrowserWindow = electronApi.BrowserWindow;

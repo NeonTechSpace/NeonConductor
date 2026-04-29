@@ -1,7 +1,6 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { loadNativeRegistryAssetFiles } from '@/app/backend/runtime/services/registry/filesystem';
@@ -72,5 +71,38 @@ Inspect the repository before responding.
                 required: false,
             },
         ]);
+    });
+
+    it('falls back to empty attributes when frontmatter is not an object', async () => {
+        const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'neon-registry-filesystem-'));
+        tempDirectories.push(tempRoot);
+
+        const skillDirectory = path.join(tempRoot, 'skills', 'shared', 'broken');
+        await mkdir(skillDirectory, { recursive: true });
+        await writeFile(
+            path.join(skillDirectory, 'SKILL.md'),
+            `---
+- not
+- an
+- object
+---
+# Broken skill
+Keep the body available even when attributes fail.
+`,
+            'utf8'
+        );
+
+        const discovery = await loadNativeRegistryAssetFiles({
+            rootPath: tempRoot,
+            assetKind: 'skills',
+            scope: 'global',
+        });
+        const file = discovery.files[0];
+
+        expect(discovery.files).toHaveLength(1);
+        expect(file?.parsed.attributes).toEqual({});
+        expect(file?.parsed.bodyMarkdown).toBe(
+            '# Broken skill\nKeep the body available even when attributes fail.'
+        );
     });
 });
