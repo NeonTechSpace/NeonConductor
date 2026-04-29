@@ -1,9 +1,17 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { readFileToolHandler } from '@/app/backend/runtime/services/toolExecution/handlers/readFile';
+
+const fileReadGuardServiceMock = vi.hoisted(() => ({
+    enforceFile: vi.fn(),
+}));
+
+vi.mock('@/app/backend/runtime/services/fileReadGuard/service', () => ({
+    fileReadGuardService: fileReadGuardServiceMock,
+}));
 
 const tempDirs: string[] = [];
 
@@ -21,6 +29,13 @@ afterEach(() => {
     for (const tempDir of tempDirs.splice(0)) {
         rmSync(tempDir, { recursive: true, force: true });
     }
+});
+
+beforeEach(() => {
+    fileReadGuardServiceMock.enforceFile.mockReset();
+    fileReadGuardServiceMock.enforceFile.mockResolvedValue({
+        isErr: () => false,
+    });
 });
 
 describe('readFileToolHandler', () => {
@@ -105,5 +120,50 @@ describe('readFileToolHandler', () => {
             kind: 'file_read',
             rawText,
         });
+    });
+
+    it('applies the profile file read guard before returning model-visible file content', async () => {
+        const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neon-read-file-guard-'));
+        tempDirs.push(tempDir);
+        const filePath = path.join(tempDir, '.env');
+        writeFileSync(filePath, 'TOKEN=value', 'utf8');
+        fileReadGuardServiceMock.enforceFile.mockResolvedValueOnce({
+            isErr: () => true,
+            error: {
+                message: '".env" looks like a secret or credential file.',
+            },
+        });
+
+        const result = await readFileToolHandler(
+            { path: filePath },
+            { ...workspaceContext(tempDir), profileId: 'profile_default' }
+        );
+
+        expect(result.isErr()).toBe(true);
+        if (result.isOk()) {
+            throw new Error('Expected read_file to reject a blocked path.');
+        }
+        expect(result.error.message).toContain('secret or credential');
+        expect(fileReadGuardServiceMock.enforceFile).toHaveBeenCalledWith(
+            expect.objectContaining({
+                profileId: 'profile_default',
+                fileNameOrPath: filePath,
+            })
+        );
+    });
+
+    it('honors profile read guard allow decisions for readable files', async () => {
+        const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neon-read-file-guard-allow-'));
+        tempDirs.push(tempDir);
+        const filePath = path.join(tempDir, 'notes.txt');
+        writeFileSync(filePath, 'allowed', 'utf8');
+
+        const result = await readFileToolHandler(
+            { path: filePath },
+            { ...workspaceContext(tempDir), profileId: 'profile_default' }
+        );
+
+        expect(result.isOk()).toBe(true);
+        expect(fileReadGuardServiceMock.enforceFile).toHaveBeenCalled();
     });
 });

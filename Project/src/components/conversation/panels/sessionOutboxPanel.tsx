@@ -25,6 +25,7 @@ import type {
     SessionAttachmentPayload,
     SessionOutboxEntry,
 } from '@/shared/contracts';
+import { evaluateFileReadGuard, formatFileReadGuardDecisionMessage, resolveFileReadGuardPolicy } from '@/shared/fileReadGuardPolicy';
 
 interface SessionOutboxPanelProps {
     entries: SessionOutboxEntry[];
@@ -59,7 +60,7 @@ function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
     if (attachment.kind === 'text_file_attachment') {
         return `${attachment.fileName} · ${(attachment.byteSize / 1024).toFixed(1)} KB · text`;
     }
-    return `${attachment.fileName ?? 'image'} · ${((attachment.byteSize ?? 0) / 1024).toFixed(1)} KB · ${attachment.width}×${attachment.height}`;
+    return `${attachment.fileName ?? 'image'} · ${((attachment.byteSize ?? 0) / 1024).toFixed(1)} KB · ${String(attachment.width)}×${String(attachment.height)}`;
 }
 
 function toDraftAttachment(payload: SessionAttachmentPayload): ComposerAttachmentInput {
@@ -159,6 +160,11 @@ export function SessionOutboxPanel({
             : skipToken,
         PROGRESSIVE_QUERY_OPTIONS
     );
+    const fileReadGuardQuery = trpc.profile.getFileReadGuardSettings.useQuery(
+        selectedEntry ? { profileId: selectedEntry.profileId } : skipToken,
+        PROGRESSIVE_QUERY_OPTIONS
+    );
+    const fileReadGuardPolicy = fileReadGuardQuery.data?.policy ?? resolveFileReadGuardPolicy(undefined);
 
     useEffect(() => {
         setIsEditing(false);
@@ -192,7 +198,17 @@ export function SessionOutboxPanel({
         const errors: string[] = [];
         for (const file of files) {
             const clientId = crypto.randomUUID();
-            if (file.type.startsWith('image/')) {
+            const decision = evaluateFileReadGuard({
+                fileNameOrPath: file.name,
+                mimeType: file.type,
+                byteSize: file.size,
+                policy: fileReadGuardPolicy,
+            });
+            if (!decision.allowed) {
+                errors.push(formatFileReadGuardDecisionMessage(file.name, decision));
+                continue;
+            }
+            if (decision.fileKind === 'image') {
                 const prepared = await prepareComposerImageAttachment(file, clientId);
                 if (prepared.isErr()) {
                     errors.push(prepared.error.message);
@@ -201,8 +217,12 @@ export function SessionOutboxPanel({
                 nextAttachments.push(prepared.value.attachment);
                 continue;
             }
+            if (decision.fileKind !== 'text') {
+                errors.push(`"${file.name}" is allowed by the file read policy, but cannot be attached here yet.`);
+                continue;
+            }
 
-            const prepared = await prepareComposerTextFileAttachment(file, clientId);
+            const prepared = await prepareComposerTextFileAttachment(file, clientId, fileReadGuardPolicy);
             if (prepared.isErr()) {
                 errors.push(prepared.error.message);
                 continue;
@@ -385,7 +405,7 @@ export function SessionOutboxPanel({
                                         variant='outline'
                                         onClick={() => {
                                             hydrateEditorFromQuery();
-                                            void fileInputRef.current?.click();
+                                            fileInputRef.current?.click();
                                         }}>
                                         <FileUp className='mr-2 h-4 w-4' />
                                         Add Files

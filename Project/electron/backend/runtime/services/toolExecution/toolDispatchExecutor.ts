@@ -49,6 +49,7 @@ export async function dispatchToolInvocation(input: {
                   return ok(output.value);
               })()
             : await invokeToolHandler(context.definition.tool, context.executionArgs, {
+                  ...(context.profileId ? { profileId: context.profileId } : {}),
                   ...(context.executionRoot?.kind === 'workspace' || context.executionRoot?.kind === 'sandbox'
                       ? {
                             cwd: context.executionRoot.absolutePath,

@@ -4,7 +4,13 @@ export type SettingsPrimarySectionId = 'kilo' | 'modes' | 'providers' | 'profile
 
 export type KiloSettingsSubsectionId = 'account' | 'models' | 'routing' | 'marketplace';
 export type ModesSettingsSubsectionId = 'instructions';
-export type ProfileSettingsSubsectionId = 'management' | 'execution' | 'naming' | 'utility' | 'memoryRetrieval';
+export type ProfileSettingsSubsectionId =
+    | 'management'
+    | 'execution'
+    | 'naming'
+    | 'utility'
+    | 'memoryRetrieval'
+    | 'fileReads';
 export type ContextSettingsSubsectionId = 'workspace' | 'budgeting';
 export type RegistrySettingsSubsectionId = 'rules' | 'skills' | 'modes' | 'diagnostics';
 export type AppSettingsSubsectionId = 'privacy' | 'mcp' | 'maintenance';
@@ -147,6 +153,12 @@ export const PROFILE_SETTINGS_SUBSECTIONS: ReadonlyArray<SettingsSubsectionDefin
         id: 'memoryRetrieval',
         label: 'Memory Retrieval',
         description: 'Choose the dedicated internal memory retrieval role target for semantic retrieval work.',
+        availability: 'available',
+    },
+    {
+        id: 'fileReads',
+        label: 'File Reads',
+        description: 'Control which model-visible files this profile can read or attach.',
         availability: 'available',
     },
 ];

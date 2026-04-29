@@ -197,6 +197,7 @@ export function invalidateProfileQueries(utils: TrpcUtils, profileId: string | u
             utils.profile.getExecutionPreset.invalidate(),
             utils.profile.getUtilityModel.invalidate(),
             utils.profile.getMemoryRetrievalModel.invalidate(),
+            utils.profile.getFileReadGuardSettings.invalidate(),
             invalidateShellBootstrap(utils, profileId),
         ])
     );
@@ -251,6 +252,7 @@ export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<v
     invalidations.push(toVoidPromise(utils.profile.getExecutionPreset.invalidate()));
     invalidations.push(toVoidPromise(utils.profile.getUtilityModel.invalidate()));
     invalidations.push(toVoidPromise(utils.profile.getMemoryRetrievalModel.invalidate()));
+    invalidations.push(toVoidPromise(utils.profile.getFileReadGuardSettings.invalidate()));
     invalidations.push(toVoidPromise(utils.runtime.listWorkspaceRoots.invalidate()));
     invalidations.push(toVoidPromise(utils.sandbox.list.invalidate()));
     invalidations.push(toVoidPromise(utils.session.getAttachedRules.invalidate()));

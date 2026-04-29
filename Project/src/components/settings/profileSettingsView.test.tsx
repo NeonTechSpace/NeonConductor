@@ -83,6 +83,37 @@ vi.mock('@/web/components/settings/profileSettings/useProfileSettingsController'
             saveMemoryRetrievalModel: vi.fn(),
             clearMemoryRetrievalModel: vi.fn(),
         },
+        fileReadGuard: {
+            settings: {
+                additionalAllowedExtensions: [],
+                additionalBlockedPatterns: [],
+                allowSecretLikeTextFiles: false,
+                allowUnknownUtf8Text: false,
+                maxTextFileBytes: 262144,
+            },
+            policy: {
+                additionalAllowedExtensions: [],
+                additionalBlockedPatterns: [],
+                allowSecretLikeTextFiles: false,
+                allowUnknownUtf8Text: false,
+                maxTextFileBytes: 262144,
+                defaultAllowedExtensions: ['.txt', '.ts', '.pdf', '.png'],
+                defaultBlockedPatterns: ['.env', 'private_key'],
+            },
+            isLoading: false,
+            allowedExtensionsText: '',
+            setAllowedExtensionsText: vi.fn(),
+            blockedPatternsText: '',
+            setBlockedPatternsText: vi.fn(),
+            allowSecretLikeTextFiles: false,
+            setAllowSecretLikeTextFiles: vi.fn(),
+            allowUnknownUtf8Text: false,
+            setAllowUnknownUtf8Text: vi.fn(),
+            maxTextFileBytesText: '262144',
+            setMaxTextFileBytesText: vi.fn(),
+            setSettingsMutation: { isPending: false },
+            saveSettings: vi.fn(),
+        },
         reset: {
             factoryResetMutation: { isPending: false, error: null },
         },
@@ -150,5 +181,20 @@ describe('ProfileSettingsView', () => {
         expect(html).toContain('Template + Utility AI refine');
         expect(html).not.toContain('Save AI Model');
         expect(html).not.toContain('Interim AI model override');
+    });
+
+    it('renders the File Reads subsection with guard defaults and override controls', () => {
+        const html = renderToStaticMarkup(
+            <ProfileSettingsView
+                activeProfileId='profile_default'
+                onProfileActivated={vi.fn()}
+                subsection='fileReads'
+            />
+        );
+
+        expect(html).toContain('File Reads');
+        expect(html).toContain('Default allowlist');
+        expect(html).toContain('.env');
+        expect(html).toContain('Save File Reads');
     });
 });

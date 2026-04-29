@@ -20,6 +20,7 @@ export interface ToolResolvedExecutionPath {
 
 export interface ToolRequestContext {
     at: string;
+    profileId?: string;
     args: Record<string, unknown>;
     executionArgs: Record<string, unknown>;
     definition: ResolvedToolDefinition;

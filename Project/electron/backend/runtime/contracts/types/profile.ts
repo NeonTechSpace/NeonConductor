@@ -1,7 +1,13 @@
 import type { ExecutionPreset, InternalModelRole } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
-import type { RuntimeProviderId, UtilityModelConsumerId } from '@/shared/contracts';
+import type {
+    ProfileFileReadGuardSettings,
+    ProfileGetFileReadGuardSettingsInput,
+    ProfileSetFileReadGuardSettingsInput,
+} from '@/app/backend/runtime/contracts/types/fileReadGuard';
 import type { WorkflowRoutingTargetKey } from '@/app/backend/runtime/contracts/workflowRouting';
+
+import type { RuntimeProviderId, UtilityModelConsumerId } from '@/shared/contracts';
 
 export interface ProfileCreateInput {
     name?: string;
@@ -63,6 +69,10 @@ export interface ProfileSetMemoryRetrievalModelInput extends ProfileInput {
     providerId?: RuntimeProviderId;
     modelId?: string;
 }
+
+export type ProfileGetFileReadGuardInput = ProfileGetFileReadGuardSettingsInput;
+export type ProfileSetFileReadGuardInput = ProfileSetFileReadGuardSettingsInput;
+export type ProfileFileReadGuardPreference = ProfileFileReadGuardSettings;
 
 export type InternalModelRoleDiagnosticStatus = 'configured' | 'fallback' | 'unconfigured';
 

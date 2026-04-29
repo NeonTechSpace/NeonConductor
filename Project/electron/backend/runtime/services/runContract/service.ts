@@ -1,3 +1,6 @@
+import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
+import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+
 import type {
     BrowserContextPacket,
     ComposerAttachmentInput,
@@ -10,9 +13,6 @@ import type {
     SessionOutboxEntry,
     SteeringSnapshot,
 } from '@/shared/contracts';
-
-import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
-import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
 
 function createTrustLevelCounts(): Record<PreparedContextTrustLevel, number> {
     return {
@@ -44,6 +44,8 @@ function buildAttachmentSummary(attachments: ComposerAttachmentInput[] | undefin
             (total, attachment) => total + (attachment.kind === 'text_file_attachment' ? attachment.byteSize : (attachment.byteSize ?? 0)),
             0
         ),
+        readGuardAllowedCount: (attachments ?? []).length,
+        readGuardBlockedCount: 0,
     };
 }
 
@@ -82,7 +84,7 @@ function buildTrustSummary(input: {
         byInstructionAuthority['instruct'] += 1;
     }
 
-    for (const _attachment of input.attachments ?? []) {
+    for (let index = 0; index < (input.attachments?.length ?? 0); index += 1) {
         byTrustLevel['user_input'] += 1;
         byInstructionAuthority['contextualize'] += 1;
     }

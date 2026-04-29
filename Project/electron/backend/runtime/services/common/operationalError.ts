@@ -13,6 +13,7 @@ export type OperationalErrorCode =
     | 'auth_missing'
     | 'flow_not_found'
     | 'invalid_payload'
+    | 'file_read_guard_blocked'
     | 'cache_key_invalid'
     | 'runtime_option_invalid'
     | 'provider_auth_invalid_state'

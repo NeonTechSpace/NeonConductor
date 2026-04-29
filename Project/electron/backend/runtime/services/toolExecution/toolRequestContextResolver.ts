@@ -148,6 +148,7 @@ export async function resolveToolRequestContext(input: ToolInvokeInput): Promise
 
     return {
         at,
+        profileId: input.profileId,
         args,
         executionArgs,
         definition,

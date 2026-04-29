@@ -21,6 +21,7 @@ import {
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import { submitPrompt as submitPromptFromComposer } from '@/web/components/conversation/shell/actions/promptSubmit';
 import type { PlanningDepth } from '@/web/components/conversation/shell/planningDepth';
+import { trpc } from '@/web/trpc/client';
 
 import type {
     BrowserContextPacket,
@@ -33,6 +34,7 @@ import type {
     TopLevelTab,
 } from '@/shared/contracts';
 import { isEntityId } from '@/shared/contracts';
+import { evaluateFileReadGuard, formatFileReadGuardDecisionMessage, resolveFileReadGuardPolicy } from '@/shared/fileReadGuardPolicy';
 
 type ComposerPlanStartInput = PlanStartInput & {
     planningDepth?: PlanningDepth;
@@ -122,6 +124,11 @@ export function useConversationShellComposer<
     );
     const [runSubmitError, setRunSubmitError] = useState<string | undefined>(undefined);
     const [promptResetKey, setPromptResetKey] = useState(0);
+    const fileReadGuardQuery = trpc.profile.getFileReadGuardSettings.useQuery(
+        { profileId: input.profileId },
+        { staleTime: 30_000 }
+    );
+    const fileReadGuardPolicy = fileReadGuardQuery.data?.policy ?? resolveFileReadGuardPolicy(undefined);
     const pendingImagesRef = useRef<ComposerPendingImage[]>([]);
     const pendingTextFilesRef = useRef<ComposerPendingTextFile[]>([]);
     const promptRef = useRef('');
@@ -211,7 +218,7 @@ export function useConversationShellComposer<
     }
 
     async function prepareTextFile(file: File, clientId: string) {
-        const prepared = await prepareComposerTextFileAttachment(file, clientId);
+        const prepared = await prepareComposerTextFileAttachment(file, clientId, fileReadGuardPolicy);
         replacePendingTextFiles(
             pendingTextFilesRef.current.map((candidate) =>
                 candidate.clientId !== clientId
@@ -241,8 +248,34 @@ export function useConversationShellComposer<
         setRunSubmitError(undefined);
 
         const allFiles = Array.from(inputFiles);
-        const imageFiles = allFiles.filter((file) => file.type.startsWith('image/'));
-        const textFiles = allFiles.filter((file) => !file.type.startsWith('image/'));
+        const blockedFiles: string[] = [];
+        const allowedFiles = allFiles.flatMap((file) => {
+            const decision = evaluateFileReadGuard({
+                fileNameOrPath: file.name,
+                mimeType: file.type,
+                byteSize: file.size,
+                policy: fileReadGuardPolicy,
+            });
+            if (decision.allowed) {
+                if (decision.fileKind === 'pdf') {
+                    blockedFiles.push(`"${file.name}" is allowed by the file read policy, but PDF attachment ingestion is not enabled yet.`);
+                    return [];
+                }
+                return [{ file, fileKind: decision.fileKind }];
+            }
+            blockedFiles.push(formatFileReadGuardDecisionMessage(file.name, decision));
+            return [];
+        });
+        if (blockedFiles.length > 0) {
+            failImageAttachment(blockedFiles[0] ?? 'A selected file was blocked by the profile file read policy.');
+        }
+
+        const imageFiles = allowedFiles
+            .filter((candidate) => candidate.fileKind === 'image')
+            .map((candidate) => candidate.file);
+        const textFiles = allowedFiles
+            .filter((candidate) => candidate.fileKind === 'text')
+            .map((candidate) => candidate.file);
         if (imageFiles.length === 0 && textFiles.length === 0) {
             failImageAttachment('Only screenshots/images and UTF-8 text/code files can be attached to a prompt.');
             return;

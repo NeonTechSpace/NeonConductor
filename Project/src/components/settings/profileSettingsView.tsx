@@ -561,6 +561,123 @@ function ProfileMemoryRetrievalScreen({ controller }: { controller: ReturnType<t
     );
 }
 
+function ProfileFileReadsScreen({ controller }: { controller: ReturnType<typeof useProfileSettingsController> }) {
+    const fileReadGuard = controller.fileReadGuard;
+    const defaultAllowedExtensions = fileReadGuard.policy?.defaultAllowedExtensions ?? [];
+    const defaultBlockedPatterns = fileReadGuard.policy?.defaultBlockedPatterns ?? [];
+
+    return (
+        <section className='border-border/70 bg-card/55 space-y-4 rounded-[24px] border p-5'>
+            <div className='space-y-1'>
+                <p className='text-sm font-semibold'>Model-visible file reads</p>
+                <p className='text-muted-foreground text-xs leading-5'>
+                    Neon applies this guard before files are attached to prompts or returned through the native
+                    read_file tool. Shell commands and internal runtime files are controlled by their own authority
+                    boundaries.
+                </p>
+            </div>
+
+            <div className='grid gap-4 lg:grid-cols-2'>
+                <div className='border-border/70 bg-background/60 rounded-2xl border px-4 py-3'>
+                    <p className='text-sm font-medium'>Default allowlist</p>
+                    <p className='text-muted-foreground mt-2 text-xs leading-5'>
+                        {defaultAllowedExtensions.join(', ')}
+                    </p>
+                </div>
+                <div className='border-border/70 bg-background/60 rounded-2xl border px-4 py-3'>
+                    <p className='text-sm font-medium'>Default secret blocks</p>
+                    <p className='text-muted-foreground mt-2 text-xs leading-5'>
+                        {defaultBlockedPatterns.join(', ')}
+                    </p>
+                </div>
+            </div>
+
+            <div className='grid gap-4 lg:grid-cols-2'>
+                <label className='space-y-2'>
+                    <span className='text-sm font-medium'>Additional allowed extensions</span>
+                    <textarea
+                        aria-label='Additional allowed extensions'
+                        className='border-border bg-background min-h-32 w-full rounded-xl border px-3 py-2 text-sm'
+                        value={fileReadGuard.allowedExtensionsText}
+                        disabled={fileReadGuard.setSettingsMutation.isPending}
+                        placeholder={'.log\n.conf'}
+                        onChange={(event) => {
+                            fileReadGuard.setAllowedExtensionsText(event.target.value);
+                        }}
+                    />
+                </label>
+                <label className='space-y-2'>
+                    <span className='text-sm font-medium'>Additional blocked patterns</span>
+                    <textarea
+                        aria-label='Additional blocked patterns'
+                        className='border-border bg-background min-h-32 w-full rounded-xl border px-3 py-2 text-sm'
+                        value={fileReadGuard.blockedPatternsText}
+                        disabled={fileReadGuard.setSettingsMutation.isPending}
+                        placeholder={'prod-secret\ncustomer-token'}
+                        onChange={(event) => {
+                            fileReadGuard.setBlockedPatternsText(event.target.value);
+                        }}
+                    />
+                </label>
+            </div>
+
+            <div className='grid gap-3 md:grid-cols-3'>
+                <label className='space-y-2'>
+                    <span className='text-sm font-medium'>Text size limit</span>
+                    <input
+                        aria-label='Text file byte limit'
+                        className='border-border bg-background h-10 w-full rounded-xl border px-3 text-sm'
+                        value={fileReadGuard.maxTextFileBytesText}
+                        disabled={fileReadGuard.setSettingsMutation.isPending}
+                        inputMode='numeric'
+                        onChange={(event) => {
+                            fileReadGuard.setMaxTextFileBytesText(event.target.value);
+                        }}
+                    />
+                </label>
+                <label className='flex items-center gap-2 text-sm'>
+                    <input
+                        type='checkbox'
+                        checked={fileReadGuard.allowUnknownUtf8Text}
+                        disabled={fileReadGuard.setSettingsMutation.isPending}
+                        onChange={(event) => {
+                            fileReadGuard.setAllowUnknownUtf8Text(event.target.checked);
+                        }}
+                    />
+                    Allow unknown UTF-8 text
+                </label>
+                <label className='flex items-center gap-2 text-sm'>
+                    <input
+                        type='checkbox'
+                        checked={fileReadGuard.allowSecretLikeTextFiles}
+                        disabled={fileReadGuard.setSettingsMutation.isPending}
+                        onChange={(event) => {
+                            fileReadGuard.setAllowSecretLikeTextFiles(event.target.checked);
+                        }}
+                    />
+                    Allow secret-like text files
+                </label>
+            </div>
+
+            <div className='flex flex-wrap items-center gap-2'>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    disabled={fileReadGuard.setSettingsMutation.isPending}
+                    onClick={() => {
+                        void fileReadGuard.saveSettings();
+                    }}>
+                    Save File Reads
+                </Button>
+                <span className='text-muted-foreground text-xs'>
+                    Profile overrides are normalized before they are saved.
+                </span>
+            </div>
+        </section>
+    );
+}
+
 function getProfileSectionMetadata(subsection: ProfileSettingsSubsectionId): {
     title: string;
     description: string;
@@ -595,6 +712,12 @@ function getProfileSectionMetadata(subsection: ProfileSettingsSubsectionId): {
                 title: 'Memory Retrieval',
                 description:
                     'Choose the dedicated internal memory retrieval role target for semantic retrieval work. This stays separate from Utility AI.',
+            };
+        case 'fileReads':
+            return {
+                title: 'File Reads',
+                description:
+                    'Control the default-deny guard for files that can become model-visible through attachments and read_file.',
             };
     }
 }
@@ -634,6 +757,7 @@ export function ProfileSettingsView({
                 {subsection === 'naming' ? <ProfileConversationNamingScreen controller={controller} /> : null}
                 {subsection === 'utility' ? <ProfileUtilityAiScreen controller={controller} /> : null}
                 {subsection === 'memoryRetrieval' ? <ProfileMemoryRetrievalScreen controller={controller} /> : null}
+                {subsection === 'fileReads' ? <ProfileFileReadsScreen controller={controller} /> : null}
             </SettingsContentScaffold>
 
             <ConfirmDialog

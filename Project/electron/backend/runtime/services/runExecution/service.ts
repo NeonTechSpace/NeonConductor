@@ -12,6 +12,7 @@ import type { ProviderRuntimeTransportFamily } from '@/app/backend/providers/typ
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { withCorrelationContext } from '@/app/backend/runtime/services/common/logContext';
 import { sessionContextService } from '@/app/backend/runtime/services/context/sessionContextService';
+import { fileReadGuardService } from '@/app/backend/runtime/services/fileReadGuard/service';
 import { prepareRunContractPreview } from '@/app/backend/runtime/services/runContract/service';
 import type { RunExecutionError } from '@/app/backend/runtime/services/runExecution/errors';
 import { resolveKiloCloudRunGate } from '@/app/backend/runtime/services/runExecution/kiloCloudRunGate';
@@ -129,6 +130,26 @@ export class RunExecutionService {
         };
     }
 
+    private async enforceAttachmentReadGuard(input: StartRunInput): Promise<RunExecutionError | null> {
+        const guardResult = await fileReadGuardService.enforceComposerAttachments({
+            profileId: input.profileId,
+            ...(input.attachments ? { attachments: input.attachments } : {}),
+        });
+        if (guardResult.isOk()) {
+            return null;
+        }
+        return {
+            code: guardResult.error.code,
+            message: guardResult.error.message,
+            action: {
+                code: guardResult.error.code,
+                reason: guardResult.error.decision.reason,
+                fileKind: guardResult.error.decision.fileKind,
+                extension: guardResult.error.decision.extension,
+            },
+        };
+    }
+
     async startRun(
         input: StartRunInput,
         options?: {
@@ -136,6 +157,11 @@ export class RunExecutionService {
             previousCompatibleContract?: RunContractPreview;
         }
     ): Promise<StartRunResult> {
+        const attachmentGuardError = await this.enforceAttachmentReadGuard(input);
+        if (attachmentGuardError) {
+            return toRejectedStartResult(attachmentGuardError, input);
+        }
+
         const runnable = await sessionStore.ensureRunnableSession(input.profileId, input.sessionId);
         if (!runnable.ok) {
             appLog.warn({
@@ -572,6 +598,11 @@ export class RunExecutionService {
     }
 
     async queueRun(input: StartRunInput): Promise<SessionQueueRunResult> {
+        const attachmentGuardError = await this.enforceAttachmentReadGuard(input);
+        if (attachmentGuardError) {
+            throw new InvariantError(attachmentGuardError.message);
+        }
+
         const previewResult = await previewRunContractForStart(input);
         if (!previewResult.available) {
             throw new InvariantError(previewResult.message);
@@ -648,6 +679,10 @@ export class RunExecutionService {
             ...(nextAttachments.length > 0 ? { attachments: nextAttachments } : {}),
             ...(nextBrowserContext ? { browserContext: nextBrowserContext } : {}),
         };
+        const attachmentGuardError = await this.enforceAttachmentReadGuard(previewInput);
+        if (attachmentGuardError) {
+            throw new InvariantError(attachmentGuardError.message);
+        }
         const previewResult = await previewRunContractForStart(previewInput);
         const attachmentSummaries = await Promise.all(
             nextAttachments.map((attachment) =>
@@ -756,6 +791,16 @@ export class RunExecutionService {
     }
 
     async previewRunContract(input: StartRunInput): Promise<RunContractPreviewResult> {
+        const attachmentGuardError = await this.enforceAttachmentReadGuard(input);
+        if (attachmentGuardError) {
+            return {
+                available: false,
+                reason: 'rejected',
+                code: attachmentGuardError.code,
+                message: attachmentGuardError.message,
+                ...(attachmentGuardError.action ? { action: attachmentGuardError.action } : {}),
+            };
+        }
         return previewRunContractForStart(input);
     }
 

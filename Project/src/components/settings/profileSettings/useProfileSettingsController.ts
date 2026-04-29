@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useProfileFileReadGuardController } from '@/web/components/settings/profileSettings/useProfileFileReadGuardController';
 import { useProfileLibraryController } from '@/web/components/settings/profileSettings/useProfileLibraryController';
 import { useProfilePreferencesController } from '@/web/components/settings/profileSettings/useProfilePreferencesController';
 import { useProfileResetController } from '@/web/components/settings/profileSettings/useProfileResetController';
@@ -24,6 +25,10 @@ export function useProfileSettingsController(input: {
         selection,
         setStatusMessage,
     });
+    const fileReadGuard = useProfileFileReadGuardController({
+        selection,
+        setStatusMessage,
+    });
     const reset = useProfileResetController({
         setSelectedProfileId: selection.setSelectedProfileId,
         setStatusMessage,
@@ -40,6 +45,7 @@ export function useProfileSettingsController(input: {
         },
         library,
         preferences,
+        fileReadGuard,
         reset,
         feedback: {
             message:
@@ -55,6 +61,7 @@ export function useProfileSettingsController(input: {
                 preferences.setUtilityModelMutation.error?.message ??
                 preferences.setUtilityModelConsumerPreferenceMutation.error?.message ??
                 preferences.setMemoryRetrievalModelMutation.error?.message ??
+                fileReadGuard.setSettingsMutation.error?.message ??
                 statusMessage,
             tone:
                 (library.createMutation.error ??
@@ -68,7 +75,8 @@ export function useProfileSettingsController(input: {
                 preferences.setExecutionPresetMutation.error ??
                 preferences.setUtilityModelMutation.error ??
                 preferences.setUtilityModelConsumerPreferenceMutation.error ??
-                preferences.setMemoryRetrievalModelMutation.error)
+                preferences.setMemoryRetrievalModelMutation.error ??
+                fileReadGuard.setSettingsMutation.error)
                     ? ('error' as const)
                     : statusMessage
                       ? ('success' as const)

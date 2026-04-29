@@ -70,6 +70,12 @@ export type RuntimeCompatibilityIssue =
               | 'api_key_required'
               | 'base_url_not_supported'
               | 'provider_not_supported';
+      }
+    | {
+          code: 'file_read_guard_blocked';
+          reason?: string;
+          fileKind?: string;
+          extension?: string;
       };
 
 export type RunStartRejectionAction = RuntimeCompatibilityIssue;

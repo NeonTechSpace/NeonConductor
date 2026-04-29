@@ -4,6 +4,7 @@ import {
     profileDeleteInputSchema,
     profileDuplicateInputSchema,
     profileGetExecutionPresetInputSchema,
+    profileGetFileReadGuardSettingsInputSchema,
     profileInputSchema,
     profileGetMemoryRetrievalModelInputSchema,
     profileGetUtilityModelConsumerPreferencesInputSchema,
@@ -11,15 +12,17 @@ import {
     profileRenameInputSchema,
     profileSetActiveInputSchema,
     profileSetExecutionPresetInputSchema,
+    profileSetFileReadGuardSettingsInputSchema,
     profileSetMemoryRetrievalModelInputSchema,
     profileSetUtilityModelConsumerPreferenceInputSchema,
     profileSetUtilityModelInputSchema,
 } from '@/app/backend/runtime/contracts';
+import { fileReadGuardService } from '@/app/backend/runtime/services/fileReadGuard/service';
 import { getExecutionPreset, setExecutionPreset } from '@/app/backend/runtime/services/profile/executionPreset';
 import { internalModelRoleDiagnosticsService } from '@/app/backend/runtime/services/profile/internalModelRoleDiagnostics';
 import { memoryRetrievalModelService } from '@/app/backend/runtime/services/profile/memoryRetrievalModel';
-import { utilityModelConsumerPreferencesService } from '@/app/backend/runtime/services/profile/utilityModelConsumerPreferences';
 import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
+import { utilityModelConsumerPreferencesService } from '@/app/backend/runtime/services/profile/utilityModelConsumerPreferences';
 import {
     runtimeRemoveEvent,
     runtimeStatusEvent,
@@ -65,6 +68,14 @@ export const profileRouter = router({
         .input(profileGetMemoryRetrievalModelInputSchema)
         .query(async ({ input }) => {
             return memoryRetrievalModelService.getMemoryRetrievalModelPreference(input.profileId);
+        }),
+    getFileReadGuardSettings: publicProcedure
+        .input(profileGetFileReadGuardSettingsInputSchema)
+        .query(async ({ input }) => {
+            return {
+                settings: await fileReadGuardService.getSettings(input.profileId),
+                policy: await fileReadGuardService.getPolicy(input.profileId),
+            };
         }),
     setExecutionPreset: publicProcedure.input(profileSetExecutionPresetInputSchema).mutation(async ({ input }) => {
         const preset = await setExecutionPreset(input.profileId, input.preset);
@@ -148,6 +159,28 @@ export const profileRouter = router({
             );
 
             return result.value;
+        }),
+    setFileReadGuardSettings: publicProcedure
+        .input(profileSetFileReadGuardSettingsInputSchema)
+        .mutation(async ({ input }) => {
+            const settings = await fileReadGuardService.setSettings(input);
+
+            await runtimeEventLogService.append(
+                runtimeStatusEvent({
+                    entityType: 'profile',
+                    domain: 'profile',
+                    entityId: input.profileId,
+                    eventType: 'profile.file-read-guard.updated',
+                    payload: {
+                        profileId: input.profileId,
+                    },
+                })
+            );
+
+            return {
+                settings,
+                policy: await fileReadGuardService.getPolicy(input.profileId),
+            };
         }),
     setActive: publicProcedure.input(profileSetActiveInputSchema).mutation(async ({ input }) => {
         const result = await profileStore.setActive(input.profileId);

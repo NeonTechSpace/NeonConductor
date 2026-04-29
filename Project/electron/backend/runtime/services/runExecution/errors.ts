@@ -10,6 +10,7 @@ export type RunExecutionErrorCode =
     | 'execution_target_unavailable'
     | 'runtime_option_invalid'
     | 'invalid_payload'
+    | 'file_read_guard_blocked'
     | 'cache_resolution_failed'
     | 'provider_not_authenticated'
     | 'provider_auth_invalid_state'

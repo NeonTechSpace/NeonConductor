@@ -1,54 +1,11 @@
 import { err, ok, type Result } from 'neverthrow';
 
-import type { ComposerTextFileAttachmentInput } from '@/shared/contracts';
+import type { ComposerTextFileAttachmentInput, ResolvedFileReadGuardPolicy } from '@/shared/contracts';
+import {
+    evaluateFileReadGuard,
+    formatFileReadGuardDecisionMessage,
+} from '@/shared/fileReadGuardPolicy';
 
-const MAX_TEXT_FILE_ATTACHMENT_BYTES = 256 * 1024;
-
-const textFileExtensions = new Set([
-    '.txt',
-    '.md',
-    '.markdown',
-    '.json',
-    '.yml',
-    '.yaml',
-    '.toml',
-    '.ini',
-    '.conf',
-    '.env',
-    '.xml',
-    '.html',
-    '.htm',
-    '.css',
-    '.scss',
-    '.less',
-    '.js',
-    '.jsx',
-    '.ts',
-    '.tsx',
-    '.mjs',
-    '.cjs',
-    '.py',
-    '.rb',
-    '.go',
-    '.rs',
-    '.java',
-    '.kt',
-    '.c',
-    '.cc',
-    '.cpp',
-    '.h',
-    '.hpp',
-    '.cs',
-    '.php',
-    '.sql',
-    '.sh',
-    '.ps1',
-    '.bat',
-    '.cmd',
-    '.graphql',
-    '.gql',
-    '.dockerfile',
-]);
 
 export interface ComposerPendingTextFile {
     clientId: string;
@@ -69,24 +26,6 @@ export type PreparedComposerTextFileAttachmentResult = Result<
         message: string;
     }
 >;
-
-function getFileExtension(fileName: string): string {
-    const lastDotIndex = fileName.lastIndexOf('.');
-    if (lastDotIndex < 0) {
-        return '';
-    }
-    return fileName.slice(lastDotIndex).toLowerCase();
-}
-
-function isLikelyTextFile(file: File): boolean {
-    if (file.type.startsWith('text/')) {
-        return true;
-    }
-    if (file.type === 'application/json' || file.type === 'application/xml') {
-        return true;
-    }
-    return textFileExtensions.has(getFileExtension(file.name));
-}
 
 function decodeUtf8Text(bytes: Uint8Array): { text: string; encoding: ComposerTextFileAttachmentInput['encoding'] } | null {
     const hasBom = bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
@@ -119,24 +58,38 @@ export function createPendingTextFile(file: File): ComposerPendingTextFile {
 
 export async function prepareComposerTextFileAttachment(
     file: File,
-    clientId: string
+    clientId: string,
+    policy: ResolvedFileReadGuardPolicy
 ): Promise<PreparedComposerTextFileAttachmentResult> {
-    if (!isLikelyTextFile(file)) {
+    const preReadDecision = evaluateFileReadGuard({
+        fileNameOrPath: file.name,
+        mimeType: file.type,
+        byteSize: file.size,
+        policy,
+    });
+    if (!preReadDecision.allowed) {
         return err({
-            message: `"${file.name}" is not a supported UTF-8 text/code file.`,
+            message: formatFileReadGuardDecisionMessage(file.name, preReadDecision),
         });
     }
-    if (file.size > MAX_TEXT_FILE_ATTACHMENT_BYTES) {
+    if (preReadDecision.fileKind !== 'text') {
         return err({
-            message: `"${file.name}" exceeds the 256 KB text attachment limit.`,
+            message: `"${file.name}" is not a supported UTF-8 text/code file.`,
         });
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const decoded = decodeUtf8Text(bytes);
     if (!decoded) {
+        const invalidUtf8Decision = evaluateFileReadGuard({
+            fileNameOrPath: file.name,
+            mimeType: file.type,
+            byteSize: file.size,
+            policy,
+            utf8Valid: false,
+        });
         return err({
-            message: `"${file.name}" is not valid UTF-8 text.`,
+            message: formatFileReadGuardDecisionMessage(file.name, invalidUtf8Decision),
         });
     }
 

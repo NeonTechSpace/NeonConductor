@@ -95,6 +95,7 @@ function createUtilsMock(calls: InvalidationCall[]) {
             getExecutionPreset: createInvalidateLeaf(calls, 'profile.getExecutionPreset'),
             getUtilityModel: createInvalidateLeaf(calls, 'profile.getUtilityModel'),
             getMemoryRetrievalModel: createInvalidateLeaf(calls, 'profile.getMemoryRetrievalModel'),
+            getFileReadGuardSettings: createInvalidateLeaf(calls, 'profile.getFileReadGuardSettings'),
             list: createInvalidateLeaf(calls, 'profile.list'),
             getActive: createInvalidateLeaf(calls, 'profile.getActive'),
         },

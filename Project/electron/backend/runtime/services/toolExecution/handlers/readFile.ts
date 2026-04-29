@@ -1,7 +1,8 @@
 import { err, ok, type Result } from 'neverthrow';
 import { Buffer } from 'node:buffer';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 
+import { fileReadGuardService } from '@/app/backend/runtime/services/fileReadGuard/service';
 import { readNumberArg, readStringArg } from '@/app/backend/runtime/services/toolExecution/args';
 import {
     requireFileToolExecutionRoot,
@@ -46,13 +47,57 @@ export async function readFileToolHandler(
     const targetPath = targetPathResult.value.absolutePath;
     const maxBytes = Math.max(1, Math.floor(readNumberArg(args, 'maxBytes', 200_000)));
     try {
+        const targetStat = await stat(targetPath);
+        if (context?.profileId) {
+            const guardResult = await fileReadGuardService.enforceFile({
+                profileId: context.profileId,
+                fileNameOrPath: targetPath,
+                byteSize: targetStat.size,
+            });
+            if (guardResult.isErr()) {
+                return err({
+                    code: 'execution_failed',
+                    message: guardResult.error.message,
+                });
+            }
+        }
+
         const buffer = await readFile(targetPath);
         const rawText = buffer.toString('utf8');
         if (isMateriallyLossyUtf8Decode(buffer, rawText)) {
+            if (context?.profileId) {
+                const invalidUtf8Guard = await fileReadGuardService.enforceFile({
+                    profileId: context.profileId,
+                    fileNameOrPath: targetPath,
+                    byteSize: buffer.byteLength,
+                    utf8Valid: false,
+                });
+                if (invalidUtf8Guard.isErr()) {
+                    return err({
+                        code: 'execution_failed',
+                        message: invalidUtf8Guard.error.message,
+                    });
+                }
+            }
             return err({
                 code: 'execution_failed',
                 message: 'read_file currently supports UTF-8 text files only.',
             });
+        }
+
+        if (context?.profileId) {
+            const guardResult = await fileReadGuardService.enforceFile({
+                profileId: context.profileId,
+                fileNameOrPath: targetPath,
+                byteSize: buffer.byteLength,
+                utf8Valid: true,
+            });
+            if (guardResult.isErr()) {
+                return err({
+                    code: 'execution_failed',
+                    message: guardResult.error.message,
+                });
+            }
         }
 
         const executionOutput = createReadFileExecutionOutput({
