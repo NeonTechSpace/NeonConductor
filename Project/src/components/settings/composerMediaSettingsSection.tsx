@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import {
     DEFAULT_COMPOSER_IMAGE_COMPRESSION_CONCURRENCY,
     DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
@@ -23,6 +25,10 @@ export function ComposerMediaSettingsSection({
     onDraftChange,
     onSave,
 }: ComposerMediaSettingsSectionProps) {
+    const inputIdPrefix = useId();
+    const maxImagesInputId = `${inputIdPrefix}-max-images`;
+    const compressionConcurrencyInputId = `${inputIdPrefix}-compression-concurrency`;
+
     return (
         <section className='space-y-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4'>
             <div className='space-y-1'>
@@ -35,8 +41,11 @@ export function ComposerMediaSettingsSection({
 
             <div className='grid gap-3 md:grid-cols-2'>
                 <div className='max-w-sm space-y-1'>
-                    <label className='text-sm font-medium'>Images per message</label>
+                    <label className='text-sm font-medium' htmlFor={maxImagesInputId}>
+                        Images per message
+                    </label>
                     <input
+                        id={maxImagesInputId}
                         aria-label='Maximum images per message'
                         type='number'
                         min={1}
@@ -57,8 +66,11 @@ export function ComposerMediaSettingsSection({
                 </div>
 
                 <div className='max-w-sm space-y-1'>
-                    <label className='text-sm font-medium'>Images processed simultaneously</label>
+                    <label className='text-sm font-medium' htmlFor={compressionConcurrencyInputId}>
+                        Images processed simultaneously
+                    </label>
                     <input
+                        id={compressionConcurrencyInputId}
                         aria-label='Image compression concurrency'
                         type='number'
                         min={1}

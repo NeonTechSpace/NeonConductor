@@ -137,7 +137,7 @@ export function SidebarInlineThreadDraft({
                     </select>
                 </label>
 
-                <label className='space-y-1.5 md:col-span-2'>
+                <div className='space-y-1.5 md:col-span-2'>
                     <span className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
                         Model
                     </span>
@@ -156,7 +156,7 @@ export function SidebarInlineThreadDraft({
                             onModelChange(option.id);
                         }}
                     />
-                </label>
+                </div>
             </div>
 
             <div className='flex items-center justify-end gap-2 pt-1'>

@@ -30,6 +30,7 @@ function RailButton({
     return (
         <button
             type='button'
+            aria-current={selected ? 'page' : undefined}
             className={cn(
                 'border-border/80 bg-card/70 hover:bg-accent focus-visible:ring-ring w-full rounded-2xl border px-3 py-3 text-left transition-colors focus-visible:ring-2',
                 selected && 'border-primary bg-primary/10 text-primary shadow-sm'
@@ -92,6 +93,7 @@ function RailSubsectionButton({
     return (
         <button
             type='button'
+            aria-current={selected ? 'page' : undefined}
             className={cn(
                 'border-border/70 bg-background/75 hover:bg-accent focus-visible:ring-ring w-full rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:ring-2',
                 selected && 'border-primary bg-primary/10 text-primary shadow-sm'
@@ -130,7 +132,7 @@ export function SettingsWorkspaceRail({
                         <ArrowLeft className='h-4 w-4' />
                     </button>
                     {privacyModeEnabled ? (
-                        <p className='text-primary rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                        <p className='text-primary border-primary/30 bg-primary/10 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.12em] uppercase'>
                             Privacy mode active
                         </p>
                     ) : null}
@@ -185,7 +187,10 @@ export function SettingsWorkspaceRail({
                                         }
                                         onClick={() => {
                                             onSelectSubsection(
-                                                createSettingsSelection(navigationModel.selectedSection.id, subsection.id)
+                                                createSettingsSelection(
+                                                    navigationModel.selectedSection.id,
+                                                    subsection.id
+                                                )
                                             );
                                         }}
                                     />

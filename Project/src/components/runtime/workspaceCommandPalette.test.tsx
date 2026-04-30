@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkspaceCommandPalette } from '@/web/components/runtime/workspaceCommandPalette';
+import { moveWorkspaceCommandPaletteHighlight } from '@/web/components/runtime/workspaceCommandPaletteKeyboard';
 
 describe('WorkspaceCommandPalette', () => {
     it('renders section, profile, and workspace actions', () => {
@@ -31,6 +32,10 @@ describe('WorkspaceCommandPalette', () => {
         expect(html).toContain('Switch profile: Default Profile');
         expect(html).toContain('Focus workspace: Alpha Workspace');
         expect(html).toContain('Current section');
+        expect(html).toContain('role="listbox"');
+        expect(html).toContain('aria-label="Command palette results"');
+        expect(html).toContain('role="option"');
+        expect(html).toContain('aria-selected="true"');
     });
 
     it('wires action callbacks through the rendered action metadata', () => {
@@ -59,5 +64,43 @@ describe('WorkspaceCommandPalette', () => {
         expect(onPreviewSectionChange).not.toHaveBeenCalled();
         expect(onProfileChange).not.toHaveBeenCalled();
         expect(onWorkspaceChange).not.toHaveBeenCalled();
+    });
+
+    it('moves keyboard highlight predictably through available actions', () => {
+        expect(
+            moveWorkspaceCommandPaletteHighlight({
+                currentIndex: 0,
+                itemCount: 3,
+                direction: 'next',
+            })
+        ).toBe(1);
+        expect(
+            moveWorkspaceCommandPaletteHighlight({
+                currentIndex: 2,
+                itemCount: 3,
+                direction: 'next',
+            })
+        ).toBe(0);
+        expect(
+            moveWorkspaceCommandPaletteHighlight({
+                currentIndex: 0,
+                itemCount: 3,
+                direction: 'previous',
+            })
+        ).toBe(2);
+        expect(
+            moveWorkspaceCommandPaletteHighlight({
+                currentIndex: 4,
+                itemCount: 3,
+                direction: 'previous',
+            })
+        ).toBe(2);
+        expect(
+            moveWorkspaceCommandPaletteHighlight({
+                currentIndex: 0,
+                itemCount: 0,
+                direction: 'next',
+            })
+        ).toBe(-1);
     });
 });

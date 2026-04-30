@@ -56,6 +56,7 @@ describe('settings workspace', () => {
         expect(html).toContain('Account &amp; Access');
         expect(html).toContain('Gateway Models');
         expect(html).toContain('One routed utility surface for Kilo');
+        expect(html).toContain('aria-current="page"');
     });
 
     it('keeps the settings body overflow-safe inside the workspace surface', () => {

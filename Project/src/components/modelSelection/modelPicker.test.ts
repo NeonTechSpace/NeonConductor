@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
+import { ModelPickerOptionList } from '@/web/components/modelSelection/modelPickerOptionList';
 import {
     getModelLabelCollisionIndex,
     getOptionDisplayText,
@@ -57,6 +58,9 @@ describe('model picker', () => {
         );
 
         expect(html).toContain('<button');
+        expect(html).toContain('aria-haspopup="listbox"');
+        expect(html).toContain('aria-expanded="false"');
+        expect(html).toContain('aria-controls=');
         expect(html).toContain('Kilo Auto Frontier');
         expect(html).not.toContain('<select');
         expect(html).not.toContain('price 12');
@@ -203,5 +207,42 @@ describe('model picker', () => {
 
         expect(html).toContain('<button');
         expect(html).not.toContain('<select');
+    });
+
+    it('renders option list rows with listbox-compatible option metadata', () => {
+        const option = createOption({
+            id: kiloFrontierModelId,
+            label: 'Kilo Auto Frontier',
+        });
+        const html = renderToStaticMarkup(
+            createElement(ModelPickerOptionList, {
+                groups: [
+                    {
+                        key: 'kilo',
+                        label: 'Kilo',
+                        options: [
+                            {
+                                key: option.id,
+                                option,
+                                displayText: option.label,
+                                description: 'Kilo frontier route.',
+                                metricBadges: [],
+                                sourceProviderBadge: undefined,
+                                capabilityBadges: [],
+                                selected: true,
+                            },
+                        ],
+                    },
+                ],
+                optionIdPrefix: 'model-option',
+                onSelectModel: () => {},
+            })
+        );
+
+        expect(html).toContain('role="group"');
+        expect(html).toContain('aria-label="Kilo"');
+        expect(html).toContain('id="model-option-0-0"');
+        expect(html).toContain('role="option"');
+        expect(html).toContain('aria-selected="true"');
     });
 });

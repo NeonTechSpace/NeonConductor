@@ -9,7 +9,6 @@ import type { ProviderListItem } from '@/app/backend/providers/service/types';
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 import type { WorkspaceEnvironmentSnapshot } from '@/shared/contracts/types/runtime';
 
-
 interface WorkspaceLifecycleDialogProps {
     open: boolean;
     draft: WorkspaceLifecycleDraftState;
@@ -180,7 +179,7 @@ export function WorkspaceLifecycleDialog({
                                     </select>
                                 </label>
 
-                                <label className='space-y-2'>
+                                <div className='space-y-2'>
                                     <span className='text-sm font-medium'>Model</span>
                                     <ModelPicker
                                         providerId={draft.defaultProviderId}
@@ -199,7 +198,7 @@ export function WorkspaceLifecycleDialog({
                                             onDefaultModelIdChange(option.id);
                                         }}
                                     />
-                                </label>
+                                </div>
                             </div>
                         </div>
 

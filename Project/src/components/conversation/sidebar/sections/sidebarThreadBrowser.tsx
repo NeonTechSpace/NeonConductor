@@ -177,6 +177,7 @@ export function SidebarThreadBrowser({
                                 size='sm'
                                 className='rounded-full whitespace-nowrap'
                                 variant={scopeFilter === 'all' ? 'secondary' : 'outline'}
+                                aria-pressed={scopeFilter === 'all'}
                                 onClick={() => {
                                     onScopeFilterChange('all');
                                 }}>
@@ -187,6 +188,7 @@ export function SidebarThreadBrowser({
                                 size='sm'
                                 className='rounded-full whitespace-nowrap'
                                 variant={scopeFilter === 'workspace' ? 'secondary' : 'outline'}
+                                aria-pressed={scopeFilter === 'workspace'}
                                 onClick={() => {
                                     onScopeFilterChange('workspace');
                                 }}>
@@ -197,6 +199,7 @@ export function SidebarThreadBrowser({
                                 size='sm'
                                 className='rounded-full whitespace-nowrap'
                                 variant={scopeFilter === 'detached' ? 'secondary' : 'outline'}
+                                aria-pressed={scopeFilter === 'detached'}
                                 onClick={() => {
                                     onScopeFilterChange('detached');
                                 }}>
@@ -237,6 +240,7 @@ export function SidebarThreadBrowser({
                                 size='sm'
                                 className='rounded-full'
                                 variant={showAllModes ? 'secondary' : 'outline'}
+                                aria-pressed={showAllModes}
                                 onClick={() => {
                                     onShowAllModesChange(!showAllModes);
                                 }}>
@@ -256,6 +260,7 @@ export function SidebarThreadBrowser({
 
                         {scopeFilter === 'workspace' || workspaceFilter ? (
                             <select
+                                aria-label='Workspace filter'
                                 className='border-border bg-background h-8 w-full rounded-xl border px-3 text-sm'
                                 value={workspaceFilter ?? ''}
                                 onChange={(event) => {
@@ -285,6 +290,7 @@ export function SidebarThreadBrowser({
                                                     ? 'bg-primary text-primary-foreground border-primary'
                                                     : 'border-border bg-background text-foreground'
                                             }`}
+                                            aria-pressed={selectedTagIds.includes(tag.id)}
                                             onClick={() => {
                                                 onToggleTagFilter(tag.id);
                                             }}>

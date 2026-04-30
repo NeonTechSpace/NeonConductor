@@ -1,13 +1,18 @@
 import { Command, Settings2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 
 import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
+import { moveWorkspaceUtilityMenuHighlight } from '@/web/components/runtime/workspaceSurfaceUtilityMenuKeyboard';
 
 interface WorkspaceSurfaceUtilityMenuProps {
     appSection: WorkspaceAppSection;
     onOpenSettings: () => void;
     onReturnToPrimarySection: () => void;
     onOpenCommandPalette: () => void;
+}
+
+function focusMenuItem(index: number, refs: Array<RefObject<HTMLButtonElement | null>>) {
+    refs[index]?.current?.focus();
 }
 
 export function WorkspaceSurfaceUtilityMenu({
@@ -17,12 +22,22 @@ export function WorkspaceSurfaceUtilityMenu({
     onOpenCommandPalette,
 }: WorkspaceSurfaceUtilityMenuProps) {
     const [open, setOpen] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(0);
+    const menuId = useId();
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const settingsItemRef = useRef<HTMLButtonElement | null>(null);
+    const commandPaletteItemRef = useRef<HTMLButtonElement | null>(null);
+    const menuItemRefs = [settingsItemRef, commandPaletteItemRef];
 
     useEffect(() => {
         if (!open) {
             return;
         }
+        setHighlightedIndex(0);
+        requestAnimationFrame(() => {
+            settingsItemRef.current?.focus();
+        });
 
         const handlePointerDown = (event: MouseEvent) => {
             const targetNode = event.target;
@@ -38,6 +53,7 @@ export function WorkspaceSurfaceUtilityMenu({
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 setOpen(false);
+                triggerRef.current?.focus();
             }
         };
 
@@ -53,9 +69,11 @@ export function WorkspaceSurfaceUtilityMenu({
     return (
         <div ref={containerRef} className='relative shrink-0'>
             <button
+                ref={triggerRef}
                 type='button'
                 aria-haspopup='menu'
                 aria-expanded={open}
+                {...(open ? { 'aria-controls': menuId } : {})}
                 className={`border-border rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
                     appSection === 'settings'
                         ? 'border-primary bg-primary/10 text-primary'
@@ -69,13 +87,33 @@ export function WorkspaceSurfaceUtilityMenu({
 
             {open ? (
                 <div
+                    id={menuId}
                     role='menu'
                     aria-label='App utilities'
+                    onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
+                        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                            event.preventDefault();
+                            setHighlightedIndex((current) => {
+                                const nextIndex = moveWorkspaceUtilityMenuHighlight({
+                                    currentIndex: current,
+                                    itemCount: menuItemRefs.length,
+                                    direction: event.key === 'ArrowDown' ? 'next' : 'previous',
+                                });
+                                focusMenuItem(nextIndex, menuItemRefs);
+                                return nextIndex;
+                            });
+                        }
+                    }}
                     className='border-border bg-background absolute top-[calc(100%+0.5rem)] right-0 z-20 min-w-[220px] rounded-3xl border p-2 shadow-xl'>
                     <button
+                        ref={settingsItemRef}
                         type='button'
                         role='menuitem'
+                        data-highlighted={highlightedIndex === 0 ? 'true' : undefined}
                         className='hover:bg-accent flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition-colors'
+                        onFocus={() => {
+                            setHighlightedIndex(0);
+                        }}
                         onClick={() => {
                             if (appSection === 'settings') {
                                 onReturnToPrimarySection();
@@ -98,9 +136,14 @@ export function WorkspaceSurfaceUtilityMenu({
                     </button>
 
                     <button
+                        ref={commandPaletteItemRef}
                         type='button'
                         role='menuitem'
+                        data-highlighted={highlightedIndex === 1 ? 'true' : undefined}
                         className='hover:bg-accent flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition-colors'
+                        onFocus={() => {
+                            setHighlightedIndex(1);
+                        }}
                         onClick={() => {
                             onOpenCommandPalette();
                             setOpen(false);

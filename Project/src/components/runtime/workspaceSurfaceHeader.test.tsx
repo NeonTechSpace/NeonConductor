@@ -24,6 +24,7 @@ describe('workspace surface header', () => {
         expect(html).toContain('NeonConductor');
         expect(html).toContain('Local Default');
         expect(html).toContain('Search');
+        expect(html).toContain('aria-label="Open command palette"');
         expect(html).toContain('Open settings');
         expect(html).toContain('Sessions, threads, and runs in one shell');
         expect(html).not.toContain('Return to sessions');

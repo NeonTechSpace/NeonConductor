@@ -203,27 +203,33 @@ describe('conversation sidebar layout', () => {
                 onShowAllModesChange: vi.fn(),
                 onGroupViewChange: vi.fn(),
                 onSelectWorkspaceFingerprint: vi.fn(),
-                upsertTag: vi.fn(() => Promise.resolve({
-                    tag: {
-                        id: 'tag_ui',
-                        profileId: 'profile_default',
-                        label: 'UI',
-                        createdAt: '2026-03-12T09:00:00.000Z',
-                        updatedAt: '2026-03-12T09:00:00.000Z',
-                    },
-                })),
+                upsertTag: vi.fn(() =>
+                    Promise.resolve({
+                        tag: {
+                            id: 'tag_ui',
+                            profileId: 'profile_default',
+                            label: 'UI',
+                            createdAt: '2026-03-12T09:00:00.000Z',
+                            updatedAt: '2026-03-12T09:00:00.000Z',
+                        },
+                    })
+                ),
                 setThreadTags: vi.fn(() => Promise.resolve({ threadTags: [] })),
                 setThreadFavorite: vi.fn(() => Promise.resolve({ updated: true })),
-                deleteWorkspaceThreads: vi.fn(() => Promise.resolve({
-                    deletedThreadIds: [],
-                    deletedTagIds: [],
-                    deletedConversationIds: [],
-                    sessionIds: [],
-                })),
-                onCreateThread: vi.fn(() => Promise.resolve({
-                    kind: 'created_with_starter_session' as const,
-                    workspaceFingerprint: 'ws_alpha',
-                })),
+                deleteWorkspaceThreads: vi.fn(() =>
+                    Promise.resolve({
+                        deletedThreadIds: [],
+                        deletedTagIds: [],
+                        deletedConversationIds: [],
+                        sessionIds: [],
+                    })
+                ),
+                onCreateThread: vi.fn(() =>
+                    Promise.resolve({
+                        kind: 'created_with_starter_session' as const,
+                        workspaceFingerprint: 'ws_alpha',
+                    })
+                ),
             })
         );
 
@@ -236,6 +242,8 @@ describe('conversation sidebar layout', () => {
         expect(html).toContain('Filters and grouping');
         expect(html).toContain('Add workspace');
         expect(html).toContain('New thread');
+        expect(html).toContain('aria-current="page"');
+        expect(html).toContain('aria-expanded="true"');
+        expect(html).toContain('aria-pressed="true"');
     });
 });
-

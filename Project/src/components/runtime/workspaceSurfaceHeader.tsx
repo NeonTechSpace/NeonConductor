@@ -1,8 +1,8 @@
 import { Settings2 } from 'lucide-react';
+import { useId } from 'react';
 
 import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
-
 
 interface WorkspaceSurfaceHeaderProps {
     appSection: WorkspaceAppSection;
@@ -26,6 +26,7 @@ export function WorkspaceSurfaceHeader({
     onOpenCommandPalette,
 }: WorkspaceSurfaceHeaderProps) {
     const isSettingsOpen = appSection === 'settings';
+    const profileSelectId = useId();
 
     return (
         <header className='border-border/80 bg-background/90 flex items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur-sm'>
@@ -39,9 +40,12 @@ export function WorkspaceSurfaceHeader({
             </div>
 
             <div className='flex min-w-0 flex-wrap items-center justify-end gap-2'>
-                <label className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                <label
+                    className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'
+                    htmlFor={profileSelectId}>
                     <span className='sr-only'>Profile</span>
                     <select
+                        id={profileSelectId}
                         className='border-border bg-card h-11 min-w-[200px] rounded-full border px-3 text-sm'
                         value={resolvedProfileId ?? ''}
                         disabled={!resolvedProfileId || isSwitchingProfile}
@@ -58,6 +62,7 @@ export function WorkspaceSurfaceHeader({
 
                 <button
                     type='button'
+                    aria-label='Open command palette'
                     className='border-border bg-card hover:bg-accent min-h-11 rounded-full border px-3 py-1.5 text-sm font-medium'
                     onClick={onOpenCommandPalette}>
                     Search · Cmd/Ctrl+K

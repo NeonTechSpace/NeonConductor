@@ -20,15 +20,22 @@ function PresetBadge({ presetKey }: { presetKey?: ComposerSlashResultItem['prese
     );
 }
 
-export function ComposerSlashCommandPopup(props: { state: ComposerSlashPopupState }) {
+export function ComposerSlashCommandPopup(props: {
+    state: ComposerSlashPopupState;
+    popupId: string;
+    listboxId: string;
+}) {
     if (props.state.kind === 'hidden') {
         return null;
     }
 
     const popupState = props.state;
+    const optionId = (index: number) => `${props.listboxId}-option-${String(index)}`;
 
     return (
-        <div className='border-border bg-background/95 absolute inset-x-4 bottom-[calc(100%+0.75rem)] z-20 rounded-2xl border shadow-xl backdrop-blur'>
+        <div
+            id={props.popupId}
+            className='border-border bg-background/95 absolute inset-x-4 bottom-[calc(100%+0.75rem)] z-20 rounded-2xl border shadow-xl backdrop-blur'>
             <div className='border-border border-b px-4 py-3'>
                 <p className='text-[11px] font-semibold tracking-[0.14em] uppercase'>
                     {popupState.kind === 'commands'
@@ -38,12 +45,26 @@ export function ComposerSlashCommandPopup(props: { state: ComposerSlashPopupStat
                           : 'Manual Rule Selection'}
                 </p>
             </div>
-            <div className='max-h-80 overflow-y-auto px-2 py-2'>
+            <div
+                id={props.listboxId}
+                role='listbox'
+                aria-label={
+                    popupState.kind === 'commands'
+                        ? 'Slash command suggestions'
+                        : popupState.commandId === 'skills'
+                          ? 'Skill suggestions'
+                          : 'Manual rule suggestions'
+                }
+                className='max-h-80 overflow-y-auto px-2 py-2'>
                 {popupState.kind === 'commands' ? (
                     popupState.items.length > 0 ? (
                         popupState.items.map((item, index) => (
                             <div
                                 key={item.id}
+                                id={optionId(index)}
+                                role='option'
+                                aria-selected={index === popupState.highlightIndex}
+                                aria-disabled={!item.available}
                                 className={`rounded-xl px-3 py-3 ${
                                     index === popupState.highlightIndex ? 'bg-accent' : ''
                                 } ${item.available ? '' : 'opacity-60'}`}>
@@ -62,12 +83,17 @@ export function ComposerSlashCommandPopup(props: { state: ComposerSlashPopupStat
                             </div>
                         ))
                     ) : (
-                        <p className='text-muted-foreground px-3 py-3 text-sm'>{popupState.emptyMessage}</p>
+                        <p role='status' className='text-muted-foreground px-3 py-3 text-sm'>
+                            {popupState.emptyMessage}
+                        </p>
                     )
                 ) : popupState.items.length > 0 ? (
                     popupState.items.map((item, index) => (
                         <div
                             key={item.key}
+                            id={optionId(index)}
+                            role='option'
+                            aria-selected={index === popupState.highlightIndex}
                             className={`rounded-xl px-3 py-3 ${
                                 index === popupState.highlightIndex ? 'bg-accent' : ''
                             }`}>
@@ -87,7 +113,9 @@ export function ComposerSlashCommandPopup(props: { state: ComposerSlashPopupStat
                         </div>
                     ))
                 ) : (
-                    <p className='text-muted-foreground px-3 py-3 text-sm'>{popupState.emptyMessage}</p>
+                    <p role='status' className='text-muted-foreground px-3 py-3 text-sm'>
+                        {popupState.emptyMessage}
+                    </p>
                 )}
             </div>
             {popupState.kind === 'results' && popupState.warningMessage ? (

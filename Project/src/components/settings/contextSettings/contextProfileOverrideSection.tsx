@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import type { ContextProfileDraft } from '@/web/components/settings/contextSettingsDrafts';
 
@@ -18,6 +18,10 @@ export function ContextProfileOverrideSection({
     onSave,
 }: ContextProfileOverrideSectionProps) {
     const [draft, setDraft] = useState(initialDraft);
+    const inputIdPrefix = useId();
+    const overrideModeSelectId = `${inputIdPrefix}-override-mode`;
+    const percentInputId = `${inputIdPrefix}-threshold-percent`;
+    const fixedTokensInputId = `${inputIdPrefix}-fixed-input-tokens`;
 
     return (
         <section className='space-y-3'>
@@ -30,8 +34,11 @@ export function ContextProfileOverrideSection({
             </div>
 
             <div className='max-w-sm space-y-1'>
-                <label className='text-sm font-medium'>Override mode</label>
+                <label className='text-sm font-medium' htmlFor={overrideModeSelectId}>
+                    Override mode
+                </label>
                 <select
+                    id={overrideModeSelectId}
                     aria-label='Profile override mode'
                     value={draft.overrideMode}
                     onChange={(event) => {
@@ -51,8 +58,11 @@ export function ContextProfileOverrideSection({
 
             {draft.overrideMode === 'percent' ? (
                 <div className='max-w-sm space-y-1'>
-                    <label className='text-sm font-medium'>Profile threshold (%)</label>
+                    <label className='text-sm font-medium' htmlFor={percentInputId}>
+                        Profile threshold (%)
+                    </label>
                     <input
+                        id={percentInputId}
                         aria-label='Profile-specific threshold percent'
                         type='number'
                         min={1}
@@ -69,8 +79,11 @@ export function ContextProfileOverrideSection({
 
             {draft.overrideMode === 'fixed_tokens' ? (
                 <div className='max-w-sm space-y-1'>
-                    <label className='text-sm font-medium'>Fixed input tokens</label>
+                    <label className='text-sm font-medium' htmlFor={fixedTokensInputId}>
+                        Fixed input tokens
+                    </label>
                     <input
+                        id={fixedTokensInputId}
                         aria-label='Fixed input token budget'
                         type='number'
                         min={1}

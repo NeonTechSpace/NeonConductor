@@ -7,6 +7,8 @@ describe('ComposerSlashCommandPopup', () => {
     it('renders command availability and unavailable reasons', () => {
         const html = renderToStaticMarkup(
             <ComposerSlashCommandPopup
+                popupId='slash-popup'
+                listboxId='slash-options'
                 state={{
                     kind: 'commands',
                     typedQuery: '',
@@ -32,6 +34,11 @@ describe('ComposerSlashCommandPopup', () => {
         );
 
         expect(html).toContain('Slash Commands');
+        expect(html).toContain('id="slash-popup"');
+        expect(html).toContain('role="listbox"');
+        expect(html).toContain('id="slash-options-option-0"');
+        expect(html).toContain('role="option"');
+        expect(html).toContain('aria-selected="true"');
         expect(html).toContain('/skills');
         expect(html).toContain('Available');
         expect(html).toContain('/rules');
@@ -42,6 +49,8 @@ describe('ComposerSlashCommandPopup', () => {
     it('renders skill and rule result metadata with attached badges and warnings', () => {
         const skillsHtml = renderToStaticMarkup(
             <ComposerSlashCommandPopup
+                popupId='skills-popup'
+                listboxId='skills-options'
                 state={{
                     kind: 'results',
                     commandId: 'skills',
@@ -68,6 +77,8 @@ describe('ComposerSlashCommandPopup', () => {
 
         const rulesHtml = renderToStaticMarkup(
             <ComposerSlashCommandPopup
+                popupId='rules-popup'
+                listboxId='rules-options'
                 state={{
                     kind: 'results',
                     commandId: 'rules',

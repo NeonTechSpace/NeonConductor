@@ -1,16 +1,24 @@
 import {
+    useId,
+    type ClipboardEvent as ReactClipboardEvent,
+    type KeyboardEvent as ReactKeyboardEvent,
+    type RefObject,
+} from 'react';
+
+import {
     PendingDocumentsList,
     type PendingDocumentCardView,
 } from '@/web/components/conversation/panels/composerActionPanel/pendingDocumentsList';
-import { PendingImagesGrid, type PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
+import {
+    PendingImagesGrid,
+    type PendingImageCardView,
+} from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 import {
     PendingTextFilesList,
     type PendingTextFileCardView,
 } from '@/web/components/conversation/panels/composerActionPanel/pendingTextFilesList';
 import { ComposerSlashCommandPopup } from '@/web/components/conversation/panels/composerSlashCommandPopup';
 import type { ComposerSlashPopupState } from '@/web/components/conversation/panels/composerSlashCommands';
-
-import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react';
 
 interface ComposerPromptCardProps {
     isDragActive: boolean;
@@ -27,7 +35,7 @@ interface ComposerPromptCardProps {
     slashPopupState: ComposerSlashPopupState;
     onPromptChange: (prompt: string) => void;
     onPromptEdited: () => void;
-    onPromptPaste: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+    onPromptPaste: (event: ReactClipboardEvent<HTMLTextAreaElement>) => void;
     onPromptKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
     onDragLeave: (event: React.DragEvent<HTMLDivElement>) => void;
@@ -71,12 +79,16 @@ export function ComposerPromptCard({
     onRemovePendingTextFile,
     onRemovePendingDocument,
 }: ComposerPromptCardProps) {
+    const slashPopupId = useId();
+    const slashListboxId = useId();
+    const hasSlashPopup = slashPopupState.kind !== 'hidden';
+    const activeSlashDescendantId =
+        hasSlashPopup && slashPopupState.highlightIndex >= 0
+            ? `${slashListboxId}-option-${String(slashPopupState.highlightIndex)}`
+            : undefined;
+
     return (
-        <div
-            className='space-y-2'
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop}>
+        <div className='space-y-2' onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
             <input
                 ref={fileInputRef}
                 type='file'
@@ -96,7 +108,7 @@ export function ComposerPromptCard({
                 className={`border-border/70 bg-card/35 relative overflow-hidden rounded-[24px] border transition ${
                     isDragActive ? 'border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]' : ''
                 }`}>
-                <ComposerSlashCommandPopup state={slashPopupState} />
+                <ComposerSlashCommandPopup state={slashPopupState} popupId={slashPopupId} listboxId={slashListboxId} />
                 {imageAttachmentBlockedReason && !canAttachImages ? (
                     <p className='text-muted-foreground border-border/60 border-b px-4 py-3 text-xs'>
                         {imageAttachmentBlockedReason}
@@ -121,7 +133,12 @@ export function ComposerPromptCard({
                 />
                 <textarea
                     ref={promptTextareaRef}
+                    role='combobox'
                     aria-label='Prompt'
+                    aria-autocomplete='list'
+                    aria-expanded={hasSlashPopup}
+                    aria-controls={slashListboxId}
+                    {...(activeSlashDescendantId ? { 'aria-activedescendant': activeSlashDescendantId } : {})}
                     name='composerPrompt'
                     value={draftPrompt}
                     onChange={(event) => {

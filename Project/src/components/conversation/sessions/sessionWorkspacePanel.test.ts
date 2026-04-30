@@ -48,6 +48,7 @@ import {
     buildWorkspaceShellProjection,
     type SessionWorkspacePanelProps,
 } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
+import { moveWorkspacePrimarySurfaceTab } from '@/web/components/conversation/sessions/workspace/workspacePrimarySurfaceTabs';
 
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
@@ -506,6 +507,10 @@ describe('session workspace panel layout', () => {
         expect(html).toContain('Thread');
         expect(html).toContain('Run');
         expect(html).toContain('2 turns · completed');
+        expect(html).toContain('role="tablist"');
+        expect(html).toContain('role="tab"');
+        expect(html).toContain('aria-controls="workspace-primary-transcript-panel"');
+        expect(html).toContain('role="tabpanel"');
         expect(html).not.toContain('inspector');
     });
 
@@ -514,8 +519,12 @@ describe('session workspace panel layout', () => {
             ...sessionWorkspacePanelProps,
             cloudSessionsPanel: createElement('div', undefined, 'cloud sessions'),
         });
-        const queuedReviewSection = projection.inspector.sections.find((section) => section.id === 'selected-outbox-entry');
-        const executionReceiptSection = projection.inspector.sections.find((section) => section.id === 'execution-receipt');
+        const queuedReviewSection = projection.inspector.sections.find(
+            (section) => section.id === 'selected-outbox-entry'
+        );
+        const executionReceiptSection = projection.inspector.sections.find(
+            (section) => section.id === 'execution-receipt'
+        );
         const cloudSessionsSection = projection.inspector.sections.find((section) => section.id === 'cloud-sessions');
         const queuedReviewMarkup = queuedReviewSection
             ? renderToStaticMarkup(queuedReviewSection.content as ReturnType<typeof createElement>)
@@ -537,5 +546,29 @@ describe('session workspace panel layout', () => {
         expect(cloudSessionsSection?.label).toBe('Cloud sessions');
         expect(queuedReviewMarkup).toContain('Browser context: 3 comments · 2 elements');
         expect(executionReceiptMarkup).toContain('Browser context: 3 comments · 2 elements');
+    });
+
+    it('keeps browser surface keyboard navigation unavailable without a selected session', () => {
+        expect(
+            moveWorkspacePrimarySurfaceTab({
+                currentSurface: 'transcript',
+                direction: 'next',
+                browserEnabled: true,
+            })
+        ).toBe('browser');
+        expect(
+            moveWorkspacePrimarySurfaceTab({
+                currentSurface: 'browser',
+                direction: 'next',
+                browserEnabled: true,
+            })
+        ).toBe('transcript');
+        expect(
+            moveWorkspacePrimarySurfaceTab({
+                currentSurface: 'transcript',
+                direction: 'next',
+                browserEnabled: false,
+            })
+        ).toBe('transcript');
     });
 });

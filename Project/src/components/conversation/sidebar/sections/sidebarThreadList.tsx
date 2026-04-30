@@ -132,6 +132,10 @@ function getRunStatusLabel(runStatus: SessionSummaryRecord['runStatus']): string
     return 'Idle';
 }
 
+function getWorkspaceThreadListId(workspaceFingerprint: string): string {
+    return `sidebar-workspace-${workspaceFingerprint.replace(/[^a-zA-Z0-9_-]+/g, '-')}-threads`;
+}
+
 function ThreadRow({
     thread,
     depth,
@@ -178,6 +182,8 @@ function ThreadRow({
                 style={{ marginLeft: `${String(depth * 14)}px` }}>
                 <button
                     type='button'
+                    aria-current={selectedThreadId === thread.id ? 'page' : undefined}
+                    aria-label={`Open thread ${thread.title}`}
                     className='focus-visible:ring-ring min-w-0 flex-1 rounded-md text-left focus-visible:ring-2'
                     onMouseEnter={() => {
                         onPreviewThread?.(thread.id);
@@ -189,7 +195,7 @@ function ThreadRow({
                         onSelectThread(thread.id);
                     }}>
                     <div className='flex items-start justify-between gap-2'>
-                        <p className='truncate text-sm font-medium leading-5'>{thread.title}</p>
+                        <p className='truncate text-sm leading-5 font-medium'>{thread.title}</p>
                         {showAllModes ? (
                             <span
                                 className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${modeBadgeClass(
@@ -319,6 +325,7 @@ export function SidebarThreadList({
             {workspaceGroups.map((group) => {
                 const isCollapsed = collapsedWorkspaceFingerprints.includes(group.workspaceFingerprint);
                 const isSelectedWorkspace = selectedWorkspaceFingerprint === group.workspaceFingerprint;
+                const workspaceThreadsId = getWorkspaceThreadListId(group.workspaceFingerprint);
                 return (
                     <section key={group.workspaceFingerprint} className='mb-4 space-y-2'>
                         <div
@@ -334,6 +341,8 @@ export function SidebarThreadList({
                                             aria-label={
                                                 isCollapsed ? `Expand ${group.label}` : `Collapse ${group.label}`
                                             }
+                                            aria-controls={workspaceThreadsId}
+                                            aria-expanded={!isCollapsed}
                                             onClick={() => {
                                                 toggleWorkspaceCollapsed(group.workspaceFingerprint);
                                             }}>
@@ -345,6 +354,7 @@ export function SidebarThreadList({
                                         </button>
                                         <button
                                             type='button'
+                                            aria-current={isSelectedWorkspace ? 'page' : undefined}
                                             className='hover:bg-background/60 focus-visible:ring-ring min-w-0 flex-1 rounded-xl px-1 py-0.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none'
                                             onClick={() => {
                                                 onSelectWorkspaceFingerprint(group.workspaceFingerprint);
@@ -361,27 +371,27 @@ export function SidebarThreadList({
                                     </div>
                                 </div>
 
-                            <div className='flex items-center gap-1'>
-                                <button
-                                    type='button'
-                                    className='border-border bg-background hover:bg-accent focus-visible:ring-ring rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors focus-visible:ring-2'
-                                    aria-label={`Create a thread in ${group.label}`}
-                                    onClick={() => {
-                                        onRequestNewThread(group.workspaceFingerprint);
-                                    }}>
-                                    <span className='inline-flex items-center gap-1'>
-                                        <Plus className='h-3.5 w-3.5' />
-                                        New thread
-                                    </span>
-                                </button>
-                                <button
-                                    type='button'
-                                    className='hover:bg-destructive/10 hover:text-destructive focus-visible:ring-ring rounded-full p-1.5 transition-colors focus-visible:ring-2'
-                                    aria-label={`Clear threads for ${group.label}`}
-                                    onClick={() => {
-                                        onRequestWorkspaceDelete(group.workspaceFingerprint, group.label);
-                                    }}>
-                                    <Trash2 className='h-3.5 w-3.5' />
+                                <div className='flex items-center gap-1'>
+                                    <button
+                                        type='button'
+                                        className='border-border bg-background hover:bg-accent focus-visible:ring-ring rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors focus-visible:ring-2'
+                                        aria-label={`Create a thread in ${group.label}`}
+                                        onClick={() => {
+                                            onRequestNewThread(group.workspaceFingerprint);
+                                        }}>
+                                        <span className='inline-flex items-center gap-1'>
+                                            <Plus className='h-3.5 w-3.5' />
+                                            New thread
+                                        </span>
+                                    </button>
+                                    <button
+                                        type='button'
+                                        className='hover:bg-destructive/10 hover:text-destructive focus-visible:ring-ring rounded-full p-1.5 transition-colors focus-visible:ring-2'
+                                        aria-label={`Clear threads for ${group.label}`}
+                                        onClick={() => {
+                                            onRequestWorkspaceDelete(group.workspaceFingerprint, group.label);
+                                        }}>
+                                        <Trash2 className='h-3.5 w-3.5' />
                                     </button>
                                 </div>
                             </div>
@@ -401,7 +411,7 @@ export function SidebarThreadList({
                         </div>
 
                         {!isCollapsed ? (
-                            <div className='space-y-2 pl-3'>
+                            <div id={workspaceThreadsId} className='space-y-2 pl-3'>
                                 {inlineThreadDraft?.workspaceFingerprint === group.workspaceFingerprint ? (
                                     <SidebarInlineThreadDraft
                                         workspaceLabel={group.label}

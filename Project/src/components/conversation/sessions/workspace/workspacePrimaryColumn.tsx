@@ -1,11 +1,17 @@
 import { skipToken } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { ComposerActionPanel } from '@/web/components/conversation/panels/composerActionPanel';
 import { DevBrowserPanel } from '@/web/components/conversation/panels/devBrowserPanel';
 import { MessageFlowPanel } from '@/web/components/conversation/panels/messageFlowPanel';
 import { SessionOutboxPanel } from '@/web/components/conversation/panels/sessionOutboxPanel';
 import type { SessionWorkspacePanelProps } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
+import {
+    getWorkspacePrimarySurfacePanelId,
+    getWorkspacePrimarySurfaceTabId,
+    moveWorkspacePrimarySurfaceTab,
+    type WorkspacePrimarySurface,
+} from '@/web/components/conversation/sessions/workspace/workspacePrimarySurfaceTabs';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { Button } from '@/web/components/ui/button';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -160,8 +166,11 @@ export function WorkspacePrimaryColumn({
     onPromoteMessage,
 }: WorkspacePrimaryColumnProps) {
     const validatedSelectedSessionId = isEntityId(selectedSessionId, 'sess') ? selectedSessionId : undefined;
-    const [activePrimarySurface, setActivePrimarySurface] = useState<'transcript' | 'browser'>('transcript');
+    const [activePrimarySurface, setActivePrimarySurface] = useState<WorkspacePrimarySurface>('transcript');
     const [draftPromptSnapshot, setDraftPromptSnapshot] = useState('');
+    const browserSurfaceEnabled = Boolean(validatedSelectedSessionId);
+    const activeSurfacePanelId = getWorkspacePrimarySurfacePanelId(activePrimarySurface);
+    const activeSurfaceTabId = getWorkspacePrimarySurfaceTabId(activePrimarySurface);
     const includedBrowserPacketQuery = trpc.session.buildBrowserContextPacket.useQuery(
         validatedSelectedSessionId
             ? {
@@ -176,6 +185,26 @@ export function WorkspacePrimaryColumn({
     const includedBrowserSummary =
         includedBrowserPacketQuery.data?.available === true ? includedBrowserPacketQuery.data.summary : undefined;
 
+    useEffect(() => {
+        if (!browserSurfaceEnabled && activePrimarySurface === 'browser') {
+            setActivePrimarySurface('transcript');
+        }
+    }, [activePrimarySurface, browserSurfaceEnabled]);
+
+    function handleSurfaceTabKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+            return;
+        }
+        event.preventDefault();
+        setActivePrimarySurface((current) =>
+            moveWorkspacePrimarySurfaceTab({
+                currentSurface: current,
+                direction: event.key === 'ArrowRight' ? 'next' : 'previous',
+                browserEnabled: browserSurfaceEnabled,
+            })
+        );
+    }
+
     return (
         <div className='flex min-h-0 min-w-0 flex-col overflow-hidden'>
             <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-4'>
@@ -187,9 +216,17 @@ export function WorkspacePrimaryColumn({
                                 Switch between the transcript and the local dev browser for frontend review work.
                             </p>
                         </div>
-                        <div className='flex items-center gap-2'>
+                        <div
+                            role='tablist'
+                            aria-label='Session surface'
+                            className='flex items-center gap-2'
+                            onKeyDown={handleSurfaceTabKeyDown}>
                             <Button
+                                id='workspace-primary-transcript-tab'
                                 type='button'
+                                role='tab'
+                                aria-selected={activePrimarySurface === 'transcript'}
+                                aria-controls='workspace-primary-transcript-panel'
                                 size='sm'
                                 variant={activePrimarySurface === 'transcript' ? 'default' : 'outline'}
                                 onClick={() => {
@@ -198,10 +235,15 @@ export function WorkspacePrimaryColumn({
                                 Transcript
                             </Button>
                             <Button
+                                id='workspace-primary-browser-tab'
                                 type='button'
+                                role='tab'
+                                aria-selected={activePrimarySurface === 'browser'}
+                                aria-controls='workspace-primary-browser-panel'
                                 size='sm'
                                 variant={activePrimarySurface === 'browser' ? 'default' : 'outline'}
                                 disabled={!validatedSelectedSessionId}
+                                aria-disabled={!validatedSelectedSessionId}
                                 onClick={() => {
                                     setActivePrimarySurface('browser');
                                 }}>
@@ -209,7 +251,11 @@ export function WorkspacePrimaryColumn({
                             </Button>
                         </div>
                     </div>
-                    <div className='border-border/50 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[34px] border-dashed p-3 md:p-4'>
+                    <div
+                        id={activeSurfacePanelId}
+                        role='tabpanel'
+                        aria-labelledby={activeSurfaceTabId}
+                        className='border-border/50 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[34px] border-dashed p-3 md:p-4'>
                         {activePrimarySurface === 'browser' ? (
                             <DevBrowserPanel
                                 profileId={profileId}
@@ -225,7 +271,9 @@ export function WorkspacePrimaryColumn({
                                 messages={messages}
                                 partsByMessageId={partsByMessageId}
                                 runs={runs}
-                                {...(validatedSelectedSessionId ? { selectedSessionId: validatedSelectedSessionId } : {})}
+                                {...(validatedSelectedSessionId
+                                    ? { selectedSessionId: validatedSelectedSessionId }
+                                    : {})}
                                 {...(optimisticUserMessage ? { optimisticUserMessage } : {})}
                                 {...(onEditMessage ? { onEditMessage } : {})}
                                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}

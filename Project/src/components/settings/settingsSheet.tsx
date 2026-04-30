@@ -31,6 +31,7 @@ function SheetPrimaryRailButton({
     return (
         <button
             type='button'
+            aria-current={selected ? 'page' : undefined}
             className={`w-full rounded-[22px] border px-3 py-3 text-left transition-colors ${
                 selected
                     ? 'border-primary bg-primary/10 text-primary shadow-sm'

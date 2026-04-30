@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import type { ContextGlobalDraft } from '@/web/components/settings/contextSettingsDrafts';
 
@@ -16,6 +16,7 @@ export function ContextGlobalDefaultsSection({
     onSave,
 }: ContextGlobalDefaultsSectionProps) {
     const [draft, setDraft] = useState(initialDraft);
+    const compactThresholdInputId = `${useId()}-compact-threshold`;
 
     return (
         <section className='space-y-3'>
@@ -40,8 +41,11 @@ export function ContextGlobalDefaultsSection({
             </label>
 
             <div className='max-w-sm space-y-1'>
-                <label className='text-sm font-medium'>Compact threshold (%)</label>
+                <label className='text-sm font-medium' htmlFor={compactThresholdInputId}>
+                    Compact threshold (%)
+                </label>
                 <input
+                    id={compactThresholdInputId}
                     aria-label='Global context compact threshold percent'
                     type='number'
                     min={1}

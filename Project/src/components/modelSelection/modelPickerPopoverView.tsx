@@ -12,10 +12,7 @@ interface ModelPickerPopoverViewProps extends ModelPickerProps {
     readModel: ModelPickerReadModel;
 }
 
-function matchesModelQuery(input: {
-    query: string;
-    model: ModelPickerProps['models'][number];
-}): boolean {
+function matchesModelQuery(input: { query: string; model: ModelPickerProps['models'][number] }): boolean {
     const normalizedQuery = input.query.trim().toLowerCase();
     if (normalizedQuery.length === 0) {
         return true;
@@ -35,6 +32,7 @@ function matchesModelQuery(input: {
 
 export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
     const selectedOptionViewModel = props.readModel.options.find((option) => option.selected);
+    const portalHost = typeof document === 'undefined' ? null : document.body;
     const filteredGroups = props.readModel.groups
         .map((group) => ({
             ...group,
@@ -71,13 +69,11 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                 <ChevronDown className='h-4 w-4 shrink-0 opacity-70' />
             </Button>
 
-            {props.controller.isOpen &&
-            props.controller.popoverLayout &&
-            typeof document !== 'undefined' &&
-            document.body
+            {props.controller.isOpen && props.controller.popoverLayout && portalHost
                 ? createPortal(
                       <div
                           ref={props.controller.panelRef}
+                          id={`${props.controller.listboxId}-popover`}
                           className='border-border bg-popover text-popover-foreground fixed z-[80] overflow-hidden rounded-2xl border shadow-xl'
                           style={{
                               top: `${String(props.controller.popoverLayout.top)}px`,
@@ -94,6 +90,7 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                                       ref={props.controller.searchInputRef}
                                       id={`${props.controller.listboxId}-search`}
                                       type='text'
+                                      aria-controls={props.controller.listboxId}
                                       value={props.controller.query}
                                       onChange={(event) => {
                                           props.controller.setQuery(event.target.value);
@@ -107,6 +104,7 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                           <div
                               id={props.controller.listboxId}
                               role='listbox'
+                              aria-label={`${props.ariaLabel} options`}
                               className='overflow-y-auto p-2'
                               style={{ maxHeight: `${String(props.controller.popoverLayout.maxHeight)}px` }}>
                               {filteredGroups.length === 0 ? (
@@ -117,6 +115,7 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                                   <ModelPickerOptionList
                                       {...(props.onSelectOption ? { onSelectOption: props.onSelectOption } : {})}
                                       groups={filteredGroups}
+                                      optionIdPrefix={`${props.controller.listboxId}-option`}
                                       onSelectModel={(modelId) => {
                                           props.onSelectModel(modelId);
                                           props.controller.closePopover();
@@ -125,7 +124,7 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                               )}
                           </div>
                       </div>,
-                      document.body
+                      portalHost
                   )
                 : null}
         </div>

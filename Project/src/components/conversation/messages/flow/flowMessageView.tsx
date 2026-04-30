@@ -10,9 +10,9 @@ import { readRelatedTargetNode } from '@/web/lib/dom/readRelatedTargetNode';
 
 import type { RunRecord } from '@/app/backend/persistence/types';
 
-import type { FocusEvent } from 'react';
 import type { EntityId } from '@/shared/contracts';
 
+import type { FocusEvent } from 'react';
 
 interface FlowMessageViewProps {
     profileId: string;
@@ -57,15 +57,22 @@ export function FlowMessageView({
         return (
             <div className='flex justify-end'>
                 <article
-                    className='group focus-visible:ring-ring focus-visible:ring-offset-background relative max-w-[min(40rem,82%)] rounded-[1.6rem] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
-                    tabIndex={0}
+                    className='group relative max-w-[min(40rem,82%)] rounded-[1.6rem]'
                     onClick={() => {
                         setIsPinnedVisible(true);
                     }}
-                    onFocus={() => {
-                        setIsPinnedVisible(true);
-                    }}
                     onBlur={handleUserMessageBlur}>
+                    <button
+                        type='button'
+                        className='focus:bg-background focus:text-foreground focus:ring-ring sr-only absolute top-2 right-2 z-10 rounded-full border px-3 py-1.5 text-xs font-medium focus:not-sr-only focus:ring-2 focus:outline-none'
+                        onFocus={() => {
+                            setIsPinnedVisible(true);
+                        }}
+                        onClick={() => {
+                            setIsPinnedVisible(true);
+                        }}>
+                        Show message actions
+                    </button>
                     <div className='bg-card/85 border-border/70 rounded-[1.4rem] border px-4 py-3 shadow-[0_18px_48px_rgba(4,8,18,0.12)]'>
                         <MessageFlowBody
                             profileId={profileId}
