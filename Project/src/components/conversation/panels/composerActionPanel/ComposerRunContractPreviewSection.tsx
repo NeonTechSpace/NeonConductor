@@ -1,3 +1,9 @@
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import {
+    buildRunContractPreviewDiagnostics,
+    buildRunContractUnavailableDiagnostic,
+} from '@/web/lib/operatorDiagnostics';
+
 import type { BrowserContextSummary, RunContractPreview } from '@/shared/contracts';
 
 interface ComposerRunContractPreviewSectionProps {
@@ -58,6 +64,11 @@ function formatExecutionTarget(preview: RunContractPreview): string {
 
 export function ComposerRunContractPreviewSection(input: ComposerRunContractPreviewSectionProps) {
     const browserContextSummary = input.preview?.browserContextSummary ?? input.browserContextSummary;
+    const diagnostics = input.preview ? buildRunContractPreviewDiagnostics(input.preview) : [];
+    const unavailableDiagnostic =
+        !input.waitingForAttachments && input.unavailableMessage
+            ? [buildRunContractUnavailableDiagnostic(input.unavailableMessage)]
+            : [];
 
     return (
         <section className='border-border/60 bg-card/25 rounded-2xl border px-3 py-3'>
@@ -79,107 +90,110 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                 </span>
             </div>
             {input.waitingForAttachments ? (
-                <p className='text-muted-foreground text-xs'>Run contract preview waits until attached files finish preparing.</p>
+                <p className='text-muted-foreground text-xs'>
+                    Run contract preview waits until attached files finish preparing.
+                </p>
             ) : null}
-            {!input.waitingForAttachments && input.unavailableMessage ? (
-                <p className='text-muted-foreground text-xs'>{input.unavailableMessage}</p>
-            ) : null}
+            <OperatorDiagnosticList diagnostics={unavailableDiagnostic} className='mb-2' compact />
             {!input.waitingForAttachments && !input.unavailableMessage && input.preview ? (
-                <div className='grid gap-2 text-xs sm:grid-cols-2'>
-                    <div className='rounded-xl border px-3 py-2'>
-                        <p className='text-muted-foreground'>Target</p>
-                        <p className='font-medium'>
-                            {input.preview.steeringSnapshot.providerId} / {input.preview.steeringSnapshot.modelId}
-                        </p>
-                    </div>
-                    <div className='rounded-xl border px-3 py-2'>
-                        <p className='text-muted-foreground'>Cache</p>
-                        <p className='font-medium'>{input.preview.cache.cacheabilityHint}</p>
-                    </div>
-                    <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
-                        <p className='text-muted-foreground'>Execution Target</p>
-                        <p className='font-medium'>{formatExecutionTarget(input.preview)}</p>
-                    </div>
-                    <div className='rounded-xl border px-3 py-2'>
-                        <p className='text-muted-foreground'>Prepared Context</p>
-                        <p className='font-medium'>
-                            {String(input.preview.preparedContext.activeContributorCount)} contributors
-                        </p>
-                    </div>
-                    <div className='rounded-xl border px-3 py-2'>
-                        <p className='text-muted-foreground'>Attachments</p>
-                        <p className='font-medium'>
-                            {String(input.preview.attachmentSummary.totalCount)} total
-                            {input.preview.attachmentSummary.textFileAttachmentCount > 0
-                                ? `, ${String(input.preview.attachmentSummary.textFileAttachmentCount)} text`
-                                : ''}
-                            {input.preview.attachmentSummary.imageAttachmentCount > 0
-                                ? `, ${String(input.preview.attachmentSummary.imageAttachmentCount)} images`
-                                : ''}
-                            {(input.preview.attachmentSummary.documentAttachmentCount ?? 0) > 0
-                                ? `, ${String(input.preview.attachmentSummary.documentAttachmentCount)} PDFs`
-                                : ''}
-                        </p>
-                    </div>
-                    {(input.preview.documentSummary?.length ?? 0) > 0 ? (
-                        <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
-                            <p className='text-muted-foreground'>PDF Documents</p>
-                            <p className='font-medium'>{formatDocumentSelection(input.preview)}</p>
-                            <div className='mt-2 space-y-1'>
-                                {input.preview.documentSummary?.map((document) => (
-                                    <p key={document.documentArtifactId} className='text-muted-foreground'>
-                                        {document.fileName}: {formatDocumentPageRanges(document)} ·{' '}
-                                        {String(document.selectedTokenCount)} tokens selected
-                                    </p>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
-                    {browserContextSummary ? (
+                <div className='space-y-2'>
+                    <OperatorDiagnosticList diagnostics={diagnostics} compact />
+                    <div className='grid gap-2 text-xs sm:grid-cols-2'>
                         <div className='rounded-xl border px-3 py-2'>
-                            <p className='text-muted-foreground'>Browser Context</p>
+                            <p className='text-muted-foreground'>Target</p>
                             <p className='font-medium'>
-                                {String(browserContextSummary.commentCount)} comments,{' '}
-                                {String(browserContextSummary.selectedElementCount)} elements,{' '}
-                                {String(browserContextSummary.captureCount)} captures,{' '}
-                                {String(browserContextSummary.designerDraftCount)} designer drafts
-                            </p>
-                            <p className='text-muted-foreground mt-1'>
-                                Apply intent: {browserContextSummary.designerApplyIntentStatus.replaceAll('_', ' ')}
+                                {input.preview.steeringSnapshot.providerId} / {input.preview.steeringSnapshot.modelId}
                             </p>
                         </div>
-                    ) : null}
-                    <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
-                        <p className='text-muted-foreground'>Trust Mix</p>
-                        <p className='font-medium'>{renderTrustSummary(input.preview)}</p>
-                    </div>
-                    <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
-                        <p className='text-muted-foreground'>Dynamic Skill Expansion</p>
-                        <p className='font-medium'>
-                            {String(input.preview.dynamicExpansionSummary.resolvedCount)} resolved,{' '}
-                            {String(input.preview.dynamicExpansionSummary.blockedCount)} blocked,{' '}
-                            {String(input.preview.dynamicExpansionSummary.failedCount)} failed,{' '}
-                            {String(input.preview.dynamicExpansionSummary.omittedCount)} omitted
-                        </p>
-                    </div>
-                    {input.preview.diffFromLastCompatible ? (
+                        <div className='rounded-xl border px-3 py-2'>
+                            <p className='text-muted-foreground'>Cache</p>
+                            <p className='font-medium'>{input.preview.cache.cacheabilityHint}</p>
+                        </div>
                         <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
-                            <p className='text-muted-foreground'>Compatibility</p>
-                            <p className='font-medium'>
-                                {input.preview.diffFromLastCompatible.hasMaterialChanges
-                                    ? 'Material drift detected before execution.'
-                                    : 'Compatible with the last accepted contract.'}
-                            </p>
-                            {input.preview.diffFromLastCompatible.items.length > 0 ? (
-                                <p className='text-muted-foreground mt-1'>
-                                    {input.preview.diffFromLastCompatible.items
-                                        .slice(0, 2)
-                                        .map((item) => `${item.field}: ${item.reason}`)
-                                        .join(' • ')}
-                                </p>
-                            ) : null}
+                            <p className='text-muted-foreground'>Execution Target</p>
+                            <p className='font-medium'>{formatExecutionTarget(input.preview)}</p>
                         </div>
-                    ) : null}
+                        <div className='rounded-xl border px-3 py-2'>
+                            <p className='text-muted-foreground'>Prepared Context</p>
+                            <p className='font-medium'>
+                                {String(input.preview.preparedContext.activeContributorCount)} contributors
+                            </p>
+                        </div>
+                        <div className='rounded-xl border px-3 py-2'>
+                            <p className='text-muted-foreground'>Attachments</p>
+                            <p className='font-medium'>
+                                {String(input.preview.attachmentSummary.totalCount)} total
+                                {input.preview.attachmentSummary.textFileAttachmentCount > 0
+                                    ? `, ${String(input.preview.attachmentSummary.textFileAttachmentCount)} text`
+                                    : ''}
+                                {input.preview.attachmentSummary.imageAttachmentCount > 0
+                                    ? `, ${String(input.preview.attachmentSummary.imageAttachmentCount)} images`
+                                    : ''}
+                                {(input.preview.attachmentSummary.documentAttachmentCount ?? 0) > 0
+                                    ? `, ${String(input.preview.attachmentSummary.documentAttachmentCount)} PDFs`
+                                    : ''}
+                            </p>
+                        </div>
+                        {(input.preview.documentSummary?.length ?? 0) > 0 ? (
+                            <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                                <p className='text-muted-foreground'>PDF Documents</p>
+                                <p className='font-medium'>{formatDocumentSelection(input.preview)}</p>
+                                <div className='mt-2 space-y-1'>
+                                    {input.preview.documentSummary?.map((document) => (
+                                        <p key={document.documentArtifactId} className='text-muted-foreground'>
+                                            {document.fileName}: {formatDocumentPageRanges(document)} ·{' '}
+                                            {String(document.selectedTokenCount)} tokens selected
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+                        {browserContextSummary ? (
+                            <div className='rounded-xl border px-3 py-2'>
+                                <p className='text-muted-foreground'>Browser Context</p>
+                                <p className='font-medium'>
+                                    {String(browserContextSummary.commentCount)} comments,{' '}
+                                    {String(browserContextSummary.selectedElementCount)} elements,{' '}
+                                    {String(browserContextSummary.captureCount)} captures,{' '}
+                                    {String(browserContextSummary.designerDraftCount)} designer drafts
+                                </p>
+                                <p className='text-muted-foreground mt-1'>
+                                    Apply intent: {browserContextSummary.designerApplyIntentStatus.replaceAll('_', ' ')}
+                                </p>
+                            </div>
+                        ) : null}
+                        <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                            <p className='text-muted-foreground'>Trust Mix</p>
+                            <p className='font-medium'>{renderTrustSummary(input.preview)}</p>
+                        </div>
+                        <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                            <p className='text-muted-foreground'>Dynamic Skill Expansion</p>
+                            <p className='font-medium'>
+                                {String(input.preview.dynamicExpansionSummary.resolvedCount)} resolved,{' '}
+                                {String(input.preview.dynamicExpansionSummary.blockedCount)} blocked,{' '}
+                                {String(input.preview.dynamicExpansionSummary.failedCount)} failed,{' '}
+                                {String(input.preview.dynamicExpansionSummary.omittedCount)} omitted
+                            </p>
+                        </div>
+                        {input.preview.diffFromLastCompatible ? (
+                            <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                                <p className='text-muted-foreground'>Compatibility</p>
+                                <p className='font-medium'>
+                                    {input.preview.diffFromLastCompatible.hasMaterialChanges
+                                        ? 'Material drift detected before execution.'
+                                        : 'Compatible with the last accepted contract.'}
+                                </p>
+                                {input.preview.diffFromLastCompatible.items.length > 0 ? (
+                                    <p className='text-muted-foreground mt-1'>
+                                        {input.preview.diffFromLastCompatible.items
+                                            .slice(0, 2)
+                                            .map((item) => `${item.field}: ${item.reason}`)
+                                            .join(' • ')}
+                                    </p>
+                                ) : null}
+                            </div>
+                        ) : null}
+                    </div>
                 </div>
             ) : null}
         </section>

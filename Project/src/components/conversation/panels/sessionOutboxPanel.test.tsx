@@ -171,6 +171,7 @@ function createPausedOutboxEntry(): SessionOutboxEntry {
                 ],
             },
         },
+        pausedReason: 'Review material drift before resuming this queued run.',
         createdAt: '2026-04-30T10:00:00.000Z',
         updatedAt: '2026-04-30T10:00:00.000Z',
     };
@@ -187,6 +188,8 @@ describe('SessionOutboxPanel', () => {
 
         expect(html).toContain('Accept Contract');
         expect(html).toContain('Managed sandbox scheduled from C:\\Workspace\\Review');
+        expect(html).toContain('Queued run paused for review');
+        expect(html).toContain('Run contract changed before execution');
         expect(html).toContain('executionTargetKind');
     });
 });

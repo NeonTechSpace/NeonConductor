@@ -135,9 +135,12 @@ describe('CloudSessionsPanel', () => {
         expect(html).toContain('Remote only');
         expect(html).toContain('Remote record synced');
         expect(html).toContain('Remote snapshot only: sync-back not applicable');
+        expect(html).toContain('Remote workspace sync-back does not apply');
         expect(html).toContain('Remote Beta');
         expect(html).toContain('Continued');
         expect(html).toContain('Kilo-owned remote workspace: sync-back not available');
+        expect(html).toContain('Remote workspace sync-back is not available');
+        expect(html).toContain('Kilo owns remote workspace state');
         expect(html).toContain('Remote Gamma');
         expect(html).toContain('Local fork');
         expect(html).toContain('Local fork: sync-back not applicable');

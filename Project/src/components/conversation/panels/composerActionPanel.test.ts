@@ -67,7 +67,8 @@ function createEmptyPreparedContextSummary() {
         digest: {
             fullDigest: 'runctx-empty',
             contributorDigest: 'ctxcontributors-empty',
-            cacheabilityHint: 'Prepared context is stable until prompt layers, mode overrides, or system-owned contributors change.',
+            cacheabilityHint:
+                'Prepared context is stable until prompt layers, mode overrides, or system-owned contributors change.',
             checkpoints: {
                 bootstrap: {
                     checkpoint: 'bootstrap',
@@ -168,8 +169,14 @@ function createContextState(
 function createComposerActionPanelProps(
     input: Omit<Partial<ComponentProps<typeof ComposerActionPanel>>, 'profileId'>
 ): ComponentProps<typeof ComposerActionPanel> {
-    const { pendingTextFiles, pendingDocuments, onAddFiles, onRemovePendingTextFile, onRemovePendingDocument, ...rest } =
-        input;
+    const {
+        pendingTextFiles,
+        pendingDocuments,
+        onAddFiles,
+        onRemovePendingTextFile,
+        onRemovePendingDocument,
+        ...rest
+    } = input;
     return Object.assign({}, rest, {
         profileId: 'profile_default',
         pendingTextFiles: pendingTextFiles ?? [],
@@ -566,6 +573,8 @@ describe('composer enter handling', () => {
 
         expect(html).toContain('Prepared context: 1 loaded contributor.');
         expect(html).toContain('Dynamic skills: 1 loaded · 1 blocked or unresolved.');
+        expect(html).toContain('Dynamic skill context is blocked or unresolved');
+        expect(html).toContain('1 dynamic skill contributor did not resolve into prepared context.');
     });
 
     it('keeps context disabled-state messaging focused on thread usage', () => {
@@ -616,5 +625,6 @@ describe('composer enter handling', () => {
         expect(html).toContain(
             'Current thread usage is unavailable for image sessions because multimodal token counting is not implemented yet.'
         );
+        expect(html).toContain('Image token counting is not available');
     });
 });

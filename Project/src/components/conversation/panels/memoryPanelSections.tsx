@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 
-import type { MemoryPanelController, MemoryPanelViewModel } from '@/web/components/conversation/panels/memoryPanel.types';
+import type {
+    MemoryPanelController,
+    MemoryPanelViewModel,
+} from '@/web/components/conversation/panels/memoryPanel.types';
 import { Button } from '@/web/components/ui/button';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import { buildMemoryTruthDiagnostics } from '@/web/lib/operatorDiagnostics';
 
 import type {
     MemoryApplyReviewActionInput,
@@ -14,7 +19,10 @@ import type {
 
 type MemoryReviewActionDraft =
     | Omit<Extract<MemoryApplyReviewActionInput, { action: 'update' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
-    | Omit<Extract<MemoryApplyReviewActionInput, { action: 'supersede' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>
+    | Omit<
+          Extract<MemoryApplyReviewActionInput, { action: 'supersede' }>,
+          'profileId' | 'memoryId' | 'expectedUpdatedAt'
+      >
     | Omit<Extract<MemoryApplyReviewActionInput, { action: 'forget' }>, 'profileId' | 'memoryId' | 'expectedUpdatedAt'>;
 
 function SyncStateBadge({ syncState }: { syncState: ProjectedMemoryRecord['syncState'] }) {
@@ -54,11 +62,7 @@ function formatRetentionTimestamp(timestamp: string): string {
     return new Date(timestamp).toLocaleString();
 }
 
-function DerivedSummaryBadges({
-    derivedSummary,
-}: {
-    derivedSummary?: RetrievedMemoryRecord['derivedSummary'];
-}) {
+function DerivedSummaryBadges({ derivedSummary }: { derivedSummary?: RetrievedMemoryRecord['derivedSummary'] }) {
     if (!derivedSummary) {
         return null;
     }
@@ -69,9 +73,13 @@ function DerivedSummaryBadges({
             {derivedSummary.linkedRunIds.length > 0 ? <ScopeBadge label='linked run' /> : null}
             {derivedSummary.linkedThreadIds.length > 0 ? <ScopeBadge label='linked thread' /> : null}
             {derivedSummary.linkedWorkspaceFingerprints.length > 0 ? <ScopeBadge label='linked workspace' /> : null}
-            {derivedSummary.graphNeighborCount > 0 ? <ScopeBadge label={`${String(derivedSummary.graphNeighborCount)} neighbors`} /> : null}
+            {derivedSummary.graphNeighborCount > 0 ? (
+                <ScopeBadge label={`${String(derivedSummary.graphNeighborCount)} neighbors`} />
+            ) : null}
             {derivedSummary.temporalStatus ? <ScopeBadge label={derivedSummary.temporalStatus} /> : null}
-            {derivedSummary.strength ? <ScopeBadge label={`confidence ${derivedSummary.strength.confidenceScore.toFixed(2)}`} /> : null}
+            {derivedSummary.strength ? (
+                <ScopeBadge label={`confidence ${derivedSummary.strength.confidenceScore.toFixed(2)}`} />
+            ) : null}
         </>
     );
 }
@@ -95,13 +103,22 @@ function MemoryProjectionRoots({ viewModel }: { viewModel: MemoryPanelViewModel 
     );
 }
 
-function RetrievedMemoryCard({ controller, record }: { controller: MemoryPanelController; record: RetrievedMemoryRecord }) {
+function RetrievedMemoryCard({
+    controller,
+    record,
+}: {
+    controller: MemoryPanelController;
+    record: RetrievedMemoryRecord;
+}) {
     const hasConflictingCurrentTruth = record.derivedSummary
         ? record.derivedSummary.conflictingCurrentMemoryIds.length > 0
         : false;
-    const showsDifferentCurrentTruth =
-        record.derivedSummary?.currentTruthMemoryId && record.derivedSummary.currentTruthMemoryId !== record.memoryId;
     const isGraphExpanded = record.matchReason === 'graph_expanded';
+    const truthDiagnostics = buildMemoryTruthDiagnostics({
+        hasConflictingCurrentTruth,
+        memoryId: record.memoryId,
+        currentTruthMemoryId: record.derivedSummary?.currentTruthMemoryId,
+    });
 
     return (
         <div className='border-border bg-background/70 rounded-xl border px-3 py-3'>
@@ -117,20 +134,13 @@ function RetrievedMemoryCard({ controller, record }: { controller: MemoryPanelCo
                 <p className='text-muted-foreground mt-1 text-[11px]'>{record.annotations.join(' ')}</p>
             ) : null}
             <div className='border-border/70 bg-card/35 mt-2 rounded-lg border px-3 py-2'>
-                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>{record.explanation.selectedSourceLabel}</p>
+                <p className='text-xs font-semibold tracking-[0.12em] uppercase'>
+                    {record.explanation.selectedSourceLabel}
+                </p>
                 <p className='text-muted-foreground mt-1 text-[11px]'>{record.explanation.selectionReason}</p>
                 <p className='text-muted-foreground mt-1 text-[11px]'>{record.explanation.rankingReason}</p>
             </div>
-            {hasConflictingCurrentTruth ? (
-                <p className='text-muted-foreground mt-1 text-[11px]'>
-                    Conflicting current truth detected for this temporal subject.
-                </p>
-            ) : null}
-            {showsDifferentCurrentTruth ? (
-                <p className='text-muted-foreground mt-1 text-[11px]'>
-                    Current truth resolves to {record.derivedSummary?.currentTruthMemoryId}.
-                </p>
-            ) : null}
+            <OperatorDiagnosticList diagnostics={truthDiagnostics} className='mt-2' compact />
             {isGraphExpanded ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>
                     Added through derived graph expansion from a stronger contextual anchor.
@@ -197,6 +207,11 @@ function ProjectedMemoryCard({
     const hasConflictingCurrentTruth = projectedMemory.derivedSummary
         ? projectedMemory.derivedSummary.conflictingCurrentMemoryIds.length > 0
         : false;
+    const truthDiagnostics = buildMemoryTruthDiagnostics({
+        hasConflictingCurrentTruth,
+        memoryId: projectedMemory.memory.id,
+        currentTruthMemoryId: projectedMemory.derivedSummary?.currentTruthMemoryId,
+    });
     const runtimeMetadata = (() => {
         if (projectedMemory.memory.metadata['source'] !== 'runtime_run_outcome') {
             return null;
@@ -243,7 +258,9 @@ function ProjectedMemoryCard({
                 ) : null}
                 {consolidationMetadata ? <ScopeBadge label='consolidated' /> : null}
             </div>
-            <p className='text-muted-foreground mt-1 text-xs'>{projectedMemory.memory.summaryText ?? projectedMemory.memory.id}</p>
+            <p className='text-muted-foreground mt-1 text-xs'>
+                {projectedMemory.memory.summaryText ?? projectedMemory.memory.id}
+            </p>
             {projectedMemory.memory.retentionExpiresAt ? (
                 <p className='text-muted-foreground mt-1 text-[11px]'>
                     Expires {formatRetentionTimestamp(projectedMemory.memory.retentionExpiresAt)}
@@ -270,11 +287,14 @@ function ProjectedMemoryCard({
                     Consolidated system memory
                     {consolidationMetadata.sourceConsolidationId
                         ? ` from consolidation ${consolidationMetadata.sourceConsolidationId}`
-                        : ''}.
+                        : ''}
+                    .
                 </p>
             ) : null}
             <p className='text-muted-foreground mt-2 text-[11px] break-all'>{projectedMemory.absolutePath}</p>
-            {projectedMemory.parseError ? <p className='text-destructive mt-2 text-xs'>{projectedMemory.parseError}</p> : null}
+            {projectedMemory.parseError ? (
+                <p className='text-destructive mt-2 text-xs'>{projectedMemory.parseError}</p>
+            ) : null}
             {projectedMemory.derivedSummary?.hasTemporalHistory ? (
                 <p className='text-muted-foreground mt-2 text-[11px]'>
                     Temporal history: {projectedMemory.derivedSummary.predecessorMemoryIds.length} prior fact
@@ -282,11 +302,7 @@ function ProjectedMemoryCard({
                     {projectedMemory.derivedSummary.successorMemoryId ? ', plus a newer replacement' : ''}.
                 </p>
             ) : null}
-            {hasConflictingCurrentTruth ? (
-                <p className='text-muted-foreground mt-2 text-[11px]'>
-                    Conflicting current truth detected for this temporal subject.
-                </p>
-            ) : null}
+            <OperatorDiagnosticList diagnostics={truthDiagnostics} className='mt-2' compact />
             {projectedMemory.derivedSummary?.strength ? (
                 <p className='text-muted-foreground mt-2 text-[11px]'>
                     Strength: recency {projectedMemory.derivedSummary.strength.recencyScore.toFixed(2)}, evidence{' '}
@@ -420,7 +436,9 @@ function MemoryReviewDialog({ controller }: { controller: MemoryPanelController 
 
                 {!details ? (
                     <div className='border-border/70 bg-card/35 mt-4 rounded-xl border px-4 py-5 text-sm'>
-                        {controller.isReviewDetailsLoading ? 'Loading memory details...' : 'Memory details are unavailable.'}
+                        {controller.isReviewDetailsLoading
+                            ? 'Loading memory details...'
+                            : 'Memory details are unavailable.'}
                     </div>
                 ) : (
                     <div className='mt-4 max-h-[70vh] space-y-4 overflow-y-auto pr-1'>
@@ -527,7 +545,11 @@ function MemoryReviewDialog({ controller }: { controller: MemoryPanelController 
                 )}
 
                 <div className='mt-5 flex justify-end gap-2'>
-                    <Button type='button' variant='outline' onClick={controller.onCloseMemoryReview} disabled={controller.isApplyingReviewAction}>
+                    <Button
+                        type='button'
+                        variant='outline'
+                        onClick={controller.onCloseMemoryReview}
+                        disabled={controller.isApplyingReviewAction}>
                         Close
                     </Button>
                     {isReadOnlyReview ? null : (
@@ -732,11 +754,7 @@ export function MemoryPanelSections({ controller }: { controller: MemoryPanelCon
                 {viewModel.reviewSection.proposals.length > 0 ? (
                     <div className='space-y-2'>
                         {viewModel.reviewSection.proposals.map((proposal) => (
-                            <ProposalCard
-                                key={proposal.memory.id}
-                                controller={controller}
-                                proposal={proposal}
-                            />
+                            <ProposalCard key={proposal.memory.id} controller={controller} proposal={proposal} />
                         ))}
                     </div>
                 ) : (

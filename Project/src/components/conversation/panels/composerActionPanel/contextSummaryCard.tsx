@@ -1,4 +1,6 @@
 import { Button } from '@/web/components/ui/button';
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import { buildContextSummaryDiagnostics } from '@/web/lib/operatorDiagnostics';
 
 interface ContextSummaryCardProps {
     hasUsageNumbers: boolean;
@@ -59,6 +61,17 @@ export function ContextSummaryCard({
     formatTokenCount,
     formatCompactionTimestamp,
 }: ContextSummaryCardProps) {
+    const diagnostics = buildContextSummaryDiagnostics({
+        missingReason:
+            missingReason === 'missing_model_limits' ||
+            missingReason === 'feature_disabled' ||
+            missingReason === 'multimodal_counting_unavailable'
+                ? missingReason
+                : undefined,
+        blockedDynamicSkillContributorCount,
+        contextFeedback,
+    });
+
     return (
         <div className='border-border bg-card/40 space-y-1 rounded-md border px-3 py-2'>
             <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -125,7 +138,7 @@ export function ContextSummaryCard({
                 <p className='text-muted-foreground text-[11px]'>
                     Dynamic skills: {dynamicSkillContributorCount} loaded
                     {blockedDynamicSkillContributorCount > 0
-                        ? ` · ${blockedDynamicSkillContributorCount} blocked or unresolved`
+                        ? ` · ${String(blockedDynamicSkillContributorCount)} blocked or unresolved`
                         : ''}
                     .
                 </p>
@@ -134,18 +147,7 @@ export function ContextSummaryCard({
                 Limit source: {limitsSource}
                 {limitsOverrideReason ? ` · Override: ${limitsOverrideReason}` : ''}
             </p>
-            {contextFeedback ? (
-                <p
-                    className={`text-xs ${
-                        contextFeedback.tone === 'error'
-                            ? 'text-destructive'
-                            : contextFeedback.tone === 'success'
-                              ? 'text-primary'
-                              : 'text-muted-foreground'
-                    }`}>
-                    {contextFeedback.message}
-                </p>
-            ) : null}
+            <OperatorDiagnosticList diagnostics={diagnostics} compact />
         </div>
     );
 }

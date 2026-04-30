@@ -255,9 +255,10 @@ describe('MemoryPanel', () => {
                             derivedSummary: {
                                 temporalStatus: 'current',
                                 hasTemporalHistory: true,
-                                conflictingCurrentMemoryIds: [],
+                                conflictingCurrentMemoryIds: ['mem_conflict'],
                                 predecessorMemoryIds: ['mem_0'],
                                 successorMemoryId: 'mem_2',
+                                currentTruthMemoryId: 'mem_conflict',
                                 graphNeighborCount: 2,
                                 linkedRunIds: ['run_1'],
                                 linkedThreadIds: ['thr_1'],
@@ -280,6 +281,8 @@ describe('MemoryPanel', () => {
         expect(html).toContain('Exact thread');
         expect(html).toContain('The current thread matched this memory directly.');
         expect(html).toContain('Exact scope outranks broader matches.');
+        expect(html).toContain('Conflicting current truth detected');
+        expect(html).toContain('Current truth resolves elsewhere');
         expect(html).toContain('Evidence: Assistant output - Recovered implementation details.');
         expect(html).toContain('retrieved');
         expect(html).toContain('history');

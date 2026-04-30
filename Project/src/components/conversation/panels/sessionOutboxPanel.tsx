@@ -1,21 +1,13 @@
 import { skipToken } from '@tanstack/react-query';
-import {
-    ArrowDown,
-    ArrowUp,
-    Edit3,
-    FileUp,
-    PauseCircle,
-    Play,
-    Save,
-    X,
-    XCircle,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit3, FileUp, PauseCircle, Play, Save, X, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { prepareComposerDocumentPayload } from '@/web/components/conversation/hooks/composerDocumentAttachments';
 import { prepareComposerImageAttachment } from '@/web/components/conversation/hooks/composerImageAttachments';
 import { prepareComposerTextFileAttachment } from '@/web/components/conversation/hooks/composerTextFileAttachments';
 import { Button } from '@/web/components/ui/button';
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import { buildOutboxReviewDiagnostics } from '@/web/lib/operatorDiagnostics';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
@@ -26,7 +18,11 @@ import type {
     SessionAttachmentPayload,
     SessionOutboxEntry,
 } from '@/shared/contracts';
-import { evaluateFileReadGuard, formatFileReadGuardDecisionMessage, resolveFileReadGuardPolicy } from '@/shared/fileReadGuardPolicy';
+import {
+    evaluateFileReadGuard,
+    formatFileReadGuardDecisionMessage,
+    resolveFileReadGuardPolicy,
+} from '@/shared/fileReadGuardPolicy';
 
 interface SessionOutboxPanelProps {
     entries: SessionOutboxEntry[];
@@ -100,7 +96,9 @@ function toDraftAttachment(payload: SessionAttachmentPayload): ComposerAttachmen
             mimeType: payload.documentArtifact.mimeType,
             sha256: payload.documentArtifact.sha256,
             byteSize: payload.documentArtifact.byteSize,
-            ...(payload.documentArtifact.pageCount !== undefined ? { pageCount: payload.documentArtifact.pageCount } : {}),
+            ...(payload.documentArtifact.pageCount !== undefined
+                ? { pageCount: payload.documentArtifact.pageCount }
+                : {}),
             extractionState: payload.documentArtifact.extractionState,
             extractedTextByteSize: payload.documentArtifact.extractedTextByteSize,
             extractedTextTokenCount: payload.documentArtifact.extractedTextTokenCount,
@@ -269,10 +267,9 @@ export function SessionOutboxPanel({
                     errors.push('Select a queued entry before attaching PDFs.');
                     continue;
                 }
-                const draftDocumentAttachmentCount = [
-                    ...draftAttachments,
-                    ...nextAttachments,
-                ].filter((attachment) => attachment.kind === 'document_attachment').length;
+                const draftDocumentAttachmentCount = [...draftAttachments, ...nextAttachments].filter(
+                    (attachment) => attachment.kind === 'document_attachment'
+                ).length;
                 if (draftDocumentAttachmentCount >= 3) {
                     errors.push('You can attach up to 3 PDFs per queued prompt.');
                     continue;
@@ -352,7 +349,8 @@ export function SessionOutboxPanel({
         if (!selectedEntry || !onUpdateEntry) {
             return;
         }
-        const attachmentPayloads = selectedEntryQuery.data?.found === true ? selectedEntryQuery.data.attachments : undefined;
+        const attachmentPayloads =
+            selectedEntryQuery.data?.found === true ? selectedEntryQuery.data.attachments : undefined;
         if (selectedEntry.attachmentIds.length > 0 && attachmentPayloads === undefined) {
             setEditorMessage('Queued attachments are still loading.');
             return;
@@ -375,12 +373,16 @@ export function SessionOutboxPanel({
         }
     }
 
+    const selectedEntryReviewDiagnostics = selectedEntry ? buildOutboxReviewDiagnostics(selectedEntry) : [];
+
     return (
         <section className='border-border/70 bg-card/20 rounded-[26px] border px-4 py-4 shadow-[0_12px_32px_rgba(15,23,42,0.05)]'>
             <div className='mb-3 flex items-center justify-between gap-3'>
                 <div>
                     <h3 className='text-sm font-semibold'>Session Outbox</h3>
-                    <p className='text-muted-foreground text-xs'>Queued runs stay local to this session and re-check their run contract before execution.</p>
+                    <p className='text-muted-foreground text-xs'>
+                        Queued runs stay local to this session and re-check their run contract before execution.
+                    </p>
                 </div>
                 <span className='text-muted-foreground rounded-full border px-2 py-1 text-[11px]'>
                     {String(entries.length)} queued
@@ -389,6 +391,7 @@ export function SessionOutboxPanel({
             <div className='space-y-2'>
                 {entries.map((entry, index) => {
                     const isSelected = entry.id === selectedEntry?.id;
+                    const entryDiagnostics = buildOutboxReviewDiagnostics(entry).slice(0, 2);
                     return (
                         <article
                             key={entry.id}
@@ -411,9 +414,7 @@ export function SessionOutboxPanel({
                                         </span>
                                     </div>
                                     <p className='line-clamp-2 text-sm'>{entry.prompt}</p>
-                                    {entry.pausedReason ? (
-                                        <p className='text-muted-foreground mt-2 text-xs'>{entry.pausedReason}</p>
-                                    ) : null}
+                                    <OperatorDiagnosticList diagnostics={entryDiagnostics} className='mt-2' compact />
                                 </div>
                                 <div className='flex shrink-0 items-center gap-1'>
                                     <Button
@@ -486,7 +487,9 @@ export function SessionOutboxPanel({
                             <p className='text-muted-foreground text-xs'>
                                 {selectedEntry.steeringSnapshot.providerId} / {selectedEntry.steeringSnapshot.modelId}
                             </p>
-                            <p className='text-muted-foreground mt-1 text-xs'>{formatExecutionTargetSummary(selectedEntry)}</p>
+                            <p className='text-muted-foreground mt-1 text-xs'>
+                                {formatExecutionTargetSummary(selectedEntry)}
+                            </p>
                         </div>
                         <div className='flex items-center gap-2'>
                             {!isEditing && selectedEntry.state === 'paused_for_review' ? (
@@ -547,7 +550,11 @@ export function SessionOutboxPanel({
                                         <X className='mr-2 h-4 w-4' />
                                         Cancel
                                     </Button>
-                                    <Button type='button' size='sm' disabled={isSaving} onClick={() => void handleSave()}>
+                                    <Button
+                                        type='button'
+                                        size='sm'
+                                        disabled={isSaving}
+                                        onClick={() => void handleSave()}>
                                         <Save className='mr-2 h-4 w-4' />
                                         {isSaving ? 'Saving…' : 'Save'}
                                     </Button>
@@ -584,7 +591,9 @@ export function SessionOutboxPanel({
                             <div className='space-y-2'>
                                 <div className='flex items-center justify-between gap-2'>
                                     <p className='text-muted-foreground text-xs'>Attachment snapshot</p>
-                                    <span className='text-muted-foreground text-xs'>{String(draftAttachments.length)} items</span>
+                                    <span className='text-muted-foreground text-xs'>
+                                        {String(draftAttachments.length)} items
+                                    </span>
                                 </div>
                                 {draftAttachments.length === 0 ? (
                                     <p className='text-muted-foreground rounded-xl border border-dashed px-3 py-3 text-xs'>
@@ -592,10 +601,16 @@ export function SessionOutboxPanel({
                                     </p>
                                 ) : (
                                     draftAttachments.map((attachment, index) => (
-                                        <div key={attachment.clientId} className='flex items-center justify-between gap-3 rounded-xl border px-3 py-2'>
+                                        <div
+                                            key={attachment.clientId}
+                                            className='flex items-center justify-between gap-3 rounded-xl border px-3 py-2'>
                                             <div className='min-w-0 flex-1'>
-                                                <p className='truncate text-xs font-medium'>{summarizeDraftAttachment(attachment)}</p>
-                                                <p className='text-muted-foreground text-[11px]'>{attachment.mimeType}</p>
+                                                <p className='truncate text-xs font-medium'>
+                                                    {summarizeDraftAttachment(attachment)}
+                                                </p>
+                                                <p className='text-muted-foreground text-[11px]'>
+                                                    {attachment.mimeType}
+                                                </p>
                                             </div>
                                             <div className='flex items-center gap-1'>
                                                 <Button
@@ -608,7 +623,11 @@ export function SessionOutboxPanel({
                                                         setDraftAttachments((current) => {
                                                             const currentAttachment = current[index];
                                                             const previousAttachment = current[index - 1];
-                                                            if (index === 0 || !currentAttachment || !previousAttachment) {
+                                                            if (
+                                                                index === 0 ||
+                                                                !currentAttachment ||
+                                                                !previousAttachment
+                                                            ) {
                                                                 return current;
                                                             }
                                                             const next = [...current];
@@ -651,7 +670,10 @@ export function SessionOutboxPanel({
                                                     className='h-7 w-7 rounded-full'
                                                     onClick={() => {
                                                         setDraftAttachments((current) =>
-                                                            current.filter((candidate) => candidate.clientId !== attachment.clientId)
+                                                            current.filter(
+                                                                (candidate) =>
+                                                                    candidate.clientId !== attachment.clientId
+                                                            )
                                                         );
                                                     }}>
                                                     <X className='h-3.5 w-3.5' />
@@ -674,7 +696,9 @@ export function SessionOutboxPanel({
                                     <button
                                         type='button'
                                         className={`rounded-xl border px-3 py-3 text-left text-xs ${
-                                            draftBrowserContextAction === 'keep' ? 'border-foreground/30 bg-background' : ''
+                                            draftBrowserContextAction === 'keep'
+                                                ? 'border-foreground/30 bg-background'
+                                                : ''
                                         }`}
                                         onClick={() => {
                                             setDraftBrowserContextAction('keep');
@@ -687,7 +711,9 @@ export function SessionOutboxPanel({
                                     <button
                                         type='button'
                                         className={`rounded-xl border px-3 py-3 text-left text-xs ${
-                                            draftBrowserContextAction === 'replace' ? 'border-foreground/30 bg-background' : ''
+                                            draftBrowserContextAction === 'replace'
+                                                ? 'border-foreground/30 bg-background'
+                                                : ''
                                         }`}
                                         onClick={() => {
                                             setDraftBrowserContextAction('replace');
@@ -696,20 +722,24 @@ export function SessionOutboxPanel({
                                         <p className='text-muted-foreground mt-1'>
                                             {liveBrowserPacketQuery.data?.available
                                                 ? `${String(liveBrowserPacketQuery.data.summary.commentCount)} comments · ${String(liveBrowserPacketQuery.data.summary.selectedElementCount)} elements · ${String(liveBrowserPacketQuery.data.summary.designerDraftCount)} designer drafts are staged now`
-                                                : liveBrowserPacketQuery.data?.message ?? 'No current staged browser packet is available.'}
+                                                : (liveBrowserPacketQuery.data?.message ??
+                                                  'No current staged browser packet is available.')}
                                         </p>
                                     </button>
                                     <button
                                         type='button'
                                         className={`rounded-xl border px-3 py-3 text-left text-xs ${
-                                            draftBrowserContextAction === 'clear' ? 'border-foreground/30 bg-background' : ''
+                                            draftBrowserContextAction === 'clear'
+                                                ? 'border-foreground/30 bg-background'
+                                                : ''
                                         }`}
                                         onClick={() => {
                                             setDraftBrowserContextAction('clear');
                                         }}>
                                         <p className='font-medium'>Clear browser packet</p>
                                         <p className='text-muted-foreground mt-1'>
-                                            Remove browser context from this queued entry and keep only prompt plus attachments.
+                                            Remove browser context from this queued entry and keep only prompt plus
+                                            attachments.
                                         </p>
                                     </button>
                                 </div>
@@ -722,7 +752,9 @@ export function SessionOutboxPanel({
                                 Attachments: {String(selectedEntry.attachmentIds.length)} · Context contributors:{' '}
                                 {String(selectedEntry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}
                             </p>
-                            <p className='text-muted-foreground'>Execution target: {formatExecutionTargetSummary(selectedEntry)}</p>
+                            <p className='text-muted-foreground'>
+                                Execution target: {formatExecutionTargetSummary(selectedEntry)}
+                            </p>
                             <p className='text-muted-foreground'>
                                 Browser context:{' '}
                                 {selectedEntry.browserContextSummary
@@ -737,19 +769,11 @@ export function SessionOutboxPanel({
                                 )}{' '}
                                 · user{' '}
                                 {String(
-                                    selectedEntry.latestRunContract?.trustSummary.contributorCountByTrustLevel.user_input ?? 0
+                                    selectedEntry.latestRunContract?.trustSummary.contributorCountByTrustLevel
+                                        .user_input ?? 0
                                 )}
                             </p>
-                            {selectedEntry.latestRunContract?.diffFromLastCompatible?.items.length ? (
-                                <div className='rounded-xl border px-3 py-2'>
-                                    <p className='font-medium'>Latest compatibility diff</p>
-                                    {selectedEntry.latestRunContract.diffFromLastCompatible.items.slice(0, 3).map((item) => (
-                                        <p key={`${item.field}:${item.reason}`} className='text-muted-foreground mt-1'>
-                                            {item.field}: {item.reason}
-                                        </p>
-                                    ))}
-                                </div>
-                            ) : null}
+                            <OperatorDiagnosticList diagnostics={selectedEntryReviewDiagnostics} compact />
                         </div>
                     )}
                     {selectedEntryQuery.isFetching ? (

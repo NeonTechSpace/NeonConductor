@@ -31,8 +31,32 @@ vi.mock('@/web/components/settings/registrySettings/controller', () => ({
             globalNativeRoot: 'C:/Users/test/.neonconductor',
             workspaceModeRoot: undefined,
             workspaceNativeRoot: undefined,
-            globalDiagnostics: [],
-            workspaceDiagnostics: [],
+            globalDiagnostics: [
+                {
+                    id: 'diag_global',
+                    assetKind: 'rules',
+                    scope: 'global',
+                    relativePath: 'rules/bad.md',
+                    severity: 'error',
+                    code: 'invalid_target_layout',
+                    message: 'Rule file is outside an allowed registry layout.',
+                    createdAt: '2026-04-30T10:00:00.000Z',
+                    updatedAt: '2026-04-30T10:00:00.000Z',
+                },
+            ],
+            workspaceDiagnostics: [
+                {
+                    id: 'diag_workspace',
+                    assetKind: 'skills',
+                    scope: 'workspace',
+                    relativePath: 'skills/bad/SKILL.md',
+                    severity: 'error',
+                    code: 'invalid_package_layout',
+                    message: 'Skill package is missing required metadata.',
+                    createdAt: '2026-04-30T10:00:00.000Z',
+                    updatedAt: '2026-04-30T10:00:00.000Z',
+                },
+            ],
         },
         registryQuery: {
             data: {
@@ -81,5 +105,18 @@ describe('registry settings layout', () => {
 
         expect(html).toContain('Rules, Skills &amp; Modes');
         expect(html).toContain('min-h-0 min-w-0 overflow-y-auto');
+    });
+
+    it('renders discovery diagnostics through shared operator cards', () => {
+        const html = renderToStaticMarkup(
+            <RegistrySettingsScreen profileId='profile_default' subsection='diagnostics' />
+        );
+
+        expect(html).toContain('Rules discovery problem');
+        expect(html).toContain('Rule file is outside an allowed registry layout.');
+        expect(html).toContain('rules/bad.md');
+        expect(html).toContain('Skills discovery problem');
+        expect(html).toContain('Skill package is missing required metadata.');
+        expect(html).toContain('skills/bad/SKILL.md');
     });
 });

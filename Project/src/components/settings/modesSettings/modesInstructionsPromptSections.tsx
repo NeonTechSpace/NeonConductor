@@ -16,6 +16,8 @@ import type {
     PromptLayerSectionModel,
 } from '@/web/components/settings/modesSettings/modesInstructionsViewModel';
 import { Button } from '@/web/components/ui/button';
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import { buildModePromptWarningDiagnostic } from '@/web/lib/operatorDiagnostics';
 import { isOneOf } from '@/web/lib/typeGuards/isOneOf';
 
 import {
@@ -313,9 +315,7 @@ export function PromptLayerCard(
                 <p className='text-muted-foreground text-sm leading-6'>{input.description}</p>
             </div>
             {input.warning ? (
-                <div className='rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100'>
-                    {input.warning}
-                </div>
+                <OperatorDiagnosticList diagnostics={[buildModePromptWarningDiagnostic(input.warning)]} />
             ) : null}
             <label className='space-y-2'>
                 <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>
@@ -382,9 +382,7 @@ export function BuiltInModePromptCard(input: {
                     {input.hasOverride ? 'Override active' : 'Using shipped defaults'}
                 </div>
             </div>
-            <div className='rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100'>
-                {input.warning}
-            </div>
+            <OperatorDiagnosticList diagnostics={[buildModePromptWarningDiagnostic(input.warning)]} />
             <MetadataSummary item={input.metadata} />
             <label className='space-y-2'>
                 <span className='text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase'>

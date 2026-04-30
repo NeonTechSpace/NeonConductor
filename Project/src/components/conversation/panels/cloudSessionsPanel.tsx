@@ -2,9 +2,18 @@ import { Cloud, Download, GitFork, PlayCircle, Search } from 'lucide-react';
 import { useDeferredValue, useState } from 'react';
 
 import { Button } from '@/web/components/ui/button';
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import {
+    buildCloudSessionPrerequisiteDiagnostics,
+    buildCloudSessionSyncBackDiagnostic,
+} from '@/web/lib/operatorDiagnostics';
 import { trpc } from '@/web/trpc/client';
 
-import type { CloudSessionSummaryRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
+import type {
+    CloudSessionSummaryRecord,
+    SessionSummaryRecord,
+    ThreadListRecord,
+} from '@/app/backend/persistence/types';
 
 import {
     canContinueCloudSessionAuthorityState,
@@ -61,6 +70,7 @@ function CloudSessionRecordRow(input: {
     const title = input.record.title ?? input.record.remoteSessionId;
     const localSessionId = input.record.localSessionId;
     const canContinueRecord = input.canContinue && canContinueCloudSessionAuthorityState(input.record.authorityState);
+    const syncBackDiagnostics = [buildCloudSessionSyncBackDiagnostic(input.record.syncBackExpectation)];
 
     return (
         <article className='border-border/70 bg-background/80 space-y-3 rounded-xl border p-3'>
@@ -68,7 +78,9 @@ function CloudSessionRecordRow(input: {
                 <div className='min-w-0'>
                     <p className='truncate text-sm font-semibold'>{title}</p>
                     <p className='text-muted-foreground mt-1 truncate text-xs'>{input.record.remoteSessionId}</p>
-                    <p className='text-muted-foreground mt-1 text-xs'>{formatRemoteDate(input.record.remoteUpdatedAt)}</p>
+                    <p className='text-muted-foreground mt-1 text-xs'>
+                        {formatRemoteDate(input.record.remoteUpdatedAt)}
+                    </p>
                 </div>
                 <div className='flex shrink-0 flex-col items-end gap-1'>
                     <span className='border-border bg-card rounded-full border px-2 py-0.5 text-[11px] capitalize'>
@@ -84,6 +96,7 @@ function CloudSessionRecordRow(input: {
                 {localSessionId ? <span>Local {localSessionId}</span> : <span>Remote snapshot only</span>}
                 <span>{formatCloudSessionSyncBackExpectation(input.record.syncBackExpectation)}</span>
             </div>
+            <OperatorDiagnosticList diagnostics={syncBackDiagnostics} compact />
             <div className='flex flex-wrap gap-2'>
                 {localSessionId ? (
                     <Button
@@ -157,6 +170,7 @@ export function CloudSessionsPanel({
     const blockers = prerequisites?.blockers ?? [];
     const canBrowse = prerequisites?.canBrowseRemoteSessions === true;
     const canContinue = prerequisites?.canContinueRemoteSessions === true;
+    const blockerDiagnostics = buildCloudSessionPrerequisiteDiagnostics(blockers);
 
     async function refreshSessionSurfaces() {
         await Promise.all([
@@ -197,12 +211,8 @@ export function CloudSessionsPanel({
                 </div>
                 {prerequisitesQuery.isLoading ? (
                     <p className='text-muted-foreground mt-3 text-xs'>Checking Kilo readiness...</p>
-                ) : blockers.length > 0 ? (
-                    <div className='text-muted-foreground mt-3 space-y-1 text-xs'>
-                        {blockers.map((blocker) => (
-                            <p key={blocker}>{blocker.replaceAll('_', ' ')}</p>
-                        ))}
-                    </div>
+                ) : blockerDiagnostics.length > 0 ? (
+                    <OperatorDiagnosticList diagnostics={blockerDiagnostics} className='mt-3' compact />
                 ) : (
                     <p className='text-muted-foreground mt-3 text-xs'>
                         Scope {prerequisites?.scope?.remoteScopeKey ?? 'current Kilo account'}

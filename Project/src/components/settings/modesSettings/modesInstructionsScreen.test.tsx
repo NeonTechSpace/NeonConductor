@@ -2,11 +2,6 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-    createDefaultPreparedContextModeOverridesSnapshot,
-    createDefaultPreparedContextProfileDefaultsSnapshot,
-} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
-
 vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsController', () => ({
     useModesInstructionsSettingsController: () => ({
         feedback: {
@@ -302,6 +297,10 @@ vi.mock('@/web/components/settings/modesSettings/useModesInstructionsSettingsCon
     }),
 }));
 
+import {
+    createDefaultPreparedContextModeOverridesSnapshot,
+    createDefaultPreparedContextProfileDefaultsSnapshot,
+} from '@/web/components/settings/modesSettings/modesInstructionsControllerShared';
 import { ModesInstructionsScreen } from '@/web/components/settings/modesSettings/modesInstructionsScreen';
 
 describe('modes instructions screen', () => {
@@ -315,6 +314,8 @@ describe('modes instructions screen', () => {
         );
 
         expect(html).toContain('Built-In Mode Prompts');
+        expect(html).toContain('Prompt change needs care');
+        expect(html).toContain('Editing this mode is risky.');
         expect(html).toContain('Show Advanced Tool Settings');
         expect(html).toContain('Live Mode Library');
         expect(html).toContain('New Global Draft');

@@ -4,6 +4,8 @@ import type { RegistrySettingsSubsectionId } from '@/web/components/settings/set
 import { SettingsContentScaffold } from '@/web/components/settings/shared/settingsContentScaffold';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { Button } from '@/web/components/ui/button';
+import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import { buildRegistryDiscoveryDiagnostics } from '@/web/lib/operatorDiagnostics';
 
 import { formatModePromptMarkdown } from '@/shared/contracts';
 
@@ -13,12 +15,11 @@ interface RegistrySettingsViewProps {
     onSubsectionChange?: (subsection: RegistrySettingsSubsectionId) => void;
 }
 
-export function RegistrySettingsScreen({
-    profileId,
-    subsection = 'rules',
-}: RegistrySettingsViewProps) {
+export function RegistrySettingsScreen({ profileId, subsection = 'rules' }: RegistrySettingsViewProps) {
     const controller = useRegistrySettingsController(profileId);
     const { readModel } = controller;
+    const globalDiscoveryDiagnostics = buildRegistryDiscoveryDiagnostics(readModel.globalDiagnostics);
+    const workspaceDiscoveryDiagnostics = buildRegistryDiscoveryDiagnostics(readModel.workspaceDiagnostics);
 
     async function handleRefreshGlobal() {
         try {
@@ -148,7 +149,8 @@ export function RegistrySettingsScreen({
                                             Mode root: {readModel.workspaceModeRoot ?? 'Unavailable'}
                                         </p>
                                         <p className='text-muted-foreground break-all'>
-                                            Native rules and skills root: {readModel.workspaceNativeRoot ?? 'Unavailable'}
+                                            Native rules and skills root:{' '}
+                                            {readModel.workspaceNativeRoot ?? 'Unavailable'}
                                         </p>
                                     </div>
                                 ) : null}
@@ -181,41 +183,31 @@ export function RegistrySettingsScreen({
                     <div className='border-border bg-card rounded-2xl border p-4 shadow-sm'>
                         <div className='flex items-center justify-between gap-3'>
                             <p className='text-sm font-semibold'>Global discovery diagnostics</p>
-                            <span className='text-muted-foreground text-xs'>{readModel.globalDiagnostics.length} items</span>
+                            <span className='text-muted-foreground text-xs'>
+                                {readModel.globalDiagnostics.length} items
+                            </span>
                         </div>
                         {readModel.globalDiagnostics.length > 0 ? (
-                            <div className='mt-3 space-y-2'>
-                                {readModel.globalDiagnostics.map((diagnostic) => (
-                                    <div key={diagnostic.id} className='rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs'>
-                                        <p className='font-semibold'>
-                                            {diagnostic.assetKind} · {diagnostic.code}
-                                        </p>
-                                        <p className='text-muted-foreground mt-1 break-all'>{diagnostic.relativePath}</p>
-                                        <p className='mt-1'>{diagnostic.message}</p>
-                                    </div>
-                                ))}
-                            </div>
+                            <OperatorDiagnosticList diagnostics={globalDiscoveryDiagnostics} className='mt-3' compact />
                         ) : (
-                            <p className='text-muted-foreground mt-3 text-sm'>No global discovery problems right now.</p>
+                            <p className='text-muted-foreground mt-3 text-sm'>
+                                No global discovery problems right now.
+                            </p>
                         )}
                     </div>
                     <div className='border-border bg-card rounded-2xl border p-4 shadow-sm'>
                         <div className='flex items-center justify-between gap-3'>
                             <p className='text-sm font-semibold'>Workspace discovery diagnostics</p>
-                            <span className='text-muted-foreground text-xs'>{readModel.workspaceDiagnostics.length} items</span>
+                            <span className='text-muted-foreground text-xs'>
+                                {readModel.workspaceDiagnostics.length} items
+                            </span>
                         </div>
                         {readModel.workspaceDiagnostics.length > 0 ? (
-                            <div className='mt-3 space-y-2'>
-                                {readModel.workspaceDiagnostics.map((diagnostic) => (
-                                    <div key={diagnostic.id} className='rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs'>
-                                        <p className='font-semibold'>
-                                            {diagnostic.assetKind} · {diagnostic.code}
-                                        </p>
-                                        <p className='text-muted-foreground mt-1 break-all'>{diagnostic.relativePath}</p>
-                                        <p className='mt-1'>{diagnostic.message}</p>
-                                    </div>
-                                ))}
-                            </div>
+                            <OperatorDiagnosticList
+                                diagnostics={workspaceDiscoveryDiagnostics}
+                                className='mt-3'
+                                compact
+                            />
                         ) : (
                             <p className='text-muted-foreground mt-3 text-sm'>
                                 {controller.selectedWorkspaceFingerprint
