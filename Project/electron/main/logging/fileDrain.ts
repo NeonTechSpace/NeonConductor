@@ -3,14 +3,14 @@ import { createDrainPipeline, type PipelineDrainFn } from 'evlog/pipeline';
 import { appendFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import { app } from '@/app/main/runtime/electronApi';
+import { resolveElectronRuntimeApi } from '@/app/main/runtime/electronRuntimeResolver';
 
 const LOG_SUBDIRECTORY = 'logs';
 
 let drain: PipelineDrainFn<DrainContext> | null = null;
 
 function resolveLogsDirectory(): string {
-    return path.join(app.getPath('userData'), LOG_SUBDIRECTORY);
+    return path.join(resolveElectronRuntimeApi().app.getPath('userData'), LOG_SUBDIRECTORY);
 }
 
 function resolveEventDate(event: WideEvent): string {

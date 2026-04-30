@@ -49,10 +49,11 @@ const controllerTestState = vi.hoisted(() => {
         isPending: false,
         error: null,
     });
+    type MutationContext = { previous?: unknown; profileId?: string } | undefined;
     type MutationConfig = {
-        onMutate?: (...args: any[]) => Promise<any> | any;
-        onError?: (...args: any[]) => void;
-        onSuccess?: (...args: any[]) => void;
+        onMutate?: (...args: unknown[]) => Promise<MutationContext> | MutationContext;
+        onError?: (...args: unknown[]) => void;
+        onSuccess?: (...args: unknown[]) => void;
     };
 
     const mutationConfigs: Record<string, MutationConfig> = {};
@@ -180,6 +181,11 @@ const controllerTestState = vi.hoisted(() => {
                     })),
                 },
                 setMemoryRetrievalModel: createUseMutationMock('setMemoryRetrievalModel'),
+                getInternalModelRoleDiagnostics: {
+                    useQuery: vi.fn(() => ({
+                        data: { diagnostics: [] },
+                    })),
+                },
             },
             provider: {
                 getControlPlane: {
@@ -260,6 +266,7 @@ vi.mock('@/web/trpc/client', () => ({
             setUtilityModelConsumerPreference: controllerTestState.trpcMocks.profile.setUtilityModelConsumerPreference,
             getMemoryRetrievalModel: controllerTestState.trpcMocks.profile.getMemoryRetrievalModel,
             setMemoryRetrievalModel: controllerTestState.trpcMocks.profile.setMemoryRetrievalModel,
+            getInternalModelRoleDiagnostics: controllerTestState.trpcMocks.profile.getInternalModelRoleDiagnostics,
         },
         provider: {
             getControlPlane: controllerTestState.trpcMocks.provider.getControlPlane,
@@ -268,18 +275,33 @@ vi.mock('@/web/trpc/client', () => ({
     },
 }));
 
+type ProviderControlProviderForTest = {
+    providerId: string;
+    label: string;
+};
+
+type ProviderControlForTest = {
+    providers: ProviderControlProviderForTest[];
+};
+
 vi.mock('@/web/lib/providerControl/selectors', () => ({
-    listProviderControlProviders: (providerControl: any) =>
-        providerControl.providers.map((provider: any) => ({
+    listProviderControlProviders: (providerControl: ProviderControlForTest) =>
+        providerControl.providers.map((provider) => ({
             id: provider.providerId,
             label: provider.label,
         })),
-    findProviderControlEntry: (providerControl: any, providerId: string | undefined) =>
-        providerControl.providers.find((provider: any) => provider.providerId === providerId),
+    findProviderControlEntry: (providerControl: ProviderControlForTest, providerId: string | undefined) =>
+        providerControl.providers.find((provider) => provider.providerId === providerId),
 }));
 
 vi.mock('@/web/components/modelSelection/modelCapabilities', () => ({
-    buildModelPickerOption: ({ model, provider }: any) => ({
+    buildModelPickerOption: ({
+        model,
+        provider,
+    }: {
+        model: { id: string; label: string };
+        provider?: { id: string };
+    }) => ({
         id: model.id,
         label: model.label,
         providerId: provider?.id,
@@ -308,7 +330,12 @@ function Harness() {
 }
 
 function getMutationConfig(name: keyof typeof controllerTestState.mutationConfigs) {
-    return controllerTestState.mutationConfigs[name]!;
+    const config = controllerTestState.mutationConfigs[name];
+    if (!config) {
+        throw new Error(`Expected mutation config "${name}" to be registered.`);
+    }
+
+    return config;
 }
 
 describe('useProfilePreferencesController', () => {
@@ -317,7 +344,7 @@ describe('useProfilePreferencesController', () => {
         reactState.currentModelPreferenceDrafts = {};
         vi.clearAllMocks();
         for (const key of Object.keys(controllerTestState.mutationConfigs)) {
-            delete controllerTestState.mutationConfigs[key];
+            Reflect.deleteProperty(controllerTestState.mutationConfigs, key);
         }
         controllerTestState.utilityQueryData.selection = {
             providerId: 'openai',

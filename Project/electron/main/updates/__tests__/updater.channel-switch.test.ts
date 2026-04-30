@@ -97,6 +97,9 @@ async function loadUpdaterHarness(options: {
 
     vi.doMock('electron-updater', () => {
         return {
+            default: {
+                autoUpdater,
+            },
             autoUpdater,
         };
     });

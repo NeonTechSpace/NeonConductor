@@ -197,4 +197,3 @@ export function collectRepositoryTextFiles(rootDir: string): AuditSourceFile[] {
         shouldIncludeFile: isRepositoryTextFile,
     });
 }
-

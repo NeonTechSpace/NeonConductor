@@ -54,10 +54,9 @@ Branch naming note:
 
 ## Validation
 
-- [ ] `pnpm -C Project lint`
-- [ ] `pnpm -C Project typecheck`
-- [ ] `pnpm -C Project test`
-- [ ] I did not run one or more checks above, and explained why below.
+- [ ] `pnpm -C Project health:quick`
+- [ ] `pnpm -C Project health:ci`
+- [ ] I ran targeted checks instead and explained why below.
 
 ## Scope Labels (for maintainers)
 

@@ -49,10 +49,16 @@ function mapVerificationRow(row: PlanPhaseVerificationRow): PlanPhaseVerificatio
     };
 }
 
-function mapVerificationDiscrepancyRow(row: PlanPhaseVerificationDiscrepancyRow): PlanPhaseVerificationDiscrepancyRecord {
+function mapVerificationDiscrepancyRow(
+    row: PlanPhaseVerificationDiscrepancyRow
+): PlanPhaseVerificationDiscrepancyRecord {
     return {
         id: parseEntityId(row.id, 'plan_phase_verification_discrepancies.id', 'ppvd'),
-        verificationId: parseEntityId(row.verification_id, 'plan_phase_verification_discrepancies.verification_id', 'ppv'),
+        verificationId: parseEntityId(
+            row.verification_id,
+            'plan_phase_verification_discrepancies.verification_id',
+            'ppv'
+        ),
         sequence: row.sequence,
         title: row.title,
         detailsMarkdown: row.details_markdown,
@@ -102,24 +108,20 @@ export class PlanPhaseVerificationStore {
             .execute();
     }
 
-    async listForPlanRevision(input: {
-        planId: string;
-        planRevisionId: string;
-        planVariantId: string;
-    }): Promise<{
+    async listForPlanRevision(input: { planId: string; planRevisionId: string; planVariantId: string }): Promise<{
         phaseVerifications: PlanPhaseVerificationRecord[];
         phaseVerificationDiscrepancies: PlanPhaseVerificationDiscrepancyRecord[];
     }> {
         const db = this.getDb();
-        const phaseIds = await db
+        const phaseRows = await db
             .selectFrom('plan_phases')
             .select('id')
             .where('plan_id', '=', input.planId)
             .where('plan_revision_id', '=', input.planRevisionId)
             .where('plan_variant_id', '=', input.planVariantId)
             .orderBy('phase_sequence', 'asc')
-            .execute()
-            .then((rows) => rows.map((row) => row.id));
+            .execute();
+        const phaseIds = phaseRows.map((row) => row.id);
 
         const verificationRows = await this.listVerificationRowsByPhaseIds(db, phaseIds);
         const verifications = verificationRows.map(mapVerificationRow);
@@ -177,15 +179,10 @@ export class PlanPhaseVerificationStore {
         return row ? mapVerificationRow(row) : null;
     }
 
-    async getViewById(input: {
-        verificationId: string;
-    }): Promise<
-        | null
-        | {
-              verification: PlanPhaseVerificationRecord;
-              discrepancies: PlanPhaseVerificationDiscrepancyRecord[];
-          }
-    > {
+    async getViewById(input: { verificationId: string }): Promise<null | {
+        verification: PlanPhaseVerificationRecord;
+        discrepancies: PlanPhaseVerificationDiscrepancyRecord[];
+    }> {
         const verification = await this.getById(input.verificationId);
         if (!verification) {
             return null;

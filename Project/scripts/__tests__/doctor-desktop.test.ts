@@ -149,9 +149,9 @@ describe('doctor-desktop', () => {
 
         expect(inspectDesktopDoctorEnvironment(env)).toEqual({
             inheritedElectronRunAsNode: true,
-            launchCommand: 'pnpm run launch:desktop',
+            launchCommand: 'pnpm run desktop:launch',
             message:
-                'ELECTRON_RUN_AS_NODE=1 is inherited; use `pnpm run launch:desktop` for live Electron validation so the child environment is sanitized.',
+                'ELECTRON_RUN_AS_NODE=1 is inherited; use `pnpm run desktop:launch` for live Electron validation so the child environment is sanitized.',
         });
         expect(env.ELECTRON_RUN_AS_NODE).toBe('1');
     });
@@ -159,7 +159,7 @@ describe('doctor-desktop', () => {
     it('reports a clean Electron launch environment when Node-mode is absent', () => {
         expect(inspectDesktopDoctorEnvironment({ PATH: 'C:\\Tools' })).toEqual({
             inheritedElectronRunAsNode: false,
-            launchCommand: 'pnpm run launch:desktop',
+            launchCommand: 'pnpm run desktop:launch',
             message: null,
         });
     });

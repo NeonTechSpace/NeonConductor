@@ -2,7 +2,7 @@ import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 
 import { resolveRuntimeAssetPath } from '@/app/main/runtime/assets';
-import { app } from '@/app/main/runtime/electronApi';
+import { resolveElectronRuntimeApi } from '@/app/main/runtime/electronRuntimeResolver';
 
 import {
     resolveVendoredRipgrepTargetKey,
@@ -27,11 +27,21 @@ export interface ResolvedVendoredRipgrep {
 }
 
 function readDefaultRuntimeContext(): VendoredRipgrepRuntimeContext {
+    let isPackaged = false;
+    let appPath = process.cwd();
+    try {
+        const electronApi = resolveElectronRuntimeApi();
+        isPackaged = electronApi.app.isPackaged;
+        appPath = electronApi.app.getAppPath();
+    } catch {
+        // Vendored tool resolution also runs in backend contract tests and CLI probes outside Electron.
+    }
+
     return {
         platform: process.platform,
         arch: process.arch,
-        isPackaged: app.isPackaged,
-        appPath: app.getAppPath(),
+        isPackaged,
+        appPath,
         resourcesPath: process.resourcesPath,
     };
 }

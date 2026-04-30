@@ -152,4 +152,3 @@ export function formatAuditWorklist(report: AgentsConformanceReport, options: Au
         ...sections,
     ].join('\n');
 }
-

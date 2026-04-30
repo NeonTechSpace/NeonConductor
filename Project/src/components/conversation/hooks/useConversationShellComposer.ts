@@ -26,6 +26,7 @@ import {
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import { submitPrompt as submitPromptFromComposer } from '@/web/components/conversation/shell/actions/promptSubmit';
 import type { PlanningDepth } from '@/web/components/conversation/shell/planningDepth';
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import { trpc } from '@/web/trpc/client';
 
 import type {
@@ -39,7 +40,11 @@ import type {
     TopLevelTab,
 } from '@/shared/contracts';
 import { isEntityId } from '@/shared/contracts';
-import { evaluateFileReadGuard, formatFileReadGuardDecisionMessage, resolveFileReadGuardPolicy } from '@/shared/fileReadGuardPolicy';
+import {
+    evaluateFileReadGuard,
+    formatFileReadGuardDecisionMessage,
+    resolveFileReadGuardPolicy,
+} from '@/shared/fileReadGuardPolicy';
 
 type ComposerPlanStartInput = PlanStartInput & {
     planningDepth?: PlanningDepth;
@@ -183,7 +188,11 @@ export function useConversationShellComposer<
     }
 
     function discardPendingDocument(document: ComposerPendingDocument) {
-        if (!document.document || typeof input.selectedSessionId !== 'string' || !isEntityId(input.selectedSessionId, 'sess')) {
+        if (
+            !document.document ||
+            typeof input.selectedSessionId !== 'string' ||
+            !isEntityId(input.selectedSessionId, 'sess')
+        ) {
             return;
         }
         void discardDocumentAttachmentMutation.mutateAsync({
@@ -378,7 +387,9 @@ export function useConversationShellComposer<
             .filter((candidate) => candidate.fileKind === 'pdf')
             .map((candidate) => candidate.file);
         if (imageFiles.length === 0 && textFiles.length === 0 && documentFiles.length === 0) {
-            failImageAttachment('Only screenshots/images, PDFs, and UTF-8 text/code files can be attached to a prompt.');
+            failImageAttachment(
+                'Only screenshots/images, PDFs, and UTF-8 text/code files can be attached to a prompt.'
+            );
             return;
         }
 
@@ -388,7 +399,10 @@ export function useConversationShellComposer<
                     input.imageAttachmentBlockedReason ?? 'Select a vision-capable run target to attach images.'
                 );
             } else {
-                const availableSlots = Math.max(0, input.maxImageAttachmentsPerMessage - pendingImagesRef.current.length);
+                const availableSlots = Math.max(
+                    0,
+                    input.maxImageAttachmentsPerMessage - pendingImagesRef.current.length
+                );
                 if (availableSlots === 0) {
                     failImageAttachment(
                         `You can attach up to ${String(input.maxImageAttachmentsPerMessage)} images per message.`
@@ -396,7 +410,9 @@ export function useConversationShellComposer<
                 } else {
                     const acceptedImageFiles = imageFiles.slice(0, availableSlots);
                     if (acceptedImageFiles.length < imageFiles.length) {
-                        failImageAttachment(`Only the first ${String(input.maxImageAttachmentsPerMessage)} images were kept.`);
+                        failImageAttachment(
+                            `Only the first ${String(input.maxImageAttachmentsPerMessage)} images were kept.`
+                        );
                     }
 
                     const nextImages = acceptedImageFiles.map((file) => createPendingImage(file));
@@ -536,7 +552,8 @@ export function useConversationShellComposer<
         onQueuePrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
-            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
+            const hasSubmittableComposerContent =
+                hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
 
             if (!hasSubmittableComposerContent) {
                 return;
@@ -560,37 +577,39 @@ export function useConversationShellComposer<
             }
             const selectedSessionId = input.selectedSessionId;
 
-            void input
-                .queueRun({
-                    profileId: input.profileId,
-                    sessionId: selectedSessionId,
-                    prompt: promptRef.current.trim(),
-                    topLevelTab: input.topLevelTab,
-                    modeKey: input.modeKey,
-                    ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
-                    ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
-                    ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
-                    ...(browserContext ? { browserContext } : {}),
-                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                    ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
-                    runtimeOptions: input.runtimeOptions,
-                })
-                .then(() => {
+            void createFailClosedAsyncAction(
+                async () => {
+                    await input.queueRun({
+                        profileId: input.profileId,
+                        sessionId: selectedSessionId,
+                        prompt: promptRef.current.trim(),
+                        topLevelTab: input.topLevelTab,
+                        modeKey: input.modeKey,
+                        ...(input.resolvedRunTarget ? { providerId: input.resolvedRunTarget.providerId } : {}),
+                        ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
+                        ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+                        ...(browserContext ? { browserContext } : {}),
+                        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                        ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
+                        runtimeOptions: input.runtimeOptions,
+                    });
                     setRunSubmitError(undefined);
                     promptRef.current = '';
                     setPromptResetKey((current) => current + 1);
                     clearPendingImages();
                     clearPendingTextFiles();
                     clearPendingDocuments();
-                })
-                .catch((error: unknown) => {
+                },
+                (error) => {
                     setRunSubmitError(error instanceof Error ? error.message : String(error));
-                });
+                }
+            )();
         },
         onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
-            const hasSubmittableComposerContent = hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
+            const hasSubmittableComposerContent =
+                hasPromptContent || readyAttachments.length > 0 || Boolean(browserContext);
 
             if (!hasSubmittableComposerContent) {
                 return;

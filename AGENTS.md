@@ -3,18 +3,18 @@
 ## Project Stage
 
 - NeonConductor is in active alpha development.
-- `Research/Repair-First Stabilization Track.md` is closed; normal first-alpha feature work may continue while `check:repair-first` remains clear.
+- `Research/Repair-First Stabilization Track.md` is closed; normal first-alpha feature work may continue while the health baseline remains clear.
 - Prefer the best long-term architecture over temporary compatibility.
 - Breaking changes are allowed when they remove bad patterns, collapse unnecessary complexity, or establish cleaner boundaries.
 - Do not preserve unstable APIs, weak abstractions, or legacy behavior just to avoid churn.
 - Persistence is also in alpha rebaseline mode: rewrite the single canonical baseline migration instead of adding numbered migration files until first alpha is complete.
 
-## Repair-First Priority
+## Health Baseline
 
-- Check `Research/Repair-First Stabilization Track.md` before starting new feature work.
-- If `check:repair-first` regresses or new unresolved `P0` or `P1` repair-first items are opened, do not add unrelated feature scope unless the user explicitly approves the override.
-- Security, fail-closed runtime boundaries, code-health tooling, verification, and documentation updates that preserve the repair-first baseline are always allowed.
-- Keep ordinary first-alpha roadmap work unblocked only while the repair-first baseline remains clear.
+- Run or preserve the project health baseline before starting unrelated feature work.
+- If `health:baseline` regresses or new unresolved `P0` or `P1` baseline items are opened, do not add unrelated feature scope unless the user explicitly approves the override.
+- Security, fail-closed runtime boundaries, code-health tooling, verification, and documentation updates that preserve the health baseline are always allowed.
+- Keep ordinary first-alpha roadmap work unblocked only while the health baseline remains clear.
 
 ## Core Delivery Rules
 
@@ -98,7 +98,7 @@
 - Keep it concise enough to resist context rot, but complete enough that another AI can act safely without access to `Research`.
 - Human contributor workflow, release flow, and local setup live in `Markdown/CONTRIBUTING.md`.
 - Historical and architectural explanation lives in `Research`.
-- The closed repair-first baseline and regression criteria live in `Research/Repair-First Stabilization Track.md`.
+- The closed repair-first history and durable health-baseline criteria live in `Research/Repair-First Stabilization Track.md`.
 - Feature-affecting and subsystem-boundary changes must update `Research/Current System Blueprint.md`.
 - Frontend/backend ownership changes must update the blueprint relation maps.
 - Removals and deferments must be reflected in the blueprint immediately, not later.

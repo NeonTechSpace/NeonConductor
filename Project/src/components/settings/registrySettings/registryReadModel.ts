@@ -1,6 +1,6 @@
 import { filterResolvedSkillfiles } from '@/web/components/settings/registrySettings/registrySkillSearch';
 
-import type { RegistryListResolvedResult } from '@/app/backend/runtime/contracts/types/registry';
+import type { RegistryListResolvedResult } from '@/shared/contracts/types/registry';
 import type { WorkspaceRootRecord } from '@/shared/contracts/types/runtime';
 
 export interface RegistryReadModel {
@@ -31,15 +31,16 @@ export function buildRegistryReadModel(input: {
     registryData: RegistryListResolvedResult | undefined;
     deferredSkillQuery: string;
 }): RegistryReadModel {
-    const resolvedAgentModes =
-        input.registryData?.resolved.modes.filter((mode) => mode.topLevelTab === 'agent') ?? [];
+    const resolvedAgentModes = input.registryData?.resolved.modes.filter((mode) => mode.topLevelTab === 'agent') ?? [];
     const selectedWorkspaceRoot = input.selectedWorkspaceFingerprint
         ? input.workspaceRoots.find((workspaceRoot) => workspaceRoot.fingerprint === input.selectedWorkspaceFingerprint)
         : undefined;
 
     return {
         workspaceRoots: input.workspaceRoots,
-        ...(input.selectedWorkspaceFingerprint ? { selectedWorkspaceFingerprint: input.selectedWorkspaceFingerprint } : {}),
+        ...(input.selectedWorkspaceFingerprint
+            ? { selectedWorkspaceFingerprint: input.selectedWorkspaceFingerprint }
+            : {}),
         ...(selectedWorkspaceRoot ? { selectedWorkspaceRoot } : {}),
         resolvedRules: input.registryData?.resolved.rulesets ?? [],
         resolvedSkills: input.registryData?.resolved.skillfiles ?? [],

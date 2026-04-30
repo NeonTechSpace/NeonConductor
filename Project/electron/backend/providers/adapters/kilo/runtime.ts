@@ -72,11 +72,21 @@ function resolveKiloRoutedRuntimeFamily(input: ProviderRuntimeInput): ProviderAd
         );
     }
 
-    if (input.runtime.routedApiFamily === 'openai_compatible' || input.runtime.routedApiFamily === 'anthropic_messages') {
-        return okProviderAdapter(input.runtime.routedApiFamily);
+    const routedApiFamily = input.runtime.routedApiFamily as string;
+    if (routedApiFamily === 'openai_compatible') {
+        return okProviderAdapter('openai_compatible');
+    }
+    if (routedApiFamily === 'anthropic_messages') {
+        return okProviderAdapter('anthropic_messages');
+    }
+    if (routedApiFamily === 'google_generativeai') {
+        return okProviderAdapter('google_generativeai');
     }
 
-    return okProviderAdapter(input.runtime.routedApiFamily);
+    return errProviderAdapter(
+        'invalid_payload',
+        `Model "${input.modelId}" declares unsupported routed Kilo family "${routedApiFamily}".`
+    );
 }
 
 const kiloRoutedRuntimeHandlers: Record<KiloRoutedRuntimeFamily, KiloRoutedRuntimeHandler> = {

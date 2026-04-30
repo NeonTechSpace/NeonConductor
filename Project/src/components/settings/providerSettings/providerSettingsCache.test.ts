@@ -35,9 +35,11 @@ describe('patchProviderCache', () => {
             }>;
             providerModels: Array<{ id: string; providerId: string }>;
         }>();
+        const providerControlPlaneStore = createSetDataSpy<unknown>();
 
         const utils = {
             provider: {
+                getControlPlane: { setData: providerControlPlaneStore.setData },
                 listModels: { setData: listModelsStore.setData },
             },
             runtime: {

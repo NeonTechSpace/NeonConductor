@@ -18,6 +18,7 @@ import type { PlanningDepth } from '@/web/components/conversation/shell/planning
 import type { useConversationQueries } from '@/web/components/conversation/shell/queries/useConversationQueries';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import type { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 
 import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
@@ -393,40 +394,44 @@ export function buildConversationWorkspaceProjection(
             if (!isEntityId(input.selectedSessionId, 'sess')) {
                 return;
             }
-            void input.mutations.moveOutboxEntryMutation
-                .mutateAsync({
+            const selectedSessionId = input.selectedSessionId;
+            void createFailClosedAsyncAction(async () => {
+                await input.mutations.moveOutboxEntryMutation.mutateAsync({
                     profileId: input.profileId,
-                    sessionId: input.selectedSessionId,
+                    sessionId: selectedSessionId,
                     entryId,
                     direction,
-                })
-                .then(() => input.queries.outboxQuery.refetch());
+                });
+                await input.queries.outboxQuery.refetch();
+            })();
         },
         onResumeOutboxEntry: (entryId) => {
             if (!isEntityId(input.selectedSessionId, 'sess')) {
                 return;
             }
-            void input.mutations.resumeOutboxEntryMutation
-                .mutateAsync({
+            const selectedSessionId = input.selectedSessionId;
+            void createFailClosedAsyncAction(async () => {
+                await input.mutations.resumeOutboxEntryMutation.mutateAsync({
                     profileId: input.profileId,
-                    sessionId: input.selectedSessionId,
+                    sessionId: selectedSessionId,
                     entryId,
-                })
-                .then(async () => {
-                    await Promise.all([input.queries.outboxQuery.refetch(), input.queries.runsQuery.refetch()]);
                 });
+                await Promise.all([input.queries.outboxQuery.refetch(), input.queries.runsQuery.refetch()]);
+            })();
         },
         onCancelOutboxEntry: (entryId) => {
             if (!isEntityId(input.selectedSessionId, 'sess')) {
                 return;
             }
-            void input.mutations.cancelOutboxEntryMutation
-                .mutateAsync({
+            const selectedSessionId = input.selectedSessionId;
+            void createFailClosedAsyncAction(async () => {
+                await input.mutations.cancelOutboxEntryMutation.mutateAsync({
                     profileId: input.profileId,
-                    sessionId: input.selectedSessionId,
+                    sessionId: selectedSessionId,
                     entryId,
-                })
-                .then(() => input.queries.outboxQuery.refetch());
+                });
+                await input.queries.outboxQuery.refetch();
+            })();
         },
         onUpdateOutboxEntry: async (updateInput: {
             entryId: EntityId<'outbox'>;

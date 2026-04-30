@@ -47,7 +47,7 @@ export interface SandboxedPreloadBundleCheck {
 
 export interface DesktopDoctorEnvironmentCheck {
     inheritedElectronRunAsNode: boolean;
-    launchCommand: 'pnpm run launch:desktop';
+    launchCommand: 'pnpm run desktop:launch';
     message: string | null;
 }
 
@@ -211,9 +211,9 @@ export function inspectDesktopDoctorEnvironment(env: NodeJS.ProcessEnv = process
     const inheritedElectronRunAsNode = env.ELECTRON_RUN_AS_NODE === '1';
     return {
         inheritedElectronRunAsNode,
-        launchCommand: 'pnpm run launch:desktop',
+        launchCommand: 'pnpm run desktop:launch',
         message: inheritedElectronRunAsNode
-            ? 'ELECTRON_RUN_AS_NODE=1 is inherited; use `pnpm run launch:desktop` for live Electron validation so the child environment is sanitized.'
+            ? 'ELECTRON_RUN_AS_NODE=1 is inherited; use `pnpm run desktop:launch` for live Electron validation so the child environment is sanitized.'
             : null,
     };
 }

@@ -3,6 +3,7 @@ import { useDeferredValue, useState } from 'react';
 
 import { Button } from '@/web/components/ui/button';
 import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
+import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import {
     buildCloudSessionPrerequisiteDiagnostics,
     buildCloudSessionSyncBackDiagnostic,
@@ -194,6 +195,15 @@ export function CloudSessionsPanel({
         await refreshSessionSurfaces();
     }
 
+    function runCloudSessionAction(action: () => Promise<void>, fallbackMessage: string): void {
+        void createFailClosedAsyncAction(action, (error) => {
+            setFeedback({
+                tone: 'error',
+                message: error instanceof Error ? error.message : fallbackMessage,
+            });
+        })();
+    }
+
     return (
         <section className='space-y-4 text-sm'>
             <div className='border-border/70 bg-background/70 rounded-xl border p-3'>
@@ -257,24 +267,17 @@ export function CloudSessionsPanel({
                             className='h-10 rounded-xl'
                             disabled={busy || !canBrowse || importRemoteSessionId.trim().length === 0}
                             onClick={() => {
-                                void importMutation
-                                    .mutateAsync({
+                                runCloudSessionAction(async () => {
+                                    const result = await importMutation.mutateAsync({
                                         profileId,
                                         threadId,
                                         remoteSessionId: importRemoteSessionId.trim(),
-                                    })
-                                    .then(async (result) => {
-                                        await handleActionResult(result);
-                                        if (result.ok) {
-                                            setImportRemoteSessionId('');
-                                        }
-                                    })
-                                    .catch((error: unknown) => {
-                                        setFeedback({
-                                            tone: 'error',
-                                            message: error instanceof Error ? error.message : 'Import failed.',
-                                        });
                                     });
+                                    await handleActionResult(result);
+                                    if (result.ok) {
+                                        setImportRemoteSessionId('');
+                                    }
+                                }, 'Import failed.');
                             }}>
                             <Download className='mr-1.5 h-4 w-4' />
                             Import
@@ -311,34 +314,24 @@ export function CloudSessionsPanel({
                             canContinue={canContinue}
                             onSelectLocal={onSelectSession}
                             onFork={(cloudSession) => {
-                                void forkMutation
-                                    .mutateAsync({
+                                runCloudSessionAction(async () => {
+                                    const result = await forkMutation.mutateAsync({
                                         profileId,
                                         threadId,
                                         cloudSessionId: cloudSession.id,
-                                    })
-                                    .then(handleActionResult)
-                                    .catch((error: unknown) => {
-                                        setFeedback({
-                                            tone: 'error',
-                                            message: error instanceof Error ? error.message : 'Fork failed.',
-                                        });
                                     });
+                                    await handleActionResult(result);
+                                }, 'Fork failed.');
                             }}
                             onContinue={(cloudSession) => {
-                                void continueMutation
-                                    .mutateAsync({
+                                runCloudSessionAction(async () => {
+                                    const result = await continueMutation.mutateAsync({
                                         profileId,
                                         threadId,
                                         cloudSessionId: cloudSession.id,
-                                    })
-                                    .then(handleActionResult)
-                                    .catch((error: unknown) => {
-                                        setFeedback({
-                                            tone: 'error',
-                                            message: error instanceof Error ? error.message : 'Continue failed.',
-                                        });
                                     });
+                                    await handleActionResult(result);
+                                }, 'Continue failed.');
                             }}
                         />
                     ))

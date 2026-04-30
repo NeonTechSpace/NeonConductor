@@ -1,79 +1,65 @@
 import * as electronModule from 'electron';
-import { createRequire } from 'node:module';
 
-type ElectronRuntimeApi = typeof import('electron');
+import { resolveElectronRuntimeValue, type ElectronRuntimeApi } from '@/app/main/runtime/electronRuntimeResolver';
 
-const requireFromElectronApi = createRequire(import.meta.url);
-export const ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE =
-    'Electron main-process API is unavailable. If ELECTRON_RUN_AS_NODE=1 is inherited from the caller environment, Electron runs as Node and the electron package resolves to the launcher path instead of the desktop runtime API. Use `pnpm run launch:desktop` for built desktop validation.';
+type AnyFunction = (...args: unknown[]) => unknown;
+type AnyConstructor = new (...args: unknown[]) => object;
 
-function isElectronRuntimeApi(value: unknown): value is ElectronRuntimeApi {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
+function createLazyElectronExport<K extends keyof ElectronRuntimeApi>(key: K): ElectronRuntimeApi[K] {
+    const resolveTarget = (): object => {
+        const target = resolveElectronRuntimeValue(key, electronModule);
+        if (typeof target !== 'object' && typeof target !== 'function') {
+            throw new Error(`Electron main-process API export "${key}" is not an object or function.`);
+        }
 
-    const candidate = value as Partial<ElectronRuntimeApi>;
-    return (
-        Object.prototype.hasOwnProperty.call(candidate, 'app') &&
-        Object.prototype.hasOwnProperty.call(candidate, 'BrowserWindow') &&
-        Object.prototype.hasOwnProperty.call(candidate, 'dialog') &&
-        Object.prototype.hasOwnProperty.call(candidate, 'ipcMain') &&
-        candidate.app !== undefined &&
-        candidate.BrowserWindow !== undefined &&
-        candidate.dialog !== undefined &&
-        candidate.ipcMain !== undefined
-    );
-}
+        return target;
+    };
 
-function getDefaultExport(value: unknown): unknown {
-    if (typeof value !== 'object' || value === null) {
+    function proxyTarget(): undefined {
         return undefined;
     }
+    const proxy = new Proxy(proxyTarget, {
+        apply(_target, thisArg, argArray): unknown {
+            const result: unknown = Reflect.apply(resolveTarget() as AnyFunction, thisArg, argArray);
+            return result;
+        },
+        construct(_target, argArray, newTarget): object {
+            const instance: unknown = Reflect.construct(resolveTarget() as AnyConstructor, argArray, newTarget);
+            if ((typeof instance !== 'object' && typeof instance !== 'function') || instance === null) {
+                throw new Error(`Electron main-process API export "${key}" did not construct an object.`);
+            }
 
-    if (!Object.prototype.hasOwnProperty.call(value, 'default')) {
-        return undefined;
-    }
+            return instance;
+        },
+        get(_target, property, receiver): unknown {
+            const result: unknown = Reflect.get(resolveTarget(), property, receiver);
+            return result;
+        },
+        getPrototypeOf() {
+            return Reflect.getPrototypeOf(resolveTarget());
+        },
+        has(_target, property) {
+            return Reflect.has(resolveTarget(), property);
+        },
+        ownKeys() {
+            return Reflect.ownKeys(resolveTarget());
+        },
+        set(_target, property, value, receiver) {
+            return Reflect.set(resolveTarget(), property, value, receiver);
+        },
+    });
 
-    return (value as { default?: unknown }).default;
+    return proxy as unknown as ElectronRuntimeApi[K];
 }
 
-function requireElectronModule(): unknown {
-    return requireFromElectronApi('electron');
-}
-
-function resolveElectronRuntimeApi(moduleValue: unknown): ElectronRuntimeApi {
-    if (isElectronRuntimeApi(moduleValue)) {
-        return moduleValue;
-    }
-
-    const defaultExport = getDefaultExport(moduleValue);
-    if (isElectronRuntimeApi(defaultExport)) {
-        return defaultExport;
-    }
-
-    const requiredModule = requireElectronModule();
-    if (isElectronRuntimeApi(requiredModule)) {
-        return requiredModule;
-    }
-
-    const requiredDefaultExport = getDefaultExport(requiredModule);
-    if (isElectronRuntimeApi(requiredDefaultExport)) {
-        return requiredDefaultExport;
-    }
-
-    throw new Error(ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE);
-}
-
-const electronApi = resolveElectronRuntimeApi(electronModule);
-
-export const app = electronApi.app;
-export const BrowserWindow = electronApi.BrowserWindow;
-export const Menu = electronApi.Menu;
-export const dialog = electronApi.dialog;
-export const ipcMain = electronApi.ipcMain;
-export const session = electronApi.session;
-export const shell = electronApi.shell;
-export const WebContentsView = electronApi.WebContentsView;
+export const app = createLazyElectronExport('app');
+export const BrowserWindow = createLazyElectronExport('BrowserWindow');
+export const Menu = createLazyElectronExport('Menu');
+export const dialog = createLazyElectronExport('dialog');
+export const ipcMain = createLazyElectronExport('ipcMain');
+export const session = createLazyElectronExport('session');
+export const shell = createLazyElectronExport('shell');
+export const WebContentsView = createLazyElectronExport('WebContentsView');
 
 export type {
     BrowserWindow as BrowserWindowType,

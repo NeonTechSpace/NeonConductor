@@ -59,7 +59,7 @@ if (checkOnly) {
     if (currentContent !== nextContent) {
         scriptLog.error({
             tag: 'generate-migrations',
-            message: 'generatedMigrations.ts is stale. Run `pnpm generate:migrations`.',
+            message: 'generatedMigrations.ts is stale. Run `pnpm run generated:update`.',
         });
         process.exit(1);
     }

@@ -85,6 +85,23 @@ export function getSecretStoreInfo(): SecretStoreInfo {
     return storeInfo;
 }
 
+async function refreshDatabaseSecretStoreInfo(): Promise<void> {
+    const availability = await getSecretPayloadCodecAvailability();
+    storeInfo = {
+        backend: 'encrypted-database',
+        available: availability.available,
+        payloadCodec: availability.backend,
+    };
+    appLog.info({
+        tag: 'secrets.store',
+        message: availability.available
+            ? 'Initialized encrypted database-backed secret store.'
+            : 'Encrypted database-backed secret store is unavailable.',
+        backend: storeInfo.backend,
+        payloadCodec: storeInfo.payloadCodec,
+    });
+}
+
 export function initializeSecretStore(nextStore?: ProviderSecretStoreBackend): ProviderSecretStoreBackend {
     if (nextStore) {
         store = nextStore;
@@ -101,21 +118,7 @@ export function initializeSecretStore(nextStore?: ProviderSecretStoreBackend): P
     }
 
     store = new DatabaseSecretStore();
-    void getSecretPayloadCodecAvailability().then((availability) => {
-        storeInfo = {
-            backend: 'encrypted-database',
-            available: availability.available,
-            payloadCodec: availability.backend,
-        };
-        appLog.info({
-            tag: 'secrets.store',
-            message: availability.available
-                ? 'Initialized encrypted database-backed secret store.'
-                : 'Encrypted database-backed secret store is unavailable.',
-            backend: storeInfo.backend,
-            payloadCodec: storeInfo.payloadCodec,
-        });
-    });
+    void refreshDatabaseSecretStoreInfo();
     storeInfo = {
         backend: 'encrypted-database',
         available: false,

@@ -14,7 +14,6 @@ import type {
     ReviewStatus,
 } from '@/scripts/audit/types';
 
-
 export const REVIEW_MANIFEST_RELATIVE_PATH = 'scripts/audit/agents-review-manifest.json';
 
 export function buildContentHash(content: string): string {
@@ -217,4 +216,3 @@ export function annotateReviewCategories(input: {
         };
     });
 }
-

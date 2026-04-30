@@ -4,12 +4,12 @@
 
 - Use `Node v24.14.1` and `pnpm 10.28.2`.
 - From the repo root, install with `pnpm -C Project install --frozen-lockfile`.
-- Run `pnpm -C Project prep` before wider checks when generated files or migration checks may be stale.
-- Use `pnpm -C Project check:fast` for the default local verification pass.
-- Use `pnpm -C Project check` when you want the full check set, including the build.
-- Use `pnpm -C Project audit:agents:worklist:new` when you want the current actionable agent review queue.
-- Use `pnpm -C Project doctor:desktop` for packaged-storage checks and `pnpm -C Project doctor:desktop:dev` for isolated development storage.
-- Use `pnpm -C Project build:app` followed by `pnpm -C Project launch:desktop` for built Electron validation; `launch:desktop` sanitizes inherited Electron Node-mode environment.
+- Run `pnpm -C Project generated:update` when generated route or migration files may be stale.
+- Use `pnpm -C Project health:quick` for the default local verification pass.
+- Use `pnpm -C Project health:ci` when you want the CI-equivalent check set, including the build.
+- Use `pnpm -C Project report:agents:worklist:new` when you want the current actionable agent review queue.
+- Use `pnpm -C Project desktop:doctor` for packaged-storage checks and `pnpm -C Project desktop:doctor:dev` for isolated development storage.
+- Use `pnpm -C Project build:app` followed by `pnpm -C Project desktop:launch` for built Electron validation; `desktop:launch` sanitizes inherited Electron Node-mode environment.
 - `jj status` is the best first status command when the workspace is managed by `jj`; Git may look detached by design.
 
 ## Branch Flow

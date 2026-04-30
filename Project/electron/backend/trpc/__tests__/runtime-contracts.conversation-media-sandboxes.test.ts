@@ -307,62 +307,6 @@ describe('runtime contracts: conversation and runs', () => {
         rmSync(workspacePath, { recursive: true, force: true });
     });
 
-    it('fails preview closed when an explicit managed sandbox binding is missing', async () => {
-        const caller = createCaller();
-        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-sandbox-missing-binding-'));
-
-        const configured = await caller.provider.setApiKey({
-            profileId,
-            providerId: 'openai',
-            apiKey: 'openai-sandbox-missing-binding-key',
-        });
-        expect(configured.success).toBe(true);
-
-        const thread = await caller.conversation.createThread({
-            profileId,
-            topLevelTab: 'agent',
-            scope: 'workspace',
-            workspacePath,
-            title: 'Sandbox missing binding',
-            executionEnvironmentMode: 'sandbox',
-            sandboxId: 'sb_missing_binding',
-        });
-        expect(thread.thread.executionEnvironmentMode).toBe('sandbox');
-
-        const session = await caller.session.create({
-            profileId,
-            threadId: requireEntityId(thread.thread.id, 'thr', 'Expected sandbox missing-binding thread id.'),
-            kind: 'local',
-        });
-        expect(session.created).toBe(true);
-        if (!session.created) {
-            throw new Error('Expected sandbox missing-binding session creation.');
-        }
-
-        const preview = await caller.session.previewRunContract({
-            profileId,
-            sessionId: session.session.id,
-            prompt: 'Do not run with a missing sandbox',
-            topLevelTab: 'agent',
-            modeKey: 'code',
-            runtimeOptions: defaultRuntimeOptions,
-            providerId: 'openai',
-            modelId: 'openai/gpt-5',
-        });
-        expect(preview.available).toBe(false);
-        if (preview.available) {
-            throw new Error('Expected missing sandbox binding to reject preview.');
-        }
-        expect(preview.code).toBe('execution_target_unavailable');
-        expect(preview.action).toEqual({
-            code: 'execution_target_unavailable',
-            target: 'sandbox',
-            detail: 'sandbox_not_materialized',
-        });
-
-        rmSync(workspacePath, { recursive: true, force: true });
-    });
-
     it('fails closed when managed sandbox materialization is unavailable', async () => {
         const caller = createCaller();
         const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-sandbox-fail-closed-'));

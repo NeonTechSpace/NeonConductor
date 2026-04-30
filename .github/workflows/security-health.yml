@@ -34,7 +34,7 @@ jobs:
         run: pnpm -C Project install --frozen-lockfile
       - name: Agent audit report
         continue-on-error: true
-        run: pnpm -C Project audit:agents:report
+        run: pnpm -C Project report:agents
       - name: Audit production dependencies
         run: pnpm -C Project audit --prod --audit-level=high
 
@@ -57,10 +57,8 @@ jobs:
           cache-dependency-path: Project/pnpm-lock.yaml
       - name: Install
         run: pnpm -C Project install --frozen-lockfile
-      - name: Check
-        run: pnpm -C Project check:fast
-      - name: Build
-        run: pnpm -C Project build:app
+      - name: Health
+        run: pnpm -C Project health:ci
       - name: Agent audit report
         continue-on-error: true
-        run: pnpm -C Project audit:agents:report
+        run: pnpm -C Project report:agents

@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE } from '@/app/main/runtime/electronRuntimeResolver';
+
 function createElectronRuntimeApiMock() {
     return {
         app: { name: 'NeonConductor' },
@@ -28,8 +30,8 @@ describe('electronApi', () => {
 
         const runtimeApi = await import('./electronApi');
 
-        expect(runtimeApi.app).toBe(electronApi.app);
-        expect(runtimeApi.dialog).toBe(electronApi.dialog);
+        expect(runtimeApi.app.name).toBe(electronApi.app.name);
+        expect('showErrorBox' in runtimeApi.dialog).toBe(true);
     });
 
     it('fails with an actionable diagnostic when Electron runs as Node', async () => {
@@ -37,8 +39,8 @@ describe('electronApi', () => {
             default: 'C:\\Program Files\\Electron\\electron.exe',
         }));
 
-        await expect(import('./electronApi')).rejects.toThrow(
-            'Electron main-process API is unavailable. If ELECTRON_RUN_AS_NODE=1 is inherited from the caller environment'
-        );
+        const runtimeApi = await import('./electronApi');
+
+        expect(() => runtimeApi.app.name).toThrow(ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE);
     });
 });

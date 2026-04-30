@@ -1,17 +1,17 @@
+import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { copyFile, mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
-
-import { scriptLog } from '@/scripts/logger';
 
 import {
     resolveVendoredNodeTargetKey,
     vendoredNodeTargets,
     type VendoredNodeTargetKey,
-} from '../electron/shared/tooling/vendoredNode';
+} from '@/shared/tooling/vendoredNode';
+
+import { scriptLog } from '@/scripts/logger';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRootPath = path.resolve(__dirname, '..');
@@ -111,7 +111,7 @@ async function runExtractionCommand(archivePath: string, destinationPath: string
 async function downloadFile(url: string, destinationPath: string): Promise<void> {
     const response = await fetch(url);
     if (!response.ok || !response.body) {
-        throw new Error(`Failed to download ${url} (${response.status} ${response.statusText}).`);
+        throw new Error(`Failed to download ${url} (${String(response.status)} ${response.statusText}).`);
     }
 
     const arrayBuffer = await response.arrayBuffer();
@@ -190,7 +190,7 @@ async function main(): Promise<void> {
     }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
     scriptLog.error({
         tag: 'vendor-node',
         message: error instanceof Error ? error.message : String(error),

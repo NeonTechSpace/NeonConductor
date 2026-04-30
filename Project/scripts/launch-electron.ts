@@ -82,16 +82,14 @@ function isDirectExecution(importMetaUrl: string): boolean {
 }
 
 if (isDirectExecution(import.meta.url)) {
-    launchElectron()
-        .then((exitCode) => {
-            process.exitCode = exitCode;
-        })
-        .catch((error: unknown) => {
-            scriptLog.error({
-                tag: 'desktop.launch',
-                message: 'Failed to launch Electron.',
-                ...(error instanceof Error ? { error: error.message } : { error: String(error) }),
-            });
-            process.exitCode = 1;
+    try {
+        process.exitCode = await launchElectron();
+    } catch (error) {
+        scriptLog.error({
+            tag: 'desktop.launch',
+            message: 'Failed to launch Electron.',
+            ...(error instanceof Error ? { error: error.message } : { error: String(error) }),
         });
+        process.exitCode = 1;
+    }
 }

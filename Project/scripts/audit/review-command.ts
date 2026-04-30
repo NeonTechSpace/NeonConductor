@@ -1,11 +1,14 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { refreshStaleReviewEntries, removeReviewManifestEntry, setReviewManifestEntry } from '@/scripts/audit/reviewManifest';
+import {
+    refreshStaleReviewEntries,
+    removeReviewManifestEntry,
+    setReviewManifestEntry,
+} from '@/scripts/audit/reviewManifest';
 import { scriptLog } from '@/scripts/logger';
 
 import type { ReviewManifestStatus } from '@/scripts/audit/types';
-
 
 function isDirectExecution(importMetaUrl: string): boolean {
     const entryPath = process.argv[1];
@@ -117,4 +120,3 @@ export function runAuditReviewCommandWithArgs(input: { args: string[]; rootDir: 
 if (isDirectExecution(import.meta.url)) {
     runAuditReviewCommand();
 }
-

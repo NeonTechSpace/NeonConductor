@@ -56,8 +56,8 @@ jobs:
       - name: Install
         run: pnpm -C Project install --frozen-lockfile
 
-      - name: Prepare generated project state
-        run: pnpm -C Project prep
+      - name: Update generated project state
+        run: pnpm -C Project generated:update
 
       - name: Check formatting
         id: format_check
@@ -67,14 +67,14 @@ jobs:
       - name: Check lint
         id: lint_check
         continue-on-error: true
-        run: pnpm -C Project lint:base
+        run: pnpm -C Project lint
 
       - name: Apply automated fixes
         if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
         run: |
           set -euo pipefail
           pnpm -C Project format
-          pnpm -C Project lint:base -- --fix
+          pnpm -C Project lint:fix
 
       - name: Recheck formatting after fixes
         if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
@@ -82,7 +82,7 @@ jobs:
 
       - name: Recheck lint after fixes
         if: ${{ steps.format_check.outcome == 'failure' || steps.lint_check.outcome == 'failure' }}
-        run: pnpm -C Project lint:base
+        run: pnpm -C Project lint
 
       - name: Detect auto-fix diff
         id: diff
@@ -136,11 +136,11 @@ jobs:
       - name: Install
         run: pnpm -C Project install --frozen-lockfile
 
-      - name: Prepare generated project state
-        run: pnpm -C Project prep
+      - name: Update generated project state
+        run: pnpm -C Project generated:update
 
       - name: Check formatting
         run: pnpm -C Project format:check
 
       - name: Check lint
-        run: pnpm -C Project lint:base
+        run: pnpm -C Project lint
