@@ -40,6 +40,22 @@ function formatDocumentPageRanges(document: NonNullable<RunContractPreview['docu
         .join(', ');
 }
 
+function formatExecutionTarget(preview: RunContractPreview): string {
+    const target = preview.executionTarget;
+    if (target.kind === 'detached') {
+        return 'Detached: no filesystem target';
+    }
+    if (target.kind === 'workspace') {
+        return target.absolutePath ? `Local workspace: ${target.absolutePath}` : `Local workspace: ${target.label}`;
+    }
+    if (target.kind === 'scheduled_sandbox') {
+        return target.workspacePath
+            ? `Managed sandbox scheduled from ${target.workspacePath}`
+            : `Managed sandbox scheduled from ${target.label}`;
+    }
+    return target.absolutePath ? `Managed sandbox: ${target.absolutePath}` : `Managed sandbox: ${target.label}`;
+}
+
 export function ComposerRunContractPreviewSection(input: ComposerRunContractPreviewSectionProps) {
     const browserContextSummary = input.preview?.browserContextSummary ?? input.browserContextSummary;
 
@@ -79,6 +95,10 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                     <div className='rounded-xl border px-3 py-2'>
                         <p className='text-muted-foreground'>Cache</p>
                         <p className='font-medium'>{input.preview.cache.cacheabilityHint}</p>
+                    </div>
+                    <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                        <p className='text-muted-foreground'>Execution Target</p>
+                        <p className='font-medium'>{formatExecutionTarget(input.preview)}</p>
                     </div>
                     <div className='rounded-xl border px-3 py-2'>
                         <p className='text-muted-foreground'>Prepared Context</p>

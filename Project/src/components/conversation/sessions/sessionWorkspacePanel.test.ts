@@ -258,6 +258,11 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                     strategy: 'auto',
                     cacheabilityHint: 'cacheable',
                 },
+                executionTarget: {
+                    kind: 'detached',
+                    label: 'Detached',
+                    materializationState: 'not_required',
+                },
                 trustSummary: {
                     contributorCountByTrustLevel: {
                         trusted_instruction: 1,
@@ -410,6 +415,11 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                 digest: 'runctx-1',
                 strategy: 'auto',
                 cacheabilityHint: 'cacheable',
+            },
+            executionTarget: {
+                kind: 'detached',
+                label: 'Detached',
+                materializationState: 'not_required',
             },
             trustSummary: {
                 contributorCountByTrustLevel: {

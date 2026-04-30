@@ -1,4 +1,5 @@
 import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
+import { buildRunContractExecutionTargetSummary } from '@/app/backend/runtime/services/runContract/executionTargetSummary';
 import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 
 import type {
@@ -179,6 +180,35 @@ function buildDiffSummary(previousContract: RunContractPreview | undefined, next
             material: true,
         });
     }
+    if (previousContract.executionTarget.kind !== nextContract.executionTarget.kind) {
+        items.push({
+            field: 'executionTargetKind',
+            previousValue: previousContract.executionTarget.kind,
+            nextValue: nextContract.executionTarget.kind,
+            reason: 'The resolved execution target kind changed.',
+            material: true,
+        });
+    }
+    if (previousContract.executionTarget.absolutePath !== nextContract.executionTarget.absolutePath) {
+        items.push({
+            field: 'executionTargetPath',
+            ...(previousContract.executionTarget.absolutePath
+                ? { previousValue: previousContract.executionTarget.absolutePath }
+                : {}),
+            ...(nextContract.executionTarget.absolutePath ? { nextValue: nextContract.executionTarget.absolutePath } : {}),
+            reason: 'The resolved execution target path changed.',
+            material: true,
+        });
+    }
+    if (previousContract.executionTarget.sandboxId !== nextContract.executionTarget.sandboxId) {
+        items.push({
+            field: 'executionTargetSandboxId',
+            ...(previousContract.executionTarget.sandboxId ? { previousValue: previousContract.executionTarget.sandboxId } : {}),
+            ...(nextContract.executionTarget.sandboxId ? { nextValue: nextContract.executionTarget.sandboxId } : {}),
+            reason: 'The selected managed sandbox changed.',
+            material: true,
+        });
+    }
     const previousBrowserContextSummary = previousContract.browserContextSummary;
     const nextBrowserContextSummary = nextContract.browserContextSummary;
     if (previousBrowserContextSummary?.targetUrl !== nextBrowserContextSummary?.targetUrl) {
@@ -225,6 +255,7 @@ export function prepareRunContractPreview(input: {
             startInput: input.startInput,
             prepared: input.prepared,
         }),
+        executionTarget: buildRunContractExecutionTargetSummary(input.prepared.workspaceContext),
         preparedContext,
         cache: {
             digest: input.prepared.runContext?.digest ?? preparedContext.digest.fullDigest,

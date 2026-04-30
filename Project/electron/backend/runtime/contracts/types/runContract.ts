@@ -88,8 +88,27 @@ export interface RunContractDiffSummary {
     items: RunContractDiffItem[];
 }
 
+export type RunContractExecutionTargetKind = 'detached' | 'workspace' | 'scheduled_sandbox' | 'sandbox';
+export type RunContractExecutionTargetMaterializationState =
+    | 'not_required'
+    | 'scheduled_on_start'
+    | 'materialized';
+
+export interface RunContractExecutionTargetSummary {
+    kind: RunContractExecutionTargetKind;
+    label: string;
+    materializationState: RunContractExecutionTargetMaterializationState;
+    workspaceFingerprint?: string;
+    absolutePath?: string;
+    workspaceLabel?: string;
+    workspacePath?: string;
+    sandboxId?: EntityId<'sb'>;
+    sandboxStatus?: string;
+}
+
 export interface RunContractPreview {
     steeringSnapshot: SteeringSnapshot;
+    executionTarget: RunContractExecutionTargetSummary;
     preparedContext: PreparedContextSummary;
     cache: {
         digest: string;

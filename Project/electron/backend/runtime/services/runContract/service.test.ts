@@ -90,6 +90,19 @@ function createPreparedRunStart(): PreparedRunStart {
     };
 }
 
+function createWorkspacePreparedRunStart(): PreparedRunStart {
+    return {
+        ...createPreparedRunStart(),
+        workspaceContext: {
+            kind: 'workspace',
+            workspaceFingerprint: 'ws_contract',
+            label: 'Contract Workspace',
+            absolutePath: 'C:\\Workspace\\Contract',
+            executionEnvironmentMode: 'new_sandbox',
+        },
+    };
+}
+
 function createStartRunInput(commentText: string): StartRunInput {
     return {
         profileId: 'profile_default',
@@ -208,6 +221,57 @@ describe('runContract service', () => {
         expect(nextContract?.diffFromLastCompatible?.items.some((item) => item.field === 'browserContextDigest')).toBe(
             true
         );
+    });
+
+    it('surfaces scheduled sandbox targets and treats target drift as material', () => {
+        const previousContract = prepareRunContractPreview({
+            startInput: createStartRunInput('Run in scheduled sandbox.'),
+            prepared: createWorkspacePreparedRunStart(),
+        });
+        const nextPrepared = createWorkspacePreparedRunStart();
+        nextPrepared.workspaceContext = {
+            kind: 'sandbox',
+            workspaceFingerprint: 'ws_contract',
+            label: 'Contract Sandbox',
+            absolutePath: 'C:\\Sandbox\\Contract',
+            executionEnvironmentMode: 'sandbox',
+            sandbox: {
+                id: 'sb_contract',
+                profileId: 'profile_default',
+                workspaceFingerprint: 'ws_contract',
+                absolutePath: 'C:\\Sandbox\\Contract',
+                label: 'Contract Sandbox',
+                status: 'ready',
+                creationStrategy: 'copy',
+                createdAt: '2026-04-30T10:00:00.000Z',
+                updatedAt: '2026-04-30T10:00:00.000Z',
+                lastUsedAt: '2026-04-30T10:00:00.000Z',
+            },
+            baseWorkspace: {
+                label: 'Contract Workspace',
+                absolutePath: 'C:\\Workspace\\Contract',
+            },
+        };
+        const nextContract = prepareRunContractPreview({
+            startInput: createStartRunInput('Run in materialized sandbox.'),
+            prepared: nextPrepared,
+            ...(previousContract ? { previousCompatibleContract: previousContract } : {}),
+        });
+
+        expect(previousContract?.executionTarget).toMatchObject({
+            kind: 'scheduled_sandbox',
+            materializationState: 'scheduled_on_start',
+            workspacePath: 'C:\\Workspace\\Contract',
+        });
+        expect(nextContract?.executionTarget).toMatchObject({
+            kind: 'sandbox',
+            materializationState: 'materialized',
+            sandboxId: 'sb_contract',
+        });
+        expect(nextContract?.diffFromLastCompatible?.hasMaterialChanges).toBe(true);
+        expect(
+            nextContract?.diffFromLastCompatible?.items.some((item) => item.field === 'executionTargetKind')
+        ).toBe(true);
     });
 
     it('includes PDF document attachment counts and selected context summaries', () => {

@@ -1,7 +1,9 @@
 import type { ExecutionTargetExplanationModel } from '@/web/components/conversation/shell/workspace/runTargetSelection';
 import { formatInteger, methodLabel } from '@/web/components/settings/providerSettings/helpers';
 
-import type { ProviderUsageSummary, RunRecord } from '@/app/backend/persistence/types';
+import type { CloudSessionSummaryRecord, ProviderUsageSummary, RunRecord } from '@/app/backend/persistence/types';
+
+import { formatCloudSessionSyncBackExpectation } from '@/shared/contracts';
 
 interface WorkspaceStatusPanelProps {
     run: RunRecord | undefined;
@@ -41,6 +43,7 @@ interface WorkspaceStatusPanelProps {
     targetExplanation?: ExecutionTargetExplanationModel;
     usageSummary: ProviderUsageSummary | undefined;
     routingBadge: string | undefined;
+    cloudSession?: CloudSessionSummaryRecord;
     registrySummary?:
         | {
               modes: number;
@@ -85,13 +88,14 @@ export function WorkspaceStatusPanel({
     targetExplanation,
     usageSummary,
     routingBadge,
+    cloudSession,
     registrySummary,
     agentContextSummary,
 }: WorkspaceStatusPanelProps) {
     return (
         <section
             className={`grid gap-3 md:grid-cols-2 ${
-                registrySummary || agentContextSummary ? 'xl:grid-cols-5' : 'xl:grid-cols-3'
+                registrySummary || agentContextSummary || cloudSession ? 'xl:grid-cols-5' : 'xl:grid-cols-3'
             }`}>
             <StatusCard
                 label='Run'
@@ -149,6 +153,13 @@ export function WorkspaceStatusPanel({
                     label='Agent Context'
                     value={agentContextSummary.modeLabel}
                     detail={`${formatInteger(agentContextSummary.rulesetCount)} rules · ${formatInteger(agentContextSummary.attachedRuleCount)} manual rules · ${formatInteger(agentContextSummary.attachedSkillCount)} attached skills`}
+                />
+            ) : null}
+            {cloudSession ? (
+                <StatusCard
+                    label='Cloud Sync-Back'
+                    value={cloudSession.authorityState.replaceAll('_', ' ')}
+                    detail={formatCloudSessionSyncBackExpectation(cloudSession.syncBackExpectation)}
                 />
             ) : null}
             {registrySummary ? (

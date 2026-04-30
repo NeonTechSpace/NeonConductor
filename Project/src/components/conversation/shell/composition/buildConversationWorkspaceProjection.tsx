@@ -431,7 +431,7 @@ export function buildConversationWorkspaceProjection(
         onUpdateOutboxEntry: async (updateInput: {
             entryId: EntityId<'outbox'>;
             prompt: string;
-            attachments: ComposerAttachmentInput[];
+            attachments?: ComposerAttachmentInput[];
             browserContext?: BrowserContextPacket | null;
         }) => {
             if (!isEntityId(input.selectedSessionId, 'sess')) {
@@ -442,7 +442,7 @@ export function buildConversationWorkspaceProjection(
                 sessionId: input.selectedSessionId,
                 entryId: updateInput.entryId,
                 prompt: updateInput.prompt,
-                attachments: updateInput.attachments,
+                ...(updateInput.attachments !== undefined ? { attachments: updateInput.attachments } : {}),
                 ...(updateInput.browserContext !== undefined ? { browserContext: updateInput.browserContext } : {}),
             });
             await input.queries.outboxQuery.refetch();

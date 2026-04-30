@@ -38,7 +38,7 @@ interface SessionOutboxPanelProps {
     onUpdateEntry?: (input: {
         entryId: EntityId<'outbox'>;
         prompt: string;
-        attachments: ComposerAttachmentInput[];
+        attachments?: ComposerAttachmentInput[];
         browserContext?: BrowserContextPacket | null;
     }) => Promise<void>;
 }
@@ -55,6 +55,29 @@ function formatBrowserContextSummary(entry: SessionOutboxEntry): string {
         return 'No browser context';
     }
     return `${String(entry.browserContextSummary.commentCount)} comments · ${String(entry.browserContextSummary.selectedElementCount)} elements · ${String(entry.browserContextSummary.designerDraftCount)} designer`;
+}
+
+function formatExecutionTargetSummary(entry: SessionOutboxEntry): string {
+    const target = entry.latestRunContract?.executionTarget;
+    if (!target) {
+        return 'Execution target unavailable';
+    }
+
+    if (target.kind === 'detached') {
+        return 'Detached: no filesystem target';
+    }
+
+    if (target.kind === 'workspace') {
+        return target.absolutePath ? `Local workspace: ${target.absolutePath}` : `Local workspace: ${target.label}`;
+    }
+
+    if (target.kind === 'scheduled_sandbox') {
+        return target.workspacePath
+            ? `Managed sandbox scheduled from ${target.workspacePath}`
+            : `Managed sandbox scheduled from ${target.label}`;
+    }
+
+    return target.absolutePath ? `Managed sandbox: ${target.absolutePath}` : `Managed sandbox: ${target.label}`;
 }
 
 function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
@@ -107,6 +130,10 @@ function toDraftAttachment(payload: SessionAttachmentPayload): ComposerAttachmen
         byteSize: payload.byteSize,
         ...(payload.fileName ? { fileName: payload.fileName } : {}),
     };
+}
+
+function toDraftAttachments(payloads: SessionAttachmentPayload[] | undefined): ComposerAttachmentInput[] {
+    return (payloads ?? []).map(toDraftAttachment);
 }
 
 function selectEntry(
@@ -321,6 +348,33 @@ export function SessionOutboxPanel({
         }
     }
 
+    async function handleAcceptCurrentContract() {
+        if (!selectedEntry || !onUpdateEntry) {
+            return;
+        }
+        const attachmentPayloads = selectedEntryQuery.data?.found === true ? selectedEntryQuery.data.attachments : undefined;
+        if (selectedEntry.attachmentIds.length > 0 && attachmentPayloads === undefined) {
+            setEditorMessage('Queued attachments are still loading.');
+            return;
+        }
+
+        setIsSaving(true);
+        setEditorMessage(undefined);
+        try {
+            await onUpdateEntry({
+                entryId: selectedEntry.id,
+                prompt: selectedEntry.prompt.trim(),
+                ...(attachmentPayloads !== undefined ? { attachments: toDraftAttachments(attachmentPayloads) } : {}),
+            });
+            await selectedEntryQuery.refetch();
+            setEditorMessage('Queued entry contract accepted.');
+        } catch (error) {
+            setEditorMessage(error instanceof Error ? error.message : 'Queued entry contract update failed.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     return (
         <section className='border-border/70 bg-card/20 rounded-[26px] border px-4 py-4 shadow-[0_12px_32px_rgba(15,23,42,0.05)]'>
             <div className='mb-3 flex items-center justify-between gap-3'>
@@ -432,8 +486,28 @@ export function SessionOutboxPanel({
                             <p className='text-muted-foreground text-xs'>
                                 {selectedEntry.steeringSnapshot.providerId} / {selectedEntry.steeringSnapshot.modelId}
                             </p>
+                            <p className='text-muted-foreground mt-1 text-xs'>{formatExecutionTargetSummary(selectedEntry)}</p>
                         </div>
                         <div className='flex items-center gap-2'>
+                            {!isEditing && selectedEntry.state === 'paused_for_review' ? (
+                                <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={
+                                        !onUpdateEntry ||
+                                        isSaving ||
+                                        selectedEntryQuery.isFetching ||
+                                        (selectedEntry.attachmentIds.length > 0 &&
+                                            selectedEntryQuery.data?.found !== true)
+                                    }
+                                    onClick={() => {
+                                        void handleAcceptCurrentContract();
+                                    }}>
+                                    <Save className='mr-2 h-4 w-4' />
+                                    {isSaving ? 'Accepting…' : 'Accept Contract'}
+                                </Button>
+                            ) : null}
                             {!isEditing ? (
                                 <Button
                                     type='button'
@@ -648,6 +722,7 @@ export function SessionOutboxPanel({
                                 Attachments: {String(selectedEntry.attachmentIds.length)} · Context contributors:{' '}
                                 {String(selectedEntry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}
                             </p>
+                            <p className='text-muted-foreground'>Execution target: {formatExecutionTargetSummary(selectedEntry)}</p>
                             <p className='text-muted-foreground'>
                                 Browser context:{' '}
                                 {selectedEntry.browserContextSummary

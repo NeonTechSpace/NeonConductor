@@ -97,6 +97,21 @@ export async function previewRunContractForStart(
             },
         };
     }
+    if (input.topLevelTab !== 'chat' && sessionThread.thread.executionEnvironmentMode === 'sandbox' && workspaceContext.kind !== 'sandbox') {
+        return {
+            available: false as const,
+            reason: 'rejected' as const,
+            code: 'execution_target_unavailable',
+            message:
+                'Selected managed sandbox could not be resolved. Choose a ready sandbox or switch this thread to managed-sandbox scheduling.',
+            action: {
+                code: 'execution_target_unavailable',
+                target: 'sandbox',
+                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                detail: 'sandbox_not_materialized',
+            },
+        };
+    }
 
     const preparedResult = await prepareRunStart({
         ...input,

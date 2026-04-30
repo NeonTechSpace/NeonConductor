@@ -222,7 +222,7 @@ export interface SessionWorkspacePanelProps {
     onUpdateOutboxEntry?: (input: {
         entryId: EntityId<'outbox'>;
         prompt: string;
-        attachments: ComposerAttachmentInput[];
+        attachments?: ComposerAttachmentInput[];
         browserContext?: BrowserContextPacket | null;
     }) => Promise<void>;
     onSelectOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
@@ -292,6 +292,7 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                     ...(input.selectedTargetExplanation ? { targetExplanation: input.selectedTargetExplanation } : {}),
                     usageSummary: input.selectedUsageSummary,
                     routingBadge: input.routingBadge,
+                    ...(header.selectedSession?.cloudSession ? { cloudSession: header.selectedSession.cloudSession } : {}),
                     registrySummary: input.registrySummary,
                     agentContextSummary: input.agentContextSummary,
                 }),
