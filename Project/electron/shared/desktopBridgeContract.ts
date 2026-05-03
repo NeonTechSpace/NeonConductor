@@ -1,10 +1,12 @@
 export const PICK_DIRECTORY_CHANNEL = 'neonconductor:desktop:pick-directory';
+export const PICK_WORKSPACE_ICON_CHANNEL = 'neonconductor:desktop:pick-workspace-icon';
 export const DEV_BROWSER_SYNC_MOUNT_CHANNEL = 'neonconductor:desktop:dev-browser:sync-mount';
 export const DEV_BROWSER_PICKER_CHANNEL = 'neonconductor:desktop:dev-browser:picker';
 export const DEV_BROWSER_SELECTION_CHANNEL = 'neonconductor:desktop:dev-browser:selection';
 export const DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL = 'neonconductor:desktop:dev-browser:designer-preview';
 
 export type PickDirectoryResult = { canceled: true } | { canceled: false; absolutePath: string };
+export type PickWorkspaceIconResult = { canceled: true } | { canceled: false; absolutePath: string };
 
 export interface DevBrowserMountPayload {
     profileId: string;
@@ -83,6 +85,10 @@ export function isPickDirectoryResult(value: unknown): value is PickDirectoryRes
         typeof candidate['absolutePath'] === 'string' &&
         candidate['absolutePath'].trim().length > 0
     );
+}
+
+export function isPickWorkspaceIconResult(value: unknown): value is PickWorkspaceIconResult {
+    return isPickDirectoryResult(value);
 }
 
 function isFiniteNumber(value: unknown): value is number {

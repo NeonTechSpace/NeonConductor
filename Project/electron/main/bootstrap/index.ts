@@ -25,10 +25,12 @@ import {
 } from '@/app/main/window/devBrowser/registry';
 import { createMainWindow } from '@/app/main/window/factory';
 import { createSplashWindow } from '@/app/main/window/splash';
+import { handleWorkspaceIconProtocol, registerWorkspaceIconProtocol } from '@/app/main/window/workspaceIconProtocol';
 import {
     DEV_BROWSER_SELECTION_CHANNEL,
     DEV_BROWSER_SYNC_MOUNT_CHANNEL,
     PICK_DIRECTORY_CHANNEL,
+    PICK_WORKSPACE_ICON_CHANNEL,
     isDevBrowserMountPayload,
 } from '@/app/shared/desktopBridgeContract';
 import { BOOT_STUCK_WARNING_DEV_MS } from '@/app/shared/splashContract';
@@ -72,6 +74,8 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
         isDev,
         ...(devServerUrl ? { devServerUrl } : {}),
     };
+
+    registerWorkspaceIconProtocol();
 
     function createBootManagedMainWindow(): BrowserWindowType {
         const nextMainWindow = createMainWindow(runtimeWindowOptions);
@@ -121,6 +125,7 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
     initializePersistence({
         dbPath: storagePaths.dbPath,
     });
+    handleWorkspaceIconProtocol();
     reportMainBootStatus({
         stage: 'persistence_ready',
     });
@@ -178,6 +183,32 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
             absolutePath,
         };
     });
+    ipcMain.handle(PICK_WORKSPACE_ICON_CHANNEL, async () => {
+        const ownerWindow = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+        const dialogOptions: OpenDialogOptions = {
+            title: 'Choose Workspace Icon',
+            properties: ['openFile', 'dontAddToRecent'],
+            filters: [
+                {
+                    name: 'Workspace icon images',
+                    extensions: ['png', 'ico', 'svg'],
+                },
+            ],
+        };
+        const result = ownerWindow
+            ? await dialog.showOpenDialog(ownerWindow, dialogOptions)
+            : await dialog.showOpenDialog(dialogOptions);
+        const absolutePath = result.filePaths[0];
+
+        if (result.canceled || !absolutePath) {
+            return { canceled: true } as const;
+        }
+
+        return {
+            canceled: false as const,
+            absolutePath,
+        };
+    });
     ipcMain.handle(DEV_BROWSER_SYNC_MOUNT_CHANNEL, async (event, payload: unknown) => {
         if (!isDevBrowserMountPayload(payload)) {
             return { ok: false as const };
@@ -211,6 +242,7 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
 
     app.on('before-quit', () => {
         ipcMain.removeHandler(PICK_DIRECTORY_CHANNEL);
+        ipcMain.removeHandler(PICK_WORKSPACE_ICON_CHANNEL);
         ipcMain.removeHandler(DEV_BROWSER_SYNC_MOUNT_CHANNEL);
         ipcMain.removeAllListeners(DEV_BROWSER_SELECTION_CHANNEL);
         closePersistence();

@@ -278,6 +278,13 @@ CREATE TABLE workspace_roots (
     absolute_path TEXT NOT NULL,
     path_key TEXT NOT NULL,
     label TEXT NOT NULL,
+    icon_kind TEXT NOT NULL CHECK (icon_kind IN ('manual', 'detected', 'fallback')),
+    icon_source_kind TEXT NULL CHECK (icon_source_kind IN ('well_known_file', 'html_link', 'manifest_icon')),
+    icon_detected_relative_path TEXT NULL,
+    icon_manual_storage_relative_path TEXT NULL,
+    icon_manual_mime_type TEXT NULL,
+    icon_manual_sha256 TEXT NULL,
+    icon_updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

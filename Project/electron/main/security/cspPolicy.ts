@@ -83,8 +83,8 @@ const basePolicy: CspPolicy = {
     // Styles: same-origin + inline styles (required for Tailwind/React)
     'style-src': ["'self'", "'unsafe-inline'"],
 
-    // Images: same-origin + data URIs (for inline icons, base64 images)
-    'img-src': ["'self'", 'data:'],
+    // Images: same-origin + data URIs + route-served workspace-root icons
+    'img-src': ["'self'", 'data:', 'neon-workspace-icon:'],
 
     // Fonts: same-origin only (bundled local fonts)
     'font-src': ["'self'"],

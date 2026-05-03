@@ -54,6 +54,10 @@ describe('workspaceEnvironmentInspectionResolver', () => {
                     profileId: 'profile_default',
                     absolutePath: 'c:\\repo',
                     label: 'Repo',
+                    workspaceIconSummary: {
+                        kind: 'fallback',
+                        updatedAt: '2026-03-30T09:00:00.000Z',
+                    },
                     createdAt: '2026-03-30T09:00:00.000Z',
                     updatedAt: '2026-03-30T09:00:00.000Z',
                 },

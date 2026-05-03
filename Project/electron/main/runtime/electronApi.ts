@@ -57,6 +57,7 @@ export const BrowserWindow = createLazyElectronExport('BrowserWindow');
 export const Menu = createLazyElectronExport('Menu');
 export const dialog = createLazyElectronExport('dialog');
 export const ipcMain = createLazyElectronExport('ipcMain');
+export const protocol = createLazyElectronExport('protocol');
 export const session = createLazyElectronExport('session');
 export const shell = createLazyElectronExport('shell');
 export const WebContentsView = createLazyElectronExport('WebContentsView');

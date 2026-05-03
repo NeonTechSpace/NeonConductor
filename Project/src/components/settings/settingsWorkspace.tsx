@@ -7,7 +7,10 @@ import {
 } from '@/web/components/settings/settingsNavigation';
 import { SettingsSectionContent } from '@/web/components/settings/settingsSectionContent';
 import { SettingsWorkspaceRail } from '@/web/components/settings/shared/settingsWorkspaceRail';
+import { WorkspaceIdentitySettings } from '@/web/components/settings/workspaceIdentitySettings';
 import { usePrivacyMode } from '@/web/lib/privacy/privacyContext';
+
+import type { WorkspaceRootRecord } from '@/shared/contracts';
 
 interface SettingsWorkspaceProps {
     profileId: string;
@@ -18,6 +21,7 @@ interface SettingsWorkspaceProps {
     onPreviewReturnToSessions?: () => void;
     currentWorkspaceFingerprint?: string;
     selectedWorkspaceLabel?: string;
+    selectedWorkspaceRoot?: WorkspaceRootRecord;
 }
 
 export function SettingsWorkspace({
@@ -29,6 +33,7 @@ export function SettingsWorkspace({
     onPreviewReturnToSessions,
     currentWorkspaceFingerprint,
     selectedWorkspaceLabel,
+    selectedWorkspaceRoot,
 }: SettingsWorkspaceProps) {
     const privacyMode = usePrivacyMode();
 
@@ -53,14 +58,21 @@ export function SettingsWorkspace({
                 }}
             />
             <div className='bg-background/20 h-full min-h-0 min-w-0 flex-1 overflow-hidden'>
-                <SettingsSectionContent
-                    profileId={profileId}
-                    selection={selection}
-                    onSelectionChange={onSelectionChange}
-                    onProfileActivated={onProfileActivated}
-                    {...(currentWorkspaceFingerprint ? { currentWorkspaceFingerprint } : {})}
-                    {...(selectedWorkspaceLabel ? { selectedWorkspaceLabel } : {})}
-                />
+                <div className='flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4'>
+                    {selectedWorkspaceRoot ? (
+                        <WorkspaceIdentitySettings profileId={profileId} workspaceRoot={selectedWorkspaceRoot} />
+                    ) : null}
+                    <div className='min-h-0 flex-1'>
+                        <SettingsSectionContent
+                            profileId={profileId}
+                            selection={selection}
+                            onSelectionChange={onSelectionChange}
+                            onProfileActivated={onProfileActivated}
+                            {...(currentWorkspaceFingerprint ? { currentWorkspaceFingerprint } : {})}
+                            {...(selectedWorkspaceLabel ? { selectedWorkspaceLabel } : {})}
+                        />
+                    </div>
+                </div>
             </div>
         </section>
     );

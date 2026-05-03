@@ -1,20 +1,22 @@
 import { contextBudgets, runtimeResetTargets } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
-    readEnumValue,
     readBoolean,
     readEntityId,
+    readEnumValue,
     readObject,
     readOptionalBoolean,
     readOptionalNumber,
     readOptionalString,
+    readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
     ContextBudgetInput,
-    RuntimeInspectWorkspaceEnvironmentInput,
     NeonObservabilitySubscriptionInput,
     RuntimeFactoryResetInput,
     RuntimeEventsSubscriptionInput,
+    RuntimeInspectWorkspaceEnvironmentInput,
+    RuntimePatchWorkspaceRootInput,
     RuntimeRegisterWorkspaceRootInput,
     RuntimeResetInput,
     RuntimeSetWorkspacePreferenceInput,
@@ -162,6 +164,55 @@ export function parseRuntimeRegisterWorkspaceRootInput(input: unknown): RuntimeR
     };
 }
 
+export function parseRuntimePatchWorkspaceRootInput(input: unknown): RuntimePatchWorkspaceRootInput {
+    const source = readObject(input, 'input');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    const label = readOptionalString(source.label, 'label');
+    const iconActionSource = source.iconAction === undefined ? undefined : readObject(source.iconAction, 'iconAction');
+
+    if (!profileId || profileId.trim().length === 0) {
+        throw new Error('Invalid "profileId": expected non-empty string.');
+    }
+
+    if (!workspaceFingerprint || workspaceFingerprint.trim().length === 0) {
+        throw new Error('Invalid "workspaceFingerprint": expected non-empty string.');
+    }
+
+    if (label !== undefined && label.trim().length === 0) {
+        throw new Error('Invalid "label": expected non-empty string when provided.');
+    }
+
+    const iconAction =
+        iconActionSource === undefined
+            ? undefined
+            : (() => {
+                  const kind = readEnumValue(iconActionSource.kind, 'iconAction.kind', [
+                      'set_manual',
+                      'clear_manual',
+                      'refresh_detected',
+                  ] as const);
+                  if (kind === 'set_manual') {
+                      return {
+                          kind,
+                          sourceAbsolutePath: readString(
+                              iconActionSource.sourceAbsolutePath,
+                              'iconAction.sourceAbsolutePath'
+                          ),
+                      };
+                  }
+
+                  return { kind };
+              })();
+
+    return {
+        profileId: profileId.trim(),
+        workspaceFingerprint: workspaceFingerprint.trim(),
+        ...(label !== undefined ? { label: label.trim() } : {}),
+        ...(iconAction ? { iconAction } : {}),
+    };
+}
+
 export function parseRuntimeSetWorkspacePreferenceInput(input: unknown): RuntimeSetWorkspacePreferenceInput {
     const source = readObject(input, 'input');
     const profileId = readOptionalString(source.profileId, 'profileId');
@@ -260,5 +311,6 @@ export const runtimeResetInputSchema = createParser(parseRuntimeResetInput);
 export const runtimeFactoryResetInputSchema = createParser(parseRuntimeFactoryResetInput);
 export const contextBudgetInputSchema = createParser(parseContextBudgetInput);
 export const runtimeRegisterWorkspaceRootInputSchema = createParser(parseRuntimeRegisterWorkspaceRootInput);
+export const runtimePatchWorkspaceRootInputSchema = createParser(parseRuntimePatchWorkspaceRootInput);
 export const runtimeSetWorkspacePreferenceInputSchema = createParser(parseRuntimeSetWorkspacePreferenceInput);
 export const runtimeInspectWorkspaceEnvironmentInputSchema = createParser(parseRuntimeInspectWorkspaceEnvironmentInput);

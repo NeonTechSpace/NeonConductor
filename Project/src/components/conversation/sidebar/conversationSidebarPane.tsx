@@ -16,8 +16,7 @@ import type { SessionSummaryRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 
 import type { EntityId, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
-import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
-
+import type { WorkspaceIconSummary, WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
 
 interface ConversationSidebarPaneProps {
     profileId: string;
@@ -37,6 +36,7 @@ interface ConversationSidebarPaneProps {
         fingerprint: string;
         label: string;
         absolutePath: string;
+        workspaceIconSummary?: WorkspaceIconSummary;
     }>;
     providers: ProviderListItem[];
     providerModels: ProviderModelRecord[];

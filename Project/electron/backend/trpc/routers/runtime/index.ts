@@ -9,13 +9,12 @@ import {
     runtimeFactoryResetInputSchema,
     type RuntimeInspectWorkspaceEnvironmentInput,
     runtimeEventsSubscriptionInputSchema,
+    runtimePatchWorkspaceRootInputSchema,
     runtimeRegisterWorkspaceRootInputSchema,
     runtimeResetInputSchema,
     runtimeSetWorkspacePreferenceInputSchema,
 } from '@/app/backend/runtime/contracts';
-import {
-    workspaceEnvironmentService,
-} from '@/app/backend/runtime/services/environment/service';
+import { workspaceEnvironmentService } from '@/app/backend/runtime/services/environment/service';
 import { resolveWorkspaceEnvironmentInspectionTarget } from '@/app/backend/runtime/services/environment/workspaceEnvironmentInspectionResolver';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
 import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
@@ -25,6 +24,7 @@ import { runtimeFactoryResetService } from '@/app/backend/runtime/services/runti
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
+import { workspaceIconService } from '@/app/backend/runtime/services/workspaceIcons/service';
 import { setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
@@ -132,16 +132,14 @@ export const runtimeRouter = router({
     registerWorkspaceRoot: publicProcedure
         .input(runtimeRegisterWorkspaceRootInputSchema)
         .mutation(async ({ input }) => {
-            const workspaceRoot = await workspaceRootStore.resolveOrCreate(
-                input.profileId,
-                input.absolutePath,
-                input.label
-            );
-
-            return {
-                workspaceRoot,
-            };
+            return workspaceIconService.registerWorkspaceRoot(input);
         }),
+    patchWorkspaceRoot: publicProcedure.input(runtimePatchWorkspaceRootInputSchema).mutation(async ({ input }) => {
+        return (await workspaceIconService.patchWorkspaceRoot(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
+    }),
     setWorkspacePreference: publicProcedure
         .input(runtimeSetWorkspacePreferenceInputSchema)
         .mutation(async ({ input }) => {

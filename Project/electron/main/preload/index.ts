@@ -9,16 +9,23 @@ import { exposeElectronTRPC } from 'electron-trpc-experimental/preload';
 import {
     DEV_BROWSER_SYNC_MOUNT_CHANNEL,
     PICK_DIRECTORY_CHANNEL,
+    PICK_WORKSPACE_ICON_CHANNEL,
     isDevBrowserMountPayload,
     isPickDirectoryResult,
+    isPickWorkspaceIconResult,
     type DevBrowserMountPayload,
     type PickDirectoryResult,
+    type PickWorkspaceIconResult,
 } from '@/app/shared/desktopBridgeContract';
 
 contextBridge.exposeInMainWorld('neonDesktop', {
     async pickDirectory(): Promise<PickDirectoryResult> {
         const result: unknown = await ipcRenderer.invoke(PICK_DIRECTORY_CHANNEL);
         return isPickDirectoryResult(result) ? result : { canceled: true };
+    },
+    async pickWorkspaceIcon(): Promise<PickWorkspaceIconResult> {
+        const result: unknown = await ipcRenderer.invoke(PICK_WORKSPACE_ICON_CHANNEL);
+        return isPickWorkspaceIconResult(result) ? result : { canceled: true };
     },
     devBrowser: {
         async syncMount(payload: DevBrowserMountPayload): Promise<{ ok: boolean }> {

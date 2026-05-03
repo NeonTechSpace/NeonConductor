@@ -15,9 +15,11 @@ import type {
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 
 import { launchBackgroundTask } from '@/shared/async/launchBackgroundTask';
+import type { WorkspaceIconSummary } from '@/shared/contracts';
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 
 interface SidebarThreadBrowserProps {
+    profileId: string;
     buckets: ConversationRecord[];
     threads: ThreadListRecord[];
     sessions: SessionSummaryRecord[];
@@ -26,6 +28,7 @@ interface SidebarThreadBrowserProps {
         fingerprint: string;
         label: string;
         absolutePath: string;
+        workspaceIconSummary?: WorkspaceIconSummary;
     }>;
     threadTagIdsByThread: Map<string, string[]>;
     selectedThreadId?: string;
@@ -83,6 +86,7 @@ function matchesThreadSearch(thread: ThreadListRecord, searchValue: string): boo
 }
 
 export function SidebarThreadBrowser({
+    profileId,
     buckets,
     threads,
     sessions,
@@ -343,6 +347,7 @@ export function SidebarThreadBrowser({
 
             <SidebarThreadList
                 workspaceGroups={workspaceGroups}
+                profileId={profileId}
                 playgroundRows={playgroundRows}
                 sessions={sessions}
                 {...(selectedWorkspaceFingerprint ? { selectedWorkspaceFingerprint } : {})}

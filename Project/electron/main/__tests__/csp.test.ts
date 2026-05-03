@@ -17,4 +17,11 @@ describe('buildCspPolicy', () => {
 
         expect(scriptSrc).not.toContain("'unsafe-inline'");
     });
+
+    it('allows route-served workspace icons as images', () => {
+        const policy = buildCspPolicy('prod');
+        const imageSrc = policy['img-src'] ?? [];
+
+        expect(imageSrc).toContain('neon-workspace-icon:');
+    });
 });

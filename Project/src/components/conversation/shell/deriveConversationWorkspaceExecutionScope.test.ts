@@ -67,6 +67,10 @@ const workspaceRoots: RuntimeShellBootstrap['workspaceRoots'] = [
         profileId: 'profile_default',
         label: 'Workspace Primary',
         absolutePath: 'C:\\Workspace',
+        workspaceIconSummary: {
+            kind: 'fallback',
+            updatedAt: '2026-03-21T10:00:00.000Z',
+        },
         createdAt: '2026-03-21T10:00:00.000Z',
         updatedAt: '2026-03-21T10:00:00.000Z',
     },

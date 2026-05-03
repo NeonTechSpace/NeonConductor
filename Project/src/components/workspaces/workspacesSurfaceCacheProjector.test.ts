@@ -5,6 +5,11 @@ import {
     patchWorkspaceRootCaches,
 } from '@/web/components/workspaces/workspacesSurfaceCacheProjector';
 
+const fallbackWorkspaceIconSummary = {
+    kind: 'fallback' as const,
+    updatedAt: '2026-03-26T10:00:00.000Z',
+};
+
 describe('workspacesSurfaceCacheProjector', () => {
     it('patches workspace roots into the list and shell bootstrap caches', () => {
         const listWorkspaceRootsSetData = vi.fn();
@@ -27,6 +32,7 @@ describe('workspacesSurfaceCacheProjector', () => {
                 fingerprint: 'ws_123',
                 label: 'Workspace Alpha',
                 absolutePath: 'C:/workspace',
+                workspaceIconSummary: fallbackWorkspaceIconSummary,
                 createdAt: '2026-03-26T10:00:00.000Z',
                 updatedAt: '2026-03-26T10:00:00.000Z',
             },
@@ -43,6 +49,10 @@ describe('workspacesSurfaceCacheProjector', () => {
                     fingerprint: 'ws_old',
                     label: 'Workspace Old',
                     absolutePath: 'C:/old',
+                    workspaceIconSummary: {
+                        kind: 'fallback',
+                        updatedAt: '2026-03-25T10:00:00.000Z',
+                    },
                     createdAt: '2026-03-25T10:00:00.000Z',
                     updatedAt: '2026-03-25T10:00:00.000Z',
                 },
@@ -55,6 +65,7 @@ describe('workspacesSurfaceCacheProjector', () => {
                     fingerprint: 'ws_123',
                     label: 'Workspace Alpha',
                     absolutePath: 'C:/workspace',
+                    workspaceIconSummary: fallbackWorkspaceIconSummary,
                     createdAt: '2026-03-26T10:00:00.000Z',
                     updatedAt: '2026-03-26T10:00:00.000Z',
                 },
@@ -63,6 +74,10 @@ describe('workspacesSurfaceCacheProjector', () => {
                     fingerprint: 'ws_old',
                     label: 'Workspace Old',
                     absolutePath: 'C:/old',
+                    workspaceIconSummary: {
+                        kind: 'fallback',
+                        updatedAt: '2026-03-25T10:00:00.000Z',
+                    },
                     createdAt: '2026-03-25T10:00:00.000Z',
                     updatedAt: '2026-03-25T10:00:00.000Z',
                 },
@@ -80,6 +95,10 @@ describe('workspacesSurfaceCacheProjector', () => {
                     fingerprint: 'ws_old',
                     label: 'Workspace Old',
                     absolutePath: 'C:/old',
+                    workspaceIconSummary: {
+                        kind: 'fallback',
+                        updatedAt: '2026-03-25T10:00:00.000Z',
+                    },
                     createdAt: '2026-03-25T10:00:00.000Z',
                     updatedAt: '2026-03-25T10:00:00.000Z',
                 },

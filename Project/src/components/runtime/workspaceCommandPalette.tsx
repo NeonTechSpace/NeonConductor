@@ -3,12 +3,16 @@ import { useDeferredValue, useEffect, useId, useRef, useState, type KeyboardEven
 import { moveWorkspaceCommandPaletteHighlight } from '@/web/components/runtime/workspaceCommandPaletteKeyboard';
 import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
+import { WorkspaceIcon } from '@/web/components/workspaces/workspaceIcon';
+
+import type { WorkspaceIconSummary } from '@/shared/contracts';
 
 interface WorkspaceCommandPaletteProps {
     open: boolean;
+    profileId: string;
     appSection: WorkspaceAppSection;
     profiles: Array<{ id: string; name: string }>;
-    workspaceOptions: Array<{ fingerprint: string; label: string }>;
+    workspaceOptions: Array<{ fingerprint: string; label: string; workspaceIconSummary?: WorkspaceIconSummary }>;
     onClose: () => void;
     onSectionChange: (section: WorkspaceAppSection) => void;
     onPreviewSectionChange?: (section: WorkspaceAppSection) => void;
@@ -18,7 +22,15 @@ interface WorkspaceCommandPaletteProps {
 
 type CommandAction =
     | { id: string; label: string; meta: string; onSelect: () => void; onPreview?: () => void }
-    | { id: string; label: string; meta: string; onSelect: () => Promise<void>; onPreview?: () => void };
+    | { id: string; label: string; meta: string; onSelect: () => Promise<void>; onPreview?: () => void }
+    | {
+          id: string;
+          label: string;
+          meta: string;
+          workspace: { fingerprint: string; label: string; workspaceIconSummary?: WorkspaceIconSummary };
+          onSelect: () => void;
+          onPreview?: () => void;
+      };
 
 const APP_ACTIONS: Array<{ id: WorkspaceAppSection; label: string }> = [
     { id: 'sessions', label: 'Go to Sessions' },
@@ -27,6 +39,7 @@ const APP_ACTIONS: Array<{ id: WorkspaceAppSection; label: string }> = [
 
 export function WorkspaceCommandPalette({
     open,
+    profileId,
     appSection,
     profiles,
     workspaceOptions,
@@ -74,6 +87,7 @@ export function WorkspaceCommandPalette({
             id: `workspace:${workspace.fingerprint}`,
             label: `Focus workspace: ${workspace.label}`,
             meta: workspace.fingerprint,
+            workspace,
             onSelect: () => {
                 onWorkspaceChange(workspace.fingerprint);
                 closePalette();
@@ -196,8 +210,21 @@ export function WorkspaceCommandPalette({
                                         onClick={() => {
                                             void action.onSelect();
                                         }}>
-                                        <p className='text-sm font-medium'>{action.label}</p>
-                                        <p className='text-muted-foreground text-xs'>{action.meta}</p>
+                                        <div className='flex min-w-0 items-center gap-2'>
+                                            {'workspace' in action && action.workspace.workspaceIconSummary ? (
+                                                <WorkspaceIcon
+                                                    profileId={profileId}
+                                                    workspaceFingerprint={action.workspace.fingerprint}
+                                                    summary={action.workspace.workspaceIconSummary}
+                                                    label={action.workspace.label}
+                                                    className='h-7 w-7 rounded-md'
+                                                />
+                                            ) : null}
+                                            <div className='min-w-0'>
+                                                <p className='truncate text-sm font-medium'>{action.label}</p>
+                                                <p className='text-muted-foreground truncate text-xs'>{action.meta}</p>
+                                            </div>
+                                        </div>
                                     </button>
                                 ))}
                             </div>

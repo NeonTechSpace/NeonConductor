@@ -7,6 +7,7 @@ export interface SidebarBrowserWorkspaceGroup {
     label: string;
     workspaceFingerprint: string;
     absolutePath?: string;
+    workspaceIconSummary?: WorkspaceRootRecord['workspaceIconSummary'];
     favoriteCount: number;
     threadCount: number;
     rows: Array<{

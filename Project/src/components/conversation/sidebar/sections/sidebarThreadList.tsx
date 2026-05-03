@@ -3,17 +3,19 @@ import { useState } from 'react';
 
 import { SidebarInlineThreadDraft } from '@/web/components/conversation/sidebar/sections/sidebarInlineThreadDraft';
 import type { SidebarMutationResult } from '@/web/components/conversation/sidebar/sidebarMutationResult';
+import { WorkspaceIcon } from '@/web/components/workspaces/workspaceIcon';
 
 import type { SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 
-import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { RuntimeProviderId, TopLevelTab, WorkspaceIconSummary } from '@/shared/contracts';
 
 interface WorkspaceGroupRow {
     label: string;
     workspaceFingerprint: string;
     absolutePath?: string;
+    workspaceIconSummary?: WorkspaceIconSummary;
     favoriteCount: number;
     threadCount: number;
     rows: Array<{
@@ -23,6 +25,7 @@ interface WorkspaceGroupRow {
 }
 
 interface SidebarThreadListProps {
+    profileId: string;
     workspaceGroups: WorkspaceGroupRow[];
     playgroundRows: Array<{
         thread: ThreadListRecord;
@@ -268,6 +271,7 @@ function ThreadRow({
 }
 
 export function SidebarThreadList({
+    profileId,
     workspaceGroups,
     playgroundRows,
     sessions,
@@ -359,13 +363,24 @@ export function SidebarThreadList({
                                             onClick={() => {
                                                 onSelectWorkspaceFingerprint(group.workspaceFingerprint);
                                             }}>
-                                            <div className='min-w-0'>
-                                                <p className='truncate text-sm font-semibold'>{group.label}</p>
-                                                {group.absolutePath ? (
-                                                    <p className='text-muted-foreground truncate text-xs'>
-                                                        {group.absolutePath}
-                                                    </p>
+                                            <div className='flex min-w-0 items-start gap-2'>
+                                                {group.workspaceIconSummary ? (
+                                                    <WorkspaceIcon
+                                                        profileId={profileId}
+                                                        workspaceFingerprint={group.workspaceFingerprint}
+                                                        summary={group.workspaceIconSummary}
+                                                        label={group.label}
+                                                        className='h-7 w-7 rounded-md'
+                                                    />
                                                 ) : null}
+                                                <div className='min-w-0'>
+                                                    <p className='truncate text-sm font-semibold'>{group.label}</p>
+                                                    {group.absolutePath ? (
+                                                        <p className='text-muted-foreground truncate text-xs'>
+                                                            {group.absolutePath}
+                                                        </p>
+                                                    ) : null}
+                                                </div>
                                             </div>
                                         </button>
                                     </div>

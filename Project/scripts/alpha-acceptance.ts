@@ -31,13 +31,13 @@ export function buildAlphaAcceptanceReport(): AlphaAcceptanceReport {
         },
         {
             id: 'workspace-icons',
-            title: 'Slice 8G workspace icon identity',
-            status: 'blocked',
-            detail: 'Workspace-root icon detection, manual override, refresh, and shared rendering are not landed.',
+            title: 'Slice 8H workspace icon identity',
+            status: 'passed',
+            detail: 'Workspace-root icon detection, manual override, refresh, and shared rendering are landed.',
         },
         {
             id: 'repo-research-acceptance',
-            title: 'Slice 8H repo-research acceptance coverage',
+            title: 'Slice 8I repo-research acceptance coverage',
             status: 'blocked',
             detail: 'Repo-research checkout/root-policy and VCS explanation acceptance coverage is not landed.',
         },

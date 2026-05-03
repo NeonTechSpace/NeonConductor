@@ -675,6 +675,13 @@ export interface WorkspaceRootsTable {
     absolute_path: string;
     path_key: string;
     label: string;
+    icon_kind: 'manual' | 'detected' | 'fallback';
+    icon_source_kind: 'well_known_file' | 'html_link' | 'manifest_icon' | null;
+    icon_detected_relative_path: string | null;
+    icon_manual_storage_relative_path: string | null;
+    icon_manual_mime_type: string | null;
+    icon_manual_sha256: string | null;
+    icon_updated_at: string;
     created_at: string;
     updated_at: string;
 }

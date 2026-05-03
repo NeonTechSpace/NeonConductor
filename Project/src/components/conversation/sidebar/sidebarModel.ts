@@ -96,6 +96,7 @@ export function buildConversationSidebarModel(input: {
         fingerprint: string;
         label: string;
         absolutePath?: string;
+        workspaceIconSummary?: SidebarBrowserState['workspaceGroups'][number]['workspaceIconSummary'];
     }>;
     selectedThreadId?: string;
     groupView: 'workspace' | 'branch';
@@ -150,6 +151,9 @@ export function buildConversationSidebarModel(input: {
                 workspaceRoot?.label ?? workspaceLabelByFingerprint.get(workspaceFingerprint) ?? workspaceFingerprint,
             workspaceFingerprint,
             ...(absolutePath ? { absolutePath } : {}),
+            ...(workspaceRoot?.workspaceIconSummary
+                ? { workspaceIconSummary: workspaceRoot.workspaceIconSummary }
+                : {}),
             favoriteCount: 0,
             threadCount: 0,
             rows: [],

@@ -31,6 +31,7 @@ function SettingsRouteComponent() {
             {...(controller.selectedWorkspaceRoot?.label
                 ? { selectedWorkspaceLabel: controller.selectedWorkspaceRoot.label }
                 : {})}
+            {...(controller.selectedWorkspaceRoot ? { selectedWorkspaceRoot: controller.selectedWorkspaceRoot } : {})}
             onSelectionChange={(nextSelection) => {
                 void navigate({
                     search: getSettingsRouteSearch(nextSelection),

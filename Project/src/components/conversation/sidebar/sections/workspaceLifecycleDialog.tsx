@@ -1,3 +1,5 @@
+import { Folder } from 'lucide-react';
+
 import type { WorkspaceLifecycleDraftState } from '@/web/components/conversation/sidebar/sidebarTypes';
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
@@ -128,6 +130,18 @@ export function WorkspaceLifecycleDialog({
                             snapshot={environmentPreview.snapshot}
                             emptyMessage='Neon will use this folder for sessions, commands, rules, and skills tied to the workspace.'
                         />
+
+                        <div className='border-border/70 bg-card/35 flex items-center gap-3 rounded-2xl border px-4 py-3'>
+                            <span className='border-border bg-background inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border'>
+                                <Folder className='text-muted-foreground h-5 w-5' aria-hidden />
+                            </span>
+                            <div className='min-w-0'>
+                                <p className='truncate text-sm font-medium'>{draft.label.trim() || 'New workspace'}</p>
+                                <p className='text-muted-foreground text-xs'>
+                                    Neon detects a local icon after the workspace is saved.
+                                </p>
+                            </div>
+                        </div>
 
                         <div className='border-border/70 bg-card/35 space-y-4 rounded-2xl border px-4 py-4'>
                             <div className='space-y-1'>

@@ -13,6 +13,7 @@ describe('alpha acceptance report', () => {
             'workspace-icons',
             'repo-research-acceptance',
         ]);
+        expect(report.criteria.find((criterion) => criterion.id === 'workspace-icons')?.status).toBe('passed');
         expect(formatAlphaAcceptanceReport(report)).toContain('Slice 8C manual shell sign-off');
     });
 });

@@ -9,6 +9,7 @@ describe('WorkspaceCommandPalette', () => {
         const html = renderToStaticMarkup(
             <WorkspaceCommandPalette
                 open
+                profileId='profile_default'
                 appSection='sessions'
                 profiles={[
                     { id: 'profile_default', name: 'Default Profile' },
@@ -48,6 +49,7 @@ describe('WorkspaceCommandPalette', () => {
         renderToStaticMarkup(
             <WorkspaceCommandPalette
                 open
+                profileId='profile_default'
                 appSection='sessions'
                 profiles={[{ id: 'profile_default', name: 'Default Profile' }]}
                 workspaceOptions={[{ fingerprint: 'ws_alpha', label: 'Alpha Workspace' }]}

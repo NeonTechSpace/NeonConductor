@@ -35,11 +35,25 @@ export interface RuntimeRegisterWorkspaceRootInput extends ProfileInput {
     label?: string;
 }
 
+export const workspaceIconKinds = ['manual', 'detected', 'fallback'] as const;
+export type WorkspaceIconKind = (typeof workspaceIconKinds)[number];
+
+export const workspaceIconSourceKinds = ['well_known_file', 'html_link', 'manifest_icon'] as const;
+export type WorkspaceIconSourceKind = (typeof workspaceIconSourceKinds)[number];
+
+export interface WorkspaceIconSummary {
+    kind: WorkspaceIconKind;
+    sourceKind?: WorkspaceIconSourceKind;
+    detectedRelativePath?: string;
+    updatedAt: string;
+}
+
 export interface WorkspaceRootRecord {
     fingerprint: string;
     profileId: string;
     absolutePath: string;
     label: string;
+    workspaceIconSummary: WorkspaceIconSummary;
     createdAt: string;
     updatedAt: string;
 }
@@ -169,6 +183,28 @@ export interface RuntimeFactoryResetResult {
 }
 
 export interface RuntimeRegisterWorkspaceRootResult {
+    workspaceRoot: WorkspaceRootRecord;
+}
+
+export type RuntimeWorkspaceRootIconAction =
+    | {
+          kind: 'set_manual';
+          sourceAbsolutePath: string;
+      }
+    | {
+          kind: 'clear_manual';
+      }
+    | {
+          kind: 'refresh_detected';
+      };
+
+export interface RuntimePatchWorkspaceRootInput extends ProfileInput {
+    workspaceFingerprint: string;
+    label?: string;
+    iconAction?: RuntimeWorkspaceRootIconAction;
+}
+
+export interface RuntimePatchWorkspaceRootResult {
     workspaceRoot: WorkspaceRootRecord;
 }
 

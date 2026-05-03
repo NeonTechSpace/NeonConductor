@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { submitSidebarWorkspaceLifecycle } from '@/web/components/conversation/sidebar/useSidebarWorkspaceCreateController';
 import { browseSidebarWorkspaceDirectory } from '@/web/components/conversation/sidebar/useWorkspaceLifecycleDraftState';
 
+const fallbackWorkspaceIconSummary = {
+    kind: 'fallback' as const,
+    updatedAt: '2026-03-26T10:00:00.000Z',
+};
+
 describe('browseSidebarWorkspaceDirectory', () => {
     it('returns the selected path when the desktop picker succeeds', async () => {
         const onPickingWorkspaceDirectoryChange = vi.fn();
@@ -16,6 +21,7 @@ describe('browseSidebarWorkspaceDirectory', () => {
                         absolutePath: 'C:/workspace',
                     })
                 ),
+                pickWorkspaceIcon: vi.fn(() => Promise.resolve({ canceled: true })),
                 devBrowser: {
                     syncMount: vi.fn(() => Promise.resolve({ ok: true })),
                 },
@@ -38,6 +44,7 @@ describe('browseSidebarWorkspaceDirectory', () => {
         const result = await browseSidebarWorkspaceDirectory({
             desktopBridge: {
                 pickDirectory: vi.fn(() => Promise.reject(new Error('Picker failed.'))),
+                pickWorkspaceIcon: vi.fn(() => Promise.resolve({ canceled: true })),
                 devBrowser: {
                     syncMount: vi.fn(() => Promise.resolve({ ok: true })),
                 },
@@ -57,20 +64,25 @@ describe('browseSidebarWorkspaceDirectory', () => {
 
 describe('submitSidebarWorkspaceLifecycle', () => {
     it('returns a created-with-starter-thread result when the starter thread succeeds', async () => {
-        const createWorkspaceRecord = vi.fn(() => Promise.resolve({
-            workspaceRoot: {
-                profileId: 'profile_default',
-                fingerprint: 'ws_alpha',
-                label: 'Workspace Alpha',
-                absolutePath: 'C:/workspace',
-                createdAt: '2026-03-26T10:00:00.000Z',
-                updatedAt: '2026-03-26T10:00:00.000Z',
-            },
-        }));
-        const onCreateThread = vi.fn(() => Promise.resolve({
-            kind: 'created_with_starter_session' as const,
-            workspaceFingerprint: 'ws_alpha',
-        }));
+        const createWorkspaceRecord = vi.fn(() =>
+            Promise.resolve({
+                workspaceRoot: {
+                    profileId: 'profile_default',
+                    fingerprint: 'ws_alpha',
+                    label: 'Workspace Alpha',
+                    absolutePath: 'C:/workspace',
+                    workspaceIconSummary: fallbackWorkspaceIconSummary,
+                    createdAt: '2026-03-26T10:00:00.000Z',
+                    updatedAt: '2026-03-26T10:00:00.000Z',
+                },
+            })
+        );
+        const onCreateThread = vi.fn(() =>
+            Promise.resolve({
+                kind: 'created_with_starter_session' as const,
+                workspaceFingerprint: 'ws_alpha',
+            })
+        );
 
         const result = await submitSidebarWorkspaceLifecycle({
             profileId: 'profile_default',
@@ -90,6 +102,7 @@ describe('submitSidebarWorkspaceLifecycle', () => {
                 fingerprint: 'ws_alpha',
                 label: 'Workspace Alpha',
                 absolutePath: 'C:/workspace',
+                workspaceIconSummary: fallbackWorkspaceIconSummary,
                 createdAt: '2026-03-26T10:00:00.000Z',
                 updatedAt: '2026-03-26T10:00:00.000Z',
             },
@@ -116,21 +129,24 @@ describe('submitSidebarWorkspaceLifecycle', () => {
             defaultTopLevelTab: 'agent',
             defaultProviderId: 'kilo',
             defaultModelId: 'kilo-auto/frontier',
-            createWorkspaceRecord: () => Promise.resolve({
-                workspaceRoot: {
-                    profileId: 'profile_default',
-                    fingerprint: 'ws_alpha',
-                    label: 'Workspace Alpha',
-                    absolutePath: 'C:/workspace',
-                    createdAt: '2026-03-26T10:00:00.000Z',
-                    updatedAt: '2026-03-26T10:00:00.000Z',
-                },
-            }),
-            onCreateThread: () => Promise.resolve({
-                kind: 'failed',
-                workspaceFingerprint: 'ws_alpha',
-                message: 'The starter thread failed.',
-            }),
+            createWorkspaceRecord: () =>
+                Promise.resolve({
+                    workspaceRoot: {
+                        profileId: 'profile_default',
+                        fingerprint: 'ws_alpha',
+                        label: 'Workspace Alpha',
+                        absolutePath: 'C:/workspace',
+                        workspaceIconSummary: fallbackWorkspaceIconSummary,
+                        createdAt: '2026-03-26T10:00:00.000Z',
+                        updatedAt: '2026-03-26T10:00:00.000Z',
+                    },
+                }),
+            onCreateThread: () =>
+                Promise.resolve({
+                    kind: 'failed',
+                    workspaceFingerprint: 'ws_alpha',
+                    message: 'The starter thread failed.',
+                }),
         });
 
         expect(result).toEqual({
@@ -140,6 +156,7 @@ describe('submitSidebarWorkspaceLifecycle', () => {
                 fingerprint: 'ws_alpha',
                 label: 'Workspace Alpha',
                 absolutePath: 'C:/workspace',
+                workspaceIconSummary: fallbackWorkspaceIconSummary,
                 createdAt: '2026-03-26T10:00:00.000Z',
                 updatedAt: '2026-03-26T10:00:00.000Z',
             },
@@ -163,10 +180,11 @@ describe('submitSidebarWorkspaceLifecycle', () => {
             defaultProviderId: 'kilo',
             defaultModelId: 'kilo-auto/frontier',
             createWorkspaceRecord: () => Promise.reject(new Error('Workspace could not be created.')),
-            onCreateThread: () => Promise.resolve({
-                kind: 'created_with_starter_session',
-                workspaceFingerprint: 'ws_alpha',
-            }),
+            onCreateThread: () =>
+                Promise.resolve({
+                    kind: 'created_with_starter_session',
+                    workspaceFingerprint: 'ws_alpha',
+                }),
         });
 
         expect(result).toEqual({
@@ -175,4 +193,3 @@ describe('submitSidebarWorkspaceLifecycle', () => {
         });
     });
 });
-

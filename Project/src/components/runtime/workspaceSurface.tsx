@@ -178,11 +178,13 @@ export function WorkspaceSurface() {
 
             <WorkspaceCommandPalette
                 open={controller.isCommandPaletteOpen}
+                profileId={controller.resolvedProfileId ?? ''}
                 appSection={appSection}
                 profiles={controller.profiles}
                 workspaceOptions={controller.workspaceRoots.map((workspaceRoot) => ({
                     fingerprint: workspaceRoot.fingerprint,
                     label: workspaceRoot.label,
+                    workspaceIconSummary: workspaceRoot.workspaceIconSummary,
                 }))}
                 onClose={() => {
                     controller.setIsCommandPaletteOpen(false);

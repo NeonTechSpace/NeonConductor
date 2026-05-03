@@ -25,8 +25,7 @@ import type {
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 
 import type { EntityId, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
-import type { WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
-
+import type { WorkspaceIconSummary, WorkspacePreferenceRecord } from '@/shared/contracts/types/runtime';
 
 interface ConversationSidebarProps {
     profileId: string;
@@ -51,6 +50,7 @@ interface ConversationSidebarProps {
         fingerprint: string;
         label: string;
         absolutePath: string;
+        workspaceIconSummary?: WorkspaceIconSummary;
     }>;
     providers: ProviderListItem[];
     providerModels: ProviderModelRecord[];
@@ -351,6 +351,7 @@ export function ConversationSidebar({
                 ) : (
                     <div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
                         <SidebarThreadBrowser
+                            profileId={profileId}
                             buckets={buckets}
                             threads={threads}
                             sessions={sessions}
