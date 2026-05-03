@@ -66,25 +66,7 @@ export async function createSessionInScope(
     let workspacePath: string | undefined;
     if (input.scope === 'workspace' && input.workspaceFingerprint) {
         workspacePath = mkdtempSync(path.join(os.tmpdir(), `${input.workspaceFingerprint}-`));
-        const now = new Date().toISOString();
-        const { sqlite } = getPersistence();
-        sqlite
-            .prepare(
-                `
-                    INSERT OR IGNORE INTO workspace_roots
-                        (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `
-            )
-            .run(
-                input.workspaceFingerprint,
-                profileId,
-                workspacePath,
-                process.platform === 'win32' ? workspacePath.toLowerCase() : workspacePath,
-                path.basename(workspacePath),
-                now,
-                now
-            );
+        insertWorkspaceRootForTests(profileId, input.workspaceFingerprint, workspacePath);
     }
 
     const threadResult = await caller.conversation.createThread({
@@ -113,6 +95,54 @@ export async function createSessionInScope(
         thread: threadResult.thread,
         session: sessionResult.session,
     };
+}
+
+export function insertWorkspaceRootForTests(
+    profileId: string,
+    workspaceFingerprint: string,
+    workspacePath: string
+): void {
+    const now = new Date().toISOString();
+    const { sqlite } = getPersistence();
+    sqlite
+        .prepare(
+            `
+                INSERT OR IGNORE INTO workspace_roots
+                    (
+                        fingerprint,
+                        profile_id,
+                        absolute_path,
+                        path_key,
+                        label,
+                        icon_kind,
+                        icon_source_kind,
+                        icon_detected_relative_path,
+                        icon_manual_storage_relative_path,
+                        icon_manual_mime_type,
+                        icon_manual_sha256,
+                        icon_updated_at,
+                        created_at,
+                        updated_at
+                    )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `
+        )
+        .run(
+            workspaceFingerprint,
+            profileId,
+            workspacePath,
+            process.platform === 'win32' ? workspacePath.toLowerCase() : workspacePath,
+            path.basename(workspacePath),
+            'fallback',
+            null,
+            null,
+            null,
+            null,
+            null,
+            now,
+            now,
+            now
+        );
 }
 
 export async function waitForRunStatus(

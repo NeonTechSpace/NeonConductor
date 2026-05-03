@@ -15,6 +15,8 @@ const {
     ipcMainOnSpy,
     ipcMainRemoveHandlerSpy,
     ipcMainRemoveAllListenersSpy,
+    protocolHandleSpy,
+    protocolRegisterSchemesAsPrivilegedSpy,
     sessionOnHeadersReceivedSpy,
     shellOpenExternalSpy,
     shellOpenPathSpy,
@@ -65,6 +67,8 @@ const {
         ipcMainOnSpy: vi.fn(),
         ipcMainRemoveHandlerSpy: vi.fn(),
         ipcMainRemoveAllListenersSpy: vi.fn(),
+        protocolHandleSpy: vi.fn(),
+        protocolRegisterSchemesAsPrivilegedSpy: vi.fn(),
         sessionOnHeadersReceivedSpy: vi.fn(),
         shellOpenExternalSpy: vi.fn(() => Promise.resolve()),
         shellOpenPathSpy: vi.fn(() => Promise.resolve('')),
@@ -148,6 +152,10 @@ vi.mock('electron', () => ({
         on: ipcMainOnSpy,
         removeHandler: ipcMainRemoveHandlerSpy,
         removeAllListeners: ipcMainRemoveAllListenersSpy,
+    },
+    protocol: {
+        handle: protocolHandleSpy,
+        registerSchemesAsPrivileged: protocolRegisterSchemesAsPrivilegedSpy,
     },
     session: {
         defaultSession: {

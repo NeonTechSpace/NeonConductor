@@ -82,6 +82,12 @@ export function buildHealthSteps(profile: HealthProfile): HealthStep[] {
     ];
     const alphaExit = [
         ...full,
+        healthStep('alpha-evals', 'First-alpha internal eval scenarios pass', 'required', [
+            'exec',
+            'tsx',
+            'scripts/alpha-evals.ts',
+            '--check',
+        ]),
         healthStep('alpha-acceptance', 'First-alpha exit criteria are complete', 'required', [
             'exec',
             'tsx',

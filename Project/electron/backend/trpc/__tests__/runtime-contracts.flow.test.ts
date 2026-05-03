@@ -1,12 +1,13 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildShellApprovalContext } from '@/app/backend/runtime/services/toolExecution/shellApproval';
 import {
     createCaller,
     createSessionInScope,
+    insertWorkspaceRootForTests,
     type EntityId,
     registerRuntimeContractHooks,
     runtimeContractProfileId,
@@ -16,26 +17,7 @@ registerRuntimeContractHooks();
 
 async function seedWorkspaceRoot(profileId: string, workspaceFingerprint: string): Promise<string> {
     const workspacePath = mkdtempSync(join(tmpdir(), `${workspaceFingerprint}-`));
-    const now = new Date().toISOString();
-
-    const { getPersistence } = await import('@/app/backend/trpc/__tests__/runtime-contracts.shared');
-    getPersistence()
-        .sqlite.prepare(
-            `
-                INSERT OR IGNORE INTO workspace_roots
-                    (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            `
-        )
-        .run(
-            workspaceFingerprint,
-            profileId,
-            workspacePath,
-            process.platform === 'win32' ? workspacePath.toLowerCase() : workspacePath,
-            basename(workspacePath),
-            now,
-            now
-        );
+    insertWorkspaceRootForTests(profileId, workspaceFingerprint, workspacePath);
 
     return workspacePath;
 }
@@ -71,8 +53,8 @@ async function waitForFlowInstanceByDefinition(input: {
     const { getPersistence } = await import('@/app/backend/trpc/__tests__/runtime-contracts.shared');
 
     for (let attempt = 0; attempt < 120; attempt += 1) {
-        const flowInstance = await getPersistence().db
-            .selectFrom('flow_instances')
+        const flowInstance = await getPersistence()
+            .db.selectFrom('flow_instances')
             .selectAll()
             .where('profile_id', '=', input.profileId)
             .where('flow_definition_id', '=', input.flowDefinitionId)
@@ -427,8 +409,8 @@ describe('runtime contracts: flow', () => {
 
         const permissionRequestId = started.flowInstance.awaitingApproval.permissionRequestId;
         const { getPersistence } = await import('@/app/backend/trpc/__tests__/runtime-contracts.shared');
-        const permissionRow = await getPersistence().db
-            .selectFrom('permissions')
+        const permissionRow = await getPersistence()
+            .db.selectFrom('permissions')
             .selectAll()
             .where('id', '=', permissionRequestId)
             .executeTakeFirstOrThrow();
@@ -792,9 +774,7 @@ describe('runtime contracts: flow', () => {
             throw new Error('Expected unsupported flow instance to start.');
         }
         expect(unsupportedStart.flowInstance.instance.status).toBe('failed');
-        expect(unsupportedStart.flowInstance.lastErrorMessage).toContain(
-            'not executable in Execute Flow Slice 4'
-        );
+        expect(unsupportedStart.flowInstance.lastErrorMessage).toContain('not executable in Execute Flow Slice 4');
 
         const cancelWorkspaceFingerprint = 'ws_flow_cancel';
         await seedWorkspaceRoot(profileId, cancelWorkspaceFingerprint);

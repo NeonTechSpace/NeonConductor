@@ -29,6 +29,12 @@ describe('health runner', () => {
             'build-app',
             'agents-audit',
         ]);
+
+        expect(
+            buildHealthSteps('alpha-exit')
+                .map((step) => step.id)
+                .slice(-2)
+        ).toEqual(['alpha-evals', 'alpha-acceptance']);
     });
 
     it('parses explicit profile arguments', () => {

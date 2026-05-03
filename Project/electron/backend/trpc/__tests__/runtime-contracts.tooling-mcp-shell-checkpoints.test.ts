@@ -8,7 +8,7 @@ import {
     createCaller,
     createGitWorkspace,
     defaultRuntimeOptions,
-    getPersistence,
+    insertWorkspaceRootForTests,
     mkdtempSync,
     os,
     path,
@@ -235,28 +235,10 @@ describe('runtime contracts: permissions and tooling', () => {
 
     it('executes run_command with exact-command approvals and bounded shell output', async () => {
         const caller = createCaller();
-        const { sqlite } = getPersistence();
-        const now = new Date().toISOString();
         const generalWorkspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-shell-general-'));
         const specificWorkspacePath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-shell-specific-'));
         const insertWorkspaceRoot = (targetProfileId: string, fingerprint: string, absolutePath: string) => {
-            sqlite
-                .prepare(
-                    `
-                        INSERT OR IGNORE INTO workspace_roots
-                            (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    `
-                )
-                .run(
-                    fingerprint,
-                    targetProfileId,
-                    absolutePath,
-                    process.platform === 'win32' ? absolutePath.toLowerCase() : absolutePath,
-                    path.basename(absolutePath),
-                    now,
-                    now
-                );
+            insertWorkspaceRootForTests(targetProfileId, fingerprint, absolutePath);
         };
         const approveExactShellCommand = async (input: {
             targetProfileId: string;

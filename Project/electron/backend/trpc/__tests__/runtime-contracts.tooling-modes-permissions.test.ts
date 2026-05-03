@@ -6,7 +6,7 @@ import {
     runtimeContractProfileId,
     registerRuntimeContractHooks,
     createCaller,
-    getPersistence,
+    insertWorkspaceRootForTests,
     isEntityId,
     mkdtempSync,
     os,
@@ -161,25 +161,7 @@ describe('runtime contracts: permissions and tooling', () => {
         const caller = createCaller();
         const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-execute-code-contract-'));
         const workspaceFingerprint = 'ws_execute_code_contracts';
-        const now = new Date().toISOString();
-        const { sqlite } = getPersistence();
-        sqlite
-            .prepare(
-                `
-                    INSERT OR IGNORE INTO workspace_roots
-                        (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `
-            )
-            .run(
-                workspaceFingerprint,
-                profileId,
-                tempDir,
-                process.platform === 'win32' ? tempDir.toLowerCase() : tempDir,
-                path.basename(tempDir),
-                now,
-                now
-            );
+        insertWorkspaceRootForTests(profileId, workspaceFingerprint, tempDir);
 
         const code = 'console.log("contract");\nreturn 4;';
         const requested = await caller.tool.invoke({
@@ -238,26 +220,8 @@ describe('runtime contracts: permissions and tooling', () => {
         const tempDir = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-tool-test-'));
         const tempFile = path.join(tempDir, 'readme.txt');
         const workspaceFingerprint = 'ws_tool_runtime_contracts';
-        const now = new Date().toISOString();
-        const { sqlite } = getPersistence();
         writeFileSync(tempFile, 'hello from tool execution test', 'utf8');
-        sqlite
-            .prepare(
-                `
-                    INSERT OR IGNORE INTO workspace_roots
-                        (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `
-            )
-            .run(
-                workspaceFingerprint,
-                profileId,
-                tempDir,
-                process.platform === 'win32' ? tempDir.toLowerCase() : tempDir,
-                path.basename(tempDir),
-                now,
-                now
-            );
+        insertWorkspaceRootForTests(profileId, workspaceFingerprint, tempDir);
 
         const tools = await caller.tool.list();
         expect(tools.tools.map((item) => item.id)).toContain('read_file');

@@ -3,12 +3,14 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { flowStore, runtimeEventStore } from '@/app/backend/persistence/stores';
-import { getPersistence, registerRuntimeContractHooks, runtimeContractProfileId } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
-
 import {
-    createFlowApprovalRequiredLifecycleEvent,
-    createFlowStepStartedLifecycleEvent,
-} from '@/shared/flowLifecycle';
+    getPersistence,
+    insertWorkspaceRootForTests,
+    registerRuntimeContractHooks,
+    runtimeContractProfileId,
+} from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
+
+import { createFlowApprovalRequiredLifecycleEvent, createFlowStepStartedLifecycleEvent } from '@/shared/flowLifecycle';
 
 registerRuntimeContractHooks();
 
@@ -222,18 +224,9 @@ describe('flowStore', () => {
     });
 
     it('keeps branch-workflow adapter identities stable per profile and workspace', async () => {
-        const { sqlite } = getPersistence();
         const now = new Date().toISOString();
         const workspaceRootPath = join(tmpdir(), 'ws_flow_adapter');
-        sqlite
-            .prepare(
-                `
-                    INSERT OR IGNORE INTO workspace_roots
-                        (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `
-            )
-            .run('ws_flow_adapter', profileId, workspaceRootPath, workspaceRootPath.toLowerCase(), 'ws', now, now);
+        insertWorkspaceRootForTests(profileId, 'ws_flow_adapter', workspaceRootPath);
 
         const first = await flowStore.upsertBranchWorkflowAdapterDefinition({
             profileId,

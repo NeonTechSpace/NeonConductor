@@ -25,9 +25,9 @@ export function buildAlphaAcceptanceReport(): AlphaAcceptanceReport {
         },
         {
             id: 'internal-evals',
-            title: 'Slice 8F internal evals and trace graders',
-            status: 'blocked',
-            detail: 'Replayable acceptance coverage for critical run, memory, promotion, and cloud paths is not landed.',
+            title: 'Slice 8G internal evals and trace graders',
+            status: 'passed',
+            detail: 'Replayable internal eval scenarios cover critical run, memory, promotion, and cloud-session paths.',
         },
         {
             id: 'workspace-icons',

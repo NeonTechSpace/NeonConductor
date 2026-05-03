@@ -1,9 +1,9 @@
 import os from 'node:os';
 import { describe, expect, it } from 'vitest';
 
-import { getPersistence } from '@/app/backend/persistence/db';
 import { branchWorkflowService } from '@/app/backend/runtime/services/branchWorkflows/service';
 import {
+    insertWorkspaceRootForTests,
     mkdirSync,
     mkdtempSync,
     path,
@@ -16,25 +16,7 @@ import {
 registerRuntimeContractHooks();
 
 function insertWorkspaceRoot(profileId: string, workspaceFingerprint: string, workspacePath: string) {
-    const now = new Date().toISOString();
-    const { sqlite } = getPersistence();
-    sqlite
-        .prepare(
-            `
-                INSERT OR IGNORE INTO workspace_roots
-                    (fingerprint, profile_id, absolute_path, path_key, label, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            `
-        )
-        .run(
-            workspaceFingerprint,
-            profileId,
-            workspacePath,
-            process.platform === 'win32' ? workspacePath.toLowerCase() : workspacePath,
-            path.basename(workspacePath),
-            now,
-            now
-        );
+    insertWorkspaceRootForTests(profileId, workspaceFingerprint, workspacePath);
 }
 
 describe('branchWorkflowService', () => {
