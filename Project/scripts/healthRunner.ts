@@ -1,5 +1,5 @@
 import { spawn, type SpawnOptionsWithoutStdio } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 export type HealthStepRequirement = 'required' | 'advisory';
@@ -45,6 +45,33 @@ function splitPathEntries(env: NodeJS.ProcessEnv): string[] {
 function findPnpmCjsOnPath(env: NodeJS.ProcessEnv): string | null {
     for (const pathEntry of splitPathEntries(env)) {
         const pnpmCjsPath = path.resolve(pathEntry, '..', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs');
+        if (existsSync(pnpmCjsPath)) {
+            return pnpmCjsPath;
+        }
+
+        const shimPnpmCjsPath = findPnpmCjsFromCmdShim(pathEntry);
+        if (shimPnpmCjsPath) {
+            return shimPnpmCjsPath;
+        }
+    }
+
+    return null;
+}
+
+function findPnpmCjsFromCmdShim(pathEntry: string): string | null {
+    for (const shimName of ['pnpm.cmd', 'pnpm.CMD']) {
+        const shimPath = path.join(pathEntry, shimName);
+        if (!existsSync(shimPath)) {
+            continue;
+        }
+
+        const shimText = readFileSync(shimPath, 'utf8');
+        const match = /"%~dp0\\(?<relativePath>[^"]*?pnpm\.cjs)"/iu.exec(shimText);
+        if (!match?.groups?.relativePath) {
+            continue;
+        }
+
+        const pnpmCjsPath = path.resolve(pathEntry, match.groups.relativePath.replaceAll('\\', path.sep));
         if (existsSync(pnpmCjsPath)) {
             return pnpmCjsPath;
         }

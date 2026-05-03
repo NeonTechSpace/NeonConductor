@@ -57,6 +57,50 @@ describe('health runner', () => {
         }
     });
 
+    it('resolves Windows pnpm through the cmd shim target when pnpm uses a global layout', () => {
+        const tempDir = mkdtempSync(path.join(os.tmpdir(), 'health-runner-pnpm-shim-'));
+        const binDir = path.join(tempDir, 'pnpm', 'bin');
+        const pnpmCjsPath = path.join(
+            tempDir,
+            'pnpm',
+            'global',
+            '5',
+            '.pnpm',
+            'pnpm@10.28.2',
+            'node_modules',
+            'pnpm',
+            'bin',
+            'pnpm.cjs'
+        );
+        try {
+            mkdirSync(binDir, { recursive: true });
+            mkdirSync(path.dirname(pnpmCjsPath), { recursive: true });
+            writeFileSync(pnpmCjsPath, 'module.exports = {};\n', 'utf8');
+            writeFileSync(
+                path.join(binDir, 'pnpm.CMD'),
+                [
+                    '@SETLOCAL',
+                    '@IF EXIST "%~dp0\\node.exe" (',
+                    '  "%~dp0\\node.exe"  "%~dp0\\..\\global\\5\\.pnpm\\pnpm@10.28.2\\node_modules\\pnpm\\bin\\pnpm.cjs" %*',
+                    ') ELSE (',
+                    '  node  "%~dp0\\..\\global\\5\\.pnpm\\pnpm@10.28.2\\node_modules\\pnpm\\bin\\pnpm.cjs" %*',
+                    ')',
+                    '',
+                ].join('\n'),
+                'utf8'
+            );
+
+            const invocation = resolvePnpmInvocation('win32', { PATH: binDir });
+
+            expect(invocation).toEqual({
+                command: process.execPath,
+                argsPrefix: [pnpmCjsPath],
+            });
+        } finally {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
     it('fails only when required steps fail', async () => {
         const steps: HealthStep[] = [
             {
