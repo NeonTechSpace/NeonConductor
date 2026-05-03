@@ -63,6 +63,14 @@ export function buildAlphaEvalScenarios(): AlphaEvalScenario[] {
             'electron/backend/trpc/__tests__/runtime-contracts.provider-auth.test.ts',
             'src/components/conversation/panels/cloudSessionsPanel.test.tsx',
         ]),
+        createVitestScenario(
+            'repo-research-acceptance',
+            'Repo-research checkout awareness remains backend-owned and replayable',
+            [
+                'electron/backend/runtime/services/researchCheckouts/service.test.ts',
+                'electron/backend/trpc/__tests__/runtime-contracts.repo-research.test.ts',
+            ]
+        ),
     ];
 }
 

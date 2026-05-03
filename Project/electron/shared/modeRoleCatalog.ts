@@ -120,6 +120,19 @@ const modeRoleTemplateDefinitions = [
     },
     {
         authoringRole: 'single_task_agent',
+        roleTemplate: 'single_task_agent/research',
+        label: 'Research',
+        topLevelTab: 'agent',
+        toolCapabilities: ['filesystem_read', 'mcp'],
+        workflowCapabilities: ['artifact_view'],
+        behaviorFlags: ['read_only_execution', 'artifact_producing'],
+        runtimeProfile: 'read_only_agent',
+        internalModelRole: 'apply',
+        delegatedOnly: false,
+        sessionSelectable: true,
+    },
+    {
+        authoringRole: 'single_task_agent',
         roleTemplate: 'single_task_agent/review',
         label: 'Review',
         topLevelTab: 'agent',
@@ -289,6 +302,9 @@ function inferRoleTemplateFromLegacyMetadata(input: {
     }
     if (workflowCapabilities.has('review') || input.runtimeProfile === 'reviewer') {
         return 'single_task_agent/review';
+    }
+    if (modeKey === 'research') {
+        return 'single_task_agent/research';
     }
     if (
         modeKey === 'ask' ||

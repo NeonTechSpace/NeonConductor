@@ -12,6 +12,7 @@ describe('alpha eval report', () => {
             'memory-retrieval-retention-promotion',
             'rule-skill-promotion',
             'cloud-session-boundaries',
+            'repo-research-acceptance',
         ]);
         expect(scenarios.every((scenario) => scenario.args.includes('vitest'))).toBe(true);
         expect(scenarios.every((scenario) => scenario.args.includes('--fileParallelism=false'))).toBe(true);

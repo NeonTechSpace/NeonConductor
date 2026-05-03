@@ -20,6 +20,7 @@ import type {
     StartRunInput,
 } from '@/app/backend/runtime/services/runExecution/types';
 import type { ResolvedWorkspaceContext } from '@/shared/contracts';
+import type { RunResearchTarget } from '@/shared/contracts';
 
 async function resolvePreparedCandidate(input: {
     startInput: StartRunInput;
@@ -108,6 +109,7 @@ async function resolvePreparedCandidate(input: {
 export async function prepareRunStart(
     input: StartRunInput & {
         workspaceContext?: ResolvedWorkspaceContext;
+        resolvedResearchTarget?: RunResearchTarget;
     }
 ): Promise<RunExecutionResult<PreparedRunStart>> {
     const resolvedModeResult = await resolveModeExecution({
@@ -229,5 +231,6 @@ export async function prepareRunStart(
         ...(kiloModeHeader ? { kiloModeHeader } : {}),
         ...(kiloRouting ? { kiloRouting } : {}),
         ...(input.workspaceContext ? { workspaceContext: input.workspaceContext } : {}),
+        ...(input.resolvedResearchTarget ? { researchTarget: input.resolvedResearchTarget } : {}),
     });
 }

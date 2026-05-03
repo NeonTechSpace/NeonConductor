@@ -33,6 +33,8 @@ import type {
     TopLevelTab,
     RunStartRejectionAction,
     ResolvedWorkspaceContext,
+    ResearchTargetRequest,
+    RunResearchTarget,
 } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
@@ -55,6 +57,7 @@ export interface StartRunInput {
     runtimeOptions: RuntimeRunOptions;
     providerId?: RuntimeProviderId;
     modelId?: string;
+    researchTarget?: ResearchTargetRequest;
 }
 
 export interface ResolvedRunTarget {
@@ -218,6 +221,7 @@ export interface PreparedRunStart {
     kiloModeHeader?: KiloModeHeader;
     kiloRouting?: ResolvedKiloRouting;
     workspaceContext?: ResolvedWorkspaceContext;
+    researchTarget?: RunResearchTarget;
 }
 
 export type StartRunResult =

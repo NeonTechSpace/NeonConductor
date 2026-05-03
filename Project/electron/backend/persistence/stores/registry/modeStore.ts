@@ -82,6 +82,7 @@ function parseExecutionPolicy(input: {
             'single_task_agent/plan',
             'single_task_agent/apply',
             'single_task_agent/debug',
+            'single_task_agent/research',
             'single_task_agent/review',
             'orchestrator_primary/plan',
             'orchestrator_primary/orchestrate',

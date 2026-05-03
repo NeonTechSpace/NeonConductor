@@ -5,6 +5,7 @@ import {
     resolveKiloCloudRunGate,
 } from '@/app/backend/runtime/services/runExecution/kiloCloudRunGate';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
+import { resolveResearchTargetForRun } from '@/app/backend/runtime/services/runExecution/researchTarget';
 import type { StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
@@ -63,60 +64,84 @@ export async function previewRunContractForStart(
         };
     }
 
-    const workspaceContext = await workspaceContextService.resolveForSession({
-        profileId: input.profileId,
-        sessionId: input.sessionId,
-        topLevelTab: input.topLevelTab,
-        allowLazySandboxCreation: false,
+    const researchTargetResult = await resolveResearchTargetForRun({
+        startInput: input,
+        requireExistingCheckout: false,
     });
-    if (!workspaceContext) {
+    if (researchTargetResult.isErr()) {
         return {
             available: false as const,
             reason: 'rejected' as const,
-            code: 'execution_target_unavailable',
-            message: 'Workspace execution target could not be resolved for this session.',
-            action: {
-                code: 'execution_target_unavailable',
-                target: 'workspace',
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                detail: 'workspace_not_resolved',
-            },
+            code: researchTargetResult.error.code,
+            message: researchTargetResult.error.message,
+            ...(researchTargetResult.error.action ? { action: researchTargetResult.error.action } : {}),
         };
     }
-    if (input.topLevelTab !== 'chat' && workspaceContext.kind === 'workspace_unresolved') {
-        return {
-            available: false as const,
-            reason: 'rejected' as const,
-            code: 'execution_target_unavailable',
-            message: 'Workspace root is unresolved for this session.',
-            action: {
+    const researchTarget = researchTargetResult.value;
+
+    const workspaceContext = researchTarget
+        ? undefined
+        : await workspaceContextService.resolveForSession({
+              profileId: input.profileId,
+              sessionId: input.sessionId,
+              topLevelTab: input.topLevelTab,
+              allowLazySandboxCreation: false,
+          });
+    if (!researchTarget) {
+        if (!workspaceContext) {
+            return {
+                available: false as const,
+                reason: 'rejected' as const,
                 code: 'execution_target_unavailable',
-                target: 'workspace',
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                detail: 'workspace_root_missing',
-            },
-        };
-    }
-    if (input.topLevelTab !== 'chat' && sessionThread.thread.executionEnvironmentMode === 'sandbox' && workspaceContext.kind !== 'sandbox') {
-        return {
-            available: false as const,
-            reason: 'rejected' as const,
-            code: 'execution_target_unavailable',
-            message:
-                'Selected managed sandbox could not be resolved. Choose a ready sandbox or switch this thread to managed-sandbox scheduling.',
-            action: {
+                message: 'Workspace execution target could not be resolved for this session.',
+                action: {
+                    code: 'execution_target_unavailable',
+                    target: 'workspace',
+                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                    detail: 'workspace_not_resolved',
+                },
+            };
+        }
+        if (input.topLevelTab !== 'chat' && workspaceContext.kind === 'workspace_unresolved') {
+            return {
+                available: false as const,
+                reason: 'rejected' as const,
                 code: 'execution_target_unavailable',
-                target: 'sandbox',
-                ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                detail: 'sandbox_not_materialized',
-            },
-        };
+                message: 'Workspace root is unresolved for this session.',
+                action: {
+                    code: 'execution_target_unavailable',
+                    target: 'workspace',
+                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                    detail: 'workspace_root_missing',
+                },
+            };
+        }
+        if (
+            input.topLevelTab !== 'chat' &&
+            sessionThread.thread.executionEnvironmentMode === 'sandbox' &&
+            workspaceContext.kind !== 'sandbox'
+        ) {
+            return {
+                available: false as const,
+                reason: 'rejected' as const,
+                code: 'execution_target_unavailable',
+                message:
+                    'Selected managed sandbox could not be resolved. Choose a ready sandbox or switch this thread to managed-sandbox scheduling.',
+                action: {
+                    code: 'execution_target_unavailable',
+                    target: 'sandbox',
+                    ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                    detail: 'sandbox_not_materialized',
+                },
+            };
+        }
     }
 
     const preparedResult = await prepareRunStart({
         ...input,
-        ...(workspaceContext.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
-        workspaceContext,
+        ...(workspaceContext?.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
+        ...(workspaceContext ? { workspaceContext } : {}),
+        ...(researchTarget ? { resolvedResearchTarget: researchTarget } : {}),
     });
     if (preparedResult.isErr()) {
         return {

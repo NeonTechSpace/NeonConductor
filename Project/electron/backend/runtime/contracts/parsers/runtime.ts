@@ -17,12 +17,15 @@ import type {
     RuntimeEventsSubscriptionInput,
     RuntimeInspectWorkspaceEnvironmentInput,
     RuntimePatchWorkspaceRootInput,
+    RuntimePreviewResearchTargetInput,
     RuntimeRegisterWorkspaceRootInput,
     RuntimeResetInput,
+    RuntimeSetResearchCheckoutRootSettingsInput,
     RuntimeSetWorkspacePreferenceInput,
     WindowStateSubscriptionInput,
 } from '@/app/backend/runtime/contracts/types';
 import { FACTORY_RESET_CONFIRMATION_TEXT } from '@/app/backend/runtime/contracts/types';
+import { repoMutationIntents, researchCheckoutRootPolicies } from '@/app/backend/runtime/contracts/types/research';
 import {
     workspacePreferredPackageManagerValues,
     workspacePreferredVcsValues,
@@ -262,6 +265,105 @@ export function parseRuntimeSetWorkspacePreferenceInput(input: unknown): Runtime
     };
 }
 
+export function parseResearchTargetRequest(value: unknown, field: string) {
+    const source = readObject(value, field);
+    const repoUrl = readString(source.repoUrl, `${field}.repoUrl`).trim();
+    if (repoUrl.length === 0) {
+        throw new Error(`Invalid "${field}.repoUrl": expected non-empty string.`);
+    }
+
+    const requestedTargetSource =
+        source.requestedTarget === undefined ? undefined : readObject(source.requestedTarget, `${field}.requestedTarget`);
+    const requestedTarget =
+        requestedTargetSource === undefined
+            ? undefined
+            : (() => {
+                  const kind = readEnumValue(requestedTargetSource.kind, `${field}.requestedTarget.kind`, [
+                      'default_branch',
+                      'branch',
+                      'pull_request',
+                      'commit',
+                  ] as const);
+                  if (kind === 'branch') {
+                      const name = readString(requestedTargetSource.name, `${field}.requestedTarget.name`).trim();
+                      if (name.length === 0) {
+                          throw new Error(`Invalid "${field}.requestedTarget.name": expected non-empty string.`);
+                      }
+                      return { kind, name };
+                  }
+                  if (kind === 'pull_request') {
+                      const id = readString(requestedTargetSource.id, `${field}.requestedTarget.id`).trim();
+                      if (id.length === 0) {
+                          throw new Error(`Invalid "${field}.requestedTarget.id": expected non-empty string.`);
+                      }
+                      return { kind, id };
+                  }
+                  if (kind === 'commit') {
+                      const sha = readString(requestedTargetSource.sha, `${field}.requestedTarget.sha`).trim();
+                      if (!/^[0-9a-f]{7,64}$/iu.test(sha)) {
+                          throw new Error(`Invalid "${field}.requestedTarget.sha": expected commit SHA.`);
+                      }
+                      return { kind, sha };
+                  }
+                  return { kind };
+              })();
+    const mutationIntent =
+        source.mutationIntent === undefined
+            ? undefined
+            : readEnumValue(source.mutationIntent, `${field}.mutationIntent`, repoMutationIntents);
+
+    return {
+        repoUrl,
+        ...(requestedTarget ? { requestedTarget } : {}),
+        ...(mutationIntent ? { mutationIntent } : {}),
+    };
+}
+
+export function parseRuntimeSetResearchCheckoutRootSettingsInput(
+    input: unknown
+): RuntimeSetResearchCheckoutRootSettingsInput {
+    const source = readObject(input, 'input');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    const policy = readEnumValue(source.policy, 'policy', researchCheckoutRootPolicies);
+    const customAbsolutePath = readOptionalString(source.customAbsolutePath, 'customAbsolutePath')?.trim();
+
+    if (!profileId || profileId.trim().length === 0) {
+        throw new Error('Invalid "profileId": expected non-empty string.');
+    }
+
+    if (policy === 'custom_path' && !customAbsolutePath) {
+        throw new Error('Invalid "customAbsolutePath": required when policy is "custom_path".');
+    }
+
+    if (policy !== 'custom_path' && customAbsolutePath) {
+        throw new Error('Invalid "customAbsolutePath": only valid when policy is "custom_path".');
+    }
+
+    return {
+        profileId: profileId.trim(),
+        policy,
+        ...(customAbsolutePath ? { customAbsolutePath } : {}),
+    };
+}
+
+export function parseRuntimePreviewResearchTargetInput(input: unknown): RuntimePreviewResearchTargetInput {
+    const source = readObject(input, 'input');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    const sessionId = source.sessionId !== undefined ? readEntityId(source.sessionId, 'sessionId', 'sess') : undefined;
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint')?.trim();
+
+    if (!profileId || profileId.trim().length === 0) {
+        throw new Error('Invalid "profileId": expected non-empty string.');
+    }
+
+    return {
+        profileId: profileId.trim(),
+        ...(sessionId ? { sessionId } : {}),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        target: parseResearchTargetRequest(source.target, 'target'),
+    };
+}
+
 export function parseRuntimeInspectWorkspaceEnvironmentInput(input: unknown): RuntimeInspectWorkspaceEnvironmentInput {
     const source = readObject(input, 'input');
     const profileId = readOptionalString(source.profileId, 'profileId');
@@ -313,4 +415,8 @@ export const contextBudgetInputSchema = createParser(parseContextBudgetInput);
 export const runtimeRegisterWorkspaceRootInputSchema = createParser(parseRuntimeRegisterWorkspaceRootInput);
 export const runtimePatchWorkspaceRootInputSchema = createParser(parseRuntimePatchWorkspaceRootInput);
 export const runtimeSetWorkspacePreferenceInputSchema = createParser(parseRuntimeSetWorkspacePreferenceInput);
+export const runtimeSetResearchCheckoutRootSettingsInputSchema = createParser(
+    parseRuntimeSetResearchCheckoutRootSettingsInput
+);
+export const runtimePreviewResearchTargetInputSchema = createParser(parseRuntimePreviewResearchTargetInput);
 export const runtimeInspectWorkspaceEnvironmentInputSchema = createParser(parseRuntimeInspectWorkspaceEnvironmentInput);

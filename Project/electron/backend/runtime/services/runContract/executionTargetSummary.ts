@@ -1,8 +1,20 @@
-import type { ResolvedWorkspaceContext, RunContractExecutionTargetSummary } from '@/shared/contracts';
+import type { ResolvedWorkspaceContext, RunContractExecutionTargetSummary, RunResearchTarget } from '@/shared/contracts';
 
-export function buildRunContractExecutionTargetSummary(
-    workspaceContext: ResolvedWorkspaceContext | undefined
-): RunContractExecutionTargetSummary {
+export function buildRunContractExecutionTargetSummary(input: {
+    workspaceContext: ResolvedWorkspaceContext | undefined;
+    researchTarget?: RunResearchTarget;
+}): RunContractExecutionTargetSummary {
+    if (input.researchTarget) {
+        return {
+            kind: 'research_checkout',
+            label: `Research checkout: ${input.researchTarget.locator.name}`,
+            materializationState:
+                input.researchTarget.checkoutAction === 'clone_required' ? 'scheduled_on_start' : 'materialized',
+            absolutePath: input.researchTarget.resolvedCheckoutPath,
+        };
+    }
+
+    const workspaceContext = input.workspaceContext;
     if (!workspaceContext || workspaceContext.kind === 'detached') {
         return {
             kind: 'detached',
@@ -68,5 +80,7 @@ export function formatRunContractExecutionTargetSummary(
                 : `Managed sandbox scheduled from ${target.label}`;
         case 'sandbox':
             return target.absolutePath ? `Managed sandbox: ${target.absolutePath}` : `Managed sandbox: ${target.label}`;
+        case 'research_checkout':
+            return target.absolutePath ? `Research checkout: ${target.absolutePath}` : target.label;
     }
 }

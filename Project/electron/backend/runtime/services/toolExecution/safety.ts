@@ -21,7 +21,7 @@ export interface CanonicalToolPath {
 }
 
 export interface FileToolExecutionRootAuthority {
-    kind: 'workspace' | 'sandbox';
+    kind: 'workspace' | 'sandbox' | 'research_checkout';
     label: string;
     absolutePath: string;
 }

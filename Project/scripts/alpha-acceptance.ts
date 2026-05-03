@@ -38,8 +38,8 @@ export function buildAlphaAcceptanceReport(): AlphaAcceptanceReport {
         {
             id: 'repo-research-acceptance',
             title: 'Slice 8I repo-research acceptance coverage',
-            status: 'blocked',
-            detail: 'Repo-research checkout/root-policy and VCS explanation acceptance coverage is not landed.',
+            status: 'passed',
+            detail: 'Backend repo-research root policy, checkout planning, run-contract, and internal eval coverage are landed.',
         },
     ];
 

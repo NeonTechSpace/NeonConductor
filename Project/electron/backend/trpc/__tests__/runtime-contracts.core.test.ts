@@ -779,7 +779,7 @@ describe('runtime contracts: core flows', () => {
         expect(applied.applied).toBe(true);
 
         const snapshot = await caller.runtime.getDiagnosticSnapshot({ profileId });
-        expect(snapshot.modeDefinitions.length).toBe(8);
+        expect(snapshot.modeDefinitions.length).toBe(9);
         expect(snapshot.kiloAccountContext.authState).toBe('logged_out');
         expect(snapshot.providerSecrets).toEqual([]);
     });

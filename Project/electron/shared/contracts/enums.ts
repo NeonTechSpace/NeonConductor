@@ -54,6 +54,7 @@ export const modeRoleTemplateKeys = [
     'single_task_agent/plan',
     'single_task_agent/apply',
     'single_task_agent/debug',
+    'single_task_agent/research',
     'single_task_agent/review',
     'orchestrator_primary/plan',
     'orchestrator_primary/orchestrate',
@@ -77,7 +78,7 @@ export type InternalModelRole = (typeof internalModelRoles)[number];
 export const sessionEditModes = ['truncate', 'branch'] as const;
 export type SessionEditMode = (typeof sessionEditModes)[number];
 
-export const agentModes = ['plan', 'debug', 'code', 'ask'] as const;
+export const agentModes = ['plan', 'debug', 'code', 'ask', 'research'] as const;
 export type AgentMode = (typeof agentModes)[number];
 
 export const orchestratorModes = ['plan', 'orchestrate', 'debug'] as const;

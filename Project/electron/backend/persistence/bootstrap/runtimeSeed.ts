@@ -149,6 +149,16 @@ const MODE_SEED = [
         },
     },
     {
+        topLevelTab: 'agent',
+        modeKey: 'research',
+        label: 'Agent Research',
+        prompt: {},
+        executionPolicy: {
+            authoringRole: 'single_task_agent',
+            roleTemplate: 'single_task_agent/research',
+        },
+    },
+    {
         topLevelTab: 'orchestrator',
         modeKey: 'plan',
         label: 'Orchestrator Plan',

@@ -14,6 +14,7 @@ import type {
     DocumentExtractionState,
     RuntimeRunOptions,
 } from '@/app/backend/runtime/contracts/types/session';
+import type { ResearchTargetRequest, RunResearchTarget } from '@/app/backend/runtime/contracts/types/research';
 
 export interface SteeringSnapshot {
     profileId: string;
@@ -25,6 +26,7 @@ export interface SteeringSnapshot {
     runtimeOptions: RuntimeRunOptions;
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
+    researchTarget?: ResearchTargetRequest;
     createdAt: string;
 }
 
@@ -88,7 +90,12 @@ export interface RunContractDiffSummary {
     items: RunContractDiffItem[];
 }
 
-export type RunContractExecutionTargetKind = 'detached' | 'workspace' | 'scheduled_sandbox' | 'sandbox';
+export type RunContractExecutionTargetKind =
+    | 'detached'
+    | 'workspace'
+    | 'scheduled_sandbox'
+    | 'sandbox'
+    | 'research_checkout';
 export type RunContractExecutionTargetMaterializationState =
     | 'not_required'
     | 'scheduled_on_start'
@@ -122,6 +129,7 @@ export interface RunContractPreview {
     documentSummary?: RunContractDocumentSummary[];
     browserContextSummary?: BrowserContextSummary;
     diffFromLastCompatible?: RunContractDiffSummary;
+    researchTarget?: RunResearchTarget;
 }
 
 export type RunContractPreviewResult =

@@ -20,6 +20,7 @@ import {
     readProviderId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
+import { parseResearchTargetRequest } from '@/app/backend/runtime/contracts/parsers/runtime';
 import type {
     CloudSessionCreateMetadata,
     ComposerAttachmentInput,
@@ -249,6 +250,10 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
         source.browserContext !== undefined
             ? parseBrowserContextPacket(source.browserContext, 'browserContext')
             : undefined;
+    const researchTarget =
+        source.researchTarget !== undefined
+            ? parseResearchTargetRequest(source.researchTarget, 'researchTarget')
+            : undefined;
     if (prompt.length === 0 && (!attachments || attachments.length === 0) && !browserContext) {
         throw new Error('Invalid "prompt": expected non-empty string when no attachments or browser context are provided.');
     }
@@ -266,6 +271,7 @@ export function parseSessionStartRunInput(input: unknown): SessionStartRunInput 
         runtimeOptions,
         ...(providerId ? { providerId } : {}),
         ...(modelId ? { modelId } : {}),
+        ...(researchTarget ? { researchTarget } : {}),
     };
 }
 

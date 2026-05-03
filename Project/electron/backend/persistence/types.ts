@@ -67,8 +67,16 @@ import type {
     RuntimeReasoningSummary,
     RuntimeProviderId,
     PlanPlanningDepth,
+    RepoMutationGuardrail,
     RulesetDefinition,
+    RepoWorkflowState,
+    ResearchCheckoutAction,
+    ResearchCheckoutRootPolicy,
+    ResearchCheckoutTargetSwitchAction,
+    ResearchCheckoutUpdateAction,
+    ResearchRepoLocator,
     RunStatus,
+    RepoVcsFamily,
     SkillfileDefinition,
     TopLevelTab,
     ToolCapability,
@@ -464,6 +472,25 @@ export interface ConversationRecord {
 }
 
 export type WorkspaceRootRecord = RuntimeWorkspaceRootRecord;
+
+export interface ResearchCheckoutRecord {
+    id: EntityId<'rch'>;
+    profileId: string;
+    locator: ResearchRepoLocator;
+    rootPolicy: ResearchCheckoutRootPolicy;
+    rootAbsolutePath: string;
+    resolvedCheckoutPath: string;
+    checkoutAction: ResearchCheckoutAction;
+    updateAction: ResearchCheckoutUpdateAction;
+    targetSwitchAction: ResearchCheckoutTargetSwitchAction;
+    detectedVcs: RepoVcsFamily;
+    effectiveVcs: RepoVcsFamily;
+    repoWorkflowState: RepoWorkflowState;
+    mutationGuardrail: RepoMutationGuardrail;
+    lastCheckedAt: string;
+    createdAt: string;
+    updatedAt: string;
+}
 
 export interface ThreadRecord {
     id: string;

@@ -5,9 +5,15 @@ export type RuntimeCompatibilityState = 'compatible' | 'warning' | 'incompatible
 export type RuntimeCompatibilityIssue =
     | {
           code: 'execution_target_unavailable';
-          target: 'workspace' | 'sandbox';
+          target: 'workspace' | 'sandbox' | 'research_checkout';
           workspaceFingerprint?: string;
-          detail?: 'sandbox_not_materialized' | 'workspace_not_resolved' | 'workspace_root_missing' | 'generic';
+          detail?:
+              | 'sandbox_not_materialized'
+              | 'workspace_not_resolved'
+              | 'workspace_root_missing'
+              | 'checkout_missing'
+              | 'generic'
+              | string;
       }
     | {
           code: 'permission_required';

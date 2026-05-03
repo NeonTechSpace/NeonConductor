@@ -139,6 +139,7 @@ function buildSteeringSnapshot(input: {
         runtimeOptions: input.startInput.runtimeOptions,
         ...(input.startInput.workspaceFingerprint ? { workspaceFingerprint: input.startInput.workspaceFingerprint } : {}),
         ...(input.startInput.sandboxId ? { sandboxId: input.startInput.sandboxId } : {}),
+        ...(input.startInput.researchTarget ? { researchTarget: input.startInput.researchTarget } : {}),
         createdAt: new Date().toISOString(),
     };
 }
@@ -255,7 +256,10 @@ export function prepareRunContractPreview(input: {
             startInput: input.startInput,
             prepared: input.prepared,
         }),
-        executionTarget: buildRunContractExecutionTargetSummary(input.prepared.workspaceContext),
+        executionTarget: buildRunContractExecutionTargetSummary({
+            workspaceContext: input.prepared.workspaceContext,
+            ...(input.prepared.researchTarget ? { researchTarget: input.prepared.researchTarget } : {}),
+        }),
         preparedContext,
         cache: {
             digest: input.prepared.runContext?.digest ?? preparedContext.digest.fullDigest,
@@ -275,6 +279,7 @@ export function prepareRunContractPreview(input: {
         ...(input.startInput.browserContext
             ? { browserContextSummary: buildBrowserContextSummary(input.startInput.browserContext) }
             : {}),
+        ...(input.prepared.researchTarget ? { researchTarget: input.prepared.researchTarget } : {}),
     };
 
     return {

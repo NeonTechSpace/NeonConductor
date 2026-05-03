@@ -11,6 +11,14 @@ import type {
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 import type { SandboxRecord } from '@/app/backend/runtime/contracts/types/sandbox';
+import type {
+    ResearchCheckoutRootSettings,
+    RuntimePreviewResearchTargetInput,
+    RuntimePreviewResearchTargetResult,
+    RuntimeSetResearchCheckoutRootSettingsInput,
+    RuntimeSetResearchCheckoutRootSettingsResult,
+    RuntimeGetResearchCheckoutRootSettingsResult,
+} from '@/app/backend/runtime/contracts/types/research';
 import type { VendoredNodeTargetKey } from '@/shared/tooling/vendoredNode';
 
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
@@ -95,7 +103,16 @@ export interface RuntimeShellBootstrap {
     workspaceRoots: WorkspaceRootRecord[];
     workspacePreferences: WorkspacePreferenceRecord[];
     sandboxes: SandboxRecord[];
+    researchCheckoutRootSettings?: ResearchCheckoutRootSettings;
 }
+
+export type {
+    RuntimePreviewResearchTargetInput,
+    RuntimePreviewResearchTargetResult,
+    RuntimeSetResearchCheckoutRootSettingsInput,
+    RuntimeSetResearchCheckoutRootSettingsResult,
+    RuntimeGetResearchCheckoutRootSettingsResult,
+};
 
 export interface WindowStateSubscriptionInput {
     afterSequence?: number;

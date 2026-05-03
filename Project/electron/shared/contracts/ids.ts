@@ -23,6 +23,7 @@ export type EntityIdPrefix =
     | 'att'
     | 'doc'
     | 'rcpt'
+    | 'rch'
     | 'tag'
     | 'sess'
     | 'csess'

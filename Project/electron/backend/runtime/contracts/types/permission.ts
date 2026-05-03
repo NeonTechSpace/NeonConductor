@@ -6,6 +6,7 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { RunResearchTarget } from '@/app/backend/runtime/contracts/types/research';
 
 export interface PermissionRequestSummary {
     title: string;
@@ -61,6 +62,7 @@ export interface ToolInvokeInput extends ProfileInput {
     modeKey: string;
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
+    researchTarget?: RunResearchTarget;
 }
 
 export interface ToolInvocationObservabilityContext {

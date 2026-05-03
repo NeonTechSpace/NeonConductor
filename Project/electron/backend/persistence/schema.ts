@@ -1,4 +1,5 @@
 import type { FlowDefinitionOriginKind } from '@/app/backend/runtime/contracts/enums';
+import type { ResearchCheckoutRecordsTable } from '@/app/backend/persistence/schemaTables/researchCheckoutRecordsTable';
 
 import type { Generated } from 'kysely';
 
@@ -1430,6 +1431,7 @@ export interface DatabaseSchema {
     schema_migrations: SchemaMigrationsTable;
     conversations: ConversationsTable;
     workspace_roots: WorkspaceRootsTable;
+    research_checkout_records: ResearchCheckoutRecordsTable;
     threads: ThreadsTable;
     tags: TagsTable;
     thread_tags: ThreadTagsTable;

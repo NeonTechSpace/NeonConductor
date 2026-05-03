@@ -2,7 +2,7 @@ import { errRunExecution, okRunExecution, type RunExecutionResult } from '@/app/
 import { publishToolStateChangedObservabilityEvent } from '@/app/backend/runtime/services/observability/publishers';
 import { persistToolResultMessage } from '@/app/backend/runtime/services/runExecution/toolResultMessageRecorder';
 import { toolExecutionService } from '@/app/backend/runtime/services/toolExecution/service';
-import type { EntityId, RuntimeProviderId } from '@/shared/contracts';
+import type { EntityId, RuntimeProviderId, RunResearchTarget } from '@/shared/contracts';
 
 import type { ExecutableToolCall } from '@/app/backend/runtime/services/runExecution/assistantTurnCollector';
 import type { ProviderRuntimeInput } from '@/app/backend/providers/types';
@@ -20,6 +20,7 @@ export async function executeToolRound(input: {
         modeKey: string;
         workspaceFingerprint?: string;
         sandboxId?: EntityId<'sb'>;
+        researchTarget?: RunResearchTarget;
         providerId: RuntimeProviderId;
         modelId: string;
         toolDefinitions: { id: string }[];
@@ -73,6 +74,9 @@ export async function executeToolRound(input: {
                     ? { workspaceFingerprint: input.executeRunInput.workspaceFingerprint }
                     : {}),
                 ...(input.executeRunInput.sandboxId ? { sandboxId: input.executeRunInput.sandboxId } : {}),
+                ...(input.executeRunInput.researchTarget
+                    ? { researchTarget: input.executeRunInput.researchTarget }
+                    : {}),
                 args: toolCall.args,
             },
             {

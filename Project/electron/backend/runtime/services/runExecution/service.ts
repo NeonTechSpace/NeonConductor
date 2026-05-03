@@ -23,6 +23,7 @@ import {
 import { persistRunStart } from '@/app/backend/runtime/services/runExecution/persistRunStart';
 import { prepareRunStart } from '@/app/backend/runtime/services/runExecution/prepareRunStart';
 import { toRejectedStartResult } from '@/app/backend/runtime/services/runExecution/rejection';
+import { resolveResearchTargetForRun } from '@/app/backend/runtime/services/runExecution/researchTarget';
 import { previewRunContractForStart } from '@/app/backend/runtime/services/runExecution/runContractPreviewService';
 import { runToTerminalState } from '@/app/backend/runtime/services/runExecution/runToTerminalState';
 import { moveRunToAbortedState } from '@/app/backend/runtime/services/runExecution/terminalState';
@@ -146,6 +147,7 @@ export class RunExecutionService {
                 ? { workspaceFingerprint: entry.steeringSnapshot.workspaceFingerprint }
                 : {}),
             ...(entry.steeringSnapshot.sandboxId ? { sandboxId: entry.steeringSnapshot.sandboxId } : {}),
+            ...(entry.steeringSnapshot.researchTarget ? { researchTarget: entry.steeringSnapshot.researchTarget } : {}),
             ...(attachments.length > 0 ? { attachments: attachments.map(toComposerAttachmentInput) } : {}),
         };
     }
@@ -272,68 +274,82 @@ export class RunExecutionService {
             return toRejectedStartResult(error, input);
         }
 
-        const workspaceContext = await workspaceContextService.resolveForSession({
-            profileId: input.profileId,
-            sessionId: input.sessionId,
-            topLevelTab: input.topLevelTab,
-            allowLazySandboxCreation: input.topLevelTab !== 'chat',
+        const researchTargetResult = await resolveResearchTargetForRun({
+            startInput: input,
+            requireExistingCheckout: true,
         });
-        if (!workspaceContext) {
-            return toRejectedStartResult(
-                {
-                    code: 'execution_target_unavailable',
-                    message: 'Workspace execution target could not be resolved for this session.',
-                    action: {
-                        code: 'execution_target_unavailable',
-                        target: 'workspace',
-                        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                        detail: 'workspace_not_resolved',
-                    },
-                },
-                input
-            );
+        if (researchTargetResult.isErr()) {
+            return toRejectedStartResult(researchTargetResult.error, input);
         }
-        if (input.topLevelTab !== 'chat' && workspaceContext.kind === 'workspace_unresolved') {
-            return toRejectedStartResult(
-                {
-                    code: 'execution_target_unavailable',
-                    message: 'Workspace root is unresolved for this session.',
-                    action: {
+        const researchTarget = researchTargetResult.value;
+
+        const workspaceContext = researchTarget
+            ? undefined
+            : await workspaceContextService.resolveForSession({
+                  profileId: input.profileId,
+                  sessionId: input.sessionId,
+                  topLevelTab: input.topLevelTab,
+                  allowLazySandboxCreation: input.topLevelTab !== 'chat',
+              });
+        if (!researchTarget) {
+            if (!workspaceContext) {
+                return toRejectedStartResult(
+                    {
                         code: 'execution_target_unavailable',
-                        target: 'workspace',
-                        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                        detail: 'workspace_root_missing',
+                        message: 'Workspace execution target could not be resolved for this session.',
+                        action: {
+                            code: 'execution_target_unavailable',
+                            target: 'workspace',
+                            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                            detail: 'workspace_not_resolved',
+                        },
                     },
-                },
-                input
-            );
-        }
-        if (
-            input.topLevelTab !== 'chat' &&
-            (sessionThread.thread.executionEnvironmentMode === 'new_sandbox' ||
-                sessionThread.thread.executionEnvironmentMode === 'sandbox') &&
-            workspaceContext.kind !== 'sandbox'
-        ) {
-            return toRejectedStartResult(
-                {
-                    code: 'execution_target_unavailable',
-                    message:
-                        'Managed sandbox could not be materialized. Switch this thread to local workspace mode to allow shared-path editing.',
-                    action: {
+                    input
+                );
+            }
+            if (input.topLevelTab !== 'chat' && workspaceContext.kind === 'workspace_unresolved') {
+                return toRejectedStartResult(
+                    {
                         code: 'execution_target_unavailable',
-                        target: 'sandbox',
-                        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-                        detail: 'sandbox_not_materialized',
+                        message: 'Workspace root is unresolved for this session.',
+                        action: {
+                            code: 'execution_target_unavailable',
+                            target: 'workspace',
+                            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                            detail: 'workspace_root_missing',
+                        },
                     },
-                },
-                input
-            );
+                    input
+                );
+            }
+            if (
+                input.topLevelTab !== 'chat' &&
+                (sessionThread.thread.executionEnvironmentMode === 'new_sandbox' ||
+                    sessionThread.thread.executionEnvironmentMode === 'sandbox') &&
+                workspaceContext.kind !== 'sandbox'
+            ) {
+                return toRejectedStartResult(
+                    {
+                        code: 'execution_target_unavailable',
+                        message:
+                            'Managed sandbox could not be materialized. Switch this thread to local workspace mode to allow shared-path editing.',
+                        action: {
+                            code: 'execution_target_unavailable',
+                            target: 'sandbox',
+                            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+                            detail: 'sandbox_not_materialized',
+                        },
+                    },
+                    input
+                );
+            }
         }
 
         const preparedResult = await prepareRunStart({
             ...input,
-            ...(workspaceContext.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
-            workspaceContext,
+            ...(workspaceContext?.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
+            ...(workspaceContext ? { workspaceContext } : {}),
+            ...(researchTarget ? { resolvedResearchTarget: researchTarget } : {}),
         });
         if (preparedResult.isErr()) {
             appLog.warn({
@@ -355,7 +371,12 @@ export class RunExecutionService {
         }
 
         const prepared = preparedResult.value;
-        prepared.workspaceContext = workspaceContext;
+        if (workspaceContext) {
+            prepared.workspaceContext = workspaceContext;
+        }
+        if (researchTarget) {
+            prepared.researchTarget = researchTarget;
+        }
         const runContractPreview = prepareRunContractPreview({
             startInput: input,
             prepared,
@@ -404,8 +425,9 @@ export class RunExecutionService {
             ...(prepared.kiloRouting ? { kiloRouting: prepared.kiloRouting } : {}),
             ...(prepared.runContext ? { contextMessages: prepared.runContext.messages } : {}),
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
-            ...(workspaceContext.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
-            workspaceContext,
+            ...(workspaceContext?.kind === 'sandbox' ? { sandboxId: workspaceContext.sandbox.id } : {}),
+            ...(workspaceContext ? { workspaceContext } : {}),
+            ...(researchTarget ? { researchTarget } : {}),
             assistantMessageId: persisted.assistantMessageId,
             ...(runContractPreview ? { runContractPreview } : {}),
             ...(input.browserContext ? { browserContext: input.browserContext } : {}),
@@ -713,6 +735,7 @@ export class RunExecutionService {
                 ? { workspaceFingerprint: existing.steeringSnapshot.workspaceFingerprint }
                 : {}),
             ...(existing.steeringSnapshot.sandboxId ? { sandboxId: existing.steeringSnapshot.sandboxId } : {}),
+            ...(existing.steeringSnapshot.researchTarget ? { researchTarget: existing.steeringSnapshot.researchTarget } : {}),
             ...(nextAttachments.length > 0 ? { attachments: nextAttachments } : {}),
             ...(nextBrowserContext ? { browserContext: nextBrowserContext } : {}),
         };

@@ -16,10 +16,9 @@ describe('alpha acceptance report', () => {
         expect(report.criteria.find((criterion) => criterion.id === 'internal-evals')?.status).toBe('passed');
         expect(report.criteria.find((criterion) => criterion.id === 'workspace-icons')?.status).toBe('passed');
         expect(report.criteria.find((criterion) => criterion.id === 'manual-shell-signoff')?.status).toBe('blocked');
-        expect(report.criteria.find((criterion) => criterion.id === 'repo-research-acceptance')?.status).toBe(
-            'blocked'
-        );
+        expect(report.criteria.find((criterion) => criterion.id === 'repo-research-acceptance')?.status).toBe('passed');
         expect(formatAlphaAcceptanceReport(report)).toContain('Slice 8C manual shell sign-off');
         expect(formatAlphaAcceptanceReport(report)).toContain('Slice 8G internal evals and trace graders');
+        expect(formatAlphaAcceptanceReport(report)).toContain('Slice 8I repo-research acceptance coverage');
     });
 });

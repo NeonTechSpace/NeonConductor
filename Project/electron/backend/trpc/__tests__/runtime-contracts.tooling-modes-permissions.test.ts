@@ -49,6 +49,7 @@ describe('runtime contracts: permissions and tooling', () => {
             ['code', ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime']],
             ['debug', ['filesystem_read', 'filesystem_write', 'shell', 'mcp', 'code_runtime']],
             ['plan', ['filesystem_read', 'mcp']],
+            ['research', ['filesystem_read', 'mcp']],
         ]);
 
         const orchestratorModes = await caller.mode.list({
@@ -66,10 +67,19 @@ describe('runtime contracts: permissions and tooling', () => {
         const askMode = agentModes.modes.find((mode) => mode.modeKey === 'ask');
         const codeMode = agentModes.modes.find((mode) => mode.modeKey === 'code');
         const planMode = agentModes.modes.find((mode) => mode.modeKey === 'plan');
+        const researchMode = agentModes.modes.find((mode) => mode.modeKey === 'research');
         const orchestrateMode = orchestratorModes.modes.find((mode) => mode.modeKey === 'orchestrate');
         const orchestratorDebugMode = orchestratorModes.modes.find((mode) => mode.modeKey === 'debug');
         const orchestratorPlanMode = orchestratorModes.modes.find((mode) => mode.modeKey === 'plan');
-        if (!askMode || !codeMode || !planMode || !orchestrateMode || !orchestratorDebugMode || !orchestratorPlanMode) {
+        if (
+            !askMode ||
+            !codeMode ||
+            !planMode ||
+            !researchMode ||
+            !orchestrateMode ||
+            !orchestratorDebugMode ||
+            !orchestratorPlanMode
+        ) {
             throw new Error('Expected seeded modes to exist for runtime tool exposure checks.');
         }
 
@@ -79,6 +89,11 @@ describe('runtime contracts: permissions and tooling', () => {
             'search_files',
         ]);
         expect((await resolveRuntimeToolsForMode({ mode: planMode })).map((tool) => tool.id)).toEqual([
+            'list_files',
+            'read_file',
+            'search_files',
+        ]);
+        expect((await resolveRuntimeToolsForMode({ mode: researchMode })).map((tool) => tool.id)).toEqual([
             'list_files',
             'read_file',
             'search_files',

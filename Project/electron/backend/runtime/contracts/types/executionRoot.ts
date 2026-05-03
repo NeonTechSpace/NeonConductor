@@ -28,9 +28,18 @@ export type ResolvedExecutionRoot =
               label: string;
               absolutePath: string;
           };
+      }
+    | {
+          kind: 'research_checkout';
+          label: string;
+          absolutePath: string;
+          canonicalKey: string;
       };
 
-export type ResolvedFileToolExecutionRoot = Extract<ResolvedExecutionRoot, { kind: 'workspace' | 'sandbox' }>;
+export type ResolvedFileToolExecutionRoot = Extract<
+    ResolvedExecutionRoot,
+    { kind: 'workspace' | 'sandbox' | 'research_checkout' }
+>;
 
 export function toResolvedExecutionRoot(workspaceContext: ResolvedWorkspaceContext): ResolvedExecutionRoot {
     if (workspaceContext.kind === 'detached') {

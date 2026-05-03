@@ -68,7 +68,16 @@ export async function resolveToolRequestContext(input: ToolInvokeInput): Promise
     if (definition.tool.requiresWorkspace) {
         executionRootRequirement = 'detached_scope';
 
-        if (input.workspaceFingerprint) {
+        if (input.researchTarget) {
+            executionRoot = {
+                kind: 'research_checkout',
+                label: `Research checkout: ${input.researchTarget.locator.name}`,
+                absolutePath: input.researchTarget.resolvedCheckoutPath,
+                canonicalKey: input.researchTarget.locator.canonicalKey,
+            };
+            executionRootRequirement = 'resolved';
+            executionLabel = executionRoot.label;
+        } else if (input.workspaceFingerprint) {
             const workspaceContext = await workspaceContextService.resolveExplicit({
                 profileId: input.profileId,
                 workspaceFingerprint: input.workspaceFingerprint,
@@ -92,7 +101,9 @@ export async function resolveToolRequestContext(input: ToolInvokeInput): Promise
     if (
         executionRootRequirement === 'resolved' &&
         executionRoot &&
-        (executionRoot.kind === 'workspace' || executionRoot.kind === 'sandbox') &&
+        (executionRoot.kind === 'workspace' ||
+            executionRoot.kind === 'sandbox' ||
+            executionRoot.kind === 'research_checkout') &&
         (definition.tool.id === 'read_file' ||
             definition.tool.id === 'list_files' ||
             definition.tool.id === 'search_files' ||

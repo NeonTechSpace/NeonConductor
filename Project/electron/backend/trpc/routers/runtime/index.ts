@@ -10,8 +10,10 @@ import {
     type RuntimeInspectWorkspaceEnvironmentInput,
     runtimeEventsSubscriptionInputSchema,
     runtimePatchWorkspaceRootInputSchema,
+    runtimePreviewResearchTargetInputSchema,
     runtimeRegisterWorkspaceRootInputSchema,
     runtimeResetInputSchema,
+    runtimeSetResearchCheckoutRootSettingsInputSchema,
     runtimeSetWorkspacePreferenceInputSchema,
 } from '@/app/backend/runtime/contracts';
 import { workspaceEnvironmentService } from '@/app/backend/runtime/services/environment/service';
@@ -24,6 +26,7 @@ import { runtimeFactoryResetService } from '@/app/backend/runtime/services/runti
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
+import { researchCheckoutService } from '@/app/backend/runtime/services/researchCheckouts/service';
 import { workspaceIconService } from '@/app/backend/runtime/services/workspaceIcons/service';
 import { setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
@@ -128,6 +131,25 @@ export const runtimeRouter = router({
         return {
             workspaceRoots: shellBootstrap.workspaceRoots,
         };
+    }),
+    getResearchCheckoutRootSettings: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
+        return {
+            settings: await researchCheckoutService.getRootSettings(input.profileId),
+        };
+    }),
+    setResearchCheckoutRootSettings: publicProcedure
+        .input(runtimeSetResearchCheckoutRootSettingsInputSchema)
+        .mutation(async ({ input }) => {
+            return (await researchCheckoutService.setRootSettings(input)).match(
+                (value) => value,
+                (error) => raiseMappedTrpcError(error, toTrpcError)
+            );
+        }),
+    previewResearchTarget: publicProcedure.input(runtimePreviewResearchTargetInputSchema).query(async ({ input }) => {
+        return (await researchCheckoutService.previewResearchTarget(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
     }),
     registerWorkspaceRoot: publicProcedure
         .input(runtimeRegisterWorkspaceRootInputSchema)

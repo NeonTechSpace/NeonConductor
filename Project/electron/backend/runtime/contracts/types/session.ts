@@ -35,6 +35,7 @@ import type {
     SessionUpsertBrowserDesignerDraftInput,
 } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { RulesetDefinition, SkillfileDefinition } from '@/app/backend/runtime/contracts/types/mode';
+import type { ResearchTargetRequest } from '@/app/backend/runtime/contracts/types/research';
 import type { RunContractPreview, SessionOutboxEntry, ExecutionReceipt } from '@/app/backend/runtime/contracts/types/runContract';
 
 import type { CloudSessionSyncBackExpectation } from '@/shared/contracts/cloudSessionAuthority';
@@ -244,6 +245,7 @@ export interface SessionStartRunInput extends SessionByIdInput {
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
     runtimeOptions: RuntimeRunOptions;
+    researchTarget?: ResearchTargetRequest;
 }
 
 export interface SessionEditInput extends SessionByIdInput {

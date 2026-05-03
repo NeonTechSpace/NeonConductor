@@ -19,7 +19,13 @@ import type {
 import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 
-import type { BrowserContextPacket, OpenAIExecutionMode, ResolvedWorkspaceContext, RunContractPreview } from '@/shared/contracts';
+import type {
+    BrowserContextPacket,
+    OpenAIExecutionMode,
+    ResolvedWorkspaceContext,
+    RunContractPreview,
+    RunResearchTarget,
+} from '@/shared/contracts';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
@@ -48,7 +54,8 @@ export async function runToTerminalState(input: {
     contextMessages?: RunContextMessage[];
     workspaceFingerprint?: string;
     sandboxId?: EntityId<'sb'>;
-    workspaceContext: ResolvedWorkspaceContext;
+    workspaceContext?: ResolvedWorkspaceContext;
+    researchTarget?: RunResearchTarget;
     assistantMessageId: EntityId<'msg'>;
     runContractPreview?: RunContractPreview;
     browserContext?: BrowserContextPacket;
@@ -56,51 +63,56 @@ export async function runToTerminalState(input: {
     signal: AbortSignal;
 }): Promise<void> {
     try {
-        const checkpoint = await ensureCheckpointForRun({
-            profileId: input.profileId,
-            runId: input.runId,
-            sessionId: input.sessionId,
-            threadId: input.threadId,
-            topLevelTab: input.topLevelTab,
-            modeKey: input.modeKey,
-            workspaceContext: input.workspaceContext,
-        });
-        if (checkpoint.isErr()) {
-            await moveRunToFailedState({
+        if (input.workspaceContext) {
+            const checkpoint = await ensureCheckpointForRun({
                 profileId: input.profileId,
-                sessionId: input.sessionId,
                 runId: input.runId,
-                errorCode: checkpoint.error.code,
-                errorMessage: checkpoint.error.message,
-                logMessage: 'Run moved to failed terminal state.',
-                ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
-                ...(input.browserContext ? { browserContext: input.browserContext } : {}),
-                ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
+                sessionId: input.sessionId,
+                threadId: input.threadId,
+                topLevelTab: input.topLevelTab,
+                modeKey: input.modeKey,
+                workspaceContext: input.workspaceContext,
             });
-            return;
-        }
+            if (checkpoint.isErr()) {
+                await moveRunToFailedState({
+                    profileId: input.profileId,
+                    sessionId: input.sessionId,
+                    runId: input.runId,
+                    errorCode: checkpoint.error.code,
+                    errorMessage: checkpoint.error.message,
+                    logMessage: 'Run moved to failed terminal state.',
+                    ...(input.runContractPreview ? { contract: input.runContractPreview } : {}),
+                    ...(input.browserContext ? { browserContext: input.browserContext } : {}),
+                    ...(input.sourceOutboxEntryId ? { sourceOutboxEntryId: input.sourceOutboxEntryId } : {}),
+                });
+                return;
+            }
 
-        if (checkpoint.value) {
-            await runtimeEventLogService.append(
-                runtimeUpsertEvent({
-                    entityType: 'checkpoint',
-                    domain: 'checkpoint',
-                    entityId: checkpoint.value.id,
-                    eventType: 'checkpoint.created',
-                    payload: {
-                        profileId: input.profileId,
-                        sessionId: input.sessionId,
-                        runId: input.runId,
-                        checkpoint: checkpoint.value,
-                        diff: null,
-                    },
-                })
-            );
+            if (checkpoint.value) {
+                await runtimeEventLogService.append(
+                    runtimeUpsertEvent({
+                        entityType: 'checkpoint',
+                        domain: 'checkpoint',
+                        entityId: checkpoint.value.id,
+                        eventType: 'checkpoint.created',
+                        payload: {
+                            profileId: input.profileId,
+                            sessionId: input.sessionId,
+                            runId: input.runId,
+                            checkpoint: checkpoint.value,
+                            diff: null,
+                        },
+                    })
+                );
+            }
         }
 
         const executionResult = await executeRun({
             ...input,
             onBeforeFinalize: async () => {
+                if (!input.workspaceContext) {
+                    return;
+                }
                 try {
                     const artifactResult = await captureCheckpointDiffForRun({
                         profileId: input.profileId,

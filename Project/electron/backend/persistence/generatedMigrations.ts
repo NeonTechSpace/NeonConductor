@@ -300,6 +300,28 @@ CREATE TABLE workspace_roots (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE research_checkout_records (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    canonical_key TEXT NOT NULL,
+    sanitized_url TEXT NOT NULL,
+    repo_name TEXT NOT NULL,
+    root_policy TEXT NOT NULL CHECK (root_policy IN ('os_temp', 'custom_path', 'current_workspace')),
+    root_absolute_path TEXT NOT NULL,
+    resolved_checkout_path TEXT NOT NULL,
+    detected_vcs TEXT NOT NULL CHECK (detected_vcs IN ('git', 'jj', 'unknown')),
+    effective_vcs TEXT NOT NULL CHECK (effective_vcs IN ('git', 'jj', 'unknown')),
+    checkout_action TEXT NOT NULL CHECK (checkout_action IN ('reuse_existing', 'clone_required')),
+    update_action TEXT NOT NULL CHECK (update_action IN ('none', 'fetch_only', 'fast_forward', 'pause_for_review', 'unavailable')),
+    target_switch_action TEXT NOT NULL CHECK (target_switch_action IN ('none', 'checkout_branch', 'checkout_commit', 'checkout_pull_request', 'pause_for_review')),
+    repo_workflow_state_json TEXT NOT NULL,
+    mutation_guardrail_json TEXT NOT NULL,
+    last_checked_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (profile_id, canonical_key, root_absolute_path)
+);
+
 CREATE TABLE sandboxes (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
