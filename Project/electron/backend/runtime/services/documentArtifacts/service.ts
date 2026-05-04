@@ -3,13 +3,9 @@ import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { getPersistenceStoragePaths } from '@/app/backend/persistence/db';
-import {
-    documentArtifactStore,
-    type DocumentArtifactPageWrite,
-} from '@/app/backend/persistence/stores/conversation/attachments/documentArtifactStore';
+import { documentArtifactStore } from '@/app/backend/persistence/stores/conversation/attachments/documentArtifactStore';
 import type {
     ComposerDocumentAttachmentInput,
     DocumentArtifactSummary,
@@ -19,13 +15,12 @@ import type {
     SessionPrepareDocumentAttachmentResult,
 } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
+import { extractPdfPages } from '@/app/backend/runtime/services/documentArtifacts/pdfTextExtractor';
 import { fileReadGuardService } from '@/app/backend/runtime/services/fileReadGuard/service';
 import { appLog } from '@/app/main/logging';
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_PDF_ATTACHMENTS_PER_PROMPT = 3;
-const MAX_EXTRACTED_PAGES = 200;
-const PDF_EXTRACTION_TIMEOUT_MS = 15_000;
 const DEFAULT_DOCUMENT_CONTEXT_BUDGET_TOKENS = 8_000;
 const MAX_DOCUMENT_CONTEXT_BUDGET_TOKENS = 20_000;
 const DOCUMENT_CONTEXT_BUDGET_RATIO = 0.25;
@@ -67,14 +62,6 @@ function sanitizeFileName(fileName: string): string {
     return normalized.length > 0 ? normalized : 'document.pdf';
 }
 
-function normalizePdfText(text: string): string {
-    return text
-        .replace(/\r\n/g, '\n')
-        .replace(/[ \t]+\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-}
-
 function decodeBase64Pdf(bytesBase64: string): Uint8Array {
     return Uint8Array.from(Buffer.from(bytesBase64, 'base64'));
 }
@@ -106,87 +93,6 @@ async function writePdfFileAtomically(relativePath: string, bytes: Uint8Array): 
 
 async function removePdfFile(relativePath: string): Promise<void> {
     await rm(resolveAbsoluteStoragePath(relativePath), { force: true });
-}
-
-async function withTimeout<T>(input: {
-    promise: Promise<T>;
-    timeoutMs: number;
-    onTimeout?: () => void;
-}): Promise<T> {
-    let timeout: NodeJS.Timeout | undefined;
-    try {
-        return await Promise.race([
-            input.promise,
-            new Promise<never>((_, reject) => {
-                timeout = setTimeout(() => {
-                    input.onTimeout?.();
-                    reject(new Error('PDF extraction timed out.'));
-                }, input.timeoutMs);
-            }),
-        ]);
-    } finally {
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-    }
-}
-
-function readTextContentItemText(item: unknown): string {
-    if (!item || typeof item !== 'object') {
-        return '';
-    }
-    const text = (item as { str?: unknown }).str;
-    return typeof text === 'string' ? text : '';
-}
-
-async function extractPdfPages(bytes: Uint8Array): Promise<{
-    pageCount: number;
-    pages: DocumentArtifactPageWrite[];
-}> {
-    const loadingTask = getDocument({
-        data: Uint8Array.from(bytes),
-        disableFontFace: true,
-        useSystemFonts: false,
-        useWorkerFetch: false,
-        useWasm: false,
-        isOffscreenCanvasSupported: false,
-        isImageDecoderSupported: false,
-        stopAtErrors: false,
-    });
-
-    const pdf = await withTimeout({
-        promise: loadingTask.promise,
-        timeoutMs: PDF_EXTRACTION_TIMEOUT_MS,
-        onTimeout: () => {
-            void loadingTask.destroy();
-        },
-    });
-
-    try {
-        const pageCount = pdf.numPages;
-        const pages: DocumentArtifactPageWrite[] = [];
-        const pagesToExtract = Math.min(pageCount, MAX_EXTRACTED_PAGES);
-        for (let pageNumber = 1; pageNumber <= pagesToExtract; pageNumber += 1) {
-            const page = await pdf.getPage(pageNumber);
-            const textContent = await page.getTextContent({
-                disableNormalization: false,
-            });
-            const text = normalizePdfText(textContent.items.map(readTextContentItemText).filter(Boolean).join(' '));
-            const textByteSize = countUtf8Bytes(text);
-            pages.push({
-                pageNumber,
-                textContent: text,
-                ...(text.length > 0 ? { textSha256: sha256Hex(text) } : {}),
-                textByteSize,
-                estimatedTokenCount: estimateTextTokens(text),
-            });
-            page.cleanup();
-        }
-        return { pageCount, pages };
-    } finally {
-        await pdf.destroy();
-        await loadingTask.destroy();
-    }
 }
 
 function createAttachmentInput(input: {
@@ -285,11 +191,7 @@ export class DocumentArtifactService {
 
         const bytes = decodeBase64Pdf(input.bytesBase64);
         const actualSha256 = sha256Hex(bytes);
-        if (
-            bytes.byteLength !== input.byteSize ||
-            actualSha256 !== input.sha256 ||
-            !hasPdfHeader(bytes)
-        ) {
+        if (bytes.byteLength !== input.byteSize || actualSha256 !== input.sha256 || !hasPdfHeader(bytes)) {
             return {
                 prepared: false,
                 code: 'invalid_pdf_payload',
@@ -413,10 +315,17 @@ export class DocumentArtifactService {
     async validateComposerAttachments(input: {
         profileId: string;
         sessionId: EntityId<'sess'>;
-        attachments?: Array<{ kind?: string; documentArtifactId?: EntityId<'doc'>; sha256?: string; byteSize?: number }>;
+        attachments?: Array<{
+            kind?: string;
+            documentArtifactId?: EntityId<'doc'>;
+            sha256?: string;
+            byteSize?: number;
+        }>;
     }): Promise<Result<void, DocumentValidationFailure>> {
         const documentAttachments = (input.attachments ?? []).filter(
-            (attachment): attachment is {
+            (
+                attachment
+            ): attachment is {
                 kind: 'document_attachment';
                 documentArtifactId: EntityId<'doc'>;
                 sha256?: string;
