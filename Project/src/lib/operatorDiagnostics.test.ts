@@ -183,6 +183,53 @@ describe('operator diagnostics', () => {
         });
     });
 
+    it('maps fail-closed sandbox diagnostics into run contract diagnostics', () => {
+        const diagnostics = buildRunContractPreviewDiagnostics(
+            createRunContractPreview({
+                sandboxPolicySummary: {
+                    filesystem: {
+                        kind: 'scheduled_managed_sandbox',
+                        effectiveRootLabel: 'Workspace',
+                        effectiveRootPath: 'C:\\Workspace',
+                        writable: true,
+                        managedByNeon: true,
+                        failClosedOnMissingTarget: true,
+                    },
+                    network: {
+                        kind: 'not_restricted',
+                        restricted: false,
+                        reviewRequired: false,
+                        blockedNetworkVisible: false,
+                        reason: 'Network is not restricted.',
+                    },
+                    process: {
+                        state: 'unsupported',
+                        platform: 'win32',
+                        mechanism: 'managed_directory',
+                        nativeEnforcement: false,
+                        reason: 'Native process sandbox helpers are future work.',
+                    },
+                    diagnostics: [
+                        {
+                            code: 'managed_sandbox_scheduled',
+                            severity: 'info',
+                            message: 'A managed sandbox is scheduled and must materialize successfully at run start.',
+                            failClosed: true,
+                        },
+                    ],
+                },
+            })
+        );
+
+        expect(diagnostics).toContainEqual(
+            expect.objectContaining({
+                tone: 'info',
+                title: 'Sandbox policy can block execution',
+                detail: 'A managed sandbox is scheduled and must materialize successfully at run start.',
+            })
+        );
+    });
+
     it('maps context counting and dynamic skill gaps into actionable diagnostics', () => {
         const diagnostics = buildContextSummaryDiagnostics({
             missingReason: 'multimodal_counting_unavailable',

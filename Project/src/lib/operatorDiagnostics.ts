@@ -10,6 +10,7 @@ import {
     type RunContractPreview,
     type RuntimeCompatibilityIssue,
     type RuntimeProviderId,
+    type SandboxDiagnostic,
     type SessionOutboxEntry,
 } from '@/shared/contracts';
 
@@ -195,6 +196,30 @@ function buildDiffDiagnostic(items: RunContractDiffItem[]): OperatorDiagnosticVi
     };
 }
 
+function buildSandboxDiagnostic(diagnostic: SandboxDiagnostic): OperatorDiagnosticViewModel {
+    return {
+        tone: diagnostic.severity === 'error' ? 'error' : diagnostic.severity === 'warning' ? 'warning' : 'info',
+        title: diagnostic.failClosed ? 'Sandbox policy can block execution' : 'Sandbox policy notice',
+        detail: diagnostic.message,
+        metadata: [
+            {
+                label: 'Code',
+                value: diagnostic.code,
+            },
+            {
+                label: 'Fail closed',
+                value: diagnostic.failClosed ? 'yes' : 'no',
+            },
+        ],
+    };
+}
+
+function buildSandboxPolicyDiagnostics(preview: RunContractPreview): OperatorDiagnosticViewModel[] {
+    return (preview.sandboxPolicySummary?.diagnostics ?? [])
+        .filter((diagnostic) => diagnostic.severity !== 'info' || diagnostic.failClosed)
+        .map(buildSandboxDiagnostic);
+}
+
 export function buildRunContractPreviewDiagnostics(preview: RunContractPreview): OperatorDiagnosticViewModel[] {
     const diagnostics: OperatorDiagnosticViewModel[] = [];
     const dynamicDiagnostic = buildDynamicExpansionDiagnostic(preview.dynamicExpansionSummary);
@@ -218,6 +243,7 @@ export function buildRunContractPreviewDiagnostics(preview: RunContractPreview):
     if (diffDiagnostic) {
         diagnostics.push(diffDiagnostic);
     }
+    diagnostics.push(...buildSandboxPolicyDiagnostics(preview));
 
     return diagnostics;
 }

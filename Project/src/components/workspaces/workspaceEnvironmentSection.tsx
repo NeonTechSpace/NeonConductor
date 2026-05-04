@@ -114,9 +114,7 @@ function formatVendoredNodeSummary(snapshot: WorkspaceEnvironmentSnapshot): stri
     return `Vendored Node v${snapshot.vendoredNode.version}: Missing packaged/runtime asset`;
 }
 
-function formatProjectNodeExpectationSource(
-    source: WorkspaceProjectNodeExpectation['source']
-): string {
+function formatProjectNodeExpectationSource(source: WorkspaceProjectNodeExpectation['source']): string {
     if (source === 'package_json_engines') {
         return 'package.json engines';
     }
@@ -165,6 +163,10 @@ function formatProjectNodeCompatibility(snapshot: WorkspaceEnvironmentSnapshot):
     return undefined;
 }
 
+function formatPolicyKind(value: string): string {
+    return value.replaceAll('_', ' ');
+}
+
 function RuntimeEnvironmentSummary({ snapshot }: { snapshot: WorkspaceEnvironmentSnapshot }) {
     const projectNodeExpectation = formatProjectNodeExpectation(snapshot);
     const projectNodeCompatibility = formatProjectNodeCompatibility(snapshot);
@@ -204,7 +206,9 @@ function RuntimeEnvironmentSummary({ snapshot }: { snapshot: WorkspaceEnvironmen
                     <p className='text-muted-foreground mt-1 text-xs'>
                         Script runner {formatFamilyLabel(snapshot.effectivePreferences.scriptRunner)}
                     </p>
-                    <p className='text-muted-foreground mt-1 text-xs leading-5'>{formatVendoredNodeSummary(snapshot)}</p>
+                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                        {formatVendoredNodeSummary(snapshot)}
+                    </p>
                     {projectNodeExpectation ? (
                         <p className='text-muted-foreground mt-1 text-xs leading-5'>{projectNodeExpectation}</p>
                     ) : null}
@@ -222,6 +226,43 @@ function RuntimeEnvironmentSummary({ snapshot }: { snapshot: WorkspaceEnvironmen
                 <p className='text-muted-foreground mt-1 text-xs leading-5'>
                     Available commands: {listAvailableCommands(snapshot)}
                 </p>
+            </div>
+
+            <div className='grid gap-3 md:grid-cols-3'>
+                <div className='border-border/70 bg-background/70 rounded-2xl border px-4 py-3'>
+                    <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                        Filesystem Policy
+                    </p>
+                    <p className='mt-2 text-sm font-semibold'>
+                        {formatPolicyKind(snapshot.sandboxPolicySummary.filesystem.kind)}
+                    </p>
+                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                        {snapshot.sandboxPolicySummary.filesystem.effectiveRootPath ??
+                            snapshot.sandboxPolicySummary.filesystem.effectiveRootLabel}
+                    </p>
+                </div>
+                <div className='border-border/70 bg-background/70 rounded-2xl border px-4 py-3'>
+                    <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                        Network Policy
+                    </p>
+                    <p className='mt-2 text-sm font-semibold'>
+                        {formatPolicyKind(snapshot.sandboxPolicySummary.network.kind)}
+                    </p>
+                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                        {snapshot.sandboxPolicySummary.network.reason}
+                    </p>
+                </div>
+                <div className='border-border/70 bg-background/70 rounded-2xl border px-4 py-3'>
+                    <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                        Process Sandbox
+                    </p>
+                    <p className='mt-2 text-sm font-semibold'>
+                        {formatPolicyKind(snapshot.sandboxPolicySummary.process.state)}
+                    </p>
+                    <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                        {snapshot.sandboxPolicySummary.process.reason}
+                    </p>
+                </div>
             </div>
 
             {snapshot.notes.length > 0 ? (
@@ -374,4 +415,3 @@ export function WorkspaceEnvironmentSection(input: {
         </article>
     );
 }
-

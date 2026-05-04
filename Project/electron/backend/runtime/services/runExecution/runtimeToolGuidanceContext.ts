@@ -1,3 +1,4 @@
+import { buildSandboxPolicySummary } from '@/app/backend/runtime/services/environment/sandboxPolicySummaryBuilder';
 import { workspaceEnvironmentService } from '@/app/backend/runtime/services/environment/service';
 import { vendoredRipgrepResolver } from '@/app/backend/runtime/services/environment/vendoredRipgrepResolver';
 import { resolveSupportedPlatform } from '@/app/backend/runtime/services/environment/workspaceCommandAvailabilityService';
@@ -92,6 +93,17 @@ async function buildRuntimeToolGuidanceContext(input: {
               : {}),
         shellResolved: input.resolvedShell.resolved,
         vendoredRipgrepAvailable: input.ripgrepAvailable,
+        sandboxPolicySummary: buildSandboxPolicySummary({
+            platform: input.platform,
+            ...(input.workspaceContext &&
+            (input.workspaceContext.kind === 'workspace' || input.workspaceContext.kind === 'sandbox')
+                ? { workspaceRootPath: input.workspaceContext.absolutePath }
+                : {}),
+            ...(input.workspaceContext?.kind === 'sandbox'
+                ? { baseWorkspaceRootPath: input.workspaceContext.baseWorkspace.absolutePath }
+                : {}),
+            ...(input.workspaceContext ? { workspaceContext: input.workspaceContext } : {}),
+        }),
         ...(workspaceEnvironmentSnapshot ? { workspaceEnvironmentSnapshot } : {}),
         ...(input.workspaceContext ? { workspaceContext: input.workspaceContext } : {}),
     };

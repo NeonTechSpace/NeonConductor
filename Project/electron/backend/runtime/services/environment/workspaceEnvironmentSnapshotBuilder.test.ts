@@ -5,7 +5,9 @@ import type {
     WorkspaceEnvironmentMarkers,
     WorkspaceEnvironmentOverrides,
 } from '@/app/backend/runtime/contracts/types/runtime';
+import { buildSandboxPolicySummary } from '@/app/backend/runtime/services/environment/sandboxPolicySummaryBuilder';
 import { resolveWorkspaceEnvironmentInspection } from '@/app/backend/runtime/services/environment/workspaceEnvironmentSnapshotBuilder';
+
 import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 function buildMarkers(input: Partial<WorkspaceEnvironmentMarkers>): WorkspaceEnvironmentMarkers {
@@ -23,7 +25,9 @@ function buildMarkers(input: Partial<WorkspaceEnvironmentMarkers>): WorkspaceEnv
     };
 }
 
-function buildCommands(input: Partial<WorkspaceEnvironmentCommandAvailability>): WorkspaceEnvironmentCommandAvailability {
+function buildCommands(
+    input: Partial<WorkspaceEnvironmentCommandAvailability>
+): WorkspaceEnvironmentCommandAvailability {
     return {
         jj: input.jj ?? { available: false },
         git: input.git ?? { available: false },
@@ -38,7 +42,7 @@ function buildCommands(input: Partial<WorkspaceEnvironmentCommandAvailability>):
     };
 }
 
-describe('workspaceEnvironmentSnapshotBuilder', () => {
+describe('workspace environment snapshot builder', () => {
     it('resolves a Windows-shaped inspection snapshot with guidance inputs intact', () => {
         const overrides: WorkspaceEnvironmentOverrides = {
             preferredVcs: 'auto',
@@ -69,6 +73,11 @@ describe('workspaceEnvironmentSnapshotBuilder', () => {
                 targetKey: 'win32-x64',
                 executablePath: 'C:\\vendor\\node.exe',
             },
+            sandboxPolicySummary: buildSandboxPolicySummary({
+                platform: 'win32',
+                workspaceRootPath: 'C:\\workspaces\\neon',
+                baseWorkspaceRootPath: 'C:\\workspaces',
+            }),
             overrides,
         });
 
@@ -88,6 +97,8 @@ describe('workspaceEnvironmentSnapshotBuilder', () => {
             'This workspace appears to be jj-managed. Prefer jj for repo inspection and history operations.'
         );
         expect(snapshot.notes).toContain('This workspace prefers pnpm.');
+        expect(snapshot.sandboxPolicySummary.filesystem.kind).toBe('local_workspace');
+        expect(snapshot.sandboxPolicySummary.process.nativeEnforcement).toBe(false);
     });
 
     it('keeps unknown preferences when no matching tool is present', () => {
@@ -106,6 +117,10 @@ describe('workspaceEnvironmentSnapshotBuilder', () => {
                 available: false,
                 reason: 'missing_asset',
             },
+            sandboxPolicySummary: buildSandboxPolicySummary({
+                platform: 'linux',
+                workspaceRootPath: '/workspaces/neon',
+            }),
             overrides: {
                 preferredVcs: 'jj',
                 preferredPackageManager: 'pnpm',
@@ -130,7 +145,9 @@ describe('workspaceEnvironmentSnapshotBuilder', () => {
             'This workspace appears to be jj-managed. Prefer jj for repo inspection and history operations.'
         );
         expect(snapshot.notes).toContain('The pinned VCS preference "jj" is not available on this machine.');
-        expect(snapshot.notes).toContain('The pinned package manager preference "pnpm" is not available on this machine.');
+        expect(snapshot.notes).toContain(
+            'The pinned package manager preference "pnpm" is not available on this machine.'
+        );
     });
 
     it('preserves cmd shell family in Windows fallback snapshots', () => {
@@ -147,6 +164,10 @@ describe('workspaceEnvironmentSnapshotBuilder', () => {
                 targetKey: 'win32-x64',
                 executablePath: 'C:\\vendor\\node.exe',
             },
+            sandboxPolicySummary: buildSandboxPolicySummary({
+                platform: 'win32',
+                workspaceRootPath: 'C:\\workspaces\\fallback',
+            }),
             overrides: {
                 preferredVcs: 'auto',
                 preferredPackageManager: 'auto',

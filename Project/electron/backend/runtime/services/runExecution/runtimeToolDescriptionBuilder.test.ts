@@ -10,6 +10,31 @@ function buildGuidanceContext(overrides: Partial<RuntimeToolGuidanceContext> = {
         shellExecutable: 'pwsh.exe',
         shellResolved: true,
         vendoredRipgrepAvailable: true,
+        sandboxPolicySummary: {
+            filesystem: {
+                kind: 'local_workspace',
+                effectiveRootLabel: 'Workspace',
+                effectiveRootPath: 'C:\\Repo',
+                writable: true,
+                managedByNeon: false,
+                failClosedOnMissingTarget: false,
+            },
+            network: {
+                kind: 'not_restricted',
+                restricted: false,
+                reviewRequired: false,
+                blockedNetworkVisible: false,
+                reason: 'Network is not restricted.',
+            },
+            process: {
+                state: 'unsupported',
+                platform: 'win32',
+                mechanism: 'managed_directory',
+                nativeEnforcement: false,
+                reason: 'Native process sandbox helpers are future work.',
+            },
+            diagnostics: [],
+        },
         ...overrides,
     };
 }
@@ -23,6 +48,9 @@ describe('runtimeToolDescriptionBuilder', () => {
         });
 
         expect(description).toContain('PowerShell 7 via pwsh.exe');
+        expect(description).toContain('Effective filesystem policy: local workspace at C:\\Repo.');
+        expect(description).toContain('Network policy: not restricted. Network is not restricted.');
+        expect(description).toContain('Process sandbox capability: unsupported; native enforcement not enabled.');
         expect(description).toContain('search_files tool');
         expect(description).toContain('rg "TODO"');
         expect(description).toContain('Get-Content path');

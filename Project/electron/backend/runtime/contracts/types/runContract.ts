@@ -8,13 +8,14 @@ import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { PreparedContextSummary } from '@/app/backend/runtime/contracts/types/context';
 import type { BrowserContextPacket, BrowserContextSummary } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { FileReadGuardDecisionReason } from '@/app/backend/runtime/contracts/types/fileReadGuard';
+import type { ResearchTargetRequest, RunResearchTarget } from '@/app/backend/runtime/contracts/types/research';
+import type { SandboxPolicySummary } from '@/app/backend/runtime/contracts/types/runtime';
 import type {
     DocumentContextMode,
     DocumentCountingState,
     DocumentExtractionState,
     RuntimeRunOptions,
 } from '@/app/backend/runtime/contracts/types/session';
-import type { ResearchTargetRequest, RunResearchTarget } from '@/app/backend/runtime/contracts/types/research';
 
 export interface SteeringSnapshot {
     profileId: string;
@@ -96,10 +97,7 @@ export type RunContractExecutionTargetKind =
     | 'scheduled_sandbox'
     | 'sandbox'
     | 'research_checkout';
-export type RunContractExecutionTargetMaterializationState =
-    | 'not_required'
-    | 'scheduled_on_start'
-    | 'materialized';
+export type RunContractExecutionTargetMaterializationState = 'not_required' | 'scheduled_on_start' | 'materialized';
 
 export interface RunContractExecutionTargetSummary {
     kind: RunContractExecutionTargetKind;
@@ -128,6 +126,7 @@ export interface RunContractPreview {
     attachmentSummary: RunContractAttachmentSummary;
     documentSummary?: RunContractDocumentSummary[];
     browserContextSummary?: BrowserContextSummary;
+    sandboxPolicySummary?: SandboxPolicySummary;
     diffFromLastCompatible?: RunContractDiffSummary;
     researchTarget?: RunResearchTarget;
 }

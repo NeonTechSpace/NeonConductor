@@ -5,17 +5,19 @@ import type {
     WorkspaceEnvironmentSnapshot,
 } from '@/app/backend/runtime/contracts/types/runtime';
 import { errOp, okOp, type OperationalResult } from '@/app/backend/runtime/services/common/operationalError';
+import { projectNodeExpectationResolver } from '@/app/backend/runtime/services/environment/projectNodeExpectationResolver';
+import { buildSandboxPolicySummary } from '@/app/backend/runtime/services/environment/sandboxPolicySummaryBuilder';
+import { vendoredNodeResolver } from '@/app/backend/runtime/services/environment/vendoredNodeResolver';
 import {
     resolveSupportedPlatform,
     workspaceCommandAvailabilityService,
 } from '@/app/backend/runtime/services/environment/workspaceCommandAvailabilityService';
 import { buildWorkspaceEnvironmentGuidance } from '@/app/backend/runtime/services/environment/workspaceEnvironmentGuidanceBuilder';
-import { projectNodeExpectationResolver } from '@/app/backend/runtime/services/environment/projectNodeExpectationResolver';
-import { buildWorkspaceEnvironmentInspection } from '@/app/backend/runtime/services/environment/workspaceEnvironmentSnapshotBuilder';
-import { vendoredNodeResolver } from '@/app/backend/runtime/services/environment/vendoredNodeResolver';
 import { normalizeWorkspacePath } from '@/app/backend/runtime/services/environment/workspaceEnvironmentPathUtils';
-import { workspaceShellResolver } from '@/app/backend/runtime/services/environment/workspaceShellResolver';
+import { buildWorkspaceEnvironmentInspection } from '@/app/backend/runtime/services/environment/workspaceEnvironmentSnapshotBuilder';
 import { workspaceMarkerScanner } from '@/app/backend/runtime/services/environment/workspaceMarkerScanner';
+import { workspaceShellResolver } from '@/app/backend/runtime/services/environment/workspaceShellResolver';
+
 import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 export class WorkspaceEnvironmentService {
@@ -76,6 +78,11 @@ export class WorkspaceEnvironmentService {
                     ...(vendoredNodeResolution.reason ? { reason: vendoredNodeResolution.reason } : {}),
                 },
                 ...(projectNodeExpectation ? { projectNodeExpectation } : {}),
+                sandboxPolicySummary: buildSandboxPolicySummary({
+                    platform,
+                    workspaceRootPath,
+                    ...(baseWorkspaceRootPath ? { baseWorkspaceRootPath } : {}),
+                }),
                 overrides: {
                     preferredVcs: input.overrides?.preferredVcs ?? 'auto',
                     preferredPackageManager: input.overrides?.preferredPackageManager ?? 'auto',

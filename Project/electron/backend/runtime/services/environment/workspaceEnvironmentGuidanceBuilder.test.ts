@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorkspaceEnvironmentSnapshot } from '@/app/backend/runtime/contracts/types/runtime';
+import { buildSandboxPolicySummary } from '@/app/backend/runtime/services/environment/sandboxPolicySummaryBuilder';
 import { buildWorkspaceEnvironmentGuidance } from '@/app/backend/runtime/services/environment/workspaceEnvironmentGuidanceBuilder';
+
 import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 function buildSnapshot(overrides: Partial<WorkspaceEnvironmentSnapshot>): WorkspaceEnvironmentSnapshot {
@@ -68,12 +70,16 @@ function buildSnapshot(overrides: Partial<WorkspaceEnvironmentSnapshot>): Worksp
             targetKey: 'win32-x64',
             executablePath: 'C:\\Repo\\vendor\\node\\win32-x64\\node.exe',
         },
+        sandboxPolicySummary: buildSandboxPolicySummary({
+            platform: 'win32',
+            workspaceRootPath: 'C:\\Repo',
+        }),
         notes: [],
         ...overrides,
     };
 }
 
-describe('workspaceEnvironmentGuidanceBuilder', () => {
+describe('workspace environment guidance builder', () => {
     it('includes explicit vendored runtime summary and rg/search guidance when vendored ripgrep is available', () => {
         const guidance = buildWorkspaceEnvironmentGuidance(
             buildSnapshot({
@@ -85,11 +91,14 @@ describe('workspaceEnvironmentGuidanceBuilder', () => {
                 },
             }),
             {
-            vendoredRipgrepAvailable: true,
+                vendoredRipgrepAvailable: true,
             }
         );
 
         expect(guidance).toContain('Shell family: powershell. Shell executable: pwsh.exe.');
+        expect(guidance).toContain('Filesystem policy: local workspace at C:\\Repo');
+        expect(guidance).toContain('Network policy: not restricted.');
+        expect(guidance).toContain('Process sandbox capability: unsupported; native enforcement not enabled.');
         expect(guidance).toContain(`Vendored code runtime: Node v${VENDORED_NODE_VERSION}. Target: win32-x64.`);
         expect(guidance).toContain('Workspace Node expectation: "^24" from package.json engines.');
         expect(guidance).toContain('Vendored Node satisfies that expectation.');
@@ -101,7 +110,8 @@ describe('workspaceEnvironmentGuidanceBuilder', () => {
         const snapshot = buildSnapshot({
             shellFamily: 'cmd',
         });
-        const { shellExecutable: _shellExecutable, ...unresolvedSnapshot } = snapshot;
+        const unresolvedSnapshot = { ...snapshot };
+        delete unresolvedSnapshot.shellExecutable;
         const guidance = buildWorkspaceEnvironmentGuidance(unresolvedSnapshot);
 
         expect(guidance).toContain('Windows shell could not be resolved.');
@@ -116,10 +126,7 @@ describe('workspaceEnvironmentGuidanceBuilder', () => {
                     detectedMajor: 22,
                     satisfiesVendoredNode: false,
                 },
-                notes: [
-                    'This workspace looks Node/TypeScript-oriented.',
-                    'This workspace prefers pnpm.',
-                ],
+                notes: ['This workspace looks Node/TypeScript-oriented.', 'This workspace prefers pnpm.'],
             })
         );
 

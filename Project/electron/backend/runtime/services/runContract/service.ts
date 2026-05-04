@@ -1,4 +1,5 @@
 import { buildBrowserContextSummary } from '@/app/backend/runtime/services/devBrowser/browserContext';
+import { buildSandboxPolicySummary } from '@/app/backend/runtime/services/environment/sandboxPolicySummaryBuilder';
 import { buildRunContractExecutionTargetSummary } from '@/app/backend/runtime/services/runContract/executionTargetSummary';
 import type { PreparedRunStart, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
 
@@ -33,7 +34,9 @@ function createInstructionAuthorityCounts(): Record<PreparedContextInstructionAu
     };
 }
 
-function buildAttachmentSummary(attachments: ComposerAttachmentInput[] | undefined): RunContractPreview['attachmentSummary'] {
+function buildAttachmentSummary(
+    attachments: ComposerAttachmentInput[] | undefined
+): RunContractPreview['attachmentSummary'] {
     const allAttachments = attachments ?? [];
     const imageAttachments = (attachments ?? []).filter(
         (attachment) => attachment.kind === undefined || attachment.kind === 'image_attachment'
@@ -72,12 +75,17 @@ function buildDynamicExpansionSummary(
 ): RunContractPreview['dynamicExpansionSummary'] {
     const expansions = contributors
         .map((contributor) => contributor.dynamicExpansion)
-        .filter((expansion): expansion is NonNullable<PreparedContextContributorSummary['dynamicExpansion']> => expansion !== undefined);
+        .filter(
+            (expansion): expansion is NonNullable<PreparedContextContributorSummary['dynamicExpansion']> =>
+                expansion !== undefined
+        );
 
     return {
         resolvedCount: expansions.filter((expansion) => expansion.resolutionState === 'resolved').length,
         blockedCount: expansions.filter((expansion) => expansion.resolutionState === 'pending_approval').length,
-        omittedCount: expansions.filter((expansion) => expansion.resolutionState === 'omitted' || expansion.resolutionState === 'preview_only').length,
+        omittedCount: expansions.filter(
+            (expansion) => expansion.resolutionState === 'omitted' || expansion.resolutionState === 'preview_only'
+        ).length,
         failedCount: expansions.filter((expansion) => expansion.resolutionState === 'failed').length,
         invalidCount: expansions.filter((expansion) => expansion.resolutionState === 'invalid').length,
     };
@@ -125,10 +133,7 @@ function buildTrustSummary(input: {
     };
 }
 
-function buildSteeringSnapshot(input: {
-    startInput: StartRunInput;
-    prepared: PreparedRunStart;
-}): SteeringSnapshot {
+function buildSteeringSnapshot(input: { startInput: StartRunInput; prepared: PreparedRunStart }): SteeringSnapshot {
     return {
         profileId: input.startInput.profileId,
         sessionId: input.startInput.sessionId,
@@ -137,14 +142,19 @@ function buildSteeringSnapshot(input: {
         providerId: input.prepared.activeTarget.providerId,
         modelId: input.prepared.activeTarget.modelId,
         runtimeOptions: input.startInput.runtimeOptions,
-        ...(input.startInput.workspaceFingerprint ? { workspaceFingerprint: input.startInput.workspaceFingerprint } : {}),
+        ...(input.startInput.workspaceFingerprint
+            ? { workspaceFingerprint: input.startInput.workspaceFingerprint }
+            : {}),
         ...(input.startInput.sandboxId ? { sandboxId: input.startInput.sandboxId } : {}),
         ...(input.startInput.researchTarget ? { researchTarget: input.startInput.researchTarget } : {}),
         createdAt: new Date().toISOString(),
     };
 }
 
-function buildDiffSummary(previousContract: RunContractPreview | undefined, nextContract: RunContractPreview): RunContractDiffSummary {
+function buildDiffSummary(
+    previousContract: RunContractPreview | undefined,
+    nextContract: RunContractPreview
+): RunContractDiffSummary {
     if (!previousContract) {
         return {
             compatible: true,
@@ -196,7 +206,9 @@ function buildDiffSummary(previousContract: RunContractPreview | undefined, next
             ...(previousContract.executionTarget.absolutePath
                 ? { previousValue: previousContract.executionTarget.absolutePath }
                 : {}),
-            ...(nextContract.executionTarget.absolutePath ? { nextValue: nextContract.executionTarget.absolutePath } : {}),
+            ...(nextContract.executionTarget.absolutePath
+                ? { nextValue: nextContract.executionTarget.absolutePath }
+                : {}),
             reason: 'The resolved execution target path changed.',
             material: true,
         });
@@ -204,7 +216,9 @@ function buildDiffSummary(previousContract: RunContractPreview | undefined, next
     if (previousContract.executionTarget.sandboxId !== nextContract.executionTarget.sandboxId) {
         items.push({
             field: 'executionTargetSandboxId',
-            ...(previousContract.executionTarget.sandboxId ? { previousValue: previousContract.executionTarget.sandboxId } : {}),
+            ...(previousContract.executionTarget.sandboxId
+                ? { previousValue: previousContract.executionTarget.sandboxId }
+                : {}),
             ...(nextContract.executionTarget.sandboxId ? { nextValue: nextContract.executionTarget.sandboxId } : {}),
             reason: 'The selected managed sandbox changed.',
             material: true,
@@ -275,10 +289,23 @@ export function prepareRunContractPreview(input: {
         }),
         dynamicExpansionSummary: buildDynamicExpansionSummary(preparedContext.contributors),
         attachmentSummary: buildAttachmentSummary(input.startInput.attachments),
-        ...(input.prepared.runContext?.documentContexts ? { documentSummary: input.prepared.runContext.documentContexts } : {}),
+        ...(input.prepared.runContext?.documentContexts
+            ? { documentSummary: input.prepared.runContext.documentContexts }
+            : {}),
         ...(input.startInput.browserContext
             ? { browserContextSummary: buildBrowserContextSummary(input.startInput.browserContext) }
             : {}),
+        sandboxPolicySummary: buildSandboxPolicySummary({
+            platform: process.platform === 'win32' || process.platform === 'darwin' ? process.platform : 'linux',
+            ...(input.prepared.workspaceContext &&
+            (input.prepared.workspaceContext.kind === 'workspace' || input.prepared.workspaceContext.kind === 'sandbox')
+                ? { workspaceRootPath: input.prepared.workspaceContext.absolutePath }
+                : {}),
+            ...(input.prepared.workspaceContext?.kind === 'sandbox'
+                ? { baseWorkspaceRootPath: input.prepared.workspaceContext.baseWorkspace.absolutePath }
+                : {}),
+            ...(input.prepared.workspaceContext ? { workspaceContext: input.prepared.workspaceContext } : {}),
+        }),
         ...(input.prepared.researchTarget ? { researchTarget: input.prepared.researchTarget } : {}),
     };
 

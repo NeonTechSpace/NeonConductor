@@ -18,6 +18,23 @@ function formatProjectNodeExpectationSource(
     return 'workspace markers';
 }
 
+function formatFilesystemPolicy(snapshot: WorkspaceEnvironmentSnapshot): string {
+    const filesystem = snapshot.sandboxPolicySummary.filesystem;
+    const writable = filesystem.writable ? 'writable' : 'read-only';
+    const root = filesystem.effectiveRootPath ?? filesystem.effectiveRootLabel;
+    return `Filesystem policy: ${filesystem.kind.replaceAll('_', ' ')} at ${root}; ${writable}; ${filesystem.failClosedOnMissingTarget ? 'fails closed if the target cannot be resolved' : 'does not require managed target materialization'}.`;
+}
+
+function formatNetworkPolicy(snapshot: WorkspaceEnvironmentSnapshot): string {
+    const network = snapshot.sandboxPolicySummary.network;
+    return `Network policy: ${network.kind.replaceAll('_', ' ')}. ${network.reason}`;
+}
+
+function formatProcessPolicy(snapshot: WorkspaceEnvironmentSnapshot): string {
+    const processPolicy = snapshot.sandboxPolicySummary.process;
+    return `Process sandbox capability: ${processPolicy.state.replaceAll('_', ' ')}; native enforcement ${processPolicy.nativeEnforcement ? 'enabled' : 'not enabled'}. ${processPolicy.reason}`;
+}
+
 export function buildWorkspaceEnvironmentGuidance(
     snapshot: WorkspaceEnvironmentSnapshot,
     options?: {
@@ -28,14 +45,15 @@ export function buildWorkspaceEnvironmentGuidance(
         snapshot.platform === 'win32' && !snapshot.shellExecutable
             ? `Platform: ${snapshot.platform}. Windows shell could not be resolved.`
             : `Platform: ${snapshot.platform}. Shell family: ${snapshot.shellFamily}.${snapshot.shellExecutable ? ` Shell executable: ${snapshot.shellExecutable}.` : ''}`;
-    const lines = [
-        `Effective root: ${snapshot.workspaceRootPath}.`,
-        shellLine,
-    ];
+    const lines = [`Effective root: ${snapshot.workspaceRootPath}.`, shellLine];
 
     if (snapshot.baseWorkspaceRootPath) {
         lines.push(`Base workspace root: ${snapshot.baseWorkspaceRootPath}.`);
     }
+
+    lines.push(formatFilesystemPolicy(snapshot));
+    lines.push(formatNetworkPolicy(snapshot));
+    lines.push(formatProcessPolicy(snapshot));
 
     if (snapshot.effectivePreferences.vcs.family !== 'unknown') {
         lines.push(`Preferred VCS: ${snapshot.effectivePreferences.vcs.family}.`);
@@ -60,7 +78,9 @@ export function buildWorkspaceEnvironmentGuidance(
     }
 
     if (snapshot.projectNodeExpectation?.source === 'node_workspace_heuristic') {
-        lines.push('Workspace looks Node/TypeScript-oriented, but no explicit root Node version expectation was found.');
+        lines.push(
+            'Workspace looks Node/TypeScript-oriented, but no explicit root Node version expectation was found.'
+        );
     } else if (snapshot.projectNodeExpectation?.rawValue) {
         lines.push(
             `Workspace Node expectation: "${snapshot.projectNodeExpectation.rawValue}" from ${formatProjectNodeExpectationSource(snapshot.projectNodeExpectation.source)}.`

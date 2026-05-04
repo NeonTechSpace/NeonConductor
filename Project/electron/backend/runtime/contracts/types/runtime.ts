@@ -10,7 +10,6 @@ import type {
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
-import type { SandboxRecord } from '@/app/backend/runtime/contracts/types/sandbox';
 import type {
     ResearchCheckoutRootSettings,
     RuntimePreviewResearchTargetInput,
@@ -19,9 +18,10 @@ import type {
     RuntimeSetResearchCheckoutRootSettingsResult,
     RuntimeGetResearchCheckoutRootSettingsResult,
 } from '@/app/backend/runtime/contracts/types/research';
-import type { VendoredNodeTargetKey } from '@/shared/tooling/vendoredNode';
+import type { SandboxRecord } from '@/app/backend/runtime/contracts/types/sandbox';
 
 import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { VendoredNodeTargetKey } from '@/shared/tooling/vendoredNode';
 
 export interface StreamEventEnvelope {
     id: EntityId<'evt'>;
@@ -325,6 +325,65 @@ export interface WorkspaceProjectNodeExpectation {
     satisfiesVendoredNode?: boolean;
 }
 
+export type SandboxFilesystemPolicyKind =
+    | 'detached'
+    | 'local_workspace'
+    | 'scheduled_managed_sandbox'
+    | 'managed_sandbox';
+
+export interface SandboxFilesystemPolicySummary {
+    kind: SandboxFilesystemPolicyKind;
+    effectiveRootLabel: string;
+    effectiveRootPath?: string;
+    writable: boolean;
+    baseWorkspacePath?: string;
+    managedByNeon: boolean;
+    failClosedOnMissingTarget: boolean;
+}
+
+export type SandboxNetworkPolicyKind = 'not_restricted' | 'restricted' | 'blocked' | 'pending_review' | 'unknown';
+
+export interface SandboxNetworkPolicySummary {
+    kind: SandboxNetworkPolicyKind;
+    restricted: boolean;
+    reviewRequired: boolean;
+    blockedNetworkVisible: boolean;
+    reason: string;
+}
+
+export type ProcessSandboxCapabilityState = 'supported' | 'unsupported' | 'setup_required' | 'degraded' | 'failed';
+
+export interface ProcessSandboxCapability {
+    state: ProcessSandboxCapabilityState;
+    platform: WorkspaceEnvironmentSnapshot['platform'];
+    mechanism: 'managed_directory' | 'native_process_sandbox';
+    nativeEnforcement: boolean;
+    reason: string;
+}
+
+export type SandboxDiagnosticCode =
+    | 'native_process_sandbox_unavailable'
+    | 'managed_sandbox_scheduled'
+    | 'managed_sandbox_missing'
+    | 'network_not_restricted'
+    | 'network_blocked'
+    | 'windows_managed_directory_only'
+    | 'wsl_not_detected';
+
+export interface SandboxDiagnostic {
+    code: SandboxDiagnosticCode;
+    severity: 'info' | 'warning' | 'error';
+    message: string;
+    failClosed: boolean;
+}
+
+export interface SandboxPolicySummary {
+    filesystem: SandboxFilesystemPolicySummary;
+    network: SandboxNetworkPolicySummary;
+    process: ProcessSandboxCapability;
+    diagnostics: SandboxDiagnostic[];
+}
+
 export interface WorkspaceEnvironmentSnapshot {
     platform: 'win32' | 'darwin' | 'linux';
     shellFamily: 'powershell' | 'cmd' | 'posix_sh';
@@ -338,6 +397,7 @@ export interface WorkspaceEnvironmentSnapshot {
     overrides: WorkspaceEnvironmentOverrides;
     vendoredNode: WorkspaceEnvironmentVendoredNode;
     projectNodeExpectation?: WorkspaceProjectNodeExpectation;
+    sandboxPolicySummary: SandboxPolicySummary;
     notes: string[];
 }
 

@@ -71,6 +71,15 @@ function formatExecutionTarget(preview: RunContractPreview): string {
     return target.absolutePath ? `Managed sandbox: ${target.absolutePath}` : `Managed sandbox: ${target.label}`;
 }
 
+function formatSandboxPolicy(preview: RunContractPreview): string {
+    const summary = preview.sandboxPolicySummary;
+    if (!summary) {
+        return 'Sandbox policy unavailable.';
+    }
+
+    return `${summary.filesystem.kind.replaceAll('_', ' ')} · ${summary.network.kind.replaceAll('_', ' ')} network · process ${summary.process.state.replaceAll('_', ' ')}`;
+}
+
 function RepoWorkflowPreviewSection({ preview, profileId }: { preview: RunContractPreview; profileId: string }) {
     const researchTarget = preview.researchTarget;
     const checkoutRecordId = researchTarget?.checkoutRecordId;
@@ -331,6 +340,10 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                         <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
                             <p className='text-muted-foreground'>Execution Target</p>
                             <p className='font-medium'>{formatExecutionTarget(input.preview)}</p>
+                        </div>
+                        <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                            <p className='text-muted-foreground'>Sandbox Policy</p>
+                            <p className='font-medium'>{formatSandboxPolicy(input.preview)}</p>
                         </div>
                         <div className='rounded-xl border px-3 py-2'>
                             <p className='text-muted-foreground'>Prepared Context</p>

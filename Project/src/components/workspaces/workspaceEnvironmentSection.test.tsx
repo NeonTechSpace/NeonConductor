@@ -5,6 +5,7 @@ import {
     WorkspaceEnvironmentPreviewCard,
     WorkspaceEnvironmentSection,
 } from '@/web/components/workspaces/workspaceEnvironmentSection';
+
 import { VENDORED_NODE_VERSION } from '@/shared/tooling/vendoredNode';
 
 const inspectWorkspaceEnvironmentUseQueryMock = vi.fn();
@@ -97,6 +98,31 @@ const snapshot = {
         targetKey: 'win32-x64' as const,
         executablePath: 'C:\\vendor\\node.exe',
     },
+    sandboxPolicySummary: {
+        filesystem: {
+            kind: 'local_workspace' as const,
+            effectiveRootLabel: 'Repo',
+            effectiveRootPath: 'C:\\Repo',
+            writable: true,
+            managedByNeon: false,
+            failClosedOnMissingTarget: false,
+        },
+        network: {
+            kind: 'not_restricted' as const,
+            restricted: false,
+            reviewRequired: false,
+            blockedNetworkVisible: false,
+            reason: 'Neon does not apply native network restriction in the current managed sandbox implementation.',
+        },
+        process: {
+            state: 'unsupported' as const,
+            platform: 'win32' as const,
+            mechanism: 'managed_directory' as const,
+            nativeEnforcement: false,
+            reason: 'Native process sandbox helpers are future work.',
+        },
+        diagnostics: [],
+    },
     projectNodeExpectation: {
         source: 'package_json_engines' as const,
         rawValue: '^24',
@@ -159,6 +185,12 @@ describe('WorkspaceEnvironmentPreviewCard', () => {
         expect(html).toContain(`Vendored Node v${VENDORED_NODE_VERSION} available (win32-x64)`);
         expect(html).toContain('Workspace expects ^24 from package.json engines');
         expect(html).toContain('Matches vendored Node');
+        expect(html).toContain('Filesystem Policy');
+        expect(html).toContain('local workspace');
+        expect(html).toContain('Network Policy');
+        expect(html).toContain('not restricted');
+        expect(html).toContain('Process Sandbox');
+        expect(html).toContain('unsupported');
         expect(html).toContain('The pinned VCS preference');
     });
 

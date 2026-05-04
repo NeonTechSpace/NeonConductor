@@ -21,6 +21,9 @@ function buildRunCommandGuidance(input: { guidanceContext: RuntimeToolGuidanceCo
         input.guidanceContext.shellResolved
             ? `This run executes commands through ${shellLabel}. Use shell-native syntax for that shell.`
             : 'This run could not resolve a supported shell executable. Command execution is expected to fail until a supported shell is available.',
+        `Effective filesystem policy: ${input.guidanceContext.sandboxPolicySummary.filesystem.kind.replaceAll('_', ' ')}${input.guidanceContext.sandboxPolicySummary.filesystem.effectiveRootPath ? ` at ${input.guidanceContext.sandboxPolicySummary.filesystem.effectiveRootPath}` : ''}.`,
+        `Network policy: ${input.guidanceContext.sandboxPolicySummary.network.kind.replaceAll('_', ' ')}. ${input.guidanceContext.sandboxPolicySummary.network.reason}`,
+        `Process sandbox capability: ${input.guidanceContext.sandboxPolicySummary.process.state.replaceAll('_', ' ')}; native enforcement ${input.guidanceContext.sandboxPolicySummary.process.nativeEnforcement ? 'enabled' : 'not enabled'}.`,
         'For ordinary workspace fixed-text search, prefer the native search_files tool before using shell commands.',
     ];
 

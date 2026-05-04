@@ -263,15 +263,24 @@ describe('runContract service', () => {
             materializationState: 'scheduled_on_start',
             workspacePath: 'C:\\Workspace\\Contract',
         });
+        expect(previousContract?.sandboxPolicySummary?.filesystem).toMatchObject({
+            kind: 'scheduled_managed_sandbox',
+            failClosedOnMissingTarget: true,
+        });
         expect(nextContract?.executionTarget).toMatchObject({
             kind: 'sandbox',
             materializationState: 'materialized',
             sandboxId: 'sb_contract',
         });
+        expect(nextContract?.sandboxPolicySummary?.filesystem).toMatchObject({
+            kind: 'managed_sandbox',
+            baseWorkspacePath: 'C:\\Workspace\\Contract',
+        });
+        expect(nextContract?.sandboxPolicySummary?.process.nativeEnforcement).toBe(false);
         expect(nextContract?.diffFromLastCompatible?.hasMaterialChanges).toBe(true);
-        expect(
-            nextContract?.diffFromLastCompatible?.items.some((item) => item.field === 'executionTargetKind')
-        ).toBe(true);
+        expect(nextContract?.diffFromLastCompatible?.items.some((item) => item.field === 'executionTargetKind')).toBe(
+            true
+        );
     });
 
     it('includes PDF document attachment counts and selected context summaries', () => {

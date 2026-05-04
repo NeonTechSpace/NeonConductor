@@ -4,11 +4,11 @@ import type {
     WorkspaceProjectNodeExpectation,
     WorkspaceEnvironmentSnapshot,
 } from '@/app/backend/runtime/contracts/types/runtime';
+import { buildWorkspaceEnvironmentNotes } from '@/app/backend/runtime/services/environment/workspaceEnvironmentNotesBuilder';
 import {
     resolveWorkspaceEnvironmentDetectedPreferences,
     resolveWorkspaceEnvironmentPreferencePolicy,
 } from '@/app/backend/runtime/services/environment/workspaceEnvironmentPreferencePolicy';
-import { buildWorkspaceEnvironmentNotes } from '@/app/backend/runtime/services/environment/workspaceEnvironmentNotesBuilder';
 
 export function resolveWorkspaceEnvironmentInspection(input: {
     platform: WorkspaceEnvironmentSnapshot['platform'];
@@ -21,6 +21,7 @@ export function resolveWorkspaceEnvironmentInspection(input: {
     overrides: WorkspaceEnvironmentOverrides;
     vendoredNode: WorkspaceEnvironmentSnapshot['vendoredNode'];
     projectNodeExpectation?: WorkspaceProjectNodeExpectation;
+    sandboxPolicySummary: WorkspaceEnvironmentSnapshot['sandboxPolicySummary'];
 }): WorkspaceEnvironmentSnapshot {
     const detectedPreferences = resolveWorkspaceEnvironmentDetectedPreferences({
         markers: input.markers,
@@ -55,6 +56,7 @@ export function resolveWorkspaceEnvironmentInspection(input: {
         overrides: input.overrides,
         vendoredNode: input.vendoredNode,
         ...(input.projectNodeExpectation ? { projectNodeExpectation: input.projectNodeExpectation } : {}),
+        sandboxPolicySummary: input.sandboxPolicySummary,
         notes,
     };
 }

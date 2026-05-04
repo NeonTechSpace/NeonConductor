@@ -147,6 +147,7 @@ export interface RuntimeToolGuidanceContext {
     shellExecutable?: string;
     shellResolved: boolean;
     vendoredRipgrepAvailable: boolean;
+    sandboxPolicySummary: WorkspaceEnvironmentSnapshot['sandboxPolicySummary'];
     workspaceEnvironmentSnapshot?: WorkspaceEnvironmentSnapshot;
     workspaceContext?: ResolvedWorkspaceContext;
 }
@@ -246,4 +247,3 @@ export type StartRunResult =
           thread?: ThreadListRecord;
           resolvedContextState: ResolvedContextState;
       };
-

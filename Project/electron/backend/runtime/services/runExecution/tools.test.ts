@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import { createDefaultPreparedContextModeOverrides } from '@/app/backend/runtime/contracts';
+import { resolveRuntimeToolsForMode } from '@/app/backend/runtime/services/runExecution/tools';
 import type { RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
 
 import type { ModeDefinition } from '@/shared/contracts';
@@ -39,8 +39,7 @@ function buildMode(input: {
             input.planningOnly || input.workflowCapabilities?.includes('planning')
                 ? 'single_task_agent/plan'
                 : 'single_task_agent/apply',
-        internalModelRole:
-            input.planningOnly || input.workflowCapabilities?.includes('planning') ? 'planner' : 'apply',
+        internalModelRole: input.planningOnly || input.workflowCapabilities?.includes('planning') ? 'planner' : 'apply',
         delegatedOnly: false,
         sessionSelectable: true,
         label: 'Agent Code',
@@ -79,6 +78,31 @@ function buildGuidanceContext(): RuntimeToolGuidanceContext {
         shellExecutable: process.platform === 'win32' ? 'pwsh.exe' : '/bin/sh',
         shellResolved: true,
         vendoredRipgrepAvailable: true,
+        sandboxPolicySummary: {
+            filesystem: {
+                kind: 'local_workspace',
+                effectiveRootLabel: 'Workspace',
+                effectiveRootPath: process.cwd(),
+                writable: true,
+                managedByNeon: false,
+                failClosedOnMissingTarget: false,
+            },
+            network: {
+                kind: 'not_restricted',
+                restricted: false,
+                reviewRequired: false,
+                blockedNetworkVisible: false,
+                reason: 'Network is not restricted.',
+            },
+            process: {
+                state: 'unsupported',
+                platform: process.platform === 'win32' ? 'win32' : process.platform === 'darwin' ? 'darwin' : 'linux',
+                mechanism: 'managed_directory',
+                nativeEnforcement: false,
+                reason: 'Native process sandbox helpers are future work.',
+            },
+            diagnostics: [],
+        },
     };
 }
 
