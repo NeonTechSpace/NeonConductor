@@ -16,7 +16,9 @@ import type {
     RuntimeFactoryResetInput,
     RuntimeEventsSubscriptionInput,
     RuntimeInspectWorkspaceEnvironmentInput,
+    RuntimeApplyRepoCommitInput,
     RuntimePatchWorkspaceRootInput,
+    RuntimeRepoCommitInput,
     RuntimePreviewResearchTargetInput,
     RuntimeRegisterWorkspaceRootInput,
     RuntimeResetInput,
@@ -364,6 +366,41 @@ export function parseRuntimePreviewResearchTargetInput(input: unknown): RuntimeP
     };
 }
 
+function readCommitMessage(value: unknown, field: string): string {
+    const message = readString(value, field);
+    if (message.includes('\0')) {
+        throw new Error(`Invalid "${field}": NUL bytes are not allowed.`);
+    }
+    if (message.length > 4000) {
+        throw new Error(`Invalid "${field}": expected 4000 characters or fewer.`);
+    }
+    return message;
+}
+
+export function parseRuntimeRepoCommitInput(input: unknown): RuntimeRepoCommitInput {
+    const source = readObject(input, 'input');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    if (!profileId || profileId.trim().length === 0) {
+        throw new Error('Invalid "profileId": expected non-empty string.');
+    }
+
+    return {
+        profileId: profileId.trim(),
+        researchCheckoutRecordId: readEntityId(source.researchCheckoutRecordId, 'researchCheckoutRecordId', 'rch'),
+        message: readCommitMessage(source.message, 'message'),
+    };
+}
+
+export function parseRuntimeApplyRepoCommitInput(input: unknown): RuntimeApplyRepoCommitInput {
+    const parsed = parseRuntimeRepoCommitInput(input);
+    const source = readObject(input, 'input');
+
+    return {
+        ...parsed,
+        expectedWorkingTreeDigest: readString(source.expectedWorkingTreeDigest, 'expectedWorkingTreeDigest'),
+    };
+}
+
 export function parseRuntimeInspectWorkspaceEnvironmentInput(input: unknown): RuntimeInspectWorkspaceEnvironmentInput {
     const source = readObject(input, 'input');
     const profileId = readOptionalString(source.profileId, 'profileId');
@@ -419,4 +456,6 @@ export const runtimeSetResearchCheckoutRootSettingsInputSchema = createParser(
     parseRuntimeSetResearchCheckoutRootSettingsInput
 );
 export const runtimePreviewResearchTargetInputSchema = createParser(parseRuntimePreviewResearchTargetInput);
+export const runtimeRepoCommitInputSchema = createParser(parseRuntimeRepoCommitInput);
+export const runtimeApplyRepoCommitInputSchema = createParser(parseRuntimeApplyRepoCommitInput);
 export const runtimeInspectWorkspaceEnvironmentInputSchema = createParser(parseRuntimeInspectWorkspaceEnvironmentInput);

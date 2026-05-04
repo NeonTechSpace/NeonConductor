@@ -58,6 +58,19 @@ export async function resolveResearchTargetForRun(input: {
             },
         });
     }
+    if (input.requireExistingCheckout && researchTarget.mutationGuardrail.intent !== 'inspect') {
+        return errRunExecution(
+            'mode_policy_invalid',
+            'Repo-research mutation intents require an explicit guarded runtime action.',
+            {
+                action: {
+                    code: 'runtime_options_invalid',
+                    modeKey: input.startInput.modeKey,
+                    detail: 'generic',
+                },
+            }
+        );
+    }
 
     if (input.requireExistingCheckout && researchTarget.checkoutAction === 'clone_required') {
         return errRunExecution(

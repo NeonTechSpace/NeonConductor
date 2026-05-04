@@ -7,9 +7,11 @@ import {
     type NeonObservabilityEvent,
     profileInputSchema,
     runtimeFactoryResetInputSchema,
+    runtimeApplyRepoCommitInputSchema,
     type RuntimeInspectWorkspaceEnvironmentInput,
     runtimeEventsSubscriptionInputSchema,
     runtimePatchWorkspaceRootInputSchema,
+    runtimeRepoCommitInputSchema,
     runtimePreviewResearchTargetInputSchema,
     runtimeRegisterWorkspaceRootInputSchema,
     runtimeResetInputSchema,
@@ -19,16 +21,17 @@ import {
 import { workspaceEnvironmentService } from '@/app/backend/runtime/services/environment/service';
 import { resolveWorkspaceEnvironmentInspectionTarget } from '@/app/backend/runtime/services/environment/workspaceEnvironmentInspectionResolver';
 import { neonObservabilityService } from '@/app/backend/runtime/services/observability/service';
+import { repoCommitService } from '@/app/backend/runtime/services/researchCheckouts/commitService';
+import { researchCheckoutService } from '@/app/backend/runtime/services/researchCheckouts/service';
 import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
-import { runtimeResetEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
+import { runtimeResetEvent, runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { getRuntimeStorageInfo, runtimeFactoryResetService } from '@/app/backend/runtime/services/runtimeFactoryReset';
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
-import { researchCheckoutService } from '@/app/backend/runtime/services/researchCheckouts/service';
-import { workspaceIconService } from '@/app/backend/runtime/services/workspaceIcons/service';
 import { setWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
+import { workspaceIconService } from '@/app/backend/runtime/services/workspaceIcons/service';
 import { publicProcedure, router } from '@/app/backend/trpc/init';
 import { raiseMappedTrpcError, toTrpcError } from '@/app/backend/trpc/trpcErrorMap';
 
@@ -153,6 +156,36 @@ export const runtimeRouter = router({
             (value) => value,
             (error) => raiseMappedTrpcError(error, toTrpcError)
         );
+    }),
+    previewRepoCommit: publicProcedure.input(runtimeRepoCommitInputSchema).query(async ({ input }) => {
+        return (await repoCommitService.preview(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
+    }),
+    applyRepoCommit: publicProcedure.input(runtimeApplyRepoCommitInputSchema).mutation(async ({ input }) => {
+        const result = (await repoCommitService.apply(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
+        await runtimeEventLogService.append(
+            runtimeStatusEvent({
+                entityType: 'runtime',
+                domain: 'runtime',
+                entityId: 'runtime',
+                eventType: 'runtime.repo_commit.applied',
+                payload: {
+                    profileId: input.profileId,
+                    researchCheckoutRecordId: input.researchCheckoutRecordId,
+                    vcsFamily: result.vcsFamily,
+                    revisionId: result.revisionId ?? null,
+                    changedFileCount: result.changeSummary.changedFileCount,
+                    command: result.receipt.command,
+                },
+            })
+        );
+
+        return result;
     }),
     registerWorkspaceRoot: publicProcedure
         .input(runtimeRegisterWorkspaceRootInputSchema)

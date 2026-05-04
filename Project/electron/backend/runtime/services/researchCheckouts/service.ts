@@ -294,8 +294,11 @@ function chooseTargetSwitchAction(
     return 'checkout_commit';
 }
 
-function buildMutationGuardrail(input: RuntimePreviewResearchTargetInput['target']): RepoMutationGuardrail {
-    const intent = input.mutationIntent ?? 'inspect';
+function buildMutationGuardrail(input: {
+    target: RuntimePreviewResearchTargetInput['target'];
+    state: RepoWorkflowState;
+}): RepoMutationGuardrail {
+    const intent = input.target.mutationIntent ?? 'inspect';
     if (intent === 'inspect') {
         return {
             intent,
@@ -303,11 +306,29 @@ function buildMutationGuardrail(input: RuntimePreviewResearchTargetInput['target
             reason: 'Repo-research inspect runs are read-only by default.',
         };
     }
+    if (intent === 'commit') {
+        if (input.state.status === 'dirty' && (input.state.family === 'git' || input.state.family === 'jj')) {
+            return {
+                intent,
+                outcome: 'approval_required',
+                reason: 'Repo-research commit requires explicit operator approval before mutating the checkout.',
+            };
+        }
+
+        return {
+            intent,
+            outcome: 'blocked',
+            reason:
+                input.state.status === 'clean'
+                    ? 'Repo-research commit requires checkout changes.'
+                    : 'Repo-research commit requires an existing dirty Git or JJ checkout.',
+        };
+    }
 
     return {
         intent,
         outcome: 'blocked',
-        reason: 'Repo-research commit and push intents are not implemented in Slice 8I.',
+        reason: 'Repo-research push intents are not implemented in this slice.',
     };
 }
 
@@ -386,7 +407,7 @@ export class ResearchCheckoutService {
             detectedVcs: inspected.detectedVcs,
             effectiveVcs: inspected.effectiveVcs,
             repoWorkflowState: inspected.state,
-            mutationGuardrail: buildMutationGuardrail(input.target),
+            mutationGuardrail: buildMutationGuardrail({ target: input.target, state: inspected.state }),
             explanation: buildExplanation({
                 state: inspected.state,
                 updateAction,

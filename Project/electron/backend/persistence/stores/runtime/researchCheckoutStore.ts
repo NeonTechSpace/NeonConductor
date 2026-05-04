@@ -77,6 +77,18 @@ function mapResearchCheckoutRecord(row: {
 }
 
 export class ResearchCheckoutStore {
+    async getById(profileId: string, id: ResearchCheckoutRecord['id']): Promise<ResearchCheckoutRecord | null> {
+        const { db } = getPersistence();
+        const row = await db
+            .selectFrom('research_checkout_records')
+            .selectAll()
+            .where('profile_id', '=', profileId)
+            .where('id', '=', id)
+            .executeTakeFirst();
+
+        return row ? mapResearchCheckoutRecord(row) : null;
+    }
+
     async getByProfileAndLocator(input: {
         profileId: string;
         canonicalKey: string;

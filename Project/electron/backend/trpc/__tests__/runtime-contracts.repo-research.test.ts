@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { providerAuthStore } from '@/app/backend/persistence/stores';
+import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { getSecretStore } from '@/app/backend/secrets/store';
 import {
     createCaller,
@@ -194,5 +195,18 @@ describe('runtime contracts: repo-research acceptance', () => {
             throw new Error('Expected repo-research target outside agent.research to be rejected.');
         }
         expect(invalidMode.code).toBe('invalid_mode');
+    });
+
+    it('exposes guarded commit endpoints without inventing missing checkout records', async () => {
+        const caller = createCaller();
+        const missingCheckoutId = createEntityId('rch');
+
+        await expect(
+            caller.runtime.previewRepoCommit({
+                profileId,
+                researchCheckoutRecordId: missingCheckoutId,
+                message: 'type: test commit',
+            })
+        ).rejects.toThrow('Repo-research checkout record was not found.');
     });
 });

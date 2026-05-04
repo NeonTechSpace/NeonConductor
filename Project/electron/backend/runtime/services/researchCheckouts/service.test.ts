@@ -209,7 +209,36 @@ describe('research checkout service', () => {
         );
     });
 
-    it('reports commit and push mutation intents as blocked guardrails', async () => {
+    it('requires approval for dirty commit intents and keeps push blocked', async () => {
+        const customRoot = mkdtempSync(path.join(os.tmpdir(), 'nc-research-root-'));
+        const commitService = new ResearchCheckoutService(runnerWithStdout('## main...origin/main\n M src/index.ts\n'));
+        await setCustomRoot(commitService, customRoot);
+        const missing = await commitService.previewResearchTarget({
+            profileId,
+            target: {
+                repoUrl: 'https://github.com/neon/commit.git',
+                mutationIntent: 'commit',
+            },
+        });
+        expect(missing.isOk()).toBe(true);
+        mkdirSync(path.join(missing._unsafeUnwrap().researchTarget.resolvedCheckoutPath, '.git'), {
+            recursive: true,
+        });
+
+        const commit = await commitService.previewResearchTarget({
+            profileId,
+            target: {
+                repoUrl: 'https://github.com/neon/commit.git',
+                mutationIntent: 'commit',
+            },
+        });
+
+        expect(commit.isOk()).toBe(true);
+        expect(commit._unsafeUnwrap().researchTarget.mutationGuardrail).toMatchObject({
+            intent: 'commit',
+            outcome: 'approval_required',
+        });
+
         const service = new ResearchCheckoutService(runnerWithStdout(''));
         const result = await service.previewResearchTarget({
             profileId,

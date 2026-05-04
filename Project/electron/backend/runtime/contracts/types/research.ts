@@ -112,3 +112,46 @@ export interface RuntimePreviewResearchTargetInput extends ProfileInput {
 export interface RuntimePreviewResearchTargetResult {
     researchTarget: RunResearchTarget;
 }
+
+export interface RuntimeRepoCommitInput extends ProfileInput {
+    researchCheckoutRecordId: EntityId<'rch'>;
+    message: string;
+}
+
+export interface RuntimeApplyRepoCommitInput extends RuntimeRepoCommitInput {
+    expectedWorkingTreeDigest: string;
+}
+
+export interface RepoCommitChangeSummary {
+    changedFileCount: number;
+    changedPathSamples: string[];
+}
+
+export interface RepoCommitCommandReceipt {
+    command: 'git commit' | 'jj describe';
+    exitCode: number | null;
+    stdout: string;
+    stderr: string;
+    timedOut: boolean;
+}
+
+export interface RuntimePreviewRepoCommitResult {
+    available: boolean;
+    guardrail: RepoMutationGuardrail;
+    vcsFamily: RepoVcsFamily;
+    researchCheckoutRecordId: EntityId<'rch'>;
+    resolvedCheckoutPath: string;
+    changeSummary: RepoCommitChangeSummary;
+    expectedWorkingTreeDigest?: string;
+}
+
+export interface RuntimeApplyRepoCommitResult {
+    committed: boolean;
+    guardrail: RepoMutationGuardrail;
+    vcsFamily: RepoVcsFamily;
+    researchCheckoutRecordId: EntityId<'rch'>;
+    resolvedCheckoutPath: string;
+    changeSummary: RepoCommitChangeSummary;
+    revisionId?: string;
+    receipt: RepoCommitCommandReceipt;
+}
