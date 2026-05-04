@@ -19,6 +19,7 @@ import type {
     PreparedRunnableCandidate,
     StartRunInput,
 } from '@/app/backend/runtime/services/runExecution/types';
+
 import type { ResolvedWorkspaceContext } from '@/shared/contracts';
 import type { RunResearchTarget } from '@/shared/contracts';
 
@@ -162,6 +163,7 @@ export async function prepareRunStart(
             ? { workspaceEnvironmentSnapshot: runtimeToolGuidanceContext.workspaceEnvironmentSnapshot }
             : {}),
         runtimeToolGuidanceContext,
+        ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
     });
     if (runContextResult.isErr()) {
         return errRunExecution(runContextResult.error.code, runContextResult.error.message, {

@@ -1,6 +1,9 @@
 import { expect, expectTypeOf, test } from 'vitest';
 
-import { OPENAI_RATE_LIMITS_PROCEDURE, OPENAI_USAGE_PROCEDURE } from '@/app/backend/trpc/__tests__/app-router.types.shared';
+import {
+    OPENAI_RATE_LIMITS_PROCEDURE,
+    OPENAI_USAGE_PROCEDURE,
+} from '@/app/backend/trpc/__tests__/app-router.types.shared';
 import type { AppRouterInputs, AppRouterOutputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
 
 test('AppRouter exposes prompt and provider procedure contracts to clients', () => {
@@ -58,11 +61,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         mode: {
             slug: string;
             name: string;
-            authoringRole:
-                | 'chat'
-                | 'single_task_agent'
-                | 'orchestrator_primary'
-                | 'orchestrator_worker_agent';
+            authoringRole: 'chat' | 'single_task_agent' | 'orchestrator_primary' | 'orchestrator_worker_agent';
             roleTemplate:
                 | 'chat/default'
                 | 'single_task_agent/ask'
@@ -75,12 +74,14 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                 | 'orchestrator_primary/orchestrate'
                 | 'orchestrator_primary/debug'
                 | 'orchestrator_worker_agent/apply'
-                | 'orchestrator_worker_agent/debug';
+                | 'orchestrator_worker_agent/debug'
+                | 'orchestrator_worker_agent/explorer';
             description?: string;
             roleDefinition?: string;
             customInstructions?: string;
             whenToUse?: string;
             tags?: string[];
+            promptLayerOverrides?: unknown;
         };
     }>();
     expectTypeOf<AppRouterInputs['prompt']['updateCustomMode']>().toExtend<{
@@ -91,11 +92,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         workspaceFingerprint?: string;
         mode: {
             name: string;
-            authoringRole:
-                | 'chat'
-                | 'single_task_agent'
-                | 'orchestrator_primary'
-                | 'orchestrator_worker_agent';
+            authoringRole: 'chat' | 'single_task_agent' | 'orchestrator_primary' | 'orchestrator_worker_agent';
             roleTemplate:
                 | 'chat/default'
                 | 'single_task_agent/ask'
@@ -108,12 +105,14 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                 | 'orchestrator_primary/orchestrate'
                 | 'orchestrator_primary/debug'
                 | 'orchestrator_worker_agent/apply'
-                | 'orchestrator_worker_agent/debug';
+                | 'orchestrator_worker_agent/debug'
+                | 'orchestrator_worker_agent/explorer';
             description?: string;
             roleDefinition?: string;
             customInstructions?: string;
             whenToUse?: string;
             tags?: string[];
+            promptLayerOverrides?: unknown;
         };
     }>();
     expectTypeOf<AppRouterInputs['prompt']['deleteCustomMode']>().toExtend<{
@@ -141,11 +140,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             topLevelTab?: 'chat' | 'agent' | 'orchestrator';
             slug?: string;
             name?: string;
-            authoringRole?:
-                | 'chat'
-                | 'single_task_agent'
-                | 'orchestrator_primary'
-                | 'orchestrator_worker_agent';
+            authoringRole?: 'chat' | 'single_task_agent' | 'orchestrator_primary' | 'orchestrator_worker_agent';
             roleTemplate?:
                 | 'chat/default'
                 | 'single_task_agent/ask'
@@ -158,7 +153,14 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                 | 'orchestrator_primary/orchestrate'
                 | 'orchestrator_primary/debug'
                 | 'orchestrator_worker_agent/apply'
-                | 'orchestrator_worker_agent/debug';
+                | 'orchestrator_worker_agent/debug'
+                | 'orchestrator_worker_agent/explorer';
+            description?: string;
+            roleDefinition?: string;
+            customInstructions?: string;
+            whenToUse?: string;
+            tags?: string[];
+            promptLayerOverrides?: unknown;
         };
     }>();
     expectTypeOf<AppRouterInputs['prompt']['applyModeDraft']>().toExtend<{
@@ -426,11 +428,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                     label: string;
                     prompt: { roleDefinition?: string; customInstructions?: string };
                     hasOverride: boolean;
-                    authoringRole:
-                        | 'chat'
-                        | 'single_task_agent'
-                        | 'orchestrator_primary'
-                        | 'orchestrator_worker_agent';
+                    authoringRole: 'chat' | 'single_task_agent' | 'orchestrator_primary' | 'orchestrator_worker_agent';
                     roleTemplate: string;
                     internalModelRole:
                         | 'chat'
@@ -468,7 +466,9 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                         description?: string;
                         whenToUse?: string;
                         tags?: string[];
-                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
+                        toolCapabilities?: Array<
+                            'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'
+                        >;
                     }>
                 >;
                 workspace?: Record<
@@ -496,7 +496,9 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                         description?: string;
                         whenToUse?: string;
                         tags?: string[];
-                        toolCapabilities?: Array<'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'>;
+                        toolCapabilities?: Array<
+                            'filesystem_read' | 'filesystem_write' | 'shell' | 'git' | 'mcp' | 'code_runtime'
+                        >;
                     }>
                 >;
             };
@@ -523,11 +525,7 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
                     topLevelTab?: 'chat' | 'agent' | 'orchestrator';
                     slug?: string;
                     name?: string;
-                    authoringRole?:
-                        | 'chat'
-                        | 'single_task_agent'
-                        | 'orchestrator_primary'
-                        | 'orchestrator_worker_agent';
+                    authoringRole?: 'chat' | 'single_task_agent' | 'orchestrator_primary' | 'orchestrator_worker_agent';
                     roleTemplate?: string;
                 };
                 validationState: 'unvalidated' | 'valid' | 'invalid';
@@ -549,20 +547,9 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             modeKey: string;
             slug: string;
             name: string;
-            authoringRole:
-                | 'chat'
-                | 'single_task_agent'
-                | 'orchestrator_primary'
-                | 'orchestrator_worker_agent';
+            authoringRole: 'chat' | 'single_task_agent' | 'orchestrator_primary' | 'orchestrator_worker_agent';
             roleTemplate: string;
-            internalModelRole:
-                | 'chat'
-                | 'planner'
-                | 'apply'
-                | 'utility'
-                | 'memory_retrieval'
-                | 'embeddings'
-                | 'rerank';
+            internalModelRole: 'chat' | 'planner' | 'apply' | 'utility' | 'memory_retrieval' | 'embeddings' | 'rerank';
             delegatedOnly: boolean;
             sessionSelectable: boolean;
             description?: string;

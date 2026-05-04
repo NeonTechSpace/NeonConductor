@@ -128,6 +128,7 @@ export interface ResolvedContextStateInput extends ContextPolicyInput {
 export type PreparedContextContributorKind =
     | 'workspace_prelude'
     | 'environment_guidance'
+    | 'runtime_prompt_fragment'
     | 'prompt_layer'
     | 'mode_role_definition'
     | 'mode_custom_instructions'
@@ -140,6 +141,7 @@ export type PreparedContextContributorKind =
 
 export type PreparedContextContributorGroup =
     | 'runtime_environment'
+    | 'runtime_prompt_orchestration'
     | 'shared_prompt_layer'
     | 'mode_prompt'
     | 'ruleset'
@@ -157,6 +159,7 @@ export interface PreparedContextContributorSource {
     kind:
         | 'workspace'
         | 'environment'
+        | 'runtime_prompt_fragment'
         | 'prompt_layer'
         | 'mode'
         | 'ruleset'

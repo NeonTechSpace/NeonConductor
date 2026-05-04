@@ -37,6 +37,7 @@ import type {
     RunResearchTarget,
 } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
+import type { WorkerPresetId } from '@/shared/workerPresetCatalog';
 
 export interface StartRunInput {
     profileId: string;
@@ -58,6 +59,7 @@ export interface StartRunInput {
     providerId?: RuntimeProviderId;
     modelId?: string;
     researchTarget?: ResearchTargetRequest;
+    workerPresetId?: WorkerPresetId;
 }
 
 export interface ResolvedRunTarget {

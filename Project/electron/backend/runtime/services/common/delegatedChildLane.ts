@@ -21,6 +21,8 @@ import { runtimeUpsertEvent } from '@/app/backend/runtime/services/runtimeEventE
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
+import { getWorkerPresetDefinition, type WorkerPresetId } from '@/shared/workerPresetCatalog';
+
 type WorkspaceExecutionTarget = Extract<ResolvedWorkspaceContext, { kind: 'workspace' | 'sandbox' }>;
 
 export interface DelegatedChildRootExecutionContext {
@@ -276,12 +278,23 @@ export async function startDelegatedChildLaneRun(input: {
     runtimeOptions: RuntimeRunOptions;
     providerId?: RuntimeProviderId;
     modelId?: string;
+    workerPresetId?: WorkerPresetId;
     workspaceFingerprint?: string;
     planId?: EntityId<'plan'>;
     planRevisionId?: EntityId<'prev'>;
     planPhaseId?: string;
     planPhaseRevisionId?: string;
 }): Promise<{ accepted: true; started: DelegatedChildLaneStart } | { accepted: false; reason: string }> {
+    if (input.workerPresetId) {
+        const preset = getWorkerPresetDefinition(input.workerPresetId);
+        if (preset.topLevelTab !== input.topLevelTab || preset.modeKey !== input.modeKey) {
+            return {
+                accepted: false,
+                reason: `Worker preset "${input.workerPresetId}" requires ${preset.topLevelTab}/${preset.modeKey}.`,
+            };
+        }
+    }
+
     const childExecutionBinding = buildChildExecutionBinding(input.rootContext.executionTarget);
     const createdThread = await threadStore.create({
         profileId: input.profileId,
@@ -337,6 +350,7 @@ export async function startDelegatedChildLaneRun(input: {
         runtimeOptions: input.runtimeOptions,
         ...(input.providerId ? { providerId: input.providerId } : {}),
         ...(input.modelId ? { modelId: input.modelId } : {}),
+        ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.planId ? { planId: input.planId } : {}),
         ...(input.planRevisionId ? { planRevisionId: input.planRevisionId } : {}),

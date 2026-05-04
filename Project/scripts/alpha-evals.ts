@@ -71,6 +71,15 @@ export function buildAlphaEvalScenarios(): AlphaEvalScenario[] {
                 'electron/backend/trpc/__tests__/runtime-contracts.repo-research.test.ts',
             ]
         ),
+        createVitestScenario(
+            'prompt-orchestration-hardening',
+            'Prompt orchestration remains runtime-owned, typed, and eval-gated',
+            [
+                'electron/backend/runtime/services/runExecution/contextPrelude.test.ts',
+                'electron/shared/workerPresetCatalog.test.ts',
+                'src/components/settings/modesSettings/modesInstructionsControllerShared.test.ts',
+            ]
+        ),
     ];
 }
 

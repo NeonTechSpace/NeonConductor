@@ -28,12 +28,14 @@ import {
     okRunExecution,
     type RunExecutionResult,
 } from '@/app/backend/runtime/services/runExecution/errors';
+import { buildRuntimePromptFragmentContributorSpecs } from '@/app/backend/runtime/services/runExecution/promptOrchestrationFragments';
 import type { RunContextMessage, RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
 import { getWorkspacePreference } from '@/app/backend/runtime/services/workspace/preferences';
 import { workspaceContextService } from '@/app/backend/runtime/services/workspaceContext/service';
 
 import { getRegistryPresetKeysForMode, type ModeDefinition } from '@/shared/contracts';
 import type { RegistryPresetKey, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/shared/contracts';
+import type { WorkerPresetId } from '@/shared/workerPresetCatalog';
 
 type LoadedSkillfileDefinition = SkillfileDefinition & { bodyMarkdown: string };
 
@@ -152,6 +154,8 @@ function buildAgentPreludeContributorSpecs(input: {
     skillfiles: LoadedSkillfileDefinition[];
     workspacePrelude?: RunContextMessage[];
     workspaceContextLabel?: string;
+    runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
+    workerPresetId?: WorkerPresetId;
 }): PreparedContextContributorSpec[] {
     const prelude: PreparedContextContributorSpec[] = [];
     if (input.workspacePrelude) {
@@ -172,6 +176,14 @@ function buildAgentPreludeContributorSpecs(input: {
             });
         });
     }
+
+    prelude.push(
+        ...buildRuntimePromptFragmentContributorSpecs({
+            mode: input.mode,
+            ...(input.runtimeToolGuidanceContext ? { guidanceContext: input.runtimeToolGuidanceContext } : {}),
+            ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
+        })
+    );
 
     const appGlobalInstructions = readPromptText(input.appGlobalInstructions);
     if (appGlobalInstructions) {
@@ -447,6 +459,7 @@ export async function buildSessionSystemPrelude(input: {
     workspaceContext?: Awaited<ReturnType<typeof workspaceContextService.resolveForSession>>;
     workspaceEnvironmentSnapshot?: WorkspaceEnvironmentSnapshot;
     runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
+    workerPresetId?: WorkerPresetId;
     resolvedMode: {
         mode: ModeDefinition;
     };
@@ -602,6 +615,10 @@ export async function buildSessionSystemPrelude(input: {
             projectInstructions,
             skillfiles: activeSkillfiles,
             ...(workspacePrelude ? { workspacePrelude } : {}),
+            ...(input.runtimeToolGuidanceContext
+                ? { runtimeToolGuidanceContext: input.runtimeToolGuidanceContext }
+                : {}),
+            ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
             ...(workspaceContext && (workspaceContext.kind === 'workspace' || workspaceContext.kind === 'sandbox')
                 ? { workspaceContextLabel: workspaceContext.label }
                 : {}),

@@ -209,6 +209,19 @@ const modeRoleTemplateDefinitions = [
         delegatedOnly: true,
         sessionSelectable: false,
     },
+    {
+        authoringRole: 'orchestrator_worker_agent',
+        roleTemplate: 'orchestrator_worker_agent/explorer',
+        label: 'Worker Explorer',
+        topLevelTab: 'agent',
+        toolCapabilities: ['filesystem_read', 'mcp'],
+        workflowCapabilities: ['artifact_view', 'review'],
+        behaviorFlags: ['read_only_execution', 'artifact_producing'],
+        runtimeProfile: 'read_only_agent',
+        internalModelRole: 'apply',
+        delegatedOnly: true,
+        sessionSelectable: false,
+    },
 ] as const satisfies readonly ModeRoleTemplateDefinition[];
 
 const roleTemplateDefinitionByKey = new Map(
@@ -278,6 +291,9 @@ function inferRoleTemplateFromLegacyMetadata(input: {
     }
 
     if (authoringRole === 'orchestrator_worker_agent') {
+        if (modeKey === 'explorer' || modeKey === 'research') {
+            return 'orchestrator_worker_agent/explorer';
+        }
         return modeKey === 'debug' ? 'orchestrator_worker_agent/debug' : 'orchestrator_worker_agent/apply';
     }
 
@@ -349,9 +365,7 @@ export function normalizeModeExecutionMetadata(input: {
         roleTemplate,
         internalModelRole: policy.internalModelRole ?? templateDefinition.internalModelRole,
         delegatedOnly: policy.delegatedOnly ?? templateDefinition.delegatedOnly,
-        sessionSelectable: policy.sessionSelectable ?? !(
-            policy.delegatedOnly ?? templateDefinition.delegatedOnly
-        ),
+        sessionSelectable: policy.sessionSelectable ?? !(policy.delegatedOnly ?? templateDefinition.delegatedOnly),
         ...(policy.planningOnly !== undefined ? { planningOnly: policy.planningOnly } : {}),
         toolCapabilities: uniqueValues(policy.toolCapabilities ?? templateDefinition.toolCapabilities),
         workflowCapabilities: uniqueValues(policy.workflowCapabilities ?? templateDefinition.workflowCapabilities),

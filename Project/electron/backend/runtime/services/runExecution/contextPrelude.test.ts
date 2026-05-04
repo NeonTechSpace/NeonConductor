@@ -332,6 +332,7 @@ Nested project instructions.
         expect(messageTexts.map((message) => message.split('\n\n')[0])).toEqual([
             'Execution environment',
             'Environment guidance',
+            'Runtime authority guidance',
             'App instructions',
             'Profile instructions',
             'Built-in chat instructions',
@@ -343,6 +344,96 @@ Nested project instructions.
             'Project instructions: .agents/z-last.md',
             'Attached skill: Attached Skill',
         ]);
+    });
+
+    it('adds Neon-authored runtime prompt fragments without raw external prompt intake', async () => {
+        const profileId = getDefaultProfileId();
+        const workspacePath = mkdtempSync(path.join(os.tmpdir(), 'nc-prompt-orchestration-'));
+        const workspaceRoot = await workspaceRootStore.resolveOrCreate(profileId, workspacePath);
+        const bucket = await conversationStore.createOrGetBucket({
+            profileId,
+            scope: 'workspace',
+            workspaceFingerprint: workspaceRoot.fingerprint,
+            title: 'Prompt Orchestration',
+        });
+        if (bucket.isErr()) {
+            throw new Error(bucket.error.message);
+        }
+
+        const thread = await threadStore.create({
+            profileId,
+            conversationId: bucket.value.id,
+            title: 'Research Worker Thread',
+            topLevelTab: 'agent',
+        });
+        if (thread.isErr()) {
+            throw new Error(thread.error.message);
+        }
+
+        const session = await sessionStore.create(profileId, thread.value.id, 'local');
+        if (!session.created) {
+            throw new Error(`Expected session creation to succeed, received "${session.reason}".`);
+        }
+
+        const result = await buildSessionSystemPrelude({
+            profileId,
+            sessionId: session.session.id,
+            prompt: 'Inspect the planner surface.',
+            topLevelTab: 'agent',
+            workspaceFingerprint: workspaceRoot.fingerprint,
+            workerPresetId: 'code_explorer',
+            resolvedMode: {
+                mode: {
+                    id: 'mode_profile_local_default_agent_research',
+                    profileId,
+                    topLevelTab: 'agent',
+                    modeKey: 'research',
+                    authoringRole: 'single_task_agent',
+                    roleTemplate: 'single_task_agent/research',
+                    internalModelRole: 'apply',
+                    delegatedOnly: false,
+                    sessionSelectable: true,
+                    label: 'Agent Research',
+                    prompt: {},
+                    promptLayerOverrides: createDefaultPreparedContextModeOverrides(),
+                    executionPolicy: {
+                        authoringRole: 'single_task_agent',
+                        roleTemplate: 'single_task_agent/research',
+                        internalModelRole: 'apply',
+                        delegatedOnly: false,
+                        sessionSelectable: true,
+                    },
+                    source: 'system',
+                    enabled: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    assetKey: 'research',
+                    sourceKind: 'system_seed',
+                    scope: 'system',
+                    tags: [],
+                    precedence: 0,
+                },
+            },
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) {
+            throw new Error(result.error.message);
+        }
+
+        const runtimeFragments = result.value.contributorSpecs.filter(
+            (contributor) => contributor.kind === 'runtime_prompt_fragment'
+        );
+        expect(runtimeFragments.map((contributor) => contributor.label)).toEqual([
+            'Runtime authority guidance',
+            'Evidence discipline guidance',
+            'Completion receipt guidance',
+            'Worker preset: Code Explorer',
+        ]);
+        expect(runtimeFragments.every((contributor) => contributor.group === 'runtime_prompt_orchestration')).toBe(
+            true
+        );
+        expect(collectContributorTextParts(result.value).join('\n')).not.toMatch(/PRMPTS|1a55b8a/i);
     });
 
     it('reads project instructions from the effective sandbox root instead of the base workspace root', async () => {

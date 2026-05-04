@@ -52,9 +52,12 @@ describe('modesInstructionsControllerShared', () => {
     });
 
     it('lists only templates for the selected authoring role', () => {
-        expect(getModeRoleTemplateOptions('orchestrator_worker_agent').map((template) => template.roleTemplate)).toEqual([
+        expect(
+            getModeRoleTemplateOptions('orchestrator_worker_agent').map((template) => template.roleTemplate)
+        ).toEqual([
             'orchestrator_worker_agent/apply',
             'orchestrator_worker_agent/debug',
+            'orchestrator_worker_agent/explorer',
         ]);
     });
 

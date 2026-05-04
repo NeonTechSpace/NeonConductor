@@ -10,9 +10,14 @@ import {
     type RunExecutionResult,
     type RunExecutionErrorCode,
 } from '@/app/backend/runtime/services/runExecution/errors';
-import type { RunContext, RuntimeToolGuidanceContext, StartRunInput } from '@/app/backend/runtime/services/runExecution/types';
+import type {
+    RunContext,
+    RuntimeToolGuidanceContext,
+    StartRunInput,
+} from '@/app/backend/runtime/services/runExecution/types';
 
 import type { ModeDefinition, ResolvedWorkspaceContext, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { WorkerPresetId } from '@/shared/workerPresetCatalog';
 
 function toRunExecutionErrorCode(code: OperationalErrorCode): RunExecutionErrorCode {
     switch (code) {
@@ -51,6 +56,7 @@ export async function buildRunContext(input: {
     workspaceEnvironmentSnapshot?: WorkspaceEnvironmentSnapshot;
     runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
     browserContext?: StartRunInput['browserContext'];
+    workerPresetId?: WorkerPresetId;
     resolvedMode: {
         mode: ModeDefinition;
     };
@@ -62,8 +68,11 @@ export async function buildRunContext(input: {
         topLevelTab: input.topLevelTab,
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
         ...(input.workspaceContext ? { workspaceContext: input.workspaceContext } : {}),
-        ...(input.workspaceEnvironmentSnapshot ? { workspaceEnvironmentSnapshot: input.workspaceEnvironmentSnapshot } : {}),
+        ...(input.workspaceEnvironmentSnapshot
+            ? { workspaceEnvironmentSnapshot: input.workspaceEnvironmentSnapshot }
+            : {}),
         ...(input.runtimeToolGuidanceContext ? { runtimeToolGuidanceContext: input.runtimeToolGuidanceContext } : {}),
+        ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
         resolvedMode: input.resolvedMode,
     });
     if (systemPreludeResult.isErr()) {
@@ -121,4 +130,3 @@ export async function buildRunContext(input: {
         ...(preparedContext.value.retrievedMemory ? { retrievedMemory: preparedContext.value.retrievedMemory } : {}),
     });
 }
-

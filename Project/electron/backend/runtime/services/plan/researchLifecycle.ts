@@ -55,9 +55,7 @@ async function readLatestAssistantResponseMarkdown(input: {
         messageStore.listPartsBySession(input.profileId, input.sessionId, input.runId),
     ]);
     const messagesById = new Map(messages.map((message) => [message.id, message] as const));
-    const lastAssistantMessage = messages
-        .filter((message) => message.role === 'assistant')
-        .at(-1);
+    const lastAssistantMessage = messages.filter((message) => message.role === 'assistant').at(-1);
     if (!lastAssistantMessage) {
         return null;
     }
@@ -154,11 +152,12 @@ async function runPlannerResearchWorker(input: {
         childTitle: readWorkerThreadTitle(input.worker),
         prompt: input.worker.promptMarkdown,
         topLevelTab: 'agent',
-        modeKey: 'ask',
+        modeKey: 'research',
+        workerPresetId: 'code_explorer',
         runtimeOptions: input.runtimeOptions,
         ...(input.providerId ? { providerId: input.providerId } : {}),
         ...(input.modelId ? { modelId: input.modelId } : {}),
-        ...(input.workspaceFingerprint ?? input.plan.workspaceFingerprint
+        ...((input.workspaceFingerprint ?? input.plan.workspaceFingerprint)
             ? { workspaceFingerprint: input.workspaceFingerprint ?? input.plan.workspaceFingerprint }
             : {}),
         planId: input.plan.id,
@@ -347,7 +346,11 @@ export async function startPlanResearchBatch(
     }
 
     const capacity = readPlannerResearchCapacity();
-    if (!Number.isInteger(input.workerCount) || input.workerCount <= 0 || input.workerCount > capacity.hardMaxWorkerCount) {
+    if (
+        !Number.isInteger(input.workerCount) ||
+        input.workerCount <= 0 ||
+        input.workerCount > capacity.hardMaxWorkerCount
+    ) {
         return errPlan(
             'invalid_worker_count',
             `Worker count must be between 1 and ${String(capacity.hardMaxWorkerCount)} for this machine.`
@@ -371,7 +374,7 @@ export async function startPlanResearchBatch(
             : await resolvePlanningWorkflowRoutingRunTarget({
                   profileId: input.profileId,
                   planningDepth: plan.planningDepth,
-                  ...(input.workspaceFingerprint ?? plan.workspaceFingerprint
+                  ...((input.workspaceFingerprint ?? plan.workspaceFingerprint)
                       ? { workspaceFingerprint: input.workspaceFingerprint ?? plan.workspaceFingerprint }
                       : {}),
               });
@@ -412,10 +415,7 @@ export async function startPlanResearchBatch(
     });
 
     if (!researchBatch) {
-        return errPlan(
-            'research_conflict',
-            'Unable to start a research batch for the current plan revision.'
-        );
+        return errPlan('research_conflict', 'Unable to start a research batch for the current plan revision.');
     }
 
     void processPlanResearchBatch({

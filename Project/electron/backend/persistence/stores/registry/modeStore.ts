@@ -89,6 +89,7 @@ function parseExecutionPolicy(input: {
             'orchestrator_primary/debug',
             'orchestrator_worker_agent/apply',
             'orchestrator_worker_agent/debug',
+            'orchestrator_worker_agent/explorer',
         ] as const
     )?.[0];
     const internalModelRole = parseEnumArray(

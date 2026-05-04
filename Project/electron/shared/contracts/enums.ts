@@ -61,6 +61,7 @@ export const modeRoleTemplateKeys = [
     'orchestrator_primary/debug',
     'orchestrator_worker_agent/apply',
     'orchestrator_worker_agent/debug',
+    'orchestrator_worker_agent/explorer',
 ] as const;
 export type ModeRoleTemplateKey = (typeof modeRoleTemplateKeys)[number];
 
