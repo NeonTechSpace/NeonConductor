@@ -32,7 +32,12 @@ function createLazyElectronExport<K extends keyof ElectronRuntimeApi>(key: K): E
             return instance;
         },
         get(_target, property, receiver): unknown {
-            const result: unknown = Reflect.get(resolveTarget(), property, receiver);
+            const target = resolveTarget();
+            const result: unknown = Reflect.get(target, property, receiver);
+            if (typeof result === 'function') {
+                return result.bind(target);
+            }
+
             return result;
         },
         getPrototypeOf() {

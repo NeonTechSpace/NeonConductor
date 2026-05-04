@@ -208,5 +208,12 @@ describe('runtime contracts: repo-research acceptance', () => {
                 message: 'type: test commit',
             })
         ).rejects.toThrow('Repo-research checkout record was not found.');
+
+        await expect(
+            caller.runtime.previewRepoPush({
+                profileId,
+                researchCheckoutRecordId: missingCheckoutId,
+            })
+        ).rejects.toThrow('Repo-research checkout record was not found.');
     });
 });

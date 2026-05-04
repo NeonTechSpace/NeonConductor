@@ -35,11 +35,11 @@ function requireCheckoutRecordId(input: { checkoutRecordId?: `rch_${string}` }):
     return input.checkoutRecordId;
 }
 
-function requireWorkingTreeDigest(input: { expectedWorkingTreeDigest?: string }): string {
-    if (!input.expectedWorkingTreeDigest) {
-        throw new Error('Expected commit preview to include a working tree digest.');
+function requireCommitDigest(input: { expectedCommitDigest?: string }): string {
+    if (!input.expectedCommitDigest) {
+        throw new Error('Expected commit preview to include a commit digest.');
     }
-    return input.expectedWorkingTreeDigest;
+    return input.expectedCommitDigest;
 }
 
 function scriptedRunner(entries: Array<{ command: string; args: string[]; result: ResearchCheckoutCommandResult }>): {
@@ -64,11 +64,7 @@ function scriptedRunner(entries: Array<{ command: string; args: string[]; result
     };
 }
 
-async function createMaterializedCheckout(input: {
-    vcs: 'git' | 'jj';
-    statusOutput: string;
-    repoUrl?: string;
-}) {
+async function createMaterializedCheckout(input: { vcs: 'git' | 'jj'; statusOutput: string; repoUrl?: string }) {
     const root = mkdtempSync(path.join(os.tmpdir(), 'nc-repo-commit-root-'));
     const checkoutService = new ResearchCheckoutService(runnerWithStdout(input.statusOutput));
     const settings = await checkoutService.setRootSettings({
@@ -126,14 +122,14 @@ describe('repo commit service', () => {
             changedFileCount: 2,
             changedPathSamples: ['src/index.ts', 'README.md'],
         });
-        const expectedWorkingTreeDigest = requireWorkingTreeDigest(previewValue);
-        expect(expectedWorkingTreeDigest).toMatch(/^[0-9a-f]{64}$/u);
+        const expectedCommitDigest = requireCommitDigest(previewValue);
+        expect(expectedCommitDigest).toMatch(/^[0-9a-f]{64}$/u);
 
         const applied = await service.apply({
             profileId,
             researchCheckoutRecordId: checkoutRecordId,
             message: 'type: test commit',
-            expectedWorkingTreeDigest,
+            expectedCommitDigest,
         });
 
         expect(applied.isOk()).toBe(true);
@@ -151,6 +147,52 @@ describe('repo commit service', () => {
             'git status --porcelain=v1 --branch',
             'git add -A -- .',
             'git commit -m type: test commit',
+            'git rev-parse HEAD',
+        ]);
+    });
+
+    it('commits only approved git pathspecs for selected changed files', async () => {
+        const statusOutput = '## main...origin/main\n M src/index.ts\n M docs/notes.md\n';
+        const researchTarget = await createMaterializedCheckout({
+            vcs: 'git',
+            statusOutput,
+            repoUrl: 'https://github.com/neon/selected-commit.git',
+        });
+        const { runner, calls } = scriptedRunner([
+            { command: 'git', args: ['status', '--porcelain=v1', '--branch'], result: okCommand(statusOutput) },
+            { command: 'git', args: ['status', '--porcelain=v1', '--branch'], result: okCommand(statusOutput) },
+            { command: 'git', args: ['add', '-A', '--', 'src/index.ts'], result: okCommand('') },
+            {
+                command: 'git',
+                args: ['commit', '-m', 'type: selected commit', '--', 'src/index.ts'],
+                result: okCommand('[main 2222222] test\n'),
+            },
+            { command: 'git', args: ['rev-parse', 'HEAD'], result: okCommand('222222222222\n') },
+        ]);
+        const service = new RepoCommitService(runner);
+        const checkoutRecordId = requireCheckoutRecordId(researchTarget);
+        const preview = await service.preview({
+            profileId,
+            researchCheckoutRecordId: checkoutRecordId,
+            message: 'type: selected commit',
+            selectedPaths: ['src/index.ts'],
+        });
+        expect(preview.isOk()).toBe(true);
+
+        const applied = await service.apply({
+            profileId,
+            researchCheckoutRecordId: checkoutRecordId,
+            message: 'type: selected commit',
+            selectedPaths: ['src/index.ts'],
+            expectedCommitDigest: requireCommitDigest(preview._unsafeUnwrap()),
+        });
+
+        expect(applied.isOk()).toBe(true);
+        expect(calls.map((call) => `${call.command} ${call.args.join(' ')}`)).toEqual([
+            'git status --porcelain=v1 --branch',
+            'git status --porcelain=v1 --branch',
+            'git add -A -- src/index.ts',
+            'git commit -m type: selected commit -- src/index.ts',
             'git rev-parse HEAD',
         ]);
     });
@@ -193,19 +235,19 @@ describe('repo commit service', () => {
             message: 'type: dirty commit',
         });
         expect(dirtyPreview.isOk()).toBe(true);
-        const dirtyExpectedDigest = requireWorkingTreeDigest(dirtyPreview._unsafeUnwrap());
+        const dirtyExpectedDigest = requireCommitDigest(dirtyPreview._unsafeUnwrap());
 
         const driftedApply = await dirtyService.apply({
             profileId,
             researchCheckoutRecordId: dirtyCheckoutRecordId,
             message: 'type: dirty commit',
-            expectedWorkingTreeDigest: dirtyExpectedDigest,
+            expectedCommitDigest: dirtyExpectedDigest,
         });
 
         expect(driftedApply.isErr()).toBe(true);
         expect(driftedApply._unsafeUnwrapErr()).toMatchObject({
             code: 'mode_policy_invalid',
-            message: 'Repo commit was blocked because the working tree changed after preview.',
+            message: 'Repo commit was blocked because the changed file set or selection changed after preview.',
         });
     });
 
@@ -244,7 +286,7 @@ describe('repo commit service', () => {
             profileId,
             researchCheckoutRecordId: checkoutRecordId,
             message: 'type: describe change',
-            expectedWorkingTreeDigest: requireWorkingTreeDigest(preview._unsafeUnwrap()),
+            expectedCommitDigest: requireCommitDigest(preview._unsafeUnwrap()),
         });
         expect(applied.isOk()).toBe(true);
         expect(applied._unsafeUnwrap()).toMatchObject({
@@ -259,5 +301,89 @@ describe('repo commit service', () => {
             'jj describe -m type: describe change',
             'jj --no-pager log -r @ --no-graph --color never',
         ]);
+    });
+
+    it('guards git push with clean ahead-only upstream state and fixed argv execution', async () => {
+        const statusOutput = '## main...origin/main [ahead 2]\n';
+        const researchTarget = await createMaterializedCheckout({
+            vcs: 'git',
+            statusOutput,
+            repoUrl: 'https://github.com/neon/push.git',
+        });
+        const { runner, calls } = scriptedRunner([
+            { command: 'git', args: ['status', '--porcelain=v1', '--branch'], result: okCommand(statusOutput) },
+            { command: 'git', args: ['status', '--porcelain=v1', '--branch'], result: okCommand(statusOutput) },
+            {
+                command: 'git',
+                args: ['push', '--porcelain'],
+                result: okCommand('To origin\n=\trefs/heads/main:refs/heads/main\tup to date\n'),
+            },
+        ]);
+        const service = new RepoCommitService(runner);
+        const checkoutRecordId = requireCheckoutRecordId(researchTarget);
+        const preview = await service.previewPush({
+            profileId,
+            researchCheckoutRecordId: checkoutRecordId,
+        });
+        expect(preview.isOk()).toBe(true);
+        expect(preview._unsafeUnwrap()).toMatchObject({
+            available: true,
+            branch: 'main',
+            upstream: 'origin/main',
+            aheadCount: 2,
+        });
+
+        const applied = await service.applyPush({
+            profileId,
+            researchCheckoutRecordId: checkoutRecordId,
+            expectedPushDigest: preview._unsafeUnwrap().expectedPushDigest ?? '',
+        });
+
+        expect(applied.isOk()).toBe(true);
+        expect(applied._unsafeUnwrap()).toMatchObject({
+            pushed: true,
+            receipt: { command: 'git push' },
+        });
+        expect(calls.map((call) => `${call.command} ${call.args.join(' ')}`)).toEqual([
+            'git status --porcelain=v1 --branch',
+            'git status --porcelain=v1 --branch',
+            'git push --porcelain',
+        ]);
+    });
+
+    it('blocks push for dirty git and jj checkouts', async () => {
+        const dirtyGit = await createMaterializedCheckout({
+            vcs: 'git',
+            statusOutput: '## main...origin/main [ahead 1]\n M src/index.ts\n',
+            repoUrl: 'https://github.com/neon/dirty-push.git',
+        });
+        const dirtyGitPreview = await new RepoCommitService(
+            runnerWithStdout('## main...origin/main [ahead 1]\n M src/index.ts\n')
+        ).previewPush({
+            profileId,
+            researchCheckoutRecordId: requireCheckoutRecordId(dirtyGit),
+        });
+        expect(dirtyGitPreview.isOk()).toBe(true);
+        expect(dirtyGitPreview._unsafeUnwrap().guardrail).toMatchObject({
+            intent: 'push',
+            outcome: 'blocked',
+        });
+
+        const jjTarget = await createMaterializedCheckout({
+            vcs: 'jj',
+            statusOutput: 'The working copy has no changes.\n',
+            repoUrl: 'https://github.com/neon/jj-push.git',
+        });
+        const jjPreview = await new RepoCommitService(
+            runnerWithStdout('The working copy has no changes.\n')
+        ).previewPush({
+            profileId,
+            researchCheckoutRecordId: requireCheckoutRecordId(jjTarget),
+        });
+        expect(jjPreview.isOk()).toBe(true);
+        expect(jjPreview._unsafeUnwrap().guardrail).toMatchObject({
+            intent: 'push',
+            outcome: 'blocked',
+        });
     });
 });

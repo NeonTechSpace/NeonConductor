@@ -8,6 +8,7 @@ import type {
     BrowserContextSummary,
     ComposerAttachmentInput,
     EntityId,
+    ResearchTargetRequest,
     ResolvedContextState,
     RulesetDefinition,
     RuntimeRunOptions,
@@ -98,8 +99,8 @@ export interface ComposerActionPanelProps {
     onRemovePendingTextFile: (clientId: string) => void;
     onRemovePendingDocument: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
-    onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;
+    onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket, researchTarget?: ResearchTargetRequest) => void;
+    onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket, researchTarget?: ResearchTargetRequest) => void;
     onCompactContext?: () => Promise<ComposerActionFeedback | undefined>;
 }
 

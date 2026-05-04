@@ -1,5 +1,5 @@
 import { skipToken } from '@tanstack/react-query';
-import { useDeferredValue, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { buildComposerControlsReadModel } from '@/web/components/conversation/panels/composerActionPanel/buildComposerControlsReadModel';
 import { buildComposerSubmissionPolicy } from '@/web/components/conversation/panels/composerActionPanel/buildComposerSubmissionPolicy';
@@ -24,9 +24,130 @@ import { isProviderId } from '@/web/components/conversation/shell/workspace/help
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
 import { trpc } from '@/web/trpc/client';
 
+import type { RepoMutationIntent, ResearchTargetKind, ResearchTargetRequest } from '@/shared/contracts';
 
 export { shouldSubmitComposerOnEnter } from '@/web/components/conversation/panels/composerActionPanel/helpers';
 export { handleComposerSlashAcceptance } from '@/web/components/conversation/panels/composerActionPanel/useComposerSlashCommandController';
+
+interface ResearchTargetDraftState {
+    enabled: boolean;
+    repoUrl: string;
+    targetKind: ResearchTargetKind['kind'];
+    targetValue: string;
+    mutationIntent: RepoMutationIntent;
+}
+
+function buildResearchTarget(draft: ResearchTargetDraftState): ResearchTargetRequest | undefined {
+    const repoUrl = draft.repoUrl.trim();
+    if (!draft.enabled || repoUrl.length === 0) {
+        return undefined;
+    }
+    const targetValue = draft.targetValue.trim();
+    const requestedTarget: ResearchTargetKind | undefined =
+        draft.targetKind === 'branch' && targetValue
+            ? { kind: 'branch', name: targetValue }
+            : draft.targetKind === 'pull_request' && targetValue
+              ? { kind: 'pull_request', id: targetValue }
+              : draft.targetKind === 'commit' && targetValue
+                ? { kind: 'commit', sha: targetValue }
+                : draft.targetKind === 'default_branch'
+                  ? { kind: 'default_branch' }
+                  : undefined;
+
+    return {
+        repoUrl,
+        ...(requestedTarget ? { requestedTarget } : {}),
+        ...(draft.mutationIntent !== 'inspect' ? { mutationIntent: draft.mutationIntent } : {}),
+    };
+}
+
+function ResearchTargetEditor(input: {
+    draft: ResearchTargetDraftState;
+    onDraftChange: (draft: ResearchTargetDraftState) => void;
+}) {
+    return (
+        <section className='border-border/60 bg-card/25 rounded-2xl border px-3 py-3'>
+            <div className='mb-2 flex items-center justify-between gap-3'>
+                <div>
+                    <h3 className='text-sm font-semibold'>Research Repository</h3>
+                    <p className='text-muted-foreground text-xs'>Resolve an external checkout for agent.research.</p>
+                </div>
+                <label className='flex items-center gap-2 text-xs'>
+                    <input
+                        type='checkbox'
+                        checked={input.draft.enabled}
+                        onChange={(event) => {
+                            input.onDraftChange({ ...input.draft, enabled: event.target.checked });
+                        }}
+                    />
+                    Enabled
+                </label>
+            </div>
+            {input.draft.enabled ? (
+                <div className='grid gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_140px_160px]'>
+                    <label className='space-y-1'>
+                        <span className='text-muted-foreground'>Repository URL</span>
+                        <input
+                            className='border-input bg-background h-9 w-full rounded-md border px-3'
+                            value={input.draft.repoUrl}
+                            onChange={(event) => {
+                                input.onDraftChange({ ...input.draft, repoUrl: event.target.value });
+                            }}
+                            placeholder='https://github.com/owner/repo'
+                        />
+                    </label>
+                    <label className='space-y-1'>
+                        <span className='text-muted-foreground'>Target</span>
+                        <select
+                            className='border-input bg-background h-9 w-full rounded-md border px-2'
+                            value={input.draft.targetKind}
+                            onChange={(event) => {
+                                input.onDraftChange({
+                                    ...input.draft,
+                                    targetKind: event.target.value as ResearchTargetKind['kind'],
+                                    targetValue: '',
+                                });
+                            }}>
+                            <option value='default_branch'>Default</option>
+                            <option value='branch'>Branch</option>
+                            <option value='pull_request'>PR</option>
+                            <option value='commit'>Commit</option>
+                        </select>
+                    </label>
+                    <label className='space-y-1'>
+                        <span className='text-muted-foreground'>Intent</span>
+                        <select
+                            className='border-input bg-background h-9 w-full rounded-md border px-2'
+                            value={input.draft.mutationIntent}
+                            onChange={(event) => {
+                                input.onDraftChange({
+                                    ...input.draft,
+                                    mutationIntent: event.target.value as RepoMutationIntent,
+                                });
+                            }}>
+                            <option value='inspect'>Inspect</option>
+                            <option value='commit'>Commit</option>
+                            <option value='push'>Push</option>
+                        </select>
+                    </label>
+                    {input.draft.targetKind !== 'default_branch' ? (
+                        <label className='space-y-1 sm:col-span-3'>
+                            <span className='text-muted-foreground'>Target value</span>
+                            <input
+                                className='border-input bg-background h-9 w-full rounded-md border px-3'
+                                value={input.draft.targetValue}
+                                onChange={(event) => {
+                                    input.onDraftChange({ ...input.draft, targetValue: event.target.value });
+                                }}
+                                placeholder='main, 123, or commit SHA'
+                            />
+                        </label>
+                    ) : null}
+                </div>
+            ) : null}
+        </section>
+    );
+}
 
 function readReasoningExplanationMessage(input: {
     selectedProviderId: string | undefined;
@@ -114,6 +235,15 @@ function ComposerActionPanelDraftBoundary({
     const draftController = useComposerDraftController({
         ...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {}),
     });
+    const [researchTargetDraft, setResearchTargetDraft] = useState<ResearchTargetDraftState>({
+        enabled: false,
+        repoUrl: '',
+        targetKind: 'default_branch',
+        targetValue: '',
+        mutationIntent: 'inspect',
+    });
+    const researchTarget = useMemo(() => buildResearchTarget(researchTargetDraft), [researchTargetDraft]);
+    const showResearchTargetEditor = topLevelTab === 'agent' && activeModeKey === 'research';
     useEffect(() => {
         onDraftPromptSnapshotChange?.(draftController.draftPrompt);
     }, [draftController.draftPrompt, onDraftPromptSnapshotChange]);
@@ -195,7 +325,10 @@ function ComposerActionPanelDraftBoundary({
         validatedSelectedProviderId &&
         selectedModelId &&
         !hasBlockingPendingAttachments &&
-        (deferredDraftPrompt.trim().length > 0 || readyComposerAttachments.length > 0 || browserContext !== undefined)
+        (deferredDraftPrompt.trim().length > 0 ||
+            readyComposerAttachments.length > 0 ||
+            browserContext !== undefined ||
+            researchTarget !== undefined)
             ? {
                   profileId,
                   sessionId: selectedSessionId,
@@ -208,6 +341,7 @@ function ComposerActionPanelDraftBoundary({
                   modeKey: activeModeKey,
                   ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
                   ...(sandboxId ? { sandboxId } : {}),
+                  ...(researchTarget ? { researchTarget } : {}),
                   runtimeOptions,
               }
             : skipToken;
@@ -215,14 +349,13 @@ function ComposerActionPanelDraftBoundary({
         runContractPreviewInput,
         PROGRESSIVE_QUERY_OPTIONS
     );
-    const runContractPreviewUnavailableMessage =
-        hasBlockingPendingAttachments
-            ? undefined
-            : runContractPreviewQuery.data && !runContractPreviewQuery.data.available
-              ? runContractPreviewQuery.data.message ?? 'Run contract preview is unavailable for the current draft.'
-              : !selectedSessionId
-                ? 'Select a session to inspect the run contract for the current draft.'
-                : undefined;
+    const runContractPreviewUnavailableMessage = hasBlockingPendingAttachments
+        ? undefined
+        : runContractPreviewQuery.data && !runContractPreviewQuery.data.available
+          ? (runContractPreviewQuery.data.message ?? 'Run contract preview is unavailable for the current draft.')
+          : !selectedSessionId
+            ? 'Select a session to inspect the run contract for the current draft.'
+            : undefined;
 
     function handlePromptEdited() {
         if (slashCommandController.slashCommandError) {
@@ -251,8 +384,12 @@ function ComposerActionPanelDraftBoundary({
                             }}
                         />
                     ) : null}
+                    {showResearchTargetEditor ? (
+                        <ResearchTargetEditor draft={researchTargetDraft} onDraftChange={setResearchTargetDraft} />
+                    ) : null}
                     {showRunContractPreview ? (
                         <ComposerRunContractPreviewSection
+                            profileId={profileId}
                             isLoading={runContractPreviewQuery.isFetching}
                             waitingForAttachments={hasBlockingPendingAttachments}
                             {...(runContractPreviewQuery.data?.available
@@ -305,7 +442,11 @@ function ComposerActionPanelDraftBoundary({
                                 return;
                             }
 
-                            if (shouldInterceptSlashSubmit({ popupState: slashCommandController.slashCommands.popupState })) {
+                            if (
+                                shouldInterceptSlashSubmit({
+                                    popupState: slashCommandController.slashCommands.popupState,
+                                })
+                            ) {
                                 event.preventDefault();
                                 void slashCommandController.handleSlashCommandAccept(false);
                                 return;
@@ -316,7 +457,7 @@ function ComposerActionPanelDraftBoundary({
                             }
 
                             event.preventDefault();
-                            onSubmitPrompt(draftController.draftPrompt, browserContext);
+                            onSubmitPrompt(draftController.draftPrompt, browserContext, researchTarget);
                         }}
                         onDragOver={(event) => {
                             attachmentController.handleDragOver(event);
@@ -371,7 +512,7 @@ function ComposerActionPanelDraftBoundary({
                         {...(onQueuePrompt
                             ? {
                                   onQueuePrompt: () => {
-                                      onQueuePrompt(draftController.draftPrompt, browserContext);
+                                      onQueuePrompt(draftController.draftPrompt, browserContext, researchTarget);
                                   },
                               }
                             : {})}

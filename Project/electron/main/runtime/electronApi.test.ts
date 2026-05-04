@@ -34,6 +34,30 @@ describe('electronApi', () => {
         expect('showErrorBox' in runtimeApi.dialog).toBe(true);
     });
 
+    it('binds Electron object methods to the resolved runtime object', async () => {
+        const electronApp = {
+            name: 'NeonConductor',
+            getPath: vi.fn(function (this: { name: string }, pathName: string) {
+                if (this !== electronApp) {
+                    throw new TypeError('Illegal invocation');
+                }
+                return `${this.name}:${pathName}`;
+            }),
+        };
+        vi.doMock('electron', () => ({
+            app: electronApp,
+            BrowserWindow: function BrowserWindow() {},
+            dialog: { showErrorBox: vi.fn() },
+            ipcMain: { handle: vi.fn() },
+            default: 'C:\\Program Files\\Electron\\electron.exe',
+        }));
+
+        const runtimeApi = await import('./electronApi');
+
+        expect(runtimeApi.app.getPath('userData')).toBe('NeonConductor:userData');
+        expect(electronApp.getPath).toHaveBeenCalledWith('userData');
+    });
+
     it('fails with an actionable diagnostic when Electron runs as Node', async () => {
         vi.doMock('electron', () => ({
             default: 'C:\\Program Files\\Electron\\electron.exe',

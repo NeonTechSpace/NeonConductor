@@ -1,6 +1,7 @@
 import { contextBudgets, runtimeResetTargets } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
+    readArray,
     readBoolean,
     readEntityId,
     readEnumValue,
@@ -8,6 +9,7 @@ import {
     readOptionalBoolean,
     readOptionalNumber,
     readOptionalString,
+    readProviderId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
 import type {
@@ -17,8 +19,11 @@ import type {
     RuntimeEventsSubscriptionInput,
     RuntimeInspectWorkspaceEnvironmentInput,
     RuntimeApplyRepoCommitInput,
+    RuntimeApplyRepoPushInput,
+    RuntimeGenerateRepoTextDraftInput,
     RuntimePatchWorkspaceRootInput,
     RuntimeRepoCommitInput,
+    RuntimeRepoPushInput,
     RuntimePreviewResearchTargetInput,
     RuntimeRegisterWorkspaceRootInput,
     RuntimeResetInput,
@@ -27,7 +32,11 @@ import type {
     WindowStateSubscriptionInput,
 } from '@/app/backend/runtime/contracts/types';
 import { FACTORY_RESET_CONFIRMATION_TEXT } from '@/app/backend/runtime/contracts/types';
-import { repoMutationIntents, researchCheckoutRootPolicies } from '@/app/backend/runtime/contracts/types/research';
+import {
+    repoGeneratedDraftKinds,
+    repoMutationIntents,
+    researchCheckoutRootPolicies,
+} from '@/app/backend/runtime/contracts/types/research';
 import {
     workspacePreferredPackageManagerValues,
     workspacePreferredVcsValues,
@@ -275,7 +284,9 @@ export function parseResearchTargetRequest(value: unknown, field: string) {
     }
 
     const requestedTargetSource =
-        source.requestedTarget === undefined ? undefined : readObject(source.requestedTarget, `${field}.requestedTarget`);
+        source.requestedTarget === undefined
+            ? undefined
+            : readObject(source.requestedTarget, `${field}.requestedTarget`);
     const requestedTarget =
         requestedTargetSource === undefined
             ? undefined
@@ -377,6 +388,25 @@ function readCommitMessage(value: unknown, field: string): string {
     return message;
 }
 
+function readSelectedPaths(value: unknown, field: string): string[] | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+    const paths: string[] = readArray(value, field).map((item: unknown, index: number) =>
+        readString(item, `${field}[${String(index)}]`)
+    );
+    for (const selectedPath of paths) {
+        if (selectedPath.includes('\0') || selectedPath.startsWith('/') || /^[a-z]:/iu.test(selectedPath)) {
+            throw new Error(`Invalid "${field}": selected paths must be relative checkout paths.`);
+        }
+        const segments: string[] = selectedPath.split(/[\\/]+/u);
+        if (segments.some((segment) => segment === '..' || segment.trim().length === 0)) {
+            throw new Error(`Invalid "${field}": selected paths must stay inside the checkout.`);
+        }
+    }
+    return [...new Set(paths)];
+}
+
 export function parseRuntimeRepoCommitInput(input: unknown): RuntimeRepoCommitInput {
     const source = readObject(input, 'input');
     const profileId = readOptionalString(source.profileId, 'profileId');
@@ -384,10 +414,12 @@ export function parseRuntimeRepoCommitInput(input: unknown): RuntimeRepoCommitIn
         throw new Error('Invalid "profileId": expected non-empty string.');
     }
 
+    const selectedPaths = readSelectedPaths(source.selectedPaths, 'selectedPaths');
     return {
         profileId: profileId.trim(),
         researchCheckoutRecordId: readEntityId(source.researchCheckoutRecordId, 'researchCheckoutRecordId', 'rch'),
         message: readCommitMessage(source.message, 'message'),
+        ...(selectedPaths ? { selectedPaths } : {}),
     };
 }
 
@@ -397,7 +429,47 @@ export function parseRuntimeApplyRepoCommitInput(input: unknown): RuntimeApplyRe
 
     return {
         ...parsed,
-        expectedWorkingTreeDigest: readString(source.expectedWorkingTreeDigest, 'expectedWorkingTreeDigest'),
+        expectedCommitDigest: readString(source.expectedCommitDigest, 'expectedCommitDigest'),
+    };
+}
+
+export function parseRuntimeRepoPushInput(input: unknown): RuntimeRepoPushInput {
+    const source = readObject(input, 'input');
+    const profileId = readOptionalString(source.profileId, 'profileId');
+    if (!profileId || profileId.trim().length === 0) {
+        throw new Error('Invalid "profileId": expected non-empty string.');
+    }
+
+    return {
+        profileId: profileId.trim(),
+        researchCheckoutRecordId: readEntityId(source.researchCheckoutRecordId, 'researchCheckoutRecordId', 'rch'),
+    };
+}
+
+export function parseRuntimeApplyRepoPushInput(input: unknown): RuntimeApplyRepoPushInput {
+    const parsed = parseRuntimeRepoPushInput(input);
+    const source = readObject(input, 'input');
+
+    return {
+        ...parsed,
+        expectedPushDigest: readString(source.expectedPushDigest, 'expectedPushDigest'),
+    };
+}
+
+export function parseRuntimeGenerateRepoTextDraftInput(input: unknown): RuntimeGenerateRepoTextDraftInput {
+    const parsed = parseRuntimeRepoCommitInput(input);
+    const source = readObject(input, 'input');
+    const providerId = source.providerId === undefined ? undefined : readProviderId(source.providerId, 'providerId');
+    const modelId = readOptionalString(source.modelId, 'modelId');
+    if ((providerId && !modelId) || (!providerId && modelId)) {
+        throw new Error('Invalid repo text draft model selection: provider and model must be set together.');
+    }
+
+    return {
+        ...parsed,
+        draftKind: readEnumValue(source.draftKind, 'draftKind', repoGeneratedDraftKinds),
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
     };
 }
 
@@ -458,4 +530,7 @@ export const runtimeSetResearchCheckoutRootSettingsInputSchema = createParser(
 export const runtimePreviewResearchTargetInputSchema = createParser(parseRuntimePreviewResearchTargetInput);
 export const runtimeRepoCommitInputSchema = createParser(parseRuntimeRepoCommitInput);
 export const runtimeApplyRepoCommitInputSchema = createParser(parseRuntimeApplyRepoCommitInput);
+export const runtimeRepoPushInputSchema = createParser(parseRuntimeRepoPushInput);
+export const runtimeApplyRepoPushInputSchema = createParser(parseRuntimeApplyRepoPushInput);
+export const runtimeGenerateRepoTextDraftInputSchema = createParser(parseRuntimeGenerateRepoTextDraftInput);
 export const runtimeInspectWorkspaceEnvironmentInputSchema = createParser(parseRuntimeInspectWorkspaceEnvironmentInput);

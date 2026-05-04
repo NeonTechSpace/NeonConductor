@@ -1,3 +1,4 @@
+import type { RuntimeProviderId } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
 
@@ -116,19 +117,31 @@ export interface RuntimePreviewResearchTargetResult {
 export interface RuntimeRepoCommitInput extends ProfileInput {
     researchCheckoutRecordId: EntityId<'rch'>;
     message: string;
+    selectedPaths?: string[];
 }
 
 export interface RuntimeApplyRepoCommitInput extends RuntimeRepoCommitInput {
-    expectedWorkingTreeDigest: string;
+    expectedCommitDigest: string;
+}
+
+export type RepoChangedFileStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'untracked' | 'unknown';
+
+export interface RepoChangedFileEntry {
+    relativePath: string;
+    status: RepoChangedFileStatus;
+    staged: boolean;
+    selectable: boolean;
 }
 
 export interface RepoCommitChangeSummary {
     changedFileCount: number;
     changedPathSamples: string[];
+    files: RepoChangedFileEntry[];
+    selectedPathCount: number;
 }
 
 export interface RepoCommitCommandReceipt {
-    command: 'git commit' | 'jj describe';
+    command: 'git commit' | 'jj describe' | 'git push';
     exitCode: number | null;
     stdout: string;
     stderr: string;
@@ -142,7 +155,7 @@ export interface RuntimePreviewRepoCommitResult {
     researchCheckoutRecordId: EntityId<'rch'>;
     resolvedCheckoutPath: string;
     changeSummary: RepoCommitChangeSummary;
-    expectedWorkingTreeDigest?: string;
+    expectedCommitDigest?: string;
 }
 
 export interface RuntimeApplyRepoCommitResult {
@@ -154,4 +167,53 @@ export interface RuntimeApplyRepoCommitResult {
     changeSummary: RepoCommitChangeSummary;
     revisionId?: string;
     receipt: RepoCommitCommandReceipt;
+}
+
+export interface RuntimeRepoPushInput extends ProfileInput {
+    researchCheckoutRecordId: EntityId<'rch'>;
+}
+
+export interface RuntimeApplyRepoPushInput extends RuntimeRepoPushInput {
+    expectedPushDigest: string;
+}
+
+export interface RuntimePreviewRepoPushResult {
+    available: boolean;
+    guardrail: RepoMutationGuardrail;
+    vcsFamily: RepoVcsFamily;
+    researchCheckoutRecordId: EntityId<'rch'>;
+    resolvedCheckoutPath: string;
+    branch?: string;
+    upstream?: string;
+    aheadCount?: number;
+    expectedPushDigest?: string;
+}
+
+export interface RuntimeApplyRepoPushResult {
+    pushed: boolean;
+    guardrail: RepoMutationGuardrail;
+    vcsFamily: RepoVcsFamily;
+    researchCheckoutRecordId: EntityId<'rch'>;
+    resolvedCheckoutPath: string;
+    branch?: string;
+    upstream?: string;
+    aheadCount?: number;
+    receipt: RepoCommitCommandReceipt;
+}
+
+export const repoGeneratedDraftKinds = ['commit_message', 'pr_title'] as const;
+export type RepoGeneratedDraftKind = (typeof repoGeneratedDraftKinds)[number];
+
+export interface RuntimeGenerateRepoTextDraftInput extends RuntimeRepoCommitInput {
+    draftKind: RepoGeneratedDraftKind;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
+}
+
+export interface RuntimeGenerateRepoTextDraftResult {
+    available: boolean;
+    draftKind: RepoGeneratedDraftKind;
+    text?: string;
+    reason?: string;
+    source?: 'utility' | 'fallback';
 }

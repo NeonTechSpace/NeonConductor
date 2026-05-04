@@ -8,10 +8,13 @@ import {
     profileInputSchema,
     runtimeFactoryResetInputSchema,
     runtimeApplyRepoCommitInputSchema,
+    runtimeApplyRepoPushInputSchema,
+    runtimeGenerateRepoTextDraftInputSchema,
     type RuntimeInspectWorkspaceEnvironmentInput,
     runtimeEventsSubscriptionInputSchema,
     runtimePatchWorkspaceRootInputSchema,
     runtimeRepoCommitInputSchema,
+    runtimeRepoPushInputSchema,
     runtimePreviewResearchTargetInputSchema,
     runtimeRegisterWorkspaceRootInputSchema,
     runtimeResetInputSchema,
@@ -187,6 +190,45 @@ export const runtimeRouter = router({
 
         return result;
     }),
+    previewRepoPush: publicProcedure.input(runtimeRepoPushInputSchema).query(async ({ input }) => {
+        return (await repoCommitService.previewPush(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
+    }),
+    applyRepoPush: publicProcedure.input(runtimeApplyRepoPushInputSchema).mutation(async ({ input }) => {
+        const result = (await repoCommitService.applyPush(input)).match(
+            (value) => value,
+            (error) => raiseMappedTrpcError(error, toTrpcError)
+        );
+        await runtimeEventLogService.append(
+            runtimeStatusEvent({
+                entityType: 'runtime',
+                domain: 'runtime',
+                entityId: 'runtime',
+                eventType: 'runtime.repo_push.applied',
+                payload: {
+                    profileId: input.profileId,
+                    researchCheckoutRecordId: input.researchCheckoutRecordId,
+                    vcsFamily: result.vcsFamily,
+                    branch: result.branch ?? null,
+                    upstream: result.upstream ?? null,
+                    aheadCount: result.aheadCount ?? null,
+                    command: result.receipt.command,
+                },
+            })
+        );
+
+        return result;
+    }),
+    generateRepoTextDraft: publicProcedure
+        .input(runtimeGenerateRepoTextDraftInputSchema)
+        .mutation(async ({ input }) => {
+            return (await repoCommitService.generateTextDraft(input)).match(
+                (value) => value,
+                (error) => raiseMappedTrpcError(error, toTrpcError)
+            );
+        }),
     registerWorkspaceRoot: publicProcedure
         .input(runtimeRegisterWorkspaceRootInputSchema)
         .mutation(async ({ input }) => {

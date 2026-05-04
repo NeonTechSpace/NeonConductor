@@ -13,6 +13,7 @@ import type {
     EntityId,
     PlanStartInput,
     PlanRecordView,
+    ResearchTargetRequest,
     RuntimeProviderId,
     RuntimeRunOptions,
     SessionStartRunInput,
@@ -46,6 +47,7 @@ interface SubmitPromptInput<
     prompt: string;
     attachments?: ComposerAttachmentInput[];
     browserContext?: BrowserContextPacket;
+    researchTarget?: ResearchTargetRequest;
     isStartingRun: boolean;
     selectedSessionId: string | undefined;
     isPlanningMode: boolean;
@@ -145,6 +147,7 @@ export async function submitPrompt<
             modelId: input.resolvedRunTarget.modelId,
             ...(attachments.length > 0 ? { attachments } : {}),
             ...(input.browserContext ? { browserContext: input.browserContext } : {}),
+            ...(input.researchTarget ? { researchTarget: input.researchTarget } : {}),
             ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
             ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
             runtimeOptions: input.runtimeOptions,

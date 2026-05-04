@@ -34,6 +34,7 @@ import type {
     EntityId,
     PlanStartInput,
     PlanRecordView,
+    ResearchTargetRequest,
     RuntimeProviderId,
     RuntimeRunOptions,
     SessionStartRunInput,
@@ -549,7 +550,11 @@ export function useConversationShellComposer<
             replacePendingDocuments(pendingDocumentsRef.current.filter((candidate) => candidate.clientId !== clientId));
         },
         onRetryPendingImage: retryPendingImage,
-        onQueuePrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
+        onQueuePrompt: (
+            prompt: string,
+            browserContext?: BrowserContextPacket,
+            researchTarget?: ResearchTargetRequest
+        ) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
             const hasSubmittableComposerContent =
@@ -589,6 +594,7 @@ export function useConversationShellComposer<
                         ...(input.resolvedRunTarget ? { modelId: input.resolvedRunTarget.modelId } : {}),
                         ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
                         ...(browserContext ? { browserContext } : {}),
+                        ...(researchTarget ? { researchTarget } : {}),
                         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
                         ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
                         runtimeOptions: input.runtimeOptions,
@@ -605,7 +611,11 @@ export function useConversationShellComposer<
                 }
             )();
         },
-        onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => {
+        onSubmitPrompt: (
+            prompt: string,
+            browserContext?: BrowserContextPacket,
+            researchTarget?: ResearchTargetRequest
+        ) => {
             promptRef.current = prompt;
             const hasPromptContent = prompt.trim().length > 0;
             const hasSubmittableComposerContent =
@@ -633,6 +643,7 @@ export function useConversationShellComposer<
                 prompt: promptRef.current,
                 ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
                 ...(browserContext ? { browserContext } : {}),
+                ...(researchTarget ? { researchTarget } : {}),
                 isStartingRun: input.isStartingRun,
                 selectedSessionId: input.selectedSessionId,
                 isPlanningMode: input.isPlanningMode,
