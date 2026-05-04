@@ -5,8 +5,10 @@ import type { MessageFlowBodyEntry, MessageFlowMessage } from '@/web/components/
 import { MessageMediaPreview } from '@/web/components/conversation/messages/messageMediaPreview';
 import { describeAssistantPlaceholder } from '@/web/components/conversation/messages/messagePlaceholderState';
 import { ToolArtifactPreviewCard } from '@/web/components/conversation/messages/toolArtifactPreviewCard';
+import { WorkbenchStatusRow } from '@/web/components/conversation/messages/workbenchStatusRow';
 
 import type { RunRecord } from '@/app/backend/persistence/types';
+
 import type { EntityId } from '@/shared/contracts';
 
 interface MessageFlowBodyProps {
@@ -62,12 +64,9 @@ export function MessageFlowBody({ profileId, message, run, onOpenToolArtifact }:
             {contentEntries.map((item) => (
                 <div key={item.id} className='space-y-2'>
                     {'label' in item ? (
-                        <AssistantStatusRow item={item} />
+                        <WorkbenchStatusRow item={item} />
                     ) : 'text' in item ? (
-                        <FlowMessageTextBlock
-                            item={item}
-                            {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
-                        />
+                        <FlowMessageTextBlock item={item} {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})} />
                     ) : (
                         <MessageMediaPreview profileId={profileId} item={item} />
                     )}
@@ -110,23 +109,6 @@ function FlowMessageTextBlock({
                 />
             ) : null}
         </>
-    );
-}
-
-function AssistantStatusRow({ item }: { item: Extract<MessageFlowBodyEntry, { type: 'assistant_status' }> }) {
-    const className =
-        item.code === 'failed_before_output'
-            ? 'border-destructive/30 bg-destructive/5 text-destructive'
-            : 'border-border/70 bg-background/60 text-muted-foreground';
-
-    return (
-        <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${className}`}>
-            <span
-                className={`h-1.5 w-1.5 rounded-full ${item.code === 'failed_before_output' ? 'bg-current' : 'animate-pulse bg-current'}`}
-            />
-            <span>{item.label}</span>
-        </div>
     );
 }
 

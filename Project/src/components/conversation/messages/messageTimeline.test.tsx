@@ -16,9 +16,17 @@ describe('message timeline assistant placeholders', () => {
                     body: [
                         {
                             id: 'part_status',
+                            workbenchItemId: 'msg_assistant:part_status:status',
                             type: 'assistant_status',
                             code: 'received',
                             label: 'Agent received message',
+                            status: 'running',
+                            severity: 'info',
+                            icon: 'activity',
+                            title: 'Agent received message',
+                            defaultCollapsed: false,
+                            summary: 'Agent received message',
+                            elapsedMs: 1250,
                         },
                     ],
                 }}
@@ -28,6 +36,49 @@ describe('message timeline assistant placeholders', () => {
         );
 
         expect(html).toContain('Agent received message');
+        expect(html).toContain('aria-expanded="true"');
+        expect(html).toContain('aria-controls="msg_assistant:part_status:status-details"');
+        expect(html).toContain('role="region"');
+        expect(html).toContain('motion-safe:animate-pulse');
+        expect(html).toContain('motion-reduce:animate-none');
+        expect(html).toContain('1.3 s');
+    });
+
+    it('renders failed assistant lifecycle rows as expanded error rows without a running pulse', () => {
+        const html = renderToStaticMarkup(
+            <MessageTimelineItem
+                profileId='profile_default'
+                entry={{
+                    id: 'msg_assistant',
+                    runId: 'run_default',
+                    role: 'assistant',
+                    createdAt: '2026-03-12T09:00:00.000Z',
+                    body: [
+                        {
+                            id: 'part_status',
+                            workbenchItemId: 'msg_assistant:part_status:error',
+                            type: 'assistant_status',
+                            code: 'failed_before_output',
+                            label: 'Run failed before output',
+                            status: 'failed',
+                            severity: 'error',
+                            icon: 'error',
+                            title: 'Assistant failed before output',
+                            defaultCollapsed: false,
+                            summary: 'Run failed before output',
+                        },
+                    ],
+                }}
+                runStatus='error'
+                canBranch={false}
+            />
+        );
+
+        expect(html).toContain('Assistant failed before output');
+        expect(html).toContain('Run failed before output');
+        expect(html).toContain('aria-expanded="true"');
+        expect(html).toContain('text-destructive');
+        expect(html).not.toContain('motion-safe:animate-pulse');
     });
 
     it('shows a concrete failure message when a run ends before assistant output arrives', () => {

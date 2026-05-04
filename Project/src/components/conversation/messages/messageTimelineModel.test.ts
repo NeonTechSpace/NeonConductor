@@ -229,9 +229,16 @@ describe('message timeline model', () => {
         expect(pendingEntries[0]?.body).toEqual([
             {
                 id: 'part_received',
+                workbenchItemId: 'msg_assistant_status:part_received:status',
                 type: 'assistant_status',
                 code: 'received',
                 label: 'Agent received message',
+                status: 'running',
+                severity: 'info',
+                icon: 'activity',
+                title: 'Agent received message',
+                defaultCollapsed: false,
+                summary: 'Agent received message',
             },
         ]);
 

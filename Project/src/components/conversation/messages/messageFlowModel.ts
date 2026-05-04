@@ -6,6 +6,9 @@ import type {
 import {
     buildWorkbenchTimelineMessages,
     type WorkbenchTimelineItem,
+    type WorkbenchTimelineIconToken,
+    type WorkbenchTimelineItemSeverity,
+    type WorkbenchTimelineItemStatus,
 } from '@/web/components/conversation/messages/workbenchTimelineModel';
 
 import type { EntityId } from '@/shared/contracts';
@@ -38,9 +41,16 @@ export type MessageFlowBodyEntry =
       }
     | {
           id: string;
+          workbenchItemId: string;
           type: MessageFlowStatusEntryType;
           code: 'received' | 'stalled' | 'failed_before_output';
           label: string;
+          status: WorkbenchTimelineItemStatus;
+          severity: WorkbenchTimelineItemSeverity;
+          icon: WorkbenchTimelineIconToken;
+          title: string;
+          defaultCollapsed: boolean;
+          summary?: string;
           elapsedMs?: number;
       }
     | {
@@ -126,9 +136,16 @@ function adaptWorkbenchItemToFlowBodyEntry(item: WorkbenchTimelineItem): Message
     if (item.kind === 'status') {
         return {
             id: item.sourcePartId ?? item.id,
+            workbenchItemId: item.id,
             type: 'assistant_status',
             code: item.code,
             label: item.label,
+            status: item.status,
+            severity: item.severity,
+            icon: item.icon,
+            title: item.title,
+            defaultCollapsed: item.defaultCollapsed,
+            ...(item.summary ? { summary: item.summary } : {}),
             ...(item.elapsedMs !== undefined ? { elapsedMs: item.elapsedMs } : {}),
         };
     }
@@ -136,9 +153,16 @@ function adaptWorkbenchItemToFlowBodyEntry(item: WorkbenchTimelineItem): Message
     if (item.kind === 'error') {
         return {
             id: item.sourcePartId ?? item.id,
+            workbenchItemId: item.id,
             type: 'assistant_status',
             code: item.code,
             label: item.label,
+            status: item.status,
+            severity: item.severity,
+            icon: item.icon,
+            title: item.title,
+            defaultCollapsed: item.defaultCollapsed,
+            ...(item.summary ? { summary: item.summary } : {}),
             ...(item.elapsedMs !== undefined ? { elapsedMs: item.elapsedMs } : {}),
         };
     }

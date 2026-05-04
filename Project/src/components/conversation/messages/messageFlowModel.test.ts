@@ -281,9 +281,16 @@ describe('message flow model', () => {
         expect(pendingTurns[0]?.messages[0]?.body).toEqual([
             {
                 id: 'part_stalled',
+                workbenchItemId: 'msg_assistant_status:part_stalled:status',
                 type: 'assistant_status',
                 code: 'stalled',
                 label: 'Still waiting for the first response chunk...',
+                status: 'pending',
+                severity: 'warning',
+                icon: 'activity',
+                title: 'Still waiting for the first response chunk...',
+                defaultCollapsed: false,
+                summary: 'Still waiting for the first response chunk...',
             },
         ]);
 

@@ -78,9 +78,16 @@ describe('message flow rendering', () => {
                             body: [
                                 {
                                     id: 'part_status_pending',
+                                    workbenchItemId: 'msg_assistant_pending:part_status_pending:status',
                                     type: 'assistant_status',
                                     code: 'received',
                                     label: 'Agent received message',
+                                    status: 'running',
+                                    severity: 'info',
+                                    icon: 'activity',
+                                    title: 'Agent received message',
+                                    defaultCollapsed: false,
+                                    summary: 'Agent received message',
                                 },
                             ],
                         },
@@ -105,6 +112,11 @@ describe('message flow rendering', () => {
         expect(populatedAssistantHtml).not.toContain('Regenerate');
         expect(populatedAssistantHtml.indexOf('Reasoning')).toBeLessThan(populatedAssistantHtml.indexOf('Answer body'));
         expect(pendingAssistantHtml).toContain('Agent received message');
+        expect(pendingAssistantHtml).toContain('aria-expanded="true"');
+        expect(pendingAssistantHtml).toContain(
+            'aria-controls="msg_assistant_pending:part_status_pending:status-details"'
+        );
+        expect(pendingAssistantHtml).toContain('motion-safe:animate-pulse');
         expect(pendingAssistantHtml).not.toContain('Branch');
     });
 
