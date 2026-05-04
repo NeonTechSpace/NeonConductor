@@ -1,7 +1,13 @@
 import type { ConversationTanstackMessage } from '@/web/components/conversation/messages/tanstackMessageBridge';
-import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
-import type { ToolArtifactKind, ToolArtifactPreviewStrategy } from '@/web/components/conversation/messages/toolArtifactFormatting';
-
+import type {
+    ToolArtifactKind,
+    ToolArtifactPreviewStrategy,
+} from '@/web/components/conversation/messages/toolArtifactFormatting';
+import {
+    buildWorkbenchTimelineMessages,
+    type WorkbenchTimelineItem,
+    type WorkbenchTimelineMessage,
+} from '@/web/components/conversation/messages/workbenchTimelineModel';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -80,7 +86,7 @@ export interface BottomThresholdInput {
 
 const DEFAULT_BOTTOM_THRESHOLD_PX = 96;
 
-function mapImageEntryType(role: ConversationTanstackMessage['role']): MessageTimelineImageEntryType | null {
+function mapImageEntryType(role: WorkbenchTimelineItem['role']): MessageTimelineImageEntryType | null {
     if (role === 'assistant') {
         return 'assistant_image';
     }
@@ -95,7 +101,7 @@ function mapImageEntryType(role: ConversationTanstackMessage['role']): MessageTi
 }
 
 function mapTextEntryType(
-    role: ConversationTanstackMessage['role']
+    role: WorkbenchTimelineItem['role']
 ): Exclude<MessageTimelineTextEntryType, 'assistant_reasoning'> | null {
     if (role === 'assistant') {
         return 'assistant_text';
@@ -110,140 +116,119 @@ function mapTextEntryType(
     return null;
 }
 
-function buildBodyEntries(message: ConversationTanstackMessage): MessageTimelineBodyEntry[] {
-    const projected: MessageTimelineBodyEntry[] = [];
-    const assistantStatusEntries: Extract<MessageTimelineBodyEntry, { type: 'assistant_status' }>[] = [];
+function adaptWorkbenchItemToTimelineBodyEntry(item: WorkbenchTimelineItem): MessageTimelineBodyEntry | null {
+    if (item.kind === 'status') {
+        return {
+            id: item.sourcePartId ?? item.id,
+            type: 'assistant_status',
+            code: item.code,
+            label: item.label,
+            ...(item.elapsedMs !== undefined ? { elapsedMs: item.elapsedMs } : {}),
+        };
+    }
 
-    for (const part of message.renderParts) {
-        if (part.kind === 'status' && message.role === 'assistant') {
-            assistantStatusEntries.push({
-                id: part.key,
-                type: 'assistant_status',
-                code: part.code,
-                label: part.label,
-                ...(part.elapsedMs !== undefined ? { elapsedMs: part.elapsedMs } : {}),
-            });
-            continue;
+    if (item.kind === 'error') {
+        return {
+            id: item.sourcePartId ?? item.id,
+            type: 'assistant_status',
+            code: item.code,
+            label: item.label,
+            ...(item.elapsedMs !== undefined ? { elapsedMs: item.elapsedMs } : {}),
+        };
+    }
+
+    if (item.kind === 'media') {
+        const imageEntryType = mapImageEntryType(item.role);
+        if (!imageEntryType) {
+            return null;
         }
 
-        if (part.kind === 'image') {
-            const imageEntryType = mapImageEntryType(message.role);
+        return {
+            id: item.sourcePartId ?? item.id,
+            type: imageEntryType,
+            ...(item.mediaId ? { mediaId: item.mediaId } : {}),
+            ...(item.attachmentId ? { attachmentId: item.attachmentId } : {}),
+            mimeType: item.mimeType,
+            width: item.width,
+            height: item.height,
+        };
+    }
 
-            if (
-                imageEntryType &&
-                (isEntityId(part.mediaId, 'media') || isEntityId(part.attachmentId, 'att')) &&
-                typeof part.width === 'number' &&
-                typeof part.height === 'number'
-            ) {
-                projected.push({
-                    id: part.key,
-                    type: imageEntryType,
-                    ...(isEntityId(part.mediaId, 'media') ? { mediaId: part.mediaId } : {}),
-                    ...(isEntityId(part.attachmentId, 'att') ? { attachmentId: part.attachmentId } : {}),
-                    mimeType: part.mimeType,
-                    width: part.width,
-                    height: part.height,
-                });
-            }
-            continue;
-        }
+    if (item.kind === 'reasoning') {
+        return {
+            id: item.sourcePartId ?? item.id,
+            type: 'assistant_reasoning',
+            text: item.text,
+            providerLimitedReasoning: item.providerLimitedReasoning,
+        };
+    }
 
-        if (part.kind === 'reasoning') {
-            const text = part.text.trim();
-            if (text.length === 0) {
-                continue;
-            }
-
-            projected.push({
-                id: part.key,
-                type: 'assistant_reasoning',
-                text,
-                providerLimitedReasoning: part.providerLimitedReasoning,
-            });
-            continue;
-        }
-
-        if (part.kind === 'tool_call' && message.role === 'assistant') {
-            projected.push({
-                id: part.key,
-                type: 'assistant_tool_call',
-                text: part.argumentsText.trim().length > 0 ? `\`\`\`json\n${part.argumentsText}\n\`\`\`` : '',
-                providerLimitedReasoning: false,
-                displayLabel: `Tool Call: ${part.toolName}`,
-            });
-            continue;
-        }
-
-        if (part.kind === 'tool_result' && message.role === 'tool') {
-            projected.push({
-                id: part.key,
-                type: 'tool_result',
-                text: part.outputText,
-                providerLimitedReasoning: false,
-                displayLabel: 'Tool Result',
-                messagePartId: part.messagePartId,
-                toolName: part.toolName,
-                artifactized: part.artifactized,
-                artifactAvailable: part.artifactAvailable,
-                ...(part.artifactKind ? { artifactKind: part.artifactKind } : {}),
-                ...(part.previewStrategy ? { previewStrategy: part.previewStrategy } : {}),
-                ...(part.totalBytes !== undefined ? { totalBytes: part.totalBytes } : {}),
-                ...(part.totalLines !== undefined ? { totalLines: part.totalLines } : {}),
-                ...(part.omittedBytes !== undefined ? { omittedBytes: part.omittedBytes } : {}),
-                ...(part.summaryMode ? { summaryMode: part.summaryMode } : {}),
-                ...(part.summaryProviderId ? { summaryProviderId: part.summaryProviderId } : {}),
-                ...(part.summaryModelId ? { summaryModelId: part.summaryModelId } : {}),
-            });
-            continue;
-        }
-
-        if (part.kind !== 'text') {
-            continue;
-        }
-
-        const text = part.text.trim();
-        if (text.length === 0) {
-            continue;
-        }
-
-        const textEntryType = mapTextEntryType(message.role);
-        if (!textEntryType) {
-            continue;
-        }
-
-        projected.push({
-            id: part.key,
-            type: textEntryType,
-            text: part.text,
+    if (item.kind === 'tool_call') {
+        return {
+            id: item.sourcePartId ?? item.id,
+            type: 'assistant_tool_call',
+            text: item.argumentsText.trim().length > 0 ? `\`\`\`json\n${item.argumentsText}\n\`\`\`` : '',
             providerLimitedReasoning: false,
-        });
+            displayLabel: `Tool Call: ${item.toolName}`,
+        };
     }
 
-    if (projected.length === 0 && assistantStatusEntries.length > 0) {
-        const lastStatusEntry = assistantStatusEntries.at(-1);
-        return lastStatusEntry ? [lastStatusEntry] : [];
+    if (item.kind === 'command' || item.kind === 'artifact') {
+        return {
+            id: item.sourcePartId ?? item.id,
+            type: 'tool_result',
+            text: item.text,
+            providerLimitedReasoning: false,
+            displayLabel: 'Tool Result',
+            messagePartId: item.artifactRef.messagePartId,
+            toolName: item.toolName,
+            artifactized: item.artifactRef.artifactized,
+            artifactAvailable: item.artifactRef.artifactAvailable,
+            ...(item.artifactRef.artifactKind ? { artifactKind: item.artifactRef.artifactKind } : {}),
+            ...(item.artifactRef.previewStrategy ? { previewStrategy: item.artifactRef.previewStrategy } : {}),
+            ...(item.artifactRef.totalBytes !== undefined ? { totalBytes: item.artifactRef.totalBytes } : {}),
+            ...(item.artifactRef.totalLines !== undefined ? { totalLines: item.artifactRef.totalLines } : {}),
+            ...(item.artifactRef.omittedBytes !== undefined ? { omittedBytes: item.artifactRef.omittedBytes } : {}),
+            ...(item.artifactRef.summaryMode ? { summaryMode: item.artifactRef.summaryMode } : {}),
+            ...(item.artifactRef.summaryProviderId ? { summaryProviderId: item.artifactRef.summaryProviderId } : {}),
+            ...(item.artifactRef.summaryModelId ? { summaryModelId: item.artifactRef.summaryModelId } : {}),
+        };
     }
 
-    return projected;
+    const textEntryType = mapTextEntryType(item.role);
+    if (!textEntryType) {
+        return null;
+    }
+
+    return {
+        id: item.sourcePartId ?? item.id,
+        type: textEntryType,
+        text: item.text,
+        providerLimitedReasoning: false,
+    };
+}
+
+function buildTimelineEntry(message: WorkbenchTimelineMessage): MessageTimelineEntry {
+    const body = message.items
+        .map((item) => adaptWorkbenchItemToTimelineBodyEntry(item))
+        .filter((item): item is MessageTimelineBodyEntry => item !== null);
+
+    return {
+        id: message.id,
+        runId: message.runId,
+        role: message.role,
+        createdAt: message.createdAt,
+        body,
+        ...(message.plainCopyText ? { plainCopyText: message.plainCopyText } : {}),
+        ...(message.rawCopyText ? { rawCopyText: message.rawCopyText } : {}),
+        ...(message.editableText ? { editableText: message.editableText } : {}),
+        ...(message.deliveryState ? { deliveryState: message.deliveryState } : {}),
+        ...(message.isOptimistic ? { isOptimistic: message.isOptimistic } : {}),
+    };
 }
 
 export function buildTimelineEntries(messages: ConversationTanstackMessage[]): MessageTimelineEntry[] {
-    return messages.map((message) => {
-        const body = buildBodyEntries(message);
-
-        return {
-            id: message.id,
-            runId: message.runId,
-            role: message.role,
-            createdAt: message.createdAt,
-            body,
-            ...(message.plainCopyText ? { plainCopyText: message.plainCopyText } : {}),
-            ...(message.rawCopyText ? { rawCopyText: message.rawCopyText } : {}),
-            ...(message.editableText ? { editableText: message.editableText } : {}),
-            ...(message.deliveryState ? { deliveryState: message.deliveryState } : {}),
-            ...(message.isOptimistic ? { isOptimistic: message.isOptimistic } : {}),
-        };
-    });
+    return buildWorkbenchTimelineMessages(messages).map((message) => buildTimelineEntry(message));
 }
 
 export function isWithinBottomThreshold({
