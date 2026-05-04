@@ -514,6 +514,29 @@ describe('session workspace panel layout', () => {
         expect(html).not.toContain('inspector');
     });
 
+    it('shows an active-run stop affordance only for running selected sessions', () => {
+        const baseSession = sessionWorkspacePanelProps.sessions[0];
+        if (!baseSession) {
+            throw new Error('expected a default session fixture');
+        }
+
+        const runningSession: SessionWorkspacePanelProps['sessions'][number] = {
+            ...baseSession,
+            runStatus: 'running' as const,
+        };
+        const html = renderToStaticMarkup(
+            createElement(SessionWorkspacePanel, {
+                ...sessionWorkspacePanelProps,
+                sessions: [runningSession],
+                onAbortSessionRun: vi.fn(),
+            })
+        );
+        const completedHtml = renderToStaticMarkup(createElement(SessionWorkspacePanel, sessionWorkspacePanelProps));
+
+        expect(html).toContain('Stop Run');
+        expect(completedHtml).not.toContain('Stop Run');
+    });
+
     it('builds a workspace shell projection from panel inputs', () => {
         const projection = buildWorkspaceShellProjection({
             ...sessionWorkspacePanelProps,

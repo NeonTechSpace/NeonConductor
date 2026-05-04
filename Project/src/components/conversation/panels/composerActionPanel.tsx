@@ -213,6 +213,7 @@ function ComposerActionPanelDraftBoundary({
     missingAttachedRuleKeys = [],
     attachedSkills = [],
     missingAttachedSkillKeys = [],
+    inspectorSectionIds = [],
     canCompactContext = false,
     isCompactingContext = false,
     focusComposerRequestKey,
@@ -230,6 +231,7 @@ function ComposerActionPanelDraftBoundary({
     onRetryPendingImage,
     onQueuePrompt,
     onSubmitPrompt,
+    onOpenInspectorSection,
     onCompactContext,
 }: ComposerActionPanelProps) {
     const draftController = useComposerDraftController({
@@ -282,6 +284,8 @@ function ComposerActionPanelDraftBoundary({
         missingAttachedRuleKeys,
         attachedSkills,
         missingAttachedSkillKeys,
+        ...(onOpenInspectorSection ? { inspectorSectionIds } : {}),
+        ...(onOpenInspectorSection ? { onOpenInspectorSection } : {}),
     });
     const contextCardController = useComposerContextCardController({
         selectedProviderId,

@@ -4,6 +4,19 @@ import type { EntityId, OrchestratorExecutionStrategy } from '@/shared/contracts
 
 import type { ReactNode } from 'react';
 
+export type WorkspaceInspectorSectionId =
+    | 'workspace-status'
+    | 'execution-environment'
+    | 'plan-and-orchestration'
+    | 'cloud-sessions'
+    | 'run-changes'
+    | 'execution-receipt'
+    | 'selected-outbox-entry'
+    | 'pending-permissions'
+    | 'context-assets'
+    | 'memory'
+    | 'checkpoints';
+
 export interface WorkspaceStripChip {
     id: string;
     label: string;
@@ -12,7 +25,7 @@ export interface WorkspaceStripChip {
 }
 
 export interface WorkspaceInspectorSection {
-    id: string;
+    id: WorkspaceInspectorSectionId;
     label: string;
     description: string;
     content: ReactNode;

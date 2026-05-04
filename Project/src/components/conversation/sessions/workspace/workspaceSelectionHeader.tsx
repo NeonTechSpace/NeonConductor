@@ -14,6 +14,7 @@ interface WorkspaceSelectionHeaderProps {
     onSelectSession: (sessionId: string) => void;
     onSelectRun: (runId: string) => void;
     onToggleInspector: () => void;
+    onAbortSessionRun?: () => void;
 }
 
 function formatRunStatus(run: RunRecord | undefined): string | undefined {
@@ -40,8 +41,10 @@ export function WorkspaceSelectionHeader({
     onSelectSession,
     onSelectRun,
     onToggleInspector,
+    onAbortSessionRun,
 }: WorkspaceSelectionHeaderProps) {
     const runStatus = selectedRun ? formatRunStatus(selectedRun) : undefined;
+    const hasRunningSession = selectedSession?.runStatus === 'running';
     const activeSummary = selectedSession
         ? `${String(selectedSession.turnCount)} turns${runStatus ? ` · ${runStatus}` : ''}`
         : 'Choose or create a thread to start working.';
@@ -51,7 +54,7 @@ export function WorkspaceSelectionHeader({
             <div className='flex flex-wrap items-start justify-between gap-4'>
                 <div className='min-w-0 flex-1 space-y-2'>
                     <div className='flex flex-wrap items-center gap-2'>
-                        <p className='text-[11px] font-semibold tracking-[0.16em] uppercase text-muted-foreground'>
+                        <p className='text-muted-foreground text-[11px] font-semibold tracking-[0.16em] uppercase'>
                             Workspace selection
                         </p>
                         {compactConnectionLabel ? (
@@ -72,7 +75,9 @@ export function WorkspaceSelectionHeader({
                     </div>
 
                     <div className='space-y-1'>
-                        <p className='text-sm font-semibold'>{selectedSession ? 'Selected thread' : 'Workspace overview'}</p>
+                        <p className='text-sm font-semibold'>
+                            {selectedSession ? 'Selected thread' : 'Workspace overview'}
+                        </p>
                         <p className='text-muted-foreground text-xs'>{activeSummary}</p>
                     </div>
 
@@ -82,10 +87,10 @@ export function WorkspaceSelectionHeader({
                                 Thread
                             </span>
                             <select
-                            aria-label='Select thread'
-                            className='border-border bg-background/80 h-11 w-full rounded-2xl border px-3 text-sm tabular-nums'
-                            value={selectedSession?.id ?? ''}
-                            disabled={sessions.length === 0}
+                                aria-label='Select thread'
+                                className='border-border bg-background/80 h-11 w-full rounded-2xl border px-3 text-sm tabular-nums'
+                                value={selectedSession?.id ?? ''}
+                                disabled={sessions.length === 0}
                                 onChange={(event) => {
                                     const nextSessionId = event.target.value;
                                     if (!nextSessionId) {
@@ -108,10 +113,10 @@ export function WorkspaceSelectionHeader({
                                 Run
                             </span>
                             <select
-                            aria-label='Select run'
-                            className='border-border bg-background/80 h-11 w-full rounded-2xl border px-3 text-sm'
-                            value={selectedRun?.id ?? ''}
-                            disabled={runs.length === 0}
+                                aria-label='Select run'
+                                className='border-border bg-background/80 h-11 w-full rounded-2xl border px-3 text-sm'
+                                value={selectedRun?.id ?? ''}
+                                disabled={runs.length === 0}
                                 onChange={(event) => {
                                     const nextRunId = event.target.value;
                                     if (!nextRunId) {
@@ -131,7 +136,18 @@ export function WorkspaceSelectionHeader({
                     </div>
                 </div>
 
-                <div className='flex shrink-0 items-start'>
+                <div className='flex shrink-0 items-start gap-2'>
+                    {hasRunningSession ? (
+                        <Button
+                            type='button'
+                            size='sm'
+                            variant='destructive'
+                            className='min-h-11 rounded-full'
+                            disabled={!onAbortSessionRun}
+                            onClick={onAbortSessionRun}>
+                            Stop Run
+                        </Button>
+                    ) : null}
                     <Button
                         type='button'
                         size='sm'

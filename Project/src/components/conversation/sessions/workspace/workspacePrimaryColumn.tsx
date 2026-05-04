@@ -12,6 +12,7 @@ import {
     moveWorkspacePrimarySurfaceTab,
     type WorkspacePrimarySurface,
 } from '@/web/components/conversation/sessions/workspace/workspacePrimarySurfaceTabs';
+import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
 import { isEntityId } from '@/web/components/conversation/shell/workspace/helpers';
 import { Button } from '@/web/components/ui/button';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -92,6 +93,11 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onPromoteMessage'
 >;
 
+interface WorkspacePrimaryColumnExtraProps {
+    inspectorSectionIds: WorkspaceInspectorSectionId[];
+    onOpenInspectorSection: (sectionId: WorkspaceInspectorSectionId) => void;
+}
+
 export function WorkspacePrimaryColumn({
     profileId,
     profiles,
@@ -164,7 +170,9 @@ export function WorkspacePrimaryColumn({
     onBranchFromMessage,
     onOpenToolArtifact,
     onPromoteMessage,
-}: WorkspacePrimaryColumnProps) {
+    inspectorSectionIds,
+    onOpenInspectorSection,
+}: WorkspacePrimaryColumnProps & WorkspacePrimaryColumnExtraProps) {
     const validatedSelectedSessionId = isEntityId(selectedSessionId, 'sess') ? selectedSessionId : undefined;
     const [activePrimarySurface, setActivePrimarySurface] = useState<WorkspacePrimarySurface>('transcript');
     const [draftPromptSnapshot, setDraftPromptSnapshot] = useState('');
@@ -367,6 +375,8 @@ export function WorkspacePrimaryColumn({
                     {...(onQueuePrompt ? { onQueuePrompt } : {})}
                     onSubmitPrompt={onSubmitPrompt}
                     {...(onCompactContext ? { onCompactContext } : {})}
+                    inspectorSectionIds={inspectorSectionIds}
+                    onOpenInspectorSection={onOpenInspectorSection}
                 />
             </div>
         </div>

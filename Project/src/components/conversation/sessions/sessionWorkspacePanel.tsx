@@ -115,7 +115,9 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     {...(workspaceShell.header.compactConnectionLabel
                         ? { compactConnectionLabel: workspaceShell.header.compactConnectionLabel }
                         : {})}
-                    {...(workspaceShell.header.routingBadge ? { routingBadge: workspaceShell.header.routingBadge } : {})}
+                    {...(workspaceShell.header.routingBadge
+                        ? { routingBadge: workspaceShell.header.routingBadge }
+                        : {})}
                     pendingPermissionCount={workspaceShell.header.pendingPermissionCount}
                     isInspectorOpen={isInspectorOpen}
                     sessions={workspaceShell.header.sessions}
@@ -123,83 +125,88 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     onSelectSession={onSelectSession}
                     onSelectRun={onSelectRun}
                     onToggleInspector={toggleInspector}
+                    {...(input.onAbortSessionRun ? { onAbortSessionRun: input.onAbortSessionRun } : {})}
                 />
             )}>
-            <WorkspacePrimaryColumn
-                profileId={profileId}
-                profiles={profiles}
-                messages={messages}
-                partsByMessageId={partsByMessageId}
-                runs={runs}
-                pendingImages={pendingImages}
-                pendingTextFiles={pendingTextFiles}
-                pendingDocuments={pendingDocuments}
-                readyComposerAttachments={readyComposerAttachments}
-                hasBlockingPendingAttachments={hasBlockingPendingAttachments}
-                isStartingRun={isStartingRun}
-                selectedProviderId={selectedProviderId}
-                selectedModelId={selectedModelId}
-                topLevelTab={topLevelTab}
-                activeModeKey={activeModeKey}
-                modes={modes}
-                reasoningEffort={reasoningEffort}
-                selectedModelSupportsReasoning={selectedModelSupportsReasoning}
-                maxImageAttachmentsPerMessage={maxImageAttachmentsPerMessage}
-                canAttachImages={canAttachImages}
-                modelOptions={modelOptions}
-                runErrorMessage={runErrorMessage}
-                attachedRules={attachedRules}
-                missingAttachedRuleKeys={missingAttachedRuleKeys}
-                attachedSkills={attachedSkills}
-                missingAttachedSkillKeys={missingAttachedSkillKeys}
-                {...(selectedProfileId ? { selectedProfileId } : {})}
-                {...(selectedSessionId ? { selectedSessionId } : {})}
-                {...(selectedWorkspaceFingerprint ? { selectedWorkspaceFingerprint } : {})}
-                {...(selectedSandboxId ? { selectedSandboxId } : {})}
-                {...(optimisticUserMessage ? { optimisticUserMessage } : {})}
-                {...(supportedReasoningEfforts ? { supportedReasoningEfforts } : {})}
-                {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
-                {...(routingBadge !== undefined ? { routingBadge } : {})}
-                {...(selectedModelCompatibilityState ? { selectedModelCompatibilityState } : {})}
-                {...(selectedModelCompatibilityReason ? { selectedModelCompatibilityReason } : {})}
-                {...(selectedProviderStatus ? { selectedProviderStatus } : {})}
-                {...(contextState ? { contextState } : {})}
-                {...(outboxEntries ? { outboxEntries } : {})}
-                {...(selectedOutboxEntryId ? { selectedOutboxEntryId } : {})}
-                {...(showRunContractPreview !== undefined ? { showRunContractPreview } : {})}
-                {...(canCompactContext !== undefined ? { canCompactContext } : {})}
-                {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
-                runtimeOptions={runtimeOptions}
-                {...(promptResetKey !== undefined ? { promptResetKey } : {})}
-                {...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {})}
-                {...(controlsDisabled !== undefined ? { controlsDisabled } : {})}
-                {...(submitDisabled !== undefined ? { submitDisabled } : {})}
-                onProfileChange={onProfileChange}
-                onProviderChange={onProviderChange}
-                onModelChange={onModelChange}
-                onReasoningEffortChange={onReasoningEffortChange}
-                onModeChange={onModeChange}
-                onPromptEdited={onPromptEdited}
-                onAddFiles={onAddFiles}
-                onRemovePendingImage={onRemovePendingImage}
-                onRemovePendingTextFile={onRemovePendingTextFile}
-                onRemovePendingDocument={onRemovePendingDocument}
-                onRetryPendingImage={onRetryPendingImage}
-                {...(onQueuePrompt ? { onQueuePrompt } : {})}
-                onSubmitPrompt={onSubmitPrompt}
-                {...(onMoveOutboxEntry ? { onMoveOutboxEntry } : {})}
-                {...(onResumeOutboxEntry ? { onResumeOutboxEntry } : {})}
-                {...(onCancelOutboxEntry ? { onCancelOutboxEntry } : {})}
-                {...(onUpdateOutboxEntry ? { onUpdateOutboxEntry } : {})}
-                onSelectOutboxEntry={(entryId) => {
-                    setSelectedOutboxEntryId(entryId);
-                }}
-                {...(onCompactContext ? { onCompactContext } : {})}
-                {...(onEditMessage ? { onEditMessage } : {})}
-                {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
-                {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
-                {...(onPromoteMessage ? { onPromoteMessage } : {})}
-            />
+            {({ openInspectorSection }) => (
+                <WorkspacePrimaryColumn
+                    profileId={profileId}
+                    profiles={profiles}
+                    messages={messages}
+                    partsByMessageId={partsByMessageId}
+                    runs={runs}
+                    pendingImages={pendingImages}
+                    pendingTextFiles={pendingTextFiles}
+                    pendingDocuments={pendingDocuments}
+                    readyComposerAttachments={readyComposerAttachments}
+                    hasBlockingPendingAttachments={hasBlockingPendingAttachments}
+                    isStartingRun={isStartingRun}
+                    selectedProviderId={selectedProviderId}
+                    selectedModelId={selectedModelId}
+                    topLevelTab={topLevelTab}
+                    activeModeKey={activeModeKey}
+                    modes={modes}
+                    reasoningEffort={reasoningEffort}
+                    selectedModelSupportsReasoning={selectedModelSupportsReasoning}
+                    maxImageAttachmentsPerMessage={maxImageAttachmentsPerMessage}
+                    canAttachImages={canAttachImages}
+                    modelOptions={modelOptions}
+                    runErrorMessage={runErrorMessage}
+                    attachedRules={attachedRules}
+                    missingAttachedRuleKeys={missingAttachedRuleKeys}
+                    attachedSkills={attachedSkills}
+                    missingAttachedSkillKeys={missingAttachedSkillKeys}
+                    {...(selectedProfileId ? { selectedProfileId } : {})}
+                    {...(selectedSessionId ? { selectedSessionId } : {})}
+                    {...(selectedWorkspaceFingerprint ? { selectedWorkspaceFingerprint } : {})}
+                    {...(selectedSandboxId ? { selectedSandboxId } : {})}
+                    {...(optimisticUserMessage ? { optimisticUserMessage } : {})}
+                    {...(supportedReasoningEfforts ? { supportedReasoningEfforts } : {})}
+                    {...(imageAttachmentBlockedReason ? { imageAttachmentBlockedReason } : {})}
+                    {...(routingBadge !== undefined ? { routingBadge } : {})}
+                    {...(selectedModelCompatibilityState ? { selectedModelCompatibilityState } : {})}
+                    {...(selectedModelCompatibilityReason ? { selectedModelCompatibilityReason } : {})}
+                    {...(selectedProviderStatus ? { selectedProviderStatus } : {})}
+                    {...(contextState ? { contextState } : {})}
+                    {...(outboxEntries ? { outboxEntries } : {})}
+                    {...(selectedOutboxEntryId ? { selectedOutboxEntryId } : {})}
+                    inspectorSectionIds={workspaceShell.inspector.sections.map((section) => section.id)}
+                    onOpenInspectorSection={openInspectorSection}
+                    {...(showRunContractPreview !== undefined ? { showRunContractPreview } : {})}
+                    {...(canCompactContext !== undefined ? { canCompactContext } : {})}
+                    {...(isCompactingContext !== undefined ? { isCompactingContext } : {})}
+                    runtimeOptions={runtimeOptions}
+                    {...(promptResetKey !== undefined ? { promptResetKey } : {})}
+                    {...(focusComposerRequestKey !== undefined ? { focusComposerRequestKey } : {})}
+                    {...(controlsDisabled !== undefined ? { controlsDisabled } : {})}
+                    {...(submitDisabled !== undefined ? { submitDisabled } : {})}
+                    onProfileChange={onProfileChange}
+                    onProviderChange={onProviderChange}
+                    onModelChange={onModelChange}
+                    onReasoningEffortChange={onReasoningEffortChange}
+                    onModeChange={onModeChange}
+                    onPromptEdited={onPromptEdited}
+                    onAddFiles={onAddFiles}
+                    onRemovePendingImage={onRemovePendingImage}
+                    onRemovePendingTextFile={onRemovePendingTextFile}
+                    onRemovePendingDocument={onRemovePendingDocument}
+                    onRetryPendingImage={onRetryPendingImage}
+                    {...(onQueuePrompt ? { onQueuePrompt } : {})}
+                    onSubmitPrompt={onSubmitPrompt}
+                    {...(onMoveOutboxEntry ? { onMoveOutboxEntry } : {})}
+                    {...(onResumeOutboxEntry ? { onResumeOutboxEntry } : {})}
+                    {...(onCancelOutboxEntry ? { onCancelOutboxEntry } : {})}
+                    {...(onUpdateOutboxEntry ? { onUpdateOutboxEntry } : {})}
+                    onSelectOutboxEntry={(entryId) => {
+                        setSelectedOutboxEntryId(entryId);
+                    }}
+                    {...(onCompactContext ? { onCompactContext } : {})}
+                    {...(onEditMessage ? { onEditMessage } : {})}
+                    {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
+                    {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
+                    {...(onPromoteMessage ? { onPromoteMessage } : {})}
+                />
+            )}
         </WorkspaceShell>
     );
 }

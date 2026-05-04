@@ -18,6 +18,7 @@ export async function handleComposerSlashAcceptance(input: {
     onSetDraftPrompt: (prompt: string) => void;
     onFocusPrompt: () => void;
     onError: (message: string | undefined) => void;
+    onOpenInspectorSection?: ComposerActionPanelProps['onOpenInspectorSection'];
 }): Promise<void> {
     input.onError(undefined);
 
@@ -31,6 +32,9 @@ export async function handleComposerSlashAcceptance(input: {
         }
 
         if (slashResult.clearDraft) {
+            if (slashResult.inspectorSectionId) {
+                input.onOpenInspectorSection?.(slashResult.inspectorSectionId);
+            }
             input.onSetDraftPrompt('');
             input.onFocusPrompt();
             return;
@@ -57,7 +61,9 @@ export function useComposerSlashCommandController(
         | 'missingAttachedRuleKeys'
         | 'attachedSkills'
         | 'missingAttachedSkillKeys'
+        | 'inspectorSectionIds'
         | 'onSubmitPrompt'
+        | 'onOpenInspectorSection'
     > & {
         draftPrompt: string;
         onSetDraftPrompt: (prompt: string) => void;
@@ -77,6 +83,7 @@ export function useComposerSlashCommandController(
         missingAttachedRuleKeys: input.missingAttachedRuleKeys ?? [],
         attachedSkills: input.attachedSkills ?? [],
         missingAttachedSkillKeys: input.missingAttachedSkillKeys ?? [],
+        ...(input.inspectorSectionIds ? { inspectorSectionIds: input.inspectorSectionIds } : {}),
     });
 
     return {
@@ -94,6 +101,7 @@ export function useComposerSlashCommandController(
                 onSetDraftPrompt: input.onSetDraftPrompt,
                 onFocusPrompt: input.onFocusPrompt,
                 onError: setSlashCommandError,
+                ...(input.onOpenInspectorSection ? { onOpenInspectorSection: input.onOpenInspectorSection } : {}),
             });
         },
     };

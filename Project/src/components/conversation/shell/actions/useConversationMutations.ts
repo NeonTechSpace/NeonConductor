@@ -10,6 +10,7 @@ export function useConversationMutations() {
         setThreadTagsMutation: trpc.conversation.setThreadTags.useMutation(),
         createSessionMutation: trpc.session.create.useMutation(),
         startRunMutation: trpc.session.startRun.useMutation(),
+        abortSessionMutation: trpc.session.abort.useMutation(),
         queueRunMutation: trpc.session.queueRun.useMutation(),
         updateOutboxEntryMutation: trpc.session.updateOutboxEntry.useMutation(),
         moveOutboxEntryMutation: trpc.session.moveOutboxEntry.useMutation(),

@@ -5,6 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import { prepareComposerDocumentPayload } from '@/web/components/conversation/hooks/composerDocumentAttachments';
 import { prepareComposerImageAttachment } from '@/web/components/conversation/hooks/composerImageAttachments';
 import { prepareComposerTextFileAttachment } from '@/web/components/conversation/hooks/composerTextFileAttachments';
+import {
+    formatQueuedAttachmentSummary,
+    formatQueuedBrowserContextSummary,
+    formatQueuedExecutionTargetSummary,
+} from '@/web/components/conversation/panels/queuedRunReviewModel';
+import { QueuedRunReviewSummary } from '@/web/components/conversation/panels/queuedRunReviewSummary';
 import { Button } from '@/web/components/ui/button';
 import { OperatorDiagnosticList } from '@/web/components/ui/operatorDiagnosticList';
 import { buildOutboxReviewDiagnostics } from '@/web/lib/operatorDiagnostics';
@@ -37,43 +43,6 @@ interface SessionOutboxPanelProps {
         attachments?: ComposerAttachmentInput[];
         browserContext?: BrowserContextPacket | null;
     }) => Promise<void>;
-}
-
-function formatAttachmentSummary(entry: SessionOutboxEntry): string {
-    if (entry.attachmentIds.length === 0) {
-        return 'No attachments';
-    }
-    return `${String(entry.attachmentIds.length)} attachment${entry.attachmentIds.length === 1 ? '' : 's'}`;
-}
-
-function formatBrowserContextSummary(entry: SessionOutboxEntry): string {
-    if (!entry.browserContextSummary) {
-        return 'No browser context';
-    }
-    return `${String(entry.browserContextSummary.commentCount)} comments · ${String(entry.browserContextSummary.selectedElementCount)} elements · ${String(entry.browserContextSummary.designerDraftCount)} designer`;
-}
-
-function formatExecutionTargetSummary(entry: SessionOutboxEntry): string {
-    const target = entry.latestRunContract?.executionTarget;
-    if (!target) {
-        return 'Execution target unavailable';
-    }
-
-    if (target.kind === 'detached') {
-        return 'Detached: no filesystem target';
-    }
-
-    if (target.kind === 'workspace') {
-        return target.absolutePath ? `Local workspace: ${target.absolutePath}` : `Local workspace: ${target.label}`;
-    }
-
-    if (target.kind === 'scheduled_sandbox') {
-        return target.workspacePath
-            ? `Managed sandbox scheduled from ${target.workspacePath}`
-            : `Managed sandbox scheduled from ${target.label}`;
-    }
-
-    return target.absolutePath ? `Managed sandbox: ${target.absolutePath}` : `Managed sandbox: ${target.label}`;
 }
 
 function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
@@ -373,8 +342,6 @@ export function SessionOutboxPanel({
         }
     }
 
-    const selectedEntryReviewDiagnostics = selectedEntry ? buildOutboxReviewDiagnostics(selectedEntry) : [];
-
     return (
         <section className='border-border/70 bg-card/20 rounded-[26px] border px-4 py-4 shadow-[0_12px_32px_rgba(15,23,42,0.05)]'>
             <div className='mb-3 flex items-center justify-between gap-3'>
@@ -407,10 +374,10 @@ export function SessionOutboxPanel({
                                             {entry.state.replaceAll('_', ' ')}
                                         </span>
                                         <span className='text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]'>
-                                            {formatAttachmentSummary(entry)}
+                                            {formatQueuedAttachmentSummary(entry)}
                                         </span>
                                         <span className='text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]'>
-                                            {formatBrowserContextSummary(entry)}
+                                            {formatQueuedBrowserContextSummary(entry)}
                                         </span>
                                     </div>
                                     <p className='line-clamp-2 text-sm'>{entry.prompt}</p>
@@ -488,7 +455,7 @@ export function SessionOutboxPanel({
                                 {selectedEntry.steeringSnapshot.providerId} / {selectedEntry.steeringSnapshot.modelId}
                             </p>
                             <p className='text-muted-foreground mt-1 text-xs'>
-                                {formatExecutionTargetSummary(selectedEntry)}
+                                {formatQueuedExecutionTargetSummary(selectedEntry)}
                             </p>
                         </div>
                         <div className='flex items-center gap-2'>
@@ -746,35 +713,7 @@ export function SessionOutboxPanel({
                             </div>
                         </div>
                     ) : (
-                        <div className='space-y-2 text-xs'>
-                            <p className='text-muted-foreground'>{selectedEntry.prompt}</p>
-                            <p className='text-muted-foreground'>
-                                Attachments: {String(selectedEntry.attachmentIds.length)} · Context contributors:{' '}
-                                {String(selectedEntry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}
-                            </p>
-                            <p className='text-muted-foreground'>
-                                Execution target: {formatExecutionTargetSummary(selectedEntry)}
-                            </p>
-                            <p className='text-muted-foreground'>
-                                Browser context:{' '}
-                                {selectedEntry.browserContextSummary
-                                    ? `${String(selectedEntry.browserContextSummary.commentCount)} comments · ${String(selectedEntry.browserContextSummary.selectedElementCount)} elements · ${String(selectedEntry.browserContextSummary.designerDraftCount)} designer drafts · ${selectedEntry.browserContextSummary.targetLabel}`
-                                    : 'none'}
-                            </p>
-                            <p className='text-muted-foreground'>
-                                Trust mix: trusted{' '}
-                                {String(
-                                    selectedEntry.latestRunContract?.trustSummary.contributorCountByTrustLevel
-                                        .trusted_instruction ?? 0
-                                )}{' '}
-                                · user{' '}
-                                {String(
-                                    selectedEntry.latestRunContract?.trustSummary.contributorCountByTrustLevel
-                                        .user_input ?? 0
-                                )}
-                            </p>
-                            <OperatorDiagnosticList diagnostics={selectedEntryReviewDiagnostics} compact />
-                        </div>
+                        <QueuedRunReviewSummary entry={selectedEntry} />
                     )}
                     {selectedEntryQuery.isFetching ? (
                         <p className='text-muted-foreground text-xs'>Refreshing queued entry snapshot…</p>

@@ -55,6 +55,7 @@ vi.mock('@/web/trpc/client', () => ({
 
 import {
     ComposerActionPanel,
+    handleComposerSlashAcceptance,
     shouldSubmitComposerOnEnter,
 } from '@/web/components/conversation/panels/composerActionPanel';
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
@@ -220,6 +221,35 @@ describe('composer enter handling', () => {
                 nativeEvent: { isComposing: true },
             })
         ).toBe(false);
+    });
+
+    it('opens inspector slash commands without submitting a prompt', async () => {
+        const onSubmitPrompt = vi.fn();
+        const onSetDraftPrompt = vi.fn();
+        const onFocusPrompt = vi.fn();
+        const onError = vi.fn();
+        const onOpenInspectorSection = vi.fn();
+
+        await handleComposerSlashAcceptance({
+            acceptHighlighted: () =>
+                Promise.resolve({
+                    handled: true,
+                    clearDraft: true,
+                    inspectorSectionId: 'pending-permissions',
+                }),
+            draftPrompt: '/permissions',
+            submitWhenUnhandled: true,
+            onSubmitPrompt,
+            onSetDraftPrompt,
+            onFocusPrompt,
+            onError,
+            onOpenInspectorSection,
+        });
+
+        expect(onSubmitPrompt).not.toHaveBeenCalled();
+        expect(onOpenInspectorSection).toHaveBeenCalledWith('pending-permissions');
+        expect(onSetDraftPrompt).toHaveBeenCalledWith('');
+        expect(onFocusPrompt).toHaveBeenCalledTimes(1);
     });
 
     it('disables reasoning selection when the active model does not support it', () => {

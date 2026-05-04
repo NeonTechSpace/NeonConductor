@@ -1,5 +1,6 @@
 import type { PendingDocumentCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingDocumentsList';
 import type { PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
+import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
 import type { ConversationModeOption } from '@/web/components/conversation/shell/workspace/helpers';
 import type { ModelCompatibilityState, ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 
@@ -83,6 +84,7 @@ export interface ComposerActionPanelProps {
     missingAttachedRuleKeys?: string[];
     attachedSkills?: SkillfileDefinition[];
     missingAttachedSkillKeys?: string[];
+    inspectorSectionIds?: WorkspaceInspectorSectionId[];
     canCompactContext?: boolean;
     isCompactingContext?: boolean;
     promptResetKey?: number;
@@ -99,8 +101,17 @@ export interface ComposerActionPanelProps {
     onRemovePendingTextFile: (clientId: string) => void;
     onRemovePendingDocument: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket, researchTarget?: ResearchTargetRequest) => void;
-    onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket, researchTarget?: ResearchTargetRequest) => void;
+    onQueuePrompt?: (
+        prompt: string,
+        browserContext?: BrowserContextPacket,
+        researchTarget?: ResearchTargetRequest
+    ) => void;
+    onSubmitPrompt: (
+        prompt: string,
+        browserContext?: BrowserContextPacket,
+        researchTarget?: ResearchTargetRequest
+    ) => void;
+    onOpenInspectorSection?: (sectionId: WorkspaceInspectorSectionId) => void;
     onCompactContext?: () => Promise<ComposerActionFeedback | undefined>;
 }
 

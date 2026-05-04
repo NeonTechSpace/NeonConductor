@@ -72,6 +72,14 @@ describe('composerSlashCommands', () => {
             query: 'manual',
             exactCommandId: 'rules',
         });
+
+        expect(parseComposerSlashDraft('/permissions')).toEqual({
+            hasLeadingSlash: true,
+            token: 'permissions',
+            normalizedToken: 'permissions',
+            query: '',
+            exactCommandId: 'permissions',
+        });
     });
 
     it('keeps unknown slash drafts outside the exact-command path', () => {
@@ -100,6 +108,17 @@ describe('composerSlashCommands', () => {
         const availableEntries = buildComposerSlashCommandEntries({
             topLevelTab: 'agent',
             selectedSessionId: 'sess_test',
+            availableInspectorSectionIds: [
+                'workspace-status',
+                'selected-outbox-entry',
+                'run-changes',
+                'execution-receipt',
+                'pending-permissions',
+                'context-assets',
+                'memory',
+                'cloud-sessions',
+                'checkpoints',
+            ],
         });
 
         expect(chatEntries.every((entry) => !entry.available)).toBe(true);
@@ -107,6 +126,21 @@ describe('composerSlashCommands', () => {
         expect(missingSessionEntries.every((entry) => !entry.available)).toBe(true);
         expect(missingSessionEntries[0]?.unavailableReason).toBe('Select a session before using slash commands.');
         expect(availableEntries.every((entry) => entry.available)).toBe(true);
+    });
+
+    it('gates inspector slash commands by available inspector sections', () => {
+        const entries = buildComposerSlashCommandEntries({
+            topLevelTab: 'agent',
+            selectedSessionId: 'sess_test',
+            availableInspectorSectionIds: ['workspace-status', 'pending-permissions'],
+        });
+
+        expect(entries.find((entry) => entry.id === 'status')?.available).toBe(true);
+        expect(entries.find((entry) => entry.id === 'permissions')?.available).toBe(true);
+        expect(entries.find((entry) => entry.id === 'receipt')?.available).toBe(false);
+        expect(entries.find((entry) => entry.id === 'receipt')?.unavailableReason).toBe(
+            'Inspector section is not available for the current session.'
+        );
     });
 
     it('filters known commands by typed token text', () => {
@@ -117,6 +151,9 @@ describe('composerSlashCommands', () => {
 
         expect(filterComposerSlashCommandEntries(entries, 'skill').map((entry) => entry.id)).toEqual(['skills']);
         expect(filterComposerSlashCommandEntries(entries, 'manual').map((entry) => entry.id)).toEqual(['rules']);
+        expect(filterComposerSlashCommandEntries(entries, 'permission').map((entry) => entry.id)).toEqual([
+            'permissions',
+        ]);
     });
 
     it('cycles slash highlight state through visible items', () => {

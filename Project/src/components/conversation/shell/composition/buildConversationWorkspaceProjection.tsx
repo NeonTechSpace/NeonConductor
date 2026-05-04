@@ -390,6 +390,23 @@ export function buildConversationWorkspaceProjection(
         onRetryPendingImage: input.composer.onRetryPendingImage,
         ...(!input.isPlanningComposerMode ? { onQueuePrompt: input.composer.onQueuePrompt } : {}),
         onSubmitPrompt: input.composer.onSubmitPrompt,
+        onAbortSessionRun: () => {
+            if (!isEntityId(input.selectedSessionId, 'sess')) {
+                return;
+            }
+            const selectedSessionId = input.selectedSessionId;
+            void createFailClosedAsyncAction(async () => {
+                await input.mutations.abortSessionMutation.mutateAsync({
+                    profileId: input.profileId,
+                    sessionId: selectedSessionId,
+                });
+                await Promise.all([
+                    input.queries.sessionsQuery.refetch(),
+                    input.queries.runsQuery.refetch(),
+                    input.queries.outboxQuery.refetch(),
+                ]);
+            })();
+        },
         onMoveOutboxEntry: (entryId, direction) => {
             if (!isEntityId(input.selectedSessionId, 'sess')) {
                 return;

@@ -2,15 +2,16 @@ import { useDeferredValue, useEffect, useState } from 'react';
 
 import {
     buildComposerSlashInteractionState,
+    buildComposerSlashCommandEntries,
     buildComposerSlashRuleItems,
     buildComposerSlashSkillItems,
-    buildComposerSlashCommandEntries,
     filterComposerSlashCommandEntries,
     getFirstSelectableSlashIndex,
     moveComposerSlashHighlight,
     parseComposerSlashDraft,
 } from '@/web/components/conversation/panels/composerSlashCommands';
 import { useContextAssetAttachmentController } from '@/web/components/conversation/panels/useContextAssetAttachmentController';
+import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
 
 import type { EntityId, RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/shared/contracts';
 
@@ -26,9 +27,17 @@ interface UseComposerSlashCommandsInput {
     missingAttachedRuleKeys: string[];
     attachedSkills: SkillfileDefinition[];
     missingAttachedSkillKeys: string[];
+    inspectorSectionIds?: WorkspaceInspectorSectionId[];
 }
 
-export type SlashAcceptResult = { handled: false } | { handled: true; nextDraft?: string; clearDraft?: boolean };
+export type SlashAcceptResult =
+    | { handled: false }
+    | {
+          handled: true;
+          nextDraft?: string;
+          clearDraft?: boolean;
+          inspectorSectionId?: WorkspaceInspectorSectionId;
+      };
 
 export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
     const [dismissedDraft, setDismissedDraft] = useState<string | undefined>(undefined);
@@ -38,13 +47,17 @@ export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
     const commandEntries = buildComposerSlashCommandEntries({
         topLevelTab: input.topLevelTab,
         ...(input.selectedSessionId ? { selectedSessionId: input.selectedSessionId } : {}),
+        ...(input.inspectorSectionIds ? { availableInspectorSectionIds: input.inspectorSectionIds } : {}),
     });
     const filteredCommandEntries = filterComposerSlashCommandEntries(commandEntries, parsedDraft.normalizedToken);
     const exactCommand = parsedDraft.exactCommandId
         ? commandEntries.find((entry) => entry.id === parsedDraft.exactCommandId)
         : undefined;
     const searchEnabled =
-        Boolean(exactCommand?.available) && input.topLevelTab !== 'chat' && input.selectedSessionId !== undefined;
+        Boolean(exactCommand?.available) &&
+        (parsedDraft.exactCommandId === 'skills' || parsedDraft.exactCommandId === 'rules') &&
+        input.topLevelTab !== 'chat' &&
+        input.selectedSessionId !== undefined;
     const attachmentController = useContextAssetAttachmentController({
         profileId: input.profileId,
         ...(input.selectedSessionId ? { sessionId: input.selectedSessionId } : {}),
@@ -126,6 +139,14 @@ export function useComposerSlashCommands(input: UseComposerSlashCommandsInput) {
             const selectedCommand = popupState.items[popupState.highlightIndex];
             if (!selectedCommand || !selectedCommand.available) {
                 return { handled: false };
+            }
+
+            if (selectedCommand.inspectorSectionId) {
+                return {
+                    handled: true,
+                    clearDraft: true,
+                    inspectorSectionId: selectedCommand.inspectorSectionId,
+                };
             }
 
             return {

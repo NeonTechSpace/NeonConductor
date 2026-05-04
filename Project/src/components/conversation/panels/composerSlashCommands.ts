@@ -1,11 +1,25 @@
+import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
+
 import type { RulesetDefinition, SkillfileDefinition, TopLevelTab } from '@/shared/contracts';
 
-export type ComposerSlashCommandId = 'skills' | 'rules';
+export type ComposerSlashCommandId =
+    | 'skills'
+    | 'rules'
+    | 'status'
+    | 'queue'
+    | 'changes'
+    | 'receipt'
+    | 'permissions'
+    | 'context'
+    | 'memory'
+    | 'cloud'
+    | 'checkpoints';
 
 export interface ComposerSlashCommandDefinition {
     id: ComposerSlashCommandId;
     label: string;
     description: string;
+    inspectorSectionId?: WorkspaceInspectorSectionId;
 }
 
 export interface ParsedComposerSlashDraft {
@@ -80,6 +94,60 @@ export const composerSlashCommandDefinitions: ComposerSlashCommandDefinition[] =
         label: '/rules',
         description: 'Attach or remove manual rules for the current agent/orchestrator session.',
     },
+    {
+        id: 'status',
+        label: '/status',
+        description: 'Open the inspector workspace status section.',
+        inspectorSectionId: 'workspace-status',
+    },
+    {
+        id: 'queue',
+        label: '/queue',
+        description: 'Open the inspector queued-run review section.',
+        inspectorSectionId: 'selected-outbox-entry',
+    },
+    {
+        id: 'changes',
+        label: '/changes',
+        description: 'Open the inspector run changes section.',
+        inspectorSectionId: 'run-changes',
+    },
+    {
+        id: 'receipt',
+        label: '/receipt',
+        description: 'Open the inspector execution receipt section.',
+        inspectorSectionId: 'execution-receipt',
+    },
+    {
+        id: 'permissions',
+        label: '/permissions',
+        description: 'Open the inspector pending permissions section.',
+        inspectorSectionId: 'pending-permissions',
+    },
+    {
+        id: 'context',
+        label: '/context',
+        description: 'Open the inspector context assets section.',
+        inspectorSectionId: 'context-assets',
+    },
+    {
+        id: 'memory',
+        label: '/memory',
+        description: 'Open the inspector memory section.',
+        inspectorSectionId: 'memory',
+    },
+    {
+        id: 'cloud',
+        label: '/cloud',
+        description: 'Open the inspector cloud sessions section.',
+        inspectorSectionId: 'cloud-sessions',
+    },
+    {
+        id: 'checkpoints',
+        label: '/checkpoints',
+        description: 'Open the inspector checkpoints section.',
+        inspectorSectionId: 'checkpoints',
+    },
 ];
 
 export function parseComposerSlashDraft(draftPrompt: string): ParsedComposerSlashDraft {
@@ -111,20 +179,46 @@ export function parseComposerSlashDraft(draftPrompt: string): ParsedComposerSlas
 export function buildComposerSlashCommandEntries(input: {
     topLevelTab: TopLevelTab;
     selectedSessionId?: string;
+    availableInspectorSectionIds?: WorkspaceInspectorSectionId[];
 }): ComposerSlashCommandEntry[] {
-    const available = input.topLevelTab !== 'chat' && input.selectedSessionId !== undefined;
-    const unavailableReason =
+    const sessionCommandAvailable = input.topLevelTab !== 'chat' && input.selectedSessionId !== undefined;
+    const sessionUnavailableReason =
         input.topLevelTab === 'chat'
             ? 'Available only for agent and orchestrator sessions.'
             : input.selectedSessionId === undefined
               ? 'Select a session before using slash commands.'
               : undefined;
+    const availableInspectorSectionIds = new Set(input.availableInspectorSectionIds ?? []);
 
-    return composerSlashCommandDefinitions.map((command) => ({
-        ...command,
-        available,
-        ...(unavailableReason ? { unavailableReason } : {}),
-    }));
+    return composerSlashCommandDefinitions.map((command) => {
+        if (!sessionCommandAvailable) {
+            return {
+                ...command,
+                available: false,
+                ...(sessionUnavailableReason ? { unavailableReason: sessionUnavailableReason } : {}),
+            };
+        }
+
+        if (!command.inspectorSectionId) {
+            return {
+                ...command,
+                available: true,
+            };
+        }
+
+        if (availableInspectorSectionIds.has(command.inspectorSectionId)) {
+            return {
+                ...command,
+                available: true,
+            };
+        }
+
+        return {
+            ...command,
+            available: false,
+            unavailableReason: 'Inspector section is not available for the current session.',
+        };
+    });
 }
 
 export function filterComposerSlashCommandEntries(
@@ -243,7 +337,8 @@ export function buildComposerSlashInteractionState(input: {
                 query: input.query,
                 items: input.skillItems,
                 highlightIndex: input.highlightIndex,
-                emptyMessage: input.query.length > 0 ? 'No resolved skills match this search.' : 'No resolved skills available.',
+                emptyMessage:
+                    input.query.length > 0 ? 'No resolved skills match this search.' : 'No resolved skills available.',
                 ...(input.missingAttachedSkillKeys.length > 0
                     ? {
                           warningMessage: `Unresolved attached skills will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedSkillKeys.join(', ')}.`,
@@ -262,7 +357,8 @@ export function buildComposerSlashInteractionState(input: {
                 query: input.query,
                 items: input.ruleItems,
                 highlightIndex: input.highlightIndex,
-                emptyMessage: input.query.length > 0 ? 'No manual rules match this search.' : 'No manual rules available.',
+                emptyMessage:
+                    input.query.length > 0 ? 'No manual rules match this search.' : 'No manual rules available.',
                 ...(input.missingAttachedRuleKeys.length > 0
                     ? {
                           warningMessage: `Unresolved attached rules will only be pruned if you explicitly change the attachment set. Missing: ${input.missingAttachedRuleKeys.join(', ')}.`,

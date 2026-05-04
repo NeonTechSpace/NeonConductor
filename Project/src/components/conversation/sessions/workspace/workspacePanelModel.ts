@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import { PendingPermissionsPanel } from '@/web/components/conversation/panels/pendingPermissionsPanel';
+import { QueuedRunReviewSummary } from '@/web/components/conversation/panels/queuedRunReviewSummary';
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
 import { WorkbenchExecutionReceiptRow } from '@/web/components/conversation/panels/workbenchExecutionReceiptRow';
 import { WorkspaceStatusPanel } from '@/web/components/conversation/panels/workspaceStatusPanel';
@@ -217,6 +218,7 @@ export interface SessionWorkspacePanelProps {
     onRetryPendingImage: (clientId: string) => void;
     onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
     onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;
+    onAbortSessionRun?: () => void;
     onMoveOutboxEntry?: (entryId: EntityId<'outbox'>, direction: 'up' | 'down') => void;
     onResumeOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
     onCancelOutboxEntry?: (entryId: EntityId<'outbox'>) => void;
@@ -269,10 +271,6 @@ export function buildWorkspaceHeaderModel(input: SessionWorkspacePanelProps): Wo
 export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps): WorkspaceInspectorModel {
     const header = buildWorkspaceHeaderModel(input);
     const pendingPermissionCount = header.pendingPermissionCount;
-    const selectedOutboxDynamicContributors =
-        input.selectedOutboxEntry?.latestRunContract?.preparedContext.contributors.filter(
-            (contributor) => contributor.kind === 'dynamic_skill_context'
-        ) ?? [];
     return {
         sections: [
             {
@@ -352,65 +350,15 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                           id: 'selected-outbox-entry',
                           label: 'Queued run review',
                           description: 'Current queued entry steering, run-contract status, and review signals.',
-                          content: createElement('div', { className: 'space-y-2 text-xs' }, [
-                              createElement(
-                                  'p',
-                                  { key: 'state', className: 'font-medium' },
-                                  `State: ${input.selectedOutboxEntry.state.replaceAll('_', ' ')}`
-                              ),
-                              createElement(
-                                  'p',
-                                  { key: 'target', className: 'text-muted-foreground' },
-                                  `Target: ${input.selectedOutboxEntry.steeringSnapshot.providerId} / ${input.selectedOutboxEntry.steeringSnapshot.modelId}`
-                              ),
-                              createElement(
-                                  'p',
-                                  { key: 'attachments', className: 'text-muted-foreground' },
-                                  `Attachments: ${String(input.selectedOutboxEntry.attachmentIds.length)}`
-                              ),
-                              ...(input.selectedOutboxEntry.browserContextSummary
-                                  ? [
-                                        createElement(
-                                            'p',
-                                            { key: 'browser', className: 'text-muted-foreground' },
-                                            `Browser context: ${String(input.selectedOutboxEntry.browserContextSummary.commentCount)} comments · ${String(input.selectedOutboxEntry.browserContextSummary.selectedElementCount)} elements · ${String(input.selectedOutboxEntry.browserContextSummary.designerDraftCount)} designer drafts`
-                                        ),
-                                    ]
-                                  : []),
-                              createElement(
-                                  'p',
-                                  { key: 'contributors', className: 'text-muted-foreground' },
-                                  `Prepared context contributors: ${String(input.selectedOutboxEntry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}`
-                              ),
-                              ...(input.selectedOutboxEntry.pausedReason
-                                  ? [
-                                        createElement(
-                                            'p',
-                                            { key: 'paused', className: 'text-amber-700 dark:text-amber-300' },
-                                            input.selectedOutboxEntry.pausedReason
-                                        ),
-                                    ]
-                                  : []),
-                              ...(input.selectedOutboxEntry.latestRunContract?.diffFromLastCompatible?.items
-                                  .slice(0, 3)
-                                  .map((item, index) =>
-                                      createElement(
-                                          'p',
-                                          { key: `diff-${String(index)}`, className: 'text-muted-foreground' },
-                                          `${item.field}: ${item.reason}`
-                                      )
-                                  ) ?? []),
-                              ...selectedOutboxDynamicContributors.slice(0, 3).map((contributor) =>
-                                  createElement(
-                                      'p',
-                                      {
-                                          key: `dynamic-${contributor.id}`,
-                                          className: 'text-muted-foreground',
-                                      },
-                                      `Dynamic context: ${contributor.label} (${contributor.dynamicExpansion?.resolutionState ?? 'preview_only'})`
-                                  )
-                              ),
-                          ]),
+                          badge: input.selectedOutboxEntry.state.replaceAll('_', ' '),
+                          tone:
+                              input.selectedOutboxEntry.state === 'paused_for_review' ||
+                              input.selectedOutboxEntry.state === 'paused_for_permission'
+                                  ? 'attention'
+                                  : 'default',
+                          content: createElement(QueuedRunReviewSummary, {
+                              entry: input.selectedOutboxEntry,
+                          }),
                       } satisfies WorkspaceInspectorSection,
                   ]
                 : []),
