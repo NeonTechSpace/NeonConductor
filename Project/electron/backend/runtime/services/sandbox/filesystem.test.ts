@@ -1,9 +1,14 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { createManagedSandbox } from '@/app/backend/runtime/services/sandbox/filesystem';
+import { closePersistence, resetPersistenceForTests } from '@/app/backend/persistence/db';
+import {
+    createManagedSandbox,
+    removeManagedSandbox,
+    toManagedSandboxRoot,
+} from '@/app/backend/runtime/services/sandbox/filesystem';
 
 describe('createManagedSandbox', () => {
     it('fails closed when the target sandbox path already exists', async () => {
@@ -29,6 +34,61 @@ describe('createManagedSandbox', () => {
         } finally {
             rmSync(workspaceRootPath, { recursive: true, force: true });
             rmSync(targetPath, { recursive: true, force: true });
+        }
+    });
+});
+
+describe('removeManagedSandbox', () => {
+    it('refuses to remove a sandbox path outside the active managed sandbox root', async () => {
+        const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-sandbox-remove-'));
+        const dbPath = path.join(tempRoot, 'runtime', 'alpha', 'neonconductor.db');
+        const externalSandboxPath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-external-sandbox-'));
+        const externalFilePath = path.join(externalSandboxPath, 'keep.txt');
+        writeFileSync(externalFilePath, 'do not delete\n', 'utf8');
+
+        try {
+            resetPersistenceForTests(dbPath);
+
+            const removed = await removeManagedSandbox({
+                sandboxPath: externalSandboxPath,
+                removeFiles: true,
+            });
+
+            expect(removed.ok).toBe(false);
+            if (removed.ok) {
+                throw new Error('Expected external sandbox removal to fail closed.');
+            }
+            expect(removed.error.reason).toBe('unsafe_path');
+            expect(readFileSync(externalFilePath, 'utf8')).toBe('do not delete\n');
+        } finally {
+            closePersistence();
+            rmSync(tempRoot, { recursive: true, force: true });
+            rmSync(externalSandboxPath, { recursive: true, force: true });
+        }
+    });
+
+    it('refuses to remove the managed sandbox root itself', async () => {
+        const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-sandbox-root-remove-'));
+        const dbPath = path.join(tempRoot, 'runtime', 'alpha', 'neonconductor.db');
+
+        try {
+            resetPersistenceForTests(dbPath);
+            const managedSandboxRoot = toManagedSandboxRoot();
+
+            const removed = await removeManagedSandbox({
+                sandboxPath: managedSandboxRoot,
+                removeFiles: true,
+            });
+
+            expect(removed.ok).toBe(false);
+            if (removed.ok) {
+                throw new Error('Expected managed sandbox root removal to fail closed.');
+            }
+            expect(removed.error.reason).toBe('unsafe_path');
+            expect(existsSync(path.dirname(managedSandboxRoot))).toBe(true);
+        } finally {
+            closePersistence();
+            rmSync(tempRoot, { recursive: true, force: true });
         }
     });
 });

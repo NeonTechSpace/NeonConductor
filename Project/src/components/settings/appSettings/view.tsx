@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { McpSettingsSection } from '@/web/components/settings/appSettings/mcpSection';
 import type { AppSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
+import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
 import { SettingsContentScaffold } from '@/web/components/settings/shared/settingsContentScaffold';
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
@@ -54,7 +55,7 @@ export function AppSettingsView({
     }
 
     function handleOpenFactoryResetDialog() {
-        if (factoryResetMutation.isPending) {
+        if (!canOpenFactoryResetDialog) {
             return;
         }
 
@@ -70,6 +71,14 @@ export function AppSettingsView({
               : 'Keep destructive app-wide maintenance actions separate from ordinary privacy controls.';
     const storageInfo = factoryResetMutation.data?.storage ?? storageInfoQuery.data;
     const runtimeNamespaceLabel = storageInfo?.runtimeNamespace ?? 'current';
+    const maintenanceFeedbackMessage =
+        factoryResetMutation.error?.message ??
+        storageInfoQuery.error?.message ??
+        (factoryResetMutation.data ? 'Factory reset completed. App data was reset to the default profile.' : undefined);
+    const maintenanceFeedbackTone =
+        factoryResetMutation.error || storageInfoQuery.error ? 'error' : factoryResetMutation.data ? 'success' : 'info';
+    const canOpenFactoryResetDialog =
+        Boolean(storageInfo) && !storageInfoQuery.isLoading && !factoryResetMutation.isPending;
 
     return (
         <>
@@ -105,6 +114,7 @@ export function AppSettingsView({
 
                 {subsection === 'maintenance' ? (
                     <section className='border-destructive/30 bg-destructive/5 space-y-4 rounded-[24px] border p-5'>
+                        <SettingsFeedbackBanner message={maintenanceFeedbackMessage} tone={maintenanceFeedbackTone} />
                         <div className='space-y-1'>
                             <p className='text-sm font-semibold'>Factory reset {runtimeNamespaceLabel} app data</p>
                             <p className='text-muted-foreground text-xs leading-5'>
@@ -128,7 +138,7 @@ export function AppSettingsView({
                             <button
                                 type='button'
                                 className='border-destructive/40 bg-destructive/10 text-destructive rounded-full border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60'
-                                disabled={factoryResetMutation.isPending}
+                                disabled={!canOpenFactoryResetDialog}
                                 onClick={() => {
                                     handleOpenFactoryResetDialog();
                                 }}>
@@ -145,7 +155,7 @@ export function AppSettingsView({
                 confirmLabel='Reset app data'
                 destructive
                 busy={factoryResetMutation.isPending}
-                confirmDisabled={confirmationText !== FACTORY_RESET_CONFIRMATION_TEXT}
+                confirmDisabled={!storageInfo || confirmationText !== FACTORY_RESET_CONFIRMATION_TEXT}
                 onCancel={() => {
                     handleCancelFactoryReset();
                 }}

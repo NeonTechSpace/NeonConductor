@@ -153,10 +153,13 @@ describe('AppSettingsView', () => {
                 runtimeRoot: 'C:\\Users\\Neon\\AppData\\Roaming\\neon-conductor\\runtime\\alpha',
                 userDataRoot: 'C:\\Users\\Neon\\AppData\\Roaming\\neon-conductor',
             },
+            error: null,
+            isLoading: false,
         });
         appSettingsTestState.useMutationMock.mockReset();
         appSettingsTestState.useMutationMock.mockReturnValue({
             data: undefined,
+            error: null,
             isPending: false,
             mutateAsync: appSettingsTestState.mutateAsyncMock,
         });
@@ -176,6 +179,7 @@ describe('AppSettingsView', () => {
         expect(html).toContain('neonconductor.db');
 
         expect(appSettingsTestState.confirmDialogProps).toBeDefined();
+        expect(appSettingsTestState.confirmDialogProps?.confirmDisabled).toBe(true);
         appSettingsTestState.confirmDialogProps?.onConfirm();
 
         expect(appSettingsTestState.mutateAsyncMock).toHaveBeenCalledWith({
@@ -187,5 +191,18 @@ describe('AppSettingsView', () => {
         appSettingsTestState.confirmDialogProps?.onConfirm();
 
         expect(appSettingsTestState.mutateAsyncMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('disables factory reset when storage info cannot be resolved', () => {
+        appSettingsTestState.useQueryMock.mockReturnValue({
+            data: undefined,
+            error: new Error('storage unavailable'),
+            isLoading: false,
+        });
+
+        const html = renderToStaticMarkup(<AppSettingsView profileId='profile_default' subsection='maintenance' />);
+
+        expect(html).toContain('storage unavailable');
+        expect(html).toContain('disabled=""');
     });
 });

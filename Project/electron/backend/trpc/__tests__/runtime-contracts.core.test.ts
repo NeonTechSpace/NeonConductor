@@ -1,7 +1,7 @@
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-import { getPersistenceStoragePaths } from '@/app/backend/persistence/db';
+import { closePersistence, getPersistenceStoragePaths } from '@/app/backend/persistence/db';
 import { accountSnapshotStore, cloudSessionStore, providerAuthStore } from '@/app/backend/persistence/stores';
 import { writeProviderSecretValue } from '@/app/backend/providers/auth/providerSecrets';
 import { encryptSecretPayload } from '@/app/backend/secrets/secretPayloadCodec';
@@ -794,6 +794,7 @@ describe('runtime contracts: core flows', () => {
         process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'] = 'alpha';
         process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'] = 'alpha';
         resetPersistenceForTests(path.join(userDataPath, 'runtime', 'alpha', 'neonconductor.db'));
+        let externalSandboxPath: string | undefined;
 
         try {
             const caller = createCaller();
@@ -831,6 +832,9 @@ describe('runtime contracts: core flows', () => {
             const managedSandboxPath = path.join(storagePaths.managedSandboxesRoot, 'workspace', 'feature-reset');
             mkdirSync(managedSandboxPath, { recursive: true });
             writeFileSync(path.join(managedSandboxPath, 'README.md'), 'managed sandbox');
+            externalSandboxPath = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-external-factory-reset-'));
+            const externalSandboxFilePath = path.join(externalSandboxPath, 'keep.txt');
+            writeFileSync(externalSandboxFilePath, 'external sandbox should survive');
 
             const now = new Date().toISOString();
             const threadWorkspaceFingerprint = sqlite
@@ -889,6 +893,39 @@ describe('runtime contracts: core flows', () => {
                     now,
                     now
                 );
+            sqlite
+                .prepare(
+                    `
+                        INSERT INTO sandboxes
+                            (
+                                id,
+                                profile_id,
+                                workspace_fingerprint,
+                                absolute_path,
+                                path_key,
+                                label,
+                                status,
+                                creation_strategy,
+                                created_at,
+                                updated_at,
+                                last_used_at
+                            )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `
+                )
+                .run(
+                    'sb_factory_reset_external',
+                    profileId,
+                    threadWorkspaceFingerprint.workspaceFingerprint,
+                    externalSandboxPath,
+                    process.platform === 'win32' ? externalSandboxPath.toLowerCase() : externalSandboxPath,
+                    'Corrupted External Sandbox',
+                    'ready',
+                    'copy',
+                    now,
+                    now,
+                    now
+                );
 
             const result = await caller.runtime.factoryReset({
                 confirm: true,
@@ -898,7 +935,7 @@ describe('runtime contracts: core flows', () => {
             expect(result.resetProfileId).toBe(profileId);
             expect(result.counts.profiles).toBe(2);
             expect(result.counts.workspaceRoots).toBe(1);
-            expect(result.counts.sandboxes).toBe(1);
+            expect(result.counts.sandboxes).toBe(2);
             expect(result.cleanupCounts.providerSecrets).toBe(1);
             expect(result.cleanupCounts.globalAssetEntries).toBeGreaterThan(0);
             expect(result.cleanupCounts.logEntries).toBeGreaterThan(0);
@@ -937,6 +974,7 @@ describe('runtime contracts: core flows', () => {
             expect(existsSync(storagePaths.globalAssetsRoot)).toBe(false);
             expect(existsSync(storagePaths.logsRoot)).toBe(false);
             expect(existsSync(storagePaths.managedSandboxesRoot)).toBe(false);
+            expect(readFileSync(externalSandboxFilePath, 'utf8')).toBe('external sandbox should survive');
             expect(readFileSync(workspaceLocalRuntimeFile, 'utf8')).toBe('keep me');
             expect(() => resetSqlite.prepare('SELECT 1').get()).not.toThrow();
         } finally {
@@ -954,6 +992,11 @@ describe('runtime contracts: core flows', () => {
                 delete process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'];
             } else {
                 process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'] = previousPersistenceChannel;
+            }
+            closePersistence();
+            rmSync(tempRoot, { recursive: true, force: true });
+            if (externalSandboxPath) {
+                rmSync(externalSandboxPath, { recursive: true, force: true });
             }
         }
     }, 15000);

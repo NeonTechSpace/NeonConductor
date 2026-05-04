@@ -114,9 +114,6 @@ vi.mock('@/web/components/settings/profileSettings/useProfileSettingsController'
             setSettingsMutation: { isPending: false },
             saveSettings: vi.fn(),
         },
-        reset: {
-            factoryResetMutation: { isPending: false, error: null },
-        },
     }),
 }));
 

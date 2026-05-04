@@ -22,12 +22,7 @@ import {
     type OperationalResult,
 } from '@/app/backend/runtime/services/common/operationalError';
 import { planFullReset } from '@/app/backend/runtime/services/runtimeReset/full';
-import { removeManagedSandbox } from '@/app/backend/runtime/services/sandbox/filesystem';
 import { appLog, flushAppLogger } from '@/app/main/logging';
-
-interface FactoryResetSandboxTarget {
-    sandboxPath: string;
-}
 
 type RuntimeNamespace = RuntimeStorageInfo['runtimeNamespace'];
 
@@ -142,53 +137,8 @@ async function removeDatabaseFiles(dbPath: string): Promise<number> {
     return removedCount;
 }
 
-async function collectManagedSandboxTargets(): Promise<FactoryResetSandboxTarget[]> {
-    const { db } = getPersistence();
-    const rows = await db
-        .selectFrom('sandboxes as sandbox')
-        .leftJoin('workspace_roots as workspaceRoot', (join) =>
-            join
-                .onRef('workspaceRoot.profile_id', '=', 'sandbox.profile_id')
-                .onRef('workspaceRoot.fingerprint', '=', 'sandbox.workspace_fingerprint')
-        )
-        .select(['sandbox.absolute_path as sandboxPath'])
-        .execute();
-
-    return rows.map((row) => ({
-        sandboxPath: row.sandboxPath,
-    }));
-}
-
 async function cleanupManagedSandboxes(rootPath: string): Promise<number> {
-    const targets = await collectManagedSandboxTargets();
-    const entryCount = await countRecursiveEntries(rootPath);
-
-    for (const target of targets) {
-        try {
-            await access(target.sandboxPath);
-        } catch (error) {
-            if (isMissingPathError(error)) {
-                continue;
-            }
-
-            throw error;
-        }
-
-        {
-            const removed = await removeManagedSandbox({
-                sandboxPath: target.sandboxPath,
-                removeFiles: true,
-            });
-            if (removed.ok) {
-                continue;
-            }
-        }
-
-        await rm(target.sandboxPath, { recursive: true, force: true });
-    }
-
-    await rm(rootPath, { recursive: true, force: true });
-    return entryCount;
+    return removeDirectoryTree(rootPath);
 }
 
 class RuntimeFactoryResetServiceImpl implements RuntimeFactoryResetService {

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { getPersistenceStoragePaths } from '@/app/backend/persistence/db';
 
 interface SandboxFilesystemFailure {
-    reason: 'workspace_missing' | 'create_failed' | 'remove_failed';
+    reason: 'workspace_missing' | 'create_failed' | 'remove_failed' | 'unsafe_path';
     detail: string;
 }
 
@@ -48,6 +48,14 @@ export function buildManagedSandboxPath(input: {
     });
 
     return path.join(toManagedSandboxRoot(), workspaceFolder, sandboxFolder);
+}
+
+function isPathInsideRoot(input: { targetPath: string; rootPath: string }): boolean {
+    const resolvedTargetPath = path.resolve(input.targetPath);
+    const resolvedRootPath = path.resolve(input.rootPath);
+    const relativePath = path.relative(resolvedRootPath, resolvedTargetPath);
+
+    return relativePath.length > 0 && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
 }
 
 async function copyWorkspaceDirectory(input: {
@@ -156,6 +164,22 @@ export async function removeManagedSandbox(input: {
 }): Promise<{ ok: true } | { ok: false; error: SandboxFilesystemFailure }> {
     if (!input.removeFiles) {
         return { ok: true };
+    }
+
+    const managedSandboxRoot = toManagedSandboxRoot();
+    if (
+        !isPathInsideRoot({
+            targetPath: input.sandboxPath,
+            rootPath: managedSandboxRoot,
+        })
+    ) {
+        return {
+            ok: false,
+            error: {
+                reason: 'unsafe_path',
+                detail: `Refused to remove sandbox outside the active managed sandbox root: ${input.sandboxPath}`,
+            },
+        };
     }
 
     try {

@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useProfileFileReadGuardController } from '@/web/components/settings/profileSettings/useProfileFileReadGuardController';
 import { useProfileLibraryController } from '@/web/components/settings/profileSettings/useProfileLibraryController';
 import { useProfilePreferencesController } from '@/web/components/settings/profileSettings/useProfilePreferencesController';
-import { useProfileResetController } from '@/web/components/settings/profileSettings/useProfileResetController';
 import { useProfileSelectionState } from '@/web/components/settings/profileSettings/useProfileSelectionState';
 
 export function useProfileSettingsController(input: {
@@ -29,12 +28,6 @@ export function useProfileSettingsController(input: {
         selection,
         setStatusMessage,
     });
-    const reset = useProfileResetController({
-        setSelectedProfileId: selection.setSelectedProfileId,
-        setStatusMessage,
-        onProfileActivated: input.onProfileActivated,
-    });
-
     return {
         selection: {
             ...selection,
@@ -46,7 +39,6 @@ export function useProfileSettingsController(input: {
         library,
         preferences,
         fileReadGuard,
-        reset,
         feedback: {
             message:
                 library.createMutation.error?.message ??
@@ -54,7 +46,6 @@ export function useProfileSettingsController(input: {
                 library.duplicateMutation.error?.message ??
                 library.deleteMutation.error?.message ??
                 library.setActiveMutation.error?.message ??
-                reset.factoryResetMutation.error?.message ??
                 preferences.setEditPreferenceMutation.error?.message ??
                 preferences.setThreadTitlePreferenceMutation.error?.message ??
                 preferences.setExecutionPresetMutation.error?.message ??
@@ -69,7 +60,6 @@ export function useProfileSettingsController(input: {
                 library.duplicateMutation.error ??
                 library.deleteMutation.error ??
                 library.setActiveMutation.error ??
-                reset.factoryResetMutation.error ??
                 preferences.setEditPreferenceMutation.error ??
                 preferences.setThreadTitlePreferenceMutation.error ??
                 preferences.setExecutionPresetMutation.error ??
