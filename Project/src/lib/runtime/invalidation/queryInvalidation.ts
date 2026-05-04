@@ -206,6 +206,7 @@ export function invalidateProfileQueries(utils: TrpcUtils, profileId: string | u
 export async function invalidateRuntimeResetQueries(utils: TrpcUtils): Promise<void> {
     const invalidations: Promise<void>[] = [
         utils.runtime.getShellBootstrap.invalidate(),
+        utils.runtime.getStorageInfo.invalidate(),
         utils.runtime.getDiagnosticSnapshot.invalidate(),
         utils.conversation.listBuckets.invalidate(),
         utils.conversation.listTags.invalidate(),

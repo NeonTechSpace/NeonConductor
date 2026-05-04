@@ -48,6 +48,7 @@ function createUtilsMock(calls: InvalidationCall[]) {
         },
         runtime: {
             getShellBootstrap: createInvalidateLeaf(calls, 'runtime.getShellBootstrap'),
+            getStorageInfo: createInvalidateLeaf(calls, 'runtime.getStorageInfo'),
             getDiagnosticSnapshot: createInvalidateLeaf(calls, 'runtime.getDiagnosticSnapshot'),
             listWorkspaceRoots: createInvalidateLeaf(calls, 'runtime.listWorkspaceRoots'),
         },

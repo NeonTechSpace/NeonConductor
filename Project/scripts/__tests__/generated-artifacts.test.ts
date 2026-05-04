@@ -49,7 +49,10 @@ describe('generated artifacts', () => {
             });
 
             expect(result.status).toBe('stale');
-            expect(result.staleArtifacts).toEqual(['electron/backend/persistence/generatedMigrations.ts']);
+            expect(result.staleArtifacts).toEqual([
+                'electron/backend/persistence/generatedMigrations.ts',
+                'electron/backend/persistence/generatedSchemaMetadata.ts',
+            ]);
             expect(readFileSync(routeTreePath, 'utf8')).toBe('route tree');
         } finally {
             rmSync(rootDir, { recursive: true, force: true });

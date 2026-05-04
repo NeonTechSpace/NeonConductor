@@ -18,6 +18,7 @@ export interface PersistenceContext {
 }
 
 export interface PersistenceStoragePaths {
+    dbPath: string;
     runtimeRoot: string;
     userDataRoot: string;
     globalAssetsRoot: string;
@@ -184,6 +185,7 @@ export function getPersistenceStoragePaths(): PersistenceStoragePaths {
     const userDataRoot = resolveUserDataRoot(runtimeRoot);
 
     return {
+        dbPath,
         runtimeRoot,
         userDataRoot,
         globalAssetsRoot: path.join(runtimeRoot, 'assets'),

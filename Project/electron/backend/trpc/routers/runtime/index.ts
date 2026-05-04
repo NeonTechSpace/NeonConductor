@@ -22,7 +22,7 @@ import { neonObservabilityService } from '@/app/backend/runtime/services/observa
 import { runtimeEventBus } from '@/app/backend/runtime/services/runtimeEventBus';
 import { runtimeResetEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
-import { runtimeFactoryResetService } from '@/app/backend/runtime/services/runtimeFactoryReset';
+import { getRuntimeStorageInfo, runtimeFactoryResetService } from '@/app/backend/runtime/services/runtimeFactoryReset';
 import { runtimeResetService } from '@/app/backend/runtime/services/runtimeReset';
 import { runtimeShellBootstrapService } from '@/app/backend/runtime/services/runtimeShellBootstrap';
 import { runtimeSnapshotService } from '@/app/backend/runtime/services/runtimeSnapshot';
@@ -120,6 +120,9 @@ export const runtimeRouter = router({
     }),
     getShellBootstrap: publicProcedure.input(profileInputSchema).query(async ({ input }) => {
         return runtimeShellBootstrapService.getShellBootstrap(input.profileId);
+    }),
+    getStorageInfo: publicProcedure.query(() => {
+        return getRuntimeStorageInfo();
     }),
     inspectWorkspaceEnvironment: publicProcedure
         .input(runtimeInspectWorkspaceEnvironmentInputSchema)

@@ -190,6 +190,14 @@ export interface RuntimeFactoryResetCleanupCounts {
     managedSandboxEntries: number;
     globalAssetEntries: number;
     logEntries: number;
+    databaseFiles: number;
+}
+
+export interface RuntimeStorageInfo {
+    runtimeNamespace: 'development' | 'alpha' | 'beta' | 'stable';
+    dbPath: string;
+    runtimeRoot: string;
+    userDataRoot: string;
 }
 
 export interface RuntimeFactoryResetResult {
@@ -197,6 +205,7 @@ export interface RuntimeFactoryResetResult {
     counts: RuntimeResetCounts;
     cleanupCounts: RuntimeFactoryResetCleanupCounts;
     resetProfileId: string;
+    storage: RuntimeStorageInfo;
 }
 
 export interface RuntimeRegisterWorkspaceRootResult {

@@ -6,6 +6,7 @@ import { SettingsContentScaffold } from '@/web/components/settings/shared/settin
 import { ConfirmDialog } from '@/web/components/ui/confirmDialog';
 import PrivacyModeToggle from '@/web/components/window/privacyModeToggle';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
+import { invalidateRuntimeResetQueries } from '@/web/lib/runtime/invalidation/queryInvalidation';
 import { trpc } from '@/web/trpc/client';
 
 import { FACTORY_RESET_CONFIRMATION_TEXT } from '@/shared/contracts';
@@ -22,9 +23,15 @@ export function AppSettingsView({
     subsection = 'privacy',
     currentWorkspaceFingerprint,
 }: AppSettingsViewProps) {
+    const utils = trpc.useUtils();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
-    const factoryResetMutation = trpc.runtime.factoryReset.useMutation();
+    const storageInfoQuery = trpc.runtime.getStorageInfo.useQuery();
+    const factoryResetMutation = trpc.runtime.factoryReset.useMutation({
+        onSuccess: async () => {
+            await invalidateRuntimeResetQueries(utils);
+        },
+    });
 
     const confirmFactoryReset = createFailClosedAsyncAction(async () => {
         await factoryResetMutation.mutateAsync({
@@ -61,6 +68,8 @@ export function AppSettingsView({
             : subsection === 'mcp'
               ? 'Manage backend-owned stdio MCP servers, secret-backed env keys, live tool discovery, and which MCP tools are safe for basic plan mode.'
               : 'Keep destructive app-wide maintenance actions separate from ordinary privacy controls.';
+    const storageInfo = factoryResetMutation.data?.storage ?? storageInfoQuery.data;
+    const runtimeNamespaceLabel = storageInfo?.runtimeNamespace ?? 'current';
 
     return (
         <>
@@ -97,14 +106,23 @@ export function AppSettingsView({
                 {subsection === 'maintenance' ? (
                     <section className='border-destructive/30 bg-destructive/5 space-y-4 rounded-[24px] border p-5'>
                         <div className='space-y-1'>
-                            <p className='text-sm font-semibold'>Factory reset app data</p>
+                            <p className='text-sm font-semibold'>Factory reset {runtimeNamespaceLabel} app data</p>
                             <p className='text-muted-foreground text-xs leading-5'>
-                                Deletes all app-owned chats, profiles, permissions, provider state, managed
-                                sandboxes, registry assets, and logs. Workspace-local{' '}
-                                <code className='rounded bg-black/5 px-1 py-0.5 text-[11px]'>.neonconductor</code>{' '}
-                                files are not removed.
+                                Deletes all app-owned chats, profiles, permissions, provider state, managed sandboxes,
+                                registry assets, logs, and the SQLite database for this lane only. Workspace-local{' '}
+                                <code className='rounded bg-black/5 px-1 py-0.5 text-[11px]'>.neonconductor</code> files
+                                are not removed.
                             </p>
                         </div>
+
+                        <dl className='border-border/70 bg-background/70 grid gap-3 rounded-2xl border px-4 py-3 text-xs sm:grid-cols-[8rem_minmax(0,1fr)]'>
+                            <dt className='text-muted-foreground'>Lane</dt>
+                            <dd className='font-medium'>{runtimeNamespaceLabel}</dd>
+                            <dt className='text-muted-foreground'>Database</dt>
+                            <dd className='text-muted-foreground min-w-0 break-all'>
+                                {storageInfo?.dbPath ?? 'Resolving active database path...'}
+                            </dd>
+                        </dl>
 
                         <div className='flex justify-end'>
                             <button
@@ -122,8 +140,8 @@ export function AppSettingsView({
             </SettingsContentScaffold>
             <ConfirmDialog
                 open={confirmOpen}
-                title='Factory Reset App Data'
-                message='This removes all app-owned data and recreates a fresh default profile. Type the confirmation phrase to continue.'
+                title={`Factory Reset ${runtimeNamespaceLabel} App Data`}
+                message='This removes the current lane database and app-owned managed data, then recreates a fresh default profile from the canonical baseline. Type the confirmation phrase to continue.'
                 confirmLabel='Reset app data'
                 destructive
                 busy={factoryResetMutation.isPending}

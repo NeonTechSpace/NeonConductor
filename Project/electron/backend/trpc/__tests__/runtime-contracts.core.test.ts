@@ -786,9 +786,13 @@ describe('runtime contracts: core flows', () => {
 
     it('factory reset removes app-owned data and keeps workspace-local files', async () => {
         const previousUserDataPath = process.env['NEONCONDUCTOR_USER_DATA_PATH'];
+        const previousRuntimeNamespace = process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'];
+        const previousPersistenceChannel = process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'];
         const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'neonconductor-factory-reset-'));
         const userDataPath = path.join(tempRoot, 'userData');
         process.env['NEONCONDUCTOR_USER_DATA_PATH'] = userDataPath;
+        process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'] = 'alpha';
+        process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'] = 'alpha';
         resetPersistenceForTests(path.join(userDataPath, 'runtime', 'alpha', 'neonconductor.db'));
 
         try {
@@ -899,6 +903,13 @@ describe('runtime contracts: core flows', () => {
             expect(result.cleanupCounts.globalAssetEntries).toBeGreaterThan(0);
             expect(result.cleanupCounts.logEntries).toBeGreaterThan(0);
             expect(result.cleanupCounts.managedSandboxEntries).toBeGreaterThan(0);
+            expect(result.cleanupCounts.databaseFiles).toBeGreaterThan(0);
+            expect(result.storage).toMatchObject({
+                runtimeNamespace: 'alpha',
+                dbPath: path.join(userDataPath, 'runtime', 'alpha', 'neonconductor.db'),
+                runtimeRoot: path.join(userDataPath, 'runtime', 'alpha'),
+                userDataRoot: userDataPath,
+            });
 
             const snapshot = await caller.runtime.getDiagnosticSnapshot({ profileId: result.resetProfileId });
             expect(snapshot.profiles).toHaveLength(1);
@@ -907,13 +918,16 @@ describe('runtime contracts: core flows', () => {
             expect(snapshot.conversations).toEqual([]);
             expect(snapshot.providerSecrets).toEqual([]);
 
-            const remainingWorkspaceRoots = sqlite.prepare('SELECT COUNT(*) AS count FROM workspace_roots').get() as {
+            const resetSqlite = getPersistence().sqlite;
+            const remainingWorkspaceRoots = resetSqlite
+                .prepare('SELECT COUNT(*) AS count FROM workspace_roots')
+                .get() as {
                 count: number;
             };
-            const remainingSandboxes = sqlite.prepare('SELECT COUNT(*) AS count FROM sandboxes').get() as {
+            const remainingSandboxes = resetSqlite.prepare('SELECT COUNT(*) AS count FROM sandboxes').get() as {
                 count: number;
             };
-            const remainingProfiles = sqlite.prepare('SELECT COUNT(*) AS count FROM profiles').get() as {
+            const remainingProfiles = resetSqlite.prepare('SELECT COUNT(*) AS count FROM profiles').get() as {
                 count: number;
             };
             expect(remainingWorkspaceRoots.count).toBe(0);
@@ -924,12 +938,22 @@ describe('runtime contracts: core flows', () => {
             expect(existsSync(storagePaths.logsRoot)).toBe(false);
             expect(existsSync(storagePaths.managedSandboxesRoot)).toBe(false);
             expect(readFileSync(workspaceLocalRuntimeFile, 'utf8')).toBe('keep me');
-            expect(() => sqlite.prepare('SELECT 1').get()).not.toThrow();
+            expect(() => resetSqlite.prepare('SELECT 1').get()).not.toThrow();
         } finally {
             if (previousUserDataPath === undefined) {
                 delete process.env['NEONCONDUCTOR_USER_DATA_PATH'];
             } else {
                 process.env['NEONCONDUCTOR_USER_DATA_PATH'] = previousUserDataPath;
+            }
+            if (previousRuntimeNamespace === undefined) {
+                delete process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'];
+            } else {
+                process.env['NEONCONDUCTOR_RUNTIME_NAMESPACE'] = previousRuntimeNamespace;
+            }
+            if (previousPersistenceChannel === undefined) {
+                delete process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'];
+            } else {
+                process.env['NEONCONDUCTOR_PERSISTENCE_CHANNEL'] = previousPersistenceChannel;
             }
         }
     }, 15000);

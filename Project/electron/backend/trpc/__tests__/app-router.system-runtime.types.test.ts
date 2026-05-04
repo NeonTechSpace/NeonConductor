@@ -3,7 +3,6 @@ import { expect, expectTypeOf, test } from 'vitest';
 import type { AppRouterInputs, AppRouterOutputs } from '@/app/backend/trpc/__tests__/app-router.types.shared';
 import type { BootStatusSnapshot } from '@/app/shared/splashContract';
 
-
 test('AppRouter exposes system, runtime, tooling, and registry procedure contracts to clients', () => {
     expectTypeOf<AppRouterInputs['permission']['request']>().toExtend<{
         policy: 'ask' | 'allow' | 'deny';
@@ -102,6 +101,20 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
     }>();
     expectTypeOf<AppRouterInputs['runtime']['getDiagnosticSnapshot']>().toExtend<{ profileId: string }>();
     expectTypeOf<AppRouterInputs['runtime']['getShellBootstrap']>().toExtend<{ profileId: string }>();
+    expectTypeOf<AppRouterOutputs['runtime']['getStorageInfo']>().toExtend<{
+        runtimeNamespace: 'development' | 'alpha' | 'beta' | 'stable';
+        dbPath: string;
+        runtimeRoot: string;
+        userDataRoot: string;
+    }>();
+    expectTypeOf<AppRouterOutputs['runtime']['factoryReset']>().toExtend<{
+        applied: boolean;
+        cleanupCounts: { databaseFiles: number };
+        storage: {
+            runtimeNamespace: 'development' | 'alpha' | 'beta' | 'stable';
+            dbPath: string;
+        };
+    }>();
     expectTypeOf<AppRouterInputs['runtime']['inspectWorkspaceEnvironment']>().toExtend<
         { profileId: string; workspaceFingerprint: string } | { profileId: string; absolutePath: string }
     >();
@@ -129,13 +142,22 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         profileId: string;
         source:
             | { kind: 'message'; sessionId: string; messageId: string }
-            | { kind: 'tool_result_artifact_window'; sessionId: string; messagePartId: string; startLine: number; lineCount: number };
+            | {
+                  kind: 'tool_result_artifact_window';
+                  sessionId: string;
+                  messagePartId: string;
+                  startLine: number;
+                  lineCount: number;
+              };
         target: 'rule' | 'skill_snippet';
         scope: 'global' | 'workspace';
         targeting:
             | { targetKind: 'shared' }
             | { targetKind: 'preset'; presetKey: 'ask' | 'code' | 'debug' | 'orchestrator' }
-            | { targetKind: 'exact_mode'; targetMode: { topLevelTab: 'chat' | 'agent' | 'orchestrator'; modeKey: string } };
+            | {
+                  targetKind: 'exact_mode';
+                  targetMode: { topLevelTab: 'chat' | 'agent' | 'orchestrator'; modeKey: string };
+              };
         workspaceFingerprint?: string;
     }>();
     expectTypeOf<AppRouterInputs['registry']['applyPromotion']>().toExtend<{
@@ -148,7 +170,13 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
         profileId: string;
         source:
             | { kind: 'message'; sessionId: string; messageId: string }
-            | { kind: 'tool_result_artifact_window'; sessionId: string; messagePartId: string; startLine: number; lineCount: number };
+            | {
+                  kind: 'tool_result_artifact_window';
+                  sessionId: string;
+                  messagePartId: string;
+                  startLine: number;
+                  lineCount: number;
+              };
         workspaceFingerprint?: string;
     }>();
     expectTypeOf<AppRouterInputs['memory']['applyPromotion']>().toExtend<{
@@ -287,4 +315,3 @@ test('AppRouter exposes system, runtime, tooling, and registry procedure contrac
     }>();
     expect(true).toBe(true);
 });
-

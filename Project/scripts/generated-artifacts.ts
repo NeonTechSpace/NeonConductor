@@ -61,6 +61,7 @@ export async function checkGeneratedArtifacts(
     );
     if (migrationExit !== 0) {
         staleArtifacts.push('electron/backend/persistence/generatedMigrations.ts');
+        staleArtifacts.push('electron/backend/persistence/generatedSchemaMetadata.ts');
     }
 
     const routeTreePath = options.routeTreePath ?? path.join(cwd, 'src', 'routeTree.gen.ts');
