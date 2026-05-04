@@ -30,6 +30,14 @@ export type MessageTimelineBodyEntry =
           text: string;
           providerLimitedReasoning: boolean;
           displayLabel?: string;
+          workbenchItemId?: string;
+          workbenchKind?: Extract<WorkbenchTimelineItem['kind'], 'tool_call'>;
+          status?: WorkbenchTimelineItemStatus;
+          severity?: WorkbenchTimelineItemSeverity;
+          icon?: WorkbenchTimelineIconToken;
+          title?: string;
+          summary?: string;
+          defaultCollapsed?: boolean;
       }
     | {
           id: string;
@@ -56,10 +64,18 @@ export type MessageTimelineBodyEntry =
       }
     | {
           id: string;
+          workbenchItemId?: string;
+          workbenchKind?: 'command' | 'artifact';
           type: 'tool_result';
           text: string;
           providerLimitedReasoning: false;
           displayLabel: 'Tool Result';
+          status?: WorkbenchTimelineItemStatus;
+          severity?: WorkbenchTimelineItemSeverity;
+          icon?: WorkbenchTimelineIconToken;
+          title?: string;
+          summary?: string;
+          defaultCollapsed?: boolean;
           messagePartId: EntityId<'part'>;
           toolName: string;
           artifactized: boolean;
@@ -190,20 +206,36 @@ function adaptWorkbenchItemToTimelineBodyEntry(item: WorkbenchTimelineItem): Mes
     if (item.kind === 'tool_call') {
         return {
             id: item.sourcePartId ?? item.id,
+            workbenchItemId: item.id,
+            workbenchKind: item.kind,
             type: 'assistant_tool_call',
             text: item.argumentsText.trim().length > 0 ? `\`\`\`json\n${item.argumentsText}\n\`\`\`` : '',
             providerLimitedReasoning: false,
             displayLabel: `Tool Call: ${item.toolName}`,
+            status: item.status,
+            severity: item.severity,
+            icon: item.icon,
+            title: item.title,
+            ...(item.summary ? { summary: item.summary } : {}),
+            defaultCollapsed: item.defaultCollapsed,
         };
     }
 
     if (item.kind === 'command' || item.kind === 'artifact') {
         return {
             id: item.sourcePartId ?? item.id,
+            workbenchItemId: item.id,
+            workbenchKind: item.kind,
             type: 'tool_result',
             text: item.text,
             providerLimitedReasoning: false,
             displayLabel: 'Tool Result',
+            status: item.status,
+            severity: item.severity,
+            icon: item.icon,
+            title: item.title,
+            ...(item.summary ? { summary: item.summary } : {}),
+            defaultCollapsed: item.defaultCollapsed,
             messagePartId: item.artifactRef.messagePartId,
             toolName: item.toolName,
             artifactized: item.artifactRef.artifactized,

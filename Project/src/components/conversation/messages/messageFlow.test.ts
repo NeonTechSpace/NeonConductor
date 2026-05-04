@@ -213,10 +213,18 @@ describe('message flow rendering', () => {
                             body: [
                                 {
                                     id: 'part_tool_artifact',
+                                    workbenchItemId: 'msg_tool_artifact:part_tool_artifact:command',
+                                    workbenchKind: 'command',
                                     type: 'tool_result',
                                     text: 'preview',
                                     providerLimitedReasoning: false,
                                     displayLabel: 'Tool Result',
+                                    status: 'completed',
+                                    severity: 'neutral',
+                                    icon: 'terminal',
+                                    title: 'Command: run_command',
+                                    summary: 'preview',
+                                    defaultCollapsed: true,
                                     messagePartId: 'part_tool_artifact',
                                     toolName: 'run_command',
                                     artifactized: true,
@@ -240,5 +248,52 @@ describe('message flow rendering', () => {
         expect(html).toContain('Stored full output available');
         expect(html).toContain('Open full output');
         expect(html).toContain('AI summary');
+        expect(html).toContain('Command: run_command');
+        expect(html).toContain('aria-expanded="false"');
+        expect(html).toContain('aria-controls="msg_tool_artifact:part_tool_artifact:command-details"');
+        expect(html).toContain('Copy preview');
+    });
+
+    it('renders tool calls as collapsed workbench rows with accessible details', () => {
+        const html = renderToStaticMarkup(
+            createElement(MessageFlowTurnView, {
+                profileId: 'profile_default',
+                turn: {
+                    id: 'run_tool_call',
+                    runId: 'run_tool_call',
+                    createdAt: '2026-03-12T09:00:00.000Z',
+                    messages: [
+                        {
+                            id: 'msg_assistant_tool',
+                            runId: 'run_tool_call',
+                            role: 'assistant',
+                            createdAt: '2026-03-12T09:00:01.000Z',
+                            body: [
+                                {
+                                    id: 'part_tool_call',
+                                    workbenchItemId: 'msg_assistant_tool:part_tool_call:tool_call',
+                                    workbenchKind: 'tool_call',
+                                    type: 'assistant_tool_call',
+                                    text: '```json\n{"path":"README.md"}\n```',
+                                    providerLimitedReasoning: false,
+                                    displayLabel: 'Tool Call: read_file',
+                                    status: 'completed',
+                                    severity: 'neutral',
+                                    icon: 'tool',
+                                    title: 'Tool Call: read_file',
+                                    summary: 'read_file',
+                                    defaultCollapsed: true,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                run: undefined,
+            })
+        );
+
+        expect(html).toContain('Tool Call: read_file');
+        expect(html).toContain('aria-expanded="false"');
+        expect(html).toContain('aria-controls="msg_assistant_tool:part_tool_call:tool_call-details"');
     });
 });

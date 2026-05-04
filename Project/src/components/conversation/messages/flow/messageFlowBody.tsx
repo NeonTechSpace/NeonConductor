@@ -4,8 +4,8 @@ import { MarkdownContent } from '@/web/components/content/markdown/markdownConte
 import type { MessageFlowBodyEntry, MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import { MessageMediaPreview } from '@/web/components/conversation/messages/messageMediaPreview';
 import { describeAssistantPlaceholder } from '@/web/components/conversation/messages/messagePlaceholderState';
-import { ToolArtifactPreviewCard } from '@/web/components/conversation/messages/toolArtifactPreviewCard';
 import { WorkbenchStatusRow } from '@/web/components/conversation/messages/workbenchStatusRow';
+import { WorkbenchToolCallRow, WorkbenchToolResultRow } from '@/web/components/conversation/messages/workbenchToolRows';
 
 import type { RunRecord } from '@/app/backend/persistence/types';
 
@@ -84,7 +84,13 @@ function FlowMessageTextBlock({
     item: Extract<MessageFlowBodyEntry, { text: string }>;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
 }) {
-    const toolResultItem = item.type === 'tool_result' ? item : undefined;
+    if (item.type === 'assistant_tool_call') {
+        return <WorkbenchToolCallRow item={item} />;
+    }
+
+    if (item.type === 'tool_result') {
+        return <WorkbenchToolResultRow item={item} {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})} />;
+    }
 
     return (
         <>
@@ -94,20 +100,6 @@ function FlowMessageTextBlock({
                 </p>
             ) : null}
             <MarkdownContent markdown={item.text} />
-            {toolResultItem?.artifactAvailable && toolResultItem.artifactKind && onOpenToolArtifact ? (
-                <ToolArtifactPreviewCard
-                    artifactKind={toolResultItem.artifactKind}
-                    {...(toolResultItem.totalBytes !== undefined ? { totalBytes: toolResultItem.totalBytes } : {})}
-                    {...(toolResultItem.totalLines !== undefined ? { totalLines: toolResultItem.totalLines } : {})}
-                    {...(toolResultItem.omittedBytes !== undefined
-                        ? { omittedBytes: toolResultItem.omittedBytes }
-                        : {})}
-                    {...(toolResultItem.summaryMode ? { summaryMode: toolResultItem.summaryMode } : {})}
-                    onOpen={() => {
-                        onOpenToolArtifact(toolResultItem.messagePartId);
-                    }}
-                />
-            ) : null}
         </>
     );
 }

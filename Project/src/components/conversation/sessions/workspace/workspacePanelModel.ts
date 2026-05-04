@@ -4,6 +4,7 @@ import type { MessageFlowMessage } from '@/web/components/conversation/messages/
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import { PendingPermissionsPanel } from '@/web/components/conversation/panels/pendingPermissionsPanel';
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
+import { WorkbenchExecutionReceiptRow } from '@/web/components/conversation/panels/workbenchExecutionReceiptRow';
 import { WorkspaceStatusPanel } from '@/web/components/conversation/panels/workspaceStatusPanel';
 import type {
     WorkspaceHeaderModel,
@@ -272,11 +273,6 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
         input.selectedOutboxEntry?.latestRunContract?.preparedContext.contributors.filter(
             (contributor) => contributor.kind === 'dynamic_skill_context'
         ) ?? [];
-    const receiptDynamicContributors =
-        input.executionReceipt?.contract.preparedContext.contributors.filter(
-            (contributor) => contributor.kind === 'dynamic_skill_context'
-        ) ?? [];
-
     return {
         sections: [
             {
@@ -292,7 +288,9 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                     ...(input.selectedTargetExplanation ? { targetExplanation: input.selectedTargetExplanation } : {}),
                     usageSummary: input.selectedUsageSummary,
                     routingBadge: input.routingBadge,
-                    ...(header.selectedSession?.cloudSession ? { cloudSession: header.selectedSession.cloudSession } : {}),
+                    ...(header.selectedSession?.cloudSession
+                        ? { cloudSession: header.selectedSession.cloudSession }
+                        : {}),
                     registrySummary: input.registrySummary,
                     agentContextSummary: input.agentContextSummary,
                 }),
@@ -342,47 +340,9 @@ export function buildWorkspaceInspectorModel(input: SessionWorkspacePanelProps):
                           id: 'execution-receipt',
                           label: 'Execution receipt',
                           description: 'Immutable execution summary for the selected run.',
-                          content: createElement('div', { className: 'space-y-2 text-xs' }, [
-                              createElement(
-                                  'p',
-                                  { key: 'outcome', className: 'font-medium' },
-                                  `Outcome: ${input.executionReceipt.terminalOutcome.kind}`
-                              ),
-                              createElement(
-                                  'p',
-                                  { key: 'attachments', className: 'text-muted-foreground' },
-                                  `Attachments: ${String(input.executionReceipt.contract.attachmentSummary.totalCount)}`
-                              ),
-                              ...(input.executionReceipt.contract.browserContextSummary
-                                  ? [
-                                        createElement(
-                                            'p',
-                                            { key: 'browser', className: 'text-muted-foreground' },
-                                            `Browser context: ${String(input.executionReceipt.contract.browserContextSummary.commentCount)} comments · ${String(input.executionReceipt.contract.browserContextSummary.selectedElementCount)} elements · ${String(input.executionReceipt.contract.browserContextSummary.designerDraftCount)} designer drafts`
-                                        ),
-                                    ]
-                                  : []),
-                              createElement(
-                                  'p',
-                                  { key: 'contributors', className: 'text-muted-foreground' },
-                                  `Prepared context contributors: ${String(input.executionReceipt.contract.preparedContext.activeContributorCount)}`
-                              ),
-                              createElement(
-                                  'p',
-                                  { key: 'tools', className: 'text-muted-foreground' },
-                                  `Tools invoked: ${String(input.executionReceipt.toolsInvoked.length)}`
-                              ),
-                              ...receiptDynamicContributors.slice(0, 3).map((contributor) =>
-                                  createElement(
-                                      'p',
-                                      {
-                                          key: `dynamic-${contributor.id}`,
-                                          className: 'text-muted-foreground',
-                                      },
-                                      `Dynamic context: ${contributor.label} (${contributor.dynamicExpansion?.resolutionState ?? 'preview_only'})`
-                                  )
-                              ),
-                          ]),
+                          content: createElement(WorkbenchExecutionReceiptRow, {
+                              receipt: input.executionReceipt,
+                          }),
                       } satisfies WorkspaceInspectorSection,
                   ]
                 : []),
