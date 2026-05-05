@@ -41,6 +41,7 @@ const canonicalScriptNames = [
     'report:alpha-evals',
     'report:alpha-evals:json',
     'report:alpha-evals:check',
+    'marketplace:catalog:check',
     'desktop:doctor',
     'desktop:doctor:dev',
     'desktop:launch',

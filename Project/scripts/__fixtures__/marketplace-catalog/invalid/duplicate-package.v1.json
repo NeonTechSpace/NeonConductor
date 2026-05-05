@@ -1,0 +1,52 @@
+{
+    "schemaVersion": 1,
+    "generatedAt": "2026-05-05T00:00:00.000Z",
+    "source": {
+        "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+        "commitSha": "0123456789abcdef0123456789abcdef01234567"
+    },
+    "packages": [
+        {
+            "kind": "skill",
+            "slug": "repo-review",
+            "version": "1.0.0",
+            "name": "Repo Review",
+            "summary": "Review repository changes against NeonConductor quality rules.",
+            "source": {
+                "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+                "relativePath": "skills/repo-review"
+            },
+            "artifact": {
+                "url": "https://neontechspace.github.io/neonconductor-marketplace/artifacts/skills/repo-review-1.0.0.tgz",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "compatibility": {
+                "neonVersionRange": ">=0.0.1 <1.0.0"
+            },
+            "skill": {
+                "entryFile": "skills/repo-review/SKILL.md"
+            }
+        },
+        {
+            "kind": "skill",
+            "slug": "repo-review",
+            "version": "1.0.0",
+            "name": "Repo Review Duplicate",
+            "summary": "Duplicate identity fixture that must fail validation.",
+            "source": {
+                "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+                "relativePath": "skills/repo-review-copy"
+            },
+            "artifact": {
+                "url": "https://neontechspace.github.io/neonconductor-marketplace/artifacts/skills/repo-review-copy-1.0.0.tgz",
+                "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "compatibility": {
+                "neonVersionRange": ">=0.0.1 <1.0.0"
+            },
+            "skill": {
+                "entryFile": "skills/repo-review-copy/SKILL.md"
+            }
+        }
+    ]
+}

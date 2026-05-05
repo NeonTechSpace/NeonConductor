@@ -22,6 +22,7 @@ export type * from '@/shared/contracts/types/promotion';
 export * from '@/shared/contracts/types/mcp';
 export * from '@/shared/contracts/types/observability';
 export type * from '@/shared/contracts/types/registry';
+export * from '@/shared/contracts/types/marketplace';
 export type * from '@/shared/contracts/types/sandbox';
 export * from '@/shared/contracts/types/memory';
 export type * from '@/shared/contracts/types/prompt';

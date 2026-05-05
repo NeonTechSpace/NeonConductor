@@ -20,6 +20,7 @@ export * from '@/app/backend/runtime/contracts/parsers/composer';
 export * from '@/app/backend/runtime/contracts/parsers/devBrowser';
 export * from '@/app/backend/runtime/contracts/parsers/promotion';
 export * from '@/app/backend/runtime/contracts/parsers/registry';
+export * from '@/app/backend/runtime/contracts/parsers/marketplace';
 export * from '@/app/backend/runtime/contracts/parsers/sandbox';
 export * from '@/app/backend/runtime/contracts/parsers/memory';
 export * from '@/app/backend/runtime/contracts/parsers/prompt';

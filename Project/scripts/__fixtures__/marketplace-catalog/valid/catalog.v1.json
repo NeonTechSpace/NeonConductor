@@ -1,0 +1,80 @@
+{
+    "schemaVersion": 1,
+    "generatedAt": "2026-05-05T00:00:00.000Z",
+    "source": {
+        "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+        "commitSha": "0123456789abcdef0123456789abcdef01234567"
+    },
+    "packages": [
+        {
+            "kind": "skill",
+            "slug": "repo-review",
+            "version": "1.0.0",
+            "name": "Repo Review",
+            "summary": "Review repository changes against NeonConductor quality rules.",
+            "description": "A sample first-party skill package used to validate marketplace catalog contracts.",
+            "tags": ["review", "quality"],
+            "source": {
+                "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+                "relativePath": "skills/repo-review"
+            },
+            "artifact": {
+                "url": "https://neontechspace.github.io/neonconductor-marketplace/artifacts/skills/repo-review-1.0.0.tgz",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "sizeBytes": 1024
+            },
+            "compatibility": {
+                "neonVersionRange": ">=0.0.1 <1.0.0",
+                "requiredCapabilities": ["skills"]
+            },
+            "skill": {
+                "entryFile": "skills/repo-review/SKILL.md"
+            }
+        },
+        {
+            "kind": "mode",
+            "slug": "focused-implementer",
+            "version": "1.0.0",
+            "name": "Focused Implementer",
+            "summary": "A sample mode manifest for marketplace contract validation.",
+            "source": {
+                "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+                "relativePath": "modes/focused-implementer"
+            },
+            "artifact": {
+                "url": "https://neontechspace.github.io/neonconductor-marketplace/artifacts/modes/focused-implementer-1.0.0.tgz",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "compatibility": {
+                "neonVersionRange": ">=0.0.1 <1.0.0",
+                "requiredCapabilities": ["modes"]
+            },
+            "mode": {
+                "manifestFile": "modes/focused-implementer/MODE.yaml"
+            }
+        },
+        {
+            "kind": "mcp",
+            "slug": "local-files",
+            "version": "1.0.0",
+            "name": "Local Files MCP",
+            "summary": "A sample MCP manifest for marketplace contract validation.",
+            "source": {
+                "repositoryUrl": "https://github.com/NeonTechSpace/neonconductor-marketplace",
+                "relativePath": "mcps/local-files"
+            },
+            "artifact": {
+                "url": "https://neontechspace.github.io/neonconductor-marketplace/artifacts/mcps/local-files-1.0.0.tgz",
+                "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "compatibility": {
+                "neonVersionRange": ">=0.0.1 <1.0.0",
+                "requiredCapabilities": ["mcp"]
+            },
+            "mcp": {
+                "manifestFile": "mcps/local-files/MCP.yaml",
+                "serverLabel": "Local Files"
+            }
+        }
+    ]
+}
