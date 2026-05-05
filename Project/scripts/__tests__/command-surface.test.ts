@@ -36,6 +36,8 @@ const canonicalScriptNames = [
     'report:health-baseline',
     'report:agents',
     'report:alpha',
+    'report:alpha:json',
+    'report:alpha:check',
     'report:alpha-evals',
     'report:alpha-evals:json',
     'report:alpha-evals:check',

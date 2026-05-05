@@ -33,6 +33,8 @@
         "report:agents:worklist:new": "tsx scripts/audit-agents-conformance.ts --worklist --report --new-only",
         "report:agents:worklist:stale": "tsx scripts/audit-agents-conformance.ts --worklist --report --stale-only",
         "report:alpha": "tsx scripts/alpha-acceptance.ts",
+        "report:alpha:json": "tsx scripts/alpha-acceptance.ts --json",
+        "report:alpha:check": "tsx scripts/alpha-acceptance.ts --check",
         "report:alpha-evals": "tsx scripts/alpha-evals.ts",
         "report:alpha-evals:json": "tsx scripts/alpha-evals.ts --json",
         "report:alpha-evals:check": "tsx scripts/alpha-evals.ts --check",
