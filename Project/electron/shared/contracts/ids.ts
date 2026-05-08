@@ -44,6 +44,8 @@ export type EntityIdPrefix =
     | 'pea'
     | 'orch'
     | 'step'
+    | 'olane'
+    | 'octx'
     | 'tool'
     | 'mcp'
     | 'provider'

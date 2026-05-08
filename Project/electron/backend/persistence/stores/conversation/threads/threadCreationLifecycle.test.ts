@@ -117,7 +117,7 @@ describe('threadCreationLifecycle', () => {
             sessionId: parentSession.session.id,
             planId: plan.id,
             planRevisionId: plan.currentRevisionId,
-            executionStrategy: 'delegate',
+            executionStrategy: 'sequential',
             stepDescriptions: ['Delegate'],
         });
 

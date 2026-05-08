@@ -291,8 +291,17 @@ export type PlanItemStatus = (typeof planItemStatuses)[number];
 export const orchestratorRunStatuses = ['running', 'completed', 'aborted', 'failed'] as const;
 export type OrchestratorRunStatus = (typeof orchestratorRunStatuses)[number];
 
-export const orchestratorExecutionStrategies = ['delegate', 'parallel'] as const;
+export const orchestratorExecutionStrategies = ['sequential', 'parallel', 'swarm'] as const;
 export type OrchestratorExecutionStrategy = (typeof orchestratorExecutionStrategies)[number];
+
+export const orchestratorSwarmRoles = ['explorer', 'implementer', 'reviewer', 'verifier', 'synthesizer'] as const;
+export type OrchestratorSwarmRole = (typeof orchestratorSwarmRoles)[number];
+
+export const orchestratorSwarmLaneStatuses = ['pending', 'running', 'completed', 'failed', 'aborted'] as const;
+export type OrchestratorSwarmLaneStatus = (typeof orchestratorSwarmLaneStatuses)[number];
+
+export const orchestratorSwarmContextEntryKinds = ['lane_result', 'conductor_note', 'synthesis'] as const;
+export type OrchestratorSwarmContextEntryKind = (typeof orchestratorSwarmContextEntryKinds)[number];
 
 export const registryScopes = ['system', 'global', 'workspace', 'session'] as const;
 export type RegistryScope = (typeof registryScopes)[number];

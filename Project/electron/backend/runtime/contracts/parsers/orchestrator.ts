@@ -9,11 +9,20 @@ import {
     readProfileId,
     readProviderId,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
+import type { OrchestratorExecutionStrategy } from '@/app/backend/runtime/contracts/enums';
 import type {
     OrchestratorRunByIdInput,
     OrchestratorRunBySessionInput,
     OrchestratorStartInput,
 } from '@/app/backend/runtime/contracts/types';
+
+function readOrchestratorExecutionStrategy(value: unknown): OrchestratorExecutionStrategy {
+    if (value === 'delegate') {
+        return 'sequential';
+    }
+
+    return readEnumValue(value, 'executionStrategy', orchestratorExecutionStrategies);
+}
 
 export function parseOrchestratorStartInput(input: unknown): OrchestratorStartInput {
     const source = readObject(input, 'input');
@@ -22,7 +31,7 @@ export function parseOrchestratorStartInput(input: unknown): OrchestratorStartIn
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
     const executionStrategy =
         source.executionStrategy !== undefined
-            ? readEnumValue(source.executionStrategy, 'executionStrategy', orchestratorExecutionStrategies)
+            ? readOrchestratorExecutionStrategy(source.executionStrategy)
             : undefined;
 
     return {

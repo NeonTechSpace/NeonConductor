@@ -145,6 +145,21 @@ export interface ModeExecutionOrchestratorStepView {
     canOpenWorkerLane: boolean;
 }
 
+export interface ModeExecutionOrchestratorSwarmLaneView {
+    id: EntityId<'olane'>;
+    sequence: number;
+    role: 'explorer' | 'implementer' | 'reviewer' | 'verifier' | 'synthesizer';
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted';
+    stepId?: EntityId<'step'>;
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    activeRunId?: EntityId<'run'>;
+    runId?: EntityId<'run'>;
+    errorMessage?: string;
+    resultSummaryMarkdown?: string;
+    canOpenWorkerLane: boolean;
+}
+
 export interface ModeExecutionOrchestratorPanelState {
     activeExecutionStrategy: OrchestratorExecutionStrategy;
     canAbortOrchestrator: boolean;
@@ -156,6 +171,8 @@ export interface ModeExecutionOrchestratorPanelState {
     runningStepCount: number;
     showStrategyControls: boolean;
     steps: ModeExecutionOrchestratorStepView[];
+    swarmLanes: ModeExecutionOrchestratorSwarmLaneView[];
+    synthesisLane?: ModeExecutionOrchestratorSwarmLaneView;
 }
 
 export function resolveModeExecutionOrchestratorPanelState(input: {
@@ -179,6 +196,19 @@ export function resolveModeExecutionOrchestratorPanelState(input: {
                   activeRunId?: EntityId<'run'>;
                   runId?: EntityId<'run'>;
               }>;
+              swarmLanes?: Array<{
+                  id: EntityId<'olane'>;
+                  sequence: number;
+                  role: 'explorer' | 'implementer' | 'reviewer' | 'verifier' | 'synthesizer';
+                  status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted';
+                  stepId?: EntityId<'step'>;
+                  childThreadId?: EntityId<'thr'>;
+                  childSessionId?: EntityId<'sess'>;
+                  activeRunId?: EntityId<'run'>;
+                  runId?: EntityId<'run'>;
+                  errorMessage?: string;
+                  resultSummaryMarkdown?: string;
+              }>;
           }
         | undefined;
 }): ModeExecutionOrchestratorPanelState | undefined {
@@ -187,6 +217,12 @@ export function resolveModeExecutionOrchestratorPanelState(input: {
     }
 
     const activeExecutionStrategy = input.orchestratorView.run.executionStrategy;
+
+    const swarmLanes = (input.orchestratorView.swarmLanes ?? []).map((lane) => ({
+        ...lane,
+        canOpenWorkerLane: Boolean(lane.childThreadId),
+    }));
+    const synthesisLane = swarmLanes.find((lane) => lane.role === 'synthesizer');
 
     return {
         activeExecutionStrategy,
@@ -202,6 +238,8 @@ export function resolveModeExecutionOrchestratorPanelState(input: {
             ...step,
             canOpenWorkerLane: Boolean(step.childThreadId),
         })),
+        swarmLanes,
+        ...(synthesisLane ? { synthesisLane } : {}),
     };
 }
 

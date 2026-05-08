@@ -38,10 +38,10 @@ export function resolveOrchestratorExecutionStrategyDraft(
     });
 
     if (!rootThreadId) {
-        return 'delegate';
+        return 'sequential';
     }
 
-    return input.draftsByRootThreadId[rootThreadId] ?? 'delegate';
+    return input.draftsByRootThreadId[rootThreadId] ?? 'sequential';
 }
 
 export function updateOrchestratorExecutionStrategyDraft(input: {

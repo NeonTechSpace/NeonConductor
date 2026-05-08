@@ -12,7 +12,7 @@ import {
     tagStore,
     threadStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
-import { orchestratorStore, planStore } from '@/app/backend/persistence/stores';
+import { orchestratorStore, orchestratorSwarmStore, planStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 
 registerPersistenceStoreHooks();
@@ -203,12 +203,46 @@ describe('persistence stores: conversation domain', () => {
             sessionId: orchestratorSession.session.id,
             planId: orchestratorPlan.id,
             planRevisionId: orchestratorPlan.currentRevisionId,
-            executionStrategy: 'delegate',
+            executionStrategy: 'sequential',
             stepDescriptions: ['Delegated step'],
         });
         const storedOrchestratorRun = await orchestratorStore.getRunById(profileId, orchestratorRun.run.id);
         expect(storedOrchestratorRun?.planId).toBe(orchestratorPlan.id);
         expect(storedOrchestratorRun?.planRevisionId).toBe(orchestratorPlan.currentRevisionId);
+
+        const swarmLane = await orchestratorSwarmStore.createLane({
+            orchestratorRunId: orchestratorRun.run.id,
+            ...(orchestratorRun.steps[0] ? { stepId: orchestratorRun.steps[0].id } : {}),
+            sequence: 1,
+            role: 'explorer',
+            promptMarkdown: 'Inspect the delegated step.',
+        });
+        await orchestratorSwarmStore.updateLane(swarmLane.id, {
+            status: 'completed',
+            resultSummaryMarkdown: 'Explorer found the relevant files.',
+        });
+        await orchestratorSwarmStore.appendContextEntry({
+            orchestratorRunId: orchestratorRun.run.id,
+            sourceLaneId: swarmLane.id,
+            entryKind: 'lane_result',
+            contentMarkdown: 'Explorer found the relevant files.',
+        });
+
+        expect(await orchestratorSwarmStore.listLanes(orchestratorRun.run.id)).toMatchObject([
+            {
+                id: swarmLane.id,
+                role: 'explorer',
+                status: 'completed',
+                resultSummaryMarkdown: 'Explorer found the relevant files.',
+            },
+        ]);
+        expect(await orchestratorSwarmStore.listContextEntries(orchestratorRun.run.id)).toMatchObject([
+            {
+                sourceLaneId: swarmLane.id,
+                entryKind: 'lane_result',
+                contentMarkdown: 'Explorer found the relevant files.',
+            },
+        ]);
     });
 
     it('supports conversations, threads, tags, diffs, and checkpoints', async () => {

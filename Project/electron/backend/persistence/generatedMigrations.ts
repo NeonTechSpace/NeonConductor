@@ -1503,7 +1503,7 @@ CREATE TABLE orchestrator_runs (
     plan_phase_id TEXT NULL REFERENCES plan_phases(id) ON DELETE SET NULL,
     plan_phase_revision_id TEXT NULL REFERENCES plan_phase_revisions(id) ON DELETE SET NULL,
     status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'aborted', 'failed')),
-    execution_strategy TEXT NOT NULL CHECK (execution_strategy IN ('delegate', 'parallel')),
+    execution_strategy TEXT NOT NULL CHECK (execution_strategy IN ('sequential', 'parallel', 'swarm')),
     active_step_index INTEGER NULL,
     started_at TEXT NOT NULL,
     completed_at TEXT NULL,
@@ -1531,6 +1531,38 @@ CREATE TABLE orchestrator_steps (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
     FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_swarm_lanes (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    step_id TEXT NULL,
+    sequence INTEGER NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('explorer', 'implementer', 'reviewer', 'verifier', 'synthesizer')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'aborted')),
+    child_thread_id TEXT NULL REFERENCES threads(id) ON DELETE SET NULL,
+    child_session_id TEXT NULL REFERENCES sessions(id) ON DELETE SET NULL,
+    active_run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    prompt_markdown TEXT NOT NULL,
+    result_summary_markdown TEXT NULL,
+    error_message TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (step_id) REFERENCES orchestrator_steps(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_swarm_context_entries (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    source_lane_id TEXT NULL,
+    sequence INTEGER NOT NULL,
+    entry_kind TEXT NOT NULL CHECK (entry_kind IN ('lane_result', 'conductor_note', 'synthesis')),
+    content_markdown TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_lane_id) REFERENCES orchestrator_swarm_lanes(id) ON DELETE SET NULL
 );
 
 -- Permissions, tools, MCP, and marketplace.
@@ -2103,6 +2135,12 @@ CREATE INDEX idx_orchestrator_runs_profile_session
 
 CREATE UNIQUE INDEX idx_orchestrator_steps_run_sequence
     ON orchestrator_steps(orchestrator_run_id, sequence);
+
+CREATE UNIQUE INDEX idx_orchestrator_swarm_lanes_run_sequence
+    ON orchestrator_swarm_lanes(orchestrator_run_id, sequence);
+
+CREATE UNIQUE INDEX idx_orchestrator_swarm_context_entries_run_sequence
+    ON orchestrator_swarm_context_entries(orchestrator_run_id, sequence);
 
 CREATE INDEX idx_permission_policy_overrides_scope
     ON permission_policy_overrides(profile_id, scope_key);

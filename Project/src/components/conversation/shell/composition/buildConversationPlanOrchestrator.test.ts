@@ -93,6 +93,8 @@ function createLatestOrchestratorState(): {
     found: true;
     run: OrchestratorRunRecord;
     steps: OrchestratorStepRecord[];
+    swarmLanes: [];
+    swarmContextEntries: [];
 } {
     return {
         found: true,
@@ -120,6 +122,8 @@ function createLatestOrchestratorState(): {
                 updatedAt: '2026-03-27T10:05:00.000Z',
             },
         ],
+        swarmLanes: [],
+        swarmContextEntries: [],
     };
 }
 

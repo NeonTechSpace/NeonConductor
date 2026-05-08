@@ -7,7 +7,7 @@ import {
 } from '@/web/components/conversation/shell/orchestratorExecutionStrategyDrafts';
 
 describe('orchestratorExecutionStrategyDrafts', () => {
-    it('defaults to delegate when the selected root orchestrator thread has no draft', () => {
+    it('defaults to sequential when the selected root orchestrator thread has no draft', () => {
         expect(
             resolveOrchestratorExecutionStrategyDraft({
                 topLevelTab: 'orchestrator',
@@ -18,7 +18,7 @@ describe('orchestratorExecutionStrategyDrafts', () => {
                 } as never,
                 draftsByRootThreadId: {},
             })
-        ).toBe('delegate');
+        ).toBe('sequential');
     });
 
     it('resolves a stored draft for the selected root orchestrator thread only', () => {
@@ -32,10 +32,10 @@ describe('orchestratorExecutionStrategyDrafts', () => {
                 } as never,
                 draftsByRootThreadId: {
                     thr_root_a: 'parallel',
-                    thr_root_b: 'delegate',
+                    thr_root_b: 'sequential',
                 },
             })
-        ).toBe('delegate');
+        ).toBe('sequential');
     });
 
     it('ignores delegated child lanes when resolving the root-thread draft key', () => {
@@ -59,11 +59,11 @@ describe('orchestratorExecutionStrategyDrafts', () => {
                     thr_root_a: 'parallel',
                 },
                 rootThreadId: 'thr_root_b',
-                executionStrategy: 'delegate',
+                executionStrategy: 'sequential',
             })
         ).toEqual({
             thr_root_a: 'parallel',
-            thr_root_b: 'delegate',
+            thr_root_b: 'sequential',
         });
     });
 });

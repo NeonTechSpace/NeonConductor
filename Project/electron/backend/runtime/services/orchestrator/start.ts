@@ -75,7 +75,7 @@ export async function prepareOrchestratorStart(
         planRevisionId: approvedArtifact.approvedRevisionId,
         ...(input.planPhaseId ? { planPhaseId: input.planPhaseId } : {}),
         ...(input.planPhaseRevisionId ? { planPhaseRevisionId: input.planPhaseRevisionId } : {}),
-        executionStrategy: input.executionStrategy ?? 'delegate',
+        executionStrategy: input.executionStrategy ?? 'sequential',
         stepDescriptions,
     });
 

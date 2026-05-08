@@ -38,11 +38,14 @@ function mapOrchestratorRunRecord(row: {
         ...(row.plan_phase_id ? { planPhaseId: row.plan_phase_id } : {}),
         ...(row.plan_phase_revision_id ? { planPhaseRevisionId: row.plan_phase_revision_id } : {}),
         status: parseEnumValue(row.status, 'orchestrator_runs.status', orchestratorRunStatuses),
-        executionStrategy: parseEnumValue(
-            row.execution_strategy,
-            'orchestrator_runs.execution_strategy',
-            orchestratorExecutionStrategies
-        ),
+        executionStrategy:
+            row.execution_strategy === 'delegate'
+                ? 'sequential'
+                : parseEnumValue(
+                      row.execution_strategy,
+                      'orchestrator_runs.execution_strategy',
+                      orchestratorExecutionStrategies
+                  ),
         ...(row.active_step_index !== null ? { activeStepIndex: row.active_step_index } : {}),
         startedAt: row.started_at,
         ...(row.completed_at ? { completedAt: row.completed_at } : {}),

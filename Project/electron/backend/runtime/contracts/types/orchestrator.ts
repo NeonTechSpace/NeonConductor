@@ -1,6 +1,9 @@
 import type {
     OrchestratorExecutionStrategy,
     OrchestratorRunStatus,
+    OrchestratorSwarmContextEntryKind,
+    OrchestratorSwarmLaneStatus,
+    OrchestratorSwarmRole,
     RuntimeProviderId,
 } from '@/app/backend/runtime/contracts/enums';
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
@@ -24,6 +27,34 @@ export interface OrchestratorRunByIdInput extends ProfileInput {
 
 export interface OrchestratorRunBySessionInput extends ProfileInput {
     sessionId: EntityId<'sess'>;
+}
+
+export interface OrchestratorSwarmLaneView {
+    id: EntityId<'olane'>;
+    orchestratorRunId: EntityId<'orch'>;
+    stepId?: EntityId<'step'>;
+    sequence: number;
+    role: OrchestratorSwarmRole;
+    status: OrchestratorSwarmLaneStatus;
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    activeRunId?: EntityId<'run'>;
+    runId?: EntityId<'run'>;
+    promptMarkdown: string;
+    resultSummaryMarkdown?: string;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorSwarmContextEntryView {
+    id: EntityId<'octx'>;
+    orchestratorRunId: EntityId<'orch'>;
+    sourceLaneId?: EntityId<'olane'>;
+    sequence: number;
+    entryKind: OrchestratorSwarmContextEntryKind;
+    contentMarkdown: string;
+    createdAt: string;
 }
 
 export interface OrchestratorStepView {
@@ -58,4 +89,6 @@ export interface OrchestratorRunView {
     createdAt: string;
     updatedAt: string;
     steps: OrchestratorStepView[];
+    swarmLanes: OrchestratorSwarmLaneView[];
+    swarmContextEntries: OrchestratorSwarmContextEntryView[];
 }

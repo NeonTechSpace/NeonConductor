@@ -1034,7 +1034,7 @@ export interface OrchestratorRunRecord {
     planPhaseId?: string;
     planPhaseRevisionId?: string;
     status: 'running' | 'completed' | 'aborted' | 'failed';
-    executionStrategy: 'delegate' | 'parallel';
+    executionStrategy: 'sequential' | 'parallel' | 'swarm';
     activeStepIndex?: number;
     startedAt: string;
     completedAt?: string;
@@ -1057,6 +1057,34 @@ export interface OrchestratorStepRecord {
     errorMessage?: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface OrchestratorSwarmLaneRecord {
+    id: EntityId<'olane'>;
+    orchestratorRunId: EntityId<'orch'>;
+    stepId?: EntityId<'step'>;
+    sequence: number;
+    role: 'explorer' | 'implementer' | 'reviewer' | 'verifier' | 'synthesizer';
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted';
+    childThreadId?: EntityId<'thr'>;
+    childSessionId?: EntityId<'sess'>;
+    activeRunId?: EntityId<'run'>;
+    runId?: EntityId<'run'>;
+    promptMarkdown: string;
+    resultSummaryMarkdown?: string;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorSwarmContextEntryRecord {
+    id: EntityId<'octx'>;
+    orchestratorRunId: EntityId<'orch'>;
+    sourceLaneId?: EntityId<'olane'>;
+    sequence: number;
+    entryKind: 'lane_result' | 'conductor_note' | 'synthesis';
+    contentMarkdown: string;
+    createdAt: string;
 }
 
 export interface PermissionPolicyOverrideRecord {

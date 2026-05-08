@@ -85,6 +85,26 @@ describe('ModeExecutionPanel rendering', () => {
                             activeRunId: 'run_1',
                         },
                     ],
+                    swarmLanes: [
+                        {
+                            id: 'olane_1',
+                            sequence: 1,
+                            role: 'explorer',
+                            status: 'completed',
+                            stepId: 'step_1',
+                            childThreadId: 'thr_swarm_1',
+                            childSessionId: 'sess_swarm_1',
+                            runId: 'run_swarm_1',
+                            resultSummaryMarkdown: 'Explorer found the files.',
+                        },
+                        {
+                            id: 'olane_2',
+                            sequence: 2,
+                            role: 'synthesizer',
+                            status: 'running',
+                            activeRunId: 'run_swarm_2',
+                        },
+                    ],
                 },
                 onExecutionStrategyChange: vi.fn(),
                 onSelectChildThread: vi.fn(),
@@ -93,6 +113,10 @@ describe('ModeExecutionPanel rendering', () => {
 
         expect(html).toContain('Strategy');
         expect(html).toContain('Parallel');
+        expect(html).toContain('Swarm');
+        expect(html).toContain('Swarm lanes');
+        expect(html).toContain('explorer');
+        expect(html).toContain('Synthesis: running');
         expect(html).toContain('Open worker lane');
         expect(html).toContain('Active run run_1');
         expect(html).toContain('Current revision');
@@ -114,7 +138,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'simple',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
@@ -136,7 +160,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'advanced',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
@@ -215,7 +239,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'advanced',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
@@ -297,7 +321,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'advanced',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
@@ -416,7 +440,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'advanced',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
@@ -541,7 +565,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'advanced',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),
@@ -658,7 +682,7 @@ describe('ModeExecutionPanel rendering', () => {
     it('resolves an explicit orchestrator-facing panel model from the raw inputs', () => {
         const panelState = resolveModeExecutionOrchestratorPanelState({
             topLevelTab: 'orchestrator',
-            selectedExecutionStrategy: 'delegate',
+            selectedExecutionStrategy: 'sequential',
             canConfigureExecutionStrategy: true,
             orchestratorView: {
                 run: {
@@ -702,6 +726,7 @@ describe('ModeExecutionPanel rendering', () => {
                     canOpenWorkerLane: true,
                 },
             ],
+            swarmLanes: [],
         });
     });
 
@@ -845,7 +870,7 @@ describe('ModeExecutionPanel rendering', () => {
                 planningDepthSelection: 'simple',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 activePlan: {
@@ -1021,7 +1046,7 @@ describe('ModeExecutionPanel capability gating', () => {
                 planningDepthSelection: 'simple',
                 isLoadingPlan: false,
                 actionController: createActionController(),
-                selectedExecutionStrategy: 'delegate',
+                selectedExecutionStrategy: 'sequential',
                 canConfigureExecutionStrategy: false,
                 onPlanningDepthSelectionChange: vi.fn(),
                 onExecutionStrategyChange: vi.fn(),

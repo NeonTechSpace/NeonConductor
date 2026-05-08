@@ -1,4 +1,5 @@
 import { orchestratorExecutionStrategies, topLevelTabs } from '@/app/backend/runtime/contracts/enums';
+import type { OrchestratorExecutionStrategy } from '@/app/backend/runtime/contracts/enums';
 import {
     createParser,
     readBoolean,
@@ -47,6 +48,14 @@ import type {
     PlanStartResearchBatchInput,
     PlanVerifyPhaseInput,
 } from '@/app/backend/runtime/contracts/types';
+
+function readOrchestratorExecutionStrategy(value: unknown): OrchestratorExecutionStrategy {
+    if (value === 'delegate') {
+        return 'sequential';
+    }
+
+    return readEnumValue(value, 'executionStrategy', orchestratorExecutionStrategies);
+}
 
 function readPositiveInteger(value: unknown, field: string): number {
     if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
@@ -362,7 +371,7 @@ export function parsePlanImplementPhaseInput(input: unknown): PlanImplementPhase
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
     const executionStrategy =
         source.executionStrategy !== undefined
-            ? readEnumValue(source.executionStrategy, 'executionStrategy', orchestratorExecutionStrategies)
+            ? readOrchestratorExecutionStrategy(source.executionStrategy)
             : undefined;
 
     return {
@@ -497,7 +506,7 @@ export function parsePlanImplementInput(input: unknown): PlanImplementInput {
     const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
     const executionStrategy =
         source.executionStrategy !== undefined
-            ? readEnumValue(source.executionStrategy, 'executionStrategy', orchestratorExecutionStrategies)
+            ? readOrchestratorExecutionStrategy(source.executionStrategy)
             : undefined;
 
     return {

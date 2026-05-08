@@ -367,7 +367,7 @@ export async function implementPhase(
         profileId: input.profileId,
         planId: input.planId,
         runtimeOptions: input.runtimeOptions,
-        executionStrategy: input.executionStrategy ?? 'delegate',
+        executionStrategy: input.executionStrategy ?? 'sequential',
         ...(input.providerId ? { providerId: input.providerId } : {}),
         ...(input.modelId ? { modelId: input.modelId } : {}),
         ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),

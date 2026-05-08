@@ -19,6 +19,7 @@ import {
 import {
     getLatestOrchestratorBySession,
     getOrchestratorStatus,
+    type OrchestratorStatusResult,
 } from '@/app/backend/runtime/services/orchestrator/status';
 import type { ApprovedPlanExecutionArtifact } from '@/app/backend/runtime/services/plan/approvedExecutionArtifact';
 
@@ -78,14 +79,11 @@ export class OrchestratorExecutionService {
     async getStatus(
         profileId: string,
         orchestratorRunId: EntityId<'orch'>
-    ): Promise<{ found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }> {
+    ): Promise<OrchestratorStatusResult> {
         return getOrchestratorStatus(profileId, orchestratorRunId);
     }
 
-    async getLatestBySession(
-        profileId: string,
-        sessionId: EntityId<'sess'>
-    ): Promise<{ found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }> {
+    async getLatestBySession(profileId: string, sessionId: EntityId<'sess'>): Promise<OrchestratorStatusResult> {
         return getLatestOrchestratorBySession(profileId, sessionId);
     }
 
@@ -97,7 +95,7 @@ export class OrchestratorExecutionService {
         | {
               aborted: true;
               runId: EntityId<'orch'>;
-              latest: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] };
+              latest: OrchestratorStatusResult;
           }
     > {
         const result = await abortOrchestratorRun({
@@ -127,7 +125,7 @@ export class OrchestratorExecutionService {
         await executeOrchestratorSteps({
             ...input,
             activeRuns: this.activeRuns,
-            executionStrategy: input.startInput.executionStrategy ?? 'delegate',
+            executionStrategy: input.startInput.executionStrategy ?? 'sequential',
         });
     }
 }

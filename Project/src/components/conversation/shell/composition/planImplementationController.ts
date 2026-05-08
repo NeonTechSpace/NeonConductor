@@ -1,7 +1,12 @@
 import type { ConversationActivePlanData } from '@/web/components/conversation/shell/useConversationShellViewControllers.types';
 import type { RunTargetSelection } from '@/web/components/conversation/shell/workspace/helpers';
 
-import type { OrchestratorRunRecord, OrchestratorStepRecord } from '@/app/backend/persistence/types';
+import type {
+    OrchestratorRunRecord,
+    OrchestratorStepRecord,
+    OrchestratorSwarmContextEntryRecord,
+    OrchestratorSwarmLaneRecord,
+} from '@/app/backend/persistence/types';
 
 import { launchBackgroundTask } from '@/shared/async/launchBackgroundTask';
 import type {
@@ -19,13 +24,20 @@ interface MutationLike<TInput, TResult> {
 }
 
 type ConversationActivePlanRecord = Extract<ConversationActivePlanData, { found: true }>['plan'];
+type ConversationOrchestratorStatus =
+    | { found: false }
+    | {
+          found: true;
+          run: OrchestratorRunRecord;
+          steps: OrchestratorStepRecord[];
+          swarmLanes: OrchestratorSwarmLaneRecord[];
+          swarmContextEntries: OrchestratorSwarmContextEntryRecord[];
+      };
 
 export interface CreatePlanImplementationControllerInput {
     profileId: string;
     applyPlanWorkspaceUpdate: (result: ConversationActivePlanData) => void;
-    applyOrchestratorWorkspaceUpdate: (
-        result: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] }
-    ) => void;
+    applyOrchestratorWorkspaceUpdate: (result: ConversationOrchestratorStatus) => void;
     onError: (message: string) => void;
     resolvedRunTarget: RunTargetSelection | undefined;
     runtimeOptions: RuntimeRunOptions;
@@ -253,7 +265,7 @@ export interface CreatePlanImplementationControllerInput {
         | {
               aborted: true;
               runId: EntityId<'orch'>;
-              latest: { found: false } | { found: true; run: OrchestratorRunRecord; steps: OrchestratorStepRecord[] };
+              latest: ConversationOrchestratorStatus;
           }
     >;
 }

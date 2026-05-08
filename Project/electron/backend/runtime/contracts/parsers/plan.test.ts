@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     parsePlanAbortResearchBatchInput,
+    parsePlanImplementInput,
     parsePlanReviseInput,
     parsePlanStartPhaseReplanInput,
     parsePlanStartInput,
@@ -28,6 +29,29 @@ describe('plan parsers', () => {
             prompt: 'Draft an advanced plan',
             planningDepth: 'advanced',
         });
+    });
+
+    it('normalizes legacy orchestrator delegate strategy on plan implementation input', () => {
+        expect(
+            parsePlanImplementInput({
+                profileId: 'profile_default',
+                planId: 'plan_1',
+                runtimeOptions: {
+                    reasoning: {
+                        effort: 'medium',
+                        summary: 'auto',
+                        includeEncrypted: false,
+                    },
+                    cache: {
+                        strategy: 'auto',
+                    },
+                    transport: {
+                        family: 'auto',
+                    },
+                },
+                executionStrategy: 'delegate',
+            }).executionStrategy
+        ).toBe('sequential');
     });
 
     it('parses an advanced snapshot on revise input', () => {

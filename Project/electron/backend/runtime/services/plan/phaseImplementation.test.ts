@@ -217,7 +217,7 @@ describe('implementApprovedPlanPhase', () => {
             planRevisionId: plan.approvedRevisionId ?? plan.currentRevisionId,
             planPhaseId: phase.id,
             planPhaseRevisionId: phase.currentRevisionId,
-            executionStrategy: 'delegate',
+            executionStrategy: 'sequential',
             stepDescriptions: phase.items.map((item) => item.description),
         });
         mocks.orchestratorExecutionService.start.mockResolvedValue({
@@ -240,7 +240,7 @@ describe('implementApprovedPlanPhase', () => {
             expect.objectContaining({
                 planId: plan.id,
                 profileId: getDefaultProfileId(),
-                executionStrategy: 'delegate',
+                executionStrategy: 'sequential',
                 approvedArtifact: expect.objectContaining({
                     planId: plan.id,
                     topLevelTab: 'orchestrator',

@@ -158,7 +158,7 @@ describe('runtime contracts: planning and orchestrator', () => {
         if (!status.found) {
             throw new Error('Expected orchestrator status to be found.');
         }
-        expect(status.run.executionStrategy).toBe('delegate');
+        expect(status.run.executionStrategy).toBe('sequential');
         expect(status.run.planRevisionId).toBe(revised.plan.currentRevisionId);
         expect(status.steps.length).toBe(2);
         expect(status.steps.every((step) => step.status === 'completed')).toBe(true);
@@ -339,6 +339,116 @@ describe('runtime contracts: planning and orchestrator', () => {
 
         await waitForOrchestratorStatus(caller, profileId, implemented.orchestratorRunId, 'completed');
     });
+
+    it('supports swarm orchestrator execution with role lanes and final synthesis', async () => {
+        const caller = createCaller();
+        const completionFetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => ({
+                choices: [
+                    {
+                        message: {
+                            content: 'Swarm lane completed',
+                        },
+                    },
+                ],
+                usage: {
+                    prompt_tokens: 8,
+                    completion_tokens: 13,
+                    total_tokens: 21,
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', completionFetchMock);
+
+        await caller.provider.setApiKey({
+            profileId,
+            providerId: 'openai',
+            apiKey: 'openai-swarm-test-key',
+        });
+
+        const created = await createSessionInScope(caller, profileId, {
+            scope: 'workspace',
+            workspaceFingerprint: 'wsf_swarm_orchestrator',
+            title: 'Swarm orchestrator lifecycle thread',
+            kind: 'local',
+            topLevelTab: 'orchestrator',
+        });
+
+        const started = await caller.plan.start({
+            profileId,
+            sessionId: created.session.id,
+            topLevelTab: 'orchestrator',
+            modeKey: 'plan',
+            prompt: 'Plan one swarm-orchestrated implementation step.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'scope',
+            answer: 'Run one role-aware swarm pipeline and synthesize the result.',
+        });
+        await caller.plan.answerQuestion({
+            profileId,
+            planId: started.plan.id,
+            questionId: 'constraints',
+            answer: 'Only the implementer lane may mutate files.',
+        });
+        const revised = await caller.plan.revise({
+            profileId,
+            planId: started.plan.id,
+            summaryMarkdown: '# Swarm Orchestrator Plan',
+            items: [{ description: 'Swarm step one' }],
+        });
+        expect(revised.found).toBe(true);
+        if (!revised.found) {
+            throw new Error('Expected swarm orchestrator revision.');
+        }
+        await caller.plan.approve({
+            profileId,
+            planId: started.plan.id,
+            revisionId: revised.plan.currentRevisionId,
+        });
+
+        const implemented = await caller.plan.implement({
+            profileId,
+            planId: started.plan.id,
+            runtimeOptions: defaultRuntimeOptions,
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            executionStrategy: 'swarm',
+        });
+        expect(implemented.found).toBe(true);
+        if (!implemented.found || implemented.mode !== 'orchestrator.orchestrate') {
+            throw new Error('Expected swarm orchestrator start.');
+        }
+
+        await waitForOrchestratorStatus(caller, profileId, implemented.orchestratorRunId, 'completed');
+
+        const status = await caller.orchestrator.status({
+            profileId,
+            orchestratorRunId: implemented.orchestratorRunId,
+        });
+        expect(status.found).toBe(true);
+        if (!status.found) {
+            throw new Error('Expected swarm orchestrator status.');
+        }
+        expect(status.run.executionStrategy).toBe('swarm');
+        expect(status.steps).toHaveLength(1);
+        expect(status.steps[0]?.status).toBe('completed');
+        expect(status.swarmLanes.map((lane) => lane.role)).toEqual([
+            'explorer',
+            'implementer',
+            'reviewer',
+            'verifier',
+            'synthesizer',
+        ]);
+        expect(status.swarmLanes.every((lane) => lane.status === 'completed')).toBe(true);
+        expect(status.swarmContextEntries).toHaveLength(5);
+        expect(completionFetchMock).toHaveBeenCalledTimes(5);
+    }, 20000);
 
     it('aborts live parallel execution cleanly and requires re-approval before a fresh implementation run', async () => {
         const caller = createCaller();

@@ -33,6 +33,26 @@ type PlanView = ModeExecutionPlanView;
 
 type OrchestratorView = Parameters<typeof resolveModeExecutionOrchestratorPanelState>[0]['orchestratorView'];
 
+function readStrategyDescription(orchestratorPanelState: ModeExecutionOrchestratorPanelState): string {
+    if (orchestratorPanelState.activeExecutionStrategy === 'parallel') {
+        return `${String(orchestratorPanelState.runningStepCount)} child lane${orchestratorPanelState.runningStepCount === 1 ? '' : 's'} running. A child failure aborts sibling workers and fails the root run.`;
+    }
+
+    if (orchestratorPanelState.activeExecutionStrategy === 'swarm') {
+        return 'The conductor runs role-aware child lanes with shared run-scoped context, then requires final synthesis before completion.';
+    }
+
+    return 'The root conductor starts one child worker lane at a time. A child failure stops the strategy immediately.';
+}
+
+function readStrategyLabel(orchestratorPanelState: ModeExecutionOrchestratorPanelState): string {
+    if (orchestratorPanelState.activeExecutionStrategy === 'sequential') {
+        return 'sequential';
+    }
+
+    return orchestratorPanelState.activeExecutionStrategy;
+}
+
 export interface ModeExecutionPanelProps {
     topLevelTab: TopLevelTab;
     showPlanSurface: boolean;
@@ -85,13 +105,44 @@ function renderOrchestratorPanel(
                 Status: <span className='font-medium'>{orchestratorPanelState.runStatus}</span>
             </p>
             <p className='text-xs'>
-                Strategy: <span className='font-medium'>{orchestratorPanelState.activeExecutionStrategy}</span>
+                Strategy: <span className='font-medium'>{readStrategyLabel(orchestratorPanelState)}</span>
             </p>
-            <p className='text-muted-foreground text-xs'>
-                {orchestratorPanelState.activeExecutionStrategy === 'parallel'
-                    ? `${String(orchestratorPanelState.runningStepCount)} child lane${orchestratorPanelState.runningStepCount === 1 ? '' : 's'} running. A child failure aborts sibling workers and fails the root run.`
-                    : 'The root delegator starts one child worker lane at a time. A child failure stops the strategy immediately.'}
-            </p>
+            <p className='text-muted-foreground text-xs'>{readStrategyDescription(orchestratorPanelState)}</p>
+            {orchestratorPanelState.swarmLanes.length > 0 ? (
+                <div className='border-border/70 bg-background/80 space-y-2 rounded border px-3 py-2 text-xs'>
+                    <p className='font-medium'>Swarm lanes</p>
+                    <div className='space-y-1'>
+                        {orchestratorPanelState.swarmLanes.map((lane) => (
+                            <div key={lane.id} className='flex flex-wrap items-center justify-between gap-2'>
+                                <span>
+                                    {String(lane.sequence)}. {lane.role} · {lane.status}
+                                </span>
+                                {lane.canOpenWorkerLane ? (
+                                    <Button
+                                        type='button'
+                                        size='sm'
+                                        variant='ghost'
+                                        onClick={() => {
+                                            if (lane.childThreadId) {
+                                                input.onSelectChildThread?.(lane.childThreadId);
+                                            }
+                                        }}>
+                                        Open lane
+                                    </Button>
+                                ) : null}
+                                {lane.errorMessage ? (
+                                    <span className='text-destructive w-full'>{lane.errorMessage}</span>
+                                ) : null}
+                            </div>
+                        ))}
+                    </div>
+                    {orchestratorPanelState.synthesisLane ? (
+                        <p className='text-muted-foreground text-[11px]'>
+                            Synthesis: {orchestratorPanelState.synthesisLane.status}
+                        </p>
+                    ) : null}
+                </div>
+            ) : null}
             <div className='space-y-1'>
                 {orchestratorPanelState.steps.map((step) => (
                     <div key={step.id} className='bg-background rounded border px-3 py-2 text-xs'>

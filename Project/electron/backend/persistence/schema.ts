@@ -1,4 +1,8 @@
 import type { FlowDefinitionOriginKind } from '@/app/backend/runtime/contracts/enums';
+import type {
+    OrchestratorSwarmContextEntriesTable,
+    OrchestratorSwarmLanesTable,
+} from '@/app/backend/persistence/schemaTables/orchestratorSwarmTables';
 import type { ResearchCheckoutRecordsTable } from '@/app/backend/persistence/schemaTables/researchCheckoutRecordsTable';
 
 import type { Generated } from 'kysely';
@@ -1480,5 +1484,7 @@ export interface DatabaseSchema {
     flow_instances: FlowInstancesTable;
     orchestrator_runs: OrchestratorRunsTable;
     orchestrator_steps: OrchestratorStepsTable;
+    orchestrator_swarm_lanes: OrchestratorSwarmLanesTable;
+    orchestrator_swarm_context_entries: OrchestratorSwarmContextEntriesTable;
     permission_policy_overrides: PermissionPolicyOverridesTable;
 }

@@ -332,12 +332,12 @@ function PlanArtifactActionBar({
                     <Button
                         type='button'
                         size='sm'
-                        variant={selectedExecutionStrategy === 'delegate' ? 'default' : 'ghost'}
+                        variant={selectedExecutionStrategy === 'sequential' ? 'default' : 'ghost'}
                         disabled={isPlanMutating}
                         onClick={() => {
-                            onExecutionStrategyChange('delegate');
+                            onExecutionStrategyChange('sequential');
                         }}>
-                        Delegate
+                        Sequential
                     </Button>
                     <Button
                         type='button'
@@ -348,6 +348,16 @@ function PlanArtifactActionBar({
                             onExecutionStrategyChange('parallel');
                         }}>
                         Parallel
+                    </Button>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant={selectedExecutionStrategy === 'swarm' ? 'default' : 'ghost'}
+                        disabled={isPlanMutating}
+                        onClick={() => {
+                            onExecutionStrategyChange('swarm');
+                        }}>
+                        Swarm
                     </Button>
                 </div>
             ) : null}
