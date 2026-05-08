@@ -3,6 +3,7 @@ export const PICK_WORKSPACE_ICON_CHANNEL = 'neonconductor:desktop:pick-workspace
 export const DEV_BROWSER_SYNC_MOUNT_CHANNEL = 'neonconductor:desktop:dev-browser:sync-mount';
 export const DEV_BROWSER_PICKER_CHANNEL = 'neonconductor:desktop:dev-browser:picker';
 export const DEV_BROWSER_SELECTION_CHANNEL = 'neonconductor:desktop:dev-browser:selection';
+export const DEV_BROWSER_DESIGNER_ACTION_CHANNEL = 'neonconductor:desktop:dev-browser:designer-action';
 export const DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL = 'neonconductor:desktop:dev-browser:designer-preview';
 
 export type PickDirectoryResult = { canceled: true } | { canceled: false; absolutePath: string };
@@ -68,6 +69,13 @@ export interface DevBrowserDesignerPreviewDraftPayload {
 
 export interface DevBrowserDesignerPreviewPayload {
     drafts: DevBrowserDesignerPreviewDraftPayload[];
+}
+
+export interface DevBrowserDesignerActionPayload {
+    selection: DevBrowserSelectionPayload;
+    actionChip?: 'bolder' | 'quieter' | 'polish' | 'colorize' | 'layout' | 'animate' | 'delight';
+    intentText: string;
+    requestedVariantCount: number;
 }
 
 export function isPickDirectoryResult(value: unknown): value is PickDirectoryResult {
@@ -173,4 +181,29 @@ export function isDevBrowserDesignerPreviewPayload(value: unknown): value is Dev
             typeof candidateDraft['active'] === 'boolean'
         );
     });
+}
+
+export function isDevBrowserDesignerActionPayload(value: unknown): value is DevBrowserDesignerActionPayload {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+
+    const candidate = value as Record<string, unknown>;
+    const actionChip = candidate['actionChip'];
+    return (
+        isDevBrowserSelectionPayload(candidate['selection']) &&
+        typeof candidate['intentText'] === 'string' &&
+        candidate['intentText'].trim().length > 0 &&
+        isFiniteNumber(candidate['requestedVariantCount']) &&
+        candidate['requestedVariantCount'] >= 1 &&
+        candidate['requestedVariantCount'] <= 6 &&
+        (actionChip === undefined ||
+            actionChip === 'bolder' ||
+            actionChip === 'quieter' ||
+            actionChip === 'polish' ||
+            actionChip === 'colorize' ||
+            actionChip === 'layout' ||
+            actionChip === 'animate' ||
+            actionChip === 'delight')
+    );
 }

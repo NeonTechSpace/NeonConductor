@@ -10,6 +10,7 @@ import {
 import { runtimeStatusEvent } from '@/app/backend/runtime/services/runtimeEventEnvelope';
 import { runtimeEventLogService } from '@/app/backend/runtime/services/runtimeEventLog';
 import { threadTitleService } from '@/app/backend/runtime/services/threadTitle/service';
+import { projectBrowserDesignerGenerationRun } from '@/app/backend/runtime/services/devBrowser/designerVariantProjection';
 import { appLog } from '@/app/main/logging';
 
 import { InvariantError } from '@/app/backend/runtime/services/common/fatalErrors';
@@ -125,6 +126,12 @@ export async function applyRunTerminalSideEffects(input: {
             profileId: input.profileId,
             runId: input.runId,
         });
+        await projectBrowserDesignerGenerationRun({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            runId: input.runId,
+            terminalStatus: 'completed',
+        });
 
         if (input.sourceOutboxEntryId) {
             await sessionOutboxStore.update({
@@ -166,6 +173,13 @@ export async function applyRunTerminalSideEffects(input: {
             profileId: input.profileId,
             sessionId: input.sessionId,
             runId: input.runId,
+        });
+        await projectBrowserDesignerGenerationRun({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            runId: input.runId,
+            terminalStatus: 'aborted',
+            errorMessage: 'Designer generation run was aborted.',
         });
 
         if (input.sourceOutboxEntryId) {
@@ -218,6 +232,13 @@ export async function applyRunTerminalSideEffects(input: {
     await memoryRuntimeService.captureFinishedRunMemorySafely({
         profileId: input.profileId,
         runId: input.runId,
+    });
+    await projectBrowserDesignerGenerationRun({
+        profileId: input.profileId,
+        sessionId: input.sessionId,
+        runId: input.runId,
+        terminalStatus: 'failed',
+        errorMessage: input.outcome.errorMessage,
     });
 
     if (input.sourceOutboxEntryId) {

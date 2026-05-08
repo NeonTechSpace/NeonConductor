@@ -1,7 +1,11 @@
 import type { BrowserWindow } from 'electron';
 
-import type { DevBrowserMountPayload, DevBrowserSelectionPayload } from '@/app/shared/desktopBridgeContract';
-import { isDevBrowserSelectionPayload } from '@/app/shared/desktopBridgeContract';
+import type {
+    DevBrowserDesignerActionPayload,
+    DevBrowserMountPayload,
+    DevBrowserSelectionPayload,
+} from '@/app/shared/desktopBridgeContract';
+import { isDevBrowserDesignerActionPayload, isDevBrowserSelectionPayload } from '@/app/shared/desktopBridgeContract';
 
 import { DevBrowserWindowController, type DevBrowserWindowControllerOptions } from '@/app/main/window/devBrowser/controller';
 
@@ -56,4 +60,22 @@ export async function handleDevBrowserSelectionFromWebContents(
     }
 
     await controller.handleSelectionPayload(payload as DevBrowserSelectionPayload);
+}
+
+export async function handleDevBrowserDesignerActionFromWebContents(
+    senderId: number,
+    payload: unknown
+): Promise<void> {
+    if (!isDevBrowserDesignerActionPayload(payload)) {
+        return;
+    }
+
+    const controller = Array.from(controllersByWindowId.values()).find(
+        (candidate) => candidate.getViewWebContentsId() === senderId
+    );
+    if (!controller) {
+        return;
+    }
+
+    await controller.handleDesignerActionPayload(payload as DevBrowserDesignerActionPayload);
 }

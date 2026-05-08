@@ -1,5 +1,7 @@
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
+import type { RuntimeProviderId, TopLevelTab } from '@/app/backend/runtime/contracts/enums';
 import type { ProfileInput } from '@/app/backend/runtime/contracts/types/common';
+import type { RuntimeRunOptions } from '@/app/backend/runtime/contracts/types/session';
 
 export const devBrowserTargetSchemes = ['http', 'https'] as const;
 export type DevBrowserTargetScheme = (typeof devBrowserTargetSchemes)[number];
@@ -56,6 +58,26 @@ export const browserDesignerApplyStatuses = [
     'blocked_missing_source_anchor',
 ] as const;
 export type BrowserDesignerApplyStatus = (typeof browserDesignerApplyStatuses)[number];
+
+export const browserDesignerActionChips = [
+    'bolder',
+    'quieter',
+    'polish',
+    'colorize',
+    'layout',
+    'animate',
+    'delight',
+] as const;
+export type BrowserDesignerActionChip = (typeof browserDesignerActionChips)[number];
+
+export const browserDesignerGenerationStatuses = ['idle', 'generating', 'generated', 'failed', 'aborted'] as const;
+export type BrowserDesignerGenerationStatus = (typeof browserDesignerGenerationStatuses)[number];
+
+export const browserDesignerAnnotationKinds = ['comment', 'pin', 'stroke'] as const;
+export type BrowserDesignerAnnotationKind = (typeof browserDesignerAnnotationKinds)[number];
+
+export const browserDesignerVariantStatuses = ['generated', 'active', 'accepted', 'discarded'] as const;
+export type BrowserDesignerVariantStatus = (typeof browserDesignerVariantStatuses)[number];
 
 export const browserDesignerStylePropertyKeys = [
     'display',
@@ -253,6 +275,61 @@ export interface BrowserContextPacketComment {
 
 export type BrowserDesignerStylePatchSet = Partial<Record<BrowserDesignerStylePropertyKey, string>>;
 
+export interface BrowserDesignerAnnotationGeometry {
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    points?: Array<{ x: number; y: number }>;
+}
+
+export interface BrowserDesignerAnnotation {
+    id: EntityId<'bdann'>;
+    designerSessionId: EntityId<'bdsess'>;
+    selectionId: EntityId<'bsel'>;
+    pageIdentity: string;
+    kind: BrowserDesignerAnnotationKind;
+    text?: string;
+    geometry: BrowserDesignerAnnotationGeometry;
+    cropAttachmentId?: EntityId<'att'>;
+    sequence: number;
+    stale: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface BrowserDesignerVariant {
+    id: EntityId<'bdvar'>;
+    designerSessionId: EntityId<'bdsess'>;
+    selectionId: EntityId<'bsel'>;
+    pageIdentity: string;
+    name: string;
+    summaryMarkdown: string;
+    rationaleMarkdown: string;
+    stylePatches: BrowserDesignerStylePatchSet;
+    textContentOverride?: string;
+    status: BrowserDesignerVariantStatus;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface BrowserDesignerLiveSession {
+    id: EntityId<'bdsess'>;
+    selectionId: EntityId<'bsel'>;
+    pageIdentity: string;
+    actionChip?: BrowserDesignerActionChip;
+    intentText: string;
+    requestedVariantCount: number;
+    generationStatus: BrowserDesignerGenerationStatus;
+    activeVariantId?: EntityId<'bdvar'>;
+    acceptedVariantId?: EntityId<'bdvar'>;
+    generationRunId?: EntityId<'run'>;
+    errorMessage?: string;
+    stale: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface BrowserDesignerDraft {
     id: EntityId<'bdsn'>;
     selectionId: EntityId<'bsel'>;
@@ -310,6 +387,9 @@ export interface SessionDevBrowserState {
     selections: BrowserSelectionRecord[];
     commentDrafts: BrowserCommentDraft[];
     designerDrafts: BrowserDesignerDraft[];
+    designerLiveSessions: BrowserDesignerLiveSession[];
+    designerAnnotations: BrowserDesignerAnnotation[];
+    designerVariants: BrowserDesignerVariant[];
     summary?: BrowserContextSummary;
 }
 
@@ -365,6 +445,49 @@ export interface SessionUpsertBrowserDesignerDraftInput extends SessionDevBrowse
     stylePatches: BrowserDesignerStylePatchSet;
     textContentOverride?: string;
 }
+
+export interface SessionCreateBrowserDesignerLiveSessionInput extends SessionDevBrowserStateInput {
+    selectionId: EntityId<'bsel'>;
+    actionChip?: BrowserDesignerActionChip;
+    intentText: string;
+    requestedVariantCount?: number;
+}
+
+export interface SessionCreateBrowserDesignerAnnotationInput extends SessionDevBrowserStateInput {
+    designerSessionId: EntityId<'bdsess'>;
+    kind: BrowserDesignerAnnotationKind;
+    geometry: BrowserDesignerAnnotationGeometry;
+    text?: string;
+    cropAttachmentId?: EntityId<'att'>;
+}
+
+export interface SessionStartBrowserDesignerVariantGenerationInput extends SessionDevBrowserStateInput {
+    designerSessionId: EntityId<'bdsess'>;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    workspaceFingerprint?: string;
+    sandboxId?: EntityId<'sb'>;
+    runtimeOptions: RuntimeRunOptions;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
+}
+
+export interface SessionActivateBrowserDesignerVariantInput extends SessionDevBrowserStateInput {
+    designerSessionId: EntityId<'bdsess'>;
+    variantId: EntityId<'bdvar'>;
+}
+
+export interface SessionTuneBrowserDesignerVariantInput extends SessionActivateBrowserDesignerVariantInput {
+    stylePatches: BrowserDesignerStylePatchSet;
+    textContentOverride?: string;
+}
+
+export interface SessionAcceptBrowserDesignerVariantInput extends SessionActivateBrowserDesignerVariantInput {
+    applyMode: BrowserDesignerApplyMode;
+    inclusionState?: BrowserCommentDraftInclusionState;
+}
+
+export interface SessionDiscardBrowserDesignerVariantInput extends SessionActivateBrowserDesignerVariantInput {}
 
 export interface SessionDeleteBrowserDesignerDraftInput extends SessionDevBrowserStateInput {
     draftId: EntityId<'bdsn'>;

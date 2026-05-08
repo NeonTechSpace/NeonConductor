@@ -19,6 +19,7 @@ import { resolveDesktopStorage, resolveDesktopStoragePaths } from '@/app/main/ru
 import { attachCspHeaders } from '@/app/main/security/cspHeaders';
 import { registerBootWindows, reportMainBootStatus } from '@/app/main/window/bootCoordinator';
 import {
+    handleDevBrowserDesignerActionFromWebContents,
     handleDevBrowserSelectionFromWebContents,
     registerDevBrowserWindow,
     syncDevBrowserMount,
@@ -27,6 +28,7 @@ import { createMainWindow } from '@/app/main/window/factory';
 import { createSplashWindow } from '@/app/main/window/splash';
 import { handleWorkspaceIconProtocol, registerWorkspaceIconProtocol } from '@/app/main/window/workspaceIconProtocol';
 import {
+    DEV_BROWSER_DESIGNER_ACTION_CHANNEL,
     DEV_BROWSER_SELECTION_CHANNEL,
     DEV_BROWSER_SYNC_MOUNT_CHANNEL,
     PICK_DIRECTORY_CHANNEL,
@@ -224,6 +226,15 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
             });
         });
     });
+    ipcMain.on(DEV_BROWSER_DESIGNER_ACTION_CHANNEL, (event, payload: unknown) => {
+        handleDevBrowserDesignerActionFromWebContents(event.sender.id, payload).catch((error: unknown) => {
+            appLog.warn({
+                tag: 'dev_browser',
+                message: 'Failed to process dev browser designer action payload.',
+                ...(error instanceof Error ? { error: error.message } : { error: String(error) }),
+            });
+        });
+    });
     reportMainBootStatus({
         stage: 'renderer_connecting',
         blockingPrerequisite: 'renderer_first_report',
@@ -245,6 +256,7 @@ export async function bootstrapMainProcess(deps: BootstrapDeps, importMetaUrl: s
         ipcMain.removeHandler(PICK_WORKSPACE_ICON_CHANNEL);
         ipcMain.removeHandler(DEV_BROWSER_SYNC_MOUNT_CHANNEL);
         ipcMain.removeAllListeners(DEV_BROWSER_SELECTION_CHANNEL);
+        ipcMain.removeAllListeners(DEV_BROWSER_DESIGNER_ACTION_CHANNEL);
         closePersistence();
         flushAppLogger().catch((error: unknown) => {
             appLog.error({

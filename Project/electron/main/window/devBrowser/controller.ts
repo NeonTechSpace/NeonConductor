@@ -25,6 +25,7 @@ import {
 } from '@/app/main/runtime/electronApi';
 import { resolveDevBrowserViewPreloadPath } from '@/app/main/window/preloadPaths';
 import type {
+    DevBrowserDesignerActionPayload,
     DevBrowserDesignerPreviewPayload,
     DevBrowserMountPayload,
     DevBrowserSelectionPayload,
@@ -469,24 +470,50 @@ export class DevBrowserWindowController {
         }
         const state = await sessionDevBrowserService.getState(profileId, sessionId);
         const selectionById = new Map(state.selections.map((selection) => [selection.id, selection]));
+        const liveSessionById = new Map(state.designerLiveSessions.map((session) => [session.id, session]));
         const payload: DevBrowserDesignerPreviewPayload = {
-            drafts: state.designerDrafts
-                .filter((draft) => draft.inclusionState === 'included' && !draft.stale)
-                .flatMap((draft) => {
-                    const selection = selectionById.get(draft.selectionId);
-                    if (!selection || selection.stale) {
-                        return [];
-                    }
-                    return [
-                        {
-                            draftId: draft.id,
-                            selector: selection.selector,
-                            stylePatches: draft.stylePatches,
-                            ...(draft.textContentOverride ? { textContentOverride: draft.textContentOverride } : {}),
-                            active: true,
-                        },
-                    ];
-                }),
+            drafts: [
+                ...state.designerDrafts
+                    .filter((draft) => draft.inclusionState === 'included' && !draft.stale)
+                    .flatMap((draft) => {
+                        const selection = selectionById.get(draft.selectionId);
+                        if (!selection || selection.stale) {
+                            return [];
+                        }
+                        return [
+                            {
+                                draftId: draft.id,
+                                selector: selection.selector,
+                                stylePatches: draft.stylePatches,
+                                ...(draft.textContentOverride ? { textContentOverride: draft.textContentOverride } : {}),
+                                active: true,
+                            },
+                        ];
+                    }),
+                ...state.designerVariants
+                    .filter((variant) => variant.status === 'active')
+                    .flatMap((variant) => {
+                        const liveSession = liveSessionById.get(variant.designerSessionId);
+                        if (!liveSession || liveSession.stale) {
+                            return [];
+                        }
+                        const selection = selectionById.get(variant.selectionId);
+                        if (!selection || selection.stale) {
+                            return [];
+                        }
+                        return [
+                            {
+                                draftId: variant.id,
+                                selector: selection.selector,
+                                stylePatches: variant.stylePatches,
+                                ...(variant.textContentOverride
+                                    ? { textContentOverride: variant.textContentOverride }
+                                    : {}),
+                                active: true,
+                            },
+                        ];
+                    }),
+            ],
         };
         this.view.webContents.send(DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL, payload);
     }
@@ -587,6 +614,35 @@ export class DevBrowserWindowController {
             selection,
         });
         await this.emitSessionBrowserEvent('selection_persisted');
+    }
+
+    async handleDesignerActionPayload(payload: DevBrowserDesignerActionPayload): Promise<void> {
+        if (!this.boundProfileId || !this.boundSessionId || !this.view) {
+            return;
+        }
+
+        await this.handleSelectionPayload(payload.selection);
+        const state = await sessionDevBrowserService.getState(this.boundProfileId, this.boundSessionId);
+        const matchingSelection = state.selections
+            .filter(
+                (selection) =>
+                    selection.pageIdentity === payload.selection.pageIdentity &&
+                    selection.selector.primary === payload.selection.selector.primary
+            )
+            .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
+        if (!matchingSelection) {
+            return;
+        }
+
+        await sessionDevBrowserService.createDesignerLiveSession({
+            profileId: this.boundProfileId,
+            sessionId: this.boundSessionId,
+            selectionId: matchingSelection.id,
+            ...(payload.actionChip ? { actionChip: payload.actionChip } : {}),
+            intentText: payload.intentText,
+            requestedVariantCount: payload.requestedVariantCount,
+        });
+        await this.emitSessionBrowserEvent('designer_live_session_created');
     }
 
     private async captureSelectionCrop(

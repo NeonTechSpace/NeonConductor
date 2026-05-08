@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CheckSquare, Plus, Send, Square, Trash2 } from '
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { DevBrowserDesignerSection } from '@/web/components/conversation/panels/devBrowserDesignerSection';
+import { useDevBrowserDesignerWorkflow } from '@/web/components/conversation/panels/devBrowserDesignerWorkflow';
 import {
     buildDesignerDraftFormState,
     buildSessionScopedInput,
@@ -24,6 +25,13 @@ export function DevBrowserPanel({
     sessionId,
     visible,
     currentDraftPrompt,
+    topLevelTab,
+    modeKey,
+    runtimeOptions,
+    workspaceFingerprint,
+    sandboxId,
+    providerId,
+    modelId,
     onSubmitPrompt,
     onQueuePrompt,
 }: DevBrowserPanelProps) {
@@ -146,14 +154,6 @@ export function DevBrowserPanel({
         return drafts;
     }, [browserState?.commentDrafts]);
 
-    const designerDraftsBySelectionId = useMemo(() => {
-        const drafts = new Map<EntityId<'bsel'>, BrowserDesignerDraft>();
-        for (const draft of browserState?.designerDrafts ?? []) {
-            drafts.set(draft.selectionId, draft);
-        }
-        return drafts;
-    }, [browserState?.designerDrafts]);
-
     async function invalidateBrowserQueries() {
         if (!sessionId) {
             return;
@@ -163,6 +163,24 @@ export function DevBrowserPanel({
             utils.session.buildBrowserContextPacket.invalidate(),
         ]);
     }
+
+    const designerWorkflow = useDevBrowserDesignerWorkflow({
+        profileId,
+        ...(sessionId ? { sessionId } : {}),
+        ...(browserState ? { browserState } : {}),
+        runConfig: {
+            topLevelTab,
+            modeKey,
+            runtimeOptions,
+            ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+            ...(sandboxId ? { sandboxId } : {}),
+            ...(providerId ? { providerId } : {}),
+            ...(modelId ? { modelId } : {}),
+        },
+        setDesignerDraftForms,
+        invalidateBrowserQueries,
+        setFeedback,
+    });
 
     async function handleApplyTarget() {
         if (!sessionId) {
@@ -312,7 +330,7 @@ export function DevBrowserPanel({
         }
         const formState =
             designerDraftForms[selectionId] ??
-            buildDesignerDraftFormState(designerDraftsBySelectionId.get(selectionId));
+            buildDesignerDraftFormState(designerWorkflow.draftsBySelectionId.get(selectionId));
         const payload = toDesignerStylePatchPayload(formState);
         if (Object.keys(payload.stylePatches).length === 0 && !payload.textContentOverride) {
             setFeedback('Add at least one preview change before saving a designer draft.');
@@ -353,13 +371,6 @@ export function DevBrowserPanel({
         setFeedback(undefined);
     }
 
-    function handleDesignerFormChange(selectionId: EntityId<'bsel'>, formState: DesignerDraftFormState) {
-        setDesignerDraftForms((current) => ({
-            ...current,
-            [selectionId]: formState,
-        }));
-    }
-
     async function handleToggleDesignerInclusion(draft: BrowserDesignerDraft) {
         if (!sessionId) {
             return;
@@ -387,7 +398,9 @@ export function DevBrowserPanel({
     const selectionCount = browserState?.selections.length ?? 0;
     const staleContextCount =
         (browserState?.commentDrafts.filter((draft) => draft.stale).length ?? 0) +
-        (browserState?.designerDrafts.filter((draft) => draft.stale).length ?? 0);
+        (browserState?.designerDrafts.filter((draft) => draft.stale).length ?? 0) +
+        (browserState?.designerLiveSessions.filter((session) => session.stale).length ?? 0) +
+        (browserState?.designerAnnotations.filter((annotation) => annotation.stale).length ?? 0);
     const statusLabel = describeValidationStatus({
         ...(target?.validation.status ? { status: target.validation.status } : {}),
         ...(target?.browserAvailability ? { browserAvailability: target.browserAvailability } : {}),
@@ -542,9 +555,20 @@ export function DevBrowserPanel({
                         (browserState?.selections ?? []).map((selection) => {
                             const selectionDraftText = selectionDrafts[selection.id] ?? '';
                             const selectionComments = commentDraftsBySelectionId.get(selection.id) ?? [];
-                            const selectionDesignerDraft = designerDraftsBySelectionId.get(selection.id);
+                            const selectionDesignerDraft = designerWorkflow.draftsBySelectionId.get(selection.id);
+                            const selectionDesignerLiveSession = designerWorkflow.liveSessionsBySelectionId.get(selection.id);
+                            const selectionDesignerAnnotations = selectionDesignerLiveSession
+                                ? designerWorkflow.annotationsBySessionId.get(selectionDesignerLiveSession.id) ?? []
+                                : [];
+                            const selectionDesignerVariants = selectionDesignerLiveSession
+                                ? designerWorkflow.variantsBySessionId.get(selectionDesignerLiveSession.id) ?? []
+                                : [];
                             const designerFormState =
                                 designerDraftForms[selection.id] ?? buildDesignerDraftFormState(selectionDesignerDraft);
+                            const designerIntentForm = designerWorkflow.intentForms[selection.id] ?? {
+                                intentText: '',
+                                requestedVariantCount: 3,
+                            };
 
                             return (
                                 <article key={selection.id} className='rounded-2xl border px-4 py-4'>
@@ -778,8 +802,39 @@ export function DevBrowserPanel({
                                     <DevBrowserDesignerSection
                                         selection={selection}
                                         {...(selectionDesignerDraft ? { designerDraft: selectionDesignerDraft } : {})}
+                                        {...(selectionDesignerLiveSession
+                                            ? { designerLiveSession: selectionDesignerLiveSession }
+                                            : {})}
+                                        annotations={selectionDesignerAnnotations}
+                                        variants={selectionDesignerVariants}
                                         formState={designerFormState}
-                                        onFormChange={handleDesignerFormChange}
+                                        intentForm={designerIntentForm}
+                                        annotationText={
+                                            selectionDesignerLiveSession
+                                                ? (designerWorkflow.annotationForms[selectionDesignerLiveSession.id] ?? '')
+                                                : ''
+                                        }
+                                        generationBusy={designerWorkflow.generationBusy}
+                                        onFormChange={designerWorkflow.updateDraftForm}
+                                        onIntentFormChange={(nextIntentForm) => {
+                                            designerWorkflow.setIntentForms((current) => ({
+                                                ...current,
+                                                [selection.id]: nextIntentForm,
+                                            }));
+                                        }}
+                                        onAnnotationTextChange={(designerSessionId, value) => {
+                                            designerWorkflow.setAnnotationForms((current) => ({
+                                                ...current,
+                                                [designerSessionId]: value,
+                                            }));
+                                        }}
+                                        onCreateLiveSession={designerWorkflow.createLiveSession}
+                                        onCreateAnnotation={designerWorkflow.createAnnotation}
+                                        onStartGeneration={designerWorkflow.startGeneration}
+                                        onActivateVariant={designerWorkflow.activateVariant}
+                                        onTuneVariant={designerWorkflow.tuneVariant}
+                                        onAcceptVariant={designerWorkflow.acceptVariant}
+                                        onDiscardVariant={designerWorkflow.discardVariant}
                                         onPreview={handlePreviewDesigner}
                                         onDelete={handleDeleteDesignerDraft}
                                         onToggleInclusion={handleToggleDesignerInclusion}

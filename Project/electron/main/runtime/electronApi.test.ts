@@ -1,6 +1,26 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE } from '@/app/main/runtime/electronRuntimeResolver';
+const unavailableMessage =
+    'Electron main-process API is unavailable. If ELECTRON_RUN_AS_NODE=1 is inherited from the caller environment, Electron runs as Node and the electron package resolves to the launcher path instead of the desktop runtime API. Use `pnpm run desktop:launch` for built desktop validation.';
+
+const electronRuntimeResolverMock = vi.hoisted(() => ({
+    runtimeApi: undefined as Record<string, unknown> | undefined,
+    error: undefined as Error | undefined,
+}));
+
+vi.mock('@/app/main/runtime/electronRuntimeResolver', () => ({
+    ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE: unavailableMessage,
+    resolveElectronRuntimeValue: (key: string) => {
+        if (electronRuntimeResolverMock.error) {
+            throw electronRuntimeResolverMock.error;
+        }
+        const value = electronRuntimeResolverMock.runtimeApi?.[key];
+        if (value === undefined) {
+            throw new Error(unavailableMessage);
+        }
+        return value;
+    },
+}));
 
 function createElectronRuntimeApiMock() {
     return {
@@ -16,6 +36,13 @@ function createElectronRuntimeApiMock() {
 }
 
 describe('electronApi', () => {
+    beforeEach(() => {
+        electronRuntimeResolverMock.runtimeApi = undefined;
+        electronRuntimeResolverMock.error = undefined;
+        vi.doUnmock('electron');
+        vi.resetModules();
+    });
+
     afterEach(() => {
         vi.doUnmock('electron');
         vi.resetModules();
@@ -23,10 +50,7 @@ describe('electronApi', () => {
 
     it('uses namespace exports when the default export is Electron package metadata', async () => {
         const electronApi = createElectronRuntimeApiMock();
-        vi.doMock('electron', () => ({
-            ...electronApi,
-            default: 'C:\\Program Files\\Electron\\electron.exe',
-        }));
+        electronRuntimeResolverMock.runtimeApi = electronApi;
 
         const runtimeApi = await import('./electronApi');
 
@@ -44,13 +68,11 @@ describe('electronApi', () => {
                 return `${this.name}:${pathName}`;
             }),
         };
-        vi.doMock('electron', () => ({
+        const electronApi = {
+            ...createElectronRuntimeApiMock(),
             app: electronApp,
-            BrowserWindow: function BrowserWindow() {},
-            dialog: { showErrorBox: vi.fn() },
-            ipcMain: { handle: vi.fn() },
-            default: 'C:\\Program Files\\Electron\\electron.exe',
-        }));
+        };
+        electronRuntimeResolverMock.runtimeApi = electronApi;
 
         const runtimeApi = await import('./electronApi');
 
@@ -59,12 +81,10 @@ describe('electronApi', () => {
     });
 
     it('fails with an actionable diagnostic when Electron runs as Node', async () => {
-        vi.doMock('electron', () => ({
-            default: 'C:\\Program Files\\Electron\\electron.exe',
-        }));
+        electronRuntimeResolverMock.error = new Error(unavailableMessage);
 
         const runtimeApi = await import('./electronApi');
 
-        expect(() => runtimeApi.app.name).toThrow(ELECTRON_MAIN_API_UNAVAILABLE_MESSAGE);
+        expect(() => runtimeApi.app.name).toThrow(unavailableMessage);
     });
 });

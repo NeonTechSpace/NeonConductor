@@ -3,6 +3,7 @@
 import { ipcRenderer } from 'electron';
 
 import {
+    DEV_BROWSER_DESIGNER_ACTION_CHANNEL,
     DEV_BROWSER_DESIGNER_PREVIEW_CHANNEL,
     DEV_BROWSER_PICKER_CHANNEL,
     DEV_BROWSER_SELECTION_CHANNEL,
@@ -67,6 +68,7 @@ type DesignerPreviewState = {
 let pickerActive = false;
 let highlightOverlay: HTMLDivElement | null = null;
 let selectionOverlay: HTMLDivElement | null = null;
+let designerActionBar: HTMLDivElement | null = null;
 let highlightedElement: Element | null = null;
 let dragStartPoint: { x: number; y: number } | null = null;
 let dragCurrentPoint: { x: number; y: number } | null = null;
@@ -75,6 +77,7 @@ let suppressNextClick = false;
 const designerPreviewStates = new Map<string, DesignerPreviewState>();
 
 const DRAG_SELECTION_THRESHOLD = 8;
+const DESIGNER_ACTION_CHIPS = ['polish', 'bolder', 'quieter', 'colorize', 'layout', 'animate', 'delight'] as const;
 
 function ensureOverlay(): HTMLDivElement {
     if (highlightOverlay && document.documentElement.contains(highlightOverlay)) {
@@ -122,6 +125,136 @@ function hideSelectionOverlay(): void {
     if (selectionOverlay) {
         selectionOverlay.style.display = 'none';
     }
+}
+
+function hideDesignerActionBar(): void {
+    if (designerActionBar) {
+        designerActionBar.style.display = 'none';
+        designerActionBar.replaceChildren();
+    }
+}
+
+function ensureDesignerActionBar(): HTMLDivElement {
+    if (designerActionBar && document.documentElement.contains(designerActionBar)) {
+        return designerActionBar;
+    }
+
+    const bar = document.createElement('div');
+    bar.style.position = 'fixed';
+    bar.style.zIndex = '2147483647';
+    bar.style.display = 'none';
+    bar.style.flexDirection = 'column';
+    bar.style.gap = '8px';
+    bar.style.maxWidth = '360px';
+    bar.style.padding = '10px';
+    bar.style.border = '1px solid rgba(148, 163, 184, 0.55)';
+    bar.style.borderRadius = '8px';
+    bar.style.background = 'rgba(15, 23, 42, 0.96)';
+    bar.style.color = '#e2e8f0';
+    bar.style.boxShadow = '0 16px 40px rgba(15, 23, 42, 0.28)';
+    bar.style.font = '12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    document.documentElement.appendChild(bar);
+    designerActionBar = bar;
+    return bar;
+}
+
+function showDesignerActionBar(snapshot: ElementSnapshot): void {
+    const bar = ensureDesignerActionBar();
+    bar.replaceChildren();
+
+    const chipRow = document.createElement('div');
+    chipRow.style.display = 'flex';
+    chipRow.style.flexWrap = 'wrap';
+    chipRow.style.gap = '6px';
+
+    const intentInput = document.createElement('input');
+    intentInput.type = 'text';
+    intentInput.placeholder = 'Describe the design change';
+    intentInput.maxLength = 240;
+    intentInput.style.width = '100%';
+    intentInput.style.boxSizing = 'border-box';
+    intentInput.style.border = '1px solid rgba(148, 163, 184, 0.55)';
+    intentInput.style.borderRadius = '6px';
+    intentInput.style.padding = '7px 8px';
+    intentInput.style.background = 'rgba(15, 23, 42, 0.9)';
+    intentInput.style.color = '#f8fafc';
+
+    let selectedChip: (typeof DESIGNER_ACTION_CHIPS)[number] | undefined;
+    for (const chip of DESIGNER_ACTION_CHIPS) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = chip;
+        button.style.border = '1px solid rgba(148, 163, 184, 0.5)';
+        button.style.borderRadius = '999px';
+        button.style.padding = '5px 8px';
+        button.style.background = 'rgba(30, 41, 59, 0.9)';
+        button.style.color = '#e2e8f0';
+        button.style.cursor = 'pointer';
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            selectedChip = chip;
+            intentInput.value = intentInput.value.trim().length > 0 ? intentInput.value : chip;
+            for (const candidate of Array.from(chipRow.querySelectorAll('button'))) {
+                candidate.style.background = candidate === button ? 'rgba(14, 165, 233, 0.85)' : 'rgba(30, 41, 59, 0.9)';
+            }
+            intentInput.focus();
+        });
+        chipRow.appendChild(button);
+    }
+
+    const footer = document.createElement('div');
+    footer.style.display = 'flex';
+    footer.style.justifyContent = 'flex-end';
+    footer.style.gap = '8px';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.textContent = 'Dismiss';
+    closeButton.style.border = '0';
+    closeButton.style.background = 'transparent';
+    closeButton.style.color = '#cbd5e1';
+    closeButton.style.cursor = 'pointer';
+    closeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        hideDesignerActionBar();
+    });
+
+    const startButton = document.createElement('button');
+    startButton.type = 'button';
+    startButton.textContent = 'Start';
+    startButton.style.border = '0';
+    startButton.style.borderRadius = '6px';
+    startButton.style.padding = '6px 10px';
+    startButton.style.background = '#0ea5e9';
+    startButton.style.color = '#082f49';
+    startButton.style.cursor = 'pointer';
+    startButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const intentText = intentInput.value.trim();
+        if (intentText.length === 0) {
+            intentInput.focus();
+            return;
+        }
+        ipcRenderer.send(DEV_BROWSER_DESIGNER_ACTION_CHANNEL, {
+            selection: snapshot,
+            ...(selectedChip ? { actionChip: selectedChip } : {}),
+            intentText,
+            requestedVariantCount: 3,
+        });
+        hideDesignerActionBar();
+    });
+
+    footer.append(closeButton, startButton);
+    bar.append(chipRow, intentInput, footer);
+
+    const left = Math.min(window.innerWidth - 372, Math.max(8, snapshot.bounds.x));
+    const top = Math.min(window.innerHeight - 154, Math.max(8, snapshot.bounds.y + snapshot.bounds.height + 8));
+    bar.style.left = `${String(Math.max(8, left))}px`;
+    bar.style.top = `${String(Math.max(8, top))}px`;
+    bar.style.display = 'flex';
 }
 
 function createSelectorSegment(element: Element): string {
@@ -589,6 +722,8 @@ function syncDesignerPreviews(payload: {
 async function persistSelectionForTarget(target: Element): Promise<void> {
     const snapshot = await buildElementSnapshot(target);
     ipcRenderer.send(DEV_BROWSER_SELECTION_CHANNEL, snapshot);
+    setPickerState(false);
+    showDesignerActionBar(snapshot);
 }
 
 function handleMouseMove(event: MouseEvent): void {
@@ -670,6 +805,7 @@ function setPickerState(active: boolean): void {
         highlightedElement = null;
         hideOverlay();
         clearDragState();
+        hideDesignerActionBar();
     }
 }
 

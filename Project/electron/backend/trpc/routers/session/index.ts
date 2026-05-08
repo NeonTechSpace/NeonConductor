@@ -9,10 +9,15 @@ import {
     sessionControlDevBrowserInputSchema,
     sessionByIdInputSchema,
     sessionCreateInputSchema,
+    sessionAcceptBrowserDesignerVariantInputSchema,
+    sessionActivateBrowserDesignerVariantInputSchema,
     sessionCreateBrowserCommentDraftInputSchema,
+    sessionCreateBrowserDesignerAnnotationInputSchema,
+    sessionCreateBrowserDesignerLiveSessionInputSchema,
     sessionDeleteBrowserCommentDraftInputSchema,
     sessionDeleteBrowserDesignerDraftInputSchema,
     sessionDiscardDocumentAttachmentInputSchema,
+    sessionDiscardBrowserDesignerVariantInputSchema,
     sessionEditInputSchema,
     sessionGetAttachedRulesInputSchema,
     sessionGetExecutionReceiptInputSchema,
@@ -38,12 +43,14 @@ import {
     sessionSetBrowserDesignerDraftInclusionInputSchema,
     sessionSetDevBrowserPickerInputSchema,
     sessionSetDevBrowserTargetInputSchema,
+    sessionStartBrowserDesignerVariantGenerationInputSchema,
     sessionUpsertBrowserDesignerDraftInputSchema,
     sessionUpdateOutboxEntryInputSchema,
     sessionUpdateBrowserCommentDraftInputSchema,
     sessionSetAttachedRulesInputSchema,
     sessionSetAttachedSkillsInputSchema,
     sessionStartRunInputSchema,
+    sessionTuneBrowserDesignerVariantInputSchema,
     type SessionAttachedRulesResult,
     type SessionAttachedSkillsResult,
 } from '@/app/backend/runtime/contracts';
@@ -601,6 +608,192 @@ export const sessionRouter = router({
                         requestId: ctx.requestId,
                         correlationId: ctx.correlationId,
                         origin: 'trpc.session.upsertBrowserDesignerDraft',
+                    }),
+                })
+            );
+            return state;
+        }),
+    createBrowserDesignerLiveSession: publicProcedure
+        .input(sessionCreateBrowserDesignerLiveSessionInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.createDesignerLiveSession(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_live_session_created',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.createBrowserDesignerLiveSession',
+                    }),
+                })
+            );
+            return state;
+        }),
+    createBrowserDesignerAnnotation: publicProcedure
+        .input(sessionCreateBrowserDesignerAnnotationInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.createDesignerAnnotation(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_annotation_created',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.createBrowserDesignerAnnotation',
+                    }),
+                })
+            );
+            return state;
+        }),
+    startBrowserDesignerVariantGeneration: publicProcedure
+        .input(sessionStartBrowserDesignerVariantGenerationInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const result = await sessionDevBrowserService.startDesignerVariantGeneration(input);
+            if (result.accepted) {
+                await runtimeEventLogService.append(
+                    runtimeStatusEvent({
+                        entityType: 'session',
+                        domain: 'session',
+                        entityId: input.sessionId,
+                        eventType: 'session.run.started',
+                        payload: {
+                            runId: result.runId,
+                            profileId: input.profileId,
+                            topLevelTab: input.topLevelTab,
+                            modeKey: input.modeKey,
+                            workspaceFingerprint: input.workspaceFingerprint ?? null,
+                            reason: 'designer_variant_generation_started',
+                            designerSessionId: input.designerSessionId,
+                        },
+                        ...eventMetadata({
+                            requestId: ctx.requestId,
+                            correlationId: ctx.correlationId,
+                            origin: 'trpc.session.startBrowserDesignerVariantGeneration',
+                        }),
+                    })
+                );
+            }
+            return result;
+        }),
+    activateBrowserDesignerVariant: publicProcedure
+        .input(sessionActivateBrowserDesignerVariantInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.activateDesignerVariant(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_variant_activated',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.activateBrowserDesignerVariant',
+                    }),
+                })
+            );
+            return state;
+        }),
+    tuneBrowserDesignerVariant: publicProcedure
+        .input(sessionTuneBrowserDesignerVariantInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.tuneDesignerVariant(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_variant_tuned',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.tuneBrowserDesignerVariant',
+                    }),
+                })
+            );
+            return state;
+        }),
+    acceptBrowserDesignerVariant: publicProcedure
+        .input(sessionAcceptBrowserDesignerVariantInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.acceptDesignerVariant(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_variant_accepted',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.acceptBrowserDesignerVariant',
+                    }),
+                })
+            );
+            return state;
+        }),
+    discardBrowserDesignerVariant: publicProcedure
+        .input(sessionDiscardBrowserDesignerVariantInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const state = await sessionDevBrowserService.discardDesignerVariant(input);
+            if (ctx.win) {
+                await getDevBrowserController(ctx.win)?.syncDesignerPreviewState(input.profileId, input.sessionId);
+            }
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: 'designer_variant_discarded',
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.discardBrowserDesignerVariant',
                     }),
                 })
             );

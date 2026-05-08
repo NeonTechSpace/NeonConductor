@@ -1,12 +1,27 @@
 import { skipToken } from '@tanstack/react-query';
 
-import type { BrowserContextPacket, BrowserDesignerDraft, BrowserSelectionRecord, EntityId } from '@/shared/contracts';
+import type {
+    BrowserContextPacket,
+    BrowserDesignerDraft,
+    BrowserSelectionRecord,
+    EntityId,
+    RuntimeProviderId,
+    RuntimeRunOptions,
+    TopLevelTab,
+} from '@/shared/contracts';
 
 export interface DevBrowserPanelProps {
     profileId: string;
     sessionId?: EntityId<'sess'>;
     visible: boolean;
     currentDraftPrompt: string;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    runtimeOptions: RuntimeRunOptions;
+    workspaceFingerprint?: string;
+    sandboxId?: EntityId<'sb'>;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
     onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;
     onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
 }

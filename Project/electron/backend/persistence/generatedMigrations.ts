@@ -669,6 +669,61 @@ CREATE TABLE session_dev_browser_designer_drafts (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE session_dev_browser_designer_sessions (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    selection_id TEXT NOT NULL REFERENCES session_dev_browser_selections(id) ON DELETE CASCADE,
+    page_identity TEXT NOT NULL,
+    action_chip TEXT NULL CHECK (
+        action_chip IS NULL OR action_chip IN ('bolder', 'quieter', 'polish', 'colorize', 'layout', 'animate', 'delight')
+    ),
+    intent_text TEXT NOT NULL,
+    requested_variant_count INTEGER NOT NULL CHECK (requested_variant_count BETWEEN 1 AND 6),
+    generation_status TEXT NOT NULL CHECK (generation_status IN ('idle', 'generating', 'generated', 'failed', 'aborted')),
+    active_variant_id TEXT NULL,
+    accepted_variant_id TEXT NULL,
+    generation_run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    error_message TEXT NULL,
+    stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE session_dev_browser_designer_annotations (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    designer_session_id TEXT NOT NULL REFERENCES session_dev_browser_designer_sessions(id) ON DELETE CASCADE,
+    selection_id TEXT NOT NULL REFERENCES session_dev_browser_selections(id) ON DELETE CASCADE,
+    page_identity TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('comment', 'pin', 'stroke')),
+    text TEXT NULL,
+    geometry_json TEXT NOT NULL,
+    crop_attachment_id TEXT NULL REFERENCES conversation_attachments(id) ON DELETE SET NULL,
+    sequence INTEGER NOT NULL CHECK (sequence >= 0),
+    stale INTEGER NOT NULL CHECK (stale IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE session_dev_browser_designer_variants (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    designer_session_id TEXT NOT NULL REFERENCES session_dev_browser_designer_sessions(id) ON DELETE CASCADE,
+    selection_id TEXT NOT NULL REFERENCES session_dev_browser_selections(id) ON DELETE CASCADE,
+    page_identity TEXT NOT NULL,
+    name TEXT NOT NULL,
+    summary_markdown TEXT NOT NULL,
+    rationale_markdown TEXT NOT NULL,
+    style_patches_json TEXT NOT NULL,
+    text_content_override TEXT NULL,
+    status TEXT NOT NULL CHECK (status IN ('generated', 'active', 'accepted', 'discarded')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE execution_receipts (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -1868,6 +1923,18 @@ CREATE INDEX idx_session_dev_browser_designer_drafts_session_created_at
 
 CREATE INDEX idx_session_dev_browser_designer_drafts_session_stale
     ON session_dev_browser_designer_drafts(session_id, stale, created_at ASC);
+
+CREATE INDEX idx_session_dev_browser_designer_sessions_session_updated
+    ON session_dev_browser_designer_sessions(session_id, updated_at DESC);
+
+CREATE INDEX idx_session_dev_browser_designer_sessions_generation_run
+    ON session_dev_browser_designer_sessions(generation_run_id);
+
+CREATE INDEX idx_session_dev_browser_designer_annotations_session_sequence
+    ON session_dev_browser_designer_annotations(session_id, designer_session_id, sequence ASC);
+
+CREATE INDEX idx_session_dev_browser_designer_variants_session_status
+    ON session_dev_browser_designer_variants(session_id, designer_session_id, status, created_at ASC);
 
 CREATE INDEX idx_execution_receipts_session_created_at
     ON execution_receipts(session_id, created_at DESC);

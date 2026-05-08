@@ -1,5 +1,6 @@
 import {
     createParser,
+    parseRuntimeRunOptions,
     readArray,
     readEntityId,
     readEnumValue,
@@ -7,16 +8,22 @@ import {
     readOptionalNumber,
     readOptionalString,
     readProfileId,
+    readProviderId,
     readString,
 } from '@/app/backend/runtime/contracts/parsers/helpers';
+import { topLevelTabs } from '@/app/backend/runtime/contracts/enums';
 import type {
     BrowserCommentDraft,
     BrowserContextPacket,
     BrowserContextPacketComment,
     BrowserContextPacketDesignerDraft,
     BrowserContextSummary,
+    BrowserDesignerAnnotation,
+    BrowserDesignerAnnotationGeometry,
     BrowserDesignerDraft,
+    BrowserDesignerLiveSession,
     BrowserDesignerStylePatchSet,
+    BrowserDesignerVariant,
     BrowserSelectionAncestryEntry,
     BrowserSelectionBounds,
     BrowserSelectionReactComponentIdentity,
@@ -33,25 +40,36 @@ import type {
     SessionBuildBrowserContextPacketInput,
     SessionClearStaleBrowserContextInput,
     SessionControlDevBrowserInput,
+    SessionAcceptBrowserDesignerVariantInput,
+    SessionActivateBrowserDesignerVariantInput,
     SessionCreateBrowserCommentDraftInput,
+    SessionCreateBrowserDesignerAnnotationInput,
+    SessionCreateBrowserDesignerLiveSessionInput,
     SessionDeleteBrowserCommentDraftInput,
     SessionDeleteBrowserDesignerDraftInput,
     SessionDevBrowserStateInput,
+    SessionDiscardBrowserDesignerVariantInput,
     SessionMoveBrowserCommentDraftInput,
     SessionPersistBrowserSelectionInput,
     SessionSetBrowserCommentDraftInclusionInput,
     SessionSetBrowserDesignerDraftInclusionInput,
     SessionSetDevBrowserPickerInput,
     SessionSetDevBrowserTargetInput,
+    SessionStartBrowserDesignerVariantGenerationInput,
+    SessionTuneBrowserDesignerVariantInput,
     SessionUpdateBrowserCommentDraftInput,
     SessionUpsertBrowserDesignerDraftInput,
 } from '@/app/backend/runtime/contracts/types/devBrowser';
 import {
     browserCommentDraftInclusionStates,
     browserContextSummaryDesignerApplyIntentStatuses,
+    browserDesignerActionChips,
+    browserDesignerAnnotationKinds,
     browserDesignerApplyModes,
     browserDesignerApplyStatuses,
+    browserDesignerGenerationStatuses,
     browserDesignerStylePropertyKeys,
+    browserDesignerVariantStatuses,
     browserSelectionReactSourceKinds,
     browserSelectionSourceAnchorStatuses,
     devBrowserAvailabilityStates,
@@ -262,6 +280,29 @@ function parseBrowserDesignerStylePatchSet(value: unknown, field: string): Brows
     return next;
 }
 
+function parseBrowserDesignerAnnotationGeometry(value: unknown, field: string): BrowserDesignerAnnotationGeometry {
+    const source = readObject(value, field);
+    const width = readOptionalNumber(source.width, `${field}.width`);
+    const height = readOptionalNumber(source.height, `${field}.height`);
+    const points =
+        source.points !== undefined
+            ? readArray(source.points, `${field}.points`).map((item, index) => {
+                  const point = readObject(item, `${field}.points[${String(index)}]`);
+                  return {
+                      x: readNonNegativeNumber(point.x, `${field}.points[${String(index)}].x`),
+                      y: readNonNegativeNumber(point.y, `${field}.points[${String(index)}].y`),
+                  };
+              })
+            : undefined;
+    return {
+        x: readNonNegativeNumber(source.x, `${field}.x`),
+        y: readNonNegativeNumber(source.y, `${field}.y`),
+        ...(width !== undefined ? { width } : {}),
+        ...(height !== undefined ? { height } : {}),
+        ...(points ? { points } : {}),
+    };
+}
+
 export function parseBrowserSelectionSnapshotInput(value: unknown, field: string): BrowserSelectionSnapshotInput {
     const source = readObject(value, field);
     const pageTitle = readOptionalString(source.pageTitle, `${field}.pageTitle`);
@@ -343,6 +384,89 @@ export function parseBrowserDesignerDraft(value: unknown, field: string): Browse
         stylePatches: parseBrowserDesignerStylePatchSet(source.stylePatches ?? {}, `${field}.stylePatches`),
         ...(textContentOverride ? { textContentOverride } : {}),
         stale: source.stale === true,
+        createdAt: readString(source.createdAt, `${field}.createdAt`),
+        updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
+    };
+}
+
+export function parseBrowserDesignerLiveSession(value: unknown, field: string): BrowserDesignerLiveSession {
+    const source = readObject(value, field);
+    const actionChip =
+        source.actionChip !== undefined
+            ? readEnumValue(source.actionChip, `${field}.actionChip`, browserDesignerActionChips)
+            : undefined;
+    const activeVariantId =
+        source.activeVariantId !== undefined
+            ? readEntityId(source.activeVariantId, `${field}.activeVariantId`, 'bdvar')
+            : undefined;
+    const acceptedVariantId =
+        source.acceptedVariantId !== undefined
+            ? readEntityId(source.acceptedVariantId, `${field}.acceptedVariantId`, 'bdvar')
+            : undefined;
+    const generationRunId =
+        source.generationRunId !== undefined
+            ? readEntityId(source.generationRunId, `${field}.generationRunId`, 'run')
+            : undefined;
+    const errorMessage = readOptionalString(source.errorMessage, `${field}.errorMessage`);
+    return {
+        id: readEntityId(source.id, `${field}.id`, 'bdsess'),
+        selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
+        ...(actionChip ? { actionChip } : {}),
+        intentText: readString(source.intentText, `${field}.intentText`),
+        requestedVariantCount: readNonNegativeNumber(source.requestedVariantCount, `${field}.requestedVariantCount`),
+        generationStatus: readEnumValue(
+            source.generationStatus,
+            `${field}.generationStatus`,
+            browserDesignerGenerationStatuses
+        ),
+        ...(activeVariantId ? { activeVariantId } : {}),
+        ...(acceptedVariantId ? { acceptedVariantId } : {}),
+        ...(generationRunId ? { generationRunId } : {}),
+        ...(errorMessage ? { errorMessage } : {}),
+        stale: source.stale === true,
+        createdAt: readString(source.createdAt, `${field}.createdAt`),
+        updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
+    };
+}
+
+export function parseBrowserDesignerAnnotation(value: unknown, field: string): BrowserDesignerAnnotation {
+    const source = readObject(value, field);
+    const text = readOptionalString(source.text, `${field}.text`);
+    const cropAttachmentId =
+        source.cropAttachmentId !== undefined
+            ? readEntityId(source.cropAttachmentId, `${field}.cropAttachmentId`, 'att')
+            : undefined;
+    return {
+        id: readEntityId(source.id, `${field}.id`, 'bdann'),
+        designerSessionId: readEntityId(source.designerSessionId, `${field}.designerSessionId`, 'bdsess'),
+        selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
+        kind: readEnumValue(source.kind, `${field}.kind`, browserDesignerAnnotationKinds),
+        ...(text ? { text } : {}),
+        geometry: parseBrowserDesignerAnnotationGeometry(source.geometry, `${field}.geometry`),
+        ...(cropAttachmentId ? { cropAttachmentId } : {}),
+        sequence: readNonNegativeNumber(source.sequence, `${field}.sequence`),
+        stale: source.stale === true,
+        createdAt: readString(source.createdAt, `${field}.createdAt`),
+        updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
+    };
+}
+
+export function parseBrowserDesignerVariant(value: unknown, field: string): BrowserDesignerVariant {
+    const source = readObject(value, field);
+    const textContentOverride = readOptionalString(source.textContentOverride, `${field}.textContentOverride`);
+    return {
+        id: readEntityId(source.id, `${field}.id`, 'bdvar'),
+        designerSessionId: readEntityId(source.designerSessionId, `${field}.designerSessionId`, 'bdsess'),
+        selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
+        name: readString(source.name, `${field}.name`),
+        summaryMarkdown: readString(source.summaryMarkdown, `${field}.summaryMarkdown`),
+        rationaleMarkdown: readString(source.rationaleMarkdown, `${field}.rationaleMarkdown`),
+        stylePatches: parseBrowserDesignerStylePatchSet(source.stylePatches ?? {}, `${field}.stylePatches`),
+        ...(textContentOverride ? { textContentOverride } : {}),
+        status: readEnumValue(source.status, `${field}.status`, browserDesignerVariantStatuses),
         createdAt: readString(source.createdAt, `${field}.createdAt`),
         updatedAt: readString(source.updatedAt, `${field}.updatedAt`),
     };
@@ -531,6 +655,109 @@ export function parseSessionUpsertBrowserDesignerDraftInput(input: unknown): Ses
     };
 }
 
+export function parseSessionCreateBrowserDesignerLiveSessionInput(
+    input: unknown
+): SessionCreateBrowserDesignerLiveSessionInput {
+    const source = readObject(input, 'input');
+    const actionChip =
+        source.actionChip !== undefined
+            ? readEnumValue(source.actionChip, 'actionChip', browserDesignerActionChips)
+            : undefined;
+    const requestedVariantCount =
+        source.requestedVariantCount !== undefined
+            ? readNonNegativeNumber(source.requestedVariantCount, 'requestedVariantCount')
+            : undefined;
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        selectionId: readEntityId(source.selectionId, 'selectionId', 'bsel'),
+        ...(actionChip ? { actionChip } : {}),
+        intentText: readString(source.intentText, 'intentText'),
+        ...(requestedVariantCount !== undefined ? { requestedVariantCount } : {}),
+    };
+}
+
+export function parseSessionCreateBrowserDesignerAnnotationInput(
+    input: unknown
+): SessionCreateBrowserDesignerAnnotationInput {
+    const source = readObject(input, 'input');
+    const text = readOptionalString(source.text, 'text');
+    const cropAttachmentId =
+        source.cropAttachmentId !== undefined ? readEntityId(source.cropAttachmentId, 'cropAttachmentId', 'att') : undefined;
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        designerSessionId: readEntityId(source.designerSessionId, 'designerSessionId', 'bdsess'),
+        kind: readEnumValue(source.kind, 'kind', browserDesignerAnnotationKinds),
+        geometry: parseBrowserDesignerAnnotationGeometry(source.geometry, 'geometry'),
+        ...(text ? { text } : {}),
+        ...(cropAttachmentId ? { cropAttachmentId } : {}),
+    };
+}
+
+export function parseSessionStartBrowserDesignerVariantGenerationInput(
+    input: unknown
+): SessionStartBrowserDesignerVariantGenerationInput {
+    const source = readObject(input, 'input');
+    const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
+    const modelId = readOptionalString(source.modelId, 'modelId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        designerSessionId: readEntityId(source.designerSessionId, 'designerSessionId', 'bdsess'),
+        topLevelTab: readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs),
+        modeKey: readString(source.modeKey, 'modeKey'),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
+        runtimeOptions: parseRuntimeRunOptions(source.runtimeOptions),
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
+    };
+}
+
+function parseVariantInputBase(input: unknown): SessionActivateBrowserDesignerVariantInput {
+    const source = readObject(input, 'input');
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        designerSessionId: readEntityId(source.designerSessionId, 'designerSessionId', 'bdsess'),
+        variantId: readEntityId(source.variantId, 'variantId', 'bdvar'),
+    };
+}
+
+export function parseSessionActivateBrowserDesignerVariantInput(
+    input: unknown
+): SessionActivateBrowserDesignerVariantInput {
+    return parseVariantInputBase(input);
+}
+
+export function parseSessionTuneBrowserDesignerVariantInput(input: unknown): SessionTuneBrowserDesignerVariantInput {
+    const source = readObject(input, 'input');
+    const textContentOverride = readOptionalString(source.textContentOverride, 'textContentOverride');
+    return {
+        ...parseVariantInputBase(input),
+        stylePatches: parseBrowserDesignerStylePatchSet(source.stylePatches ?? {}, 'stylePatches'),
+        ...(textContentOverride ? { textContentOverride } : {}),
+    };
+}
+
+export function parseSessionAcceptBrowserDesignerVariantInput(input: unknown): SessionAcceptBrowserDesignerVariantInput {
+    const source = readObject(input, 'input');
+    const inclusionState =
+        source.inclusionState !== undefined
+            ? readEnumValue(source.inclusionState, 'inclusionState', browserCommentDraftInclusionStates)
+            : undefined;
+    return {
+        ...parseVariantInputBase(input),
+        applyMode: readEnumValue(source.applyMode, 'applyMode', browserDesignerApplyModes),
+        ...(inclusionState ? { inclusionState } : {}),
+    };
+}
+
+export function parseSessionDiscardBrowserDesignerVariantInput(
+    input: unknown
+): SessionDiscardBrowserDesignerVariantInput {
+    return parseVariantInputBase(input);
+}
+
 export function parseSessionDeleteBrowserDesignerDraftInput(input: unknown): SessionDeleteBrowserDesignerDraftInput {
     const source = readObject(input, 'input');
     return {
@@ -581,6 +808,23 @@ export const sessionSetBrowserCommentDraftInclusionInputSchema = createParser(
     parseSessionSetBrowserCommentDraftInclusionInput
 );
 export const sessionUpsertBrowserDesignerDraftInputSchema = createParser(parseSessionUpsertBrowserDesignerDraftInput);
+export const sessionCreateBrowserDesignerLiveSessionInputSchema = createParser(
+    parseSessionCreateBrowserDesignerLiveSessionInput
+);
+export const sessionCreateBrowserDesignerAnnotationInputSchema = createParser(
+    parseSessionCreateBrowserDesignerAnnotationInput
+);
+export const sessionStartBrowserDesignerVariantGenerationInputSchema = createParser(
+    parseSessionStartBrowserDesignerVariantGenerationInput
+);
+export const sessionActivateBrowserDesignerVariantInputSchema = createParser(
+    parseSessionActivateBrowserDesignerVariantInput
+);
+export const sessionTuneBrowserDesignerVariantInputSchema = createParser(parseSessionTuneBrowserDesignerVariantInput);
+export const sessionAcceptBrowserDesignerVariantInputSchema = createParser(parseSessionAcceptBrowserDesignerVariantInput);
+export const sessionDiscardBrowserDesignerVariantInputSchema = createParser(
+    parseSessionDiscardBrowserDesignerVariantInput
+);
 export const sessionDeleteBrowserDesignerDraftInputSchema = createParser(parseSessionDeleteBrowserDesignerDraftInput);
 export const sessionSetBrowserDesignerDraftInclusionInputSchema = createParser(
     parseSessionSetBrowserDesignerDraftInclusionInput

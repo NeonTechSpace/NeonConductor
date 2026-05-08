@@ -1,4 +1,5 @@
 import { getPersistence } from '@/app/backend/persistence/db';
+import { sessionDevBrowserDesignerStore } from '@/app/backend/persistence/stores/conversation/sessions/sessionDevBrowserDesignerStore';
 import { parseJsonRecord } from '@/app/backend/persistence/stores/shared/rowParsers';
 import { nowIso } from '@/app/backend/persistence/stores/shared/utils';
 import type {
@@ -324,11 +325,12 @@ export class SessionDevBrowserStore {
     }
 
     async getState(profileId: string, sessionId: EntityId<'sess'>): Promise<SessionDevBrowserState> {
-        const [targetRow, selectionRows, commentRows, designerRows] = await Promise.all([
+        const [targetRow, selectionRows, commentRows, designerRows, designerState] = await Promise.all([
             this.getTargetRow(profileId, sessionId),
             this.listSelectionRows(profileId, sessionId),
             this.listCommentDraftRows(profileId, sessionId),
             this.listDesignerDraftRows(profileId, sessionId),
+            sessionDevBrowserDesignerStore.listState(profileId, sessionId),
         ]);
         const target = mapTarget(targetRow);
         const selections = selectionRows.map(mapSelection);
@@ -345,6 +347,9 @@ export class SessionDevBrowserStore {
             selections,
             commentDrafts,
             designerDrafts,
+            designerLiveSessions: designerState.designerLiveSessions,
+            designerAnnotations: designerState.designerAnnotations,
+            designerVariants: designerState.designerVariants,
             ...(summary ? { summary } : {}),
         };
     }
@@ -494,6 +499,7 @@ export class SessionDevBrowserStore {
             .where('session_id', '=', input.sessionId);
         await (input.activePageIdentity ? designerQuery.where('page_identity', '!=', input.activePageIdentity) : designerQuery)
             .execute();
+        await sessionDevBrowserDesignerStore.markStaleForCurrentPage(input);
 
         return this.getState(input.profileId, input.sessionId);
     }
@@ -779,6 +785,7 @@ export class SessionDevBrowserStore {
             .where('session_id', '=', sessionId)
             .where('stale', '=', 1)
             .execute();
+        await sessionDevBrowserDesignerStore.clearStale(profileId, sessionId);
         await db
             .deleteFrom('session_dev_browser_selections')
             .where('profile_id', '=', profileId)

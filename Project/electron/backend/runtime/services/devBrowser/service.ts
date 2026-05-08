@@ -1,4 +1,4 @@
-import { sessionDevBrowserStore, threadStore } from '@/app/backend/persistence/stores';
+import { sessionDevBrowserDesignerStore, sessionDevBrowserStore, threadStore } from '@/app/backend/persistence/stores';
 import type {
     BrowserContextPacket,
     BrowserContextPacketComment,
@@ -10,7 +10,14 @@ import type {
     DevBrowserTarget,
     DevBrowserTargetDraft,
     SessionBuildBrowserContextPacketResult,
+    SessionAcceptBrowserDesignerVariantInput,
+    SessionActivateBrowserDesignerVariantInput,
+    SessionCreateBrowserDesignerAnnotationInput,
+    SessionCreateBrowserDesignerLiveSessionInput,
     SessionDevBrowserState,
+    SessionDiscardBrowserDesignerVariantInput,
+    SessionStartBrowserDesignerVariantGenerationInput,
+    SessionTuneBrowserDesignerVariantInput,
 } from '@/app/backend/runtime/contracts';
 import {
     buildBrowserContextSummary,
@@ -20,6 +27,7 @@ import {
     normalizeDevBrowserTargetDraft,
     validateLocalDevBrowserTarget,
 } from '@/app/backend/runtime/services/devBrowser/localTargetPolicy';
+import { runExecutionService } from '@/app/backend/runtime/services/runExecution/service';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -142,6 +150,58 @@ function buildPacketFromState(input: {
         packet,
         summary,
     };
+}
+
+function buildDesignerGenerationPrompt(input: {
+    state: SessionDevBrowserState;
+    designerSessionId: EntityId<'bdsess'>;
+}): string {
+    const designerSession = input.state.designerLiveSessions.find((session) => session.id === input.designerSessionId);
+    if (!designerSession) {
+        throw new Error('Designer generation cannot start because the live designer session is missing.');
+    }
+    const selection = input.state.selections.find((candidate) => candidate.id === designerSession.selectionId);
+    if (!selection) {
+        throw new Error('Designer generation cannot start because the selected element snapshot is missing.');
+    }
+    const annotations = input.state.designerAnnotations
+        .filter((annotation) => annotation.designerSessionId === designerSession.id && !annotation.stale)
+        .sort((left, right) => left.sequence - right.sequence);
+    const action = designerSession.actionChip ? `Action chip: ${designerSession.actionChip}\n` : '';
+    const annotationLines =
+        annotations.length > 0
+            ? annotations
+                  .map((annotation, index) => {
+                      const text = annotation.text ? ` ${annotation.text}` : '';
+                      return `${String(index + 1)}. ${annotation.kind} at x=${String(annotation.geometry.x)}, y=${String(annotation.geometry.y)}.${text}`;
+                  })
+                  .join('\n')
+            : 'None.';
+
+    return [
+        'Generate browser designer variants for the selected rendered UI element.',
+        '',
+        'Return strict JSON only. Do not wrap it in Markdown.',
+        `The JSON must have a top-level "variants" array with exactly ${String(designerSession.requestedVariantCount)} items.`,
+        'Each variant item must include "name", "summaryMarkdown", "rationaleMarkdown", "stylePatches", and may include "textContentOverride".',
+        'Use only safe style patch keys already supported by NeonConductor. Do not propose source edits, file writes, scripts, or package installs.',
+        '',
+        action.trimEnd(),
+        `Intent: ${designerSession.intentText}`,
+        `Selector: ${selection.selector.primary}`,
+        selection.accessibleRole ? `Role: ${selection.accessibleRole}` : '',
+        selection.accessibleLabel ? `Label: ${selection.accessibleLabel}` : '',
+        selection.textExcerpt ? `Text: ${selection.textExcerpt}` : '',
+        `Bounds: x=${String(selection.bounds.x)}, y=${String(selection.bounds.y)}, width=${String(selection.bounds.width)}, height=${String(selection.bounds.height)}`,
+        selection.reactEnrichment
+            ? `React chain: ${selection.reactEnrichment.componentChain.map((component) => component.displayName).join(' -> ')}`
+            : '',
+        '',
+        'Annotations:',
+        annotationLines,
+    ]
+        .filter((line) => line.length > 0)
+        .join('\n');
 }
 
 async function resolveDesignerApplyStatus(input: {
@@ -324,6 +384,119 @@ export class SessionDevBrowserService {
             stylePatches: input.stylePatches,
             ...(input.textContentOverride ? { textContentOverride: input.textContentOverride } : {}),
         });
+    }
+
+    async createDesignerLiveSession(input: SessionCreateBrowserDesignerLiveSessionInput): Promise<SessionDevBrowserState> {
+        const requestedVariantCount = input.requestedVariantCount ?? 3;
+        if (requestedVariantCount < 1 || requestedVariantCount > 6) {
+            throw new Error('Designer variant count must be between 1 and 6.');
+        }
+        await sessionDevBrowserDesignerStore.createLiveSession({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            selectionId: input.selectionId,
+            ...(input.actionChip ? { actionChip: input.actionChip } : {}),
+            intentText: input.intentText,
+            requestedVariantCount,
+        });
+        return sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+    }
+
+    async createDesignerAnnotation(input: SessionCreateBrowserDesignerAnnotationInput): Promise<SessionDevBrowserState> {
+        await sessionDevBrowserDesignerStore.createAnnotation(input);
+        return sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+    }
+
+    async startDesignerVariantGeneration(
+        input: SessionStartBrowserDesignerVariantGenerationInput
+    ): Promise<Awaited<ReturnType<typeof runExecutionService.startRun>>> {
+        const state = await sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+        const designerSession = state.designerLiveSessions.find((session) => session.id === input.designerSessionId);
+        if (!designerSession) {
+            throw new Error('Designer generation cannot start because the live designer session is missing.');
+        }
+        if (designerSession.stale) {
+            throw new Error('Designer generation cannot start from stale browser context.');
+        }
+        if (designerSession.generationStatus === 'generating') {
+            throw new Error('Designer generation is already running for this live session.');
+        }
+        if (!state.target || state.target.validation.status !== 'allowed') {
+            throw new Error('Designer generation requires an allowed local dev-browser target.');
+        }
+        const selection = state.selections.find((candidate) => candidate.id === designerSession.selectionId);
+        if (!selection || selection.stale) {
+            throw new Error('Designer generation requires a current selected element snapshot.');
+        }
+
+        const prompt = buildDesignerGenerationPrompt({
+            state,
+            designerSessionId: input.designerSessionId,
+        });
+        const browserContext: BrowserContextPacket = {
+            target: state.target,
+            selections: [selection],
+            comments: [],
+            cropAttachmentIds: selection.cropAttachmentId ? [selection.cropAttachmentId] : [],
+            designerDrafts: [],
+            enrichmentMode: selection.enrichmentMode,
+        };
+
+        const started = await runExecutionService.startRun({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            prompt,
+            browserContext,
+            topLevelTab: input.topLevelTab,
+            modeKey: input.modeKey,
+            ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+            ...(input.sandboxId ? { sandboxId: input.sandboxId } : {}),
+            runtimeOptions: input.runtimeOptions,
+            ...(input.providerId ? { providerId: input.providerId } : {}),
+            ...(input.modelId ? { modelId: input.modelId } : {}),
+        });
+        if (started.accepted) {
+            await sessionDevBrowserDesignerStore.markGenerationStarted({
+                profileId: input.profileId,
+                sessionId: input.sessionId,
+                designerSessionId: input.designerSessionId,
+                runId: started.runId,
+            });
+        }
+        return started;
+    }
+
+    async activateDesignerVariant(input: SessionActivateBrowserDesignerVariantInput): Promise<SessionDevBrowserState> {
+        await sessionDevBrowserDesignerStore.activateVariant(input);
+        return sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+    }
+
+    async tuneDesignerVariant(input: SessionTuneBrowserDesignerVariantInput): Promise<SessionDevBrowserState> {
+        await sessionDevBrowserDesignerStore.tuneVariant(input);
+        return sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+    }
+
+    async acceptDesignerVariant(input: SessionAcceptBrowserDesignerVariantInput): Promise<SessionDevBrowserState> {
+        const variant = await sessionDevBrowserDesignerStore.getVariant(input);
+        if (!variant || variant.status === 'discarded') {
+            throw new Error('Designer variant cannot be accepted because it is missing or discarded.');
+        }
+        await this.upsertDesignerDraft({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            selectionId: variant.selectionId,
+            inclusionState: input.inclusionState ?? 'included',
+            applyMode: input.applyMode,
+            stylePatches: variant.stylePatches,
+            ...(variant.textContentOverride ? { textContentOverride: variant.textContentOverride } : {}),
+        });
+        await sessionDevBrowserDesignerStore.markAccepted(input);
+        return sessionDevBrowserStore.getState(input.profileId, input.sessionId);
+    }
+
+    async discardDesignerVariant(input: SessionDiscardBrowserDesignerVariantInput): Promise<SessionDevBrowserState> {
+        await sessionDevBrowserDesignerStore.discardVariant(input);
+        return sessionDevBrowserStore.getState(input.profileId, input.sessionId);
     }
 
     async deleteDesignerDraft(input: {

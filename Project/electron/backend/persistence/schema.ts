@@ -4,6 +4,11 @@ import type {
     OrchestratorSwarmLanesTable,
 } from '@/app/backend/persistence/schemaTables/orchestratorSwarmTables';
 import type { ResearchCheckoutRecordsTable } from '@/app/backend/persistence/schemaTables/researchCheckoutRecordsTable';
+import type {
+    SessionDevBrowserDesignerAnnotationsTable,
+    SessionDevBrowserDesignerSessionsTable,
+    SessionDevBrowserDesignerVariantsTable,
+} from '@/app/backend/persistence/schemaTables/sessionDevBrowserDesignerTables';
 
 import type { Generated } from 'kysely';
 
@@ -1412,6 +1417,9 @@ export interface DatabaseSchema {
     session_dev_browser_selections: SessionDevBrowserSelectionsTable;
     session_dev_browser_comment_drafts: SessionDevBrowserCommentDraftsTable;
     session_dev_browser_designer_drafts: SessionDevBrowserDesignerDraftsTable;
+    session_dev_browser_designer_sessions: SessionDevBrowserDesignerSessionsTable;
+    session_dev_browser_designer_annotations: SessionDevBrowserDesignerAnnotationsTable;
+    session_dev_browser_designer_variants: SessionDevBrowserDesignerVariantsTable;
     session_outbox_entries: SessionOutboxEntriesTable;
     session_outbox_entry_attachments: SessionOutboxEntryAttachmentsTable;
     execution_receipts: ExecutionReceiptsTable;

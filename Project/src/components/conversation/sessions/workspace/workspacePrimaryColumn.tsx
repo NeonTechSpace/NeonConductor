@@ -2,6 +2,7 @@ import { skipToken } from '@tanstack/react-query';
 import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { ComposerActionPanel } from '@/web/components/conversation/panels/composerActionPanel';
+import { readRuntimeProviderId } from '@/web/components/conversation/panels/composerActionPanel/composerProviderId';
 import { DevBrowserPanel } from '@/web/components/conversation/panels/devBrowserPanel';
 import { MessageFlowPanel } from '@/web/components/conversation/panels/messageFlowPanel';
 import { SessionOutboxPanel } from '@/web/components/conversation/panels/sessionOutboxPanel';
@@ -179,6 +180,7 @@ export function WorkspacePrimaryColumn({
     const browserSurfaceEnabled = Boolean(validatedSelectedSessionId);
     const activeSurfacePanelId = getWorkspacePrimarySurfacePanelId(activePrimarySurface);
     const activeSurfaceTabId = getWorkspacePrimarySurfaceTabId(activePrimarySurface);
+    const selectedDesignerProviderId = readRuntimeProviderId(selectedProviderId);
     const includedBrowserPacketQuery = trpc.session.buildBrowserContextPacket.useQuery(
         validatedSelectedSessionId
             ? {
@@ -270,6 +272,15 @@ export function WorkspacePrimaryColumn({
                                 {...(validatedSelectedSessionId ? { sessionId: validatedSelectedSessionId } : {})}
                                 visible
                                 currentDraftPrompt={draftPromptSnapshot}
+                                topLevelTab={topLevelTab}
+                                modeKey={activeModeKey}
+                                runtimeOptions={runtimeOptions}
+                                {...(selectedWorkspaceFingerprint
+                                    ? { workspaceFingerprint: selectedWorkspaceFingerprint }
+                                    : {})}
+                                {...(selectedSandboxId ? { sandboxId: selectedSandboxId } : {})}
+                                {...(selectedDesignerProviderId ? { providerId: selectedDesignerProviderId } : {})}
+                                {...(selectedModelId ? { modelId: selectedModelId } : {})}
                                 onSubmitPrompt={onSubmitPrompt}
                                 {...(onQueuePrompt ? { onQueuePrompt } : {})}
                             />
