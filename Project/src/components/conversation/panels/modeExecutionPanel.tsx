@@ -42,6 +42,10 @@ function readStrategyDescription(orchestratorPanelState: ModeExecutionOrchestrat
         return 'The conductor runs role-aware child lanes with shared run-scoped context, then requires final synthesis before completion.';
     }
 
+    if (orchestratorPanelState.activeExecutionStrategy === 'lazy') {
+        return 'The conductor orients on the objective, builds a durable task tree, executes through child lanes, and produces a final walkthrough.';
+    }
+
     return 'The root conductor starts one child worker lane at a time. A child failure stops the strategy immediately.';
 }
 
@@ -140,6 +144,72 @@ function renderOrchestratorPanel(
                         <p className='text-muted-foreground text-[11px]'>
                             Synthesis: {orchestratorPanelState.synthesisLane.status}
                         </p>
+                    ) : null}
+                </div>
+            ) : null}
+            {orchestratorPanelState.lazy ? (
+                <div className='border-border/70 bg-background/80 space-y-2 rounded border px-3 py-2 text-xs'>
+                    <p className='font-medium'>Lazy objective</p>
+                    {orchestratorPanelState.lazy.objective ? (
+                        <div className='space-y-1'>
+                            <p>
+                                Status: <span className='font-medium'>{orchestratorPanelState.lazy.objective.status}</span>
+                            </p>
+                            <MarkdownContent
+                                markdown={orchestratorPanelState.lazy.objective.objectiveMarkdown}
+                                className='space-y-2'
+                            />
+                            <p className='text-muted-foreground text-[11px]'>
+                                Research {orchestratorPanelState.lazy.objective.researchDepth} · package policy{' '}
+                                {orchestratorPanelState.lazy.objective.packagePolicy}
+                            </p>
+                        </div>
+                    ) : null}
+                    {orchestratorPanelState.lazy.executionPhases.length > 0 ? (
+                        <div className='space-y-1'>
+                            <p className='font-medium'>Phases</p>
+                            {orchestratorPanelState.lazy.executionPhases.map((phase) => (
+                                <p key={phase.id} className='text-muted-foreground'>
+                                    {String(phase.sequence)}. {phase.phaseKind} · {phase.status}
+                                </p>
+                            ))}
+                        </div>
+                    ) : null}
+                    {orchestratorPanelState.lazy.taskTree.length > 0 ? (
+                        <div className='space-y-1'>
+                            <p className='font-medium'>Task tree</p>
+                            {orchestratorPanelState.lazy.taskTree.map((task) => (
+                                <p key={task.id}>
+                                    {String(task.sequence)}. {task.title} · {task.status}
+                                </p>
+                            ))}
+                        </div>
+                    ) : null}
+                    <p className='text-muted-foreground text-[11px]'>
+                        {String(orchestratorPanelState.lazy.techDecisionCount)} decisions ·{' '}
+                        {String(orchestratorPanelState.lazy.packageAssessmentCount)} package assessments ·{' '}
+                        {String(orchestratorPanelState.lazy.workingArtifactCount)} artifacts
+                    </p>
+                    {orchestratorPanelState.lazy.checkpoints.some((checkpoint) => checkpoint.status === 'pending') ? (
+                        <div className='space-y-1'>
+                            <p className='font-medium'>Pending checkpoints</p>
+                            {orchestratorPanelState.lazy.checkpoints
+                                .filter((checkpoint) => checkpoint.status === 'pending')
+                                .map((checkpoint) => (
+                                    <p key={checkpoint.id} className='text-amber-700'>
+                                        {checkpoint.kind}: {checkpoint.promptMarkdown}
+                                    </p>
+                                ))}
+                        </div>
+                    ) : null}
+                    {orchestratorPanelState.lazy.walkthrough ? (
+                        <div className='space-y-1'>
+                            <p className='font-medium'>Walkthrough</p>
+                            <MarkdownContent
+                                markdown={orchestratorPanelState.lazy.walkthrough.contentMarkdown}
+                                className='space-y-2'
+                            />
+                        </div>
                     ) : null}
                 </div>
             ) : null}

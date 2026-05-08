@@ -1034,7 +1034,7 @@ export interface OrchestratorRunRecord {
     planPhaseId?: string;
     planPhaseRevisionId?: string;
     status: 'running' | 'completed' | 'aborted' | 'failed';
-    executionStrategy: 'sequential' | 'parallel' | 'swarm';
+    executionStrategy: 'sequential' | 'parallel' | 'swarm' | 'lazy';
     activeStepIndex?: number;
     startedAt: string;
     completedAt?: string;
@@ -1042,6 +1042,123 @@ export interface OrchestratorRunRecord {
     errorMessage?: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface OrchestratorLazyObjectiveRecord {
+    id: EntityId<'lobj'>;
+    orchestratorRunId: EntityId<'orch'>;
+    objectiveMarkdown: string;
+    successCriteriaMarkdown?: string;
+    constraintsMarkdown?: string;
+    evidenceRequirementsMarkdown?: string;
+    allowedCapabilityGroups: Array<'repo_discovery' | 'external_research' | 'package_evaluation' | 'implementation' | 'verification'>;
+    researchDepth: 'light' | 'balanced' | 'deep';
+    packagePolicy: 'avoid_new' | 'allow_with_approval' | 'research_only';
+    status: 'active' | 'completed' | 'failed' | 'aborted';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorLazyObjectiveSegmentRecord {
+    id: EntityId<'lseg'>;
+    orchestratorRunId: EntityId<'orch'>;
+    objectiveId: EntityId<'lobj'>;
+    sequence: number;
+    kind: 'goal' | 'success_criteria' | 'constraint' | 'evidence_requirement' | 'context';
+    contentMarkdown: string;
+    createdAt: string;
+}
+
+export interface OrchestratorLazyTaskRecord {
+    id: EntityId<'ltask'>;
+    orchestratorRunId: EntityId<'orch'>;
+    parentTaskId?: EntityId<'ltask'>;
+    stepId?: EntityId<'step'>;
+    sequence: number;
+    title: string;
+    descriptionMarkdown: string;
+    executionKind: 'sequential' | 'parallel' | 'swarm';
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'blocked';
+    dependencyTaskIds: Array<EntityId<'ltask'>>;
+    verificationMarkdown?: string;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorLazyInteractionCheckpointRecord {
+    id: EntityId<'lchk'>;
+    orchestratorRunId: EntityId<'orch'>;
+    taskId?: EntityId<'ltask'>;
+    kind: 'question' | 'choice' | 'approval' | 'consent' | 'stale_context' | 'provider_recovery';
+    status: 'pending' | 'resolved' | 'cancelled';
+    promptMarkdown: string;
+    choicesJson?: string;
+    responseMarkdown?: string;
+    resumeToken?: string;
+    createdAt: string;
+    resolvedAt?: string;
+    cancelledAt?: string;
+}
+
+export interface OrchestratorLazyTechDecisionRecord {
+    id: EntityId<'ldec'>;
+    orchestratorRunId: EntityId<'orch'>;
+    taskId?: EntityId<'ltask'>;
+    title: string;
+    decisionMarkdown: string;
+    rationaleMarkdown: string;
+    status: 'proposed' | 'accepted' | 'rejected';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorLazyPackageAssessmentRecord {
+    id: EntityId<'lpkg'>;
+    orchestratorRunId: EntityId<'orch'>;
+    taskId?: EntityId<'ltask'>;
+    packageName: string;
+    ecosystem?: string;
+    requestedVersion?: string;
+    assessmentMarkdown: string;
+    status: 'not_needed' | 'needs_approval' | 'approved' | 'rejected';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorLazyWorkingArtifactRecord {
+    id: EntityId<'lart'>;
+    orchestratorRunId: EntityId<'orch'>;
+    taskId?: EntityId<'ltask'>;
+    kind: 'orientation_notes' | 'planning_notes' | 'decision_evidence' | 'verification_notes' | 'intermediate_file';
+    title: string;
+    contentMarkdown: string;
+    sourceRunId?: EntityId<'run'>;
+    createdAt: string;
+}
+
+export interface OrchestratorLazyExecutionPhaseRecord {
+    id: EntityId<'lphase'>;
+    orchestratorRunId: EntityId<'orch'>;
+    taskId?: EntityId<'ltask'>;
+    sequence: number;
+    phaseKind: 'orientation' | 'planning' | 'execution' | 'verification' | 'synthesis';
+    executionKind?: 'sequential' | 'parallel' | 'swarm';
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'blocked';
+    childRunId?: EntityId<'run'>;
+    summaryMarkdown?: string;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrchestratorLazyWalkthroughRecord {
+    id: EntityId<'lwalk'>;
+    orchestratorRunId: EntityId<'orch'>;
+    contentMarkdown: string;
+    validationSummaryMarkdown?: string;
+    riskMarkdown?: string;
+    createdAt: string;
 }
 
 export interface OrchestratorStepRecord {

@@ -324,7 +324,7 @@ export type PlanItemStatus = (typeof planItemStatuses)[number];
 export const orchestratorRunStatuses = ['running', 'completed', 'aborted', 'failed'] as const;
 export type OrchestratorRunStatus = (typeof orchestratorRunStatuses)[number];
 
-export const orchestratorExecutionStrategies = ['sequential', 'parallel', 'swarm'] as const;
+export const orchestratorExecutionStrategies = ['sequential', 'parallel', 'swarm', 'lazy'] as const;
 export type OrchestratorExecutionStrategy = (typeof orchestratorExecutionStrategies)[number];
 
 export const orchestratorSwarmRoles = ['explorer', 'implementer', 'reviewer', 'verifier', 'synthesizer'] as const;
@@ -335,6 +335,76 @@ export type OrchestratorSwarmLaneStatus = (typeof orchestratorSwarmLaneStatuses)
 
 export const orchestratorSwarmContextEntryKinds = ['lane_result', 'conductor_note', 'synthesis'] as const;
 export type OrchestratorSwarmContextEntryKind = (typeof orchestratorSwarmContextEntryKinds)[number];
+
+export const orchestratorLazyObjectiveStatuses = ['active', 'completed', 'failed', 'aborted'] as const;
+export type OrchestratorLazyObjectiveStatus = (typeof orchestratorLazyObjectiveStatuses)[number];
+
+export const orchestratorLazyResearchDepths = ['light', 'balanced', 'deep'] as const;
+export type OrchestratorLazyResearchDepth = (typeof orchestratorLazyResearchDepths)[number];
+
+export const orchestratorLazyPackagePolicies = ['avoid_new', 'allow_with_approval', 'research_only'] as const;
+export type OrchestratorLazyPackagePolicy = (typeof orchestratorLazyPackagePolicies)[number];
+
+export const orchestratorLazyCapabilityGroups = [
+    'repo_discovery',
+    'external_research',
+    'package_evaluation',
+    'implementation',
+    'verification',
+] as const;
+export type OrchestratorLazyCapabilityGroup = (typeof orchestratorLazyCapabilityGroups)[number];
+
+export const orchestratorLazyObjectiveSegmentKinds = [
+    'goal',
+    'success_criteria',
+    'constraint',
+    'evidence_requirement',
+    'context',
+] as const;
+export type OrchestratorLazyObjectiveSegmentKind = (typeof orchestratorLazyObjectiveSegmentKinds)[number];
+
+export const orchestratorLazyTaskStatuses = ['pending', 'running', 'completed', 'failed', 'aborted', 'blocked'] as const;
+export type OrchestratorLazyTaskStatus = (typeof orchestratorLazyTaskStatuses)[number];
+
+export const orchestratorLazyExecutionKinds = ['sequential', 'parallel', 'swarm'] as const;
+export type OrchestratorLazyExecutionKind = (typeof orchestratorLazyExecutionKinds)[number];
+
+export const orchestratorLazyCheckpointKinds = [
+    'question',
+    'choice',
+    'approval',
+    'consent',
+    'stale_context',
+    'provider_recovery',
+] as const;
+export type OrchestratorLazyCheckpointKind = (typeof orchestratorLazyCheckpointKinds)[number];
+
+export const orchestratorLazyCheckpointStatuses = ['pending', 'resolved', 'cancelled'] as const;
+export type OrchestratorLazyCheckpointStatus = (typeof orchestratorLazyCheckpointStatuses)[number];
+
+export const orchestratorLazyDecisionStatuses = ['proposed', 'accepted', 'rejected'] as const;
+export type OrchestratorLazyDecisionStatus = (typeof orchestratorLazyDecisionStatuses)[number];
+
+export const orchestratorLazyPackageAssessmentStatuses = ['not_needed', 'needs_approval', 'approved', 'rejected'] as const;
+export type OrchestratorLazyPackageAssessmentStatus = (typeof orchestratorLazyPackageAssessmentStatuses)[number];
+
+export const orchestratorLazyWorkingArtifactKinds = [
+    'orientation_notes',
+    'planning_notes',
+    'decision_evidence',
+    'verification_notes',
+    'intermediate_file',
+] as const;
+export type OrchestratorLazyWorkingArtifactKind = (typeof orchestratorLazyWorkingArtifactKinds)[number];
+
+export const orchestratorLazyExecutionPhaseKinds = [
+    'orientation',
+    'planning',
+    'execution',
+    'verification',
+    'synthesis',
+] as const;
+export type OrchestratorLazyExecutionPhaseKind = (typeof orchestratorLazyExecutionPhaseKinds)[number];
 
 export const registryScopes = ['system', 'global', 'workspace', 'session'] as const;
 export type RegistryScope = (typeof registryScopes)[number];

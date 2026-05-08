@@ -160,6 +160,41 @@ export interface ModeExecutionOrchestratorSwarmLaneView {
     canOpenWorkerLane: boolean;
 }
 
+export interface ModeExecutionOrchestratorLazyView {
+    objective?: {
+        objectiveMarkdown: string;
+        status: 'active' | 'completed' | 'failed' | 'aborted';
+        researchDepth: 'light' | 'balanced' | 'deep';
+        packagePolicy: 'avoid_new' | 'allow_with_approval' | 'research_only';
+    };
+    taskTree: Array<{
+        id: EntityId<'ltask'>;
+        sequence: number;
+        title: string;
+        status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'blocked';
+        executionKind: 'sequential' | 'parallel' | 'swarm';
+    }>;
+    checkpoints: Array<{
+        id: EntityId<'lchk'>;
+        kind: 'question' | 'choice' | 'approval' | 'consent' | 'stale_context' | 'provider_recovery';
+        status: 'pending' | 'resolved' | 'cancelled';
+        promptMarkdown: string;
+    }>;
+    techDecisionCount: number;
+    packageAssessmentCount: number;
+    workingArtifactCount: number;
+    executionPhases: Array<{
+        id: EntityId<'lphase'>;
+        sequence: number;
+        phaseKind: 'orientation' | 'planning' | 'execution' | 'verification' | 'synthesis';
+        status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'blocked';
+        summaryMarkdown?: string;
+    }>;
+    walkthrough?: {
+        contentMarkdown: string;
+    };
+}
+
 export interface ModeExecutionOrchestratorPanelState {
     activeExecutionStrategy: OrchestratorExecutionStrategy;
     canAbortOrchestrator: boolean;
@@ -173,6 +208,7 @@ export interface ModeExecutionOrchestratorPanelState {
     steps: ModeExecutionOrchestratorStepView[];
     swarmLanes: ModeExecutionOrchestratorSwarmLaneView[];
     synthesisLane?: ModeExecutionOrchestratorSwarmLaneView;
+    lazy?: ModeExecutionOrchestratorLazyView;
 }
 
 export function resolveModeExecutionOrchestratorPanelState(input: {
@@ -209,6 +245,16 @@ export function resolveModeExecutionOrchestratorPanelState(input: {
                   errorMessage?: string;
                   resultSummaryMarkdown?: string;
               }>;
+              lazy?: {
+                  objective?: ModeExecutionOrchestratorLazyView['objective'];
+                  taskTree: ModeExecutionOrchestratorLazyView['taskTree'];
+                  checkpoints: ModeExecutionOrchestratorLazyView['checkpoints'];
+                  techDecisions: unknown[];
+                  packageAssessments: unknown[];
+                  workingArtifacts: unknown[];
+                  executionPhases: ModeExecutionOrchestratorLazyView['executionPhases'];
+                  walkthrough?: ModeExecutionOrchestratorLazyView['walkthrough'];
+              };
           }
         | undefined;
 }): ModeExecutionOrchestratorPanelState | undefined {
@@ -240,6 +286,24 @@ export function resolveModeExecutionOrchestratorPanelState(input: {
         })),
         swarmLanes,
         ...(synthesisLane ? { synthesisLane } : {}),
+        ...(input.orchestratorView.lazy
+            ? {
+                  lazy: {
+                      ...(input.orchestratorView.lazy.objective
+                          ? { objective: input.orchestratorView.lazy.objective }
+                          : {}),
+                      taskTree: input.orchestratorView.lazy.taskTree,
+                      checkpoints: input.orchestratorView.lazy.checkpoints,
+                      techDecisionCount: input.orchestratorView.lazy.techDecisions.length,
+                      packageAssessmentCount: input.orchestratorView.lazy.packageAssessments.length,
+                      workingArtifactCount: input.orchestratorView.lazy.workingArtifacts.length,
+                      executionPhases: input.orchestratorView.lazy.executionPhases,
+                      ...(input.orchestratorView.lazy.walkthrough
+                          ? { walkthrough: input.orchestratorView.lazy.walkthrough }
+                          : {}),
+                  },
+              }
+            : {}),
     };
 }
 

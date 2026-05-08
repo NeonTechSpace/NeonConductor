@@ -41,6 +41,7 @@ export function useConversationMutations() {
         planCancelMutation: trpc.plan.cancel.useMutation(),
         planApproveMutation: trpc.plan.approve.useMutation(),
         planImplementMutation: trpc.plan.implement.useMutation(),
+        orchestratorStartLazyMutation: trpc.orchestrator.startLazy.useMutation(),
         orchestratorAbortMutation: trpc.orchestrator.abort.useMutation(),
         setEditPreferenceMutation: trpc.conversation.setEditPreference.useMutation(),
         resolvePermissionMutation: trpc.permission.resolve.useMutation(),

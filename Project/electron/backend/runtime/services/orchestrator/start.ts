@@ -1,4 +1,4 @@
-import { orchestratorStore, planStore, threadStore } from '@/app/backend/persistence/stores';
+import { orchestratorLazyStore, orchestratorStore, planStore, threadStore } from '@/app/backend/persistence/stores';
 import type {
     OrchestratorRunRecord,
     OrchestratorStepRecord,
@@ -25,6 +25,29 @@ export interface PreparedOrchestratorStart {
     planItems: PlanItemRecord[];
     run: OrchestratorRunRecord;
     steps: OrchestratorStepRecord[];
+}
+
+function deriveLazyObjective(input: {
+    startInput: OrchestratorStartInput;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
+}): NonNullable<OrchestratorStartInput['lazyObjective']> {
+    return (
+        input.startInput.lazyObjective ?? {
+            objectiveMarkdown: input.approvedArtifact.summaryMarkdown,
+            successCriteriaMarkdown: 'Complete the approved orchestrator plan and verify the result.',
+            constraintsMarkdown: 'Use NeonConductor run contracts, permissions, sandboxing, and receipts.',
+            evidenceRequirementsMarkdown: 'Record orientation notes, task decisions, verification evidence, and final walkthrough.',
+            allowedCapabilityGroups: [
+                'repo_discovery',
+                'external_research',
+                'package_evaluation',
+                'implementation',
+                'verification',
+            ],
+            researchDepth: 'balanced',
+            packagePolicy: 'allow_with_approval',
+        }
+    );
 }
 
 export async function prepareOrchestratorStart(
@@ -78,6 +101,43 @@ export async function prepareOrchestratorStart(
         executionStrategy: input.executionStrategy ?? 'sequential',
         stepDescriptions,
     });
+    if ((input.executionStrategy ?? 'sequential') === 'lazy') {
+        const lazyObjective = deriveLazyObjective({ startInput: input, approvedArtifact });
+        const objective = await orchestratorLazyStore.createObjective({
+            orchestratorRunId: created.run.id,
+            ...lazyObjective,
+        });
+        await orchestratorLazyStore.appendObjectiveSegment({
+            orchestratorRunId: created.run.id,
+            objectiveId: objective.id,
+            kind: 'goal',
+            contentMarkdown: lazyObjective.objectiveMarkdown,
+        });
+        if (lazyObjective.successCriteriaMarkdown) {
+            await orchestratorLazyStore.appendObjectiveSegment({
+                orchestratorRunId: created.run.id,
+                objectiveId: objective.id,
+                kind: 'success_criteria',
+                contentMarkdown: lazyObjective.successCriteriaMarkdown,
+            });
+        }
+        if (lazyObjective.constraintsMarkdown) {
+            await orchestratorLazyStore.appendObjectiveSegment({
+                orchestratorRunId: created.run.id,
+                objectiveId: objective.id,
+                kind: 'constraint',
+                contentMarkdown: lazyObjective.constraintsMarkdown,
+            });
+        }
+        if (lazyObjective.evidenceRequirementsMarkdown) {
+            await orchestratorLazyStore.appendObjectiveSegment({
+                orchestratorRunId: created.run.id,
+                objectiveId: objective.id,
+                kind: 'evidence_requirement',
+                contentMarkdown: lazyObjective.evidenceRequirementsMarkdown,
+            });
+        }
+    }
 
     return okOrchestrator({
         plan,

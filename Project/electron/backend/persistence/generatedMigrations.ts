@@ -1560,7 +1560,7 @@ CREATE TABLE orchestrator_runs (
     plan_phase_id TEXT NULL REFERENCES plan_phases(id) ON DELETE SET NULL,
     plan_phase_revision_id TEXT NULL REFERENCES plan_phase_revisions(id) ON DELETE SET NULL,
     status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'aborted', 'failed')),
-    execution_strategy TEXT NOT NULL CHECK (execution_strategy IN ('sequential', 'parallel', 'swarm')),
+    execution_strategy TEXT NOT NULL CHECK (execution_strategy IN ('sequential', 'parallel', 'swarm', 'lazy')),
     active_step_index INTEGER NULL,
     started_at TEXT NOT NULL,
     completed_at TEXT NULL,
@@ -1620,6 +1620,140 @@ CREATE TABLE orchestrator_swarm_context_entries (
     created_at TEXT NOT NULL,
     FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
     FOREIGN KEY (source_lane_id) REFERENCES orchestrator_swarm_lanes(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_objectives (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL UNIQUE,
+    objective_markdown TEXT NOT NULL,
+    success_criteria_markdown TEXT NULL,
+    constraints_markdown TEXT NULL,
+    evidence_requirements_markdown TEXT NULL,
+    allowed_capability_groups_json TEXT NOT NULL,
+    research_depth TEXT NOT NULL CHECK (research_depth IN ('light', 'balanced', 'deep')),
+    package_policy TEXT NOT NULL CHECK (package_policy IN ('avoid_new', 'allow_with_approval', 'research_only')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'failed', 'aborted')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE
+);
+
+CREATE TABLE orchestrator_lazy_objective_segments (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    objective_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('goal', 'success_criteria', 'constraint', 'evidence_requirement', 'context')),
+    content_markdown TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (objective_id) REFERENCES orchestrator_lazy_objectives(id) ON DELETE CASCADE
+);
+
+CREATE TABLE orchestrator_lazy_tasks (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    parent_task_id TEXT NULL,
+    step_id TEXT NULL,
+    sequence INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description_markdown TEXT NOT NULL,
+    execution_kind TEXT NOT NULL CHECK (execution_kind IN ('sequential', 'parallel', 'swarm')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'aborted', 'blocked')),
+    dependency_task_ids_json TEXT NOT NULL,
+    verification_markdown TEXT NULL,
+    error_message TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_task_id) REFERENCES orchestrator_lazy_tasks(id) ON DELETE SET NULL,
+    FOREIGN KEY (step_id) REFERENCES orchestrator_steps(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_interaction_checkpoints (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    task_id TEXT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('question', 'choice', 'approval', 'consent', 'stale_context', 'provider_recovery')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'resolved', 'cancelled')),
+    prompt_markdown TEXT NOT NULL,
+    choices_json TEXT NULL,
+    response_markdown TEXT NULL,
+    resume_token TEXT NULL,
+    created_at TEXT NOT NULL,
+    resolved_at TEXT NULL,
+    cancelled_at TEXT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES orchestrator_lazy_tasks(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_tech_decisions (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    task_id TEXT NULL,
+    title TEXT NOT NULL,
+    decision_markdown TEXT NOT NULL,
+    rationale_markdown TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('proposed', 'accepted', 'rejected')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES orchestrator_lazy_tasks(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_package_assessments (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    task_id TEXT NULL,
+    package_name TEXT NOT NULL,
+    ecosystem TEXT NULL,
+    requested_version TEXT NULL,
+    assessment_markdown TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('not_needed', 'needs_approval', 'approved', 'rejected')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES orchestrator_lazy_tasks(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_working_artifacts (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    task_id TEXT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('orientation_notes', 'planning_notes', 'decision_evidence', 'verification_notes', 'intermediate_file')),
+    title TEXT NOT NULL,
+    content_markdown TEXT NOT NULL,
+    source_run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES orchestrator_lazy_tasks(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_execution_phases (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL,
+    task_id TEXT NULL,
+    sequence INTEGER NOT NULL,
+    phase_kind TEXT NOT NULL CHECK (phase_kind IN ('orientation', 'planning', 'execution', 'verification', 'synthesis')),
+    execution_kind TEXT NULL CHECK (execution_kind IS NULL OR execution_kind IN ('sequential', 'parallel', 'swarm')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'aborted', 'blocked')),
+    child_run_id TEXT NULL REFERENCES runs(id) ON DELETE SET NULL,
+    summary_markdown TEXT NULL,
+    error_message TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES orchestrator_lazy_tasks(id) ON DELETE SET NULL
+);
+
+CREATE TABLE orchestrator_lazy_walkthroughs (
+    id TEXT PRIMARY KEY,
+    orchestrator_run_id TEXT NOT NULL UNIQUE,
+    content_markdown TEXT NOT NULL,
+    validation_summary_markdown TEXT NULL,
+    risk_markdown TEXT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (orchestrator_run_id) REFERENCES orchestrator_runs(id) ON DELETE CASCADE
 );
 
 -- Permissions, tools, MCP, and marketplace.

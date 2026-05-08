@@ -24,7 +24,7 @@ import {
     DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
 } from '@/shared/contracts';
 import type { EntityId } from '@/shared/contracts';
-import type { RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type { OrchestratorExecutionStrategy, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
 import type { ResolvedContextState, ResolvedContextStateInput } from '@/shared/contracts/types/context';
 import type { ModeRoutingIntent } from '@/shared/modeRouting';
 
@@ -36,6 +36,7 @@ interface UseConversationShellComposerSetupInput {
     workspaceFingerprint: string | undefined;
     sandboxId: EntityId<'sb'> | undefined;
     isPlanningComposerMode: boolean;
+    selectedExecutionStrategy: OrchestratorExecutionStrategy;
     planningDepthSelection: PlanningDepth;
     imageAttachmentsAllowed: boolean;
     activeMode?: ConversationModeOption;
@@ -163,7 +164,10 @@ export function useConversationShellComposerSetup(input: UseConversationShellCom
         resolvedRunTarget: input.runTargetState.resolvedRunTarget,
         providerById: input.runTargetState.providerById,
         runtimeOptions: input.reasoningState.runtimeOptions,
-        isStartingRun: input.mutations.startRunMutation.isPending,
+        isStartingRun:
+            input.mutations.startRunMutation.isPending ||
+            input.mutations.planStartMutation.isPending ||
+            input.mutations.orchestratorStartLazyMutation.isPending,
         canAttachImages: preComposerCanAttachImages,
         maxImageAttachmentsPerMessage:
             composerMediaSettings?.maxImageAttachmentsPerMessage ?? DEFAULT_COMPOSER_MAX_IMAGE_ATTACHMENTS_PER_MESSAGE,
@@ -173,10 +177,45 @@ export function useConversationShellComposerSetup(input: UseConversationShellCom
             ? { imageAttachmentBlockedReason: preComposerImageAttachmentBlockedReason }
             : {}),
         ...(preComposerSubmitBlockedReason ? { submitBlockedReason: preComposerSubmitBlockedReason } : {}),
-        startPlan: async (planStartInput) =>
-            await input.mutations.planStartMutation.mutateAsync({
+        startPlan: async (planStartInput) => {
+            if (input.topLevelTab === 'orchestrator' && input.selectedExecutionStrategy === 'lazy') {
+                const result = await input.mutations.orchestratorStartLazyMutation.mutateAsync({
+                    profileId: planStartInput.profileId,
+                    sessionId: planStartInput.sessionId,
+                    objectiveMarkdown: planStartInput.prompt,
+                    successCriteriaMarkdown: 'Complete the objective and produce a verified walkthrough.',
+                    constraintsMarkdown: 'Preserve NeonConductor permissions, sandboxing, run contracts, and receipts.',
+                    evidenceRequirementsMarkdown:
+                        'Record orientation notes, task decisions, package assessments, verification, and final synthesis.',
+                    allowedCapabilityGroups: [
+                        'repo_discovery',
+                        'external_research',
+                        'package_evaluation',
+                        'implementation',
+                        'verification',
+                    ],
+                    researchDepth: planStartInput.planningDepth === 'advanced' ? 'deep' : 'balanced',
+                    packagePolicy: 'allow_with_approval',
+                    runtimeOptions: input.reasoningState.runtimeOptions,
+                    ...(input.runTargetState.resolvedRunTarget
+                        ? {
+                              providerId: input.runTargetState.resolvedRunTarget.providerId,
+                              modelId: input.runTargetState.resolvedRunTarget.modelId,
+                          }
+                        : {}),
+                    ...(planStartInput.workspaceFingerprint
+                        ? { workspaceFingerprint: planStartInput.workspaceFingerprint }
+                        : {}),
+                });
+                return {
+                    plan: result.plan,
+                };
+            }
+
+            return await input.mutations.planStartMutation.mutateAsync({
                 ...planStartInput,
-            } as Parameters<typeof input.mutations.planStartMutation.mutateAsync>[0]),
+            } as Parameters<typeof input.mutations.planStartMutation.mutateAsync>[0]);
+        },
         startRun: input.mutations.startRunMutation.mutateAsync,
         queueRun: async (queueInput) => {
             const queued = await input.mutations.queueRunMutation.mutateAsync(queueInput);

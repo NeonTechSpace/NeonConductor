@@ -12,7 +12,7 @@ import {
     tagStore,
     threadStore,
 } from '@/app/backend/persistence/__tests__/stores.shared';
-import { orchestratorStore, orchestratorSwarmStore, planStore } from '@/app/backend/persistence/stores';
+import { orchestratorLazyStore, orchestratorStore, orchestratorSwarmStore, planStore } from '@/app/backend/persistence/stores';
 import { parseEntityId } from '@/app/backend/persistence/stores/shared/rowParsers';
 
 registerPersistenceStoreHooks();
@@ -243,6 +243,84 @@ describe('persistence stores: conversation domain', () => {
                 contentMarkdown: 'Explorer found the relevant files.',
             },
         ]);
+
+        const lazyObjective = await orchestratorLazyStore.createObjective({
+            orchestratorRunId: orchestratorRun.run.id,
+            objectiveMarkdown: 'Build a goal-driven feature.',
+            successCriteriaMarkdown: 'The feature validates.',
+            constraintsMarkdown: 'Stay inside run contracts.',
+            evidenceRequirementsMarkdown: 'Preserve decisions and receipts.',
+            allowedCapabilityGroups: ['repo_discovery', 'implementation', 'verification'],
+            researchDepth: 'balanced',
+            packagePolicy: 'avoid_new',
+        });
+        await orchestratorLazyStore.appendObjectiveSegment({
+            orchestratorRunId: orchestratorRun.run.id,
+            objectiveId: lazyObjective.id,
+            kind: 'goal',
+            contentMarkdown: 'Build a goal-driven feature.',
+        });
+        const lazyTask = await orchestratorLazyStore.createTask({
+            orchestratorRunId: orchestratorRun.run.id,
+            ...(orchestratorRun.steps[0] ? { stepId: orchestratorRun.steps[0].id } : {}),
+            sequence: 1,
+            title: 'Implement goal',
+            descriptionMarkdown: 'Implement the goal through a delegated lane.',
+            executionKind: 'sequential',
+            verificationMarkdown: 'Run targeted checks.',
+        });
+        await orchestratorLazyStore.updateTask(lazyTask.id, { status: 'completed' });
+        const lazyPhase = await orchestratorLazyStore.createExecutionPhase({
+            orchestratorRunId: orchestratorRun.run.id,
+            taskId: lazyTask.id,
+            sequence: 1,
+            phaseKind: 'execution',
+            executionKind: 'sequential',
+        });
+        await orchestratorLazyStore.updateExecutionPhase(lazyPhase.id, {
+            status: 'completed',
+            summaryMarkdown: 'Executed through a child lane.',
+        });
+        await orchestratorLazyStore.createDecision({
+            orchestratorRunId: orchestratorRun.run.id,
+            taskId: lazyTask.id,
+            title: 'Use existing authority',
+            decisionMarkdown: 'Use delegated child lanes.',
+            rationaleMarkdown: 'This preserves permissions and receipts.',
+        });
+        await orchestratorLazyStore.createPackageAssessment({
+            orchestratorRunId: orchestratorRun.run.id,
+            packageName: 'new dependencies',
+            assessmentMarkdown: 'No package install is needed.',
+            status: 'not_needed',
+        });
+        await orchestratorLazyStore.createArtifact({
+            orchestratorRunId: orchestratorRun.run.id,
+            kind: 'planning_notes',
+            title: 'Task tree',
+            contentMarkdown: '- Implement goal',
+        });
+        await orchestratorLazyStore.createWalkthrough({
+            orchestratorRunId: orchestratorRun.run.id,
+            contentMarkdown: 'Lazy walkthrough',
+            validationSummaryMarkdown: 'Validation passed.',
+            riskMarkdown: 'No known risk.',
+        });
+
+        expect(await orchestratorLazyStore.getObjectiveByRunId(orchestratorRun.run.id)).toMatchObject({
+            objectiveMarkdown: 'Build a goal-driven feature.',
+            packagePolicy: 'avoid_new',
+        });
+        expect(await orchestratorLazyStore.listTasks(orchestratorRun.run.id)).toMatchObject([
+            {
+                id: lazyTask.id,
+                status: 'completed',
+                executionKind: 'sequential',
+            },
+        ]);
+        expect(await orchestratorLazyStore.getWalkthrough(orchestratorRun.run.id)).toMatchObject({
+            contentMarkdown: 'Lazy walkthrough',
+        });
     });
 
     it('supports conversations, threads, tags, diffs, and checkpoints', async () => {

@@ -29,6 +29,7 @@ export { modeDraftStore } from '@/app/backend/persistence/stores/registry/modeDr
 export { modeStore } from '@/app/backend/persistence/stores/registry/modeStore';
 export { registryDiscoveryDiagnosticStore } from '@/app/backend/persistence/stores/registry/registryDiscoveryDiagnosticStore';
 export { researchCheckoutStore } from '@/app/backend/persistence/stores/runtime/researchCheckoutStore';
+export { orchestratorLazyStore } from '@/app/backend/persistence/stores/runtime/orchestratorLazyStore';
 export { orchestratorStore } from '@/app/backend/persistence/stores/runtime/orchestratorStore';
 export { orchestratorSwarmStore } from '@/app/backend/persistence/stores/runtime/orchestratorSwarmStore';
 export { permissionStore } from '@/app/backend/persistence/stores/runtime/permissionStore';

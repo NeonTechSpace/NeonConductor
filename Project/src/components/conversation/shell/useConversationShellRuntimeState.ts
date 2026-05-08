@@ -238,6 +238,7 @@ export function useConversationShellRuntimeState(
         workspaceFingerprint: selectionState.selectedThread?.workspaceFingerprint,
         sandboxId: workspaceScope.kind === 'sandbox' ? workspaceScope.sandboxId : undefined,
         isPlanningComposerMode,
+        selectedExecutionStrategy: executionStrategy,
         imageAttachmentsAllowed,
         planningDepthSelection,
         ...(activeMode ? { activeMode } : {}),

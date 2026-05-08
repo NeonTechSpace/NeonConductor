@@ -1,5 +1,16 @@
 import type { FlowDefinitionOriginKind } from '@/app/backend/runtime/contracts/enums';
 import type {
+    OrchestratorLazyExecutionPhasesTable,
+    OrchestratorLazyInteractionCheckpointsTable,
+    OrchestratorLazyObjectivesTable,
+    OrchestratorLazyObjectiveSegmentsTable,
+    OrchestratorLazyPackageAssessmentsTable,
+    OrchestratorLazyTasksTable,
+    OrchestratorLazyTechDecisionsTable,
+    OrchestratorLazyWalkthroughsTable,
+    OrchestratorLazyWorkingArtifactsTable,
+} from '@/app/backend/persistence/schemaTables/orchestratorLazyTables';
+import type {
     OrchestratorSwarmContextEntriesTable,
     OrchestratorSwarmLanesTable,
 } from '@/app/backend/persistence/schemaTables/orchestratorSwarmTables';
@@ -1433,5 +1444,14 @@ export interface DatabaseSchema {
     orchestrator_steps: OrchestratorStepsTable;
     orchestrator_swarm_lanes: OrchestratorSwarmLanesTable;
     orchestrator_swarm_context_entries: OrchestratorSwarmContextEntriesTable;
+    orchestrator_lazy_objectives: OrchestratorLazyObjectivesTable;
+    orchestrator_lazy_objective_segments: OrchestratorLazyObjectiveSegmentsTable;
+    orchestrator_lazy_tasks: OrchestratorLazyTasksTable;
+    orchestrator_lazy_interaction_checkpoints: OrchestratorLazyInteractionCheckpointsTable;
+    orchestrator_lazy_tech_decisions: OrchestratorLazyTechDecisionsTable;
+    orchestrator_lazy_package_assessments: OrchestratorLazyPackageAssessmentsTable;
+    orchestrator_lazy_working_artifacts: OrchestratorLazyWorkingArtifactsTable;
+    orchestrator_lazy_execution_phases: OrchestratorLazyExecutionPhasesTable;
+    orchestrator_lazy_walkthroughs: OrchestratorLazyWalkthroughsTable;
     permission_policy_overrides: PermissionPolicyOverridesTable;
 }

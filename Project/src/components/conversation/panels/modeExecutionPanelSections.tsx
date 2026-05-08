@@ -359,6 +359,16 @@ function PlanArtifactActionBar({
                         }}>
                         Swarm
                     </Button>
+                    <Button
+                        type='button'
+                        size='sm'
+                        variant={selectedExecutionStrategy === 'lazy' ? 'default' : 'ghost'}
+                        disabled={isPlanMutating}
+                        onClick={() => {
+                            onExecutionStrategyChange('lazy');
+                        }}>
+                        Lazy
+                    </Button>
                 </div>
             ) : null}
             {artifactState.canGenerateDraft ? (

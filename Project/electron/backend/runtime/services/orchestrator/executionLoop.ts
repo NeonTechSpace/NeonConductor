@@ -1,4 +1,10 @@
-import { messageStore, orchestratorSwarmStore } from '@/app/backend/persistence/stores';
+import {
+    messageStore,
+    orchestratorLazyStore,
+    orchestratorStore,
+    orchestratorSwarmStore,
+    planStore,
+} from '@/app/backend/persistence/stores';
 import type {
     OrchestratorStepRecord,
     OrchestratorSwarmLaneRecord,
@@ -778,6 +784,351 @@ async function executeSwarmStrategy(input: {
     });
 }
 
+function lazyTitleFromStep(step: OrchestratorStepRecord): string {
+    const compact = step.description
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .join(' ');
+    return compact.length <= 96 ? compact : `${compact.slice(0, 93).trimEnd()}...`;
+}
+
+function buildLazyWalkthrough(input: {
+    objectiveMarkdown: string;
+    tasks: Array<{ title: string; status: string }>;
+    synthesisMarkdown: string;
+}): string {
+    const taskLines = input.tasks.map((task) => `- ${task.title}: ${task.status}`).join('\n');
+    return [
+        '# Lazy Orchestrator Walkthrough',
+        '',
+        '## Objective',
+        input.objectiveMarkdown,
+        '',
+        '## Task Tree',
+        taskLines.length > 0 ? taskLines : '- No task nodes were created.',
+        '',
+        '## Final Synthesis',
+        input.synthesisMarkdown,
+    ].join('\n');
+}
+
+async function failLazyRun(input: {
+    orchestratorRunId: EntityId<'orch'>;
+    planId: PlanRecord['id'];
+    phaseId?: EntityId<'lphase'>;
+    taskId?: EntityId<'ltask'>;
+    reason: string;
+    aborted?: boolean;
+}): Promise<void> {
+    if (input.phaseId) {
+        await orchestratorLazyStore.updateExecutionPhase(input.phaseId, {
+            status: input.aborted ? 'aborted' : 'failed',
+            errorMessage: input.reason,
+        });
+    }
+    if (input.taskId) {
+        await orchestratorLazyStore.updateTask(input.taskId, {
+            status: input.aborted ? 'aborted' : 'failed',
+            errorMessage: input.reason,
+        });
+    }
+    await orchestratorLazyStore.markObjectiveStatus(input.orchestratorRunId, input.aborted ? 'aborted' : 'failed');
+    await orchestratorStore.setRunStatus(input.orchestratorRunId, {
+        status: input.aborted ? 'aborted' : 'failed',
+        errorMessage: input.reason,
+    });
+    if (!input.aborted) {
+        await planStore.markFailed(input.planId);
+    }
+}
+
+async function executeLazyStrategy(input: {
+    plan: PlanRecord;
+    approvedArtifact: ApprovedPlanExecutionArtifact;
+    planItems: PlanItemRecord[];
+    orchestratorRunId: EntityId<'orch'>;
+    steps: OrchestratorStepRecord[];
+    startInput: OrchestratorStartInput;
+    activeRuns: ActiveOrchestratorRunRegistry;
+}): Promise<void> {
+    const objective = await orchestratorLazyStore.getObjectiveByRunId(input.orchestratorRunId);
+    if (!objective) {
+        await failLazyRun({
+            orchestratorRunId: input.orchestratorRunId,
+            planId: input.plan.id,
+            reason: 'Lazy run started without a durable objective packet.',
+        });
+        return;
+    }
+
+    const orientationPhase = await orchestratorLazyStore.createExecutionPhase({
+        orchestratorRunId: input.orchestratorRunId,
+        sequence: 1,
+        phaseKind: 'orientation',
+    });
+    const orientation = await createAndStartSwarmLane({
+        ...input,
+        role: 'explorer',
+        sequence: 1,
+    });
+    if (!orientation.ok) {
+        await failLazyRun({
+            orchestratorRunId: input.orchestratorRunId,
+            planId: input.plan.id,
+            phaseId: orientationPhase.id,
+            reason: orientation.reason,
+        });
+        return;
+    }
+    await orchestratorLazyStore.updateExecutionPhase(orientationPhase.id, {
+        status: 'running',
+        ...(orientation.lane.activeRunId ? { childRunId: orientation.lane.activeRunId } : {}),
+    });
+    const orientationTerminal = await waitForSwarmLane({
+        profileId: input.startInput.profileId,
+        orchestratorRunId: input.orchestratorRunId,
+        lane: orientation.lane,
+        activeRuns: input.activeRuns,
+    });
+    if (!orientationTerminal.ok) {
+        await failLazyRun({
+            orchestratorRunId: input.orchestratorRunId,
+            planId: input.plan.id,
+            phaseId: orientationPhase.id,
+            reason: orientationTerminal.reason,
+            aborted: orientationTerminal.aborted,
+        });
+        return;
+    }
+    await orchestratorLazyStore.updateExecutionPhase(orientationPhase.id, {
+        status: 'completed',
+        ...(orientationTerminal.lane.runId ? { childRunId: orientationTerminal.lane.runId } : {}),
+        summaryMarkdown: orientationTerminal.summaryMarkdown,
+    });
+    await orchestratorLazyStore.createArtifact({
+        orchestratorRunId: input.orchestratorRunId,
+        kind: 'orientation_notes',
+        title: 'Lazy orientation evidence',
+        contentMarkdown: orientationTerminal.summaryMarkdown,
+        ...(orientationTerminal.lane.runId ? { sourceRunId: orientationTerminal.lane.runId } : {}),
+    });
+
+    const planningPhase = await orchestratorLazyStore.createExecutionPhase({
+        orchestratorRunId: input.orchestratorRunId,
+        sequence: 2,
+        phaseKind: 'planning',
+    });
+    await orchestratorLazyStore.updateExecutionPhase(planningPhase.id, {
+        status: 'running',
+    });
+    const tasks = [];
+    for (const [index, step] of input.steps.entries()) {
+        const task = await orchestratorLazyStore.createTask({
+            orchestratorRunId: input.orchestratorRunId,
+            stepId: step.id,
+            sequence: index + 1,
+            title: lazyTitleFromStep(step),
+            descriptionMarkdown: step.description,
+            executionKind: 'sequential',
+            verificationMarkdown: 'Verify the delegated child run result and preserve receipts.',
+        });
+        tasks.push(task);
+    }
+    await orchestratorLazyStore.createDecision({
+        orchestratorRunId: input.orchestratorRunId,
+        title: 'Lazy execution route',
+        decisionMarkdown: 'Execute the objective through NeonConductor delegated child lanes.',
+        rationaleMarkdown:
+            'Lazy preserves the existing run pipeline, permission model, sandbox posture, receipts, and child lane ownership.',
+    });
+    await orchestratorLazyStore.createPackageAssessment({
+        orchestratorRunId: input.orchestratorRunId,
+        packageName: 'new dependencies',
+        assessmentMarkdown:
+            objective.packagePolicy === 'avoid_new'
+                ? 'Lazy package policy avoids new dependencies unless the operator changes the objective constraints.'
+                : 'Lazy package policy requires explicit approval before package installation or dependency mutation.',
+        status: objective.packagePolicy === 'avoid_new' ? 'not_needed' : 'needs_approval',
+    });
+    await orchestratorLazyStore.createArtifact({
+        orchestratorRunId: input.orchestratorRunId,
+        kind: 'planning_notes',
+        title: 'Lazy task tree',
+        contentMarkdown: tasks.map((task) => `- ${task.title}`).join('\n'),
+    });
+    await orchestratorLazyStore.updateExecutionPhase(planningPhase.id, {
+        status: 'completed',
+        summaryMarkdown: `Created ${String(tasks.length)} Lazy task node(s).`,
+    });
+
+    for (const task of tasks) {
+        if (isRunCancelled(input.activeRuns, input.orchestratorRunId)) {
+            await failLazyRun({
+                orchestratorRunId: input.orchestratorRunId,
+                planId: input.plan.id,
+                taskId: task.id,
+                reason: 'Lazy run was aborted.',
+                aborted: true,
+            });
+            return;
+        }
+        const step = input.steps.find((candidate) => candidate.id === task.stepId);
+        if (!step) {
+            await failLazyRun({
+                orchestratorRunId: input.orchestratorRunId,
+                planId: input.plan.id,
+                taskId: task.id,
+                reason: 'Lazy task did not resolve to an orchestrator step.',
+            });
+            return;
+        }
+        const executionPhase = await orchestratorLazyStore.createExecutionPhase({
+            orchestratorRunId: input.orchestratorRunId,
+            taskId: task.id,
+            sequence: task.sequence + 2,
+            phaseKind: 'execution',
+            executionKind: task.executionKind,
+        });
+        await orchestratorLazyStore.updateTask(task.id, { status: 'running' });
+        await orchestratorLazyStore.updateExecutionPhase(executionPhase.id, { status: 'running' });
+        const started = await startStepChild({
+            ...input,
+            step,
+        });
+        if (!started.ok) {
+            await markStepFailed({
+                orchestratorRunId: input.orchestratorRunId,
+                step,
+                planItems: input.planItems,
+                errorMessage: started.reason,
+                planId: input.plan.id,
+            });
+            await failLazyRun({
+                orchestratorRunId: input.orchestratorRunId,
+                planId: input.plan.id,
+                phaseId: executionPhase.id,
+                taskId: task.id,
+                reason: started.reason,
+            });
+            return;
+        }
+        await orchestratorLazyStore.updateExecutionPhase(executionPhase.id, {
+            childRunId: started.child.runId,
+        });
+        const terminalStatus = await waitForRunTerminal(started.child.runId);
+        input.activeRuns.unregisterChildSession(input.orchestratorRunId, started.child.childSessionId);
+        if (terminalStatus === 'completed') {
+            await markStepCompleted({
+                orchestratorRunId: input.orchestratorRunId,
+                step,
+                planItems: input.planItems,
+                runId: started.child.runId,
+            });
+            await orchestratorLazyStore.updateTask(task.id, { status: 'completed' });
+            await orchestratorLazyStore.updateExecutionPhase(executionPhase.id, {
+                status: 'completed',
+                summaryMarkdown: 'Lazy delegated child lane completed.',
+            });
+            continue;
+        }
+        if (terminalStatus === 'aborted') {
+            await markStepAborted({
+                orchestratorRunId: input.orchestratorRunId,
+                step,
+                planItems: input.planItems,
+                runId: started.child.runId,
+            });
+            await failLazyRun({
+                orchestratorRunId: input.orchestratorRunId,
+                planId: input.plan.id,
+                phaseId: executionPhase.id,
+                taskId: task.id,
+                reason: 'Lazy delegated child lane was aborted.',
+                aborted: true,
+            });
+            return;
+        }
+        await markStepFailed({
+            orchestratorRunId: input.orchestratorRunId,
+            step,
+            planItems: input.planItems,
+            runId: started.child.runId,
+            errorMessage: 'Lazy delegated child lane ended with error.',
+            planId: input.plan.id,
+        });
+        await failLazyRun({
+            orchestratorRunId: input.orchestratorRunId,
+            planId: input.plan.id,
+            phaseId: executionPhase.id,
+            taskId: task.id,
+            reason: 'Lazy delegated child lane ended with error.',
+        });
+        return;
+    }
+
+    const synthesisPhase = await orchestratorLazyStore.createExecutionPhase({
+        orchestratorRunId: input.orchestratorRunId,
+        sequence: tasks.length + 3,
+        phaseKind: 'synthesis',
+    });
+    const synthesizer = await createAndStartSwarmLane({
+        ...input,
+        role: 'synthesizer',
+        sequence: tasks.length + 2,
+    });
+    if (!synthesizer.ok) {
+        await failLazyRun({
+            orchestratorRunId: input.orchestratorRunId,
+            planId: input.plan.id,
+            phaseId: synthesisPhase.id,
+            reason: synthesizer.reason,
+        });
+        return;
+    }
+    await orchestratorLazyStore.updateExecutionPhase(synthesisPhase.id, {
+        status: 'running',
+        ...(synthesizer.lane.activeRunId ? { childRunId: synthesizer.lane.activeRunId } : {}),
+    });
+    const synthesisTerminal = await waitForSwarmLane({
+        profileId: input.startInput.profileId,
+        orchestratorRunId: input.orchestratorRunId,
+        lane: synthesizer.lane,
+        activeRuns: input.activeRuns,
+    });
+    if (!synthesisTerminal.ok) {
+        await failLazyRun({
+            orchestratorRunId: input.orchestratorRunId,
+            planId: input.plan.id,
+            phaseId: synthesisPhase.id,
+            reason: synthesisTerminal.reason,
+            aborted: synthesisTerminal.aborted,
+        });
+        return;
+    }
+    await orchestratorLazyStore.updateExecutionPhase(synthesisPhase.id, {
+        status: 'completed',
+        ...(synthesisTerminal.lane.runId ? { childRunId: synthesisTerminal.lane.runId } : {}),
+        summaryMarkdown: synthesisTerminal.summaryMarkdown,
+    });
+    await orchestratorLazyStore.createWalkthrough({
+        orchestratorRunId: input.orchestratorRunId,
+        contentMarkdown: buildLazyWalkthrough({
+            objectiveMarkdown: objective.objectiveMarkdown,
+            tasks: tasks.map((task) => ({ title: task.title, status: 'completed' })),
+            synthesisMarkdown: synthesisTerminal.summaryMarkdown,
+        }),
+        validationSummaryMarkdown: 'Lazy execution completed through delegated child lanes and synthesis.',
+        riskMarkdown: 'Review receipts and child lane outputs before relying on the result.',
+    });
+    await orchestratorLazyStore.markObjectiveStatus(input.orchestratorRunId, 'completed');
+    await markOrchestratorCompleted({
+        orchestratorRunId: input.orchestratorRunId,
+        planId: input.plan.id,
+        stepCount: input.steps.length,
+    });
+}
+
 export async function executeOrchestratorSteps(input: {
     plan: PlanRecord;
     approvedArtifact: ApprovedPlanExecutionArtifact;
@@ -786,8 +1137,13 @@ export async function executeOrchestratorSteps(input: {
     steps: OrchestratorStepRecord[];
     startInput: OrchestratorStartInput;
     activeRuns: ActiveOrchestratorRunRegistry;
-    executionStrategy: 'sequential' | 'parallel' | 'swarm';
+    executionStrategy: 'sequential' | 'parallel' | 'swarm' | 'lazy';
 }): Promise<void> {
+    if (input.executionStrategy === 'lazy') {
+        await executeLazyStrategy(input);
+        return;
+    }
+
     if (input.executionStrategy === 'swarm') {
         await executeSwarmStrategy(input);
         return;
