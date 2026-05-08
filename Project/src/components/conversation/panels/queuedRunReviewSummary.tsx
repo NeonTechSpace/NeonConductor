@@ -25,6 +25,13 @@ export function QueuedRunReviewSummary({ entry }: { entry: SessionOutboxEntry })
                     ? `${String(entry.browserContextSummary.commentCount)} comments · ${String(entry.browserContextSummary.selectedElementCount)} elements · ${String(entry.browserContextSummary.designerDraftCount)} designer drafts · ${entry.browserContextSummary.targetLabel}`
                     : 'none'}
             </p>
+            {entry.browserContextSummary && entry.browserContextSummary.designDiagnosticCount > 0 ? (
+                <p className='text-muted-foreground'>
+                    Design diagnostics: {String(entry.browserContextSummary.designDiagnosticCount)} total ·{' '}
+                    {String(entry.browserContextSummary.designDiagnosticErrorCount)} blocking ·{' '}
+                    {String(entry.browserContextSummary.designDiagnosticWarningCount)} warnings
+                </p>
+            ) : null}
             <p className='text-muted-foreground'>
                 Trust mix: trusted{' '}
                 {String(entry.latestRunContract?.trustSummary.contributorCountByTrustLevel.trusted_instruction ?? 0)} ·

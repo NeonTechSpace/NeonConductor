@@ -23,6 +23,7 @@ import {
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 import { buildBrowserContextSummary, resolveBrowserContextEnrichmentMode } from '@/app/backend/runtime/services/devBrowser/browserContext';
+import { buildBrowserDesignQualityFindings } from '@/app/backend/runtime/services/devBrowser/designQualityDiagnostics';
 
 import type { EntityId } from '@/shared/contracts';
 
@@ -81,6 +82,7 @@ type BrowserDesignerDraftRow = {
     profile_id: string;
     session_id: string;
     selection_id: string;
+    source_variant_id: string | null;
     page_identity: string;
     inclusion_state: string;
     apply_mode: string;
@@ -158,6 +160,7 @@ function mapDesignerDraft(row: BrowserDesignerDraftRow): BrowserDesignerDraft {
         {
             id: row.id,
             selectionId: row.selection_id,
+            ...(row.source_variant_id ? { sourceVariantId: row.source_variant_id } : {}),
             pageIdentity: row.page_identity,
             inclusionState: row.inclusion_state,
             applyMode: row.apply_mode,
@@ -178,6 +181,7 @@ function buildLiveSummary(input: {
     selections: BrowserSelectionRecord[];
     commentDrafts: BrowserCommentDraft[];
     designerDrafts: BrowserDesignerDraft[];
+    designerVariants: NonNullable<SessionDevBrowserState['designerVariants']>;
 }): BrowserContextSummary | undefined {
     if (!input.target) {
         return undefined;
@@ -245,6 +249,18 @@ function buildLiveSummary(input: {
             .map((selection) => selection.cropAttachmentId)
             .filter((attachmentId): attachmentId is EntityId<'att'> => attachmentId !== undefined),
         designerDrafts: packetDesignerDrafts,
+        designDiagnostics: buildBrowserDesignQualityFindings({
+            target: input.target,
+            selections: packetSelections,
+            designerDrafts: includedDesignerDrafts,
+            designerVariants: input.designerVariants,
+        }).filter((finding) => {
+            const selectionMatch = !finding.selectionId || packetSelections.some((selection) => selection.id === finding.selectionId);
+            const draftMatch = !finding.draftId || includedDesignerDrafts.some((draft) => draft.id === finding.draftId);
+            const variantMatch =
+                !finding.variantId || includedDesignerDrafts.some((draft) => draft.sourceVariantId === finding.variantId);
+            return selectionMatch && draftMatch && variantMatch;
+        }),
         enrichmentMode: resolveBrowserContextEnrichmentMode(packetSelections.map((selection) => selection.enrichmentMode)),
     };
     return buildBrowserContextSummary(packet);
@@ -336,8 +352,16 @@ export class SessionDevBrowserStore {
         const selections = selectionRows.map(mapSelection);
         const commentDrafts = commentRows.map(mapCommentDraft);
         const designerDrafts = designerRows.map(mapDesignerDraft);
+        const designDiagnostics = buildBrowserDesignQualityFindings({
+            ...(target ? { target } : {}),
+            selections,
+            designerDrafts,
+            designerVariants: designerState.designerVariants,
+        });
         const summary = buildLiveSummary(
-            target ? { target, selections, commentDrafts, designerDrafts } : { selections, commentDrafts, designerDrafts }
+            target
+                ? { target, selections, commentDrafts, designerDrafts, designerVariants: designerState.designerVariants }
+                : { selections, commentDrafts, designerDrafts, designerVariants: designerState.designerVariants }
         );
 
         return {
@@ -350,6 +374,7 @@ export class SessionDevBrowserStore {
             designerLiveSessions: designerState.designerLiveSessions,
             designerAnnotations: designerState.designerAnnotations,
             designerVariants: designerState.designerVariants,
+            designDiagnostics,
             ...(summary ? { summary } : {}),
         };
     }
@@ -667,6 +692,7 @@ export class SessionDevBrowserStore {
         profileId: string;
         sessionId: EntityId<'sess'>;
         selectionId: EntityId<'bsel'>;
+        sourceVariantId?: BrowserDesignerDraft['sourceVariantId'];
         inclusionState: BrowserDesignerDraft['inclusionState'];
         applyMode: BrowserDesignerDraft['applyMode'];
         applyStatus: BrowserDesignerDraft['applyStatus'];
@@ -698,6 +724,7 @@ export class SessionDevBrowserStore {
                 .updateTable('session_dev_browser_designer_drafts')
                 .set({
                     page_identity: selectionRow.page_identity,
+                    source_variant_id: input.sourceVariantId ?? null,
                     inclusion_state: input.inclusionState,
                     apply_mode: input.applyMode,
                     apply_status: input.applyStatus,
@@ -717,6 +744,7 @@ export class SessionDevBrowserStore {
                     profile_id: input.profileId,
                     session_id: input.sessionId,
                     selection_id: input.selectionId,
+                    source_variant_id: input.sourceVariantId ?? null,
                     page_identity: selectionRow.page_identity,
                     inclusion_state: input.inclusionState,
                     apply_mode: input.applyMode,

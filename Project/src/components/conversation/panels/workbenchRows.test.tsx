@@ -175,6 +175,21 @@ describe('workbench row components', () => {
                     textFileAttachmentCount: 0,
                     totalByteSize: 0,
                 },
+                browserContextSummary: {
+                    targetUrl: 'http://localhost:3000/',
+                    targetLabel: 'localhost:3000',
+                    selectedElementCount: 1,
+                    commentCount: 0,
+                    captureCount: 0,
+                    enrichmentMode: 'react_source_enriched',
+                    designerDraftCount: 1,
+                    designerPatchCount: 2,
+                    designerApplyIntentStatus: 'apply_with_agent',
+                    designDiagnosticCount: 3,
+                    designDiagnosticWarningCount: 2,
+                    designDiagnosticErrorCount: 1,
+                    digest: 'browserctx-receipt',
+                },
             },
             approvalsUsed: [{ permissionRequestId: 'perm_default', scope: 'once', resource: 'shell:exact:test' }],
             toolsInvoked: [{ toolName: 'run_command', callCount: 1 }],
@@ -191,6 +206,7 @@ describe('workbench row components', () => {
         expect(html).toContain('Outcome: completed');
         expect(html).toContain('Approvals used: 1');
         expect(html).toContain('Tools invoked: 1');
+        expect(html).toContain('Design diagnostics: 3 total');
         expect(html).toContain('1.3 s');
         expect(html).not.toContain('Allow Once');
     });

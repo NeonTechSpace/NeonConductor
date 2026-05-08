@@ -18,6 +18,7 @@ import type {
     BrowserContextPacketComment,
     BrowserContextPacketDesignerDraft,
     BrowserContextSummary,
+    BrowserDesignQualityFinding,
     BrowserDesignerAnnotation,
     BrowserDesignerAnnotationGeometry,
     BrowserDesignerDraft,
@@ -51,6 +52,7 @@ import type {
     SessionDiscardBrowserDesignerVariantInput,
     SessionMoveBrowserCommentDraftInput,
     SessionPersistBrowserSelectionInput,
+    SessionQueueBrowserDesignerApplyIntentInput,
     SessionSetBrowserCommentDraftInclusionInput,
     SessionSetBrowserDesignerDraftInclusionInput,
     SessionSetDevBrowserPickerInput,
@@ -61,6 +63,9 @@ import type {
     SessionUpsertBrowserDesignerDraftInput,
 } from '@/app/backend/runtime/contracts/types/devBrowser';
 import {
+    browserDesignQualityFindingCategories,
+    browserDesignQualityFindingScopes,
+    browserDesignQualityFindingSeverities,
     browserCommentDraftInclusionStates,
     browserContextSummaryDesignerApplyIntentStatuses,
     browserDesignerActionChips,
@@ -369,9 +374,14 @@ export function parseBrowserDesignerDraft(value: unknown, field: string): Browse
     const source = readObject(value, field);
     const blockedReasonMessage = readOptionalString(source.blockedReasonMessage, `${field}.blockedReasonMessage`);
     const textContentOverride = readOptionalString(source.textContentOverride, `${field}.textContentOverride`);
+    const sourceVariantId =
+        source.sourceVariantId !== undefined
+            ? readEntityId(source.sourceVariantId, `${field}.sourceVariantId`, 'bdvar')
+            : undefined;
     return {
         id: readEntityId(source.id, `${field}.id`, 'bdsn'),
         selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        ...(sourceVariantId ? { sourceVariantId } : {}),
         pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
         inclusionState: readEnumValue(
             source.inclusionState,
@@ -472,6 +482,35 @@ export function parseBrowserDesignerVariant(value: unknown, field: string): Brow
     };
 }
 
+export function parseBrowserDesignQualityFinding(value: unknown, field: string): BrowserDesignQualityFinding {
+    const source = readObject(value, field);
+    const evidence = readOptionalString(source.evidence, `${field}.evidence`);
+    const selectionId =
+        source.selectionId !== undefined ? readEntityId(source.selectionId, `${field}.selectionId`, 'bsel') : undefined;
+    const designerSessionId =
+        source.designerSessionId !== undefined
+            ? readEntityId(source.designerSessionId, `${field}.designerSessionId`, 'bdsess')
+            : undefined;
+    const variantId =
+        source.variantId !== undefined ? readEntityId(source.variantId, `${field}.variantId`, 'bdvar') : undefined;
+    const draftId =
+        source.draftId !== undefined ? readEntityId(source.draftId, `${field}.draftId`, 'bdsn') : undefined;
+    return {
+        id: readEntityId(source.id, `${field}.id`, 'bddiag'),
+        scope: readEnumValue(source.scope, `${field}.scope`, browserDesignQualityFindingScopes),
+        severity: readEnumValue(source.severity, `${field}.severity`, browserDesignQualityFindingSeverities),
+        category: readEnumValue(source.category, `${field}.category`, browserDesignQualityFindingCategories),
+        title: readString(source.title, `${field}.title`),
+        message: readString(source.message, `${field}.message`),
+        ...(evidence ? { evidence } : {}),
+        ...(selectionId ? { selectionId } : {}),
+        ...(designerSessionId ? { designerSessionId } : {}),
+        ...(variantId ? { variantId } : {}),
+        ...(draftId ? { draftId } : {}),
+        stale: source.stale === true,
+    };
+}
+
 function parseBrowserContextPacketComment(value: unknown, field: string): BrowserContextPacketComment {
     const source = readObject(value, field);
     return {
@@ -489,9 +528,14 @@ function parseBrowserContextPacketDesignerDraft(value: unknown, field: string): 
     const source = readObject(value, field);
     const blockedReasonMessage = readOptionalString(source.blockedReasonMessage, `${field}.blockedReasonMessage`);
     const textContentOverride = readOptionalString(source.textContentOverride, `${field}.textContentOverride`);
+    const sourceVariantId =
+        source.sourceVariantId !== undefined
+            ? readEntityId(source.sourceVariantId, `${field}.sourceVariantId`, 'bdvar')
+            : undefined;
     return {
         draftId: readEntityId(source.draftId, `${field}.draftId`, 'bdsn'),
         selectionId: readEntityId(source.selectionId, `${field}.selectionId`, 'bsel'),
+        ...(sourceVariantId ? { sourceVariantId } : {}),
         pageIdentity: readString(source.pageIdentity, `${field}.pageIdentity`),
         applyMode: readEnumValue(source.applyMode, `${field}.applyMode`, browserDesignerApplyModes),
         applyStatus: readEnumValue(source.applyStatus, `${field}.applyStatus`, browserDesignerApplyStatuses),
@@ -519,6 +563,18 @@ export function parseBrowserContextSummary(value: unknown, field: string): Brows
             `${field}.designerApplyIntentStatus`,
             browserContextSummaryDesignerApplyIntentStatuses
         ),
+        designDiagnosticCount:
+            source.designDiagnosticCount !== undefined
+                ? readNonNegativeNumber(source.designDiagnosticCount, `${field}.designDiagnosticCount`)
+                : 0,
+        designDiagnosticWarningCount:
+            source.designDiagnosticWarningCount !== undefined
+                ? readNonNegativeNumber(source.designDiagnosticWarningCount, `${field}.designDiagnosticWarningCount`)
+                : 0,
+        designDiagnosticErrorCount:
+            source.designDiagnosticErrorCount !== undefined
+                ? readNonNegativeNumber(source.designDiagnosticErrorCount, `${field}.designDiagnosticErrorCount`)
+                : 0,
         digest: readString(source.digest, `${field}.digest`),
     };
 }
@@ -538,6 +594,9 @@ export function parseBrowserContextPacket(value: unknown, field: string): Browse
         ),
         designerDrafts: readArray(source.designerDrafts ?? [], `${field}.designerDrafts`).map((item, index) =>
             parseBrowserContextPacketDesignerDraft(item, `${field}.designerDrafts[${String(index)}]`)
+        ),
+        designDiagnostics: readArray(source.designDiagnostics ?? [], `${field}.designDiagnostics`).map((item, index) =>
+            parseBrowserDesignQualityFinding(item, `${field}.designDiagnostics[${String(index)}]`)
         ),
         enrichmentMode: readEnumValue(source.enrichmentMode, `${field}.enrichmentMode`, devBrowserEnrichmentModes),
     };
@@ -758,6 +817,27 @@ export function parseSessionDiscardBrowserDesignerVariantInput(
     return parseVariantInputBase(input);
 }
 
+export function parseSessionQueueBrowserDesignerApplyIntentInput(
+    input: unknown
+): SessionQueueBrowserDesignerApplyIntentInput {
+    const source = readObject(input, 'input');
+    const providerId = source.providerId !== undefined ? readProviderId(source.providerId, 'providerId') : undefined;
+    const modelId = readOptionalString(source.modelId, 'modelId');
+    const workspaceFingerprint = readOptionalString(source.workspaceFingerprint, 'workspaceFingerprint');
+    const sandboxId = source.sandboxId !== undefined ? readEntityId(source.sandboxId, 'sandboxId', 'sb') : undefined;
+    return {
+        ...parseSessionDevBrowserStateInputBase(input),
+        draftId: readEntityId(source.draftId, 'draftId', 'bdsn'),
+        topLevelTab: readEnumValue(source.topLevelTab, 'topLevelTab', topLevelTabs),
+        modeKey: readString(source.modeKey, 'modeKey'),
+        ...(workspaceFingerprint ? { workspaceFingerprint } : {}),
+        ...(sandboxId ? { sandboxId } : {}),
+        runtimeOptions: parseRuntimeRunOptions(source.runtimeOptions),
+        ...(providerId ? { providerId } : {}),
+        ...(modelId ? { modelId } : {}),
+    };
+}
+
 export function parseSessionDeleteBrowserDesignerDraftInput(input: unknown): SessionDeleteBrowserDesignerDraftInput {
     const source = readObject(input, 'input');
     return {
@@ -824,6 +904,9 @@ export const sessionTuneBrowserDesignerVariantInputSchema = createParser(parseSe
 export const sessionAcceptBrowserDesignerVariantInputSchema = createParser(parseSessionAcceptBrowserDesignerVariantInput);
 export const sessionDiscardBrowserDesignerVariantInputSchema = createParser(
     parseSessionDiscardBrowserDesignerVariantInput
+);
+export const sessionQueueBrowserDesignerApplyIntentInputSchema = createParser(
+    parseSessionQueueBrowserDesignerApplyIntentInput
 );
 export const sessionDeleteBrowserDesignerDraftInputSchema = createParser(parseSessionDeleteBrowserDesignerDraftInput);
 export const sessionSetBrowserDesignerDraftInclusionInputSchema = createParser(

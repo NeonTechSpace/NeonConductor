@@ -563,6 +563,12 @@ export function DevBrowserPanel({
                             const selectionDesignerVariants = selectionDesignerLiveSession
                                 ? designerWorkflow.variantsBySessionId.get(selectionDesignerLiveSession.id) ?? []
                                 : [];
+                            const selectionDesignDiagnostics = (browserState?.designDiagnostics ?? []).filter(
+                                (finding) =>
+                                    finding.selectionId === selection.id ||
+                                    (selectionDesignerDraft && finding.draftId === selectionDesignerDraft.id) ||
+                                    selectionDesignerVariants.some((variant) => finding.variantId === variant.id)
+                            );
                             const designerFormState =
                                 designerDraftForms[selection.id] ?? buildDesignerDraftFormState(selectionDesignerDraft);
                             const designerIntentForm = designerWorkflow.intentForms[selection.id] ?? {
@@ -807,6 +813,7 @@ export function DevBrowserPanel({
                                             : {})}
                                         annotations={selectionDesignerAnnotations}
                                         variants={selectionDesignerVariants}
+                                        diagnostics={selectionDesignDiagnostics}
                                         formState={designerFormState}
                                         intentForm={designerIntentForm}
                                         annotationText={
@@ -815,6 +822,7 @@ export function DevBrowserPanel({
                                                 : ''
                                         }
                                         generationBusy={designerWorkflow.generationBusy}
+                                        applyQueueBusy={designerWorkflow.applyQueueBusy}
                                         onFormChange={designerWorkflow.updateDraftForm}
                                         onIntentFormChange={(nextIntentForm) => {
                                             designerWorkflow.setIntentForms((current) => ({
@@ -835,6 +843,7 @@ export function DevBrowserPanel({
                                         onTuneVariant={designerWorkflow.tuneVariant}
                                         onAcceptVariant={designerWorkflow.acceptVariant}
                                         onDiscardVariant={designerWorkflow.discardVariant}
+                                        onQueueApplyIntent={designerWorkflow.queueApplyIntent}
                                         onPreview={handlePreviewDesigner}
                                         onDelete={handleDeleteDesignerDraft}
                                         onToggleInclusion={handleToggleDesignerInclusion}

@@ -183,6 +183,7 @@ function createStartRunInput(commentText: string): StartRunInput {
             ],
             cropAttachmentIds: ['att_browser_crop'],
             designerDrafts: [],
+            designDiagnostics: [],
             enrichmentMode: 'dom_only',
         },
     };

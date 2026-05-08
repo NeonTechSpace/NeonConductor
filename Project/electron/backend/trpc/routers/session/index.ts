@@ -37,6 +37,7 @@ import {
     sessionOutboxEntryInputSchema,
     sessionPersistBrowserSelectionInputSchema,
     sessionPrepareDocumentAttachmentInputSchema,
+    sessionQueueBrowserDesignerApplyIntentInputSchema,
     sessionQueueRunInputSchema,
     sessionRevertInputSchema,
     sessionSetBrowserCommentDraftInclusionInputSchema,
@@ -798,6 +799,31 @@ export const sessionRouter = router({
                 })
             );
             return state;
+        }),
+    queueBrowserDesignerApplyIntent: publicProcedure
+        .input(sessionQueueBrowserDesignerApplyIntentInputSchema)
+        .mutation(async ({ input, ctx }) => {
+            const result = await sessionDevBrowserService.queueDesignerApplyIntent(input);
+            await runtimeEventLogService.append(
+                runtimeUpsertEvent({
+                    entityType: 'session',
+                    domain: 'session',
+                    entityId: input.sessionId,
+                    eventType: 'session.dev_browser.updated',
+                    payload: {
+                        profileId: input.profileId,
+                        sessionId: input.sessionId,
+                        reason: result.queued ? 'designer_apply_intent_queued' : 'designer_apply_intent_rejected',
+                        result,
+                    },
+                    ...eventMetadata({
+                        requestId: ctx.requestId,
+                        correlationId: ctx.correlationId,
+                        origin: 'trpc.session.queueBrowserDesignerApplyIntent',
+                    }),
+                })
+            );
+            return result;
         }),
     deleteBrowserDesignerDraft: publicProcedure
         .input(sessionDeleteBrowserDesignerDraftInputSchema)

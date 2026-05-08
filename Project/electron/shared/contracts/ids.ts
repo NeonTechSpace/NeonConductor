@@ -6,6 +6,7 @@ export type EntityIdPrefix =
     | 'bdsess'
     | 'bdann'
     | 'bdvar'
+    | 'bddiag'
     | 'mem'
     | 'mrev'
     | 'mcon'

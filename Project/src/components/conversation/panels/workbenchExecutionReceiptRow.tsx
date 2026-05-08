@@ -37,6 +37,14 @@ export function WorkbenchExecutionReceiptRow({ receipt }: { receipt: ExecutionRe
                         {String(receipt.contract.browserContextSummary.designerDraftCount)} designer drafts
                     </p>
                 ) : null}
+                {receipt.contract.browserContextSummary &&
+                receipt.contract.browserContextSummary.designDiagnosticCount > 0 ? (
+                    <p className='text-muted-foreground'>
+                        Design diagnostics: {String(receipt.contract.browserContextSummary.designDiagnosticCount)} total ·{' '}
+                        {String(receipt.contract.browserContextSummary.designDiagnosticErrorCount)} blocking ·{' '}
+                        {String(receipt.contract.browserContextSummary.designDiagnosticWarningCount)} warnings
+                    </p>
+                ) : null}
                 {receipt.contract.researchTarget ? (
                     <p className='text-muted-foreground'>
                         Research target: {receipt.contract.researchTarget.locator.name} ·{' '}

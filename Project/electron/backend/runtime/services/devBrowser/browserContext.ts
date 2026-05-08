@@ -74,10 +74,22 @@ export function buildBrowserContextSummary(packet: BrowserContextPacket): Browse
         designerDrafts: packet.designerDrafts.map((draft) => ({
             draftId: draft.draftId,
             selectionId: draft.selectionId,
+            sourceVariantId: draft.sourceVariantId ?? null,
             applyMode: draft.applyMode,
             applyStatus: draft.applyStatus,
             stylePatches: draft.stylePatches,
             textContentOverride: draft.textContentOverride ?? null,
+        })),
+        designDiagnostics: packet.designDiagnostics.map((finding) => ({
+            id: finding.id,
+            scope: finding.scope,
+            severity: finding.severity,
+            category: finding.category,
+            title: finding.title,
+            selectionId: finding.selectionId ?? null,
+            draftId: finding.draftId ?? null,
+            variantId: finding.variantId ?? null,
+            stale: finding.stale,
         })),
     };
     const digest = createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 32);
@@ -92,6 +104,9 @@ export function buildBrowserContextSummary(packet: BrowserContextPacket): Browse
         designerDraftCount: packet.designerDrafts.length,
         designerPatchCount,
         designerApplyIntentStatus: resolveDesignerApplyIntentStatus(packet),
+        designDiagnosticCount: packet.designDiagnostics.length,
+        designDiagnosticWarningCount: packet.designDiagnostics.filter((finding) => finding.severity === 'warning').length,
+        designDiagnosticErrorCount: packet.designDiagnostics.filter((finding) => finding.severity === 'error').length,
         digest: `browserctx-${digest}`,
     };
 }

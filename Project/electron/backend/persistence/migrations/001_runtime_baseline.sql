@@ -639,6 +639,7 @@ CREATE TABLE session_dev_browser_designer_drafts (
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     selection_id TEXT NOT NULL REFERENCES session_dev_browser_selections(id) ON DELETE CASCADE,
+    source_variant_id TEXT NULL REFERENCES session_dev_browser_designer_variants(id) ON DELETE SET NULL,
     page_identity TEXT NOT NULL,
     inclusion_state TEXT NOT NULL CHECK (inclusion_state IN ('included', 'excluded')),
     apply_mode TEXT NOT NULL CHECK (apply_mode IN ('preview_only', 'apply_with_agent')),
@@ -647,7 +648,8 @@ CREATE TABLE session_dev_browser_designer_drafts (
             'eligible',
             'blocked_no_workspace',
             'blocked_outside_current_workspace',
-            'blocked_missing_source_anchor'
+            'blocked_missing_source_anchor',
+            'blocked_generated_source_anchor'
         )
     ),
     blocked_reason_message TEXT NULL,

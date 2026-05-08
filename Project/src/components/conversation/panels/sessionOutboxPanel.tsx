@@ -655,7 +655,7 @@ export function SessionOutboxPanel({
                                     <p className='text-muted-foreground text-xs'>Browser packet</p>
                                     <span className='text-muted-foreground text-xs'>
                                         {selectedEntry.browserContextSummary
-                                            ? `${String(selectedEntry.browserContextSummary.commentCount)} queued comments · ${String(selectedEntry.browserContextSummary.designerDraftCount)} designer drafts`
+                                            ? `${String(selectedEntry.browserContextSummary.commentCount)} queued comments · ${String(selectedEntry.browserContextSummary.designerDraftCount)} designer drafts · ${String(selectedEntry.browserContextSummary.designDiagnosticCount)} diagnostics`
                                             : 'No queued browser context'}
                                     </span>
                                 </div>
@@ -688,7 +688,7 @@ export function SessionOutboxPanel({
                                         <p className='font-medium'>Replace with current staged packet</p>
                                         <p className='text-muted-foreground mt-1'>
                                             {liveBrowserPacketQuery.data?.available
-                                                ? `${String(liveBrowserPacketQuery.data.summary.commentCount)} comments · ${String(liveBrowserPacketQuery.data.summary.selectedElementCount)} elements · ${String(liveBrowserPacketQuery.data.summary.designerDraftCount)} designer drafts are staged now`
+                                                ? `${String(liveBrowserPacketQuery.data.summary.commentCount)} comments · ${String(liveBrowserPacketQuery.data.summary.selectedElementCount)} elements · ${String(liveBrowserPacketQuery.data.summary.designerDraftCount)} designer drafts · ${String(liveBrowserPacketQuery.data.summary.designDiagnosticCount)} diagnostics are staged now`
                                                 : (liveBrowserPacketQuery.data?.message ??
                                                   'No current staged browser packet is available.')}
                                         </p>

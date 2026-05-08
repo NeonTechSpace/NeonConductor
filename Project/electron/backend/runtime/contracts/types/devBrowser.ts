@@ -56,6 +56,7 @@ export const browserDesignerApplyStatuses = [
     'blocked_no_workspace',
     'blocked_outside_current_workspace',
     'blocked_missing_source_anchor',
+    'blocked_generated_source_anchor',
 ] as const;
 export type BrowserDesignerApplyStatus = (typeof browserDesignerApplyStatuses)[number];
 
@@ -78,6 +79,24 @@ export type BrowserDesignerAnnotationKind = (typeof browserDesignerAnnotationKin
 
 export const browserDesignerVariantStatuses = ['generated', 'active', 'accepted', 'discarded'] as const;
 export type BrowserDesignerVariantStatus = (typeof browserDesignerVariantStatuses)[number];
+
+export const browserDesignQualityFindingScopes = ['page', 'selection', 'variant', 'draft'] as const;
+export type BrowserDesignQualityFindingScope = (typeof browserDesignQualityFindingScopes)[number];
+
+export const browserDesignQualityFindingSeverities = ['info', 'warning', 'error'] as const;
+export type BrowserDesignQualityFindingSeverity = (typeof browserDesignQualityFindingSeverities)[number];
+
+export const browserDesignQualityFindingCategories = [
+    'source_anchor',
+    'accessibility',
+    'sizing',
+    'typography',
+    'color',
+    'layout',
+    'stale_context',
+    'apply_guardrail',
+] as const;
+export type BrowserDesignQualityFindingCategory = (typeof browserDesignQualityFindingCategories)[number];
 
 export const browserDesignerStylePropertyKeys = [
     'display',
@@ -313,6 +332,21 @@ export interface BrowserDesignerVariant {
     updatedAt: string;
 }
 
+export interface BrowserDesignQualityFinding {
+    id: EntityId<'bddiag'>;
+    scope: BrowserDesignQualityFindingScope;
+    severity: BrowserDesignQualityFindingSeverity;
+    category: BrowserDesignQualityFindingCategory;
+    title: string;
+    message: string;
+    evidence?: string;
+    selectionId?: EntityId<'bsel'>;
+    designerSessionId?: EntityId<'bdsess'>;
+    variantId?: EntityId<'bdvar'>;
+    draftId?: EntityId<'bdsn'>;
+    stale: boolean;
+}
+
 export interface BrowserDesignerLiveSession {
     id: EntityId<'bdsess'>;
     selectionId: EntityId<'bsel'>;
@@ -333,6 +367,7 @@ export interface BrowserDesignerLiveSession {
 export interface BrowserDesignerDraft {
     id: EntityId<'bdsn'>;
     selectionId: EntityId<'bsel'>;
+    sourceVariantId?: EntityId<'bdvar'>;
     pageIdentity: string;
     inclusionState: BrowserCommentDraftInclusionState;
     applyMode: BrowserDesignerApplyMode;
@@ -348,6 +383,7 @@ export interface BrowserDesignerDraft {
 export interface BrowserContextPacketDesignerDraft {
     draftId: EntityId<'bdsn'>;
     selectionId: EntityId<'bsel'>;
+    sourceVariantId?: EntityId<'bdvar'>;
     pageIdentity: string;
     applyMode: BrowserDesignerApplyMode;
     applyStatus: BrowserDesignerApplyStatus;
@@ -368,6 +404,9 @@ export interface BrowserContextSummary {
     designerDraftCount: number;
     designerPatchCount: number;
     designerApplyIntentStatus: BrowserContextSummaryDesignerApplyIntentStatus;
+    designDiagnosticCount: number;
+    designDiagnosticWarningCount: number;
+    designDiagnosticErrorCount: number;
     digest: string;
 }
 
@@ -377,6 +416,7 @@ export interface BrowserContextPacket {
     comments: BrowserContextPacketComment[];
     cropAttachmentIds: EntityId<'att'>[];
     designerDrafts: BrowserContextPacketDesignerDraft[];
+    designDiagnostics: BrowserDesignQualityFinding[];
     enrichmentMode: DevBrowserEnrichmentMode;
 }
 
@@ -390,6 +430,7 @@ export interface SessionDevBrowserState {
     designerLiveSessions: BrowserDesignerLiveSession[];
     designerAnnotations: BrowserDesignerAnnotation[];
     designerVariants: BrowserDesignerVariant[];
+    designDiagnostics: BrowserDesignQualityFinding[];
     summary?: BrowserContextSummary;
 }
 
@@ -488,6 +529,39 @@ export interface SessionAcceptBrowserDesignerVariantInput extends SessionActivat
 }
 
 export interface SessionDiscardBrowserDesignerVariantInput extends SessionActivateBrowserDesignerVariantInput {}
+
+export interface SessionQueueBrowserDesignerApplyIntentInput extends SessionDevBrowserStateInput {
+    draftId: EntityId<'bdsn'>;
+    topLevelTab: TopLevelTab;
+    modeKey: string;
+    workspaceFingerprint?: string;
+    sandboxId?: EntityId<'sb'>;
+    runtimeOptions: RuntimeRunOptions;
+    providerId?: RuntimeProviderId;
+    modelId?: string;
+}
+
+export type SessionQueueBrowserDesignerApplyIntentResult =
+    | {
+          queued: false;
+          reason:
+              | 'missing_target'
+              | 'invalid_target'
+              | 'missing_draft'
+              | 'missing_selection'
+              | 'stale_context'
+              | 'preview_only'
+              | 'not_included'
+              | 'blocked_apply_status'
+              | 'unsafe_source_anchor'
+              | 'queue_rejected';
+          message: string;
+      }
+    | {
+          queued: true;
+          entryId: EntityId<'outbox'>;
+          message: string;
+      };
 
 export interface SessionDeleteBrowserDesignerDraftInput extends SessionDevBrowserStateInput {
     draftId: EntityId<'bdsn'>;

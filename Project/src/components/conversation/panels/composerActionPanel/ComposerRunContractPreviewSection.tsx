@@ -393,6 +393,13 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                                 <p className='text-muted-foreground mt-1'>
                                     Apply intent: {browserContextSummary.designerApplyIntentStatus.replaceAll('_', ' ')}
                                 </p>
+                                {browserContextSummary.designDiagnosticCount > 0 ? (
+                                    <p className='text-muted-foreground mt-1'>
+                                        Diagnostics: {String(browserContextSummary.designDiagnosticCount)} total ·{' '}
+                                        {String(browserContextSummary.designDiagnosticErrorCount)} blocking ·{' '}
+                                        {String(browserContextSummary.designDiagnosticWarningCount)} warnings
+                                    </p>
+                                ) : null}
                             </div>
                         ) : null}
                         <div className='rounded-xl border px-3 py-2 sm:col-span-2'>

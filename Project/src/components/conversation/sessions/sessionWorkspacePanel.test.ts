@@ -181,6 +181,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                 designerDraftCount: 0,
                 designerPatchCount: 0,
                 designerApplyIntentStatus: 'none',
+                designDiagnosticCount: 0,
+                designDiagnosticWarningCount: 0,
+                designDiagnosticErrorCount: 0,
                 digest: 'browserctx-1',
             },
             steeringSnapshot: {
@@ -301,6 +304,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                     designerDraftCount: 0,
                     designerPatchCount: 0,
                     designerApplyIntentStatus: 'none',
+                    designDiagnosticCount: 0,
+                    designDiagnosticWarningCount: 0,
+                    designDiagnosticErrorCount: 0,
                     digest: 'browserctx-1',
                 },
                 diffFromLastCompatible: {
@@ -331,6 +337,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
             designerDraftCount: 0,
             designerPatchCount: 0,
             designerApplyIntentStatus: 'none',
+            designDiagnosticCount: 0,
+            designDiagnosticWarningCount: 0,
+            designDiagnosticErrorCount: 0,
             digest: 'browserctx-1',
         },
         steeringSnapshot: {
@@ -459,6 +468,9 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
                 designerDraftCount: 0,
                 designerPatchCount: 0,
                 designerApplyIntentStatus: 'none',
+                designDiagnosticCount: 0,
+                designDiagnosticWarningCount: 0,
+                designDiagnosticErrorCount: 0,
                 digest: 'browserctx-1',
             },
             diffFromLastCompatible: {

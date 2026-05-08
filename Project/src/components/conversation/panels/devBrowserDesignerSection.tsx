@@ -1,4 +1,4 @@
-import { CheckSquare, Sparkles, Square, Trash2 } from 'lucide-react';
+import { CheckSquare, Send, Sparkles, Square, Trash2, TriangleAlert } from 'lucide-react';
 
 import {
     DESIGNER_STYLE_FIELDS,
@@ -8,6 +8,7 @@ import { Button } from '@/web/components/ui/button';
 
 import type {
     BrowserDesignerAnnotation,
+    BrowserDesignQualityFinding,
     BrowserDesignerLiveSession,
     BrowserDesignerVariant,
     BrowserSelectionRecord,
@@ -33,6 +34,7 @@ interface DevBrowserDesignerSectionProps {
     designerLiveSession?: BrowserDesignerLiveSession;
     annotations: BrowserDesignerAnnotation[];
     variants: BrowserDesignerVariant[];
+    diagnostics: BrowserDesignQualityFinding[];
     formState: DesignerDraftFormState;
     intentForm: {
         actionChip?: DesignerActionChip;
@@ -41,6 +43,7 @@ interface DevBrowserDesignerSectionProps {
     };
     annotationText: string;
     generationBusy: boolean;
+    applyQueueBusy: boolean;
     onFormChange: (selectionId: EntityId<'bsel'>, formState: DesignerDraftFormState) => void;
     onIntentFormChange: (formState: {
         actionChip?: DesignerActionChip;
@@ -58,6 +61,7 @@ interface DevBrowserDesignerSectionProps {
     onTuneVariant: (variant: BrowserDesignerVariant) => void | Promise<void>;
     onAcceptVariant: (designerSessionId: EntityId<'bdsess'>, variantId: EntityId<'bdvar'>) => void | Promise<void>;
     onDiscardVariant: (designerSessionId: EntityId<'bdsess'>, variantId: EntityId<'bdvar'>) => void | Promise<void>;
+    onQueueApplyIntent: (draftId: EntityId<'bdsn'>) => void | Promise<void>;
     onPreview: (selectionId: EntityId<'bsel'>) => void | Promise<void>;
     onDelete: (draftId: EntityId<'bdsn'>, selectionId: EntityId<'bsel'>) => void | Promise<void>;
     onToggleInclusion: (draft: BrowserDesignerDraft) => void | Promise<void>;
@@ -69,10 +73,12 @@ export function DevBrowserDesignerSection({
     designerLiveSession,
     annotations,
     variants,
+    diagnostics,
     formState,
     intentForm,
     annotationText,
     generationBusy,
+    applyQueueBusy,
     onFormChange,
     onIntentFormChange,
     onAnnotationTextChange,
@@ -83,11 +89,34 @@ export function DevBrowserDesignerSection({
     onTuneVariant,
     onAcceptVariant,
     onDiscardVariant,
+    onQueueApplyIntent,
     onPreview,
     onDelete,
     onToggleInclusion,
 }: DevBrowserDesignerSectionProps) {
     const activeVariant = variants.find((variant) => variant.status === 'active');
+    const blockingDiagnostics = diagnostics.filter((finding) => finding.severity === 'error');
+    const applyDisabledReason = (() => {
+        if (!designerDraft) {
+            return 'Accept or save a designer draft before queueing apply.';
+        }
+        if (designerDraft.inclusionState !== 'included') {
+            return 'Include the designer draft before queueing apply.';
+        }
+        if (designerDraft.applyMode !== 'apply_with_agent') {
+            return 'Switch the designer draft to apply-with-agent before queueing apply.';
+        }
+        if (designerDraft.applyStatus !== 'eligible') {
+            return designerDraft.blockedReasonMessage ?? `Apply is blocked: ${designerDraft.applyStatus.replaceAll('_', ' ')}.`;
+        }
+        if (designerDraft.stale || selection.stale) {
+            return 'Refresh stale browser context before queueing apply.';
+        }
+        if (blockingDiagnostics.length > 0) {
+            return blockingDiagnostics[0]?.message ?? 'Resolve blocking design diagnostics before queueing apply.';
+        }
+        return undefined;
+    })();
 
     return (
         <div className='mt-4 rounded-2xl border px-3 py-3'>
@@ -208,6 +237,23 @@ export function DevBrowserDesignerSection({
 
                 {designerLiveSession?.errorMessage ? (
                     <p className='text-muted-foreground mt-2 text-[11px]'>{designerLiveSession.errorMessage}</p>
+                ) : null}
+
+                {diagnostics.length > 0 ? (
+                    <div className='mt-3 space-y-2 rounded-xl border px-3 py-3'>
+                        <div className='flex items-center gap-2 text-xs font-medium'>
+                            <TriangleAlert className='h-4 w-4' />
+                            Design diagnostics
+                        </div>
+                        <div className='space-y-1'>
+                            {diagnostics.slice(0, 5).map((finding) => (
+                                <p key={finding.id} className='text-muted-foreground text-[11px]'>
+                                    <span className='font-medium'>{finding.severity}</span> · {finding.title}
+                                    {finding.evidence ? ` · ${finding.evidence}` : ''}
+                                </p>
+                            ))}
+                        </div>
+                    </div>
                 ) : null}
 
                 {designerLiveSession ? (
@@ -383,7 +429,20 @@ export function DevBrowserDesignerSection({
                     }}>
                     Save Preview
                 </Button>
+                <Button
+                    type='button'
+                    size='sm'
+                    disabled={Boolean(applyDisabledReason) || applyQueueBusy || !designerDraft}
+                    onClick={() => {
+                        if (designerDraft) {
+                            void onQueueApplyIntent(designerDraft.id);
+                        }
+                    }}>
+                    <Send className='mr-2 h-4 w-4' />
+                    Apply Through Agent
+                </Button>
             </div>
+            {applyDisabledReason ? <p className='text-muted-foreground mt-2 text-[11px]'>{applyDisabledReason}</p> : null}
         </div>
     );
 }

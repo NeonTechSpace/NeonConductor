@@ -62,6 +62,9 @@ export function formatBrowserDesignerBlock(packet: BrowserContextPacket): string
         lines.push(`${String(index + 1)}. Selection: ${selection?.selector.primary ?? draft.selectionId}`);
         lines.push(`Apply intent: ${draft.applyMode}`);
         lines.push(`Eligibility: ${draft.applyStatus}`);
+        if (draft.sourceVariantId) {
+            lines.push(`Source variant: ${draft.sourceVariantId}`);
+        }
         if (draft.blockedReasonMessage) {
             lines.push(`Blocked reason: ${draft.blockedReasonMessage}`);
         }
@@ -71,6 +74,32 @@ export function formatBrowserDesignerBlock(packet: BrowserContextPacket): string
         }
         if (draft.textContentOverride) {
             lines.push(`Preview text: ${draft.textContentOverride}`);
+        }
+        lines.push('');
+    }
+    return lines.join('\n').trim();
+}
+
+export function formatBrowserDesignDiagnosticsBlock(packet: BrowserContextPacket): string {
+    if (packet.designDiagnostics.length === 0) {
+        return '';
+    }
+
+    const lines: string[] = [];
+    lines.push('Browser design diagnostics:');
+    for (const [index, finding] of packet.designDiagnostics.entries()) {
+        lines.push(
+            `${String(index + 1)}. ${finding.severity.toUpperCase()} ${finding.category}: ${finding.title}`
+        );
+        lines.push(finding.message);
+        if (finding.evidence) {
+            lines.push(`Evidence: ${finding.evidence}`);
+        }
+        if (finding.selectionId) {
+            lines.push(`Selection: ${finding.selectionId}`);
+        }
+        if (finding.draftId) {
+            lines.push(`Designer draft: ${finding.draftId}`);
         }
         lines.push('');
     }
@@ -109,6 +138,10 @@ export async function buildBrowserContextParts(packet: BrowserContextPacket): Pr
     const designerPart = createTextPart(formatBrowserDesignerBlock(packet));
     if (designerPart) {
         parts.push(designerPart);
+    }
+    const diagnosticsPart = createTextPart(formatBrowserDesignDiagnosticsBlock(packet));
+    if (diagnosticsPart) {
+        parts.push(diagnosticsPart);
     }
     parts.push(...(await loadBrowserCropImageParts(packet)));
     return parts;

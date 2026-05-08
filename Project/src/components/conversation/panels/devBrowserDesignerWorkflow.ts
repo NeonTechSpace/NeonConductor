@@ -46,6 +46,7 @@ export function useDevBrowserDesignerWorkflow(input: {
     const tuneVariantMutation = trpc.session.tuneBrowserDesignerVariant.useMutation();
     const acceptVariantMutation = trpc.session.acceptBrowserDesignerVariant.useMutation();
     const discardVariantMutation = trpc.session.discardBrowserDesignerVariant.useMutation();
+    const queueApplyIntentMutation = trpc.session.queueBrowserDesignerApplyIntent.useMutation();
 
     const [intentForms, setIntentForms] = useState<Record<string, DesignerIntentFormState>>({});
     const [annotationForms, setAnnotationForms] = useState<Record<string, string>>({});
@@ -206,7 +207,7 @@ export function useDevBrowserDesignerWorkflow(input: {
             sessionId: input.sessionId,
             designerSessionId,
             variantId,
-            applyMode: 'preview_only',
+            applyMode: 'apply_with_agent',
             inclusionState: 'included',
         });
         await input.invalidateBrowserQueries();
@@ -225,6 +226,26 @@ export function useDevBrowserDesignerWorkflow(input: {
         await input.invalidateBrowserQueries();
     }
 
+    async function queueApplyIntent(draftId: EntityId<'bdsn'>) {
+        if (!input.sessionId) {
+            return;
+        }
+        const result = await queueApplyIntentMutation.mutateAsync({
+            profileId: input.profileId,
+            sessionId: input.sessionId,
+            draftId,
+            topLevelTab: input.runConfig.topLevelTab,
+            modeKey: input.runConfig.modeKey,
+            runtimeOptions: input.runConfig.runtimeOptions,
+            ...(input.runConfig.workspaceFingerprint ? { workspaceFingerprint: input.runConfig.workspaceFingerprint } : {}),
+            ...(input.runConfig.sandboxId ? { sandboxId: input.runConfig.sandboxId } : {}),
+            ...(input.runConfig.providerId ? { providerId: input.runConfig.providerId } : {}),
+            ...(input.runConfig.modelId ? { modelId: input.runConfig.modelId } : {}),
+        });
+        await input.invalidateBrowserQueries();
+        input.setFeedback(result.message);
+    }
+
     return {
         draftsBySelectionId,
         liveSessionsBySelectionId,
@@ -235,6 +256,7 @@ export function useDevBrowserDesignerWorkflow(input: {
         annotationForms,
         setAnnotationForms,
         generationBusy: startGenerationMutation.isPending,
+        applyQueueBusy: queueApplyIntentMutation.isPending,
         updateDraftForm,
         createLiveSession,
         createAnnotation,
@@ -243,5 +265,6 @@ export function useDevBrowserDesignerWorkflow(input: {
         tuneVariant,
         acceptVariant,
         discardVariant,
+        queueApplyIntent,
     };
 }

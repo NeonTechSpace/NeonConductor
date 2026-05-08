@@ -47,6 +47,21 @@ function createPausedOutboxEntry(): SessionOutboxEntry {
         sequence: 0,
         prompt: 'Review the scheduled sandbox target.',
         attachmentIds: [],
+        browserContextSummary: {
+            targetUrl: 'http://localhost:3000/',
+            targetLabel: 'localhost:3000',
+            selectedElementCount: 1,
+            commentCount: 0,
+            captureCount: 0,
+            enrichmentMode: 'react_source_enriched',
+            designerDraftCount: 1,
+            designerPatchCount: 2,
+            designerApplyIntentStatus: 'apply_with_agent',
+            designDiagnosticCount: 2,
+            designDiagnosticWarningCount: 1,
+            designDiagnosticErrorCount: 1,
+            digest: 'browserctx-outbox',
+        },
         steeringSnapshot: {
             profileId: 'profile_default',
             sessionId: 'sess_default',
@@ -190,6 +205,7 @@ describe('SessionOutboxPanel', () => {
         expect(html).toContain('Managed sandbox scheduled from C:\\Workspace\\Review');
         expect(html).toContain('Queued run paused for review');
         expect(html).toContain('Run contract changed before execution');
+        expect(html).toContain('Design diagnostics: 2 total');
         expect(html).toContain('executionTargetKind');
     });
 });
