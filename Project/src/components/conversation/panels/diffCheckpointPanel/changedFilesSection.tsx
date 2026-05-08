@@ -1,34 +1,16 @@
-import { startTransition } from 'react';
+import { lazy, Suspense } from 'react';
 
+import { buildDiffTreeViewModel } from '@/web/components/conversation/panels/diffViewModels';
 import { Button } from '@/web/components/ui/button';
 
-import type { DiffFileArtifact, DiffRecord } from '@/app/backend/persistence/types';
+import type { DiffRecord } from '@/app/backend/persistence/types';
 
-function groupFilesByDirectory(files: DiffFileArtifact[]): Array<{ directory: string; files: DiffFileArtifact[] }> {
-    const groups = new Map<string, DiffFileArtifact[]>();
-    for (const file of files) {
-        const parts = file.path.split('/');
-        const directory = parts.length > 1 ? parts.slice(0, -1).join('/') : '.';
-        const existing = groups.get(directory) ?? [];
-        existing.push(file);
-        groups.set(directory, existing);
-    }
-
-    return [...groups.entries()]
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([directory, directoryFiles]) => ({
-            directory,
-            files: [...directoryFiles].sort((left, right) => left.path.localeCompare(right.path)),
-        }));
-}
-
-function statusLabel(status: DiffFileArtifact['status']): string {
-    if (status === 'type_changed') {
-        return 'type';
-    }
-
-    return status;
-}
+const PierreChangedFilesTree = lazy(async () => {
+    const module = await import(
+        '@/web/components/conversation/panels/diffCheckpointPanel/pierreChangedFilesTree'
+    );
+    return { default: module.PierreChangedFilesTree };
+});
 
 export interface ChangedFilesSectionProps {
     selectedDiff: DiffRecord;
@@ -53,7 +35,7 @@ export function ChangedFilesSection({
     onPrefetchPatch,
     onSelectPath,
 }: ChangedFilesSectionProps) {
-    const fileGroups = selectedDiff.artifact.kind === 'git' ? groupFilesByDirectory(selectedDiff.artifact.files) : [];
+    const treeViewModel = buildDiffTreeViewModel(selectedDiff);
 
     return (
         <>
@@ -66,48 +48,26 @@ export function ChangedFilesSection({
                             : 'Unavailable'}
                     </span>
                 </header>
-                {selectedDiff.artifact.kind === 'git' ? (
-                    <div className='max-h-72 overflow-y-auto p-2'>
-                        {fileGroups.map((group) => (
-                            <div key={group.directory} className='mb-3 last:mb-0'>
-                                <p className='text-muted-foreground px-1 pb-1 font-mono text-[11px] tracking-[0.12em] uppercase'>
-                                    {group.directory}
-                                </p>
-                                <div className='space-y-1'>
-                                    {group.files.map((file) => (
-                                        <button
-                                            key={file.path}
-                                            type='button'
-                                            className={`focus-visible:ring-ring flex min-h-11 w-full items-center justify-between rounded-md border px-3 text-left text-sm focus-visible:ring-2 ${
-                                                resolvedSelectedPath === file.path
-                                                    ? 'border-primary bg-primary/10'
-                                                    : 'border-border bg-background/60 hover:bg-accent'
-                                            }`}
-                                            onMouseEnter={() => {
-                                                onPrefetchPatch(file.path);
-                                            }}
-                                            onFocus={() => {
-                                                onPrefetchPatch(file.path);
-                                            }}
-                                            onClick={() => {
-                                                startTransition(() => {
-                                                    onSelectPath(file.path);
-                                                });
-                                            }}>
-                                            <span className='truncate font-mono text-[12px]'>{file.path}</span>
-                                            <span className='text-muted-foreground ml-3 shrink-0 text-[11px] uppercase'>
-                                                {statusLabel(file.status)}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                {treeViewModel ? (
+                    <Suspense
+                        fallback={
+                            <p className='text-muted-foreground m-2 rounded-md border border-dashed px-3 py-4 text-sm'>
+                                Loading changed-file tree…
+                            </p>
+                        }>
+                        <PierreChangedFilesTree
+                            viewModel={treeViewModel}
+                            resolvedSelectedPath={resolvedSelectedPath}
+                            onPrefetchPatch={onPrefetchPatch}
+                            onSelectPath={onSelectPath}
+                        />
+                    </Suspense>
                 ) : (
                     <div className='p-3 text-sm'>
                         <p className='font-medium'>{selectedDiff.summary}</p>
-                        <p className='text-muted-foreground mt-1 text-xs'>{selectedDiff.artifact.detail}</p>
+                        <p className='text-muted-foreground mt-1 text-xs'>
+                            {selectedDiff.artifact.kind === 'unsupported' ? selectedDiff.artifact.detail : 'Unavailable'}
+                        </p>
                     </div>
                 )}
             </section>

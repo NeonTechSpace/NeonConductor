@@ -130,12 +130,15 @@ export function useDiffCheckpointPanelController({
         diffPatchPreviewProps: {
             selectedDiff: diffSelectionState.selectedDiff,
             resolvedSelectedPath: diffSelectionState.resolvedSelectedPath,
+            previewScope: diffSelectionState.previewScope,
+            patchText: diffSelectionState.patchText,
             patchMarkdown: diffSelectionState.patchMarkdown,
             isLoadingPatch: diffSelectionState.isLoadingPatch,
             isRefreshingPatch: diffSelectionState.isRefreshingPatch,
             canOpenPath: diffSelectionState.canOpenPath,
             isOpeningPath: diffSelectionState.isOpeningPath,
             onOpenPath: diffSelectionState.onOpenPath,
+            onPreviewScopeChange: diffSelectionState.onPreviewScopeChange,
         },
     };
 }

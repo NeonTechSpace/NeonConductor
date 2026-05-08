@@ -76,6 +76,8 @@
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.27.1",
+        "@pierre/diffs": "1.1.21",
+        "@pierre/trees": "1.0.0-beta.3",
         "@radix-ui/react-slot": "^1.2.4",
         "@tanstack/ai": "^0.8.1",
         "@tanstack/react-form": "^1.28.5",
