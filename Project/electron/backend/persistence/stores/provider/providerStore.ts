@@ -10,9 +10,11 @@ import { isJsonRecord, isJsonString, isJsonUnknownArray } from '@/app/backend/pe
 import type { ProviderModelRecord, ProviderRecord } from '@/app/backend/persistence/types';
 import {
     getProviderSpecialistDefaultKey,
+    internalModelRoles,
     isSupportedProviderSpecialistDefaultTarget,
     isSupportedWorkflowRoutingTargetKey,
     workflowRoutingTargetKeys,
+    type InternalModelRole,
     type ProviderSpecialistDefaultModeKey,
     type ProviderSpecialistDefaultTopLevelTab,
     type WorkflowRoutingPreferenceRecord,
@@ -26,6 +28,7 @@ import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 
 const SPECIALIST_DEFAULTS_KEY = 'specialist_defaults';
 const WORKFLOW_ROUTING_PREFERENCES_KEY = 'workflow_routing_preferences';
+const MODEL_ROLE_DEFAULTS_KEY = 'model_role_defaults';
 
 const workflowRoutingTargetKeyOrder = new Map<WorkflowRoutingTargetKey, number>(
     workflowRoutingTargetKeys.map((targetKey, index) => [targetKey, index])
@@ -118,6 +121,33 @@ function canonicalizeWorkflowRoutingPreferenceRecords(
         .filter((value, index, records) => records.findIndex((candidate) => candidate.targetKey === value.targetKey) === index);
 }
 
+interface PersistedModelRoleDefaultRecord {
+    role: InternalModelRole;
+    providerId: RuntimeProviderId;
+    modelId: string;
+}
+
+function isPersistedModelRoleDefaultRecord(value: unknown): value is PersistedModelRoleDefaultRecord {
+    if (!isJsonRecord(value)) {
+        return false;
+    }
+    if (!isJsonString(value.role) || !isJsonString(value.providerId) || !isJsonString(value.modelId)) {
+        return false;
+    }
+    return internalModelRoles.includes(value.role as InternalModelRole) && providerIds.includes(value.providerId as RuntimeProviderId);
+}
+
+function isPersistedModelRoleDefaultRecordArray(value: unknown): value is PersistedModelRoleDefaultRecord[] {
+    return isJsonUnknownArray(value) && value.every(isPersistedModelRoleDefaultRecord);
+}
+
+function canonicalizeModelRoleDefaultRecord(value: PersistedModelRoleDefaultRecord): PersistedModelRoleDefaultRecord {
+    return {
+        ...value,
+        modelId: canonicalizeProviderModelId(value.providerId, value.modelId),
+    };
+}
+
 export class ProviderStore {
     async listProviders(): Promise<ProviderRecord[]> {
         const { db } = getPersistence();
@@ -184,6 +214,17 @@ export class ProviderStore {
         return canonicalizeWorkflowRoutingPreferenceRecords(persisted);
     }
 
+    async getModelRoleDefaults(profileId: string): Promise<PersistedModelRoleDefaultRecord[]> {
+        const persisted =
+            (await settingsStore.getJsonOptional(
+                profileId,
+                MODEL_ROLE_DEFAULTS_KEY,
+                isPersistedModelRoleDefaultRecordArray
+            )) ?? [];
+
+        return persisted.map(canonicalizeModelRoleDefaultRecord);
+    }
+
     async setSpecialistDefault(
         profileId: string,
         input: {
@@ -221,6 +262,26 @@ export class ProviderStore {
             ...current.filter((value) => value.targetKey !== nextRecord.targetKey),
         ]);
         await settingsStore.setJson(profileId, WORKFLOW_ROUTING_PREFERENCES_KEY, nextRecords);
+        return nextRecords;
+    }
+
+    async setModelRoleDefault(
+        profileId: string,
+        input: PersistedModelRoleDefaultRecord
+    ): Promise<PersistedModelRoleDefaultRecord[]> {
+        const nextRecord = canonicalizeModelRoleDefaultRecord(input);
+        const current = await this.getModelRoleDefaults(profileId);
+        const nextRecords = [nextRecord, ...current.filter((value) => value.role !== nextRecord.role)].sort((left, right) =>
+            left.role.localeCompare(right.role)
+        );
+        await settingsStore.setJson(profileId, MODEL_ROLE_DEFAULTS_KEY, nextRecords);
+        return nextRecords;
+    }
+
+    async clearModelRoleDefault(profileId: string, role: InternalModelRole): Promise<PersistedModelRoleDefaultRecord[]> {
+        const current = await this.getModelRoleDefaults(profileId);
+        const nextRecords = current.filter((value) => value.role !== role);
+        await settingsStore.setJson(profileId, MODEL_ROLE_DEFAULTS_KEY, nextRecords);
         return nextRecords;
     }
 

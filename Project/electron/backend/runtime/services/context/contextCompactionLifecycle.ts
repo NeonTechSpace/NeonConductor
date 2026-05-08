@@ -11,7 +11,10 @@ import {
 import { buildPreparedContextMessages } from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
 import { buildResolvedContextState } from '@/app/backend/runtime/services/context/resolvedContextStateBuilder';
 import { buildPreparedContextDigest } from '@/app/backend/runtime/services/context/preparedContextMessageBuilder';
-import { buildPreparedContextDigestSummary } from '@/app/backend/runtime/services/context/preparedContextLedger';
+import {
+    buildEffectivePromptPreview,
+    buildPreparedContextDigestSummary,
+} from '@/app/backend/runtime/services/context/preparedContextLedger';
 import { estimatePreparedContextMessages } from '@/app/backend/runtime/services/context/sessionContextBudgetEvaluator';
 import { applyPersistedCompaction } from '@/app/backend/runtime/services/context/sessionReplayLoader';
 import type { ReplayMessage } from '@/app/backend/runtime/services/runExecution/contextReplay';
@@ -22,29 +25,31 @@ function createEmptyPreparedContextSummary(input: {
     fullDigest: string;
     compactionReseedActive: boolean;
 }): PreparedContextSummary {
+    const digest = buildPreparedContextDigestSummary({
+        fullDigest: input.fullDigest,
+        contributorDigest: 'ctxcontributors-empty',
+        checkpointSummaries: {
+            bootstrap: {
+                checkpoint: 'bootstrap',
+                includedContributorCount: 0,
+                excludedContributorCount: 0,
+                digest: 'ctxchk-bootstrap-empty',
+                active: true,
+            },
+            post_compaction_reseed: {
+                checkpoint: 'post_compaction_reseed',
+                includedContributorCount: 0,
+                excludedContributorCount: 0,
+                digest: 'ctxchk-post_compaction_reseed-empty',
+                active: input.compactionReseedActive,
+            },
+        },
+        compactionReseedActive: input.compactionReseedActive,
+    });
     return {
         contributors: [],
-        digest: buildPreparedContextDigestSummary({
-            fullDigest: input.fullDigest,
-            contributorDigest: 'ctxcontributors-empty',
-            checkpointSummaries: {
-                bootstrap: {
-                    checkpoint: 'bootstrap',
-                    includedContributorCount: 0,
-                    excludedContributorCount: 0,
-                    digest: 'ctxchk-bootstrap-empty',
-                    active: true,
-                },
-                post_compaction_reseed: {
-                    checkpoint: 'post_compaction_reseed',
-                    includedContributorCount: 0,
-                    excludedContributorCount: 0,
-                    digest: 'ctxchk-post_compaction_reseed-empty',
-                    active: input.compactionReseedActive,
-                },
-            },
-            compactionReseedActive: input.compactionReseedActive,
-        }),
+        digest,
+        effectivePromptPreview: buildEffectivePromptPreview({ contributors: [], digest: digest.contributorDigest }),
         activeContributorCount: 0,
         compactionReseedActive: input.compactionReseedActive,
     };

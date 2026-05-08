@@ -76,6 +76,39 @@ export const internalModelRoles = [
 ] as const;
 export type InternalModelRole = (typeof internalModelRoles)[number];
 
+export const modelFamilyProfileFamilies = [
+    'openai_responses',
+    'openai_chat_completions',
+    'anthropic_messages',
+    'gemini',
+    'kilo_routed',
+    'provider_native',
+] as const;
+export type ModelFamilyProfileFamily = (typeof modelFamilyProfileFamilies)[number];
+
+export const modelOptimizationWarningSeverities = ['info', 'warning', 'error'] as const;
+export type ModelOptimizationWarningSeverity = (typeof modelOptimizationWarningSeverities)[number];
+
+export const promptContributorEditabilityValues = [
+    'editable',
+    'toggleable',
+    'runtime-authority-visible',
+    'generated-evidence',
+] as const;
+export type PromptContributorEditability = (typeof promptContributorEditabilityValues)[number];
+
+export const modelRoleDefaultSources = [
+    'explicit_request',
+    'role_override',
+    'specialist_default',
+    'workflow_routing',
+    'utility_preference',
+    'memory_retrieval_preference',
+    'shared_default',
+    'diagnostic_only',
+] as const;
+export type ModelRoleDefaultSource = (typeof modelRoleDefaultSources)[number];
+
 export const sessionEditModes = ['truncate', 'branch'] as const;
 export type SessionEditMode = (typeof sessionEditModes)[number];
 

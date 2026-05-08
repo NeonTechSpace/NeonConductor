@@ -6,6 +6,7 @@ import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderControlSnapshot, ProviderListItem } from '@/app/backend/providers/service/types';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
 import type { WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
 
 function createInternalModelRoleDiagnostics(): ProviderControlSnapshot['internalModelRoleDiagnostics'] {
@@ -100,10 +101,12 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                 modelId: string;
             }>;
             workflowRoutingPreferences: WorkflowRoutingPreferenceRecord[];
+            modelRoleDefaults: ModelRoleDefaultRecord[];
         }>();
         const controlPlaneStore = createSetDataSpy<{
             providerControl: ProviderControlSnapshot & {
                 workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+                modelRoleDefaults?: ModelRoleDefaultRecord[];
             };
         }>();
         const listModelsStore = createSetDataSpy<{
@@ -114,6 +117,7 @@ describe('projectProviderSettingsControlPlaneCache', () => {
         const shellBootstrapStore = createSetDataSpy<{
             providerControl: ProviderControlSnapshot & {
                 workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+                modelRoleDefaults?: ModelRoleDefaultRecord[];
             };
         }>();
 
@@ -146,6 +150,16 @@ describe('projectProviderSettingsControlPlaneCache', () => {
             ],
             defaults: { providerId: 'openai', modelId: 'openai/gpt-4o-mini' },
             specialistDefaults: [],
+            modelRoleDefaults: [
+                {
+                    role: 'planner',
+                    providerId: 'kilo',
+                    modelId: 'kilo/frontier',
+                    source: 'role_override',
+                    status: 'configured',
+                    sourceLabel: 'Saved role override',
+                },
+            ],
             internalModelRoleDiagnostics: createInternalModelRoleDiagnostics(),
             workflowRoutingPreferences: [
                 {
@@ -165,6 +179,16 @@ describe('projectProviderSettingsControlPlaneCache', () => {
             {
                 defaults: { providerId: 'openai', modelId: 'openai/gpt-4o-mini' },
                 specialistDefaults: [],
+                modelRoleDefaults: [
+                    {
+                        role: 'planner',
+                        providerId: 'kilo',
+                        modelId: 'kilo/frontier',
+                        source: 'role_override',
+                        status: 'configured',
+                        sourceLabel: 'Saved role override',
+                    },
+                ],
                 workflowRoutingPreferences: [
                     {
                         targetKey: 'planning',
@@ -187,6 +211,16 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                     modeKey: 'ask',
                     providerId: 'openai',
                     modelId: 'openai/gpt-5',
+                },
+            ],
+            modelRoleDefaults: [
+                {
+                    role: 'apply',
+                    providerId: 'openai',
+                    modelId: 'openai/gpt-5',
+                    source: 'role_override',
+                    status: 'configured',
+                    sourceLabel: 'Saved role override',
                 },
             ],
             models: [],
@@ -231,6 +265,16 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                     modelId: 'kilo/frontier',
                 },
             ],
+            modelRoleDefaults: [
+                {
+                    role: 'apply',
+                    providerId: 'openai',
+                    modelId: 'openai/gpt-5',
+                    source: 'role_override',
+                    status: 'configured',
+                    sourceLabel: 'Saved role override',
+                },
+            ],
         });
         expect(controlPlaneStore.read()).toEqual({
             providerControl: {
@@ -269,6 +313,16 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                     },
                 ],
                 internalModelRoleDiagnostics: createInternalModelRoleDiagnostics(),
+                modelRoleDefaults: [
+                    {
+                        role: 'apply',
+                        providerId: 'openai',
+                        modelId: 'openai/gpt-5',
+                        source: 'role_override',
+                        status: 'configured',
+                        sourceLabel: 'Saved role override',
+                    },
+                ],
                 workflowRoutingPreferences: [
                     {
                         targetKey: 'planning',
@@ -308,6 +362,16 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                     },
                 ],
                 internalModelRoleDiagnostics: createInternalModelRoleDiagnostics(),
+                modelRoleDefaults: [
+                    {
+                        role: 'apply',
+                        providerId: 'openai',
+                        modelId: 'openai/gpt-5',
+                        source: 'role_override',
+                        status: 'configured',
+                        sourceLabel: 'Saved role override',
+                    },
+                ],
                 workflowRoutingPreferences: [
                     {
                         targetKey: 'planning',

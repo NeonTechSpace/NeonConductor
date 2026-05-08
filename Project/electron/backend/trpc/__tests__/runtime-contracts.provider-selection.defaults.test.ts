@@ -111,6 +111,57 @@ describe('runtime contracts: provider selection defaults', () => {
         expect(cleared.workflowRoutingPreferences).toEqual([]);
     });
 
+    it('persists canonical model-role defaults and projects them into provider control state', async () => {
+        const caller = createCaller();
+
+        const changed = await caller.provider.setModelRoleDefault({
+            profileId,
+            role: 'apply',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+        });
+        expect(changed.success).toBe(true);
+        expect(changed.roleDefaults).toContainEqual({
+            role: 'apply',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            source: 'role_override',
+            status: 'configured',
+            sourceLabel: 'Saved role override',
+        });
+
+        const defaults = await caller.provider.getDefaults({ profileId });
+        expect(defaults.modelRoleDefaults).toContainEqual({
+            role: 'apply',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            source: 'role_override',
+            status: 'configured',
+            sourceLabel: 'Saved role override',
+        });
+
+        const shellBootstrap = await caller.runtime.getShellBootstrap({ profileId });
+        expect(shellBootstrap.providerControl.modelRoleDefaults).toContainEqual({
+            role: 'apply',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5',
+            source: 'role_override',
+            status: 'configured',
+            sourceLabel: 'Saved role override',
+        });
+
+        const cleared = await caller.provider.clearModelRoleDefault({
+            profileId,
+            role: 'apply',
+        });
+        expect(cleared.success).toBe(true);
+        expect(
+            cleared.roleDefaults.some(
+                (roleDefault) => roleDefault.role === 'apply' && roleDefault.source === 'role_override'
+            )
+        ).toBe(false);
+    });
+
     it('normalizes only legacy OpenAI OAuth and Codex state into openai_codex', async () => {
         const caller = createCaller();
         const { sqlite } = getPersistence();

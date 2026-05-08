@@ -243,6 +243,13 @@ export function buildRunContractPreviewDiagnostics(preview: RunContractPreview):
     if (diffDiagnostic) {
         diagnostics.push(diffDiagnostic);
     }
+    for (const warning of preview.modelOptimizationProfile?.warnings ?? []) {
+        diagnostics.push({
+            tone: warning.severity === 'error' ? 'error' : 'warning',
+            title: 'Model optimization warning',
+            detail: warning.message,
+        });
+    }
     diagnostics.push(...buildSandboxPolicyDiagnostics(preview));
 
     return diagnostics;

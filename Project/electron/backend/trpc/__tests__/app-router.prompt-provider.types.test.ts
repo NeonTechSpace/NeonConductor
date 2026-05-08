@@ -191,6 +191,16 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
         profileId: string;
         targetKey: 'planning' | 'planning_advanced';
     }>();
+    expectTypeOf<AppRouterInputs['provider']['setModelRoleDefault']>().toExtend<{
+        profileId: string;
+        role: 'chat' | 'planner' | 'apply' | 'utility' | 'memory_retrieval' | 'embeddings' | 'rerank';
+        providerId: string;
+        modelId: string;
+    }>();
+    expectTypeOf<AppRouterInputs['provider']['clearModelRoleDefault']>().toExtend<{
+        profileId: string;
+        role: 'chat' | 'planner' | 'apply' | 'utility' | 'memory_retrieval' | 'embeddings' | 'rerank';
+    }>();
     expectTypeOf<AppRouterInputs['provider']['listModels']>().toExtend<{
         profileId: string;
         providerId: string;
@@ -327,6 +337,23 @@ test('AppRouter exposes prompt and provider procedure contracts to clients', () 
             targetKey: 'planning' | 'planning_advanced';
             providerId: string;
             modelId: string;
+        }>;
+        modelRoleDefaults: Array<{
+            role: 'chat' | 'planner' | 'apply' | 'utility' | 'memory_retrieval' | 'embeddings' | 'rerank';
+            source:
+                | 'explicit_request'
+                | 'role_override'
+                | 'specialist_default'
+                | 'workflow_routing'
+                | 'utility_preference'
+                | 'memory_retrieval_preference'
+                | 'shared_default'
+                | 'diagnostic_only';
+            status: 'configured' | 'fallback' | 'unconfigured';
+            providerId?: string;
+            modelId?: string;
+            sourceLabel: string;
+            detail?: string;
         }>;
     }>();
     expectTypeOf<AppRouterInputs['provider']['setApiKey']>().toExtend<{

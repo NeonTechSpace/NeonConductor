@@ -12,6 +12,10 @@ import type {
 import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { RetrievedMemorySummary } from '@/app/backend/runtime/contracts/types/memory';
 import type { SkillDynamicContextSafetyClass } from '@/app/backend/runtime/contracts/types/mode';
+import type {
+    EffectivePromptPreview,
+    PromptContributorEditabilityDetails,
+} from '@/app/backend/runtime/contracts/types/modelOptimization';
 import type { PreparedContextInjectionCheckpoint } from '@/app/backend/runtime/contracts/types/prompt';
 
 export interface ContextGlobalSettings {
@@ -208,6 +212,7 @@ export interface PreparedContextContributorSummary {
     instructionAuthority: PreparedContextInstructionAuthority;
     tokenCount?: number;
     digest: string;
+    editability?: PromptContributorEditabilityDetails;
     dynamicExpansion?: DynamicContextExpansion;
 }
 
@@ -230,6 +235,7 @@ export interface PreparedContextDigestSummary {
 export interface PreparedContextSummary {
     contributors: PreparedContextContributorSummary[];
     digest: PreparedContextDigestSummary;
+    effectivePromptPreview?: EffectivePromptPreview;
     activeContributorCount: number;
     compactionReseedActive: boolean;
 }

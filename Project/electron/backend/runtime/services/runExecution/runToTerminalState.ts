@@ -24,6 +24,7 @@ import type {
     OpenAIExecutionMode,
     ResolvedWorkspaceContext,
     RunContractPreview,
+    ModelOptimizationProfile,
     RunResearchTarget,
 } from '@/shared/contracts';
 import type { EntityId, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
@@ -40,6 +41,7 @@ export async function runToTerminalState(input: {
     providerId: RuntimeProviderId;
     modelId: string;
     runtime: ProviderRuntimeDescriptor;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     openAIExecutionMode?: OpenAIExecutionMode;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: StartRunInput['runtimeOptions'];

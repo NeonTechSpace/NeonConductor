@@ -16,12 +16,14 @@ import type {
     ProviderListItem,
 } from '@/app/backend/providers/service/types';
 
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
 import type { WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
 
 type ProviderControlPlanePatchInput = Parameters<typeof patchProviderControlSnapshot>[1];
 type ProviderSettingsCacheContext = Pick<ProviderSettingsCacheProjectionInput, 'utils' | 'profileId' | 'providerId'>;
 type ProviderDefaultsDataWithWorkflowRoutingPreferences = ProviderDefaultsData & {
     workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+    modelRoleDefaults?: ModelRoleDefaultRecord[];
 };
 
 function replaceProvider(current: ProviderListData | undefined, provider: ProviderListItem): ProviderListData | undefined {
@@ -117,6 +119,7 @@ function patchProviderControlSnapshot(
         defaults?: { providerId: string; modelId: string };
         specialistDefaults?: ProviderSettingsCacheProjectionInput['specialistDefaults'];
         workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+        modelRoleDefaults?: ModelRoleDefaultRecord[];
         models?: ProviderModelRecord[];
         catalogStateReason?: EmptyCatalogStateReason;
         catalogStateDetail?: string;
@@ -146,6 +149,11 @@ function patchProviderControlSnapshot(
         defaults: nextDefaults,
         specialistDefaults: input.specialistDefaults ?? current.specialistDefaults,
         internalModelRoleDiagnostics: current.internalModelRoleDiagnostics,
+        ...((input.modelRoleDefaults ?? current.modelRoleDefaults) !== undefined
+            ? {
+                  modelRoleDefaults: input.modelRoleDefaults ?? current.modelRoleDefaults,
+              }
+            : {}),
         ...((input.workflowRoutingPreferences ?? current.workflowRoutingPreferences) !== undefined
             ? {
                   workflowRoutingPreferences:
@@ -161,6 +169,7 @@ function shouldPatchControlPlane(input: ProviderSettingsCacheProjectionInput): b
         input.defaults !== undefined ||
         input.specialistDefaults !== undefined ||
         input.workflowRoutingPreferences !== undefined ||
+        input.modelRoleDefaults !== undefined ||
         input.models !== undefined ||
         input.authState !== undefined ||
         input.connectionProfile !== undefined ||
@@ -177,6 +186,7 @@ function buildProviderControlPlanePatchInput(
         ...(input.defaults ? { defaults: input.defaults } : {}),
         ...(input.specialistDefaults ? { specialistDefaults: input.specialistDefaults } : {}),
         ...(input.workflowRoutingPreferences ? { workflowRoutingPreferences: input.workflowRoutingPreferences } : {}),
+        ...(input.modelRoleDefaults ? { modelRoleDefaults: input.modelRoleDefaults } : {}),
         ...(input.models !== undefined ? { models: input.models } : {}),
         ...(input.catalogStateReason !== undefined ? { catalogStateReason: input.catalogStateReason } : {}),
         ...(input.catalogStateDetail !== undefined ? { catalogStateDetail: input.catalogStateDetail } : {}),
@@ -258,6 +268,11 @@ export function projectProviderSettingsControlPlaneCache(input: ProviderSettings
                     defaults: nextDefaults,
                     specialistDefaults: input.specialistDefaults ?? current?.specialistDefaults ?? [],
                     workflowRoutingPreferences: input.workflowRoutingPreferences ?? currentWorkflowRoutingPreferences,
+                    modelRoleDefaults:
+                        input.modelRoleDefaults ??
+                        (current as ProviderDefaultsDataWithWorkflowRoutingPreferences | undefined)
+                            ?.modelRoleDefaults ??
+                        [],
                 } as ProviderDefaultsDataWithWorkflowRoutingPreferences;
             }
         );

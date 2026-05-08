@@ -6,6 +6,7 @@ import type {
     OpenAIExecutionMode,
     ProviderAuthMethod,
     RuntimeMessagePartType,
+    ModelOptimizationProfile,
     RuntimeRequestedTransportFamily,
     RuntimeReasoningEffort,
     RuntimeReasoningSummary,
@@ -250,6 +251,7 @@ export interface ProviderRuntimeInput {
     providerId: FirstPartyProviderId;
     modelId: string;
     runtime: ProviderRuntimeDescriptor;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     promptText: string;
     contextMessages?: Array<{
         role: 'system' | 'user' | 'assistant' | 'tool';

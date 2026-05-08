@@ -3,6 +3,7 @@ import type {
     PreparedContextModeOverrides,
     PreparedContextProfileDefaults,
     ResolvedWorkspaceExecutionContext,
+    ModelOptimizationProfile,
 } from '@/app/backend/runtime/contracts';
 import type { WorkspaceEnvironmentSnapshot } from '@/app/backend/runtime/contracts/types/runtime';
 import type { PreparedContextContributorSpec } from '@/app/backend/runtime/services/context/preparedContextLedger';
@@ -156,6 +157,7 @@ function buildAgentPreludeContributorSpecs(input: {
     workspaceContextLabel?: string;
     runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
     workerPresetId?: WorkerPresetId;
+    modelOptimizationProfile?: ModelOptimizationProfile;
 }): PreparedContextContributorSpec[] {
     const prelude: PreparedContextContributorSpec[] = [];
     if (input.workspacePrelude) {
@@ -182,6 +184,7 @@ function buildAgentPreludeContributorSpecs(input: {
             mode: input.mode,
             ...(input.runtimeToolGuidanceContext ? { guidanceContext: input.runtimeToolGuidanceContext } : {}),
             ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
+            ...(input.modelOptimizationProfile ? { modelOptimizationProfile: input.modelOptimizationProfile } : {}),
         })
     );
 
@@ -460,6 +463,7 @@ export async function buildSessionSystemPrelude(input: {
     workspaceEnvironmentSnapshot?: WorkspaceEnvironmentSnapshot;
     runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
     workerPresetId?: WorkerPresetId;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     resolvedMode: {
         mode: ModeDefinition;
     };
@@ -619,6 +623,7 @@ export async function buildSessionSystemPrelude(input: {
                 ? { runtimeToolGuidanceContext: input.runtimeToolGuidanceContext }
                 : {}),
             ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
+            ...(input.modelOptimizationProfile ? { modelOptimizationProfile: input.modelOptimizationProfile } : {}),
             ...(workspaceContext && (workspaceContext.kind === 'workspace' || workspaceContext.kind === 'sandbox')
                 ? { workspaceContextLabel: workspaceContext.label }
                 : {}),

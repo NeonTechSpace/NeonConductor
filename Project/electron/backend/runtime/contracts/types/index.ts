@@ -1,6 +1,7 @@
 export * from '@/app/backend/runtime/contracts/types/common';
 export * from '@/app/backend/runtime/contracts/types/checkpoint';
 export * from '@/app/backend/runtime/contracts/types/profile';
+export * from '@/app/backend/runtime/contracts/types/modelOptimization';
 export * from '@/app/backend/runtime/contracts/types/fileReadGuard';
 export * from '@/app/backend/runtime/contracts/types/diff';
 export * from '@/app/backend/runtime/contracts/types/runtimeExecution';

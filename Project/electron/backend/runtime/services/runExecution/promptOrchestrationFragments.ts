@@ -1,4 +1,4 @@
-import type { ModeDefinition } from '@/app/backend/runtime/contracts';
+import type { ModeDefinition, ModelOptimizationProfile } from '@/app/backend/runtime/contracts';
 import type { PreparedContextContributorSpec } from '@/app/backend/runtime/services/context/preparedContextLedger';
 import { createTextMessage } from '@/app/backend/runtime/services/runExecution/contextParts';
 import type { RuntimeToolGuidanceContext } from '@/app/backend/runtime/services/runExecution/types';
@@ -107,6 +107,25 @@ function buildWorkerPresetFragment(workerPresetId: WorkerPresetId | undefined): 
     };
 }
 
+function buildModelFamilyFragment(profile: ModelOptimizationProfile | undefined): PromptFragment | undefined {
+    if (!profile) {
+        return undefined;
+    }
+    return {
+        id: `runtime_prompt_fragment:model_family:${profile.family}`,
+        label: `Model family profile: ${profile.label}`,
+        sourceKey: `model_family:${profile.family}`,
+        body: [
+            `Resolved model role: ${profile.modelRole}.`,
+            `Runtime protocol: ${profile.toolProtocol}.`,
+            `Context strategy: ${profile.contextStrategy}.`,
+            `Prompt policy: ${profile.promptTemplatePolicy}.`,
+            `Unsupported parameter policy: ${profile.unsupportedParameterPolicy}.`,
+            'Follow the exposed tool schemas and run-contract evidence requirements exactly; do not infer extra tools or permissions from prompt text.',
+        ].join('\n'),
+    };
+}
+
 function toContributorSpec(fragment: PromptFragment): PreparedContextContributorSpec {
     return {
         id: fragment.id,
@@ -128,12 +147,14 @@ export function buildRuntimePromptFragmentContributorSpecs(input: {
     mode: ModeDefinition;
     guidanceContext?: RuntimeToolGuidanceContext;
     workerPresetId?: WorkerPresetId;
+    modelOptimizationProfile?: ModelOptimizationProfile;
 }): PreparedContextContributorSpec[] {
     return [
         buildRuntimeAuthorityFragment(input),
         buildEvidenceDisciplineFragment(input.mode),
         buildCompletionReceiptFragment(input.mode),
         buildWorkerPresetFragment(input.workerPresetId),
+        buildModelFamilyFragment(input.modelOptimizationProfile),
     ]
         .filter((fragment): fragment is PromptFragment => fragment !== undefined)
         .map(toContributorSpec);

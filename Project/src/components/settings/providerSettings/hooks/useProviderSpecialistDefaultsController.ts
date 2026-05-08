@@ -10,6 +10,7 @@ import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsy
 import {
     getProviderControlDefaults,
     getProviderControlSpecialistDefaults,
+    getProviderControlModelRoleDefaults,
     listProviderControlModels,
     listProviderControlProviders,
 } from '@/web/lib/providerControl/selectors';
@@ -21,7 +22,7 @@ import type { ProviderModelRecord } from '@/app/backend/persistence/types';
 import type { ProviderListItem } from '@/app/backend/providers/service/types';
 
 import { findProviderSpecialistDefault, providerSpecialistDefaultTargets } from '@/shared/contracts';
-import { providerIds } from '@/shared/contracts';
+import { internalModelRoles, providerIds } from '@/shared/contracts';
 import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 import { resolveSpecialistAliasRoutingIntent } from '@/shared/modeRouting';
 
@@ -65,10 +66,27 @@ export interface ProviderSpecialistDefaultsSectionGroupViewModel {
     targets: ProviderSpecialistDefaultsTargetViewModel[];
 }
 
+export interface ProviderModelRoleDefaultViewModel {
+    role: (typeof internalModelRoles)[number];
+    label: string;
+    modeOptions: ModelPickerOption[];
+    selectedProviderId: ProviderListItem['id'] | undefined;
+    selectedModelId: string;
+    sourceLabel: string;
+    status: 'configured' | 'fallback' | 'unconfigured';
+    detail?: string;
+}
+
 export interface ProviderSpecialistDefaultsControllerState {
     feedback: ProviderSettingsFeedbackState;
+    roleDefaults: ProviderModelRoleDefaultViewModel[];
     groups: ProviderSpecialistDefaultsSectionGroupViewModel[];
     isSaving: boolean;
+    saveModelRoleDefault: (input: {
+        role: (typeof internalModelRoles)[number];
+        providerId: ProviderListItem['id'];
+        modelId: string;
+    }) => void;
     saveSpecialistDefault: (input: {
         topLevelTab: 'agent' | 'orchestrator';
         modeKey: 'ask' | 'code' | 'debug' | 'orchestrate';
@@ -104,6 +122,24 @@ export function useProviderSpecialistDefaultsController(input: { profileId: stri
             ]);
         },
     });
+    const setModelRoleDefaultMutation = trpc.provider.setModelRoleDefault.useMutation({
+        onSuccess: (result, variables) => {
+            if (!result.success) {
+                setStatusMessage(
+                    result.reason === 'model_not_found'
+                        ? 'Selected role model is not available.'
+                        : 'Selected role provider is no longer available.'
+                );
+                return;
+            }
+
+            setStatusMessage(`${variables.role.replaceAll('_', ' ')} role default updated.`);
+            void Promise.allSettled([
+                utils.provider.getControlPlane.invalidate({ profileId: input.profileId }),
+                utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId }),
+            ]);
+        },
+    });
 
     const providerControl = shellBootstrapQuery.data?.providerControl;
     const providers = listProviderControlProviders(providerControl).filter((provider) =>
@@ -112,6 +148,44 @@ export function useProviderSpecialistDefaultsController(input: { profileId: stri
     const providerModels = listProviderControlModels(providerControl);
     const defaults = getProviderControlDefaults(providerControl);
     const specialistDefaults = getProviderControlSpecialistDefaults(providerControl);
+    const modelRoleDefaults = getProviderControlModelRoleDefaults(providerControl);
+    const allModeOptions = providers.flatMap((provider) =>
+        providerModels
+            .filter((model) => model.providerId === provider.id)
+            .map((model) =>
+                buildModelPickerOption({
+                    model,
+                    provider,
+                    compatibilityContext: {
+                        surface: 'settings',
+                    },
+                })
+            )
+    );
+    const roleDefaults = internalModelRoles.map((role) => {
+        const defaultRecord = modelRoleDefaults.find((record) => record.role === role);
+        const providerId =
+            defaultRecord?.providerId && isRuntimeProviderId(defaultRecord.providerId)
+                ? defaultRecord.providerId
+                : undefined;
+        const selectedModelId =
+            providerId && defaultRecord?.modelId
+                ? canonicalizeProviderModelId(providerId, defaultRecord.modelId)
+                : '';
+        return {
+            role,
+            label: role
+                .split('_')
+                .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+                .join(' '),
+            modeOptions: allModeOptions,
+            selectedProviderId: providerId,
+            selectedModelId,
+            sourceLabel: defaultRecord?.sourceLabel ?? 'No role default available',
+            status: defaultRecord?.status ?? 'unconfigured',
+            ...(defaultRecord?.detail ? { detail: defaultRecord.detail } : {}),
+        };
+    });
 
     const groups = [
         {
@@ -239,13 +313,34 @@ export function useProviderSpecialistDefaultsController(input: { profileId: stri
         }
     }
 
+    async function saveModelRoleDefaultInternal(inputValue: {
+        role: (typeof internalModelRoles)[number];
+        providerId: ProviderListItem['id'];
+        modelId: string;
+    }) {
+        try {
+            await setModelRoleDefaultMutation.mutateAsync({
+                profileId: input.profileId,
+                role: inputValue.role,
+                providerId: inputValue.providerId,
+                modelId: inputValue.modelId,
+            });
+        } catch {
+            // The mutation error is surfaced through the hook state and feedback banner.
+        }
+    }
+
     return {
         feedback: buildProviderSettingsFeedback({
             statusMessage,
-            mutationErrorSources: [setSpecialistDefaultMutation],
+            mutationErrorSources: [setSpecialistDefaultMutation, setModelRoleDefaultMutation],
         }),
+        roleDefaults,
         groups,
-        isSaving: setSpecialistDefaultMutation.isPending,
+        isSaving: setSpecialistDefaultMutation.isPending || setModelRoleDefaultMutation.isPending,
+        saveModelRoleDefault: (inputValue) => {
+            void createFailClosedAsyncAction(saveModelRoleDefaultInternal)(inputValue);
+        },
         saveSpecialistDefault: (inputValue) => {
             void createFailClosedAsyncAction(saveSpecialistDefaultInternal)(inputValue);
         },

@@ -24,6 +24,7 @@ import {
 } from '@/app/backend/runtime/services/context/executionTargetContextPreviewService';
 import { contextPolicyService } from '@/app/backend/runtime/services/context/policyService';
 import {
+    buildEffectivePromptPreview,
     buildPreparedContextDigestSummary,
     resolvePreparedContextLedger,
     type PreparedContextContributorSpec,
@@ -62,29 +63,31 @@ function createEmptyPreparedContextSummary(input: {
     fullDigest: string;
     compactionReseedActive: boolean;
 }): PreparedContextSummary {
+    const digestSummary = buildPreparedContextDigestSummary({
+        fullDigest: input.fullDigest,
+        contributorDigest: 'ctxcontributors-empty',
+        checkpointSummaries: {
+            bootstrap: {
+                checkpoint: 'bootstrap',
+                includedContributorCount: 0,
+                excludedContributorCount: 0,
+                digest: 'ctxchk-bootstrap-empty',
+                active: true,
+            },
+            post_compaction_reseed: {
+                checkpoint: 'post_compaction_reseed',
+                includedContributorCount: 0,
+                excludedContributorCount: 0,
+                digest: 'ctxchk-post_compaction_reseed-empty',
+                active: input.compactionReseedActive,
+            },
+        },
+        compactionReseedActive: input.compactionReseedActive,
+    });
     return {
         contributors: [],
-        digest: buildPreparedContextDigestSummary({
-            fullDigest: input.fullDigest,
-            contributorDigest: 'ctxcontributors-empty',
-            checkpointSummaries: {
-                bootstrap: {
-                    checkpoint: 'bootstrap',
-                    includedContributorCount: 0,
-                    excludedContributorCount: 0,
-                    digest: 'ctxchk-bootstrap-empty',
-                    active: true,
-                },
-                post_compaction_reseed: {
-                    checkpoint: 'post_compaction_reseed',
-                    includedContributorCount: 0,
-                    excludedContributorCount: 0,
-                    digest: 'ctxchk-post_compaction_reseed-empty',
-                    active: input.compactionReseedActive,
-                },
-            },
-            compactionReseedActive: input.compactionReseedActive,
-        }),
+        digest: digestSummary,
+        effectivePromptPreview: buildEffectivePromptPreview({ contributors: [], digest: digestSummary.contributorDigest }),
         activeContributorCount: 0,
         compactionReseedActive: input.compactionReseedActive,
     };
@@ -456,13 +459,18 @@ class SessionContextService {
             compactionReseedActive: Boolean(compaction),
         });
         const digest = buildPreparedContextDigest(finalMessages);
+        const digestSummary = buildPreparedContextDigestSummary({
+            fullDigest: digest,
+            contributorDigest: finalLedger.contributorDigest,
+            checkpointSummaries: finalLedger.checkpointSummaries,
+            compactionReseedActive: finalLedger.compactionReseedActive,
+        });
         const preparedContext = {
             contributors: finalLedger.contributors,
-            digest: buildPreparedContextDigestSummary({
-                fullDigest: digest,
-                contributorDigest: finalLedger.contributorDigest,
-                checkpointSummaries: finalLedger.checkpointSummaries,
-                compactionReseedActive: finalLedger.compactionReseedActive,
+            digest: digestSummary,
+            effectivePromptPreview: buildEffectivePromptPreview({
+                contributors: finalLedger.contributors,
+                digest: digestSummary.contributorDigest,
             }),
             activeContributorCount: finalLedger.contributors.filter((contributor) => contributor.inclusionState === 'included').length,
             compactionReseedActive: finalLedger.compactionReseedActive,

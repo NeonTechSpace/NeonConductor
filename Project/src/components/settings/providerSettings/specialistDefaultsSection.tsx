@@ -21,6 +21,56 @@ export function ProviderSpecialistDefaultsSection({ profileId }: ProviderSpecial
 
             <SettingsFeedbackBanner message={controller.feedback.message} tone={controller.feedback.tone} />
 
+            <article className='border-border/70 bg-background/70 rounded-2xl border p-4'>
+                <div className='space-y-1'>
+                    <p className='text-sm font-semibold'>Model role defaults</p>
+                    <p className='text-muted-foreground text-xs leading-5'>
+                        Role defaults are the canonical routing surface for chat, planning, apply, utility, memory,
+                        embeddings, and rerank work. Saved role overrides win before compatibility fallbacks.
+                    </p>
+                </div>
+                <div className='mt-4 grid gap-4 xl:grid-cols-2'>
+                    {controller.roleDefaults.map((target) => (
+                        <div key={target.role} className='space-y-2'>
+                            <div className='flex items-center justify-between gap-3'>
+                                <div className='space-y-1'>
+                                    <p className='text-sm font-medium'>{target.label}</p>
+                                    <p className='text-muted-foreground text-[11px] leading-5'>
+                                        {target.sourceLabel} · {target.status}
+                                    </p>
+                                </div>
+                                <span className='text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase'>
+                                    {target.role.replaceAll('_', ' ')}
+                                </span>
+                            </div>
+                            <ModelPicker
+                                providerId={target.selectedProviderId}
+                                selectedModelId={target.selectedModelId}
+                                models={target.modeOptions}
+                                disabled={target.modeOptions.length === 0}
+                                ariaLabel={`${target.label} role default model`}
+                                placeholder='Select model'
+                                onSelectModel={() => {}}
+                                onSelectOption={(option) => {
+                                    if (!option.providerId) {
+                                        return;
+                                    }
+
+                                    controller.saveModelRoleDefault({
+                                        role: target.role,
+                                        providerId: option.providerId,
+                                        modelId: option.id,
+                                    });
+                                }}
+                            />
+                            {target.detail ? (
+                                <p className='text-muted-foreground text-[11px] leading-5'>{target.detail}</p>
+                            ) : null}
+                        </div>
+                    ))}
+                </div>
+            </article>
+
             <div className='grid gap-4 xl:grid-cols-2'>
                 {controller.groups.map((group) => (
                     <article key={group.label} className='border-border/70 bg-background/70 rounded-2xl border p-4'>

@@ -8,6 +8,8 @@ import {
     providerRefreshAuthInputSchema,
     providerSetApiKeyInputSchema,
     providerSetDefaultInputSchema,
+    providerSetModelRoleDefaultInputSchema,
+    providerClearModelRoleDefaultInputSchema,
     providerSetConnectionProfileInputSchema,
     providerSetExecutionPreferenceInputSchema,
     providerSetModelRoutingPreferenceInputSchema,
@@ -509,6 +511,42 @@ export const providerMutationProcedures = {
 
         return result;
     }),
+    setModelRoleDefault: publicProcedure.input(providerSetModelRoleDefaultInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.setModelRoleDefault(input);
+
+        if (result.success) {
+            await emitProviderUpsertEvent({
+                providerId: input.providerId,
+                eventType: 'provider.model-role-default-set',
+                payload: {
+                    profileId: input.profileId,
+                    role: input.role,
+                    providerId: input.providerId,
+                    modelId: input.modelId,
+                    modelRoleDefaults: result.roleDefaults,
+                },
+            });
+        }
+
+        return result;
+    }),
+    clearModelRoleDefault: publicProcedure
+        .input(providerClearModelRoleDefaultInputSchema)
+        .mutation(async ({ input }) => {
+            const result = await providerManagementService.clearModelRoleDefault(input);
+
+            await emitProviderUpsertEvent({
+                providerId: 'model-role-defaults',
+                eventType: 'provider.model-role-default-cleared',
+                payload: {
+                    profileId: input.profileId,
+                    role: input.role,
+                    modelRoleDefaults: result.roleDefaults,
+                },
+            });
+
+            return result;
+        }),
     setWorkflowRoutingPreference: publicProcedure
         .input(providerSetWorkflowRoutingPreferenceInputSchema)
         .mutation(async ({ input }) => {

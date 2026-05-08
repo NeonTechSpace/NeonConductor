@@ -178,6 +178,29 @@ export function ContextResolvedSummarySection({
                             <p className='mt-1 text-sm leading-6'>{state.preparedContext.digest.cacheabilityHint}</p>
                         </div>
 
+                        {state.preparedContext.effectivePromptPreview ? (
+                            <div className='rounded-xl border border-dashed p-3'>
+                                <p className='text-sm font-semibold'>Effective Prompt Preview</p>
+                                <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                    {state.preparedContext.effectivePromptPreview.includedContributorCount} included
+                                    contributors · digest {state.preparedContext.effectivePromptPreview.digest}
+                                </p>
+                                <div className='mt-2 grid gap-2'>
+                                    {state.preparedContext.effectivePromptPreview.contributors.slice(0, 6).map((contributor) => (
+                                        <div key={contributor.contributorId} className='text-muted-foreground text-xs leading-5'>
+                                            <p>
+                                                {contributor.label} · {contributor.editability.classification} ·{' '}
+                                                {contributor.checkpoint}
+                                            </p>
+                                            {contributor.editability.immutableReason ? (
+                                                <p>{contributor.editability.immutableReason}</p>
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+
                         <div className='grid gap-3 xl:grid-cols-2'>
                             {Object.values(state.preparedContext.digest.checkpoints).map((checkpoint) => (
                                 <div key={checkpoint.checkpoint} className='rounded-xl border border-dashed p-3'>
@@ -240,6 +263,11 @@ export function ContextResolvedSummarySection({
                                                     <span className='rounded-full border px-2 py-1'>
                                                         Authority · {formatDelimitedLabel(contributor.instructionAuthority)}
                                                     </span>
+                                                    {contributor.editability ? (
+                                                        <span className='rounded-full border px-2 py-1'>
+                                                            Edit · {formatDelimitedLabel(contributor.editability.classification)}
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                             </div>
                                             <div className='text-muted-foreground mt-2 grid gap-2 text-xs md:grid-cols-2 xl:grid-cols-4'>
@@ -254,6 +282,11 @@ export function ContextResolvedSummarySection({
                                                 </p>
                                             </div>
                                             <p className='mt-2 text-sm leading-6'>{contributor.inclusionReason}</p>
+                                            {contributor.editability?.immutableReason ? (
+                                                <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                                    {contributor.editability.immutableReason}
+                                                </p>
+                                            ) : null}
                                             {contributor.dynamicExpansion ? (
                                                 <div className='mt-3 rounded-xl border border-dashed p-3 text-xs'>
                                                     <p className='text-sm font-semibold'>Dynamic expansion</p>

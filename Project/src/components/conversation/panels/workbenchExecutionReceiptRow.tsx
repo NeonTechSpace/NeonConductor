@@ -59,6 +59,18 @@ export function WorkbenchExecutionReceiptRow({ receipt }: { receipt: ExecutionRe
                 <p className='text-muted-foreground'>
                     Prepared context contributors: {String(receipt.contract.preparedContext.activeContributorCount)}
                 </p>
+                {receipt.contract.modelOptimizationProfile ? (
+                    <p className='text-muted-foreground'>
+                        Model optimization: {receipt.contract.modelOptimizationProfile.label} ·{' '}
+                        {receipt.contract.modelOptimizationProfile.modelRole}
+                    </p>
+                ) : null}
+                {receipt.contract.preparedContext.effectivePromptPreview ? (
+                    <p className='text-muted-foreground'>
+                        Effective prompt contributors:{' '}
+                        {String(receipt.contract.preparedContext.effectivePromptPreview.includedContributorCount)}
+                    </p>
+                ) : null}
                 <p className='text-muted-foreground'>Tools invoked: {String(receipt.toolsInvoked.length)}</p>
                 <p className='text-muted-foreground'>Approvals used: {String(receipt.approvalsUsed.length)}</p>
                 <p className='text-muted-foreground'>

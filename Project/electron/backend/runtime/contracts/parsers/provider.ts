@@ -38,11 +38,14 @@ import type {
     ProviderSetWorkflowRoutingPreferenceInput,
     ProviderClearWorkflowRoutingPreferenceInput,
     ProviderSetSpecialistDefaultInput,
+    ProviderSetModelRoleDefaultInput,
+    ProviderClearModelRoleDefaultInput,
     ProviderSetOrganizationInput,
     ProviderStartAuthInput,
     ProviderSyncCatalogInput,
     ProviderFlowInput,
 } from '@/app/backend/runtime/contracts/types';
+import { internalModelRoles } from '@/shared/contracts';
 import { workflowRoutingTargetKeys } from '@/app/backend/runtime/contracts/workflowRouting';
 
 export function parseProviderSetDefaultInput(input: unknown): ProviderSetDefaultInput {
@@ -103,6 +106,26 @@ export function parseProviderSetSpecialistDefaultInput(input: unknown): Provider
         modeKey: target.modeKey,
         providerId: readProviderId(source.providerId, 'providerId'),
         modelId: readString(source.modelId, 'modelId'),
+    };
+}
+
+export function parseProviderSetModelRoleDefaultInput(input: unknown): ProviderSetModelRoleDefaultInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        role: readEnumValue(source.role, 'role', internalModelRoles),
+        providerId: readProviderId(source.providerId, 'providerId'),
+        modelId: readString(source.modelId, 'modelId'),
+    };
+}
+
+export function parseProviderClearModelRoleDefaultInput(input: unknown): ProviderClearModelRoleDefaultInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        role: readEnumValue(source.role, 'role', internalModelRoles),
     };
 }
 
@@ -351,6 +374,8 @@ export function parseProviderListModelProvidersInput(input: unknown): ProviderLi
 
 export const providerSetDefaultInputSchema = createParser(parseProviderSetDefaultInput);
 export const providerSetSpecialistDefaultInputSchema = createParser(parseProviderSetSpecialistDefaultInput);
+export const providerSetModelRoleDefaultInputSchema = createParser(parseProviderSetModelRoleDefaultInput);
+export const providerClearModelRoleDefaultInputSchema = createParser(parseProviderClearModelRoleDefaultInput);
 export const providerSetWorkflowRoutingPreferenceInputSchema = createParser(
     parseProviderSetWorkflowRoutingPreferenceInput
 );

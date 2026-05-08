@@ -80,6 +80,18 @@ export function buildAlphaEvalScenarios(): AlphaEvalScenario[] {
                 'src/components/settings/modesSettings/modesInstructionsControllerShared.test.ts',
             ]
         ),
+        createVitestScenario(
+            'model-family-optimization-and-prompt-transparency',
+            'Model-family optimization and effective-prompt transparency remain visible and role-aware',
+            [
+                'electron/backend/runtime/services/modelOptimization/profileRegistry.test.ts',
+                'electron/backend/runtime/services/context/preparedContextLedger.test.ts',
+                'electron/backend/runtime/services/runContract/service.test.ts',
+                'electron/backend/trpc/__tests__/runtime-contracts.provider-selection.defaults.test.ts',
+                'src/components/settings/providerSettings/hooks/useProviderSpecialistDefaultsController.test.tsx',
+                'src/components/settings/contextSettings/contextResolvedSummarySection.test.tsx',
+            ]
+        ),
     ];
 }
 

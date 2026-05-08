@@ -31,6 +31,7 @@ import {
     clearWorkflowRoutingPreference,
     setSpecialistDefault,
 } from '@/app/backend/providers/service/preferenceService';
+import { modelRoleDefaultService } from '@/app/backend/runtime/services/profile/modelRoleDefaults';
 import { getProviderControlSnapshot } from '@/app/backend/providers/service/projectionService';
 import {
     cancelProviderAuth,
@@ -76,6 +77,8 @@ import type {
     ProviderListModelProvidersInput,
     ProviderSetModelRoutingPreferenceInput,
     ProviderSetWorkflowRoutingPreferenceInput,
+    ProviderSetModelRoleDefaultInput,
+    ProviderClearModelRoleDefaultInput,
     ProviderClearWorkflowRoutingPreferenceInput,
     RuntimeProviderId,
 } from '@/app/backend/runtime/contracts';
@@ -133,6 +136,21 @@ class ProviderManagementService {
     async getSpecialistDefaults(profileId: string) {
         await this.ensureNormalizedProviderProfileState(profileId);
         return getSpecialistDefaults(profileId);
+    }
+
+    async getModelRoleDefaults(profileId: string) {
+        await this.ensureNormalizedProviderProfileState(profileId);
+        return modelRoleDefaultService.listRoleDefaults(profileId);
+    }
+
+    async setModelRoleDefault(input: ProviderSetModelRoleDefaultInput) {
+        await this.ensureNormalizedProviderProfileState(input.profileId);
+        return modelRoleDefaultService.setRoleDefault(input);
+    }
+
+    async clearModelRoleDefault(input: ProviderClearModelRoleDefaultInput) {
+        await this.ensureNormalizedProviderProfileState(input.profileId);
+        return modelRoleDefaultService.clearRoleDefault(input);
     }
 
     async setSpecialistDefault(input: {

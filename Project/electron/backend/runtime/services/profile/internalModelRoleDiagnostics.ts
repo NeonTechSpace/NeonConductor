@@ -1,119 +1,39 @@
-import { providerStore } from '@/app/backend/persistence/stores';
 import type {
     InternalModelRoleDiagnosticRecord,
     InternalModelRoleDiagnostics,
     PlannerTargetDiagnosticRecord,
-    RuntimeProviderId,
 } from '@/app/backend/runtime/contracts';
 import { resolvePlanningWorkflowRoutingRunTarget } from '@/app/backend/runtime/services/plan/workflowRoutingTarget';
-import { memoryRetrievalModelService } from '@/app/backend/runtime/services/profile/memoryRetrievalModel';
-import { utilityModelService } from '@/app/backend/runtime/services/profile/utilityModel';
+import { modelRoleDefaultService } from '@/app/backend/runtime/services/profile/modelRoleDefaults';
 
 import { getWorkflowRoutingTargetLabel } from '@/shared/workflowRouting';
 
-function buildRoleRecord(input: InternalModelRoleDiagnosticRecord): InternalModelRoleDiagnosticRecord {
-    return input;
-}
-
 export class InternalModelRoleDiagnosticsService {
     async getDiagnostics(profileId: string): Promise<InternalModelRoleDiagnostics> {
-        const defaults = await providerStore.getDefaults(profileId);
-        const sharedDefaultProviderId =
-            typeof defaults.providerId === 'string' ? (defaults.providerId as RuntimeProviderId) : undefined;
-        const sharedDefaultModelId = defaults.modelId;
+        const roleDefaults = await modelRoleDefaultService.listRoleDefaults(profileId);
+        const roles: InternalModelRoleDiagnosticRecord[] = roleDefaults.map((roleDefault) => ({
+            role: roleDefault.role,
+            label: roleDefault.role
+                .split('_')
+                .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+                .join(' '),
+            status: roleDefault.status,
+            ...(roleDefault.providerId ? { providerId: roleDefault.providerId } : {}),
+            ...(roleDefault.modelId ? { modelId: roleDefault.modelId } : {}),
+            sourceLabel: roleDefault.sourceLabel,
+            ...(roleDefault.detail ? { detail: roleDefault.detail } : {}),
+        }));
 
-        const [utilityPreference, memoryRetrievalPreference, simplePlannerTarget, advancedPlannerTarget] =
-            await Promise.all([
-                sharedDefaultProviderId && sharedDefaultModelId
-                    ? utilityModelService.resolveUtilityModelTarget({
-                          profileId,
-                          fallbackProviderId: sharedDefaultProviderId,
-                          fallbackModelId: sharedDefaultModelId,
-                      })
-                    : Promise.resolve(undefined),
-                memoryRetrievalModelService.getMemoryRetrievalModelPreference(profileId),
-                resolvePlanningWorkflowRoutingRunTarget({
-                    profileId,
-                    planningDepth: 'simple',
-                }),
-                resolvePlanningWorkflowRoutingRunTarget({
-                    profileId,
-                    planningDepth: 'advanced',
-                }),
-            ]);
-
-        const roles: InternalModelRoleDiagnosticRecord[] = [
-            buildRoleRecord({
-                role: 'chat',
-                label: 'Chat',
-                status: sharedDefaultProviderId && sharedDefaultModelId ? 'configured' : 'unconfigured',
-                ...(sharedDefaultProviderId ? { providerId: sharedDefaultProviderId } : {}),
-                ...(sharedDefaultModelId ? { modelId: sharedDefaultModelId } : {}),
-                sourceLabel: 'Shared conversation default',
-                ...(sharedDefaultProviderId && sharedDefaultModelId
-                    ? {}
-                    : { detail: 'No shared default provider/model is available.' }),
+        const [simplePlannerTarget, advancedPlannerTarget] = await Promise.all([
+            resolvePlanningWorkflowRoutingRunTarget({
+                profileId,
+                planningDepth: 'simple',
             }),
-            buildRoleRecord({
-                role: 'planner',
-                label: 'Planner',
-                status: simplePlannerTarget ? 'configured' : 'unconfigured',
-                ...(simplePlannerTarget?.providerId ? { providerId: simplePlannerTarget.providerId } : {}),
-                ...(simplePlannerTarget?.modelId ? { modelId: simplePlannerTarget.modelId } : {}),
-                sourceLabel: simplePlannerTarget ? 'Planning workflow routing' : 'Planner routing unavailable',
-                ...(simplePlannerTarget
-                    ? {}
-                    : { detail: 'No compatible planning target could be resolved for the planner role.' }),
+            resolvePlanningWorkflowRoutingRunTarget({
+                profileId,
+                planningDepth: 'advanced',
             }),
-            buildRoleRecord({
-                role: 'apply',
-                label: 'Apply',
-                status: sharedDefaultProviderId && sharedDefaultModelId ? 'fallback' : 'unconfigured',
-                ...(sharedDefaultProviderId ? { providerId: sharedDefaultProviderId } : {}),
-                ...(sharedDefaultModelId ? { modelId: sharedDefaultModelId } : {}),
-                sourceLabel: 'Shared conversation default fallback',
-                detail: 'Runnable agent and worker routing still falls back to the shared default in this slice.',
-            }),
-            buildRoleRecord({
-                role: 'utility',
-                label: 'Utility',
-                status: utilityPreference?.source === 'utility' ? 'configured' : sharedDefaultProviderId ? 'fallback' : 'unconfigured',
-                ...(utilityPreference?.providerId ? { providerId: utilityPreference.providerId } : {}),
-                ...(utilityPreference?.modelId ? { modelId: utilityPreference.modelId } : {}),
-                sourceLabel:
-                    utilityPreference?.source === 'utility'
-                        ? 'Saved Utility AI selection'
-                        : 'Falls back to the shared conversation default',
-            }),
-            buildRoleRecord({
-                role: 'memory_retrieval',
-                label: 'Memory Retrieval',
-                status: memoryRetrievalPreference.selection ? 'configured' : 'unconfigured',
-                ...(memoryRetrievalPreference.selection?.providerId
-                    ? { providerId: memoryRetrievalPreference.selection.providerId }
-                    : {}),
-                ...(memoryRetrievalPreference.selection?.modelId
-                    ? { modelId: memoryRetrievalPreference.selection.modelId }
-                    : {}),
-                sourceLabel: memoryRetrievalPreference.selection
-                    ? 'Saved memory retrieval selection'
-                    : 'No memory retrieval model configured',
-            }),
-            buildRoleRecord({
-                role: 'embeddings',
-                label: 'Embeddings',
-                status: 'unconfigured',
-                sourceLabel: 'Read-only diagnostic in this slice',
-                detail: 'Embeddings are reserved for a later batch and are not independently configurable yet.',
-            }),
-            buildRoleRecord({
-                role: 'rerank',
-                label: 'Rerank',
-                status: 'unconfigured',
-                sourceLabel: 'Read-only diagnostic in this slice',
-                detail: 'Reranking is reserved for a later batch and is not independently configurable yet.',
-            }),
-        ];
+        ]);
 
         const plannerTargets: PlannerTargetDiagnosticRecord[] = [
             {

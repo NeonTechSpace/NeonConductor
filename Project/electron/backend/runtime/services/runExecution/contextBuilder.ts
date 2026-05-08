@@ -16,7 +16,13 @@ import type {
     StartRunInput,
 } from '@/app/backend/runtime/services/runExecution/types';
 
-import type { ModeDefinition, ResolvedWorkspaceContext, RuntimeProviderId, TopLevelTab } from '@/shared/contracts';
+import type {
+    ModeDefinition,
+    ModelOptimizationProfile,
+    ResolvedWorkspaceContext,
+    RuntimeProviderId,
+    TopLevelTab,
+} from '@/shared/contracts';
 import type { WorkerPresetId } from '@/shared/workerPresetCatalog';
 
 function toRunExecutionErrorCode(code: OperationalErrorCode): RunExecutionErrorCode {
@@ -55,6 +61,7 @@ export async function buildRunContext(input: {
     workspaceContext?: ResolvedWorkspaceContext;
     workspaceEnvironmentSnapshot?: WorkspaceEnvironmentSnapshot;
     runtimeToolGuidanceContext?: RuntimeToolGuidanceContext;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     browserContext?: StartRunInput['browserContext'];
     workerPresetId?: WorkerPresetId;
     resolvedMode: {
@@ -73,6 +80,7 @@ export async function buildRunContext(input: {
             : {}),
         ...(input.runtimeToolGuidanceContext ? { runtimeToolGuidanceContext: input.runtimeToolGuidanceContext } : {}),
         ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
+        ...(input.modelOptimizationProfile ? { modelOptimizationProfile: input.modelOptimizationProfile } : {}),
         resolvedMode: input.resolvedMode,
     });
     if (systemPreludeResult.isErr()) {

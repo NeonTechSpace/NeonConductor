@@ -275,6 +275,9 @@ export function prepareRunContractPreview(input: {
             ...(input.prepared.researchTarget ? { researchTarget: input.prepared.researchTarget } : {}),
         }),
         preparedContext,
+        ...(input.prepared.modelOptimizationProfile
+            ? { modelOptimizationProfile: input.prepared.modelOptimizationProfile }
+            : {}),
         cache: {
             digest: input.prepared.runContext?.digest ?? preparedContext.digest.fullDigest,
             strategy: input.prepared.resolvedCache.strategy,

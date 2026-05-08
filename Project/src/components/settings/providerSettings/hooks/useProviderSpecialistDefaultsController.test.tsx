@@ -64,6 +64,16 @@ const controllerTestState = vi.hoisted(() => {
                         modelId: 'kilo/frontier',
                     },
                 ],
+                modelRoleDefaults: [
+                    {
+                        role: 'planner',
+                        providerId: 'kilo',
+                        modelId: 'kilo/frontier',
+                        source: 'role_override',
+                        status: 'configured',
+                        sourceLabel: 'Saved role override',
+                    },
+                ],
             },
         },
         isLoading: false,
@@ -141,6 +151,9 @@ vi.mock('@/web/trpc/client', () => ({
             setSpecialistDefault: {
                 useMutation: controllerTestState.useMutationMock,
             },
+            setModelRoleDefault: {
+                useMutation: controllerTestState.useMutationMock,
+            },
         },
     },
 }));
@@ -181,6 +194,12 @@ describe('useProviderSpecialistDefaultsController', () => {
         expect(lastControllerState?.groups[0]?.targets[0]?.selectedModelId).toBe('kilo/frontier');
         expect(lastControllerState?.groups[0]?.targets[1]?.selectedProviderId).toBe('openai');
         expect(lastControllerState?.groups[0]?.targets[1]?.selectedModelId).toBe('openai/gpt-4o');
+        expect(lastControllerState?.roleDefaults.find((roleDefault) => roleDefault.role === 'planner')).toMatchObject({
+            selectedProviderId: 'kilo',
+            selectedModelId: 'kilo/frontier',
+            sourceLabel: 'Saved role override',
+            status: 'configured',
+        });
 
         controllerTestState.mutationResult.mutateAsync.mockRejectedValueOnce(new Error('save failed'));
         lastControllerState?.saveSpecialistDefault({
@@ -198,10 +217,31 @@ describe('useProviderSpecialistDefaultsController', () => {
         });
     });
 
+    it('saves canonical model-role defaults with provider and model context', () => {
+        renderToStaticMarkup(<ControllerProbe />);
+
+        lastControllerState?.saveModelRoleDefault({
+            role: 'apply',
+            providerId: 'openai',
+            modelId: 'openai/gpt-4o-mini',
+        });
+
+        expect(controllerTestState.mutationResult.mutateAsync).toHaveBeenCalledWith({
+            profileId: 'profile_default',
+            role: 'apply',
+            providerId: 'openai',
+            modelId: 'openai/gpt-4o-mini',
+        });
+    });
+
     it('invalidates provider control and shell bootstrap state after a successful save', () => {
         renderToStaticMarkup(<ControllerProbe />);
 
-        controllerTestState.mutationConfigs.onSuccess?.(
+        const onSuccess = controllerTestState.useMutationMock.mock.calls[0]?.[0]?.onSuccess as
+            | ((...args: unknown[]) => void)
+            | undefined;
+
+        onSuccess?.(
             {
                 success: true,
             },

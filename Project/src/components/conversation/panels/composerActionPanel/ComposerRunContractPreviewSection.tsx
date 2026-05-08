@@ -351,6 +351,31 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                                 {String(input.preview.preparedContext.activeContributorCount)} contributors
                             </p>
                         </div>
+                        {input.preview.modelOptimizationProfile ? (
+                            <div className='rounded-xl border px-3 py-2'>
+                                <p className='text-muted-foreground'>Model Optimization</p>
+                                <p className='font-medium'>
+                                    {input.preview.modelOptimizationProfile.label} ·{' '}
+                                    {input.preview.modelOptimizationProfile.modelRole}
+                                </p>
+                                {input.preview.modelOptimizationProfile.warnings.length > 0 ? (
+                                    <p className='text-muted-foreground mt-1'>
+                                        {String(input.preview.modelOptimizationProfile.warnings.length)} compatibility
+                                        warning
+                                        {input.preview.modelOptimizationProfile.warnings.length === 1 ? '' : 's'}
+                                    </p>
+                                ) : null}
+                            </div>
+                        ) : null}
+                        {input.preview.preparedContext.effectivePromptPreview ? (
+                            <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
+                                <p className='text-muted-foreground'>Effective Prompt</p>
+                                <p className='font-medium'>
+                                    {String(input.preview.preparedContext.effectivePromptPreview.includedContributorCount)}{' '}
+                                    contributors · {input.preview.preparedContext.effectivePromptPreview.digest}
+                                </p>
+                            </div>
+                        ) : null}
                         <div className='rounded-xl border px-3 py-2'>
                             <p className='text-muted-foreground'>Attachments</p>
                             <p className='font-medium'>

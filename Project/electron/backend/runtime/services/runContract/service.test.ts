@@ -44,6 +44,20 @@ function createPreparedRunStart(): PreparedRunStart {
             apiFamily: 'kilo_gateway',
             routedApiFamily: 'openai_compatible',
         },
+        modelOptimizationProfile: {
+            profileId: 'family.kilo_routed',
+            familyProfileId: 'family.kilo_routed',
+            family: 'kilo_routed',
+            label: 'Kilo Routed',
+            providerId: 'kilo',
+            modelId: kiloFrontierModelId,
+            modelRole: 'chat',
+            contextStrategy: 'gateway request',
+            promptTemplatePolicy: 'gateway-compatible prompt ledger',
+            toolProtocol: 'kilo_gateway',
+            unsupportedParameterPolicy: 'omit_with_warning',
+            warnings: [],
+        },
         resolvedAuth: {
             authMethod: 'none',
         },
@@ -205,6 +219,7 @@ describe('runContract service', () => {
         expect(preview?.trustSummary.contributorCountByTrustLevel.user_input).toBe(4);
         expect(preview?.trustSummary.contributorCountByInstructionAuthority.instruct).toBe(2);
         expect(preview?.trustSummary.contributorCountByInstructionAuthority.contextualize).toBe(2);
+        expect(preview?.modelOptimizationProfile?.family).toBe('kilo_routed');
     });
 
     it('treats browser packet changes as material compatibility drift', () => {

@@ -412,6 +412,7 @@ export class RunExecutionService {
             providerId: prepared.activeTarget.providerId,
             modelId: prepared.activeTarget.modelId,
             runtime: prepared.runtimeDescriptor,
+            ...(prepared.modelOptimizationProfile ? { modelOptimizationProfile: prepared.modelOptimizationProfile } : {}),
             ...(prepared.openAIExecutionMode ? { openAIExecutionMode: prepared.openAIExecutionMode } : {}),
             authMethod: prepared.resolvedAuth.authMethod,
             runtimeOptions: input.runtimeOptions,

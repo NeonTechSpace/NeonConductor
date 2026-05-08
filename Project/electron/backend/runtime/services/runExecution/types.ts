@@ -20,6 +20,7 @@ import type {
     ComposerImageAttachmentInput,
     EntityId,
     ModeDefinition,
+    ModelOptimizationProfile,
     OpenAIExecutionMode,
     PreparedContextSummary,
     ResolvedContextState,
@@ -215,6 +216,7 @@ export interface PreparedRunStart {
     };
     activeTarget: ResolvedRunTarget;
     runtimeDescriptor: ProviderRuntimeDescriptor;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     resolvedAuth: ResolvedRunAuth;
     resolvedCache: RunCacheResolution;
     initialTransport: RunTransportResolution;

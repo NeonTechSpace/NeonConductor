@@ -1,6 +1,7 @@
 export type * from '@/shared/contracts/types/common';
 export type * from '@/shared/contracts/types/checkpoint';
 export type * from '@/shared/contracts/types/profile';
+export type * from '@/shared/contracts/types/modelOptimization';
 export * from '@/shared/contracts/types/fileReadGuard';
 export type * from '@/shared/contracts/types/diff';
 export * from '@/shared/contracts/types/runtimeExecution';

@@ -1,5 +1,6 @@
 import { kiloRoutingPreferenceStore } from '@/app/backend/persistence/stores';
 import type { ProviderRuntimeInput } from '@/app/backend/providers/types';
+import { resolveModelOptimizationProfile } from '@/app/backend/runtime/services/modelOptimization/profileRegistry';
 import { resolveRunCache } from '@/app/backend/runtime/services/runExecution/cacheKey';
 import { prepareRunnableCandidate } from '@/app/backend/runtime/services/runExecution/compatibility';
 import { buildRunContext } from '@/app/backend/runtime/services/runExecution/contextBuilder';
@@ -147,6 +148,14 @@ export async function prepareRunStart(
         mode: resolvedModeResult.value.mode,
         guidanceContext: runtimeToolGuidanceContext,
     });
+    const modelOptimizationProfile = resolveModelOptimizationProfile({
+        providerId: preparedCandidate.target.providerId,
+        modelId: preparedCandidate.target.modelId,
+        runtime: preparedCandidate.runtimeDescriptor,
+        modelCapabilities: preparedCandidate.modelCapabilities,
+        modelRole: resolvedModeResult.value.mode.internalModelRole,
+        runtimeOptions: input.runtimeOptions,
+    });
     const runContextResult = await buildRunContext({
         profileId: input.profileId,
         sessionId: input.sessionId,
@@ -164,6 +173,7 @@ export async function prepareRunStart(
             : {}),
         runtimeToolGuidanceContext,
         ...(input.workerPresetId ? { workerPresetId: input.workerPresetId } : {}),
+        modelOptimizationProfile,
     });
     if (runContextResult.isErr()) {
         return errRunExecution(runContextResult.error.code, runContextResult.error.message, {
@@ -222,6 +232,7 @@ export async function prepareRunStart(
         resolvedMode: resolvedModeResult.value,
         activeTarget: preparedCandidate.target,
         runtimeDescriptor: preparedCandidate.runtimeDescriptor,
+        modelOptimizationProfile,
         resolvedAuth: preparedCandidate.resolvedAuth,
         resolvedCache: resolvedCacheResult.value,
         initialTransport: preparedCandidate.initialTransport,

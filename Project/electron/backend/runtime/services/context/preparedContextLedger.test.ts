@@ -5,6 +5,7 @@ import {
     createDefaultPreparedContextProfileDefaults,
 } from '@/app/backend/runtime/contracts';
 import {
+    buildEffectivePromptPreview,
     buildPreparedContextDigestSummary,
     resolvePreparedContextLedger,
 } from '@/app/backend/runtime/services/context/preparedContextLedger';
@@ -76,6 +77,14 @@ describe('preparedContextLedger', () => {
         );
         expect(ledger.checkpointSummaries.bootstrap.includedContributorCount).toBe(2);
         expect(ledger.checkpointSummaries.post_compaction_reseed.active).toBe(false);
+        expect(ledger.contributors.find((contributor) => contributor.id === 'runtime_prelude')?.editability).toMatchObject({
+            classification: 'runtime-authority-visible',
+            editable: false,
+        });
+        expect(ledger.contributors.find((contributor) => contributor.id === 'app_instructions:bootstrap')?.editability).toMatchObject({
+            classification: 'editable',
+            editable: true,
+        });
     });
 
     it('tracks compaction-reseed checkpoint digests when reseed contributors are active', async () => {
@@ -125,5 +134,43 @@ describe('preparedContextLedger', () => {
         expect(ledger.checkpointSummaries.post_compaction_reseed.active).toBe(true);
         expect(digestSummary.checkpoints.post_compaction_reseed.includedContributorCount).toBe(2);
         expect(digestSummary.cacheabilityHint).toContain('post-compaction reseed');
+    });
+
+    it('builds an effective-prompt preview from included contributors with editability metadata', async () => {
+        const ledger = await resolvePreparedContextLedger({
+            modelId: 'openai/gpt-5',
+            contributorSpecs: [
+                {
+                    id: 'runtime_prompt_fragment:model_family:openai_responses',
+                    kind: 'runtime_prompt_fragment',
+                    group: 'runtime_prompt_orchestration',
+                    label: 'Model family profile: OpenAI Responses',
+                    source: {
+                        kind: 'runtime_prompt_fragment',
+                        key: 'model_family:openai_responses',
+                        label: 'Model family profile: OpenAI Responses',
+                    },
+                    messages: [{ role: 'system', parts: [{ type: 'text', text: 'Use Responses tools.' }] }],
+                    fixedCheckpoint: 'bootstrap',
+                },
+            ],
+            profileDefaults: createDefaultPreparedContextProfileDefaults(),
+            modeOverrides: createDefaultPreparedContextModeOverrides(),
+            compactionReseedActive: false,
+        });
+
+        const preview = buildEffectivePromptPreview({
+            contributors: ledger.contributors,
+            digest: ledger.contributorDigest,
+        });
+
+        expect(preview.includedContributorCount).toBe(1);
+        expect(preview.contributors[0]).toMatchObject({
+            label: 'Model family profile: OpenAI Responses',
+            editability: {
+                classification: 'runtime-authority-visible',
+                editable: false,
+            },
+        });
     });
 });

@@ -5,8 +5,10 @@ import type { ModeDefinition } from '@/shared/contracts';
 
 const providerStoreMock = vi.hoisted(() => ({
     getDefaults: vi.fn(),
+    getModelRoleDefaults: vi.fn(),
     getSpecialistDefaults: vi.fn(),
     modelExists: vi.fn(),
+    providerExists: vi.fn(),
 }));
 
 vi.mock('@/app/backend/persistence/stores', () => ({
@@ -98,6 +100,8 @@ describe('resolveRunTarget boundaries', () => {
             modelId: 'openai/gpt-5',
         });
         providerStoreMock.getSpecialistDefaults.mockResolvedValue([]);
+        providerStoreMock.getModelRoleDefaults.mockResolvedValue([]);
+        providerStoreMock.providerExists.mockResolvedValue(true);
     });
 
     it('fails closed when a verified explicit model is unavailable for the provider', async () => {

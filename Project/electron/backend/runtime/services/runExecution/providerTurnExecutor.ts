@@ -17,7 +17,13 @@ import { createMessagePartRecorder } from '@/app/backend/runtime/services/runExe
 import { appendAssistantLifecycleStatusPart, createFirstOutputWatchdog, FIRST_OUTPUT_TIMEOUT_MS } from '@/app/backend/runtime/services/runExecution/firstOutputWatchdog';
 import { recordTransportSelectionIfChanged } from '@/app/backend/runtime/services/runExecution/transportSelectionRecorder';
 import { accumulateUsage, type UsageAccumulator } from '@/app/backend/runtime/services/runExecution/usage';
-import type { EntityId, KiloDynamicSort, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
+import type {
+    EntityId,
+    KiloDynamicSort,
+    ModelOptimizationProfile,
+    ProviderAuthMethod,
+    RuntimeProviderId,
+} from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
 export interface ProviderTurnExecutionState {
@@ -42,6 +48,7 @@ export interface ExecuteRunProviderTurnInput {
     providerId: RuntimeProviderId;
     modelId: string;
     runtime: ProviderRuntimeDescriptor;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     openAIExecutionMode?: import('@/shared/contracts').OpenAIExecutionMode;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: import('@/app/backend/runtime/services/runExecution/types').StartRunInput['runtimeOptions'];
@@ -115,6 +122,9 @@ function createProviderRuntimeInput(input: {
         providerId: executeRunInput.providerId,
         modelId: executeRunInput.modelId,
         runtime: executeRunInput.runtime,
+        ...(executeRunInput.modelOptimizationProfile
+            ? { modelOptimizationProfile: executeRunInput.modelOptimizationProfile }
+            : {}),
         promptText: executeRunInput.prompt,
         ...(input.conversationMessages.length > 0 ? { contextMessages: input.conversationMessages } : {}),
         ...(executeRunInput.toolDefinitions.length > 0

@@ -1,11 +1,16 @@
 import type {
     KiloDynamicSort,
     KiloRoutingMode,
+    InternalModelRole,
     OpenAIExecutionMode,
     ProviderAuthMethod,
     ProviderSecretKind,
     RuntimeProviderId,
 } from '@/app/backend/runtime/contracts/enums';
+import type {
+    ModelOptimizationProfile,
+    ModelRoleDefaultRecord,
+} from '@/app/backend/runtime/contracts/types/modelOptimization';
 import type {
     ProviderSpecialistDefaultModeKey,
     ProviderSpecialistDefaultTopLevelTab,
@@ -71,10 +76,28 @@ export interface ProviderSetSpecialistDefaultInput extends ProfileInput {
     modelId: string;
 }
 
+export interface ProviderSetModelRoleDefaultInput extends ProfileInput {
+    role: InternalModelRole;
+    providerId: RuntimeProviderId;
+    modelId: string;
+}
+
+export interface ProviderClearModelRoleDefaultInput extends ProfileInput {
+    role: InternalModelRole;
+}
+
 export interface WorkflowRoutingPreferenceRecord {
     targetKey: WorkflowRoutingTargetKey;
     providerId: RuntimeProviderId;
     modelId: string;
+}
+
+export interface ProviderModelRoleDefaultsResult {
+    roleDefaults: ModelRoleDefaultRecord[];
+}
+
+export interface ProviderModelFamilyProfilesResult {
+    profiles: ModelOptimizationProfile[];
 }
 
 export interface ProviderSetWorkflowRoutingPreferenceInput extends ProfileInput {

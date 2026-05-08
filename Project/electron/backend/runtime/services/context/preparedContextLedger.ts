@@ -11,6 +11,8 @@ import type {
     PreparedContextContributorSource,
     PreparedContextContributorSummary,
     PreparedContextDigestSummary,
+    EffectivePromptPreview,
+    PromptContributorEditabilityDetails,
 } from '@/app/backend/runtime/contracts';
 import type {
     PreparedContextEditablePromptLayerGroup,
@@ -70,6 +72,75 @@ function resolveContributorInstructionAuthority(
         default:
             return 'instruct';
     }
+}
+
+function resolveContributorEditability(input: {
+    contributor: Pick<PreparedContextContributorSpec, 'kind' | 'id' | 'source' | 'eligiblePromptLayerGroup'>;
+    checkpoint?: PreparedContextInjectionCheckpoint;
+}): PromptContributorEditabilityDetails {
+    if (input.contributor.kind === 'prompt_layer') {
+        return {
+            classification: 'editable',
+            label: 'Editable prompt layer',
+            editable: true,
+            editTarget: {
+                surface: 'prompt_layers',
+                key: input.contributor.source.key,
+                label: input.contributor.source.label,
+            },
+        };
+    }
+    if (input.contributor.kind === 'mode_role_definition' || input.contributor.kind === 'mode_custom_instructions') {
+        return {
+            classification: 'editable',
+            label: 'Editable mode prompt',
+            editable: true,
+            editTarget: {
+                surface: 'modes',
+                key: input.contributor.source.key,
+                label: input.contributor.source.label,
+            },
+        };
+    }
+    if (input.contributor.eligiblePromptLayerGroup) {
+        return {
+            classification: 'toggleable',
+            label: 'Toggleable prepared-context layer',
+            editable: false,
+            editTarget: {
+                surface: 'context_controls',
+                key: `${input.contributor.eligiblePromptLayerGroup}:${input.checkpoint ?? 'bootstrap'}`,
+                label: input.contributor.source.label,
+            },
+        };
+    }
+    if (
+        input.contributor.kind === 'retrieved_memory' ||
+        input.contributor.kind === 'compaction_summary' ||
+        input.contributor.kind === 'dynamic_skill_context'
+    ) {
+        return {
+            classification: 'generated-evidence',
+            label: 'Generated or retrieved evidence',
+            editable: false,
+            immutableReason: 'This contributor is derived evidence; edit the source memory, skill, or compaction state instead.',
+        };
+    }
+    if (input.contributor.kind === 'runtime_prompt_fragment') {
+        return {
+            classification: 'runtime-authority-visible',
+            label: 'Runtime authority fragment',
+            editable: false,
+            immutableReason:
+                'Runtime authority, model-family, sandbox, tool, evidence, and receipt fragments are visible for audit but not raw-editable.',
+        };
+    }
+    return {
+        classification: 'runtime-authority-visible',
+        label: 'Backend-owned context contributor',
+        editable: false,
+        immutableReason: 'This contributor is resolved by backend runtime state and is not ordinary prompt text.',
+    };
 }
 
 function digestMessages(prefix: string, messages: RunContextMessage[]): string {
@@ -215,6 +286,7 @@ export async function resolvePreparedContextLedger(input: {
                     instructionAuthority: resolveContributorInstructionAuthority(spec.kind),
                     ...(tokenCount !== undefined ? { tokenCount } : {}),
                     digest: digestMessages(`ctxcontrib-${spec.id}-${checkpoint}`, spec.messages),
+                    editability: resolveContributorEditability({ contributor: spec, checkpoint }),
                 });
             }
             continue;
@@ -258,6 +330,7 @@ export async function resolvePreparedContextLedger(input: {
             instructionAuthority: resolveContributorInstructionAuthority(spec.kind),
             ...(tokenCount !== undefined ? { tokenCount } : {}),
             digest: digestMessages(`ctxcontrib-${spec.id}`, spec.messages),
+            editability: resolveContributorEditability({ contributor: spec, checkpoint }),
             ...(spec.dynamicExpansion ? { dynamicExpansion: spec.dynamicExpansion } : {}),
         });
     }
@@ -290,6 +363,37 @@ export async function resolvePreparedContextLedger(input: {
                 }))
         ),
         compactionReseedActive: input.compactionReseedActive,
+    };
+}
+
+export function buildEffectivePromptPreview(input: {
+    contributors: PreparedContextContributorSummary[];
+    digest: string;
+}): EffectivePromptPreview {
+    const includedContributors = input.contributors.filter((contributor) => contributor.inclusionState === 'included');
+    const estimatedTokenCount = includedContributors.reduce((sum, contributor) => sum + (contributor.tokenCount ?? 0), 0);
+    return {
+        contributors: includedContributors.map((contributor) => ({
+            contributorId: contributor.id,
+            label: contributor.label,
+            sourceLabel: contributor.source.label,
+            checkpoint: contributor.injectionCheckpoint,
+            trustLevel: contributor.trustLevel,
+            instructionAuthority: contributor.instructionAuthority,
+            ...(contributor.tokenCount !== undefined ? { tokenCount: contributor.tokenCount } : {}),
+            digest: contributor.digest,
+            editability:
+                contributor.editability ??
+                {
+                    classification: 'runtime-authority-visible',
+                    label: 'Backend-owned context contributor',
+                    editable: false,
+                    immutableReason: 'This contributor was created before editability metadata was available.',
+                },
+        })),
+        includedContributorCount: includedContributors.length,
+        ...(estimatedTokenCount > 0 ? { estimatedTokenCount } : {}),
+        digest: input.digest,
     };
 }
 

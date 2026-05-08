@@ -8,6 +8,7 @@ import type { EntityId } from '@/app/backend/runtime/contracts/ids';
 import type { PreparedContextSummary } from '@/app/backend/runtime/contracts/types/context';
 import type { BrowserContextPacket, BrowserContextSummary } from '@/app/backend/runtime/contracts/types/devBrowser';
 import type { FileReadGuardDecisionReason } from '@/app/backend/runtime/contracts/types/fileReadGuard';
+import type { ModelOptimizationProfile } from '@/app/backend/runtime/contracts/types/modelOptimization';
 import type { ResearchTargetRequest, RunResearchTarget } from '@/app/backend/runtime/contracts/types/research';
 import type { SandboxPolicySummary } from '@/app/backend/runtime/contracts/types/runtime';
 import type {
@@ -115,6 +116,7 @@ export interface RunContractPreview {
     steeringSnapshot: SteeringSnapshot;
     executionTarget: RunContractExecutionTargetSummary;
     preparedContext: PreparedContextSummary;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     cache: {
         digest: string;
         strategy: RuntimeRunOptions['cache']['strategy'];

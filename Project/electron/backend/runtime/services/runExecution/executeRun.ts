@@ -19,7 +19,7 @@ import type {
     StartRunInput,
 } from '@/app/backend/runtime/services/runExecution/types';
 
-import type { OpenAIExecutionMode, RunResearchTarget } from '@/shared/contracts';
+import type { ModelOptimizationProfile, OpenAIExecutionMode, RunResearchTarget } from '@/shared/contracts';
 import type { EntityId, KiloDynamicSort, ProviderAuthMethod, RuntimeProviderId } from '@/shared/contracts';
 import type { KiloModeHeader } from '@/shared/kiloModels';
 
@@ -37,6 +37,7 @@ export interface ExecuteRunInput {
     providerId: RuntimeProviderId;
     modelId: string;
     runtime: ProviderRuntimeDescriptor;
+    modelOptimizationProfile?: ModelOptimizationProfile;
     openAIExecutionMode?: OpenAIExecutionMode;
     authMethod: ProviderAuthMethod | 'none';
     runtimeOptions: StartRunInput['runtimeOptions'];

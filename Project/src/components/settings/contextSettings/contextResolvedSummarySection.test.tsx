@@ -155,6 +155,49 @@ describe('ContextResolvedSummarySection', () => {
                                 },
                             },
                         },
+                        effectivePromptPreview: {
+                            digest: 'ctxcontributors-full',
+                            includedContributorCount: 2,
+                            estimatedTokenCount: 54,
+                            contributors: [
+                                {
+                                    contributorId: 'app:bootstrap',
+                                    label: 'App instructions',
+                                    sourceLabel: 'App instructions',
+                                    trustLevel: 'trusted_instruction',
+                                    instructionAuthority: 'instruct',
+                                    checkpoint: 'bootstrap',
+                                    tokenCount: 42,
+                                    digest: 'ctxcontrib-app',
+                                    editability: {
+                                        classification: 'editable',
+                                        label: 'Editable',
+                                        editable: true,
+                                        editTarget: {
+                                            surface: 'prompt_layers',
+                                            key: 'app_global_instructions',
+                                            label: 'App instructions',
+                                        },
+                                    },
+                                },
+                                {
+                                    contributorId: 'compaction_summary',
+                                    label: 'Compacted conversation summary',
+                                    sourceLabel: 'Compacted conversation summary',
+                                    trustLevel: 'promoted_fact',
+                                    instructionAuthority: 'retrieval_only',
+                                    checkpoint: 'post_compaction_reseed',
+                                    tokenCount: 12,
+                                    digest: 'ctxcontrib-compaction',
+                                    editability: {
+                                        classification: 'generated-evidence',
+                                        label: 'Generated Evidence',
+                                        editable: false,
+                                        immutableReason: 'Generated evidence must preserve provenance.',
+                                    },
+                                },
+                            ],
+                        },
                     },
                     estimate: {
                         providerId: 'openai',
@@ -176,5 +219,9 @@ describe('ContextResolvedSummarySection', () => {
         expect(html).toContain('Prepared context is less stable while post-compaction reseed is active.');
         expect(html).toContain('ctxcontributors-full');
         expect(html).toContain('ctxchk-post');
+        expect(html).toContain('Effective Prompt Preview');
+        expect(html).toContain('editable');
+        expect(html).toContain('generated-evidence');
+        expect(html).toContain('Generated evidence must preserve provenance.');
     });
 });

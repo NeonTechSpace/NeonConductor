@@ -48,6 +48,7 @@ export const providerQueryProcedures = {
         return {
             defaults: await providerManagementService.getDefaults(input.profileId),
             specialistDefaults: await providerManagementService.getSpecialistDefaults(input.profileId),
+            modelRoleDefaults: await providerManagementService.getModelRoleDefaults(input.profileId),
             workflowRoutingPreferences: await providerManagementService.getWorkflowRoutingPreferences(
                 input.profileId
             ),

@@ -19,6 +19,19 @@ export function QueuedRunReviewSummary({ entry }: { entry: SessionOutboxEntry })
                 {String(entry.latestRunContract?.preparedContext.activeContributorCount ?? 0)}
             </p>
             <p className='text-muted-foreground'>Execution target: {formatQueuedExecutionTargetSummary(entry)}</p>
+            {entry.latestRunContract?.modelOptimizationProfile ? (
+                <p className='text-muted-foreground'>
+                    Model optimization: {entry.latestRunContract.modelOptimizationProfile.label} ·{' '}
+                    {entry.latestRunContract.modelOptimizationProfile.modelRole}
+                </p>
+            ) : null}
+            {entry.latestRunContract?.preparedContext.effectivePromptPreview ? (
+                <p className='text-muted-foreground'>
+                    Effective prompt:{' '}
+                    {String(entry.latestRunContract.preparedContext.effectivePromptPreview.includedContributorCount)}{' '}
+                    contributors
+                </p>
+            ) : null}
             <p className='text-muted-foreground'>
                 Browser context:{' '}
                 {entry.browserContextSummary

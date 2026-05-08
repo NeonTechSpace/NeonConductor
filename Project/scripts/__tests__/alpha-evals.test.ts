@@ -14,6 +14,7 @@ describe('alpha eval report', () => {
             'cloud-session-boundaries',
             'repo-research-acceptance',
             'prompt-orchestration-hardening',
+            'model-family-optimization-and-prompt-transparency',
         ]);
         expect(scenarios.every((scenario) => scenario.args.includes('vitest'))).toBe(true);
         expect(scenarios.every((scenario) => scenario.args.includes('--fileParallelism=false'))).toBe(true);

@@ -1,6 +1,7 @@
 import { providerStore } from '@/app/backend/persistence/stores';
 import { toSupportedProviderIdResult } from '@/app/backend/providers/registry';
 import { resolveModeRoutingIntent } from '@/app/backend/runtime/services/mode/routing';
+import { modelRoleDefaultService } from '@/app/backend/runtime/services/profile/modelRoleDefaults';
 import {
     errRunExecution,
     okRunExecution,
@@ -56,6 +57,24 @@ export async function resolveRequestedOrDefaultRunTarget(input: {
         providerStore.getDefaults(input.profileId),
         providerStore.getSpecialistDefaults(input.profileId),
     ]);
+
+    if (input.mode) {
+        const roleDefault = await modelRoleDefaultService.resolveRoleDefault({
+            profileId: input.profileId,
+            role: input.mode.internalModelRole,
+        });
+        if (
+            roleDefault.source === 'role_override' &&
+            roleDefault.status === 'configured' &&
+            roleDefault.providerId &&
+            roleDefault.modelId
+        ) {
+            return okRunExecution({
+                providerId: roleDefault.providerId,
+                modelId: canonicalizeProviderModelId(roleDefault.providerId, roleDefault.modelId),
+            });
+        }
+    }
 
     const specialistAlias = resolveModeRoutingIntent(input.mode).specialistAlias;
     const specialistDefault = specialistAlias
