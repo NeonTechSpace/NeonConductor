@@ -22,6 +22,10 @@ vi.mock('@/web/components/settings/appSettings/mcpSection', () => ({
     McpSettingsSection: () => <div>mcp section</div>,
 }));
 
+vi.mock('@/web/components/settings/appSettings/keybindingsSection', () => ({
+    KeybindingsSettingsSection: () => <div>keybindings section</div>,
+}));
+
 vi.mock('@/web/components/window/privacyModeToggle', () => ({
     default: () => <div>privacy toggle</div>,
 }));
@@ -170,6 +174,13 @@ describe('AppSettingsView', () => {
 
         expect(html).toContain('MCP');
         expect(html).toContain('mcp section');
+    });
+
+    it('renders the keybindings subsection inside App settings', () => {
+        const html = renderToStaticMarkup(<AppSettingsView profileId='profile_default' subsection='keybindings' />);
+
+        expect(html).toContain('Keybindings');
+        expect(html).toContain('keybindings section');
     });
 
     it('keeps factory reset fail-closed and preserves the mutation payload', async () => {

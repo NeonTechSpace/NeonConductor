@@ -516,6 +516,12 @@ export interface AppComposerMediaSettingsTable {
     updated_at: string;
 }
 
+export interface AppWorkbenchCommandSettingsTable {
+    id: string;
+    keybinding_overrides_json: string;
+    updated_at: string;
+}
+
 export interface ProfileContextSettingsTable {
     profile_id: string;
     override_mode: 'inherit' | 'percent' | 'fixed_tokens';
@@ -1381,6 +1387,7 @@ export interface DatabaseSchema {
     app_prompt_layer_settings: AppPromptLayerSettingsTable;
     built_in_mode_prompt_overrides: BuiltInModePromptOverridesTable;
     app_composer_media_settings: AppComposerMediaSettingsTable;
+    app_workbench_command_settings: AppWorkbenchCommandSettingsTable;
     profile_context_settings: ProfileContextSettingsTable;
     session_context_compactions: SessionContextCompactionsTable;
     session_context_compaction_preparations: SessionContextCompactionPreparationsTable;

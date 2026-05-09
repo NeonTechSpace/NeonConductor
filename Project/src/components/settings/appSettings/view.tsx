@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { KeybindingsSettingsSection } from '@/web/components/settings/appSettings/keybindingsSection';
 import { McpSettingsSection } from '@/web/components/settings/appSettings/mcpSection';
 import type { AppSettingsSubsectionId } from '@/web/components/settings/settingsNavigation';
 import { SettingsFeedbackBanner } from '@/web/components/settings/shared/settingsFeedbackBanner';
@@ -62,13 +63,22 @@ export function AppSettingsView({
         setConfirmOpen(true);
     }
 
-    const title = subsection === 'privacy' ? 'Privacy' : subsection === 'mcp' ? 'MCP' : 'Maintenance';
+    const title =
+        subsection === 'privacy'
+            ? 'Privacy'
+            : subsection === 'keybindings'
+              ? 'Keybindings'
+              : subsection === 'mcp'
+                ? 'MCP'
+                : 'Maintenance';
     const description =
         subsection === 'privacy'
             ? 'Keep sensitive value redaction in a dedicated app scope instead of scattering privacy controls across account pages.'
-            : subsection === 'mcp'
-              ? 'Manage backend-owned stdio MCP servers, secret-backed env keys, live tool discovery, and which MCP tools are safe for basic plan mode.'
-              : 'Keep destructive app-wide maintenance actions separate from ordinary privacy controls.';
+            : subsection === 'keybindings'
+              ? 'Edit app-wide workbench shortcuts without turning them into runtime authority.'
+              : subsection === 'mcp'
+                ? 'Manage backend-owned stdio MCP servers, secret-backed env keys, live tool discovery, and which MCP tools are safe for basic plan mode.'
+                : 'Keep destructive app-wide maintenance actions separate from ordinary privacy controls.';
     const storageInfo = factoryResetMutation.data?.storage ?? storageInfoQuery.data;
     const runtimeNamespaceLabel = storageInfo?.runtimeNamespace ?? 'current';
     const maintenanceFeedbackMessage =
@@ -104,6 +114,8 @@ export function AppSettingsView({
                         </div>
                     </section>
                 ) : null}
+
+                {subsection === 'keybindings' ? <KeybindingsSettingsSection /> : null}
 
                 {subsection === 'mcp' ? (
                     <McpSettingsSection

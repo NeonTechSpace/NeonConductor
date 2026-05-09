@@ -63,6 +63,12 @@ CREATE TABLE app_composer_media_settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE app_workbench_command_settings (
+    id TEXT PRIMARY KEY,
+    keybinding_overrides_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE profile_context_settings (
     profile_id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
     override_mode TEXT NOT NULL CHECK (override_mode IN ('inherit', 'percent', 'fixed_tokens')),
@@ -1853,6 +1859,9 @@ VALUES ('global', '', CURRENT_TIMESTAMP);
 
 INSERT INTO app_composer_media_settings (id, max_image_attachments_per_message, image_compression_concurrency, updated_at)
 VALUES ('global', 10, 2, CURRENT_TIMESTAMP);
+
+INSERT INTO app_workbench_command_settings (id, keybinding_overrides_json, updated_at)
+VALUES ('global', '{}', CURRENT_TIMESTAMP);
 
 -- Indexes.
 CREATE UNIQUE INDEX idx_profiles_single_active

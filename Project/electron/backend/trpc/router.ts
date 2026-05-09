@@ -27,6 +27,7 @@ import { sessionRouter } from '@/app/backend/trpc/routers/session';
 import { systemRouter } from '@/app/backend/trpc/routers/system';
 import { toolRouter } from '@/app/backend/trpc/routers/tool';
 import { updatesRouter } from '@/app/backend/trpc/routers/updates';
+import { workbenchRouter } from '@/app/backend/trpc/routers/workbench';
 
 export const appRouter = router({
     runtime: runtimeRouter,
@@ -52,6 +53,7 @@ export const appRouter = router({
     sandbox: sandboxRouter,
     branchWorkflow: branchWorkflowRouter,
     updates: updatesRouter,
+    workbench: workbenchRouter,
 });
 
 export type AppRouter = typeof appRouter;

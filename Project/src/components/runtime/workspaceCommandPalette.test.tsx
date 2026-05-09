@@ -20,7 +20,7 @@ describe('WorkspaceCommandPalette', () => {
                     { fingerprint: 'ws_beta', label: 'Beta Workspace' },
                 ]}
                 onClose={() => {}}
-                onSectionChange={() => {}}
+                onCommand={() => {}}
                 onPreviewSectionChange={() => {}}
                 onProfileChange={() => {}}
                 onWorkspaceChange={() => {}}
@@ -41,7 +41,7 @@ describe('WorkspaceCommandPalette', () => {
 
     it('wires action callbacks through the rendered action metadata', () => {
         const onClose = vi.fn();
-        const onSectionChange = vi.fn();
+        const onCommand = vi.fn();
         const onPreviewSectionChange = vi.fn();
         const onProfileChange = vi.fn();
         const onWorkspaceChange = vi.fn();
@@ -54,7 +54,7 @@ describe('WorkspaceCommandPalette', () => {
                 profiles={[{ id: 'profile_default', name: 'Default Profile' }]}
                 workspaceOptions={[{ fingerprint: 'ws_alpha', label: 'Alpha Workspace' }]}
                 onClose={onClose}
-                onSectionChange={onSectionChange}
+                onCommand={onCommand}
                 onPreviewSectionChange={onPreviewSectionChange}
                 onProfileChange={onProfileChange}
                 onWorkspaceChange={onWorkspaceChange}
@@ -62,7 +62,7 @@ describe('WorkspaceCommandPalette', () => {
         );
 
         expect(onClose).not.toHaveBeenCalled();
-        expect(onSectionChange).not.toHaveBeenCalled();
+        expect(onCommand).not.toHaveBeenCalled();
         expect(onPreviewSectionChange).not.toHaveBeenCalled();
         expect(onProfileChange).not.toHaveBeenCalled();
         expect(onWorkspaceChange).not.toHaveBeenCalled();

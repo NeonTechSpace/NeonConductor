@@ -3,6 +3,7 @@ export { checkpointStore } from '@/app/backend/persistence/stores/runtime/checkp
 export { checkpointChangesetStore } from '@/app/backend/persistence/stores/runtime/checkpointChangesetStore';
 export { checkpointSnapshotStore } from '@/app/backend/persistence/stores/runtime/checkpointSnapshotStore';
 export { appComposerMediaSettingsStore } from '@/app/backend/persistence/stores/runtime/appComposerMediaSettingsStore';
+export { appWorkbenchCommandSettingsStore } from '@/app/backend/persistence/stores/runtime/appWorkbenchCommandSettingsStore';
 export { appContextSettingsStore } from '@/app/backend/persistence/stores/runtime/appContextSettingsStore';
 export { appPromptLayerSettingsStore } from '@/app/backend/persistence/stores/runtime/appPromptLayerSettingsStore';
 export { builtInModePromptOverrideStore } from '@/app/backend/persistence/stores/runtime/builtInModePromptOverrideStore';

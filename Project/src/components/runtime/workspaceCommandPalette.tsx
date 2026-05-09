@@ -1,11 +1,15 @@
 import { useDeferredValue, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
+import {
+    buildWorkbenchPaletteCommands,
+    filterWorkbenchPaletteCommands,
+} from '@/web/components/runtime/workbenchCommandRegistry';
 import { moveWorkspaceCommandPaletteHighlight } from '@/web/components/runtime/workspaceCommandPaletteKeyboard';
 import type { WorkspaceAppSection } from '@/web/components/runtime/workspaceSurfaceModel';
 import { DialogSurface } from '@/web/components/ui/dialogSurface';
 import { WorkspaceIcon } from '@/web/components/workspaces/workspaceIcon';
 
-import type { WorkspaceIconSummary } from '@/shared/contracts';
+import type { WorkbenchCommandId, WorkspaceIconSummary } from '@/shared/contracts';
 
 interface WorkspaceCommandPaletteProps {
     open: boolean;
@@ -14,28 +18,11 @@ interface WorkspaceCommandPaletteProps {
     profiles: Array<{ id: string; name: string }>;
     workspaceOptions: Array<{ fingerprint: string; label: string; workspaceIconSummary?: WorkspaceIconSummary }>;
     onClose: () => void;
-    onSectionChange: (section: WorkspaceAppSection) => void;
+    onCommand: (commandId: WorkbenchCommandId) => void;
     onPreviewSectionChange?: (section: WorkspaceAppSection) => void;
     onProfileChange: (profileId: string) => void;
     onWorkspaceChange: (workspaceFingerprint: string | undefined) => void;
 }
-
-type CommandAction =
-    | { id: string; label: string; meta: string; onSelect: () => void; onPreview?: () => void }
-    | { id: string; label: string; meta: string; onSelect: () => Promise<void>; onPreview?: () => void }
-    | {
-          id: string;
-          label: string;
-          meta: string;
-          workspace: { fingerprint: string; label: string; workspaceIconSummary?: WorkspaceIconSummary };
-          onSelect: () => void;
-          onPreview?: () => void;
-      };
-
-const APP_ACTIONS: Array<{ id: WorkspaceAppSection; label: string }> = [
-    { id: 'sessions', label: 'Go to Sessions' },
-    { id: 'settings', label: 'Open Settings' },
-];
 
 export function WorkspaceCommandPalette({
     open,
@@ -44,7 +31,7 @@ export function WorkspaceCommandPalette({
     profiles,
     workspaceOptions,
     onClose,
-    onSectionChange,
+    onCommand,
     onPreviewSectionChange,
     onProfileChange,
     onWorkspaceChange,
@@ -57,47 +44,16 @@ export function WorkspaceCommandPalette({
     const listboxId = useId();
     const [highlightedIndex, setHighlightedIndex] = useState(0);
 
-    const actions: CommandAction[] = [
-        ...APP_ACTIONS.map((action) => ({
-            id: `section:${action.id}`,
-            label: action.label,
-            meta: action.id === appSection ? 'Current section' : 'Application section',
-            ...(onPreviewSectionChange
-                ? {
-                      onPreview: () => {
-                          onPreviewSectionChange(action.id);
-                      },
-                  }
-                : {}),
-            onSelect: () => {
-                onSectionChange(action.id);
-                closePalette();
-            },
-        })),
-        ...profiles.map((profile) => ({
-            id: `profile:${profile.id}`,
-            label: `Switch profile: ${profile.name}`,
-            meta: profile.id,
-            onSelect: () => {
-                onProfileChange(profile.id);
-                closePalette();
-            },
-        })),
-        ...workspaceOptions.map((workspace) => ({
-            id: `workspace:${workspace.fingerprint}`,
-            label: `Focus workspace: ${workspace.label}`,
-            meta: workspace.fingerprint,
-            workspace,
-            onSelect: () => {
-                onWorkspaceChange(workspace.fingerprint);
-                closePalette();
-            },
-        })),
-    ];
-
-    const visibleActions = deferredQuery.length
-        ? actions.filter((action) => `${action.label} ${action.meta}`.toLowerCase().includes(deferredQuery))
-        : actions;
+    const actions = buildWorkbenchPaletteCommands({
+        appSection,
+        profiles,
+        workspaceOptions,
+        onCommand,
+        ...(onPreviewSectionChange ? { onPreviewSectionChange } : {}),
+        onProfileChange,
+        onWorkspaceChange,
+    });
+    const visibleActions = filterWorkbenchPaletteCommands(actions, deferredQuery);
     const activeDescendantId =
         visibleActions.length > 0 && highlightedIndex >= 0
             ? `${listboxId}-option-${String(highlightedIndex)}`
@@ -147,7 +103,7 @@ export function WorkspaceCommandPalette({
                 return;
             }
             event.preventDefault();
-            void selectedAction.onSelect();
+            void Promise.resolve(selectedAction.onSelect()).then(closePalette);
         }
     }
 
@@ -208,7 +164,7 @@ export function WorkspaceCommandPalette({
                                             action.onPreview?.();
                                         }}
                                         onClick={() => {
-                                            void action.onSelect();
+                                            void Promise.resolve(action.onSelect()).then(closePalette);
                                         }}>
                                         <div className='flex min-w-0 items-center gap-2'>
                                             {'workspace' in action && action.workspace.workspaceIconSummary ? (

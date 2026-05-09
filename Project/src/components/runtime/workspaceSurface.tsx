@@ -15,6 +15,11 @@ import { useWorkspaceSurfaceController } from '@/web/components/runtime/workspac
 import { WorkspaceSurfaceControllerProvider } from '@/web/components/runtime/workspaceSurfaceControllerContext';
 import { WorkspaceSurfaceHeader } from '@/web/components/runtime/workspaceSurfaceHeader';
 import {
+    buildWorkbenchKeybindingContext,
+    findWorkbenchCommandForKeyboardEvent,
+    getWorkbenchPlatform,
+} from '@/web/components/runtime/workbenchKeybindings';
+import {
     getWorkspaceSectionPath,
     resolveWorkspaceAppSectionFromPathname,
 } from '@/web/components/runtime/workspaceSurfaceModel';
@@ -22,6 +27,8 @@ import { trpcClient } from '@/web/lib/trpcClient';
 import { trpc } from '@/web/trpc/client';
 
 import { BOOT_FORCE_SHOW_MS } from '@/app/shared/splashContract';
+
+import type { WorkbenchCommandId } from '@/shared/contracts';
 
 export function WorkspaceSurface() {
     const controller = useWorkspaceSurfaceController();
@@ -32,6 +39,7 @@ export function WorkspaceSurface() {
         select: (state) => state.location.pathname,
     });
     const appSection = resolveWorkspaceAppSectionFromPathname(pathname);
+    const commandSettingsQuery = trpc.workbench.getCommandSettings.useQuery();
     useWorkspaceBootPrefetch({
         trpcClient,
         trpcUtils: utils,
@@ -74,6 +82,9 @@ export function WorkspaceSurface() {
     const openCommandPaletteFromEffect = useEffectEvent(() => {
         controller.setIsCommandPaletteOpen(true);
     });
+    const runWorkbenchCommandFromEffect = useEffectEvent((commandId: WorkbenchCommandId) => {
+        runWorkbenchCommand(commandId);
+    });
 
     function openCommandPalette() {
         controller.setIsCommandPaletteOpen(true);
@@ -89,6 +100,20 @@ export function WorkspaceSurface() {
         void router.preloadRoute({
             to: getWorkspaceSectionPath(section),
         });
+    }
+
+    function runWorkbenchCommand(commandId: WorkbenchCommandId) {
+        if (commandId === 'open_command_palette') {
+            openCommandPalette();
+            return;
+        }
+
+        if (commandId === 'go_sessions') {
+            navigateToSection('sessions');
+            return;
+        }
+
+        navigateToSection('settings');
     }
 
     useRendererBootStatusReporter(bootDiagnostics.status);
@@ -111,30 +136,40 @@ export function WorkspaceSurface() {
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key.toLowerCase() !== 'k' || (!event.metaKey && !event.ctrlKey)) {
-                return;
-            }
-
-            const target = event.target;
-            if (
-                target instanceof HTMLElement &&
-                (target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.tagName === 'SELECT' ||
-                    target.isContentEditable)
-            ) {
+            const commandId = findWorkbenchCommandForKeyboardEvent({
+                event,
+                settings: commandSettingsQuery.data?.settings,
+                context: buildWorkbenchKeybindingContext({
+                    eventTarget: event.target,
+                    dialogOpen: controller.isCommandPaletteOpen,
+                    settingsOpen: appSection === 'settings',
+                }),
+                platform: getWorkbenchPlatform(),
+            });
+            if (!commandId) {
                 return;
             }
 
             event.preventDefault();
-            openCommandPaletteFromEffect();
+            if (commandId === 'open_command_palette') {
+                openCommandPaletteFromEffect();
+                return;
+            }
+
+            runWorkbenchCommandFromEffect(commandId);
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [openCommandPaletteFromEffect]);
+    }, [
+        appSection,
+        commandSettingsQuery.data?.settings,
+        controller.isCommandPaletteOpen,
+        openCommandPaletteFromEffect,
+        runWorkbenchCommandFromEffect,
+    ]);
 
     return (
         <section className='flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
@@ -189,8 +224,8 @@ export function WorkspaceSurface() {
                 onClose={() => {
                     controller.setIsCommandPaletteOpen(false);
                 }}
-                onSectionChange={(section) => {
-                    navigateToSection(section);
+                onCommand={(commandId) => {
+                    runWorkbenchCommand(commandId);
                 }}
                 onPreviewSectionChange={(section) => {
                     preloadSection(section);

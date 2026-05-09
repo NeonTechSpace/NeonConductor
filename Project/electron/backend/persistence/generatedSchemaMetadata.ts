@@ -12,6 +12,7 @@ export const runtimeSqlSchemaMetadata: RuntimeSqlSchemaMetadata = {
         "app_composer_media_settings",
         "app_context_settings",
         "app_prompt_layer_settings",
+        "app_workbench_command_settings",
         "built_in_mode_prompt_overrides",
         "checkpoint_blob_pack_members",
         "checkpoint_blob_packs",

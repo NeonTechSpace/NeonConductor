@@ -72,6 +72,13 @@ function createControllerState(overrides: Record<string, unknown> = {}) {
 vi.mock('@/web/trpc/client', () => ({
     trpc: {
         useUtils: () => ({}),
+        workbench: {
+            getCommandSettings: {
+                useQuery: () => ({
+                    data: undefined,
+                }),
+            },
+        },
     },
 }));
 
@@ -195,9 +202,7 @@ describe('workspace surface', () => {
         );
 
         renderToStaticMarkup(<WorkspaceSurface />);
-        (capturedPaletteProps?.onSectionChange as ((section: 'sessions' | 'settings') => void) | undefined)?.(
-            'settings'
-        );
+        (capturedPaletteProps?.onCommand as ((commandId: 'open_settings') => void) | undefined)?.('open_settings');
 
         expect(navigateMock).toHaveBeenCalledWith({
             to: '/settings',

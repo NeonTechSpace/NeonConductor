@@ -13,7 +13,7 @@ export type ProfileSettingsSubsectionId =
     | 'fileReads';
 export type ContextSettingsSubsectionId = 'workspace' | 'budgeting';
 export type RegistrySettingsSubsectionId = 'rules' | 'skills' | 'modes' | 'diagnostics';
-export type AppSettingsSubsectionId = 'privacy' | 'mcp' | 'maintenance';
+export type AppSettingsSubsectionId = 'privacy' | 'keybindings' | 'mcp' | 'maintenance';
 
 export type SettingsSelection =
     | { section: 'kilo'; subsection: KiloSettingsSubsectionId }
@@ -211,6 +211,12 @@ export const APP_SETTINGS_SUBSECTIONS: ReadonlyArray<SettingsSubsectionDefinitio
         id: 'privacy',
         label: 'Privacy',
         description: 'Sensitive value redaction across the app.',
+        availability: 'available',
+    },
+    {
+        id: 'keybindings',
+        label: 'Keybindings',
+        description: 'Edit global workbench shortcuts for app navigation and utility commands.',
         availability: 'available',
     },
     {

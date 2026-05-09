@@ -21,6 +21,7 @@ export * from '@/app/backend/runtime/contracts/types/observability';
 export * from '@/app/backend/runtime/contracts/types/context';
 export * from '@/app/backend/runtime/contracts/types/runContract';
 export * from '@/app/backend/runtime/contracts/types/composer';
+export * from '@/app/backend/runtime/contracts/types/workbench';
 export * from '@/app/backend/runtime/contracts/types/devBrowser';
 export * from '@/app/backend/runtime/contracts/types/promotion';
 export * from '@/app/backend/runtime/contracts/types/registry';
