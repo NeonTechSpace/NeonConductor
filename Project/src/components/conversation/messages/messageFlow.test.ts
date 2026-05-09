@@ -13,6 +13,8 @@ describe('message flow rendering', () => {
                     id: 'run_default',
                     runId: 'run_default',
                     createdAt: '2026-03-12T09:00:00.000Z',
+                    timelineItems: [],
+                    source: 'run',
                     messages: [
                         {
                             id: 'msg_user',
@@ -69,6 +71,8 @@ describe('message flow rendering', () => {
                     id: 'run_pending',
                     runId: 'run_pending',
                     createdAt: '2026-03-12T09:05:00.000Z',
+                    timelineItems: [],
+                    source: 'run',
                     messages: [
                         {
                             id: 'msg_assistant_pending',
@@ -128,6 +132,8 @@ describe('message flow rendering', () => {
                     id: 'optimistic_run',
                     runId: 'optimistic_run',
                     createdAt: '2026-03-12T09:10:00.000Z',
+                    timelineItems: [],
+                    source: 'run',
                     messages: [
                         {
                             id: 'optimistic_msg',
@@ -166,6 +172,8 @@ describe('message flow rendering', () => {
                     id: 'run_user',
                     runId: 'run_user',
                     createdAt: '2026-03-12T09:00:00.000Z',
+                    timelineItems: [],
+                    source: 'run',
                     messages: [
                         {
                             id: 'msg_user',
@@ -204,6 +212,8 @@ describe('message flow rendering', () => {
                     id: 'run_tool_artifact',
                     runId: 'run_tool_artifact',
                     createdAt: '2026-03-12T09:00:00.000Z',
+                    timelineItems: [],
+                    source: 'run',
                     messages: [
                         {
                             id: 'msg_tool_artifact',
@@ -262,6 +272,8 @@ describe('message flow rendering', () => {
                     id: 'run_tool_call',
                     runId: 'run_tool_call',
                     createdAt: '2026-03-12T09:00:00.000Z',
+                    timelineItems: [],
+                    source: 'run',
                     messages: [
                         {
                             id: 'msg_assistant_tool',
@@ -295,5 +307,65 @@ describe('message flow rendering', () => {
         expect(html).toContain('Tool Call: read_file');
         expect(html).toContain('aria-expanded="false"');
         expect(html).toContain('aria-controls="msg_assistant_tool:part_tool_call:tool_call-details"');
+    });
+
+    it('renders run timeline context rows after transcript messages', () => {
+        const html = renderToStaticMarkup(
+            createElement(MessageFlowTurnView, {
+                profileId: 'profile_default',
+                turn: {
+                    id: 'run_context',
+                    runId: 'run_context',
+                    createdAt: '2026-03-12T09:00:00.000Z',
+                    timelineItems: [
+                        {
+                            id: 'run-state:run_context',
+                            kind: 'run_state',
+                            status: 'running',
+                            severity: 'info',
+                            icon: 'activity',
+                            title: 'Run running',
+                            createdAt: '2026-03-12T09:00:01.000Z',
+                            defaultCollapsed: false,
+                            summary: 'Context-aware run',
+                            inspectorSectionId: 'workspace-status',
+                            run: {
+                                id: 'run_context',
+                                sessionId: 'sess_default',
+                                profileId: 'profile_default',
+                                prompt: 'Context-aware run',
+                                status: 'running',
+                                createdAt: '2026-03-12T09:00:00.000Z',
+                                updatedAt: '2026-03-12T09:00:01.000Z',
+                            },
+                        },
+                    ],
+                    source: 'run',
+                    messages: [
+                        {
+                            id: 'msg_user_context',
+                            runId: 'run_context',
+                            role: 'user',
+                            createdAt: '2026-03-12T09:00:00.000Z',
+                            body: [
+                                {
+                                    id: 'part_user_context',
+                                    type: 'user_text',
+                                    text: 'Context-aware run',
+                                    providerLimitedReasoning: false,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                run: undefined,
+                onOpenInspectorSection: () => undefined,
+            })
+        );
+
+        expect(html).toContain('Context-aware run');
+        expect(html).toContain('Run running');
+        expect(html).toContain('Open details');
+        expect(html).toContain('aria-label="Run timeline context"');
     });
 });

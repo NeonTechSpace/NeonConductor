@@ -1,7 +1,9 @@
 import { FlowMessageView } from '@/web/components/conversation/messages/flow/flowMessageView';
 import type { MessageFlowMessage, MessageFlowTurn } from '@/web/components/conversation/messages/messageFlowModel';
+import { WorkbenchTimelineContextRows } from '@/web/components/conversation/messages/workbenchTimelineContextRows';
+import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
 
-import type { RunRecord } from '@/app/backend/persistence/types';
+import type { PermissionRecord, RunRecord } from '@/app/backend/persistence/types';
 import type { EntityId } from '@/shared/contracts';
 
 interface MessageFlowTurnViewProps {
@@ -12,6 +14,13 @@ interface MessageFlowTurnViewProps {
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
     onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
+    isResolvingPermission?: boolean;
+    onResolvePermission?: (
+        requestId: PermissionRecord['id'],
+        resolution: 'deny' | 'allow_once' | 'allow_profile' | 'allow_workspace',
+        selectedApprovalResource?: string
+    ) => void;
+    onOpenInspectorSection?: (sectionId: WorkspaceInspectorSectionId) => void;
 }
 
 export function MessageFlowEmptyState() {
@@ -32,6 +41,9 @@ export function MessageFlowTurnView({
     onBranchFromMessage,
     onOpenToolArtifact,
     onPromoteMessage,
+    isResolvingPermission,
+    onResolvePermission,
+    onOpenInspectorSection,
 }: MessageFlowTurnViewProps) {
     return (
         <section className='space-y-6'>
@@ -47,6 +59,12 @@ export function MessageFlowTurnView({
                     {...(onPromoteMessage ? { onPromoteMessage } : {})}
                 />
             ))}
+            <WorkbenchTimelineContextRows
+                items={turn.timelineItems}
+                {...(isResolvingPermission !== undefined ? { isResolvingPermission } : {})}
+                {...(onResolvePermission ? { onResolvePermission } : {})}
+                {...(onOpenInspectorSection ? { onOpenInspectorSection } : {})}
+            />
         </section>
     );
 }

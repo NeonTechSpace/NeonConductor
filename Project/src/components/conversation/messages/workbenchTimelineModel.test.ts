@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { projectConversationTanstackMessages } from '@/web/components/conversation/messages/tanstackMessageBridge';
 import {
+    buildWorkbenchTimelineContextProjection,
     buildWorkbenchTimelineItems,
     buildWorkbenchTimelineMessages,
     workbenchTimelineItemKinds,
 } from '@/web/components/conversation/messages/workbenchTimelineModel';
 
-import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
+import type { MessagePartRecord, MessageRecord, PermissionRecord, RunRecord } from '@/app/backend/persistence/types';
+
+import type { DiffOverview, ExecutionReceipt, PlanRecordView, SessionOutboxEntry } from '@/shared/contracts';
 
 function createMessage(input: {
     id: string;
@@ -42,6 +45,72 @@ function createPart(input: {
         partType: input.partType,
         payload: input.payload ?? (input.text ? { text: input.text } : {}),
         createdAt: '2026-01-01T00:00:00.000Z',
+    };
+}
+
+function createRun(input: Partial<RunRecord> & { id?: RunRecord['id']; status?: RunRecord['status'] } = {}): RunRecord {
+    return {
+        id: input.id ?? 'run_test',
+        sessionId: 'sess_test' as RunRecord['sessionId'],
+        profileId: 'profile_test',
+        prompt: input.prompt ?? 'Implement the thing',
+        status: input.status ?? 'completed',
+        createdAt: input.createdAt ?? '2026-01-01T00:00:00.000Z',
+        updatedAt: input.updatedAt ?? '2026-01-01T00:00:01.000Z',
+        ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
+    };
+}
+
+function createPermission(input: Partial<PermissionRecord> & { id?: PermissionRecord['id'] } = {}): PermissionRecord {
+    return {
+        id: input.id ?? 'perm_test',
+        profileId: 'profile_test',
+        policy: 'ask' as PermissionRecord['policy'],
+        resource: input.resource ?? 'shell:pnpm test',
+        toolId: 'run_command',
+        scopeKind: 'profile' as PermissionRecord['scopeKind'],
+        summary: input.summary ?? {
+            title: 'Command approval required',
+            detail: 'pnpm test needs approval',
+        },
+        decision: 'pending',
+        createdAt: input.createdAt ?? '2026-01-01T00:00:02.000Z',
+        updatedAt: input.updatedAt ?? '2026-01-01T00:00:02.000Z',
+        ...(input.workspaceFingerprint ? { workspaceFingerprint: input.workspaceFingerprint } : {}),
+    };
+}
+
+function createPlan(input: Partial<PlanRecordView> = {}): PlanRecordView {
+    return {
+        id: 'plan_test' as PlanRecordView['id'],
+        profileId: 'profile_test',
+        sessionId: 'sess_test' as PlanRecordView['sessionId'],
+        topLevelTab: 'agent',
+        modeKey: 'code',
+        status: 'implementing' as PlanRecordView['status'],
+        sourcePrompt: 'Plan the work',
+        summaryMarkdown: 'Plan summary',
+        hasOpenPhaseDraft: false,
+        currentRevisionId: 'prev_test' as PlanRecordView['currentRevisionId'],
+        currentRevisionNumber: 1,
+        currentVariantId: 'pvar_test' as PlanRecordView['currentVariantId'],
+        currentVariantName: 'Main',
+        questions: [],
+        variants: [],
+        followUps: [],
+        history: [],
+        items: [
+            {
+                id: 'step_test' as PlanRecordView['items'][number]['id'],
+                sequence: 0,
+                description: 'Wire timeline rows',
+                status: 'running',
+                runId: 'run_test' as RunRecord['id'],
+            },
+        ],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:03.000Z',
+        ...input,
     };
 }
 
@@ -254,7 +323,17 @@ describe('workbench timeline model', () => {
 
     it('declares future item kinds without fabricating rows for unsupported transcript parts', () => {
         expect(workbenchTimelineItemKinds).toEqual(
-            expect.arrayContaining(['approval', 'file_change', 'diff', 'plan_step', 'web_research', 'queued_followup'])
+            expect.arrayContaining([
+                'approval',
+                'file_change',
+                'diff',
+                'plan_step',
+                'web_research',
+                'queued_followup',
+                'run_state',
+                'execution_receipt',
+                'compaction',
+            ])
         );
 
         const toolMessage = createMessage({ id: 'msg_generic_tool', role: 'tool' });
@@ -286,5 +365,105 @@ describe('workbench timeline model', () => {
         expect(items.map((item) => item.kind)).not.toEqual(
             expect.arrayContaining(['approval', 'file_change', 'diff', 'plan_step', 'web_research', 'queued_followup'])
         );
+    });
+
+    it('projects selected-run context rows from authoritative workspace state', () => {
+        const diffOverview: DiffOverview = {
+            kind: 'git',
+            fileCount: 1,
+            summary: '1 file changed',
+            statusCounts: {
+                added: 0,
+                modified: 1,
+                deleted: 0,
+                renamed: 0,
+                copied: 0,
+                type_changed: 0,
+                untracked: 0,
+            },
+            topDirectories: [{ directory: 'src', fileCount: 1 }],
+            highlightedFiles: [{ path: 'src/app.ts', status: 'modified', addedLines: 4, deletedLines: 1 }],
+        };
+        const receipt = {
+            id: 'rcpt_test',
+            runId: 'run_test',
+            terminalOutcome: { kind: 'completed' },
+            contract: {
+                preparedContext: {
+                    compactionReseedActive: true,
+                    digest: {
+                        checkpoints: {
+                            post_compaction_reseed: {
+                                includedContributorCount: 2,
+                                digest: 'ctxchk-reseed',
+                                active: true,
+                            },
+                        },
+                    },
+                },
+            },
+            createdAt: '2026-01-01T00:00:04.000Z',
+        } as unknown as ExecutionReceipt;
+
+        const projection = buildWorkbenchTimelineContextProjection({
+            runs: [createRun({ id: 'run_test', status: 'running' })],
+            selectedRunId: 'run_test' as RunRecord['id'],
+            activePlan: createPlan(),
+            pendingPermissions: [createPermission()],
+            runDiffOverview: diffOverview,
+            executionReceipt: receipt,
+        });
+
+        expect(projection.sessionItems).toEqual([]);
+        expect(projection.itemsByRunId.get('run_test')?.map((item) => item.kind)).toEqual([
+            'run_state',
+            'approval',
+            'plan_step',
+            'diff',
+            'file_change',
+            'execution_receipt',
+            'compaction',
+        ]);
+        expect(projection.itemsByRunId.get('run_test')?.[2]).toMatchObject({
+            kind: 'plan_step',
+            status: 'running',
+            summary: 'Wire timeline rows',
+        });
+    });
+
+    it('omits unbound plan work and keeps queued review as session context', () => {
+        const plan = createPlan({
+            implementationRunId: 'run_other' as RunRecord['id'],
+            items: [
+                {
+                    id: 'step_unbound' as PlanRecordView['items'][number]['id'],
+                    sequence: 0,
+                    description: 'Unbound work',
+                    status: 'pending',
+                },
+            ],
+        });
+        const outboxEntry = {
+            id: 'outbox_test',
+            state: 'paused_for_review',
+            prompt: 'Review queued work',
+            updatedAt: '2026-01-01T00:00:05.000Z',
+        } as unknown as SessionOutboxEntry;
+
+        const projection = buildWorkbenchTimelineContextProjection({
+            runs: [createRun({ id: 'run_selected' })],
+            selectedRunId: 'run_selected' as RunRecord['id'],
+            activePlan: plan,
+            selectedOutboxEntry: outboxEntry,
+        });
+
+        expect(projection.itemsByRunId.get('run_selected')?.map((item) => item.kind)).toEqual(['run_state']);
+        expect(projection.sessionItems).toEqual([
+            expect.objectContaining({
+                kind: 'queued_followup',
+                title: 'Queued run review',
+                summary: 'Review queued work',
+            }),
+        ]);
     });
 });

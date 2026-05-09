@@ -30,6 +30,8 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'messages'
     | 'partsByMessageId'
     | 'runs'
+    | 'selectedRunId'
+    | 'activePlan'
     | 'optimisticUserMessage'
     | 'pendingImages'
     | 'pendingTextFiles'
@@ -60,7 +62,12 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'runErrorMessage'
     | 'contextState'
     | 'pendingPermissions'
+    | 'permissionWorkspaces'
+    | 'isResolvingPermission'
+    | 'runDiffOverview'
     | 'outboxEntries'
+    | 'selectedOutboxEntry'
+    | 'executionReceipt'
     | 'selectedOutboxEntryId'
     | 'attachedRules'
     | 'missingAttachedRuleKeys'
@@ -101,6 +108,7 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onBranchFromMessage'
     | 'onOpenToolArtifact'
     | 'onPromoteMessage'
+    | 'onResolvePermission'
 >;
 
 interface WorkspacePrimaryColumnExtraProps {
@@ -118,6 +126,8 @@ export function WorkspacePrimaryColumn({
     messages,
     partsByMessageId,
     runs,
+    selectedRunId,
+    activePlan,
     optimisticUserMessage,
     pendingImages,
     pendingTextFiles,
@@ -148,7 +158,12 @@ export function WorkspacePrimaryColumn({
     runErrorMessage,
     contextState,
     pendingPermissions,
+    permissionWorkspaces,
+    isResolvingPermission,
+    runDiffOverview,
     outboxEntries,
+    selectedOutboxEntry,
+    executionReceipt,
     selectedOutboxEntryId,
     attachedRules,
     missingAttachedRuleKeys,
@@ -189,6 +204,7 @@ export function WorkspacePrimaryColumn({
     onBranchFromMessage,
     onOpenToolArtifact,
     onPromoteMessage,
+    onResolvePermission,
     inspectorSectionIds,
     onOpenInspectorSection,
 }: WorkspacePrimaryColumnProps & WorkspacePrimaryColumnExtraProps) {
@@ -308,6 +324,14 @@ export function WorkspacePrimaryColumn({
                                 messages={messages}
                                 partsByMessageId={partsByMessageId}
                                 runs={runs}
+                                {...(isEntityId(selectedRunId, 'run') ? { selectedRunId } : {})}
+                                {...(activePlan ? { activePlan } : {})}
+                                pendingPermissions={pendingPermissions}
+                                {...(permissionWorkspaces ? { permissionWorkspaces } : {})}
+                                isResolvingPermission={isResolvingPermission}
+                                {...(runDiffOverview ? { runDiffOverview } : {})}
+                                {...(executionReceipt ? { executionReceipt } : {})}
+                                {...(selectedOutboxEntry ? { selectedOutboxEntry } : {})}
                                 {...(validatedSelectedSessionId
                                     ? { selectedSessionId: validatedSelectedSessionId }
                                     : {})}
@@ -316,6 +340,8 @@ export function WorkspacePrimaryColumn({
                                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                                 {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
                                 {...(onPromoteMessage ? { onPromoteMessage } : {})}
+                                onResolvePermission={onResolvePermission}
+                                onOpenInspectorSection={onOpenInspectorSection}
                             />
                         )}
                     </div>

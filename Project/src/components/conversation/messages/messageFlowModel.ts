@@ -4,8 +4,11 @@ import type {
     ToolArtifactPreviewStrategy,
 } from '@/web/components/conversation/messages/toolArtifactFormatting';
 import {
+    buildWorkbenchTimelineContextProjection,
     buildWorkbenchTimelineMessages,
     type WorkbenchTimelineItem,
+    type WorkbenchTimelineContext,
+    type WorkbenchTimelineContextItem,
     type WorkbenchTimelineIconToken,
     type WorkbenchTimelineItemSeverity,
     type WorkbenchTimelineItemStatus,
@@ -107,6 +110,8 @@ export interface MessageFlowTurn {
     runId: ConversationTanstackMessage['runId'];
     createdAt: string;
     messages: MessageFlowMessage[];
+    timelineItems: WorkbenchTimelineContextItem[];
+    source: 'run' | 'session_context';
 }
 
 export interface BottomThresholdInput {
@@ -288,7 +293,10 @@ function buildFlowMessage(message: ReturnType<typeof buildWorkbenchTimelineMessa
     };
 }
 
-export function buildMessageFlowTurns(messages: ConversationTanstackMessage[]): MessageFlowTurn[] {
+export function buildMessageFlowTurns(
+    messages: ConversationTanstackMessage[],
+    timelineContext?: WorkbenchTimelineContext
+): MessageFlowTurn[] {
     const turns: MessageFlowTurn[] = [];
     const turnByRunId = new Map<string, MessageFlowTurn>();
 
@@ -305,9 +313,48 @@ export function buildMessageFlowTurns(messages: ConversationTanstackMessage[]): 
             runId: message.runId,
             createdAt: message.createdAt,
             messages: [flowMessage],
+            timelineItems: [],
+            source: 'run',
         };
         turnByRunId.set(message.runId, nextTurn);
         turns.push(nextTurn);
+    }
+
+    if (!timelineContext) {
+        return turns;
+    }
+
+    const contextProjection = buildWorkbenchTimelineContextProjection(timelineContext);
+
+    for (const [runId, timelineItems] of contextProjection.itemsByRunId) {
+        const existingTurn = turnByRunId.get(runId);
+        if (existingTurn) {
+            existingTurn.timelineItems.push(...timelineItems);
+            continue;
+        }
+
+        const firstItem = timelineItems[0];
+        const nextTurn: MessageFlowTurn = {
+            id: runId,
+            runId,
+            createdAt: firstItem?.createdAt ?? new Date(0).toISOString(),
+            messages: [],
+            timelineItems,
+            source: 'run',
+        };
+        turnByRunId.set(runId, nextTurn);
+        turns.push(nextTurn);
+    }
+
+    if (contextProjection.sessionItems.length > 0) {
+        turns.push({
+            id: 'session-context',
+            runId: 'session-context',
+            createdAt: contextProjection.sessionItems[0]?.createdAt ?? new Date(0).toISOString(),
+            messages: [],
+            timelineItems: contextProjection.sessionItems,
+            source: 'session_context',
+        });
     }
 
     return turns;

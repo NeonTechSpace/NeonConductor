@@ -297,6 +297,7 @@ export function buildConversationWorkspaceProjection(
         ...(input.composer.optimisticUserMessage
             ? { optimisticUserMessage: input.composer.optimisticUserMessage }
             : {}),
+        ...(input.planOrchestrator.activePlan ? { activePlan: input.planOrchestrator.activePlan } : {}),
         executionPreset: input.queries.shellBootstrapQuery.data?.executionPreset ?? 'standard',
         workspaceScope: input.shellViewModel.workspaceScope,
         pendingPermissions: input.shellViewModel.pendingPermissions,

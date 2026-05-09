@@ -7,11 +7,13 @@ import {
     type MessageFlowMessage,
 } from '@/web/components/conversation/messages/messageFlowModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
+import type { ModeExecutionPlanView } from '@/web/components/conversation/panels/modeExecutionPanelState';
+import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
 import { useConversationTanstackMessages } from '@/web/components/conversation/messages/useConversationTanstackMessages';
 import { Button } from '@/web/components/ui/button';
 
-import type { MessagePartRecord, MessageRecord, RunRecord } from '@/app/backend/persistence/types';
-import type { EntityId } from '@/shared/contracts';
+import type { MessagePartRecord, MessageRecord, PermissionRecord, RunRecord } from '@/app/backend/persistence/types';
+import type { DiffOverview, EntityId, ExecutionReceipt, SessionOutboxEntry } from '@/shared/contracts';
 
 interface MessageFlowPanelProps {
     profileId: string;
@@ -19,11 +21,31 @@ interface MessageFlowPanelProps {
     messages: MessageRecord[];
     partsByMessageId: Map<string, MessagePartRecord[]>;
     runs: RunRecord[];
+    selectedRunId?: EntityId<'run'>;
+    activePlan?: ModeExecutionPlanView;
+    pendingPermissions?: PermissionRecord[];
+    permissionWorkspaces?: Record<
+        string,
+        {
+            label: string;
+            absolutePath: string;
+        }
+    >;
+    isResolvingPermission?: boolean;
+    runDiffOverview?: DiffOverview;
+    executionReceipt?: ExecutionReceipt;
+    selectedOutboxEntry?: SessionOutboxEntry;
     optimisticUserMessage?: OptimisticConversationUserMessage;
     onEditMessage?: (entry: MessageFlowMessage) => void;
     onBranchFromMessage?: (entry: MessageFlowMessage) => void;
     onOpenToolArtifact?: (messagePartId: EntityId<'part'>) => void;
     onPromoteMessage?: (messageId: EntityId<'msg'>) => void;
+    onResolvePermission?: (
+        requestId: PermissionRecord['id'],
+        resolution: 'deny' | 'allow_once' | 'allow_profile' | 'allow_workspace',
+        selectedApprovalResource?: string
+    ) => void;
+    onOpenInspectorSection?: (sectionId: WorkspaceInspectorSectionId) => void;
 }
 
 export function MessageFlowPanel({
@@ -32,11 +54,21 @@ export function MessageFlowPanel({
     messages,
     partsByMessageId,
     runs,
+    selectedRunId,
+    activePlan,
+    pendingPermissions,
+    permissionWorkspaces,
+    isResolvingPermission,
+    runDiffOverview,
+    executionReceipt,
+    selectedOutboxEntry,
     optimisticUserMessage,
     onEditMessage,
     onBranchFromMessage,
     onOpenToolArtifact,
     onPromoteMessage,
+    onResolvePermission,
+    onOpenInspectorSection,
 }: MessageFlowPanelProps) {
     const tanstackMessages = useConversationTanstackMessages({
         messages,
@@ -44,7 +76,16 @@ export function MessageFlowPanel({
         ...(selectedSessionId ? { sessionId: selectedSessionId } : {}),
         ...(optimisticUserMessage ? { optimisticUserMessage } : {}),
     });
-    const turns = buildMessageFlowTurns(tanstackMessages);
+    const turns = buildMessageFlowTurns(tanstackMessages, {
+        runs,
+        ...(selectedRunId ? { selectedRunId } : {}),
+        ...(activePlan ? { activePlan } : {}),
+        ...(pendingPermissions ? { pendingPermissions } : {}),
+        ...(permissionWorkspaces ? { permissionWorkspaces } : {}),
+        ...(runDiffOverview ? { runDiffOverview } : {}),
+        ...(executionReceipt ? { executionReceipt } : {}),
+        ...(selectedOutboxEntry ? { selectedOutboxEntry } : {}),
+    });
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [isAutoStickEnabled, setIsAutoStickEnabled] = useState(true);
     const [isNearBottom, setIsNearBottom] = useState(true);
@@ -135,6 +176,9 @@ export function MessageFlowPanel({
                                 {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                                 {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
                                 {...(onPromoteMessage ? { onPromoteMessage } : {})}
+                                {...(isResolvingPermission !== undefined ? { isResolvingPermission } : {})}
+                                {...(onResolvePermission ? { onResolvePermission } : {})}
+                                {...(onOpenInspectorSection ? { onOpenInspectorSection } : {})}
                             />
                         ))}
                     </div>

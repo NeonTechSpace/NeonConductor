@@ -53,11 +53,11 @@ export interface WorkbenchRowShellProps {
     icon: WorkbenchTimelineIconToken;
     severity: WorkbenchTimelineItemSeverity;
     title: string;
-    summary?: string;
+    summary?: string | undefined;
     defaultCollapsed: boolean;
     isRunning?: boolean;
-    meta?: ReactNode;
-    children?: ReactNode;
+    meta?: ReactNode | undefined;
+    children?: ReactNode | undefined;
 }
 
 export function WorkbenchRowShell({

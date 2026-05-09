@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
 import type { ComposerPlanControlSummary } from '@/web/components/conversation/panels/composerActionPanel/composerControlSurfaceModel';
+import type { ModeExecutionPlanView } from '@/web/components/conversation/panels/modeExecutionPanelState';
 import { PendingPermissionsPanel } from '@/web/components/conversation/panels/pendingPermissionsPanel';
 import { QueuedRunReviewSummary } from '@/web/components/conversation/panels/queuedRunReviewSummary';
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
@@ -147,6 +148,7 @@ export interface SessionWorkspacePanelProps {
     selectedWorkspaceFingerprint?: string;
     selectedSandboxId?: EntityId<'sb'>;
     selectedThreadContext?: SelectedThreadContext;
+    activePlan?: ModeExecutionPlanView;
     optimisticUserMessage?: OptimisticConversationUserMessage;
     executionPreset: 'privacy' | 'standard' | 'yolo';
     workspaceScope: WorkspaceScope;

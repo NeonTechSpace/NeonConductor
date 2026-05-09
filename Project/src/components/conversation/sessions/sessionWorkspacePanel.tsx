@@ -40,7 +40,9 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         messages,
         partsByMessageId,
         runs,
+        selectedRunId,
         selectedSessionId,
+        activePlan,
         optimisticUserMessage,
         pendingImages,
         pendingTextFiles,
@@ -71,7 +73,11 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         runErrorMessage,
         contextState,
         pendingPermissions,
+        permissionWorkspaces,
+        isResolvingPermission,
+        runDiffOverview,
         outboxEntries,
+        executionReceipt,
         showRunContractPreview,
         attachedRules,
         missingAttachedRuleKeys,
@@ -112,6 +118,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         onBranchFromMessage,
         onOpenToolArtifact,
         onPromoteMessage,
+        onResolvePermission,
     } = input;
 
     return (
@@ -146,6 +153,8 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     messages={messages}
                     partsByMessageId={partsByMessageId}
                     runs={runs}
+                    {...(selectedRunId ? { selectedRunId } : {})}
+                    {...(activePlan ? { activePlan } : {})}
                     pendingImages={pendingImages}
                     pendingTextFiles={pendingTextFiles}
                     pendingDocuments={pendingDocuments}
@@ -168,6 +177,11 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     {...(modelContinuationLockMessage ? { modelContinuationLockMessage } : {})}
                     runErrorMessage={runErrorMessage}
                     pendingPermissions={pendingPermissions}
+                    {...(permissionWorkspaces ? { permissionWorkspaces } : {})}
+                    isResolvingPermission={isResolvingPermission}
+                    {...(runDiffOverview ? { runDiffOverview } : {})}
+                    {...(executionReceipt ? { executionReceipt } : {})}
+                    {...(selectedOutboxEntry ? { selectedOutboxEntry } : {})}
                     attachedRules={attachedRules}
                     missingAttachedRuleKeys={missingAttachedRuleKeys}
                     attachedSkills={attachedSkills}
@@ -225,6 +239,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     {...(onBranchFromMessage ? { onBranchFromMessage } : {})}
                     {...(onOpenToolArtifact ? { onOpenToolArtifact } : {})}
                     {...(onPromoteMessage ? { onPromoteMessage } : {})}
+                    onResolvePermission={onResolvePermission}
                 />
             )}
         </WorkspaceShell>

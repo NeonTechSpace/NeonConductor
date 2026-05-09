@@ -6,7 +6,7 @@ import {
 } from '@/web/components/conversation/messages/messageFlowModel';
 import { projectConversationTanstackMessages } from '@/web/components/conversation/messages/tanstackMessageBridge';
 
-import type { MessagePartRecord, MessageRecord } from '@/app/backend/persistence/types';
+import type { MessagePartRecord, MessageRecord, RunRecord } from '@/app/backend/persistence/types';
 
 function createMessage(input: {
     id: string;
@@ -330,6 +330,56 @@ describe('message flow model', () => {
                 text: 'Streaming answer',
                 providerLimitedReasoning: false,
             },
+        ]);
+    });
+
+    it('adds selected-run context rows without creating synthetic messages', () => {
+        const userMessage = createMessage({
+            id: 'msg_user_context',
+            runId: 'run_context',
+            role: 'user',
+        });
+        const run = {
+            id: 'run_context',
+            sessionId: 'sess_test',
+            profileId: 'profile_test',
+            prompt: 'Do context work',
+            status: 'running',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:01.000Z',
+        } as RunRecord;
+
+        const turns = buildMessageFlowTurns(
+            projectConversationTanstackMessages(
+                [userMessage],
+                new Map([
+                    [
+                        userMessage.id,
+                        [
+                            createPart({
+                                id: 'part_user_context',
+                                messageId: userMessage.id,
+                                partType: 'text',
+                                text: 'Do context work',
+                            }),
+                        ],
+                    ],
+                ])
+            ),
+            {
+                runs: [run],
+                selectedRunId: run.id,
+            }
+        );
+
+        expect(turns).toHaveLength(1);
+        expect(turns[0]?.messages).toHaveLength(1);
+        expect(turns[0]?.timelineItems).toEqual([
+            expect.objectContaining({
+                kind: 'run_state',
+                status: 'running',
+                title: 'Run running',
+            }),
         ]);
     });
 });
