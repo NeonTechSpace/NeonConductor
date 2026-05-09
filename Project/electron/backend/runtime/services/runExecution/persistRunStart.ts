@@ -201,6 +201,39 @@ export async function persistRunStart(input: { input: StartRunInput; prepared: P
             continue;
         }
 
+        if (attachment.kind === 'external_context_capture') {
+            const attachmentSummary = await conversationAttachmentStore.createSnapshot({
+                profileId: input.input.profileId,
+                sessionId: input.input.sessionId,
+                attachment,
+            });
+            const externalContextPart = await messageStore.appendPart({
+                messageId: userMessage.id,
+                partType: 'external_context_capture',
+                payload: {
+                    attachmentId: attachmentSummary.id,
+                    sourceType: attachment.sourceType,
+                    sourceLabel: attachment.sourceLabel,
+                    ...(attachment.originDetail ? { originDetail: attachment.originDetail } : {}),
+                    text: attachment.text,
+                    sha256: attachment.sha256,
+                    byteSize: attachment.byteSize,
+                },
+            });
+            await conversationAttachmentStore.attachToMessagePart({
+                attachmentId: attachmentSummary.id,
+                messagePartId: externalContextPart.id,
+            });
+            await emitMessagePartAppendedEvent({
+                runId: run.id,
+                profileId: input.input.profileId,
+                sessionId: input.input.sessionId,
+                messageId: userMessage.id,
+                part: externalContextPart,
+            });
+            continue;
+        }
+
         const textAttachment = asTextFileAttachment(attachment);
         if (!textAttachment) {
             continue;

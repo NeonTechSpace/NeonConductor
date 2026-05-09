@@ -7,6 +7,7 @@ import type { ModelPickerOption } from '@/web/components/modelSelection/modelCap
 import type {
     BrowserContextSummary,
     ComposerAttachmentInput,
+    ComposerExternalContextCaptureInput,
     RulesetDefinition,
     RuntimeReasoningEffort,
     SkillfileDefinition,
@@ -16,7 +17,7 @@ export type ComposerControlSurfaceItemId =
     | 'files'
     | 'context-assets'
     | 'browser-context'
-    | 'terminal-context'
+    | 'external-context'
     | 'model-role'
     | 'approvals'
     | 'questions'
@@ -25,10 +26,19 @@ export type ComposerControlSurfaceItemId =
 export type ComposerControlSurfaceAction =
     | { kind: 'open-file-picker' }
     | { kind: 'open-browser-surface' }
+    | { kind: 'open-external-context-capture' }
     | { kind: 'open-inspector-section'; sectionId: WorkspaceInspectorSectionId };
 
 export interface ComposerPlanControlSummary {
-    status: 'none' | 'awaiting_answers' | 'draft' | 'approved' | 'implementing' | 'implemented' | 'failed' | 'cancelled';
+    status:
+        | 'none'
+        | 'awaiting_answers'
+        | 'draft'
+        | 'approved'
+        | 'implementing'
+        | 'implemented'
+        | 'failed'
+        | 'cancelled';
     requiredQuestionCount: number;
     unansweredRequiredQuestionCount: number;
     optionalQuestionCount: number;
@@ -74,6 +84,7 @@ interface AttachmentInput {
     pendingImages: PendingImageCardView[];
     pendingTextFiles: PendingTextFileCardView[];
     pendingDocuments: PendingDocumentCardView[];
+    externalContextCaptures: ComposerExternalContextCaptureInput[];
     readyComposerAttachments: ComposerAttachmentInput[];
     hasBlockingPendingAttachments: boolean;
 }
@@ -82,13 +93,18 @@ function pluralize(count: number, singular: string, plural: string): string {
     return count === 1 ? singular : plural;
 }
 
-function hasInspectorSection(input: BuildComposerControlSurfaceModelInput, sectionId: WorkspaceInspectorSectionId): boolean {
+function hasInspectorSection(
+    input: BuildComposerControlSurfaceModelInput,
+    sectionId: WorkspaceInspectorSectionId
+): boolean {
     return input.inspectorSectionIds.includes(sectionId);
 }
 
 function buildFilesItem(input: BuildComposerControlSurfaceModelInput): ComposerControlSurfaceItem {
     const pendingCount = input.pendingImages.length + input.pendingTextFiles.length + input.pendingDocuments.length;
-    const readyCount = input.readyComposerAttachments.length;
+    const readyFileCount = input.readyComposerAttachments.filter(
+        (attachment) => attachment.kind !== 'external_context_capture'
+    ).length;
     const failedCount =
         input.pendingImages.filter((item) => item.status === 'failed').length +
         input.pendingTextFiles.filter((item) => item.status === 'failed').length +
@@ -96,7 +112,7 @@ function buildFilesItem(input: BuildComposerControlSurfaceModelInput): ComposerC
     const value =
         pendingCount === 0
             ? 'No files'
-            : `${String(readyCount)} ready / ${String(pendingCount)} ${pluralize(pendingCount, 'file', 'files')}`;
+            : `${String(readyFileCount)} ready / ${String(pendingCount)} ${pluralize(pendingCount, 'file', 'files')}`;
     const detail =
         failedCount > 0
             ? `${String(failedCount)} ${pluralize(failedCount, 'attachment needs', 'attachments need')} attention.`
@@ -111,7 +127,12 @@ function buildFilesItem(input: BuildComposerControlSurfaceModelInput): ComposerC
         label: 'Files',
         value,
         detail,
-        tone: failedCount > 0 || input.hasBlockingPendingAttachments ? 'attention' : pendingCount > 0 ? 'success' : 'muted',
+        tone:
+            failedCount > 0 || input.hasBlockingPendingAttachments
+                ? 'attention'
+                : pendingCount > 0
+                  ? 'success'
+                  : 'muted',
         ariaLabel: `Files: ${value}. ${detail}`,
         action: { kind: 'open-file-picker' },
     };
@@ -160,25 +181,46 @@ function buildBrowserItem(input: BuildComposerControlSurfaceModelInput): Compose
         label: 'Browser',
         value,
         detail,
-        tone: summary
-            ? summary.designDiagnosticErrorCount > 0
-                ? 'attention'
-                : 'success'
-            : 'muted',
+        tone: summary ? (summary.designDiagnosticErrorCount > 0 ? 'attention' : 'success') : 'muted',
         ariaLabel: `Browser context: ${value}. ${detail}`,
         action: { kind: 'open-browser-surface' },
         disabled: !input.canOpenBrowserSurface,
     };
 }
 
-function buildTerminalItem(): ComposerControlSurfaceItem {
+function formatCaptureByteSize(byteSize: number): string {
+    if (byteSize < 1024) {
+        return `${String(byteSize)} B`;
+    }
+    return `${(byteSize / 1024).toFixed(byteSize >= 10 * 1024 ? 0 : 1)} KB`;
+}
+
+function buildExternalContextItem(input: BuildComposerControlSurfaceModelInput): ComposerControlSurfaceItem {
+    const count = input.externalContextCaptures.length;
+    if (count === 0) {
+        return {
+            id: 'external-context',
+            label: 'External Context',
+            value: 'No snippets',
+            detail: 'Paste source-labeled external text for the next executable run.',
+            tone: 'muted',
+            ariaLabel: 'External context: no snippets. Paste source-labeled external text for the next executable run.',
+            action: { kind: 'open-external-context-capture' },
+        };
+    }
+
+    const totalBytes = input.externalContextCaptures.reduce((total, capture) => total + capture.byteSize, 0);
+    const firstCapture = input.externalContextCaptures[0];
     return {
-        id: 'terminal-context',
-        label: 'Terminal',
-        value: 'No selection',
-        detail: 'Terminal text capture remains Phase 15F.',
-        tone: 'muted',
-        ariaLabel: 'Terminal context: no selection. Terminal text capture remains Phase 15F.',
+        id: 'external-context',
+        label: 'External Context',
+        value: `${String(count)} ${pluralize(count, 'snippet', 'snippets')}`,
+        detail: `${firstCapture?.sourceLabel ?? 'External context'} · ${formatCaptureByteSize(totalBytes)}`,
+        tone: 'success',
+        ariaLabel: `External context: ${String(count)} ${pluralize(count, 'snippet', 'snippets')}. ${
+            firstCapture?.sourceLabel ?? 'External context'
+        }, ${formatCaptureByteSize(totalBytes)}.`,
+        action: { kind: 'open-external-context-capture' },
     };
 }
 
@@ -289,7 +331,7 @@ export function buildComposerControlSurfaceModel(
             buildFilesItem(input),
             buildContextAssetsItem(input),
             buildBrowserItem(input),
-            buildTerminalItem(),
+            buildExternalContextItem(input),
             buildModelRoleItem(input),
             buildApprovalsItem(input),
             buildQuestionsItem(input),

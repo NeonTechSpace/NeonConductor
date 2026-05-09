@@ -25,6 +25,7 @@ import type {
     CloudSessionCreateMetadata,
     ComposerAttachmentInput,
     ComposerDocumentAttachmentInput,
+    ComposerExternalContextCaptureInput,
     ComposerImageAttachmentInput,
     ComposerTextFileAttachmentInput,
     SessionBranchFromMessageInput,
@@ -59,6 +60,7 @@ import type {
 import { composerImageAttachmentMimeTypes } from '@/app/backend/runtime/contracts/types/session';
 import { composerDocumentAttachmentMimeTypes } from '@/app/backend/runtime/contracts/types/session';
 import { composerTextFileAttachmentEncodings } from '@/app/backend/runtime/contracts/types/session';
+import { externalContextCaptureSourceTypes } from '@/app/backend/runtime/contracts/types/session';
 
 function parseComposerImageAttachmentInput(value: unknown, field: string): ComposerImageAttachmentInput {
     const source = readObject(value, field);
@@ -119,6 +121,22 @@ function parseComposerDocumentAttachmentInput(value: unknown, field: string): Co
     };
 }
 
+function parseComposerExternalContextCaptureInput(value: unknown, field: string): ComposerExternalContextCaptureInput {
+    const source = readObject(value, field);
+    return {
+        clientId: readString(source.clientId, `${field}.clientId`),
+        kind: 'external_context_capture',
+        sourceType: readEnumValue(source.sourceType, `${field}.sourceType`, externalContextCaptureSourceTypes),
+        sourceLabel: readString(source.sourceLabel, `${field}.sourceLabel`),
+        ...(typeof source.originDetail === 'string'
+            ? { originDetail: readString(source.originDetail, `${field}.originDetail`) }
+            : {}),
+        text: readString(source.text, `${field}.text`),
+        sha256: readString(source.sha256, `${field}.sha256`),
+        byteSize: readPositiveInteger(source.byteSize, `${field}.byteSize`),
+    };
+}
+
 function parseComposerAttachmentInput(value: unknown, field: string): ComposerAttachmentInput {
     const source = readObject(value, field);
     const rawKind = source.kind;
@@ -131,6 +149,9 @@ function parseComposerAttachmentInput(value: unknown, field: string): ComposerAt
     }
     if (kind === 'document_attachment') {
         return parseComposerDocumentAttachmentInput(source, field);
+    }
+    if (kind === 'external_context_capture') {
+        return parseComposerExternalContextCaptureInput(source, field);
     }
     throw new Error(`Invalid "${field}.kind": expected supported attachment kind.`);
 }

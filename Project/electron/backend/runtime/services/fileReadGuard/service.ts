@@ -101,6 +101,9 @@ export class FileReadGuardService {
     }): Promise<Result<FileReadGuardDecision[], FileReadGuardFailure>> {
         const decisions: FileReadGuardDecision[] = [];
         for (const attachment of input.attachments ?? []) {
+            if (attachment.kind === 'external_context_capture') {
+                continue;
+            }
             const fileName =
                 attachment.kind === 'text_file_attachment'
                     ? attachment.fileName

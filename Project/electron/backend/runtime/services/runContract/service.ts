@@ -42,6 +42,9 @@ function buildAttachmentSummary(
         (attachment) => attachment.kind === undefined || attachment.kind === 'image_attachment'
     );
     const textFileAttachments = (attachments ?? []).filter((attachment) => attachment.kind === 'text_file_attachment');
+    const externalContextCaptures = (attachments ?? []).filter(
+        (attachment) => attachment.kind === 'external_context_capture'
+    );
     const documentAttachments = (attachments ?? []).filter(
         (attachment): attachment is Extract<ComposerAttachmentInput, { kind: 'document_attachment' }> =>
             attachment.kind === 'document_attachment'
@@ -55,6 +58,15 @@ function buildAttachmentSummary(
         totalCount: allAttachments.length,
         imageAttachmentCount: imageAttachments.length,
         textFileAttachmentCount: textFileAttachments.length,
+        ...(externalContextCaptures.length > 0 ? { externalContextCaptureCount: externalContextCaptures.length } : {}),
+        ...(externalContextCaptures.length > 0
+            ? {
+                  externalContextCaptureByteSize: externalContextCaptures.reduce(
+                      (total, attachment) => total + attachment.byteSize,
+                      0
+                  ),
+              }
+            : {}),
         ...(documentAttachments.length > 0 ? { documentAttachmentCount: documentAttachments.length } : {}),
         ...(documentAttachments.length > 0
             ? {

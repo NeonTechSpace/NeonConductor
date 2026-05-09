@@ -246,6 +246,7 @@ export const runtimeMessagePartTypes = [
     'text',
     'image',
     'text_file_attachment',
+    'external_context_capture',
     'document_attachment',
     'reasoning',
     'reasoning_summary',

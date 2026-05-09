@@ -85,6 +85,12 @@ export async function submitPrompt<
     }
 
     if (input.isPlanningMode) {
+        if (attachments.length > 0 || input.browserContext) {
+            input.onError(
+                'Planning runs do not accept composer attachments or browser context in this slice. Remove them or start an executable run.'
+            );
+            return;
+        }
         if (trimmedPrompt.length === 0) {
             input.onError('Planning runs require a text prompt.');
             return;

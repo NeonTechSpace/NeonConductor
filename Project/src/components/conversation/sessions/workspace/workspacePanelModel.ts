@@ -34,6 +34,7 @@ import type {
 import type {
     BrowserContextPacket,
     ComposerAttachmentInput,
+    ComposerExternalContextCaptureInput,
     DiffOverview,
     EntityId,
     ResearchTargetRequest,
@@ -160,6 +161,7 @@ export interface SessionWorkspacePanelProps {
     pendingImages: PendingImageView[];
     pendingTextFiles: PendingTextFileView[];
     pendingDocuments: PendingDocumentView[];
+    externalContextCaptures: ComposerExternalContextCaptureInput[];
     readyComposerAttachments: ComposerAttachmentInput[];
     hasBlockingPendingAttachments: boolean;
     isCreatingSession: boolean;
@@ -229,6 +231,8 @@ export interface SessionWorkspacePanelProps {
     onRemovePendingImage: (clientId: string) => void;
     onRemovePendingTextFile: (clientId: string) => void;
     onRemovePendingDocument: (clientId: string) => void;
+    onAddExternalContextCapture: (capture: ComposerExternalContextCaptureInput) => void;
+    onRemoveExternalContextCapture: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
     onQueuePrompt?: (
         prompt: string,

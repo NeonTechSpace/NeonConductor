@@ -161,6 +161,16 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
                   sha256: string;
                   byteSize: number;
               }
+            | {
+                  clientId: string;
+                  kind: 'external_context_capture';
+                  sourceType: 'clipboard' | 'command_output' | 'log_excerpt' | 'stack_trace' | 'other';
+                  sourceLabel: string;
+                  originDetail?: string;
+                  text: string;
+                  sha256: string;
+                  byteSize: number;
+              }
         >;
         browserContext?: unknown;
         topLevelTab: 'chat' | 'agent' | 'orchestrator';
@@ -247,62 +257,62 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         profileId: string;
         flowDefinitionId: string;
     }>();
-        expectTypeOf<AppRouterInputs['flow']['createDefinition']>().toExtend<{
-            profileId: string;
-            label: string;
-            description?: string;
-            enabled: boolean;
-            triggerKind: 'manual';
-            steps: Array<
-                | { kind: 'legacy_command'; id: string; label: string; command: string }
-                | {
-                      kind: 'mode_run';
-                      id: string;
-                      label: string;
-                      topLevelTab: 'chat' | 'agent' | 'orchestrator';
-                      modeKey: string;
-                      promptMarkdown: string;
-                  }
-                | {
-                      kind: 'workflow';
-                      id: string;
-                      label: string;
-                      workflowCapability: string;
-                      promptMarkdown: string;
-                      planningDepth?: 'simple' | 'advanced';
-                      requireApprovedPlan?: boolean;
-                      reuseExistingPlan?: boolean;
-                  }
+    expectTypeOf<AppRouterInputs['flow']['createDefinition']>().toExtend<{
+        profileId: string;
+        label: string;
+        description?: string;
+        enabled: boolean;
+        triggerKind: 'manual';
+        steps: Array<
+            | { kind: 'legacy_command'; id: string; label: string; command: string }
+            | {
+                  kind: 'mode_run';
+                  id: string;
+                  label: string;
+                  topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                  modeKey: string;
+                  promptMarkdown: string;
+              }
+            | {
+                  kind: 'workflow';
+                  id: string;
+                  label: string;
+                  workflowCapability: string;
+                  promptMarkdown: string;
+                  planningDepth?: 'simple' | 'advanced';
+                  requireApprovedPlan?: boolean;
+                  reuseExistingPlan?: boolean;
+              }
             | { kind: 'approval_gate'; id: string; label: string }
         >;
     }>();
-        expectTypeOf<AppRouterInputs['flow']['updateDefinition']>().toExtend<{
-            profileId: string;
-            flowDefinitionId: string;
-            label: string;
-            description?: string;
-            enabled: boolean;
-            triggerKind: 'manual';
-            steps: Array<
-                | { kind: 'legacy_command'; id: string; label: string; command: string }
-                | {
-                      kind: 'mode_run';
-                      id: string;
-                      label: string;
-                      topLevelTab: 'chat' | 'agent' | 'orchestrator';
-                      modeKey: string;
-                      promptMarkdown: string;
-                  }
-                | {
-                      kind: 'workflow';
-                      id: string;
-                      label: string;
-                      workflowCapability: string;
-                      promptMarkdown: string;
-                      planningDepth?: 'simple' | 'advanced';
-                      requireApprovedPlan?: boolean;
-                      reuseExistingPlan?: boolean;
-                  }
+    expectTypeOf<AppRouterInputs['flow']['updateDefinition']>().toExtend<{
+        profileId: string;
+        flowDefinitionId: string;
+        label: string;
+        description?: string;
+        enabled: boolean;
+        triggerKind: 'manual';
+        steps: Array<
+            | { kind: 'legacy_command'; id: string; label: string; command: string }
+            | {
+                  kind: 'mode_run';
+                  id: string;
+                  label: string;
+                  topLevelTab: 'chat' | 'agent' | 'orchestrator';
+                  modeKey: string;
+                  promptMarkdown: string;
+              }
+            | {
+                  kind: 'workflow';
+                  id: string;
+                  label: string;
+                  workflowCapability: string;
+                  promptMarkdown: string;
+                  planningDepth?: 'simple' | 'advanced';
+                  requireApprovedPlan?: boolean;
+                  reuseExistingPlan?: boolean;
+              }
             | { kind: 'approval_gate'; id: string; label: string }
         >;
     }>();
@@ -470,7 +480,11 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
     >();
     expectTypeOf<AppRouterOutputs['flow']['listInstances']>().toExtend<{
         flowInstances: Array<{
-            instance: { id: string; flowDefinitionId: string; status: 'queued' | 'running' | 'approval_required' | 'failed' | 'completed' | 'cancelled' };
+            instance: {
+                id: string;
+                flowDefinitionId: string;
+                status: 'queued' | 'running' | 'approval_required' | 'failed' | 'completed' | 'cancelled';
+            };
             definitionSnapshot: { id: string; label: string };
             lifecycleEvents: Array<{ kind: string; flowDefinitionId: string; flowInstanceId: string }>;
             originKind: 'canonical' | 'branch_workflow_adapter';
@@ -481,7 +495,11 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
         | {
               found: true;
               flowInstance: {
-                  instance: { id: string; flowDefinitionId: string; status: 'queued' | 'running' | 'approval_required' | 'failed' | 'completed' | 'cancelled' };
+                  instance: {
+                      id: string;
+                      flowDefinitionId: string;
+                      status: 'queued' | 'running' | 'approval_required' | 'failed' | 'completed' | 'cancelled';
+                  };
                   definitionSnapshot: { id: string; label: string };
                   lifecycleEvents: Array<{ kind: string; flowDefinitionId: string; flowInstanceId: string }>;
                   originKind: 'canonical' | 'branch_workflow_adapter';
@@ -570,4 +588,3 @@ test('AppRouter exposes conversation and session procedure contracts to clients'
 
     expect(true).toBe(true);
 });
-

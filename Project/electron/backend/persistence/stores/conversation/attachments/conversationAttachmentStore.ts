@@ -9,6 +9,7 @@ import type {
     SessionAttachmentSummary,
 } from '@/app/backend/runtime/contracts';
 import { composerTextFileAttachmentEncodings } from '@/app/backend/runtime/contracts';
+import { externalContextCaptureSourceTypes } from '@/app/backend/runtime/contracts';
 import { createEntityId } from '@/app/backend/runtime/identity/entityIds';
 import { DataCorruptionError } from '@/app/backend/runtime/services/common/fatalErrors';
 
@@ -27,12 +28,16 @@ function mapAttachmentSummary(row: {
     width: number | null;
     height: number | null;
     encoding: string | null;
+    source_type: string | null;
+    source_label: string | null;
+    origin_detail: string | null;
     created_at: string;
 }): SessionAttachmentSummary {
     const kind = parseEnumValue(row.kind, 'conversation_attachments.kind', [
         'image_attachment',
         'text_file_attachment',
         'document_attachment',
+        'external_context_capture',
     ] as const);
     return {
         id: parseEntityId(row.id, 'conversation_attachments.id', 'att'),
@@ -61,6 +66,17 @@ function mapAttachmentSummary(row: {
                   ),
               }
             : {}),
+        ...(row.source_type
+            ? {
+                  sourceType: parseEnumValue(
+                      row.source_type,
+                      'conversation_attachments.source_type',
+                      externalContextCaptureSourceTypes
+                  ),
+              }
+            : {}),
+        ...(row.source_label ? { sourceLabel: row.source_label } : {}),
+        ...(row.origin_detail ? { originDetail: row.origin_detail } : {}),
         createdAt: row.created_at,
     };
 }
@@ -78,6 +94,9 @@ async function mapAttachmentPayload(row: {
     width: number | null;
     height: number | null;
     encoding: string | null;
+    source_type: string | null;
+    source_label: string | null;
+    origin_detail: string | null;
     bytes_blob: Uint8Array | null;
     text_content: string | null;
     created_at: string;
@@ -117,6 +136,16 @@ async function mapAttachmentPayload(row: {
             extractedTextByteSize: documentArtifact.extractedTextByteSize,
             extractedTextTokenCount: documentArtifact.extractedTextTokenCount,
             documentArtifact,
+        };
+    }
+    if (summary.kind === 'external_context_capture') {
+        if (!row.text_content || !summary.sourceType || !summary.sourceLabel) {
+            throw new DataCorruptionError('External context capture payload is missing text or source metadata.');
+        }
+        return {
+            ...summary,
+            kind: 'external_context_capture',
+            text: row.text_content,
         };
     }
     if (!row.text_content || !summary.encoding) {
@@ -165,6 +194,9 @@ export class ConversationAttachmentStore {
                     width: null,
                     height: null,
                     encoding: null,
+                    source_type: null,
+                    source_label: null,
+                    origin_detail: null,
                     bytes_blob: null,
                     text_content: null,
                     created_at: now,
@@ -181,6 +213,9 @@ export class ConversationAttachmentStore {
                     'width',
                     'height',
                     'encoding',
+                    'source_type',
+                    'source_label',
+                    'origin_detail',
                     'created_at',
                 ])
                 .executeTakeFirstOrThrow();
@@ -211,6 +246,9 @@ export class ConversationAttachmentStore {
                     width: null,
                     height: null,
                     encoding: input.attachment.encoding,
+                    source_type: null,
+                    source_label: null,
+                    origin_detail: null,
                     bytes_blob: null,
                     text_content: input.attachment.text,
                     created_at: now,
@@ -227,6 +265,54 @@ export class ConversationAttachmentStore {
                     'width',
                     'height',
                     'encoding',
+                    'source_type',
+                    'source_label',
+                    'origin_detail',
+                    'created_at',
+                ])
+                .executeTakeFirstOrThrow();
+            return mapAttachmentSummary(inserted);
+        }
+
+        if (input.attachment.kind === 'external_context_capture') {
+            const inserted = await db
+                .insertInto('conversation_attachments')
+                .values({
+                    id: attachmentId,
+                    profile_id: input.profileId,
+                    session_id: input.sessionId,
+                    message_part_id: input.messagePartId ?? null,
+                    kind: 'external_context_capture',
+                    document_artifact_id: null,
+                    file_name: input.attachment.sourceLabel,
+                    mime_type: 'text/plain',
+                    sha256: input.attachment.sha256,
+                    byte_size: input.attachment.byteSize,
+                    width: null,
+                    height: null,
+                    encoding: null,
+                    source_type: input.attachment.sourceType,
+                    source_label: input.attachment.sourceLabel,
+                    origin_detail: input.attachment.originDetail ?? null,
+                    bytes_blob: null,
+                    text_content: input.attachment.text,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .returning([
+                    'id',
+                    'kind',
+                    'document_artifact_id',
+                    'file_name',
+                    'mime_type',
+                    'sha256',
+                    'byte_size',
+                    'width',
+                    'height',
+                    'encoding',
+                    'source_type',
+                    'source_label',
+                    'origin_detail',
                     'created_at',
                 ])
                 .executeTakeFirstOrThrow();
@@ -249,6 +335,9 @@ export class ConversationAttachmentStore {
                 width: input.attachment.width,
                 height: input.attachment.height,
                 encoding: null,
+                source_type: null,
+                source_label: null,
+                origin_detail: null,
                 bytes_blob: Uint8Array.from(Buffer.from(input.attachment.bytesBase64, 'base64')),
                 text_content: null,
                 created_at: now,
@@ -265,6 +354,9 @@ export class ConversationAttachmentStore {
                 'width',
                 'height',
                 'encoding',
+                'source_type',
+                'source_label',
+                'origin_detail',
                 'created_at',
             ])
             .executeTakeFirstOrThrow();
@@ -289,6 +381,9 @@ export class ConversationAttachmentStore {
                 'width',
                 'height',
                 'encoding',
+                'source_type',
+                'source_label',
+                'origin_detail',
                 'bytes_blob',
                 'text_content',
                 'created_at',
@@ -317,6 +412,9 @@ export class ConversationAttachmentStore {
                 'width',
                 'height',
                 'encoding',
+                'source_type',
+                'source_label',
+                'origin_detail',
                 'bytes_blob',
                 'text_content',
                 'created_at',
@@ -345,6 +443,9 @@ export class ConversationAttachmentStore {
                 'conversation_attachments.width as width',
                 'conversation_attachments.height as height',
                 'conversation_attachments.encoding as encoding',
+                'conversation_attachments.source_type as source_type',
+                'conversation_attachments.source_label as source_label',
+                'conversation_attachments.origin_detail as origin_detail',
                 'conversation_attachments.bytes_blob as bytes_blob',
                 'conversation_attachments.text_content as text_content',
                 'conversation_attachments.created_at as created_at',

@@ -1,12 +1,12 @@
 import {
     CircleHelp,
+    FileText,
     FileStack,
     Gauge,
     Globe2,
     Paperclip,
     ShieldCheck,
     Sparkles,
-    TerminalSquare,
 } from 'lucide-react';
 
 import type {
@@ -21,7 +21,7 @@ const iconByItemId: Record<ComposerControlSurfaceItemId, typeof Paperclip> = {
     files: Paperclip,
     'context-assets': FileStack,
     'browser-context': Globe2,
-    'terminal-context': TerminalSquare,
+    'external-context': FileText,
     'model-role': Sparkles,
     approvals: ShieldCheck,
     questions: CircleHelp,
@@ -91,11 +91,13 @@ export function ComposerControlSurfaceStrip({
     model,
     onOpenFilePicker,
     onOpenBrowserSurface,
+    onOpenExternalContextCapture,
     onOpenInspectorSection,
 }: {
     model: ComposerControlSurfaceModel;
     onOpenFilePicker: () => void;
     onOpenBrowserSurface?: () => void;
+    onOpenExternalContextCapture?: () => void;
     onOpenInspectorSection?: (sectionId: WorkspaceInspectorSectionId) => void;
 }) {
     function handleAction(action: ComposerControlSurfaceAction) {
@@ -105,6 +107,10 @@ export function ComposerControlSurfaceStrip({
         }
         if (action.kind === 'open-browser-surface') {
             onOpenBrowserSurface?.();
+            return;
+        }
+        if (action.kind === 'open-external-context-capture') {
+            onOpenExternalContextCapture?.();
             return;
         }
         onOpenInspectorSection?.(action.sectionId);

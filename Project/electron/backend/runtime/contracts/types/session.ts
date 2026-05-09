@@ -48,6 +48,14 @@ export const composerTextFileAttachmentEncodings = ['utf-8', 'utf-8-bom'] as con
 export type ComposerTextFileAttachmentEncoding = (typeof composerTextFileAttachmentEncodings)[number];
 export const composerDocumentAttachmentMimeTypes = ['application/pdf'] as const;
 export type ComposerDocumentAttachmentMimeType = (typeof composerDocumentAttachmentMimeTypes)[number];
+export const externalContextCaptureSourceTypes = [
+    'clipboard',
+    'command_output',
+    'log_excerpt',
+    'stack_trace',
+    'other',
+] as const;
+export type ExternalContextCaptureSourceType = (typeof externalContextCaptureSourceTypes)[number];
 export const documentExtractionStates = ['pending', 'extracted', 'empty', 'failed'] as const;
 export type DocumentExtractionState = (typeof documentExtractionStates)[number];
 export const documentArtifactLifecycleStates = ['draft', 'attached', 'deleted'] as const;
@@ -94,10 +102,22 @@ export interface ComposerDocumentAttachmentInput {
     extractedTextTokenCount: number;
 }
 
+export interface ComposerExternalContextCaptureInput {
+    clientId: string;
+    kind: 'external_context_capture';
+    sourceType: ExternalContextCaptureSourceType;
+    sourceLabel: string;
+    originDetail?: string;
+    text: string;
+    sha256: string;
+    byteSize: number;
+}
+
 export type ComposerAttachmentInput =
     | ComposerImageAttachmentInput
     | ComposerTextFileAttachmentInput
-    | ComposerDocumentAttachmentInput;
+    | ComposerDocumentAttachmentInput
+    | ComposerExternalContextCaptureInput;
 
 export interface DocumentArtifactPageSummary {
     pageNumber: number;
@@ -137,6 +157,9 @@ export interface SessionAttachmentSummary {
     width?: number;
     height?: number;
     encoding?: ComposerTextFileAttachmentEncoding;
+    sourceType?: ExternalContextCaptureSourceType;
+    sourceLabel?: string;
+    originDetail?: string;
     documentArtifactId?: EntityId<'doc'>;
     pageCount?: number;
     extractionState?: DocumentExtractionState;
@@ -152,6 +175,10 @@ export type SessionAttachmentPayload =
       } & SessionAttachmentSummary)
     | ({
           kind: 'text_file_attachment';
+          text: string;
+      } & SessionAttachmentSummary)
+    | ({
+          kind: 'external_context_capture';
           text: string;
       } & SessionAttachmentSummary)
     | ({

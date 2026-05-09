@@ -45,6 +45,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         pendingImages,
         pendingTextFiles,
         pendingDocuments,
+        externalContextCaptures,
         readyComposerAttachments,
         hasBlockingPendingAttachments,
         isStartingRun,
@@ -97,6 +98,8 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         onRemovePendingImage,
         onRemovePendingTextFile,
         onRemovePendingDocument,
+        onAddExternalContextCapture,
+        onRemoveExternalContextCapture,
         onRetryPendingImage,
         onQueuePrompt,
         onSubmitPrompt,
@@ -146,6 +149,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     pendingImages={pendingImages}
                     pendingTextFiles={pendingTextFiles}
                     pendingDocuments={pendingDocuments}
+                    externalContextCaptures={externalContextCaptures}
                     readyComposerAttachments={readyComposerAttachments}
                     hasBlockingPendingAttachments={hasBlockingPendingAttachments}
                     isStartingRun={isStartingRun}
@@ -204,6 +208,8 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     onRemovePendingImage={onRemovePendingImage}
                     onRemovePendingTextFile={onRemovePendingTextFile}
                     onRemovePendingDocument={onRemovePendingDocument}
+                    onAddExternalContextCapture={onAddExternalContextCapture}
+                    onRemoveExternalContextCapture={onRemoveExternalContextCapture}
                     onRetryPendingImage={onRetryPendingImage}
                     {...(onQueuePrompt ? { onQueuePrompt } : {})}
                     onSubmitPrompt={onSubmitPrompt}

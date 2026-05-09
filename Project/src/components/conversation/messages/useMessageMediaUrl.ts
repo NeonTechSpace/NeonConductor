@@ -87,7 +87,7 @@ function toAttachmentMediaPayload(
     value:
         | {
               found: boolean;
-              kind?: 'image_attachment' | 'text_file_attachment' | 'document_attachment';
+              kind?: 'image_attachment' | 'text_file_attachment' | 'document_attachment' | 'external_context_capture';
               mimeType?: string;
               bytesBase64?: string;
               byteSize?: number;
@@ -159,7 +159,9 @@ export function useMessageMediaUrl(input: {
     );
 
     useEffect(() => {
-        const payload = input.attachmentId ? toAttachmentMediaPayload(attachmentQuery.data) : toMediaPayload(mediaQuery.data);
+        const payload = input.attachmentId
+            ? toAttachmentMediaPayload(attachmentQuery.data)
+            : toMediaPayload(mediaQuery.data);
         if (!payload) {
             setObjectUrl(undefined);
             return;

@@ -47,6 +47,48 @@ describe('submitPrompt', () => {
         expect(onPlanStarted).toHaveBeenCalledOnce();
     });
 
+    it('fails closed when planning mode receives composer attachments', async () => {
+        const onError = vi.fn();
+        const startPlan = vi.fn();
+
+        await submitPrompt({
+            prompt: 'Plan with logs',
+            attachments: [
+                {
+                    clientId: 'external_1',
+                    kind: 'external_context_capture',
+                    sourceType: 'log_excerpt',
+                    sourceLabel: 'Build log excerpt',
+                    text: 'failed test output',
+                    sha256: 'hash-1',
+                    byteSize: 18,
+                },
+            ],
+            isStartingRun: false,
+            selectedSessionId: 'sess_test',
+            isPlanningMode: true,
+            profileId: 'profile_default',
+            topLevelTab: 'agent',
+            modeKey: 'plan',
+            planningDepthSelection: 'advanced',
+            workspaceFingerprint: 'wsf_test',
+            resolvedRunTarget: undefined,
+            runtimeOptions: DEFAULT_RUN_OPTIONS,
+            providerById: new Map(),
+            startPlan,
+            startRun: vi.fn(),
+            onPromptCleared: vi.fn(),
+            onPlanStarted: vi.fn(),
+            onRunStarted: vi.fn(),
+            onError,
+        });
+
+        expect(startPlan).not.toHaveBeenCalled();
+        expect(onError).toHaveBeenCalledWith(
+            'Planning runs do not accept composer attachments or browser context in this slice. Remove them or start an executable run.'
+        );
+    });
+
     it('returns actionable provider auth errors for run mode', async () => {
         const onError = vi.fn();
 

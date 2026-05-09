@@ -114,6 +114,19 @@ function toComposerAttachmentInput(
         };
     }
 
+    if (payload.kind === 'external_context_capture') {
+        return {
+            clientId: payload.id,
+            kind: 'external_context_capture',
+            sourceType: payload.sourceType ?? 'other',
+            sourceLabel: payload.sourceLabel ?? payload.fileName ?? 'External context',
+            ...(payload.originDetail ? { originDetail: payload.originDetail } : {}),
+            text: payload.text,
+            sha256: payload.sha256,
+            byteSize: payload.byteSize,
+        };
+    }
+
     return {
         clientId: payload.id,
         kind: 'image_attachment',

@@ -31,6 +31,7 @@ import { trpc } from '@/web/trpc/client';
 
 import type {
     BrowserContextPacket,
+    ComposerExternalContextCaptureInput,
     EntityId,
     PlanStartInput,
     PlanRecordView,
@@ -131,6 +132,7 @@ export function useConversationShellComposer<
     const [pendingImages, setPendingImages] = useState<ComposerPendingImage[]>([]);
     const [pendingTextFiles, setPendingTextFiles] = useState<ComposerPendingTextFile[]>([]);
     const [pendingDocuments, setPendingDocuments] = useState<ComposerPendingDocument[]>([]);
+    const [externalContextCaptures, setExternalContextCaptures] = useState<ComposerExternalContextCaptureInput[]>([]);
     const [optimisticUserMessage, setOptimisticUserMessage] = useState<OptimisticConversationUserMessage | undefined>(
         undefined
     );
@@ -490,6 +492,7 @@ export function useConversationShellComposer<
         ...pendingDocuments.flatMap((document) =>
             document.status === 'ready' && document.attachment ? [document.attachment] : []
         ),
+        ...externalContextCaptures,
     ];
     const hasBlockingPendingImages = pendingImages.some((image) => image.status !== 'ready');
     const hasBlockingPendingTextFiles = pendingTextFiles.some((file) => file.status === 'reading');
@@ -516,6 +519,7 @@ export function useConversationShellComposer<
         pendingImages,
         pendingTextFiles,
         pendingDocuments,
+        externalContextCaptures,
         optimisticUserMessage,
         promptResetKey,
         hasBlockingPendingImages,
@@ -532,6 +536,7 @@ export function useConversationShellComposer<
             clearPendingImages();
             clearPendingTextFiles();
             clearPendingDocuments({ discardDrafts: true });
+            setExternalContextCaptures([]);
             setRunSubmitError(undefined);
         },
         onPromptEdited: () => {
@@ -548,6 +553,14 @@ export function useConversationShellComposer<
                 discardPendingDocument(removed);
             }
             replacePendingDocuments(pendingDocumentsRef.current.filter((candidate) => candidate.clientId !== clientId));
+        },
+        onAddExternalContextCapture: (capture: ComposerExternalContextCaptureInput) => {
+            setRunSubmitError(undefined);
+            setExternalContextCaptures((current) => [...current, capture]);
+        },
+        onRemoveExternalContextCapture: (clientId: string) => {
+            setRunSubmitError(undefined);
+            setExternalContextCaptures((current) => current.filter((capture) => capture.clientId !== clientId));
         },
         onRetryPendingImage: retryPendingImage,
         onQueuePrompt: (
@@ -605,6 +618,7 @@ export function useConversationShellComposer<
                     clearPendingImages();
                     clearPendingTextFiles();
                     clearPendingDocuments();
+                    setExternalContextCaptures([]);
                 },
                 (error) => {
                     setRunSubmitError(error instanceof Error ? error.message : String(error));
@@ -665,6 +679,7 @@ export function useConversationShellComposer<
                     clearPendingImages();
                     clearPendingTextFiles();
                     clearPendingDocuments();
+                    setExternalContextCaptures([]);
                 },
                 onPlanStarted: (result) => {
                     input.onPlanStarted(result);

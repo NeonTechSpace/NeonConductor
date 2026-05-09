@@ -10,6 +10,7 @@ import { ComposerPromptCard } from '@/web/components/conversation/panels/compose
 import { ComposerRunContractPreviewSection } from '@/web/components/conversation/panels/composerActionPanel/ComposerRunContractPreviewSection';
 import { ComposerRunControlsBar } from '@/web/components/conversation/panels/composerActionPanel/ComposerRunControlsBar';
 import { ComposerStatusFooter } from '@/web/components/conversation/panels/composerActionPanel/ComposerStatusFooter';
+import { ExternalContextCaptureDialog } from '@/web/components/conversation/panels/composerActionPanel/ExternalContextCaptureDialog';
 import {
     formatAttachmentBytes,
     formatImageBytes,
@@ -178,6 +179,7 @@ function ComposerActionPanelDraftBoundary({
     pendingImages,
     pendingTextFiles,
     pendingDocuments,
+    externalContextCaptures,
     readyComposerAttachments,
     hasBlockingPendingAttachments,
     disabled,
@@ -236,6 +238,8 @@ function ComposerActionPanelDraftBoundary({
     onRemovePendingImage,
     onRemovePendingTextFile,
     onRemovePendingDocument,
+    onAddExternalContextCapture,
+    onRemoveExternalContextCapture,
     onRetryPendingImage,
     onQueuePrompt,
     onSubmitPrompt,
@@ -253,6 +257,7 @@ function ComposerActionPanelDraftBoundary({
         targetValue: '',
         mutationIntent: 'inspect',
     });
+    const [externalContextDialogOpen, setExternalContextDialogOpen] = useState(false);
     const researchTarget = useMemo(() => buildResearchTarget(researchTargetDraft), [researchTargetDraft]);
     const showResearchTargetEditor = topLevelTab === 'agent' && activeModeKey === 'research';
     useEffect(() => {
@@ -279,6 +284,7 @@ function ComposerActionPanelDraftBoundary({
         pendingImages,
         pendingTextFiles,
         pendingDocuments,
+        externalContextCaptures,
         readyComposerAttachments,
         hasBlockingPendingAttachments,
         attachedRules,
@@ -333,6 +339,7 @@ function ComposerActionPanelDraftBoundary({
         pendingImages,
         pendingTextFiles,
         pendingDocuments,
+        externalContextCaptures,
         canAttachImages,
         runErrorMessage,
         maxImageAttachmentsPerMessage,
@@ -418,6 +425,9 @@ function ComposerActionPanelDraftBoundary({
                             attachmentController.openFilePicker();
                         }}
                         {...(onOpenBrowserSurface ? { onOpenBrowserSurface } : {})}
+                        onOpenExternalContextCapture={() => {
+                            setExternalContextDialogOpen(true);
+                        }}
                         {...(onOpenInspectorSection ? { onOpenInspectorSection } : {})}
                     />
                     {contextState ? (
@@ -455,6 +465,7 @@ function ComposerActionPanelDraftBoundary({
                         pendingImages={pendingImages}
                         pendingTextFiles={pendingTextFiles}
                         pendingDocuments={pendingDocuments}
+                        externalContextCaptures={externalContextCaptures}
                         composerErrorMessage={submissionPolicy.composerErrorMessage}
                         composerErrorTone={composerErrorTone}
                         draftPrompt={draftController.draftPrompt}
@@ -527,6 +538,7 @@ function ComposerActionPanelDraftBoundary({
                         formatAttachmentBytes={formatAttachmentBytes}
                         onRemovePendingTextFile={onRemovePendingTextFile}
                         onRemovePendingDocument={onRemovePendingDocument}
+                        onRemoveExternalContextCapture={onRemoveExternalContextCapture}
                     />
                     <ComposerRunControlsBar
                         composerControlsDisabled={controlsReadModel.composerControlsDisabled}
@@ -592,6 +604,13 @@ function ComposerActionPanelDraftBoundary({
                 previewState={attachmentController.lightboxImage ? 'ready' : 'idle'}
                 onClose={() => {
                     attachmentController.closeLightbox();
+                }}
+            />
+            <ExternalContextCaptureDialog
+                open={externalContextDialogOpen}
+                onAddCapture={onAddExternalContextCapture}
+                onClose={() => {
+                    setExternalContextDialogOpen(false);
                 }}
             />
         </>

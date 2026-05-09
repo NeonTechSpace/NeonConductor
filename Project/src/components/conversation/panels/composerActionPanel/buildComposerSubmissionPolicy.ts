@@ -1,4 +1,7 @@
-import type { ComposerActionPanelProps, ComposerSubmissionPolicy } from '@/web/components/conversation/panels/composerActionPanel/types';
+import type {
+    ComposerActionPanelProps,
+    ComposerSubmissionPolicy,
+} from '@/web/components/conversation/panels/composerActionPanel/types';
 
 export function buildComposerSubmissionPolicy(
     input: Pick<
@@ -6,6 +9,7 @@ export function buildComposerSubmissionPolicy(
         | 'pendingImages'
         | 'pendingTextFiles'
         | 'pendingDocuments'
+        | 'externalContextCaptures'
         | 'canAttachImages'
         | 'imageAttachmentBlockedReason'
         | 'selectedModelCompatibilityState'
@@ -26,7 +30,8 @@ export function buildComposerSubmissionPolicy(
         input.draftPrompt.trim().length > 0 ||
         input.pendingImages.some((image) => image.status === 'ready') ||
         input.pendingTextFiles.some((file) => file.status === 'ready') ||
-        input.pendingDocuments.some((document) => document.status === 'ready');
+        input.pendingDocuments.some((document) => document.status === 'ready') ||
+        input.externalContextCaptures.length > 0;
     const hasUnsupportedPendingImages = input.pendingImages.length > 0 && !input.canAttachImages;
     const attachmentStatusMessage = hasUnsupportedPendingImages
         ? (input.imageAttachmentBlockedReason ?? 'Select a vision-capable model to send attached images.')
@@ -34,7 +39,10 @@ export function buildComposerSubmissionPolicy(
           ? input.selectedModelCompatibilityReason
           : hasBlockingPendingImages || hasBlockingPendingTextFiles || hasBlockingPendingDocuments
             ? 'Sending is locked until every attached file finishes processing.'
-            : input.pendingImages.length > 0 || input.pendingTextFiles.length > 0 || input.pendingDocuments.length > 0
+            : input.pendingImages.length > 0 ||
+                input.pendingTextFiles.length > 0 ||
+                input.pendingDocuments.length > 0 ||
+                input.externalContextCaptures.length > 0
               ? 'Attachments are ready to send with this message.'
               : input.canAttachImages
                 ? `Attach up to ${String(input.maxImageAttachmentsPerMessage)} images plus PDFs or UTF-8 text/code files, or send text-only.`

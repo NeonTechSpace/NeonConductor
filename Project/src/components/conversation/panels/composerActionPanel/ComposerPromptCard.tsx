@@ -9,6 +9,7 @@ import {
     PendingDocumentsList,
     type PendingDocumentCardView,
 } from '@/web/components/conversation/panels/composerActionPanel/pendingDocumentsList';
+import { ExternalContextCaptureList } from '@/web/components/conversation/panels/composerActionPanel/ExternalContextCaptureList';
 import {
     PendingImagesGrid,
     type PendingImageCardView,
@@ -19,6 +20,7 @@ import {
 } from '@/web/components/conversation/panels/composerActionPanel/pendingTextFilesList';
 import { ComposerSlashCommandPopup } from '@/web/components/conversation/panels/composerSlashCommandPopup';
 import type { ComposerSlashPopupState } from '@/web/components/conversation/panels/composerSlashCommands';
+import type { ComposerExternalContextCaptureInput } from '@/shared/contracts';
 
 interface ComposerPromptCardProps {
     isDragActive: boolean;
@@ -27,6 +29,7 @@ interface ComposerPromptCardProps {
     pendingImages: PendingImageCardView[];
     pendingTextFiles: PendingTextFileCardView[];
     pendingDocuments: PendingDocumentCardView[];
+    externalContextCaptures: ComposerExternalContextCaptureInput[];
     composerErrorMessage: string | undefined;
     composerErrorTone: 'destructive' | 'muted';
     draftPrompt: string;
@@ -48,6 +51,7 @@ interface ComposerPromptCardProps {
     formatAttachmentBytes: (value?: number) => string | undefined;
     onRemovePendingTextFile: (clientId: string) => void;
     onRemovePendingDocument: (clientId: string) => void;
+    onRemoveExternalContextCapture: (clientId: string) => void;
 }
 
 export function ComposerPromptCard({
@@ -57,6 +61,7 @@ export function ComposerPromptCard({
     pendingImages,
     pendingTextFiles,
     pendingDocuments,
+    externalContextCaptures,
     composerErrorMessage,
     composerErrorTone,
     draftPrompt,
@@ -78,6 +83,7 @@ export function ComposerPromptCard({
     formatAttachmentBytes,
     onRemovePendingTextFile,
     onRemovePendingDocument,
+    onRemoveExternalContextCapture,
 }: ComposerPromptCardProps) {
     const slashPopupId = useId();
     const slashListboxId = useId();
@@ -130,6 +136,10 @@ export function ComposerPromptCard({
                     pendingDocuments={pendingDocuments}
                     onRemovePendingDocument={onRemovePendingDocument}
                     formatByteSize={formatAttachmentBytes}
+                />
+                <ExternalContextCaptureList
+                    captures={externalContextCaptures}
+                    onRemoveCapture={onRemoveExternalContextCapture}
                 />
                 <textarea
                     ref={promptTextareaRef}

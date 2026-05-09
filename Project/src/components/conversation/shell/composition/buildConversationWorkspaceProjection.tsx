@@ -304,6 +304,7 @@ export function buildConversationWorkspaceProjection(
         pendingImages: input.composer.pendingImages,
         pendingTextFiles: input.composer.pendingTextFiles,
         pendingDocuments: input.composer.pendingDocuments,
+        externalContextCaptures: input.composer.externalContextCaptures,
         readyComposerAttachments: [
             ...input.composer.pendingImages.flatMap((image) =>
                 image.status === 'ready' && image.attachment ? [image.attachment] : []
@@ -314,6 +315,7 @@ export function buildConversationWorkspaceProjection(
             ...input.composer.pendingDocuments.flatMap((document) =>
                 document.status === 'ready' && document.attachment ? [document.attachment] : []
             ),
+            ...input.composer.externalContextCaptures,
         ],
         hasBlockingPendingAttachments:
             input.composer.pendingImages.some((image) => image.status !== 'ready') ||
@@ -429,6 +431,8 @@ export function buildConversationWorkspaceProjection(
         onRemovePendingImage: input.composer.onRemovePendingImage,
         onRemovePendingTextFile: input.composer.onRemovePendingTextFile,
         onRemovePendingDocument: input.composer.onRemovePendingDocument,
+        onAddExternalContextCapture: input.composer.onAddExternalContextCapture,
+        onRemoveExternalContextCapture: input.composer.onRemoveExternalContextCapture,
         onRetryPendingImage: input.composer.onRetryPendingImage,
         ...(!input.isPlanningComposerMode ? { onQueuePrompt: input.composer.onQueuePrompt } : {}),
         onSubmitPrompt: input.composer.onSubmitPrompt,

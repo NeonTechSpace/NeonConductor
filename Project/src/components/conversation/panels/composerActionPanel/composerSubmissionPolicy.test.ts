@@ -7,6 +7,7 @@ function createPolicyInput(overrides: Partial<Parameters<typeof buildComposerSub
         pendingImages: [],
         pendingTextFiles: [],
         pendingDocuments: [],
+        externalContextCaptures: [],
         canAttachImages: true,
         maxImageAttachmentsPerMessage: 4,
         draftPrompt: 'ship it',

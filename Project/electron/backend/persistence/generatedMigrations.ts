@@ -574,7 +574,7 @@ CREATE TABLE conversation_attachments (
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     session_id TEXT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     message_part_id TEXT NULL UNIQUE REFERENCES message_parts(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('image_attachment', 'text_file_attachment', 'document_attachment')),
+    kind TEXT NOT NULL CHECK (kind IN ('image_attachment', 'text_file_attachment', 'document_attachment', 'external_context_capture')),
     document_artifact_id TEXT NULL REFERENCES document_artifacts(id) ON DELETE RESTRICT,
     file_name TEXT NULL,
     mime_type TEXT NOT NULL,
@@ -583,16 +583,21 @@ CREATE TABLE conversation_attachments (
     width INTEGER NULL,
     height INTEGER NULL,
     encoding TEXT NULL CHECK (encoding IS NULL OR encoding IN ('utf-8', 'utf-8-bom')),
+    source_type TEXT NULL CHECK (source_type IS NULL OR source_type IN ('clipboard', 'command_output', 'log_excerpt', 'stack_trace', 'other')),
+    source_label TEXT NULL,
+    origin_detail TEXT NULL,
     bytes_blob BLOB NULL,
     text_content TEXT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     CHECK (
-        (kind = 'image_attachment' AND document_artifact_id IS NULL AND bytes_blob IS NOT NULL AND text_content IS NULL AND width IS NOT NULL AND height IS NOT NULL AND width > 0 AND height > 0)
+        (kind = 'image_attachment' AND document_artifact_id IS NULL AND bytes_blob IS NOT NULL AND text_content IS NULL AND width IS NOT NULL AND height IS NOT NULL AND width > 0 AND height > 0 AND source_type IS NULL AND source_label IS NULL AND origin_detail IS NULL)
         OR
-        (kind = 'text_file_attachment' AND document_artifact_id IS NULL AND bytes_blob IS NULL AND text_content IS NOT NULL AND width IS NULL AND height IS NULL AND encoding IS NOT NULL)
+        (kind = 'text_file_attachment' AND document_artifact_id IS NULL AND bytes_blob IS NULL AND text_content IS NOT NULL AND width IS NULL AND height IS NULL AND encoding IS NOT NULL AND source_type IS NULL AND source_label IS NULL AND origin_detail IS NULL)
         OR
-        (kind = 'document_attachment' AND document_artifact_id IS NOT NULL AND bytes_blob IS NULL AND text_content IS NULL AND width IS NULL AND height IS NULL AND encoding IS NULL)
+        (kind = 'document_attachment' AND document_artifact_id IS NOT NULL AND bytes_blob IS NULL AND text_content IS NULL AND width IS NULL AND height IS NULL AND encoding IS NULL AND source_type IS NULL AND source_label IS NULL AND origin_detail IS NULL)
+        OR
+        (kind = 'external_context_capture' AND document_artifact_id IS NULL AND bytes_blob IS NULL AND text_content IS NOT NULL AND width IS NULL AND height IS NULL AND encoding IS NULL AND source_type IS NOT NULL AND source_label IS NOT NULL)
     )
 );
 

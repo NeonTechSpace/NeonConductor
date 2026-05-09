@@ -391,6 +391,9 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                                 {(input.preview.attachmentSummary.documentAttachmentCount ?? 0) > 0
                                     ? `, ${String(input.preview.attachmentSummary.documentAttachmentCount)} PDFs`
                                     : ''}
+                                {(input.preview.attachmentSummary.externalContextCaptureCount ?? 0) > 0
+                                    ? `, ${String(input.preview.attachmentSummary.externalContextCaptureCount)} external`
+                                    : ''}
                             </p>
                         </div>
                         {(input.preview.documentSummary?.length ?? 0) > 0 ? (

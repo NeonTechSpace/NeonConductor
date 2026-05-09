@@ -173,22 +173,28 @@ function createComposerActionPanelProps(
     const {
         pendingTextFiles,
         pendingDocuments,
+        externalContextCaptures,
         readyComposerAttachments,
         hasBlockingPendingAttachments,
         onAddFiles,
         onRemovePendingTextFile,
         onRemovePendingDocument,
+        onAddExternalContextCapture,
+        onRemoveExternalContextCapture,
         ...rest
     } = input;
     return Object.assign({}, rest, {
         profileId: 'profile_default',
         pendingTextFiles: pendingTextFiles ?? [],
         pendingDocuments: pendingDocuments ?? [],
+        externalContextCaptures: externalContextCaptures ?? [],
         readyComposerAttachments: readyComposerAttachments ?? [],
         hasBlockingPendingAttachments: hasBlockingPendingAttachments ?? false,
         onAddFiles: onAddFiles ?? (() => {}),
         onRemovePendingTextFile: onRemovePendingTextFile ?? (() => {}),
         onRemovePendingDocument: onRemovePendingDocument ?? (() => {}),
+        onAddExternalContextCapture: onAddExternalContextCapture ?? (() => {}),
+        onRemoveExternalContextCapture: onRemoveExternalContextCapture ?? (() => {}),
     }) as ComponentProps<typeof ComposerActionPanel>;
 }
 
@@ -451,6 +457,17 @@ describe('composer enter handling', () => {
                             status: 'ready',
                         },
                     ],
+                    externalContextCaptures: [
+                        {
+                            clientId: 'external_ready',
+                            kind: 'external_context_capture',
+                            sourceType: 'log_excerpt',
+                            sourceLabel: 'Build log excerpt',
+                            text: 'failed test output',
+                            sha256: 'sha-external',
+                            byteSize: 18,
+                        },
+                    ],
                     readyComposerAttachments: [
                         {
                             clientId: 'img_ready',
@@ -459,6 +476,15 @@ describe('composer enter handling', () => {
                             width: 1,
                             height: 1,
                             sha256: 'sha',
+                        },
+                        {
+                            clientId: 'external_ready',
+                            kind: 'external_context_capture',
+                            sourceType: 'log_excerpt',
+                            sourceLabel: 'Build log excerpt',
+                            text: 'failed test output',
+                            sha256: 'sha-external',
+                            byteSize: 18,
                         },
                     ],
                     hasBlockingPendingAttachments: false,
@@ -540,8 +566,10 @@ describe('composer enter handling', () => {
         expect(html).toContain('1 ready / 1 file');
         expect(html).toContain('1 rules / 1 skills');
         expect(html).toContain('2 comments / 1 elements');
-        expect(html).toContain('Terminal');
-        expect(html).toContain('No selection');
+        expect(html).toContain('External Context');
+        expect(html).toContain('1 snippet');
+        expect(html).toContain('Build log excerpt');
+        expect(html).toContain('external context');
         expect(html).toContain('GPT-5');
         expect(html).toContain('2 approvals');
         expect(html).toContain('1 required open');

@@ -11,6 +11,7 @@ function createInput(
         pendingImages: [],
         pendingTextFiles: [],
         pendingDocuments: [],
+        externalContextCaptures: [],
         readyComposerAttachments: [],
         hasBlockingPendingAttachments: false,
         attachedRules: [],
@@ -152,13 +153,33 @@ describe('composer control surface model', () => {
         expect(browser?.action).toEqual({ kind: 'open-browser-surface' });
     });
 
-    it('keeps terminal context explicitly deferred to Phase 15F', () => {
-        expect(readValue(createInput(), 'terminal-context')).toBe('No selection');
-        const terminal = buildComposerControlSurfaceModel(createInput()).items.find(
-            (item) => item.id === 'terminal-context'
+    it('summarizes external context captures and opens the capture dialog', () => {
+        expect(readValue(createInput(), 'external-context')).toBe('No snippets');
+        const externalContext = buildComposerControlSurfaceModel(createInput()).items.find(
+            (item) => item.id === 'external-context'
         );
-        expect(terminal?.detail).toContain('Phase 15F');
-        expect(terminal?.action).toBeUndefined();
+        expect(externalContext?.label).toBe('External Context');
+        expect(externalContext?.detail).toBe('Paste source-labeled external text for the next executable run.');
+        expect(externalContext?.action).toEqual({ kind: 'open-external-context-capture' });
+
+        const withCapture = buildComposerControlSurfaceModel(
+            createInput({
+                externalContextCaptures: [
+                    {
+                        clientId: 'external_1',
+                        kind: 'external_context_capture',
+                        sourceType: 'log_excerpt',
+                        sourceLabel: 'Build log excerpt',
+                        text: 'log',
+                        sha256: 'sha',
+                        byteSize: 1234,
+                    },
+                ],
+            })
+        ).items.find((item) => item.id === 'external-context');
+        expect(withCapture?.value).toBe('1 snippet');
+        expect(withCapture?.detail).toBe('Build log excerpt · 1.2 KB');
+        expect(withCapture?.tone).toBe('success');
     });
 
     it('prioritizes pending approvals and plan questions', () => {

@@ -41,6 +41,8 @@ export interface RunContractAttachmentSummary {
     totalCount: number;
     imageAttachmentCount: number;
     textFileAttachmentCount: number;
+    externalContextCaptureCount?: number;
+    externalContextCaptureByteSize?: number;
     documentAttachmentCount?: number;
     documentAttachmentByteSize?: number;
     totalByteSize: number;

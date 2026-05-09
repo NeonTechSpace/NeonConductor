@@ -356,4 +356,27 @@ describe('runContract service', () => {
             omittedPageCount: 1,
         });
     });
+
+    it('includes external context capture counts and bytes', () => {
+        const preview = prepareRunContractPreview({
+            startInput: {
+                ...createStartRunInput('Use the external build log.'),
+                attachments: [
+                    {
+                        clientId: 'external-client',
+                        kind: 'external_context_capture',
+                        sourceType: 'log_excerpt',
+                        sourceLabel: 'Build log excerpt',
+                        text: 'failed test output',
+                        sha256: 'sha-external',
+                        byteSize: 18,
+                    },
+                ],
+            },
+            prepared: createPreparedRunStart(),
+        });
+
+        expect(preview?.attachmentSummary.externalContextCaptureCount).toBe(1);
+        expect(preview?.attachmentSummary.externalContextCaptureByteSize).toBe(18);
+    });
 });

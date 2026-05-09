@@ -124,6 +124,25 @@ function readTextFileAttachmentPayload(part: MessagePartRecord): string | null {
     return [`Attached text file: ${fileName}`, `MIME type: ${mimeType}`, `Encoding: ${encoding}`, '', text].join('\n');
 }
 
+function readExternalContextCapturePayload(part: MessagePartRecord): string | null {
+    const sourceLabel = typeof part.payload['sourceLabel'] === 'string' ? part.payload['sourceLabel'] : 'External context';
+    const sourceType =
+        typeof part.payload['sourceType'] === 'string' ? part.payload['sourceType'].replaceAll('_', ' ') : 'other';
+    const originDetail = typeof part.payload['originDetail'] === 'string' ? part.payload['originDetail'] : undefined;
+    const text = typeof part.payload['text'] === 'string' ? part.payload['text'] : '';
+    if (text.trim().length === 0) {
+        return null;
+    }
+
+    return [
+        `External context capture: ${sourceLabel}`,
+        `Source type: ${sourceType}`,
+        ...(originDetail ? [`Origin: ${originDetail}`] : []),
+        '',
+        text,
+    ].join('\n');
+}
+
 function readDocumentAttachmentPayload(part: MessagePartRecord): string | null {
     const fileName = typeof part.payload['fileName'] === 'string' ? part.payload['fileName'] : 'document.pdf';
     const mimeType = typeof part.payload['mimeType'] === 'string' ? part.payload['mimeType'] : 'application/pdf';
@@ -179,6 +198,20 @@ function buildProjectedParts(message: MessageRecord, parts: MessagePartRecord[])
 
         if (part.partType === 'text_file_attachment') {
             const text = readTextFileAttachmentPayload(part);
+            if (!text) {
+                continue;
+            }
+
+            projected.push({
+                key: part.id,
+                kind: 'text',
+                text,
+            });
+            continue;
+        }
+
+        if (part.partType === 'external_context_capture') {
+            const text = readExternalContextCapturePayload(part);
             if (!text) {
                 continue;
             }

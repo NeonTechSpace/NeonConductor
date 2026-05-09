@@ -34,6 +34,7 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'pendingImages'
     | 'pendingTextFiles'
     | 'pendingDocuments'
+    | 'externalContextCaptures'
     | 'readyComposerAttachments'
     | 'hasBlockingPendingAttachments'
     | 'isStartingRun'
@@ -85,6 +86,8 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onRemovePendingImage'
     | 'onRemovePendingTextFile'
     | 'onRemovePendingDocument'
+    | 'onAddExternalContextCapture'
+    | 'onRemoveExternalContextCapture'
     | 'onRetryPendingImage'
     | 'onQueuePrompt'
     | 'onSubmitPrompt'
@@ -119,6 +122,7 @@ export function WorkspacePrimaryColumn({
     pendingImages,
     pendingTextFiles,
     pendingDocuments,
+    externalContextCaptures,
     readyComposerAttachments,
     hasBlockingPendingAttachments,
     isStartingRun,
@@ -170,6 +174,8 @@ export function WorkspacePrimaryColumn({
     onRemovePendingImage,
     onRemovePendingTextFile,
     onRemovePendingDocument,
+    onAddExternalContextCapture,
+    onRemoveExternalContextCapture,
     onRetryPendingImage,
     onQueuePrompt,
     onSubmitPrompt,
@@ -342,6 +348,7 @@ export function WorkspacePrimaryColumn({
                     pendingImages={pendingImages}
                     pendingTextFiles={pendingTextFiles}
                     pendingDocuments={pendingDocuments}
+                    externalContextCaptures={externalContextCaptures}
                     readyComposerAttachments={readyComposerAttachments}
                     hasBlockingPendingAttachments={hasBlockingPendingAttachments}
                     disabled={false}
@@ -400,6 +407,8 @@ export function WorkspacePrimaryColumn({
                     onRemovePendingImage={onRemovePendingImage}
                     onRemovePendingTextFile={onRemovePendingTextFile}
                     onRemovePendingDocument={onRemovePendingDocument}
+                    onAddExternalContextCapture={onAddExternalContextCapture}
+                    onRemoveExternalContextCapture={onRemoveExternalContextCapture}
                     onRetryPendingImage={onRetryPendingImage}
                     {...(onQueuePrompt ? { onQueuePrompt } : {})}
                     onSubmitPrompt={onSubmitPrompt}

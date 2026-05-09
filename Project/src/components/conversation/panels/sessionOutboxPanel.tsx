@@ -49,10 +49,17 @@ function summarizeDraftAttachment(attachment: ComposerAttachmentInput): string {
     if (attachment.kind === 'document_attachment') {
         return `${attachment.fileName} · ${(attachment.byteSize / 1024).toFixed(1)} KB · PDF`;
     }
+    if (attachment.kind === 'external_context_capture') {
+        return `${attachment.sourceLabel} · ${(attachment.byteSize / 1024).toFixed(1)} KB · external context`;
+    }
     if (attachment.kind === 'text_file_attachment') {
         return `${attachment.fileName} · ${(attachment.byteSize / 1024).toFixed(1)} KB · text`;
     }
     return `${attachment.fileName ?? 'image'} · ${((attachment.byteSize ?? 0) / 1024).toFixed(1)} KB · ${String(attachment.width)}×${String(attachment.height)}`;
+}
+
+function readDraftAttachmentMimeType(attachment: ComposerAttachmentInput): string {
+    return attachment.kind === 'external_context_capture' ? 'text/plain' : attachment.mimeType;
 }
 
 function toDraftAttachment(payload: SessionAttachmentPayload): ComposerAttachmentInput {
@@ -83,6 +90,18 @@ function toDraftAttachment(payload: SessionAttachmentPayload): ComposerAttachmen
             sha256: payload.sha256,
             byteSize: payload.byteSize,
             encoding: payload.encoding ?? 'utf-8',
+        };
+    }
+    if (payload.kind === 'external_context_capture') {
+        return {
+            clientId: payload.id,
+            kind: 'external_context_capture',
+            sourceType: payload.sourceType ?? 'other',
+            sourceLabel: payload.sourceLabel ?? payload.fileName ?? 'External context',
+            ...(payload.originDetail ? { originDetail: payload.originDetail } : {}),
+            text: payload.text,
+            sha256: payload.sha256,
+            byteSize: payload.byteSize,
         };
     }
 
@@ -576,7 +595,7 @@ export function SessionOutboxPanel({
                                                     {summarizeDraftAttachment(attachment)}
                                                 </p>
                                                 <p className='text-muted-foreground text-[11px]'>
-                                                    {attachment.mimeType}
+                                                    {readDraftAttachmentMimeType(attachment)}
                                                 </p>
                                             </div>
                                             <div className='flex items-center gap-1'>

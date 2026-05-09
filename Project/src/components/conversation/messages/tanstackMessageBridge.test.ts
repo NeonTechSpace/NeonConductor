@@ -168,6 +168,38 @@ describe('tanstack message bridge', () => {
         expect(projected[0]?.uiMessage.parts).toEqual([]);
     });
 
+    it('projects external context capture message parts as user-visible text', () => {
+        const userMessage = createMessage({ id: 'msg_user_external', role: 'user' });
+
+        const projected = projectConversationTanstackMessages(
+            [userMessage],
+            new Map([
+                [
+                    userMessage.id,
+                    [
+                        createPart({
+                            id: 'part_external',
+                            messageId: userMessage.id,
+                            partType: 'external_context_capture',
+                            payload: {
+                                sourceLabel: 'Build log excerpt',
+                                sourceType: 'log_excerpt',
+                                text: 'failed test output',
+                            },
+                        }),
+                    ],
+                ],
+            ])
+        );
+
+        expect(projected[0]?.uiMessage.parts).toEqual([
+            {
+                type: 'text',
+                content: 'External context capture: Build log excerpt\nSource type: log excerpt\n\nfailed test output',
+            },
+        ]);
+    });
+
     it('projects optimistic user messages with a sending delivery state', () => {
         const projected = projectOptimisticConversationUserMessage({
             id: 'optimistic_msg_1',

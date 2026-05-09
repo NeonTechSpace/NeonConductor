@@ -344,6 +344,9 @@ export interface ConversationAttachmentsTable {
     width: number | null;
     height: number | null;
     encoding: string | null;
+    source_type: string | null;
+    source_label: string | null;
+    origin_detail: string | null;
     bytes_blob: Uint8Array | null;
     text_content: string | null;
     created_at: string;
