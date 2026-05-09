@@ -7,12 +7,14 @@ import type {
     RuntimeProviderId,
 } from '@/app/backend/runtime/contracts';
 import type {
+    ProviderModelFavoriteRecord,
     ProviderSpecialistDefaultRecord,
     WorkflowRoutingPreferenceRecord,
 } from '@/app/backend/runtime/contracts/types/provider';
 import { isSupportedModeSpecialistAlias } from '@/app/backend/runtime/services/mode/routing';
 import { appLog } from '@/app/main/logging';
 
+import { canonicalizeProviderModelId } from '@/shared/kiloModels';
 import { resolveWorkflowRoutingCompatibilityRequirements } from '@/shared/workflowRouting';
 
 export async function getDefaults(profileId: string): Promise<{ providerId: string; modelId: string }> {
@@ -25,6 +27,10 @@ export async function getSpecialistDefaults(profileId: string): Promise<Provider
 
 export async function getWorkflowRoutingPreferences(profileId: string): Promise<WorkflowRoutingPreferenceRecord[]> {
     return providerStore.getWorkflowRoutingPreferences(profileId);
+}
+
+export async function getModelFavorites(profileId: string): Promise<ProviderModelFavoriteRecord[]> {
+    return providerStore.getModelFavorites(profileId);
 }
 
 export async function setDefault(
@@ -246,5 +252,54 @@ export async function clearWorkflowRoutingPreference(input: {
         success: true,
         reason: null,
         workflowRoutingPreferences,
+    };
+}
+
+export async function setModelFavorite(input: {
+    profileId: string;
+    providerId: RuntimeProviderId;
+    modelId: string;
+    favorite: boolean;
+}): Promise<{
+    success: boolean;
+    reason: 'provider_not_found' | 'model_not_found' | null;
+    modelFavorites: ProviderModelFavoriteRecord[];
+}> {
+    const ensuredProviderResult = await ensureSupportedProvider(input.providerId);
+    if (ensuredProviderResult.isErr()) {
+        appLog.warn({
+            tag: 'provider.preference-service',
+            message: 'Rejected model favorite update due to unsupported or unregistered provider.',
+            profileId: input.profileId,
+            providerId: input.providerId,
+            error: ensuredProviderResult.error.message,
+        });
+        return {
+            success: false,
+            reason: 'provider_not_found',
+            modelFavorites: await providerStore.getModelFavorites(input.profileId),
+        };
+    }
+
+    const canonicalModelId = canonicalizeProviderModelId(input.providerId, input.modelId);
+
+    if (input.favorite) {
+        const hasModel = await providerStore.modelExists(input.profileId, input.providerId, canonicalModelId);
+        if (!hasModel) {
+            return {
+                success: false,
+                reason: 'model_not_found',
+                modelFavorites: await providerStore.getModelFavorites(input.profileId),
+            };
+        }
+    }
+
+    return {
+        success: true,
+        reason: null,
+        modelFavorites: await providerStore.setModelFavorite(input.profileId, {
+            ...input,
+            modelId: canonicalModelId,
+        }),
     };
 }

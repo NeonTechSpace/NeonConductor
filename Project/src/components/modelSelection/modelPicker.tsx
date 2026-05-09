@@ -1,8 +1,6 @@
 import type { ModelPickerProps } from '@/web/components/modelSelection/modelPicker.types';
 import { buildModelPickerReadModel } from '@/web/components/modelSelection/modelPickerReadModel';
 import { ModelPickerPopoverView } from '@/web/components/modelSelection/modelPickerPopoverView';
-import { ModelPickerSelectView } from '@/web/components/modelSelection/modelPickerSelectView';
-import { shouldUsePopoverModelPicker } from '@/web/components/modelSelection/shouldUsePopoverModelPicker';
 import { useModelPickerPopoverController } from '@/web/components/modelSelection/useModelPickerPopoverController';
 
 export type { ModelPickerProps } from '@/web/components/modelSelection/modelPicker.types';
@@ -18,23 +16,13 @@ function PopoverModelPicker(props: ModelPickerProps) {
     const readModel = buildModelPickerReadModel({
         models: props.models,
         selectedModelId: props.selectedModelId,
+        ...(props.favoriteModels ? { favoriteModels: props.favoriteModels } : {}),
+        ...(props.roleDefaultReferences ? { roleDefaultReferences: props.roleDefaultReferences } : {}),
     });
 
     return <ModelPickerPopoverView {...props} controller={controller} readModel={readModel} />;
 }
 
 export function ModelPicker(props: ModelPickerProps) {
-    if (shouldUsePopoverModelPicker({ providerId: props.providerId, models: props.models })) {
-        return <PopoverModelPicker {...props} />;
-    }
-
-    return (
-        <ModelPickerSelectView
-            {...props}
-            readModel={buildModelPickerReadModel({
-                models: props.models,
-                selectedModelId: props.selectedModelId,
-            })}
-        />
-    );
+    return <PopoverModelPicker {...props} />;
 }

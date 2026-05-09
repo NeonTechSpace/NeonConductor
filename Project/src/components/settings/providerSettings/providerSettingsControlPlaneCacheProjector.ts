@@ -17,12 +17,13 @@ import type {
 } from '@/app/backend/providers/service/types';
 
 import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
-import type { WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
+import type { ProviderModelFavoriteRecord, WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
 
 type ProviderControlPlanePatchInput = Parameters<typeof patchProviderControlSnapshot>[1];
 type ProviderSettingsCacheContext = Pick<ProviderSettingsCacheProjectionInput, 'utils' | 'profileId' | 'providerId'>;
 type ProviderDefaultsDataWithWorkflowRoutingPreferences = ProviderDefaultsData & {
     workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+    modelFavorites?: ProviderModelFavoriteRecord[];
     modelRoleDefaults?: ModelRoleDefaultRecord[];
 };
 
@@ -119,6 +120,7 @@ function patchProviderControlSnapshot(
         defaults?: { providerId: string; modelId: string };
         specialistDefaults?: ProviderSettingsCacheProjectionInput['specialistDefaults'];
         workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+        modelFavorites?: ProviderModelFavoriteRecord[];
         modelRoleDefaults?: ModelRoleDefaultRecord[];
         models?: ProviderModelRecord[];
         catalogStateReason?: EmptyCatalogStateReason;
@@ -149,6 +151,11 @@ function patchProviderControlSnapshot(
         defaults: nextDefaults,
         specialistDefaults: input.specialistDefaults ?? current.specialistDefaults,
         internalModelRoleDiagnostics: current.internalModelRoleDiagnostics,
+        ...((input.modelFavorites ?? current.modelFavorites) !== undefined
+            ? {
+                  modelFavorites: input.modelFavorites ?? current.modelFavorites,
+              }
+            : {}),
         ...((input.modelRoleDefaults ?? current.modelRoleDefaults) !== undefined
             ? {
                   modelRoleDefaults: input.modelRoleDefaults ?? current.modelRoleDefaults,
@@ -169,6 +176,7 @@ function shouldPatchControlPlane(input: ProviderSettingsCacheProjectionInput): b
         input.defaults !== undefined ||
         input.specialistDefaults !== undefined ||
         input.workflowRoutingPreferences !== undefined ||
+        input.modelFavorites !== undefined ||
         input.modelRoleDefaults !== undefined ||
         input.models !== undefined ||
         input.authState !== undefined ||
@@ -186,6 +194,7 @@ function buildProviderControlPlanePatchInput(
         ...(input.defaults ? { defaults: input.defaults } : {}),
         ...(input.specialistDefaults ? { specialistDefaults: input.specialistDefaults } : {}),
         ...(input.workflowRoutingPreferences ? { workflowRoutingPreferences: input.workflowRoutingPreferences } : {}),
+        ...(input.modelFavorites ? { modelFavorites: input.modelFavorites } : {}),
         ...(input.modelRoleDefaults ? { modelRoleDefaults: input.modelRoleDefaults } : {}),
         ...(input.models !== undefined ? { models: input.models } : {}),
         ...(input.catalogStateReason !== undefined ? { catalogStateReason: input.catalogStateReason } : {}),
@@ -263,11 +272,14 @@ export function projectProviderSettingsControlPlaneCache(input: ProviderSettings
                 const currentWorkflowRoutingPreferences =
                     (current as ProviderDefaultsDataWithWorkflowRoutingPreferences | undefined)?.workflowRoutingPreferences ??
                     [];
+                const currentModelFavorites =
+                    (current as ProviderDefaultsDataWithWorkflowRoutingPreferences | undefined)?.modelFavorites ?? [];
 
                 return {
                     defaults: nextDefaults,
                     specialistDefaults: input.specialistDefaults ?? current?.specialistDefaults ?? [],
                     workflowRoutingPreferences: input.workflowRoutingPreferences ?? currentWorkflowRoutingPreferences,
+                    modelFavorites: input.modelFavorites ?? currentModelFavorites,
                     modelRoleDefaults:
                         input.modelRoleDefaults ??
                         (current as ProviderDefaultsDataWithWorkflowRoutingPreferences | undefined)
@@ -275,6 +287,20 @@ export function projectProviderSettingsControlPlaneCache(input: ProviderSettings
                         [],
                 } as ProviderDefaultsDataWithWorkflowRoutingPreferences;
             }
+        );
+    }
+
+    if (input.modelFavorites && !input.defaults) {
+        const nextModelFavorites = input.modelFavorites;
+        writeProviderDefaultsData(
+            input,
+            (current: ProviderDefaultsData | undefined) =>
+                current
+                    ? ({
+                          ...current,
+                          modelFavorites: nextModelFavorites,
+                      } as ProviderDefaultsDataWithWorkflowRoutingPreferences)
+                    : current
         );
     }
 

@@ -64,6 +64,9 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         selectedModelCompatibilityReason,
         selectedProviderStatus,
         modelOptions,
+        modelFavorites,
+        modelRoleDefaults,
+        modelContinuationLockMessage,
         runErrorMessage,
         contextState,
         pendingPermissions,
@@ -86,6 +89,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         onProfileChange,
         onProviderChange,
         onModelChange,
+        onToggleModelFavorite,
         onReasoningEffortChange,
         onModeChange,
         onPromptEdited,
@@ -155,6 +159,9 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     maxImageAttachmentsPerMessage={maxImageAttachmentsPerMessage}
                     canAttachImages={canAttachImages}
                     modelOptions={modelOptions}
+                    {...(modelFavorites ? { modelFavorites } : {})}
+                    {...(modelRoleDefaults ? { modelRoleDefaults } : {})}
+                    {...(modelContinuationLockMessage ? { modelContinuationLockMessage } : {})}
                     runErrorMessage={runErrorMessage}
                     pendingPermissions={pendingPermissions}
                     attachedRules={attachedRules}
@@ -189,6 +196,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     onProfileChange={onProfileChange}
                     onProviderChange={onProviderChange}
                     onModelChange={onModelChange}
+                    {...(onToggleModelFavorite ? { onToggleModelFavorite } : {})}
                     onReasoningEffortChange={onReasoningEffortChange}
                     onModeChange={onModeChange}
                     onPromptEdited={onPromptEdited}

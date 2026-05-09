@@ -134,6 +134,28 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
         },
     });
 
+    const setModelFavoriteMutation = trpc.provider.setModelFavorite.useMutation({
+        onSuccess: (result, variables) => {
+            if (!result.success) {
+                input.setStatusMessage(
+                    result.reason === 'model_not_found'
+                        ? 'Selected favorite model is not available.'
+                        : 'Model favorite could not be saved.'
+                );
+                return;
+            }
+
+            input.setStatusMessage(variables.favorite ? 'Model favorite saved.' : 'Model favorite removed.');
+            patchProviderCache({
+                utils,
+                profileId: input.profileId,
+                providerId: variables.providerId,
+                modelFavorites: result.modelFavorites,
+            });
+            invalidateShellBootstrap();
+        },
+    });
+
     const setApiKeyMutation = trpc.provider.setApiKey.useMutation({
         onSuccess: (result, variables) => {
             if (!result.success) {
@@ -345,6 +367,7 @@ export function useProviderSettingsMutationCoordinator(input: UseProviderSetting
 
     return {
         setDefaultMutation,
+        setModelFavoriteMutation,
         setApiKeyMutation,
         setConnectionProfileMutation,
         setExecutionPreferenceMutation,

@@ -6,11 +6,13 @@ import {
     buildProviderSettingsFeedback,
     type ProviderSettingsFeedbackState,
 } from '@/web/components/settings/providerSettings/hooks/providerSettingsFeedback';
+import { projectProviderSettingsControlPlaneCache } from '@/web/components/settings/providerSettings/providerSettingsControlPlaneCacheProjector';
 import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsyncAction';
 import {
     getProviderControlDefaults,
-    getProviderControlSpecialistDefaults,
+    getProviderControlModelFavorites,
     getProviderControlModelRoleDefaults,
+    getProviderControlSpecialistDefaults,
     listProviderControlModels,
     listProviderControlProviders,
 } from '@/web/lib/providerControl/selectors';
@@ -31,7 +33,7 @@ function isRuntimeProviderId(value: string | undefined): value is ProviderListIt
 }
 
 function createModeOptions(input: {
-    providers: Array<Pick<ProviderListItem, 'id' | 'label' | 'authState' | 'authMethod'>>;
+    providers: Array<Pick<ProviderListItem, 'id' | 'label' | 'authState' | 'authMethod' | 'connectionProfile'>>;
     providerModels: ProviderModelRecord[];
     target: (typeof providerSpecialistDefaultTargets)[number];
 }) {
@@ -79,6 +81,8 @@ export interface ProviderModelRoleDefaultViewModel {
 
 export interface ProviderSpecialistDefaultsControllerState {
     feedback: ProviderSettingsFeedbackState;
+    modelFavorites: ReturnType<typeof getProviderControlModelFavorites>;
+    modelRoleDefaults: ReturnType<typeof getProviderControlModelRoleDefaults>;
     roleDefaults: ProviderModelRoleDefaultViewModel[];
     groups: ProviderSpecialistDefaultsSectionGroupViewModel[];
     isSaving: boolean;
@@ -87,6 +91,7 @@ export interface ProviderSpecialistDefaultsControllerState {
         providerId: ProviderListItem['id'];
         modelId: string;
     }) => void;
+    saveModelFavorite: (option: ModelPickerOption, favorite: boolean) => void;
     saveSpecialistDefault: (input: {
         topLevelTab: 'agent' | 'orchestrator';
         modeKey: 'ask' | 'code' | 'debug' | 'orchestrate';
@@ -140,6 +145,31 @@ export function useProviderSpecialistDefaultsController(input: { profileId: stri
             ]);
         },
     });
+    const setModelFavoriteMutation = trpc.provider.setModelFavorite.useMutation({
+        onSuccess: (result, variables) => {
+            if (!result.success) {
+                setStatusMessage(
+                    result.reason === 'model_not_found'
+                        ? 'Selected favorite model is not available.'
+                        : 'Model favorite could not be saved.'
+                );
+                return;
+            }
+
+            setStatusMessage(variables.favorite ? 'Model favorite saved.' : 'Model favorite removed.');
+            projectProviderSettingsControlPlaneCache({
+                utils,
+                profileId: input.profileId,
+                providerId: variables.providerId,
+                modelFavorites: result.modelFavorites,
+            });
+            void Promise.allSettled([
+                utils.provider.getControlPlane.invalidate({ profileId: input.profileId }),
+                utils.provider.getDefaults.invalidate({ profileId: input.profileId }),
+                utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId }),
+            ]);
+        },
+    });
 
     const providerControl = shellBootstrapQuery.data?.providerControl;
     const providers = listProviderControlProviders(providerControl).filter((provider) =>
@@ -149,6 +179,7 @@ export function useProviderSpecialistDefaultsController(input: { profileId: stri
     const defaults = getProviderControlDefaults(providerControl);
     const specialistDefaults = getProviderControlSpecialistDefaults(providerControl);
     const modelRoleDefaults = getProviderControlModelRoleDefaults(providerControl);
+    const modelFavorites = getProviderControlModelFavorites(providerControl);
     const allModeOptions = providers.flatMap((provider) =>
         providerModels
             .filter((model) => model.providerId === provider.id)
@@ -330,19 +361,48 @@ export function useProviderSpecialistDefaultsController(input: { profileId: stri
         }
     }
 
+    async function saveModelFavoriteInternal(option: ModelPickerOption, favorite: boolean) {
+        if (!option.providerId || !isRuntimeProviderId(option.providerId)) {
+            return;
+        }
+
+        try {
+            await setModelFavoriteMutation.mutateAsync({
+                profileId: input.profileId,
+                providerId: option.providerId,
+                modelId: option.id,
+                favorite,
+            });
+        } catch {
+            // The mutation error is surfaced through the hook state and feedback banner.
+        }
+    }
+
     return {
         feedback: buildProviderSettingsFeedback({
             statusMessage,
-            mutationErrorSources: [setSpecialistDefaultMutation, setModelRoleDefaultMutation],
+            mutationErrorSources: [
+                setSpecialistDefaultMutation,
+                setModelRoleDefaultMutation,
+                setModelFavoriteMutation,
+            ],
         }),
+        modelFavorites,
+        modelRoleDefaults,
         roleDefaults,
         groups,
-        isSaving: setSpecialistDefaultMutation.isPending || setModelRoleDefaultMutation.isPending,
+        isSaving:
+            setSpecialistDefaultMutation.isPending ||
+            setModelRoleDefaultMutation.isPending ||
+            setModelFavoriteMutation.isPending,
         saveModelRoleDefault: (inputValue) => {
             void createFailClosedAsyncAction(saveModelRoleDefaultInternal)(inputValue);
         },
         saveSpecialistDefault: (inputValue) => {
             void createFailClosedAsyncAction(saveSpecialistDefaultInternal)(inputValue);
+        },
+        saveModelFavorite: (option, favorite) => {
+            void createFailClosedAsyncAction(saveModelFavoriteInternal)(option, favorite);
         },
     };
 }

@@ -273,6 +273,8 @@ export function KiloGatewayModelsScreen({
                 selectedProviderId='kilo'
                 selectedModelId={controller.models.selectedModelId}
                 models={controller.models.options}
+                favoriteModels={controller.models.favorites}
+                roleDefaultReferences={controller.models.roleDefaults}
                 catalogStateReason={controller.models.catalogStateReason}
                 {...(controller.models.catalogStateDetail
                     ? { catalogStateDetail: controller.models.catalogStateDetail }
@@ -288,6 +290,7 @@ export function KiloGatewayModelsScreen({
 
                     void controller.models.setDefaultModel(modelId);
                 }}
+                onToggleFavorite={controller.models.setModelFavorite}
                 onSyncCatalog={() => {
                     void controller.models.syncCatalog();
                 }}
@@ -311,6 +314,8 @@ export function KiloRoutingScreen({ controller }: { controller: KiloSettingsCont
                 selectedProviderId='kilo'
                 selectedModelId={controller.models.selectedModelId}
                 models={controller.models.options}
+                favoriteModels={controller.models.favorites}
+                roleDefaultReferences={controller.models.roleDefaults}
                 catalogStateReason={controller.models.catalogStateReason}
                 {...(controller.models.catalogStateDetail
                     ? { catalogStateDetail: controller.models.catalogStateDetail }
@@ -326,6 +331,7 @@ export function KiloRoutingScreen({ controller }: { controller: KiloSettingsCont
 
                     void controller.models.setDefaultModel(modelId);
                 }}
+                onToggleFavorite={controller.models.setModelFavorite}
                 onSyncCatalog={() => {
                     void controller.models.syncCatalog();
                 }}

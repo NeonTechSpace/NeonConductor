@@ -64,6 +64,8 @@ export interface ProviderSettingsControllerState {
     models: {
         selectedModelId: string;
         options: ProviderSettingsSurfaceState['queries']['modelOptions'];
+        favorites: ProviderSettingsSurfaceState['queries']['modelFavorites'];
+        roleDefaults: ProviderSettingsSurfaceState['queries']['modelRoleDefaults'];
         catalogStateReason: ProviderSettingsSurfaceState['queries']['catalogStateReason'];
         catalogStateDetail: ProviderSettingsSurfaceState['queries']['catalogStateDetail'];
         isDefaultModel: boolean;
@@ -71,6 +73,7 @@ export interface ProviderSettingsControllerState {
         isSyncingCatalog: boolean;
         setSelectedModelId: (modelId: string) => void;
         setDefaultModel: (modelId?: string) => Promise<void>;
+        setModelFavorite: ProviderSettingsSurfaceState['actions']['setModelFavorite'];
         syncCatalog: () => Promise<void>;
     };
     kilo: {
@@ -154,6 +157,8 @@ export function buildProviderSettingsControllerState(
         models: {
             selectedModelId: surfaceState.queries.selectedModelId,
             options: surfaceState.queries.modelOptions,
+            favorites: surfaceState.queries.modelFavorites,
+            roleDefaults: surfaceState.queries.modelRoleDefaults,
             catalogStateReason: surfaceState.queries.catalogStateReason,
             catalogStateDetail: surfaceState.queries.catalogStateDetail,
             isDefaultModel: surfaceState.queries.selectedIsDefaultModel,
@@ -161,6 +166,7 @@ export function buildProviderSettingsControllerState(
             isSyncingCatalog: surfaceState.mutations.syncCatalogMutation.isPending,
             setSelectedModelId: surfaceState.selectionState.setRequestedModelId,
             setDefaultModel: wrapFailClosedAction(surfaceState.actions.setDefaultModel),
+            setModelFavorite: surfaceState.actions.setModelFavorite,
             syncCatalog: wrapFailClosedAction(surfaceState.actions.syncCatalog),
         },
         kilo: {

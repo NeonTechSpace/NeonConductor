@@ -2,6 +2,7 @@ import {
     resolvePinnedProviderId,
     selectProviderWithReset,
 } from '@/web/components/settings/providerSettings/hooks/providerSettingsState';
+import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import type { ActiveAuthFlow } from '@/web/components/settings/providerSettings/types';
 
 import type { OpenAIExecutionMode, RuntimeProviderId } from '@/shared/contracts';
@@ -28,6 +29,14 @@ export function createProviderSettingsActions(input: {
                 profileId: string;
                 providerId: RuntimeProviderId;
                 modelId: string;
+            }) => Promise<void>;
+        };
+        setModelFavoriteMutation: {
+            mutateAsync: (input: {
+                profileId: string;
+                providerId: RuntimeProviderId;
+                modelId: string;
+                favorite: boolean;
             }) => Promise<void>;
         };
         syncCatalogMutation: {
@@ -126,6 +135,18 @@ export function createProviderSettingsActions(input: {
                 profileId: input.profileId,
                 providerId: input.selectedProviderId,
                 modelId: nextModelId,
+            });
+        },
+        setModelFavorite: async (option: ModelPickerOption, favorite: boolean) => {
+            if (!option.providerId) {
+                return;
+            }
+
+            await input.mutations.setModelFavoriteMutation.mutateAsync({
+                profileId: input.profileId,
+                providerId: option.providerId,
+                modelId: option.id,
+                favorite,
             });
         },
         syncCatalog: async () => {

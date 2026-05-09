@@ -1,23 +1,29 @@
 import { RefreshCw } from 'lucide-react';
 
 import { getModelRuntimeNotes } from '@/web/components/modelSelection/modelCapabilities';
+import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import type { ProviderModelOption } from '@/web/components/settings/providerSettings/types';
 import type { ProviderCatalogStateReason } from '@/web/components/settings/providerSettings/types';
 import { Button } from '@/web/components/ui/button';
 
 import type { RuntimeProviderId } from '@/shared/contracts';
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
+import type { ProviderModelFavoriteRecord } from '@/shared/contracts/types/provider';
 
 interface ProviderDefaultModelSectionProps {
     selectedProviderId: RuntimeProviderId | undefined;
     selectedModelId: string;
     models: ProviderModelOption[];
+    favoriteModels?: ProviderModelFavoriteRecord[];
+    roleDefaultReferences?: ModelRoleDefaultRecord[];
     catalogStateReason: ProviderCatalogStateReason;
     catalogStateDetail?: string;
     isDefaultModel: boolean;
     isSavingDefault: boolean;
     isSyncingCatalog: boolean;
     onSelectModel: (modelId: string) => void;
+    onToggleFavorite?: (option: ModelPickerOption, favorite: boolean) => void;
     onSyncCatalog: () => void;
 }
 
@@ -25,12 +31,15 @@ export function ProviderDefaultModelSection({
     selectedProviderId,
     selectedModelId,
     models,
+    favoriteModels,
+    roleDefaultReferences,
     catalogStateReason,
     catalogStateDetail,
     isDefaultModel,
     isSavingDefault,
     isSyncingCatalog,
     onSelectModel,
+    onToggleFavorite,
     onSyncCatalog,
 }: ProviderDefaultModelSectionProps) {
     const isKilo = selectedProviderId === 'kilo';
@@ -75,10 +84,13 @@ export function ProviderDefaultModelSection({
                     providerId={selectedProviderId}
                     selectedModelId={selectedModelId}
                     models={models}
+                    {...(favoriteModels ? { favoriteModels } : {})}
+                    {...(roleDefaultReferences ? { roleDefaultReferences } : {})}
                     disabled={models.length === 0}
                     ariaLabel='Default model'
                     placeholder='Select model'
                     onSelectModel={onSelectModel}
+                    {...(onToggleFavorite ? { onToggleFavorite } : {})}
                 />
                 <p className='text-muted-foreground text-[11px] leading-5'>
                     {isSavingDefault

@@ -2,6 +2,7 @@ import { readProviderCatalog } from '@/app/backend/providers/service/catalogRead
 import { okProviderService, type ProviderServiceResult } from '@/app/backend/providers/service/errors';
 import {
     getDefaults,
+    getModelFavorites,
     getSpecialistDefaults,
     getWorkflowRoutingPreferences,
 } from '@/app/backend/providers/service/preferenceService';
@@ -29,12 +30,21 @@ function compareProviderEntries(left: ProviderListItem, right: ProviderListItem)
 export async function getProviderControlSnapshot(
     profileId: string
 ): Promise<ProviderServiceResult<ProviderControlSnapshot>> {
-    const [providers, defaults, specialistDefaults, workflowRoutingPreferences, modelRoleDefaults, internalModelRoleDiagnostics] =
+    const [
+        providers,
+        defaults,
+        specialistDefaults,
+        workflowRoutingPreferences,
+        modelFavorites,
+        modelRoleDefaults,
+        internalModelRoleDiagnostics,
+    ] =
         await Promise.all([
         listProviders(profileId),
         getDefaults(profileId),
         getSpecialistDefaults(profileId),
         getWorkflowRoutingPreferences(profileId),
+        getModelFavorites(profileId),
         modelRoleDefaultService.listRoleDefaults(profileId),
         internalModelRoleDiagnosticsService.getDiagnostics(profileId),
     ]);
@@ -68,6 +78,7 @@ export async function getProviderControlSnapshot(
         defaults,
         specialistDefaults,
         workflowRoutingPreferences,
+        modelFavorites,
         modelRoleDefaults,
         internalModelRoleDiagnostics,
     });

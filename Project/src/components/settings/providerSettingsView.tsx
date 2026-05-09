@@ -149,6 +149,8 @@ function DirectProviderContent({
                 selectedProviderId={selectedProvider.id}
                 selectedModelId={controller.models.selectedModelId}
                 models={controller.models.options}
+                favoriteModels={controller.models.favorites}
+                roleDefaultReferences={controller.models.roleDefaults}
                 catalogStateReason={controller.models.catalogStateReason}
                 {...(controller.models.catalogStateDetail
                     ? { catalogStateDetail: controller.models.catalogStateDetail }
@@ -164,6 +166,7 @@ function DirectProviderContent({
 
                     void controller.models.setDefaultModel(modelId);
                 }}
+                onToggleFavorite={controller.models.setModelFavorite}
                 onSyncCatalog={() => {
                     void controller.models.syncCatalog();
                 }}

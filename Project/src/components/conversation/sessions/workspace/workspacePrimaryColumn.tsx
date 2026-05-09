@@ -53,6 +53,9 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'selectedModelCompatibilityReason'
     | 'selectedProviderStatus'
     | 'modelOptions'
+    | 'modelFavorites'
+    | 'modelRoleDefaults'
+    | 'modelContinuationLockMessage'
     | 'runErrorMessage'
     | 'contextState'
     | 'pendingPermissions'
@@ -74,6 +77,7 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'onProfileChange'
     | 'onProviderChange'
     | 'onModelChange'
+    | 'onToggleModelFavorite'
     | 'onReasoningEffortChange'
     | 'onModeChange'
     | 'onPromptEdited'
@@ -134,6 +138,9 @@ export function WorkspacePrimaryColumn({
     selectedModelCompatibilityReason,
     selectedProviderStatus,
     modelOptions,
+    modelFavorites,
+    modelRoleDefaults,
+    modelContinuationLockMessage,
     runErrorMessage,
     contextState,
     pendingPermissions,
@@ -155,6 +162,7 @@ export function WorkspacePrimaryColumn({
     onProfileChange,
     onProviderChange,
     onModelChange,
+    onToggleModelFavorite,
     onReasoningEffortChange,
     onModeChange,
     onPromptEdited,
@@ -356,6 +364,9 @@ export function WorkspacePrimaryColumn({
                     {...(selectedModelCompatibilityReason ? { selectedModelCompatibilityReason } : {})}
                     {...(selectedProviderStatus ? { selectedProviderStatus } : {})}
                     modelOptions={modelOptions}
+                    {...(modelFavorites ? { modelFavorites } : {})}
+                    {...(modelRoleDefaults ? { modelRoleDefaults } : {})}
+                    {...(modelContinuationLockMessage ? { modelContinuationLockMessage } : {})}
                     runErrorMessage={runErrorMessage}
                     {...(contextState ? { contextState } : {})}
                     {...(validatedSelectedSessionId ? { selectedSessionId: validatedSelectedSessionId } : {})}
@@ -380,6 +391,7 @@ export function WorkspacePrimaryColumn({
                     onProfileChange={onProfileChange}
                     onProviderChange={onProviderChange}
                     onModelChange={onModelChange}
+                    {...(onToggleModelFavorite ? { onToggleModelFavorite } : {})}
                     onReasoningEffortChange={onReasoningEffortChange}
                     onModeChange={onModeChange}
                     onPromptEdited={onPromptEdited}

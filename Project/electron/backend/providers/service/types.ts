@@ -60,6 +60,7 @@ export interface ProviderControlSnapshot {
     };
     specialistDefaults: import('@/app/backend/runtime/contracts/types/provider').ProviderSpecialistDefaultRecord[];
     workflowRoutingPreferences?: import('@/app/backend/runtime/contracts/types/provider').WorkflowRoutingPreferenceRecord[];
+    modelFavorites?: import('@/app/backend/runtime/contracts/types/provider').ProviderModelFavoriteRecord[];
     modelRoleDefaults?: ModelRoleDefaultRecord[];
     internalModelRoleDiagnostics: InternalModelRoleDiagnostics;
 }

@@ -13,6 +13,7 @@ import {
     type WorkflowRoutingTargetKey,
 } from '@/shared/contracts';
 import type {
+    ProviderModelFavoriteRecord,
     ProviderSpecialistDefaultRecord,
     WorkflowRoutingPreferenceRecord,
 } from '@/shared/contracts/types/provider';
@@ -57,6 +58,12 @@ export function getProviderControlModelRoleDefaults(
     snapshot: ProviderControlSnapshot | undefined
 ): ModelRoleDefaultRecord[] {
     return snapshot?.modelRoleDefaults ?? [];
+}
+
+export function getProviderControlModelFavorites(
+    snapshot: ProviderControlSnapshot | undefined
+): ProviderModelFavoriteRecord[] {
+    return snapshot?.modelFavorites ?? [];
 }
 
 export function getProviderControlWorkflowRoutingPreferences(

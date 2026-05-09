@@ -50,6 +50,9 @@ interface BuildConversationWorkspaceProjectionInput {
     selectedModelSupportsReasoning: boolean;
     supportedReasoningEfforts?: RuntimeReasoningEffort[];
     composerModelOptions: SessionWorkspacePanelProps['modelOptions'];
+    modelFavorites?: SessionWorkspacePanelProps['modelFavorites'];
+    modelRoleDefaults?: SessionWorkspacePanelProps['modelRoleDefaults'];
+    modelContinuationLockMessage?: string;
     shellViewModel: ReturnType<typeof useConversationShellViewModel>;
     queries: ReturnType<typeof useConversationQueries>;
     mutations: ReturnType<typeof useConversationMutations>;
@@ -75,6 +78,7 @@ interface BuildConversationWorkspaceProjectionInput {
     onSelectRun: (runId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onToggleModelFavorite?: NonNullable<SessionWorkspacePanelProps['onToggleModelFavorite']>;
     onCompactContext: NonNullable<SessionWorkspacePanelProps['onCompactContext']>;
     focusComposerRequestKey: number;
     executionStrategy: OrchestratorExecutionStrategy;
@@ -378,6 +382,11 @@ export function buildConversationWorkspaceProjection(
             ? { runDiffOverview: input.queries.runDiffsQuery.data.overview }
             : {}),
         modelOptions: input.composerModelOptions,
+        ...(input.modelFavorites ? { modelFavorites: input.modelFavorites } : {}),
+        ...(input.modelRoleDefaults ? { modelRoleDefaults: input.modelRoleDefaults } : {}),
+        ...(input.modelContinuationLockMessage
+            ? { modelContinuationLockMessage: input.modelContinuationLockMessage }
+            : {}),
         runErrorMessage: input.composer.runSubmitError,
         ...(input.contextState ? { contextState: input.contextState } : {}),
         outboxEntries: input.queries.outboxQuery.data?.entries ?? [],
@@ -411,6 +420,7 @@ export function buildConversationWorkspaceProjection(
         onProfileChange: input.onProfileChange,
         onProviderChange: input.onProviderChange,
         onModelChange: input.onModelChange,
+        ...(input.onToggleModelFavorite ? { onToggleModelFavorite: input.onToggleModelFavorite } : {}),
         onReasoningEffortChange: input.onReasoningEffortChange,
         onModeChange: input.onModeChange,
         onCreateSession: input.sessionActions.onCreateSession,

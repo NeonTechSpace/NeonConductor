@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, Star } from 'lucide-react';
 
 import type { ModelGroupViewModel, ModelOptionViewModel } from '@/web/components/modelSelection/modelPicker.types';
 import { cn } from '@/web/lib/utils';
@@ -10,6 +10,7 @@ interface ModelPickerOptionListProps {
     optionIdPrefix?: string;
     onSelectOption?: (option: ModelOptionViewModel['option']) => void;
     onSelectModel: (modelId: string) => void;
+    onToggleFavorite?: (option: ModelOptionViewModel['option'], favorite: boolean) => void;
 }
 
 function getOptionToneClassName(option: ModelOptionViewModel['option']): string {
@@ -42,18 +43,18 @@ export function ModelPickerOptionList(props: ModelPickerOptionListProps) {
                     </div>
                     <div className='space-y-1'>
                         {group.options.map((option, optionIndex) => (
-                            <button
+                            <div
                                 key={option.option.id}
                                 id={
                                     props.optionIdPrefix
                                         ? `${props.optionIdPrefix}-${String(groupIndex)}-${String(optionIndex)}`
                                         : undefined
                                 }
-                                type='button'
                                 role='option'
+                                tabIndex={0}
                                 aria-selected={option.selected}
                                 className={cn(
-                                    'focus-visible:ring-ring w-full rounded-xl border px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:outline-none',
+                                    'focus-visible:ring-ring w-full cursor-pointer rounded-xl border px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:outline-none',
                                     option.selected
                                         ? 'border-primary bg-primary/10 shadow-sm'
                                         : getOptionToneClassName(option.option)
@@ -61,10 +62,25 @@ export function ModelPickerOptionList(props: ModelPickerOptionListProps) {
                                 onClick={() => {
                                     props.onSelectOption?.(option.option);
                                     props.onSelectModel(option.option.id);
+                                }}
+                                onKeyDown={(event) => {
+                                    if (event.key !== 'Enter' && event.key !== ' ') {
+                                        return;
+                                    }
+                                    event.preventDefault();
+                                    props.onSelectOption?.(option.option);
+                                    props.onSelectModel(option.option.id);
                                 }}>
                                 <div className='flex items-start justify-between gap-3'>
                                     <div className='min-w-0'>
-                                        <p className='truncate text-sm font-medium'>{option.displayText}</p>
+                                        <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                                            <p className='min-w-0 truncate text-sm font-medium'>{option.displayText}</p>
+                                            {option.providerInstanceBadge ? (
+                                                <span className='border-border bg-background rounded-full border px-2 py-0.5 text-[11px]'>
+                                                    {option.providerInstanceBadge}
+                                                </span>
+                                            ) : null}
+                                        </div>
                                         <p className='text-muted-foreground mt-1 text-xs leading-5'>
                                             {option.description}
                                         </p>
@@ -82,12 +98,47 @@ export function ModelPickerOptionList(props: ModelPickerOptionListProps) {
                                                 {option.option.compatibilityReason}
                                             </p>
                                         ) : null}
+                                        {option.availabilityLabel &&
+                                        option.option.compatibilityScope === 'provider' ? (
+                                            <p className='text-muted-foreground mt-1 text-xs leading-5'>
+                                                {option.availabilityLabel}
+                                            </p>
+                                        ) : null}
                                     </div>
-                                    {option.selected ? (
-                                        <Check className='text-primary mt-0.5 h-4 w-4 shrink-0' />
-                                    ) : null}
+                                    <div className='flex shrink-0 items-center gap-1'>
+                                        {props.onToggleFavorite ? (
+                                            <button
+                                                type='button'
+                                                aria-label={
+                                                    option.isFavorite
+                                                        ? `Remove ${option.displayText} from favorite models`
+                                                        : `Add ${option.displayText} to favorite models`
+                                                }
+                                                className={cn(
+                                                    'focus-visible:ring-ring rounded-md p-1 focus-visible:ring-2 focus-visible:outline-none',
+                                                    option.isFavorite
+                                                        ? 'text-amber-500'
+                                                        : 'text-muted-foreground hover:text-foreground'
+                                                )}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    props.onToggleFavorite?.(option.option, !option.isFavorite);
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    event.stopPropagation();
+                                                }}>
+                                                <Star
+                                                    className={cn('h-4 w-4', option.isFavorite ? 'fill-current' : '')}
+                                                />
+                                            </button>
+                                        ) : null}
+                                        {option.selected ? (
+                                            <Check className='text-primary mt-0.5 h-4 w-4 shrink-0' />
+                                        ) : null}
+                                    </div>
                                 </div>
                                 {option.sourceProviderBadge ||
+                                option.roleDefaultBadges.length > 0 ||
                                 option.capabilityBadges.length > 0 ||
                                 option.metricBadges.length > 0 ? (
                                     <div className='mt-2 flex flex-wrap gap-2'>
@@ -100,12 +151,15 @@ export function ModelPickerOptionList(props: ModelPickerOptionListProps) {
                                         {option.capabilityBadges.map((badge) =>
                                             renderOptionBadge(badge, `${option.option.id}:capability:${badge}`)
                                         )}
+                                        {option.roleDefaultBadges.map((badge) =>
+                                            renderOptionBadge(badge, `${option.option.id}:role:${badge}`)
+                                        )}
                                         {option.metricBadges.map((badge) =>
                                             renderOptionBadge(badge, `${option.option.id}:metric:${badge}`)
                                         )}
                                     </div>
                                 ) : null}
-                            </button>
+                            </div>
                         ))}
                     </div>
                 </div>

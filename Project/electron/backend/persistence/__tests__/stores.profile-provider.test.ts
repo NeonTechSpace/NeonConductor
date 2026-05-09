@@ -87,6 +87,45 @@ describe('persistence stores: profile and provider domain', () => {
         ]);
     });
 
+    it('persists profile-level model favorites with stable ordering and removal', async () => {
+        const profileId = getDefaultProfileId();
+
+        await providerStore.setModelFavorite(profileId, {
+            providerId: 'openai',
+            modelId: 'openai/gpt-5.2',
+            favorite: true,
+        });
+        const updated = await providerStore.setModelFavorite(profileId, {
+            providerId: 'kilo',
+            modelId: 'kilo/auto-frontier',
+            favorite: true,
+        });
+
+        expect(updated).toEqual([
+            {
+                providerId: 'kilo',
+                modelId: 'kilo/auto-frontier',
+            },
+            {
+                providerId: 'openai',
+                modelId: 'openai/gpt-5.2',
+            },
+        ]);
+        expect(await providerStore.getModelFavorites(profileId)).toEqual(updated);
+
+        await providerStore.setModelFavorite(profileId, {
+            providerId: 'openai',
+            modelId: 'openai/gpt-5.2',
+            favorite: false,
+        });
+        expect(await providerStore.getModelFavorites(profileId)).toEqual([
+            {
+                providerId: 'kilo',
+                modelId: 'kilo/auto-frontier',
+            },
+        ]);
+    });
+
     it('fails closed when workflow routing preference settings contain invalid JSON data', async () => {
         const profileId = getDefaultProfileId();
         const { sqlite } = getPersistence();

@@ -6,6 +6,8 @@ import {
 import {
     findProviderControlEntry,
     getProviderControlDefaults,
+    getProviderControlModelFavorites,
+    getProviderControlModelRoleDefaults,
     listProviderControlProviders,
 } from '@/web/lib/providerControl/selectors';
 import { PROGRESSIVE_QUERY_OPTIONS } from '@/web/lib/query/progressiveQueryOptions';
@@ -27,6 +29,8 @@ export function useProviderSettingsReadModel(input: UseProviderSettingsReadModel
     const providerControl = controlPlaneQuery.data?.providerControl;
     const providerItems = listProviderControlProviders(providerControl);
     const defaults = getProviderControlDefaults(providerControl);
+    const modelFavorites = getProviderControlModelFavorites(providerControl);
+    const modelRoleDefaults = getProviderControlModelRoleDefaults(providerControl);
     const selectedProviderId = resolveSelectedProviderId(providerItems, input.requestedProviderId);
     const selectedProviderEntry = findProviderControlEntry(providerControl, selectedProviderId);
     const selectedProvider = providerItems.find((provider) => provider.id === selectedProviderId);
@@ -54,6 +58,8 @@ export function useProviderSettingsReadModel(input: UseProviderSettingsReadModel
         providerControl,
         providerItems,
         defaults,
+        modelFavorites,
+        modelRoleDefaults,
         selectedProviderId,
         selectedProviderEntry,
         selectedProvider,

@@ -7,7 +7,11 @@ import type {
 
 import type { KiloModelRoutingPreference, RuntimeProviderId } from '@/shared/contracts';
 import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
-import type { ProviderSpecialistDefaultRecord, WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
+import type {
+    ProviderModelFavoriteRecord,
+    ProviderSpecialistDefaultRecord,
+    WorkflowRoutingPreferenceRecord,
+} from '@/shared/contracts/types/provider';
 
 type TrpcUtils = ReturnType<typeof import('@/web/trpc/client').trpc.useUtils>;
 
@@ -35,6 +39,7 @@ export interface ProviderSettingsCacheProjectionInput {
     defaults?: { providerId: string; modelId: string };
     specialistDefaults?: ProviderSpecialistDefaultRecord[];
     workflowRoutingPreferences?: WorkflowRoutingPreferenceRecord[];
+    modelFavorites?: ProviderModelFavoriteRecord[];
     modelRoleDefaults?: ModelRoleDefaultRecord[];
     models?: ProviderModelRecord[];
     catalogStateReason?: EmptyCatalogStateReason;

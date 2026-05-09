@@ -92,6 +92,17 @@ export interface WorkflowRoutingPreferenceRecord {
     modelId: string;
 }
 
+export interface ProviderModelFavoriteRecord {
+    providerId: RuntimeProviderId;
+    modelId: string;
+}
+
+export interface ProviderSetModelFavoriteInput extends ProfileInput {
+    providerId: RuntimeProviderId;
+    modelId: string;
+    favorite: boolean;
+}
+
 export interface ProviderModelRoleDefaultsResult {
     roleDefaults: ModelRoleDefaultRecord[];
 }

@@ -1,11 +1,16 @@
 import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
 
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
+import type { ProviderModelFavoriteRecord } from '@/shared/contracts/types/provider';
 import type { RuntimeProviderId } from '@/shared/contracts';
 
 export interface ModelPickerProps {
     providerId: RuntimeProviderId | undefined;
     selectedModelId: string;
     models: ModelPickerOption[];
+    favoriteModels?: ProviderModelFavoriteRecord[];
+    roleDefaultReferences?: ModelRoleDefaultRecord[];
+    continuationLockMessage?: string;
     disabled?: boolean;
     id?: string;
     name?: string;
@@ -13,6 +18,7 @@ export interface ModelPickerProps {
     placeholder: string;
     onSelectModel: (modelId: string) => void;
     onSelectOption?: (option: ModelPickerOption) => void;
+    onToggleFavorite?: (option: ModelPickerOption, favorite: boolean) => void;
 }
 
 export interface ModelGroupViewModel {
@@ -37,7 +43,11 @@ export interface ModelOptionViewModel {
     description: string;
     metricBadges: string[];
     sourceProviderBadge: string | undefined;
+    providerInstanceBadge: string | undefined;
     capabilityBadges: string[];
+    roleDefaultBadges: string[];
+    availabilityLabel: string | undefined;
+    isFavorite: boolean;
     selected: boolean;
 }
 

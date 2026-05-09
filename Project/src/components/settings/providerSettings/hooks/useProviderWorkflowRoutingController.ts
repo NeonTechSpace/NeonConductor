@@ -11,6 +11,8 @@ import { createFailClosedAsyncAction } from '@/web/lib/async/createFailClosedAsy
 import {
     getProviderControlDefaults,
     getProviderControlInternalModelRoleDiagnostics,
+    getProviderControlModelFavorites,
+    getProviderControlModelRoleDefaults,
     getProviderControlWorkflowRoutingPreferences,
     listProviderControlModels,
     listProviderControlProviders,
@@ -38,7 +40,7 @@ function isRuntimeProviderId(value: string | undefined): value is ProviderListIt
 }
 
 function buildWorkflowRoutingOptions(input: {
-    providers: Array<Pick<ProviderListItem, 'id' | 'label' | 'authState' | 'authMethod'>>;
+    providers: Array<Pick<ProviderListItem, 'id' | 'label' | 'authState' | 'authMethod' | 'connectionProfile'>>;
     providerModels: ProviderModelRecord[];
     targetKey: WorkflowRoutingTargetKey;
 }): ModelPickerOption[] {
@@ -98,6 +100,8 @@ export interface ProviderWorkflowRoutingTargetViewModel {
 
 export interface ProviderWorkflowRoutingControllerState {
     feedback: ProviderSettingsFeedbackState;
+    modelFavorites: ReturnType<typeof getProviderControlModelFavorites>;
+    modelRoleDefaults: ReturnType<typeof getProviderControlModelRoleDefaults>;
     targets: ProviderWorkflowRoutingTargetViewModel[];
     isSaving: boolean;
     saveWorkflowRoutingPreference: (input: {
@@ -106,6 +110,7 @@ export interface ProviderWorkflowRoutingControllerState {
         modelId: string;
     }) => void;
     clearWorkflowRoutingPreference: (input: { targetKey: WorkflowRoutingTargetKey }) => void;
+    saveModelFavorite: (option: ModelPickerOption, favorite: boolean) => void;
 }
 
 export function useProviderWorkflowRoutingController(input: {
@@ -123,6 +128,8 @@ export function useProviderWorkflowRoutingController(input: {
     const defaults = getProviderControlDefaults(providerControl);
     const workflowRoutingPreferences = getProviderControlWorkflowRoutingPreferences(providerControl);
     const internalModelRoleDiagnostics = getProviderControlInternalModelRoleDiagnostics(providerControl);
+    const modelFavorites = getProviderControlModelFavorites(providerControl);
+    const modelRoleDefaults = getProviderControlModelRoleDefaults(providerControl);
     const projectionProviderId = providers[0]?.id ?? 'openai';
 
     const setWorkflowRoutingPreferenceMutation = trpc.provider.setWorkflowRoutingPreference.useMutation({
@@ -163,6 +170,31 @@ export function useProviderWorkflowRoutingController(input: {
                 profileId: input.profileId,
                 providerId: projectionProviderId,
                 workflowRoutingPreferences: result.workflowRoutingPreferences,
+            });
+            void Promise.allSettled([
+                utils.provider.getControlPlane.invalidate({ profileId: input.profileId }),
+                utils.provider.getDefaults.invalidate({ profileId: input.profileId }),
+                utils.runtime.getShellBootstrap.invalidate({ profileId: input.profileId }),
+            ]);
+        },
+    });
+    const setModelFavoriteMutation = trpc.provider.setModelFavorite.useMutation({
+        onSuccess: (result, variables) => {
+            if (!result.success) {
+                setStatusMessage(
+                    result.reason === 'model_not_found'
+                        ? 'Selected favorite model is not available.'
+                        : 'Model favorite could not be saved.'
+                );
+                return;
+            }
+
+            setStatusMessage(variables.favorite ? 'Model favorite saved.' : 'Model favorite removed.');
+            projectProviderSettingsControlPlaneCache({
+                utils,
+                profileId: input.profileId,
+                providerId: variables.providerId,
+                modelFavorites: result.modelFavorites,
             });
             void Promise.allSettled([
                 utils.provider.getControlPlane.invalidate({ profileId: input.profileId }),
@@ -282,18 +314,47 @@ export function useProviderWorkflowRoutingController(input: {
         }
     }
 
+    async function saveModelFavoriteInternal(option: ModelPickerOption, favorite: boolean) {
+        if (!option.providerId || !isRuntimeProviderId(option.providerId)) {
+            return;
+        }
+
+        try {
+            await setModelFavoriteMutation.mutateAsync({
+                profileId: input.profileId,
+                providerId: option.providerId,
+                modelId: option.id,
+                favorite,
+            });
+        } catch {
+            // Mutation errors are surfaced through the controller state.
+        }
+    }
+
     return {
         feedback: buildProviderSettingsFeedback({
             statusMessage,
-            mutationErrorSources: [setWorkflowRoutingPreferenceMutation, clearWorkflowRoutingPreferenceMutation],
+            mutationErrorSources: [
+                setWorkflowRoutingPreferenceMutation,
+                clearWorkflowRoutingPreferenceMutation,
+                setModelFavoriteMutation,
+            ],
         }),
+        modelFavorites,
+        modelRoleDefaults,
         targets,
-        isSaving: setWorkflowRoutingPreferenceMutation.isPending || clearWorkflowRoutingPreferenceMutation.isPending,
+        isSaving:
+            setWorkflowRoutingPreferenceMutation.isPending ||
+            clearWorkflowRoutingPreferenceMutation.isPending ||
+            setModelFavoriteMutation.isPending,
         saveWorkflowRoutingPreference: (workflowRoutingInput) => {
             void createFailClosedAsyncAction(saveWorkflowRoutingPreferenceInternal)(workflowRoutingInput);
         },
         clearWorkflowRoutingPreference: (workflowRoutingInput) => {
             void createFailClosedAsyncAction(clearWorkflowRoutingPreferenceInternal)(workflowRoutingInput);
+        },
+        saveModelFavorite: (option, favorite) => {
+            void createFailClosedAsyncAction(saveModelFavoriteInternal)(option, favorite);
         },
     };
 }

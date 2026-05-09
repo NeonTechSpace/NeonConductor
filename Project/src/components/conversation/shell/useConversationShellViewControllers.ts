@@ -18,6 +18,12 @@ import { createConversationThread } from '@/web/components/conversation/shell/wo
 import { isEntityId, isProviderId } from '@/web/components/conversation/shell/workspace/helpers';
 import { useConversationWorkspaceActions } from '@/web/components/conversation/shell/workspace/useConversationWorkspaceActions';
 import type { ThreadEntrySubmitResult } from '@/web/components/conversation/sidebar/sidebarTypes';
+import type { ModelPickerOption } from '@/web/components/modelSelection/modelCapabilities';
+import {
+    getProviderControlModelFavorites,
+    getProviderControlModelRoleDefaults,
+} from '@/web/lib/providerControl/selectors';
+import { trpc } from '@/web/trpc/client';
 
 import type { RunRecord, SessionSummaryRecord, ThreadListRecord } from '@/app/backend/persistence/types';
 
@@ -237,6 +243,55 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         selectedSessionId,
         onPromoteArtifactWindow: registryPromotion.openArtifactWindowPromotion,
     });
+    const setModelFavoriteMutation = trpc.provider.setModelFavorite.useMutation({
+        onSuccess: (result) => {
+            if (!result.success) {
+                composer.setRunSubmitError(
+                    result.reason === 'model_not_found'
+                        ? 'Selected favorite model is no longer available.'
+                        : 'Model favorite could not be updated.'
+                );
+                return;
+            }
+
+            utils.runtime.getShellBootstrap.setData({ profileId }, (current) =>
+                current
+                    ? {
+                          ...current,
+                          providerControl: {
+                              ...current.providerControl,
+                              modelFavorites: result.modelFavorites,
+                          },
+                      }
+                    : current
+            );
+            void Promise.allSettled([
+                utils.runtime.getShellBootstrap.invalidate({ profileId }),
+                utils.provider.getControlPlane.invalidate({ profileId }),
+                utils.provider.getDefaults.invalidate({ profileId }),
+            ]);
+        },
+    });
+    const providerControl = queries.shellBootstrapQuery.data?.providerControl;
+    const modelFavorites = getProviderControlModelFavorites(providerControl);
+    const modelRoleDefaults = getProviderControlModelRoleDefaults(providerControl);
+    const selectedSession = selectionState.selectedSession;
+    const modelContinuationLockMessage =
+        selectedSession?.kind === 'cloud' && selectedSession.cloudSession?.authorityState !== 'forked'
+            ? 'Continued Kilo cloud sessions are locked to the Kilo cloud harness; local model changes do not change remote execution.'
+            : undefined;
+    const handleToggleModelFavorite = (option: ModelPickerOption, favorite: boolean) => {
+        if (!option.providerId || !isProviderId(option.providerId)) {
+            return;
+        }
+
+        setModelFavoriteMutation.mutate({
+            profileId,
+            providerId: option.providerId,
+            modelId: option.id,
+            favorite,
+        });
+    };
     const handleCreateThread = useEffectEvent(
         async (threadCreationInput: {
             workspaceFingerprint: string;
@@ -290,6 +345,9 @@ export function useConversationShellViewControllers(input: UseConversationShellV
         selectedModelSupportsReasoning,
         ...(supportedReasoningEfforts !== undefined ? { supportedReasoningEfforts } : {}),
         composerModelOptions,
+        modelFavorites,
+        modelRoleDefaults,
+        ...(modelContinuationLockMessage ? { modelContinuationLockMessage } : {}),
         shellViewModel,
         queries,
         mutations,
@@ -345,6 +403,7 @@ export function useConversationShellViewControllers(input: UseConversationShellV
             }
             sessionActions.onModelChange(runTargetState.selectedProviderIdForComposer, modelId);
         },
+        onToggleModelFavorite: handleToggleModelFavorite,
         onCompactContext: async () => {
             const currentSessionId = selectedSessionId;
             if (!hasSelectedSession || !currentSessionId || contextStateQueryInput === skipToken) {

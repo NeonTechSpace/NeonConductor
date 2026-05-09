@@ -66,7 +66,7 @@ describe('model picker', () => {
         expect(html).not.toContain('price 12');
     });
 
-    it('keeps non-Kilo providers on the simple native select path', () => {
+    it('uses the canonical popover trigger for non-Kilo providers too', () => {
         const html = renderToStaticMarkup(
             createElement(ModelPicker, {
                 providerId: 'openai',
@@ -83,9 +83,10 @@ describe('model picker', () => {
             })
         );
 
-        expect(html).toContain('<select');
+        expect(html).toContain('<button');
+        expect(html).toContain('aria-haspopup="listbox"');
         expect(html).toContain('GPT-5');
-        expect(html).not.toContain('Search Kilo models');
+        expect(html).not.toContain('<select');
     });
 
     it('uses the grouped popover picker when models span multiple providers', () => {
@@ -228,7 +229,11 @@ describe('model picker', () => {
                                 description: 'Kilo frontier route.',
                                 metricBadges: [],
                                 sourceProviderBadge: undefined,
+                                providerInstanceBadge: undefined,
                                 capabilityBadges: [],
+                                roleDefaultBadges: [],
+                                availabilityLabel: undefined,
+                                isFavorite: true,
                                 selected: true,
                             },
                         ],

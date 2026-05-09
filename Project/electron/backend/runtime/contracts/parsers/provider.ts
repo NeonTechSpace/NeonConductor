@@ -37,6 +37,7 @@ import type {
     ProviderSetDefaultInput,
     ProviderSetWorkflowRoutingPreferenceInput,
     ProviderClearWorkflowRoutingPreferenceInput,
+    ProviderSetModelFavoriteInput,
     ProviderSetSpecialistDefaultInput,
     ProviderSetModelRoleDefaultInput,
     ProviderClearModelRoleDefaultInput,
@@ -140,6 +141,17 @@ export function parseProviderSetWorkflowRoutingPreferenceInput(
         targetKey,
         providerId: readProviderId(source.providerId, 'providerId'),
         modelId: readString(source.modelId, 'modelId'),
+    };
+}
+
+export function parseProviderSetModelFavoriteInput(input: unknown): ProviderSetModelFavoriteInput {
+    const source = readObject(input, 'input');
+
+    return {
+        profileId: readProfileId(source),
+        providerId: readProviderId(source.providerId, 'providerId'),
+        modelId: readString(source.modelId, 'modelId'),
+        favorite: readOptionalBoolean(source.favorite, 'favorite') ?? false,
     };
 }
 
@@ -382,6 +394,7 @@ export const providerSetWorkflowRoutingPreferenceInputSchema = createParser(
 export const providerClearWorkflowRoutingPreferenceInputSchema = createParser(
     parseProviderClearWorkflowRoutingPreferenceInput
 );
+export const providerSetModelFavoriteInputSchema = createParser(parseProviderSetModelFavoriteInput);
 export const providerListProvidersInputSchema = createParser(parseProviderListProvidersInput);
 export const providerListModelsInputSchema = createParser(parseProviderListModelsInput);
 export const providerByIdInputSchema = createParser(parseProviderByIdInput);

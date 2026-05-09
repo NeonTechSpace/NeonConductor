@@ -45,10 +45,13 @@ export function ProviderWorkflowRoutingSection({ profileId }: ProviderWorkflowRo
                                 providerId={target.selectedProviderId}
                                 selectedModelId={target.selectedModelId}
                                 models={target.modeOptions}
+                                favoriteModels={controller.modelFavorites}
+                                roleDefaultReferences={controller.modelRoleDefaults}
                                 disabled={target.modeOptions.length === 0}
                                 ariaLabel={`${target.label} routing model`}
                                 placeholder='Select model'
                                 onSelectModel={() => {}}
+                                onToggleFavorite={controller.saveModelFavorite}
                                 onSelectOption={(option) => {
                                     if (!option.providerId) {
                                         return;

@@ -202,6 +202,9 @@ function ComposerActionPanelDraftBoundary({
     selectedModelCompatibilityReason,
     selectedProviderStatus,
     modelOptions,
+    modelFavorites,
+    modelRoleDefaults,
+    modelContinuationLockMessage,
     runErrorMessage,
     contextState,
     browserContext,
@@ -225,6 +228,7 @@ function ComposerActionPanelDraftBoundary({
     onProfileChange,
     onProviderChange,
     onModelChange,
+    onToggleModelFavorite,
     onReasoningEffortChange,
     onModeChange,
     onPromptEdited,
@@ -541,6 +545,9 @@ function ComposerActionPanelDraftBoundary({
                         routingBadge={routingBadge}
                         compactConnectionLabel={controlsReadModel.compactConnectionLabel}
                         modelOptions={modelOptions}
+                        {...(modelFavorites ? { modelFavorites } : {})}
+                        {...(modelRoleDefaults ? { modelRoleDefaults } : {})}
+                        {...(modelContinuationLockMessage ? { modelContinuationLockMessage } : {})}
                         submitButtonLabel={
                             hasBlockingPendingAttachments || submissionPolicy.hasBlockingPendingImages
                                 ? 'Files preparing...'
@@ -550,6 +557,7 @@ function ComposerActionPanelDraftBoundary({
                         onProfileChange={onProfileChange}
                         onProviderChange={onProviderChange}
                         onModelChange={onModelChange}
+                        {...(onToggleModelFavorite ? { onToggleModelFavorite } : {})}
                         onReasoningEffortChange={onReasoningEffortChange}
                         onModeChange={onModeChange}
                         {...(onQueuePrompt

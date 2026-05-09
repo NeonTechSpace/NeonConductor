@@ -2,7 +2,7 @@ import { ChevronDown, Search } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import type { ModelPickerProps } from '@/web/components/modelSelection/modelPicker.types';
-import type { ModelPickerReadModel } from '@/web/components/modelSelection/modelPicker.types';
+import type { ModelOptionViewModel, ModelPickerReadModel } from '@/web/components/modelSelection/modelPicker.types';
 import { ModelPickerOptionList } from '@/web/components/modelSelection/modelPickerOptionList';
 import type { ModelPickerPopoverController } from '@/web/components/modelSelection/useModelPickerPopoverController';
 import { Button } from '@/web/components/ui/button';
@@ -12,19 +12,26 @@ interface ModelPickerPopoverViewProps extends ModelPickerProps {
     readModel: ModelPickerReadModel;
 }
 
-function matchesModelQuery(input: { query: string; model: ModelPickerProps['models'][number] }): boolean {
+function matchesModelQuery(input: { query: string; option: ModelOptionViewModel }): boolean {
     const normalizedQuery = input.query.trim().toLowerCase();
     if (normalizedQuery.length === 0) {
         return true;
     }
 
     return [
-        input.model.id,
-        input.model.label,
-        input.model.providerLabel,
-        input.model.providerId,
-        input.model.sourceProvider,
-        input.model.promptFamily,
+        input.option.option.id,
+        input.option.option.label,
+        input.option.displayText,
+        input.option.description,
+        input.option.providerInstanceBadge,
+        input.option.option.providerLabel,
+        input.option.option.providerId,
+        input.option.option.sourceProvider,
+        input.option.option.promptFamily,
+        input.option.option.compatibilityReason,
+        ...input.option.option.capabilityBadges.map((badge) => badge.label),
+        ...input.option.roleDefaultBadges,
+        input.option.availabilityLabel,
     ]
         .filter((value): value is string => typeof value === 'string')
         .some((value) => value.toLowerCase().includes(normalizedQuery));
@@ -39,7 +46,7 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
             options: group.options.filter((optionViewModel) =>
                 matchesModelQuery({
                     query: props.controller.query,
-                    model: optionViewModel.option,
+                    option: optionViewModel,
                 })
             ),
         }))
@@ -68,6 +75,9 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                 </span>
                 <ChevronDown className='h-4 w-4 shrink-0 opacity-70' />
             </Button>
+            {props.continuationLockMessage ? (
+                <p className='text-muted-foreground mt-1 text-[11px] leading-5'>{props.continuationLockMessage}</p>
+            ) : null}
 
             {props.controller.isOpen && props.controller.popoverLayout && portalHost
                 ? createPortal(
@@ -114,6 +124,9 @@ export function ModelPickerPopoverView(props: ModelPickerPopoverViewProps) {
                               ) : (
                                   <ModelPickerOptionList
                                       {...(props.onSelectOption ? { onSelectOption: props.onSelectOption } : {})}
+                                      {...(props.onToggleFavorite
+                                          ? { onToggleFavorite: props.onToggleFavorite }
+                                          : {})}
                                       groups={filteredGroups}
                                       optionIdPrefix={`${props.controller.listboxId}-option`}
                                       onSelectModel={(modelId) => {

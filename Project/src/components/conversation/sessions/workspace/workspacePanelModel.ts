@@ -46,6 +46,8 @@ import type {
     TopLevelTab,
     ExecutionReceipt,
 } from '@/shared/contracts';
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
+import type { ProviderModelFavoriteRecord } from '@/shared/contracts/types/provider';
 
 import type { ReactNode } from 'react';
 
@@ -186,6 +188,9 @@ export interface SessionWorkspacePanelProps {
     agentContextSummary?: AgentContextSummary;
     runDiffOverview?: DiffOverview;
     modelOptions: ModelPickerOption[];
+    modelFavorites?: ProviderModelFavoriteRecord[];
+    modelRoleDefaults?: ModelRoleDefaultRecord[];
+    modelContinuationLockMessage?: string;
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
     outboxEntries?: SessionOutboxEntry[];
@@ -215,6 +220,7 @@ export interface SessionWorkspacePanelProps {
     onProfileChange: (profileId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onToggleModelFavorite?: (option: ModelPickerOption, favorite: boolean) => void;
     onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onCreateSession: () => void;

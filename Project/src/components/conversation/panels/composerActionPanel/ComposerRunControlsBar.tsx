@@ -7,6 +7,8 @@ import { ModelPicker } from '@/web/components/modelSelection/modelPicker';
 import { Button } from '@/web/components/ui/button';
 
 import type { RuntimeReasoningEffort } from '@/shared/contracts';
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
+import type { ProviderModelFavoriteRecord } from '@/shared/contracts/types/provider';
 
 interface ComposerRunControlsBarProps {
     composerControlsDisabled: boolean;
@@ -25,11 +27,15 @@ interface ComposerRunControlsBarProps {
     routingBadge: string | undefined;
     compactConnectionLabel: string | undefined;
     modelOptions: ModelPickerOption[];
+    modelFavorites?: ProviderModelFavoriteRecord[];
+    modelRoleDefaults?: ModelRoleDefaultRecord[];
+    modelContinuationLockMessage?: string;
     submitButtonLabel: string;
     queueButtonLabel: string;
     onProfileChange: ((profileId: string) => void) | undefined;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onToggleModelFavorite?: (option: ModelPickerOption, favorite: boolean) => void;
     onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onQueuePrompt?: () => void;
@@ -53,11 +59,15 @@ export function ComposerRunControlsBar({
     routingBadge,
     compactConnectionLabel,
     modelOptions,
+    modelFavorites,
+    modelRoleDefaults,
+    modelContinuationLockMessage,
     submitButtonLabel,
     queueButtonLabel,
     onProfileChange,
     onProviderChange,
     onModelChange,
+    onToggleModelFavorite,
     onReasoningEffortChange,
     onModeChange,
     onQueuePrompt,
@@ -73,6 +83,11 @@ export function ComposerRunControlsBar({
                         providerId={readRuntimeProviderId(selectedProviderId)}
                         selectedModelId={selectedModelId ?? ''}
                         models={modelOptions}
+                        {...(modelFavorites ? { favoriteModels: modelFavorites } : {})}
+                        {...(modelRoleDefaults ? { roleDefaultReferences: modelRoleDefaults } : {})}
+                        {...(modelContinuationLockMessage
+                            ? { continuationLockMessage: modelContinuationLockMessage }
+                            : {})}
                         disabled={composerControlsDisabled || modelOptions.length === 0}
                         ariaLabel='Model'
                         placeholder='Select model'
@@ -82,6 +97,7 @@ export function ComposerRunControlsBar({
                             }
                         }}
                         onSelectModel={onModelChange}
+                        {...(onToggleModelFavorite ? { onToggleFavorite: onToggleModelFavorite } : {})}
                     />
                 </div>
                 {profiles && profiles.length > 0 ? (

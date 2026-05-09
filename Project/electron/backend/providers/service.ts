@@ -24,12 +24,14 @@ import {
 } from '@/app/backend/providers/service/kiloRoutingService';
 import {
     getDefaults,
+    getModelFavorites,
     getWorkflowRoutingPreferences,
     getSpecialistDefaults,
     setWorkflowRoutingPreference,
     setDefault,
     clearWorkflowRoutingPreference,
     setSpecialistDefault,
+    setModelFavorite,
 } from '@/app/backend/providers/service/preferenceService';
 import { modelRoleDefaultService } from '@/app/backend/runtime/services/profile/modelRoleDefaults';
 import { getProviderControlSnapshot } from '@/app/backend/providers/service/projectionService';
@@ -77,6 +79,7 @@ import type {
     ProviderListModelProvidersInput,
     ProviderSetModelRoutingPreferenceInput,
     ProviderSetWorkflowRoutingPreferenceInput,
+    ProviderSetModelFavoriteInput,
     ProviderSetModelRoleDefaultInput,
     ProviderClearModelRoleDefaultInput,
     ProviderClearWorkflowRoutingPreferenceInput,
@@ -115,6 +118,11 @@ class ProviderManagementService {
     async getWorkflowRoutingPreferences(profileId: string): Promise<WorkflowRoutingPreferenceRecord[]> {
         await this.ensureNormalizedProviderProfileState(profileId);
         return getWorkflowRoutingPreferences(profileId);
+    }
+
+    async getModelFavorites(profileId: string) {
+        await this.ensureNormalizedProviderProfileState(profileId);
+        return getModelFavorites(profileId);
     }
 
     async getControlPlane(profileId: string): Promise<ProviderServiceResult<ProviderControlSnapshot>> {
@@ -172,6 +180,11 @@ class ProviderManagementService {
     async clearWorkflowRoutingPreference(input: ProviderClearWorkflowRoutingPreferenceInput) {
         await this.ensureNormalizedProviderProfileState(input.profileId);
         return clearWorkflowRoutingPreference(input);
+    }
+
+    async setModelFavorite(input: ProviderSetModelFavoriteInput) {
+        await this.ensureNormalizedProviderProfileState(input.profileId);
+        return setModelFavorite(input);
     }
 
     async getAuthState(profileId: string, providerId: RuntimeProviderId): Promise<ProviderAuthStateRecord> {

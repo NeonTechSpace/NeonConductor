@@ -154,6 +154,9 @@ vi.mock('@/web/trpc/client', () => ({
             setModelRoleDefault: {
                 useMutation: controllerTestState.useMutationMock,
             },
+            setModelFavorite: {
+                useMutation: controllerTestState.useMutationMock,
+            },
         },
     },
 }));

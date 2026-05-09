@@ -130,6 +130,9 @@ export function useProviderSettingsSurfaceState(profileId: string, options?: Pro
             setDefaultMutation: {
                 mutateAsync: ignoreMutationResult(mutations.setDefaultMutation.mutateAsync),
             },
+            setModelFavoriteMutation: {
+                mutateAsync: ignoreMutationResult(mutations.setModelFavoriteMutation.mutateAsync),
+            },
             syncCatalogMutation: {
                 mutateAsync: ignoreMutationResult(mutations.syncCatalogMutation.mutateAsync),
             },

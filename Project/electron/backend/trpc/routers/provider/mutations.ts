@@ -16,6 +16,7 @@ import {
     providerSetSpecialistDefaultInputSchema,
     providerSetWorkflowRoutingPreferenceInputSchema,
     providerClearWorkflowRoutingPreferenceInputSchema,
+    providerSetModelFavoriteInputSchema,
     providerSetOrganizationInputSchema,
     providerStartAuthInputSchema,
     providerSyncCatalogInputSchema,
@@ -557,4 +558,23 @@ export const providerMutationProcedures = {
         .mutation(async ({ input }) => {
             return providerManagementService.clearWorkflowRoutingPreference(input);
         }),
+    setModelFavorite: publicProcedure.input(providerSetModelFavoriteInputSchema).mutation(async ({ input }) => {
+        const result = await providerManagementService.setModelFavorite(input);
+
+        if (result.success) {
+            await emitProviderUpsertEvent({
+                providerId: input.providerId,
+                eventType: 'provider.model-favorite-set',
+                payload: {
+                    profileId: input.profileId,
+                    providerId: input.providerId,
+                    modelId: input.modelId,
+                    favorite: input.favorite,
+                    modelFavorites: result.modelFavorites,
+                },
+            });
+        }
+
+        return result;
+    }),
 };

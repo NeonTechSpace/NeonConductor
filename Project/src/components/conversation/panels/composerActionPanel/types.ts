@@ -18,6 +18,8 @@ import type {
     SkillfileDefinition,
     TopLevelTab,
 } from '@/shared/contracts';
+import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
+import type { ProviderModelFavoriteRecord } from '@/shared/contracts/types/provider';
 
 export type PendingImageView = PendingImageCardView;
 export type PendingDocumentView = PendingDocumentCardView;
@@ -72,6 +74,9 @@ export interface ComposerActionPanelProps {
         authMethod: string;
     };
     modelOptions: ModelPickerOption[];
+    modelFavorites?: ProviderModelFavoriteRecord[];
+    modelRoleDefaults?: ModelRoleDefaultRecord[];
+    modelContinuationLockMessage?: string;
     runErrorMessage: string | undefined;
     contextState?: ResolvedContextState;
     browserContext?: BrowserContextPacket;
@@ -96,6 +101,7 @@ export interface ComposerActionPanelProps {
     onProfileChange?: (profileId: string) => void;
     onProviderChange: (providerId: string) => void;
     onModelChange: (modelId: string) => void;
+    onToggleModelFavorite?: (option: ModelPickerOption, favorite: boolean) => void;
     onReasoningEffortChange: (effort: RuntimeReasoningEffort) => void;
     onModeChange: (modeKey: string) => void;
     onPromptEdited: () => void;

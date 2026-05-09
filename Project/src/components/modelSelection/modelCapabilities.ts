@@ -24,6 +24,9 @@ export interface ModelPickerOption {
     label: string;
     providerId?: RuntimeProviderId;
     providerLabel?: string;
+    providerAuthState?: string;
+    providerAuthMethod?: string;
+    providerConnectionLabel?: string;
     sourceProvider?: string;
     source?: string;
     promptFamily?: string;
@@ -175,7 +178,9 @@ export function resolveModelCompatibility(
 
 export function buildModelPickerOption(input: {
     model: ProviderModelRecord;
-    provider?: Pick<ProviderListItem, 'id' | 'label' | 'authState' | 'authMethod'>;
+    provider?: Pick<ProviderListItem, 'id' | 'label' | 'authState' | 'authMethod'> & {
+        connectionProfile?: Pick<ProviderListItem['connectionProfile'], 'label'>;
+    };
     compatibilityContext: ModelCompatibilityContext;
 }): ModelPickerOption {
     const compatibility = resolveModelCompatibility(input.model, {
@@ -190,7 +195,17 @@ export function buildModelPickerOption(input: {
     return {
         id: input.model.id,
         label: input.model.label,
-        ...(input.provider ? { providerId: input.provider.id, providerLabel: input.provider.label } : {}),
+        ...(input.provider
+            ? {
+                  providerId: input.provider.id,
+                  providerLabel: input.provider.label,
+                  providerAuthState: input.provider.authState,
+                  providerAuthMethod: input.provider.authMethod,
+                  ...(input.provider.connectionProfile?.label
+                      ? { providerConnectionLabel: input.provider.connectionProfile.label }
+                      : {}),
+              }
+            : {}),
         ...(input.model.sourceProvider ? { sourceProvider: input.model.sourceProvider } : {}),
         ...(input.model.source ? { source: input.model.source } : {}),
         ...(input.model.promptFamily ? { promptFamily: input.model.promptFamily } : {}),

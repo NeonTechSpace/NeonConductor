@@ -24,6 +24,7 @@ export function useProviderSettingsMutationModel(input: UseProviderSettingsMutat
         statusMessage: input.statusMessage,
         mutationErrorSources: [
             mutations.setDefaultMutation,
+            mutations.setModelFavoriteMutation,
             mutations.setApiKeyMutation,
             mutations.setConnectionProfileMutation,
             mutations.setExecutionPreferenceMutation,

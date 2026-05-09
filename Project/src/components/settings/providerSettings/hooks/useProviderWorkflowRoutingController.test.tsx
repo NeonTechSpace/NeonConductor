@@ -146,6 +146,9 @@ vi.mock('@/web/trpc/client', () => ({
             clearWorkflowRoutingPreference: {
                 useMutation: controllerTestState.useMutationMock,
             },
+            setModelFavorite: {
+                useMutation: controllerTestState.useMutationMock,
+            },
         },
     },
 }));

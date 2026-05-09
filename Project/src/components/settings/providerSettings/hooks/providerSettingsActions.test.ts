@@ -23,6 +23,7 @@ describe('provider settings actions', () => {
             onPreviewProvider: vi.fn(),
             mutations: {
                 setDefaultMutation: { mutateAsync: setDefaultMutateAsync },
+                setModelFavoriteMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 syncCatalogMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setModelRoutingPreferenceMutation: { mutateAsync },
                 setConnectionProfileMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
@@ -79,6 +80,7 @@ describe('provider settings actions', () => {
             onPreviewProvider: vi.fn(),
             mutations: {
                 setDefaultMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setModelFavoriteMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 syncCatalogMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setModelRoutingPreferenceMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setConnectionProfileMutation: { mutateAsync: setConnectionProfileMutateAsync },
@@ -118,6 +120,7 @@ describe('provider settings actions', () => {
             onPreviewProvider: vi.fn(),
             mutations: {
                 setDefaultMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
+                setModelFavoriteMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 syncCatalogMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setModelRoutingPreferenceMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },
                 setConnectionProfileMutation: { mutateAsync: vi.fn().mockResolvedValue(undefined) },

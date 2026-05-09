@@ -21,12 +21,17 @@ function createOption(input: Partial<ModelPickerOption> & Pick<ModelPickerOption
         compatibilityState: input.compatibilityState ?? 'compatible',
         ...(input.providerId ? { providerId: input.providerId } : {}),
         ...(input.providerLabel ? { providerLabel: input.providerLabel } : {}),
+        ...(input.providerAuthMethod ? { providerAuthMethod: input.providerAuthMethod } : {}),
+        ...(input.providerAuthState ? { providerAuthState: input.providerAuthState } : {}),
+        ...(input.providerConnectionLabel ? { providerConnectionLabel: input.providerConnectionLabel } : {}),
         ...(input.sourceProvider ? { sourceProvider: input.sourceProvider } : {}),
         ...(input.source ? { source: input.source } : {}),
         ...(input.promptFamily ? { promptFamily: input.promptFamily } : {}),
         ...(input.price !== undefined ? { price: input.price } : {}),
         ...(input.latency !== undefined ? { latency: input.latency } : {}),
         ...(input.tps !== undefined ? { tps: input.tps } : {}),
+        ...(input.compatibilityScope ? { compatibilityScope: input.compatibilityScope } : {}),
+        ...(input.compatibilityReason ? { compatibilityReason: input.compatibilityReason } : {}),
     };
 }
 
@@ -83,6 +88,51 @@ describe('model picker read model', () => {
         expect(openAiOption?.capabilityBadges).toEqual(['Native Tools']);
         expect(openAiOption?.metricBadges).toEqual(['Price 12', 'Latency 90', 'TPS 120']);
         expect(openAiOption?.description).toBe('OpenAI provider model.');
+    });
+
+    it('projects favorites, role defaults, provider instance details, and availability warnings', () => {
+        const readModel = buildModelPickerReadModel({
+            selectedModelId: 'openai/gpt-5',
+            models: [
+                createOption({
+                    id: 'openai/gpt-5-mini',
+                    label: 'GPT-5 Mini',
+                    providerId: 'openai',
+                    providerLabel: 'OpenAI',
+                    providerAuthMethod: 'api_key',
+                    providerAuthState: 'configured',
+                    providerConnectionLabel: 'Default',
+                }),
+                createOption({
+                    id: 'openai/gpt-5',
+                    label: 'GPT-5',
+                    providerId: 'openai',
+                    providerLabel: 'OpenAI',
+                    compatibilityState: 'warning',
+                    compatibilityReason: 'Provider credentials need attention.',
+                }),
+            ],
+            favoriteModels: [{ providerId: 'openai', modelId: 'openai/gpt-5-mini' }],
+            roleDefaultReferences: [
+                {
+                    role: 'chat',
+                    providerId: 'openai',
+                    modelId: 'openai/gpt-5-mini',
+                    source: 'role_override',
+                    status: 'configured',
+                    sourceLabel: 'Saved role default',
+                },
+            ],
+        });
+
+        expect(readModel.groups[0]?.options.map((option) => option.option.id)).toEqual([
+            'openai/gpt-5-mini',
+            'openai/gpt-5',
+        ]);
+        expect(readModel.groups[0]?.options[0]?.isFavorite).toBe(true);
+        expect(readModel.groups[0]?.options[0]?.roleDefaultBadges).toEqual(['chat default']);
+        expect(readModel.groups[0]?.options[0]?.providerInstanceBadge).toBe('OpenAI · Default · api_key · configured');
+        expect(readModel.groups[0]?.options[1]?.availabilityLabel).toBe('Provider credentials need attention.');
     });
 
     it('disambiguates colliding kilo labels with secondary context', () => {

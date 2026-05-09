@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     parseProviderClearModelRoleDefaultInput,
     parseProviderClearWorkflowRoutingPreferenceInput,
+    parseProviderSetModelFavoriteInput,
     parseProviderSetModelRoleDefaultInput,
     parseProviderSetWorkflowRoutingPreferenceInput,
 } from '@/app/backend/runtime/contracts/parsers/provider';
@@ -85,5 +86,34 @@ describe('provider contract parsers', () => {
                 modelId: 'openai/gpt-5.2',
             })
         ).toThrow('Invalid "role": expected one of');
+    });
+
+    it('parses model favorite input with explicit add and default removal posture', () => {
+        expect(
+            parseProviderSetModelFavoriteInput({
+                profileId: 'profile_default',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5.2',
+                favorite: true,
+            })
+        ).toEqual({
+            profileId: 'profile_default',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5.2',
+            favorite: true,
+        });
+
+        expect(
+            parseProviderSetModelFavoriteInput({
+                profileId: 'profile_default',
+                providerId: 'openai',
+                modelId: 'openai/gpt-5.2',
+            })
+        ).toEqual({
+            profileId: 'profile_default',
+            providerId: 'openai',
+            modelId: 'openai/gpt-5.2',
+            favorite: false,
+        });
     });
 });
