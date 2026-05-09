@@ -4,6 +4,8 @@ import { useDeferredValue, useEffect, useMemo, useState, type KeyboardEvent as R
 import { buildComposerControlsReadModel } from '@/web/components/conversation/panels/composerActionPanel/buildComposerControlsReadModel';
 import { buildComposerSubmissionPolicy } from '@/web/components/conversation/panels/composerActionPanel/buildComposerSubmissionPolicy';
 import { ComposerContextSummarySection } from '@/web/components/conversation/panels/composerActionPanel/ComposerContextSummarySection';
+import { buildComposerControlSurfaceModel } from '@/web/components/conversation/panels/composerActionPanel/composerControlSurfaceModel';
+import { ComposerControlSurfaceStrip } from '@/web/components/conversation/panels/composerActionPanel/ComposerControlSurfaceStrip';
 import { ComposerPromptCard } from '@/web/components/conversation/panels/composerActionPanel/ComposerPromptCard';
 import { ComposerRunContractPreviewSection } from '@/web/components/conversation/panels/composerActionPanel/ComposerRunContractPreviewSection';
 import { ComposerRunControlsBar } from '@/web/components/conversation/panels/composerActionPanel/ComposerRunControlsBar';
@@ -213,6 +215,8 @@ function ComposerActionPanelDraftBoundary({
     missingAttachedRuleKeys = [],
     attachedSkills = [],
     missingAttachedSkillKeys = [],
+    pendingPermissionCount = 0,
+    planControlSummary,
     inspectorSectionIds = [],
     canCompactContext = false,
     isCompactingContext = false,
@@ -232,6 +236,7 @@ function ComposerActionPanelDraftBoundary({
     onQueuePrompt,
     onSubmitPrompt,
     onOpenInspectorSection,
+    onOpenBrowserSurface,
     onCompactContext,
 }: ComposerActionPanelProps) {
     const draftController = useComposerDraftController({
@@ -264,6 +269,32 @@ function ComposerActionPanelDraftBoundary({
         canAttachFiles: true,
         controlsDisabled: controlsReadModel.composerControlsDisabled,
         onAddFiles,
+    });
+    const activeModeLabel = modes.find((mode) => mode.modeKey === activeModeKey)?.label;
+    const controlSurfaceModel = buildComposerControlSurfaceModel({
+        pendingImages,
+        pendingTextFiles,
+        pendingDocuments,
+        readyComposerAttachments,
+        hasBlockingPendingAttachments,
+        attachedRules,
+        missingAttachedRuleKeys,
+        attachedSkills,
+        missingAttachedSkillKeys,
+        inspectorSectionIds,
+        ...(browserContextSummary ? { browserContextSummary } : {}),
+        canOpenBrowserSurface: Boolean(onOpenBrowserSurface && selectedSessionId),
+        ...(selectedProviderId ? { selectedProviderId } : {}),
+        ...(selectedModelId ? { selectedModelId } : {}),
+        modelOptions,
+        activeModeKey,
+        ...(activeModeLabel ? { activeModeLabel } : {}),
+        reasoningEffort: controlsReadModel.selectedReasoningEffort,
+        pendingPermissionCount,
+        ...(planControlSummary ? { planControlSummary } : {}),
+        showRunContractPreview,
+        canQueuePrompt: Boolean(onQueuePrompt),
+        isSubmitting,
     });
     const slashCommandController = useComposerSlashCommandController({
         profileId,
@@ -377,6 +408,14 @@ function ComposerActionPanelDraftBoundary({
                     void slashCommandController.handleSlashCommandAccept(true);
                 }}>
                 <div className='space-y-3 px-4 py-4'>
+                    <ComposerControlSurfaceStrip
+                        model={controlSurfaceModel}
+                        onOpenFilePicker={() => {
+                            attachmentController.openFilePicker();
+                        }}
+                        {...(onOpenBrowserSurface ? { onOpenBrowserSurface } : {})}
+                        {...(onOpenInspectorSection ? { onOpenInspectorSection } : {})}
+                    />
                     {contextState ? (
                         <ComposerContextSummarySection
                             contextState={contextState}

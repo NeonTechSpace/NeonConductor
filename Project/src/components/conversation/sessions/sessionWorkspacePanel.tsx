@@ -66,12 +66,14 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
         modelOptions,
         runErrorMessage,
         contextState,
+        pendingPermissions,
         outboxEntries,
         showRunContractPreview,
         attachedRules,
         missingAttachedRuleKeys,
         attachedSkills,
         missingAttachedSkillKeys,
+        planControlSummary,
         runtimeOptions,
         canCompactContext,
         isCompactingContext,
@@ -154,10 +156,12 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     canAttachImages={canAttachImages}
                     modelOptions={modelOptions}
                     runErrorMessage={runErrorMessage}
+                    pendingPermissions={pendingPermissions}
                     attachedRules={attachedRules}
                     missingAttachedRuleKeys={missingAttachedRuleKeys}
                     attachedSkills={attachedSkills}
                     missingAttachedSkillKeys={missingAttachedSkillKeys}
+                    {...(planControlSummary ? { planControlSummary } : {})}
                     {...(selectedProfileId ? { selectedProfileId } : {})}
                     {...(selectedSessionId ? { selectedSessionId } : {})}
                     {...(selectedWorkspaceFingerprint ? { selectedWorkspaceFingerprint } : {})}

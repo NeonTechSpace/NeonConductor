@@ -1,3 +1,4 @@
+import type { ComposerPlanControlSummary } from '@/web/components/conversation/panels/composerActionPanel/composerControlSurfaceModel';
 import type { PendingDocumentCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingDocumentsList';
 import type { PendingImageCardView } from '@/web/components/conversation/panels/composerActionPanel/pendingImagesGrid';
 import type { WorkspaceInspectorSectionId } from '@/web/components/conversation/sessions/workspaceShellModel';
@@ -84,6 +85,8 @@ export interface ComposerActionPanelProps {
     missingAttachedRuleKeys?: string[];
     attachedSkills?: SkillfileDefinition[];
     missingAttachedSkillKeys?: string[];
+    pendingPermissionCount?: number;
+    planControlSummary?: ComposerPlanControlSummary;
     inspectorSectionIds?: WorkspaceInspectorSectionId[];
     canCompactContext?: boolean;
     isCompactingContext?: boolean;
@@ -112,6 +115,7 @@ export interface ComposerActionPanelProps {
         researchTarget?: ResearchTargetRequest
     ) => void;
     onOpenInspectorSection?: (sectionId: WorkspaceInspectorSectionId) => void;
+    onOpenBrowserSurface?: () => void;
     onCompactContext?: () => Promise<ComposerActionFeedback | undefined>;
 }
 

@@ -86,10 +86,30 @@ interface BuildConversationWorkspaceProjectionInput {
     onCloudSessionCreated: (input: { session: SessionSummaryRecord; thread?: ThreadListRecord }) => void;
 }
 
+function buildComposerPlanControlSummary(
+    plan: ReturnType<typeof buildConversationPlanOrchestrator>['activePlan'] | undefined
+): SessionWorkspacePanelProps['planControlSummary'] {
+    if (!plan) {
+        return undefined;
+    }
+
+    const requiredQuestions = plan.questions.filter((question) => question.required);
+    const optionalQuestions = plan.questions.filter((question) => !question.required);
+    return {
+        status: plan.status,
+        requiredQuestionCount: requiredQuestions.length,
+        unansweredRequiredQuestionCount: requiredQuestions.filter(
+            (question) => (question.answer?.trim().length ?? 0) === 0
+        ).length,
+        optionalQuestionCount: optionalQuestions.length,
+    };
+}
+
 export function buildConversationWorkspaceProjection(
     input: BuildConversationWorkspaceProjectionInput
 ): SessionWorkspacePanelProps {
     const selectedThread = input.shellViewModel.selectedThread;
+    const composerPlanControlSummary = buildComposerPlanControlSummary(input.planOrchestrator.activePlan);
     const canConfigureExecutionStrategy =
         input.topLevelTab === 'orchestrator' &&
         selectedThread?.topLevelTab === 'orchestrator' &&
@@ -368,6 +388,7 @@ export function buildConversationWorkspaceProjection(
         missingAttachedRuleKeys: input.shellViewModel.missingAttachedRuleKeys,
         attachedSkills: input.shellViewModel.attachedSkills,
         missingAttachedSkillKeys: input.shellViewModel.missingAttachedSkillKeys,
+        ...(composerPlanControlSummary ? { planControlSummary: composerPlanControlSummary } : {}),
         showRunContractPreview: !input.isPlanningComposerMode,
         runtimeOptions: input.runtimeOptions,
         canCompactContext:

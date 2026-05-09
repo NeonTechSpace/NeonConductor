@@ -173,6 +173,8 @@ function createComposerActionPanelProps(
     const {
         pendingTextFiles,
         pendingDocuments,
+        readyComposerAttachments,
+        hasBlockingPendingAttachments,
         onAddFiles,
         onRemovePendingTextFile,
         onRemovePendingDocument,
@@ -182,6 +184,8 @@ function createComposerActionPanelProps(
         profileId: 'profile_default',
         pendingTextFiles: pendingTextFiles ?? [],
         pendingDocuments: pendingDocuments ?? [],
+        readyComposerAttachments: readyComposerAttachments ?? [],
+        hasBlockingPendingAttachments: hasBlockingPendingAttachments ?? false,
         onAddFiles: onAddFiles ?? (() => {}),
         onRemovePendingTextFile: onRemovePendingTextFile ?? (() => {}),
         onRemovePendingDocument: onRemovePendingDocument ?? (() => {}),
@@ -432,6 +436,116 @@ describe('composer enter handling', () => {
         );
 
         expect(html).toContain('This mode requires native tool calling.');
+    });
+
+    it('renders the composer control surface over existing run context inputs', () => {
+        const html = renderToStaticMarkup(
+            createElement(
+                ComposerActionPanel,
+                createComposerActionPanelProps({
+                    pendingImages: [
+                        {
+                            clientId: 'img_ready',
+                            fileName: 'ready.png',
+                            previewUrl: 'blob:ready',
+                            status: 'ready',
+                        },
+                    ],
+                    readyComposerAttachments: [
+                        {
+                            clientId: 'img_ready',
+                            mimeType: 'image/png',
+                            bytesBase64: 'abc',
+                            width: 1,
+                            height: 1,
+                            sha256: 'sha',
+                        },
+                    ],
+                    hasBlockingPendingAttachments: false,
+                    disabled: false,
+                    isSubmitting: false,
+                    selectedProviderId: 'openai',
+                    selectedModelId: 'openai/gpt-5',
+                    topLevelTab: 'agent',
+                    activeModeKey: 'code',
+                    modes: [{ id: 'agent.code', modeKey: 'code', label: 'Code' } as never],
+                    reasoningEffort: 'high',
+                    selectedModelSupportsReasoning: true,
+                    canAttachImages: true,
+                    maxImageAttachmentsPerMessage: 4,
+                    modelOptions: [
+                        createModelOption({
+                            id: 'openai/gpt-5',
+                            label: 'GPT-5',
+                            providerId: 'openai',
+                            providerLabel: 'OpenAI',
+                        }),
+                    ],
+                    runErrorMessage: undefined,
+                    attachedRules: [
+                        {
+                            name: 'Review Rules',
+                            assetKey: 'rules/review',
+                        } as never,
+                    ],
+                    attachedSkills: [
+                        {
+                            name: 'Debug Skill',
+                            assetKey: 'skills/debug',
+                            dynamicContextSources: [],
+                        } as never,
+                    ],
+                    browserContextSummary: {
+                        targetUrl: 'http://localhost:5173',
+                        targetLabel: 'Local app',
+                        selectedElementCount: 1,
+                        commentCount: 2,
+                        captureCount: 1,
+                        enrichmentMode: 'dom_only',
+                        designerDraftCount: 1,
+                        designerPatchCount: 0,
+                        designerApplyIntentStatus: 'none',
+                        designDiagnosticCount: 0,
+                        designDiagnosticWarningCount: 0,
+                        designDiagnosticErrorCount: 0,
+                        digest: 'browserctx-test',
+                    },
+                    selectedSessionId: 'sess_default',
+                    pendingPermissionCount: 2,
+                    planControlSummary: {
+                        status: 'awaiting_answers',
+                        requiredQuestionCount: 2,
+                        unansweredRequiredQuestionCount: 1,
+                        optionalQuestionCount: 0,
+                    },
+                    inspectorSectionIds: ['context-assets', 'pending-permissions', 'plan-and-orchestration'],
+                    showRunContractPreview: false,
+                    onProviderChange: () => {},
+                    onModelChange: () => {},
+                    onReasoningEffortChange: () => {},
+                    onModeChange: () => {},
+                    onPromptEdited: () => {},
+                    onAddFiles: () => {},
+                    onRemovePendingImage: () => {},
+                    onRetryPendingImage: () => {},
+                    onSubmitPrompt: () => {},
+                    onQueuePrompt: () => {},
+                    onOpenBrowserSurface: () => {},
+                    onOpenInspectorSection: () => {},
+                })
+            )
+        );
+
+        expect(html).toContain('Composer control surface');
+        expect(html).toContain('1 ready / 1 file');
+        expect(html).toContain('1 rules / 1 skills');
+        expect(html).toContain('2 comments / 1 elements');
+        expect(html).toContain('Terminal');
+        expect(html).toContain('No selection');
+        expect(html).toContain('GPT-5');
+        expect(html).toContain('2 approvals');
+        expect(html).toContain('1 required open');
+        expect(html).toContain('Start or queue');
     });
 
     it.each(['chat', 'agent', 'orchestrator'] satisfies Array<'chat' | 'agent' | 'orchestrator'>)(

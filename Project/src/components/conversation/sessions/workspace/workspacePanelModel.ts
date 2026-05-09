@@ -2,6 +2,7 @@ import { createElement } from 'react';
 
 import type { MessageFlowMessage } from '@/web/components/conversation/messages/messageFlowModel';
 import type { OptimisticConversationUserMessage } from '@/web/components/conversation/messages/optimisticUserMessage';
+import type { ComposerPlanControlSummary } from '@/web/components/conversation/panels/composerActionPanel/composerControlSurfaceModel';
 import { PendingPermissionsPanel } from '@/web/components/conversation/panels/pendingPermissionsPanel';
 import { QueuedRunReviewSummary } from '@/web/components/conversation/panels/queuedRunReviewSummary';
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
@@ -35,6 +36,7 @@ import type {
     ComposerAttachmentInput,
     DiffOverview,
     EntityId,
+    ResearchTargetRequest,
     ResolvedContextState,
     RulesetDefinition,
     RuntimeRunOptions,
@@ -193,6 +195,7 @@ export interface SessionWorkspacePanelProps {
     missingAttachedRuleKeys: string[];
     attachedSkills: SkillfileDefinition[];
     missingAttachedSkillKeys: string[];
+    planControlSummary?: ComposerPlanControlSummary;
     showRunContractPreview?: boolean;
     canCompactContext?: boolean;
     isCompactingContext?: boolean;
@@ -221,8 +224,16 @@ export interface SessionWorkspacePanelProps {
     onRemovePendingTextFile: (clientId: string) => void;
     onRemovePendingDocument: (clientId: string) => void;
     onRetryPendingImage: (clientId: string) => void;
-    onQueuePrompt?: (prompt: string, browserContext?: BrowserContextPacket) => void;
-    onSubmitPrompt: (prompt: string, browserContext?: BrowserContextPacket) => void;
+    onQueuePrompt?: (
+        prompt: string,
+        browserContext?: BrowserContextPacket,
+        researchTarget?: ResearchTargetRequest
+    ) => void;
+    onSubmitPrompt: (
+        prompt: string,
+        browserContext?: BrowserContextPacket,
+        researchTarget?: ResearchTargetRequest
+    ) => void;
     onAbortSessionRun?: () => void;
     onMoveOutboxEntry?: (entryId: EntityId<'outbox'>, direction: 'up' | 'down') => void;
     onResumeOutboxEntry?: (entryId: EntityId<'outbox'>) => void;

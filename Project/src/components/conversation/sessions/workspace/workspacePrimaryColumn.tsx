@@ -55,12 +55,14 @@ type WorkspacePrimaryColumnProps = Pick<
     | 'modelOptions'
     | 'runErrorMessage'
     | 'contextState'
+    | 'pendingPermissions'
     | 'outboxEntries'
     | 'selectedOutboxEntryId'
     | 'attachedRules'
     | 'missingAttachedRuleKeys'
     | 'attachedSkills'
     | 'missingAttachedSkillKeys'
+    | 'planControlSummary'
     | 'showRunContractPreview'
     | 'runtimeOptions'
     | 'canCompactContext'
@@ -134,12 +136,14 @@ export function WorkspacePrimaryColumn({
     modelOptions,
     runErrorMessage,
     contextState,
+    pendingPermissions,
     outboxEntries,
     selectedOutboxEntryId,
     attachedRules,
     missingAttachedRuleKeys,
     attachedSkills,
     missingAttachedSkillKeys,
+    planControlSummary,
     showRunContractPreview,
     runtimeOptions,
     canCompactContext,
@@ -362,6 +366,8 @@ export function WorkspacePrimaryColumn({
                     missingAttachedRuleKeys={missingAttachedRuleKeys}
                     attachedSkills={attachedSkills}
                     missingAttachedSkillKeys={missingAttachedSkillKeys}
+                    pendingPermissionCount={pendingPermissions.length}
+                    {...(planControlSummary ? { planControlSummary } : {})}
                     {...(includedBrowserPacket ? { browserContext: includedBrowserPacket } : {})}
                     {...(includedBrowserSummary ? { browserContextSummary: includedBrowserSummary } : {})}
                     {...(showRunContractPreview !== undefined ? { showRunContractPreview } : {})}
@@ -385,6 +391,9 @@ export function WorkspacePrimaryColumn({
                     onRetryPendingImage={onRetryPendingImage}
                     {...(onQueuePrompt ? { onQueuePrompt } : {})}
                     onSubmitPrompt={onSubmitPrompt}
+                    onOpenBrowserSurface={() => {
+                        setActivePrimarySurface('browser');
+                    }}
                     {...(onCompactContext ? { onCompactContext } : {})}
                     inspectorSectionIds={inspectorSectionIds}
                     onOpenInspectorSection={onOpenInspectorSection}
