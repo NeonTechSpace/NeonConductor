@@ -40,8 +40,8 @@ export function WorkbenchExecutionReceiptRow({ receipt }: { receipt: ExecutionRe
                 {receipt.contract.browserContextSummary &&
                 receipt.contract.browserContextSummary.designDiagnosticCount > 0 ? (
                     <p className='text-muted-foreground'>
-                        Design diagnostics: {String(receipt.contract.browserContextSummary.designDiagnosticCount)} total ·{' '}
-                        {String(receipt.contract.browserContextSummary.designDiagnosticErrorCount)} blocking ·{' '}
+                        Design diagnostics: {String(receipt.contract.browserContextSummary.designDiagnosticCount)} total
+                        · {String(receipt.contract.browserContextSummary.designDiagnosticErrorCount)} blocking ·{' '}
                         {String(receipt.contract.browserContextSummary.designDiagnosticWarningCount)} warnings
                     </p>
                 ) : null}

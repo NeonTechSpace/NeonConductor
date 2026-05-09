@@ -24,6 +24,20 @@ export interface WorkspaceStripChip {
     selected: boolean;
 }
 
+export interface RunContextStripItem {
+    id: 'workspace' | 'execution-root' | 'authority' | 'branch-worktree' | 'run';
+    label: string;
+    value: string;
+    detail: string;
+    tone: 'default' | 'muted' | 'attention' | 'success';
+    inspectorSectionId: WorkspaceInspectorSectionId;
+    ariaLabel: string;
+}
+
+export interface RunContextStripModel {
+    items: RunContextStripItem[];
+}
+
 export interface WorkspaceInspectorSection {
     id: WorkspaceInspectorSectionId;
     label: string;
@@ -38,6 +52,7 @@ export interface WorkspaceHeaderModel {
     runs: RunRecord[];
     selectedSession: SessionSummaryRecord | undefined;
     selectedRun: RunRecord | undefined;
+    runContextStrip: RunContextStripModel;
     compactConnectionLabel?: string;
     routingBadge?: string;
     pendingPermissionCount: number;

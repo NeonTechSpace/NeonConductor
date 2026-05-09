@@ -363,7 +363,14 @@ export const orchestratorLazyObjectiveSegmentKinds = [
 ] as const;
 export type OrchestratorLazyObjectiveSegmentKind = (typeof orchestratorLazyObjectiveSegmentKinds)[number];
 
-export const orchestratorLazyTaskStatuses = ['pending', 'running', 'completed', 'failed', 'aborted', 'blocked'] as const;
+export const orchestratorLazyTaskStatuses = [
+    'pending',
+    'running',
+    'completed',
+    'failed',
+    'aborted',
+    'blocked',
+] as const;
 export type OrchestratorLazyTaskStatus = (typeof orchestratorLazyTaskStatuses)[number];
 
 export const orchestratorLazyExecutionKinds = ['sequential', 'parallel', 'swarm'] as const;
@@ -385,7 +392,12 @@ export type OrchestratorLazyCheckpointStatus = (typeof orchestratorLazyCheckpoin
 export const orchestratorLazyDecisionStatuses = ['proposed', 'accepted', 'rejected'] as const;
 export type OrchestratorLazyDecisionStatus = (typeof orchestratorLazyDecisionStatuses)[number];
 
-export const orchestratorLazyPackageAssessmentStatuses = ['not_needed', 'needs_approval', 'approved', 'rejected'] as const;
+export const orchestratorLazyPackageAssessmentStatuses = [
+    'not_needed',
+    'needs_approval',
+    'approved',
+    'rejected',
+] as const;
 export type OrchestratorLazyPackageAssessmentStatus = (typeof orchestratorLazyPackageAssessmentStatuses)[number];
 
 export const orchestratorLazyWorkingArtifactKinds = [

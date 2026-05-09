@@ -256,6 +256,17 @@ export function buildConversationWorkspaceProjection(
         ...(selectedThread?.workspaceFingerprint
             ? { selectedWorkspaceFingerprint: selectedThread.workspaceFingerprint }
             : {}),
+        ...(selectedThread && isEntityId(selectedThread.id, 'thr')
+            ? {
+                  selectedThreadContext: {
+                      threadId: selectedThread.id,
+                      rootThreadId: selectedThread.rootThreadId,
+                      topLevelTab: selectedThread.topLevelTab,
+                      title: selectedThread.title,
+                      ...(selectedThread.parentThreadId ? { parentThreadId: selectedThread.parentThreadId } : {}),
+                  },
+              }
+            : {}),
         ...(input.shellViewModel.effectiveSelectedSandboxId
             ? { selectedSandboxId: input.shellViewModel.effectiveSelectedSandboxId }
             : {}),

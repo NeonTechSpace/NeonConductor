@@ -108,10 +108,11 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
     return (
         <WorkspaceShell
             inspectorSections={workspaceShell.inspector.sections}
-            renderHeader={({ isInspectorOpen, toggleInspector }) => (
+            renderHeader={({ isInspectorOpen, toggleInspector, openInspectorSection }) => (
                 <WorkspaceSelectionHeader
                     selectedSession={workspaceShell.header.selectedSession}
                     selectedRun={workspaceShell.header.selectedRun}
+                    runContextStrip={workspaceShell.header.runContextStrip}
                     {...(workspaceShell.header.compactConnectionLabel
                         ? { compactConnectionLabel: workspaceShell.header.compactConnectionLabel }
                         : {})}
@@ -125,6 +126,7 @@ export function SessionWorkspacePanel(input: SessionWorkspacePanelProps) {
                     onSelectSession={onSelectSession}
                     onSelectRun={onSelectRun}
                     onToggleInspector={toggleInspector}
+                    onOpenInspectorSection={openInspectorSection}
                     {...(input.onAbortSessionRun ? { onAbortSessionRun: input.onAbortSessionRun } : {})}
                 />
             )}>

@@ -1,3 +1,8 @@
+import { WorkspaceRunContextStrip } from '@/web/components/conversation/sessions/workspace/workspaceRunContextStrip';
+import type {
+    RunContextStripModel,
+    WorkspaceInspectorSectionId,
+} from '@/web/components/conversation/sessions/workspaceShellModel';
 import { Button } from '@/web/components/ui/button';
 
 import type { RunRecord, SessionSummaryRecord } from '@/app/backend/persistence/types';
@@ -7,6 +12,7 @@ interface WorkspaceSelectionHeaderProps {
     runs: RunRecord[];
     selectedSession: SessionSummaryRecord | undefined;
     selectedRun: RunRecord | undefined;
+    runContextStrip: RunContextStripModel;
     compactConnectionLabel?: string;
     routingBadge?: string;
     pendingPermissionCount: number;
@@ -14,6 +20,7 @@ interface WorkspaceSelectionHeaderProps {
     onSelectSession: (sessionId: string) => void;
     onSelectRun: (runId: string) => void;
     onToggleInspector: () => void;
+    onOpenInspectorSection: (sectionId: WorkspaceInspectorSectionId) => void;
     onAbortSessionRun?: () => void;
 }
 
@@ -34,6 +41,7 @@ export function WorkspaceSelectionHeader({
     runs,
     selectedSession,
     selectedRun,
+    runContextStrip,
     compactConnectionLabel,
     routingBadge,
     pendingPermissionCount,
@@ -41,6 +49,7 @@ export function WorkspaceSelectionHeader({
     onSelectSession,
     onSelectRun,
     onToggleInspector,
+    onOpenInspectorSection,
     onAbortSessionRun,
 }: WorkspaceSelectionHeaderProps) {
     const runStatus = selectedRun ? formatRunStatus(selectedRun) : undefined;
@@ -80,6 +89,8 @@ export function WorkspaceSelectionHeader({
                         </p>
                         <p className='text-muted-foreground text-xs'>{activeSummary}</p>
                     </div>
+
+                    <WorkspaceRunContextStrip model={runContextStrip} onOpenInspectorSection={onOpenInspectorSection} />
 
                     <div className='grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,0.85fr)]'>
                         <label className='space-y-1.5'>

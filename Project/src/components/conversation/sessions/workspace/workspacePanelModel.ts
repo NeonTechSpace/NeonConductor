@@ -7,6 +7,10 @@ import { QueuedRunReviewSummary } from '@/web/components/conversation/panels/que
 import { RunChangeSummaryPanel } from '@/web/components/conversation/panels/runChangeSummaryPanel';
 import { WorkbenchExecutionReceiptRow } from '@/web/components/conversation/panels/workbenchExecutionReceiptRow';
 import { WorkspaceStatusPanel } from '@/web/components/conversation/panels/workspaceStatusPanel';
+import {
+    buildRunContextStrip,
+    type SelectedThreadContext,
+} from '@/web/components/conversation/sessions/workspace/runContextStripModel';
 import type {
     WorkspaceHeaderModel,
     WorkspaceInspectorModel,
@@ -137,6 +141,7 @@ export interface SessionWorkspacePanelProps {
     selectedRunId?: string;
     selectedWorkspaceFingerprint?: string;
     selectedSandboxId?: EntityId<'sb'>;
+    selectedThreadContext?: SelectedThreadContext;
     optimisticUserMessage?: OptimisticConversationUserMessage;
     executionPreset: 'privacy' | 'standard' | 'yolo';
     workspaceScope: WorkspaceScope;
@@ -262,6 +267,14 @@ export function buildWorkspaceHeaderModel(input: SessionWorkspacePanelProps): Wo
         runs: input.runs,
         selectedSession,
         selectedRun,
+        runContextStrip: buildRunContextStrip({
+            workspaceScope: input.workspaceScope,
+            executionPreset: input.executionPreset,
+            pendingPermissionCount: input.pendingPermissions.length,
+            selectedSession,
+            selectedRun,
+            ...(input.selectedThreadContext ? { selectedThreadContext: input.selectedThreadContext } : {}),
+        }),
         ...(compactConnectionLabel ? { compactConnectionLabel } : {}),
         ...(input.routingBadge ? { routingBadge: input.routingBadge } : {}),
         pendingPermissionCount: input.pendingPermissions.length,

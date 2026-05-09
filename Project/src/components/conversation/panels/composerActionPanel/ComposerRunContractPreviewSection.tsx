@@ -371,7 +371,9 @@ export function ComposerRunContractPreviewSection(input: ComposerRunContractPrev
                             <div className='rounded-xl border px-3 py-2 sm:col-span-2'>
                                 <p className='text-muted-foreground'>Effective Prompt</p>
                                 <p className='font-medium'>
-                                    {String(input.preview.preparedContext.effectivePromptPreview.includedContributorCount)}{' '}
+                                    {String(
+                                        input.preview.preparedContext.effectivePromptPreview.includedContributorCount
+                                    )}{' '}
                                     contributors · {input.preview.preparedContext.effectivePromptPreview.digest}
                                 </p>
                             </div>

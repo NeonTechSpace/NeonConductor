@@ -50,6 +50,7 @@ import {
 } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 import { moveWorkspacePrimarySurfaceTab } from '@/web/components/conversation/sessions/workspace/workspacePrimarySurfaceTabs';
 
+import type { EntityId } from '@/shared/contracts';
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 vi.mock('@/web/components/conversation/panels/messageFlowPanel', () => ({
@@ -112,6 +113,12 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
     partsByMessageId: new Map(),
     selectedSessionId: 'sess_default',
     selectedRunId: 'run_default',
+    selectedThreadContext: {
+        threadId: 'thr_default' as EntityId<'thr'>,
+        rootThreadId: 'thr_default',
+        topLevelTab: 'chat',
+        title: 'Default thread',
+    },
     executionPreset: 'standard',
     workspaceScope: {
         kind: 'workspace',
@@ -518,12 +525,19 @@ describe('session workspace panel layout', () => {
         expect(html).toContain('Selected thread');
         expect(html).toContain('Thread');
         expect(html).toContain('Run');
+        expect(html).toContain('Run context');
+        expect(html).toContain('Workspace Alpha');
+        expect(html).toContain('Local workspace');
+        expect(html).toContain('Standard preset');
+        expect(html).toContain('Root thread');
+        expect(html).toContain('data-inspector-section="execution-environment"');
+        expect(html).toContain('data-inspector-section="workspace-status"');
         expect(html).toContain('2 turns · completed');
         expect(html).toContain('role="tablist"');
         expect(html).toContain('role="tab"');
         expect(html).toContain('aria-controls="workspace-primary-transcript-panel"');
         expect(html).toContain('role="tabpanel"');
-        expect(html).not.toContain('inspector');
+        expect(html).not.toContain('<aside');
     });
 
     it('shows an active-run stop affordance only for running selected sessions', () => {
@@ -570,6 +584,13 @@ describe('session workspace panel layout', () => {
 
         expect(projection.header.selectedSession?.id).toBe('sess_default');
         expect(projection.header.selectedRun?.id).toBe('run_default');
+        expect(projection.header.runContextStrip.items.map((item) => item.id)).toEqual([
+            'workspace',
+            'execution-root',
+            'authority',
+            'branch-worktree',
+            'run',
+        ]);
         expect(projection.inspector.sections.map((section) => section.id)).toEqual([
             'workspace-status',
             'cloud-sessions',
