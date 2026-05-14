@@ -13,29 +13,31 @@ export interface DevToolsProps {
 
 export default function DevTools({ router }: DevToolsProps) {
     return (
-        <TanStackDevtools
-            plugins={[
-                {
-                    id: 'neon-runtime',
-                    name: 'Neon Runtime',
-                    render: <NeonRuntimeDevtoolsPanel />,
-                },
-                {
-                    name: 'TanStack Router',
-                    render: <TanStackRouterDevtoolsPanel router={router} />,
-                },
-                {
-                    name: 'TanStack Query',
-                    render: <ReactQueryDevtoolsPanel />,
-                },
-                {
-                    name: 'TanStack Form',
-                    render: <FormDevtoolsPanel />,
-                },
-            ]}
-            eventBusConfig={{
-                connectToServerBus: true,
-            }}
-        />
+        <>
+            <TanStackDevtools
+                plugins={[
+                    {
+                        id: 'neon-runtime',
+                        name: 'Neon Runtime',
+                        render: <NeonRuntimeDevtoolsPanel />,
+                    },
+                    {
+                        name: 'TanStack Router',
+                        render: <TanStackRouterDevtoolsPanel router={router} />,
+                    },
+                    {
+                        name: 'TanStack Query',
+                        render: <ReactQueryDevtoolsPanel />,
+                    },
+                    {
+                        name: 'TanStack Form',
+                        render: <FormDevtoolsPanel />,
+                    },
+                ]}
+                eventBusConfig={{
+                    connectToServerBus: true,
+                }}
+            />
+        </>
     );
 }

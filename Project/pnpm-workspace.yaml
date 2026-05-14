@@ -1,8 +1,20 @@
 packages:
-    - .
+  - .
+
+allowBuilds:
+  electron-winstaller: true
+  esbuild: true
+  unrs-resolver: true
 
 onlyBuiltDependencies:
-    - electron
-    - electron-winstaller
-    - esbuild
-    - unrs-resolver
+  - electron
+  - electron-winstaller
+  - esbuild
+  - unrs-resolver
+
+overrides:
+  '@typescript-eslint/utils': 8.59.3
+
+patchedDependencies:
+  electron-trpc-experimental@1.0.0-alpha.1: patches/electron-trpc-experimental@1.0.0-alpha.1.patch
+  evlog@2.17.0: patches/evlog@2.17.0.patch

@@ -18,7 +18,7 @@ function createMessage(input: {
     return {
         id: input.id as MessageRecord['id'],
         profileId: 'profile_test',
-        sessionId: 'sess_test' as MessageRecord['sessionId'],
+        sessionId: 'sess_test',
         runId: input.runId as MessageRecord['runId'],
         role: input.role,
         createdAt,

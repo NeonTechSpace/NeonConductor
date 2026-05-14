@@ -50,7 +50,6 @@ import {
 } from '@/web/components/conversation/sessions/workspace/workspacePanelModel';
 import { moveWorkspacePrimarySurfaceTab } from '@/web/components/conversation/sessions/workspace/workspacePrimarySurfaceTabs';
 
-import type { EntityId } from '@/shared/contracts';
 import { kiloFrontierModelId } from '@/shared/kiloModels';
 
 vi.mock('@/web/components/conversation/panels/messageFlowPanel', () => ({
@@ -114,7 +113,7 @@ const sessionWorkspacePanelProps: SessionWorkspacePanelProps = {
     selectedSessionId: 'sess_default',
     selectedRunId: 'run_default',
     selectedThreadContext: {
-        threadId: 'thr_default' as EntityId<'thr'>,
+        threadId: 'thr_default',
         rootThreadId: 'thr_default',
         topLevelTab: 'chat',
         title: 'Default thread',

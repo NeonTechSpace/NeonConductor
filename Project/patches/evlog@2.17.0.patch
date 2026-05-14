@@ -1,0 +1,45 @@
+diff --git a/dist/audit-pV5aLGP0.mjs b/dist/audit-pV5aLGP0.mjs
+index ce9968f805c69908b99dff105c8b2794e9074b41..6c2aab910606636de8c6f8faf3c614260d93dcf5 100644
+--- a/dist/audit-pV5aLGP0.mjs
++++ b/dist/audit-pV5aLGP0.mjs
+@@ -513,6 +513,18 @@ function formatValue(value) {
+ 	}
+ 	return String(value);
+ }
++function shouldUseAsciiPrettyPrefix() {
++	if (typeof process === "undefined") return false;
++	return process.platform === "win32" && !!process.versions?.electron && process.type !== "renderer";
++}
++function resolvePrettyPrefix(isLast) {
++	if (shouldUseAsciiPrettyPrefix()) return isLast ? "\\-" : "|-";
++	return isLast ? "└─" : "├─";
++}
++function resolvePrettyConnector() {
++	if (shouldUseAsciiPrettyPrefix()) return "|";
++	return "│";
++}
+ function formatCost(cost) {
+ 	if (cost < .01) return `$${cost.toFixed(6)}`;
+ 	if (cost < 1) return `$${cost.toFixed(4)}`;
+@@ -696,7 +708,7 @@ function prettyPrintWideEvent(event) {
+ 	for (let i = 0; i < allEntries.length; i++) {
+ 		const entry = allEntries[i];
+ 		const hasChildren = entry.children && entry.children.length > 0;
+-		const prefix = i === allEntries.length - 1 && !hasChildren ? "└─" : "├─";
++		const prefix = resolvePrettyPrefix(i === allEntries.length - 1 && !hasChildren);
+ 		if (browser) {
+ 			const val = entry.value ? ` ${escapeFormatString(entry.value)}` : "";
+ 			console.log(`  %c${prefix}%c %c${escapeFormatString(entry.key)}:%c${val}`, cssColors.dim, cssColors.reset, cssColors.cyan, cssColors.reset);
+@@ -705,10 +717,10 @@ function prettyPrintWideEvent(event) {
+ 			console.log(`  ${colors.dim}${prefix}${colors.reset} ${colors.cyan}${entry.key}:${colors.reset}${val}`);
+ 		}
+ 		if (hasChildren) {
+-			const connector = i === allEntries.length - 1 ? " " : "│";
++			const connector = i === allEntries.length - 1 ? " " : resolvePrettyConnector();
+ 			for (let j = 0; j < entry.children.length; j++) {
+ 				const child = entry.children[j];
+-				const childPrefix = j === entry.children.length - 1 ? "└─" : "├─";
++				const childPrefix = resolvePrettyPrefix(j === entry.children.length - 1);
+ 				if (browser) console.log(`  %c${connector}  ${childPrefix}%c ${escapeFormatString(child)}`, cssColors.dim, cssColors.reset);
+ 				else console.log(`  ${colors.dim}${connector}  ${childPrefix}${colors.reset} ${child}`);
+ 			}

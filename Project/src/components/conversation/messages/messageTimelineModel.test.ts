@@ -13,8 +13,8 @@ function createMessage(input: { id: string; role: MessageRecord['role']; created
     return {
         id: input.id as MessageRecord['id'],
         profileId: 'profile_test',
-        sessionId: 'sess_test' as MessageRecord['sessionId'],
-        runId: 'run_test' as MessageRecord['runId'],
+        sessionId: 'sess_test',
+        runId: 'run_test',
         role: input.role,
         createdAt,
         updatedAt: createdAt,

@@ -22,7 +22,7 @@ function createMessage(input: {
     return {
         id: input.id as MessageRecord['id'],
         profileId: 'profile_test',
-        sessionId: 'sess_test' as MessageRecord['sessionId'],
+        sessionId: 'sess_test',
         runId: (input.runId ?? 'run_test') as MessageRecord['runId'],
         role: input.role,
         createdAt,
@@ -51,7 +51,7 @@ function createPart(input: {
 function createRun(input: Partial<RunRecord> & { id?: RunRecord['id']; status?: RunRecord['status'] } = {}): RunRecord {
     return {
         id: input.id ?? 'run_test',
-        sessionId: 'sess_test' as RunRecord['sessionId'],
+        sessionId: 'sess_test',
         profileId: 'profile_test',
         prompt: input.prompt ?? 'Implement the thing',
         status: input.status ?? 'completed',
@@ -65,10 +65,10 @@ function createPermission(input: Partial<PermissionRecord> & { id?: PermissionRe
     return {
         id: input.id ?? 'perm_test',
         profileId: 'profile_test',
-        policy: 'ask' as PermissionRecord['policy'],
+        policy: 'ask',
         resource: input.resource ?? 'shell:pnpm test',
         toolId: 'run_command',
-        scopeKind: 'profile' as PermissionRecord['scopeKind'],
+        scopeKind: 'tool',
         summary: input.summary ?? {
             title: 'Command approval required',
             detail: 'pnpm test needs approval',
@@ -82,18 +82,18 @@ function createPermission(input: Partial<PermissionRecord> & { id?: PermissionRe
 
 function createPlan(input: Partial<PlanRecordView> = {}): PlanRecordView {
     return {
-        id: 'plan_test' as PlanRecordView['id'],
+        id: 'plan_test',
         profileId: 'profile_test',
-        sessionId: 'sess_test' as PlanRecordView['sessionId'],
+        sessionId: 'sess_test',
         topLevelTab: 'agent',
         modeKey: 'code',
-        status: 'implementing' as PlanRecordView['status'],
+        status: 'implementing',
         sourcePrompt: 'Plan the work',
         summaryMarkdown: 'Plan summary',
         hasOpenPhaseDraft: false,
-        currentRevisionId: 'prev_test' as PlanRecordView['currentRevisionId'],
+        currentRevisionId: 'prev_test',
         currentRevisionNumber: 1,
-        currentVariantId: 'pvar_test' as PlanRecordView['currentVariantId'],
+        currentVariantId: 'pvar_test',
         currentVariantName: 'Main',
         questions: [],
         variants: [],
@@ -101,11 +101,11 @@ function createPlan(input: Partial<PlanRecordView> = {}): PlanRecordView {
         history: [],
         items: [
             {
-                id: 'step_test' as PlanRecordView['items'][number]['id'],
+                id: 'step_test',
                 sequence: 0,
                 description: 'Wire timeline rows',
                 status: 'running',
-                runId: 'run_test' as RunRecord['id'],
+                runId: 'run_test',
             },
         ],
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -407,7 +407,7 @@ describe('workbench timeline model', () => {
 
         const projection = buildWorkbenchTimelineContextProjection({
             runs: [createRun({ id: 'run_test', status: 'running' })],
-            selectedRunId: 'run_test' as RunRecord['id'],
+            selectedRunId: 'run_test',
             activePlan: createPlan(),
             pendingPermissions: [createPermission()],
             runDiffOverview: diffOverview,
@@ -433,10 +433,10 @@ describe('workbench timeline model', () => {
 
     it('omits unbound plan work and keeps queued review as session context', () => {
         const plan = createPlan({
-            implementationRunId: 'run_other' as RunRecord['id'],
+            implementationRunId: 'run_other',
             items: [
                 {
-                    id: 'step_unbound' as PlanRecordView['items'][number]['id'],
+                    id: 'step_unbound',
                     sequence: 0,
                     description: 'Unbound work',
                     status: 'pending',
@@ -452,7 +452,7 @@ describe('workbench timeline model', () => {
 
         const projection = buildWorkbenchTimelineContextProjection({
             runs: [createRun({ id: 'run_selected' })],
-            selectedRunId: 'run_selected' as RunRecord['id'],
+            selectedRunId: 'run_selected',
             activePlan: plan,
             selectedOutboxEntry: outboxEntry,
         });

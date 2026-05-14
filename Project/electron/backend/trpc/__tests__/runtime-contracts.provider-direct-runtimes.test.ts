@@ -7,6 +7,7 @@ import {
     createSessionInScope,
     defaultRuntimeOptions,
     getPersistence,
+    providerCatalogStore,
     waitForRunStatus,
 } from '@/app/backend/trpc/__tests__/runtime-contracts.shared';
 
@@ -139,8 +140,6 @@ describe('runtime contracts: provider and account flows', () => {
 
     it('rejects unsupported provider ids at contract boundaries and allows anthropic models through supported providers', async () => {
         const caller = createCaller();
-        const { sqlite } = getPersistence();
-        const now = new Date().toISOString();
 
         await expect(
             caller.provider.listModels({
@@ -149,36 +148,45 @@ describe('runtime contracts: provider and account flows', () => {
             })
         ).rejects.toThrow('Invalid "providerId"');
 
-        sqlite
-            .prepare(
-                `
-                    INSERT OR IGNORE INTO provider_model_catalog
-                        (profile_id, provider_id, model_id, label, upstream_provider, is_free, supports_tools, supports_reasoning, context_length, pricing_json, raw_json, source, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `
-            )
-            .run(
-                profileId,
-                'kilo',
-                'anthropic/claude-sonnet-4.5',
-                'Claude Sonnet 4.5',
-                'anthropic',
-                0,
-                1,
-                1,
-                200000,
-                '{}',
-                '{}',
-                'test',
-                now
-            );
+        await providerCatalogStore.replaceModels(profileId, 'kilo', [
+            {
+                modelId: 'anthropic/claude-sonnet-4.5',
+                label: 'Claude Sonnet 4.5',
+                upstreamProvider: 'anthropic',
+                isFree: false,
+                features: {
+                    supportsTools: true,
+                    supportsReasoning: true,
+                    supportsVision: false,
+                    supportsAudioInput: false,
+                    supportsAudioOutput: false,
+                    supportsPromptCache: true,
+                    inputModalities: ['text'],
+                    outputModalities: ['text'],
+                },
+                runtime: {
+                    toolProtocol: 'kilo_gateway',
+                    apiFamily: 'kilo_gateway',
+                    routedApiFamily: 'anthropic_messages',
+                },
+                pricing: {},
+                raw: {},
+                source: 'test',
+                contextLength: 200000,
+            },
+        ]);
 
         const setDefault = await caller.provider.setDefault({
             profileId,
             providerId: 'kilo',
             modelId: 'anthropic/claude-sonnet-4.5',
         });
-        expect(setDefault.success).toBe(true);
+        expect(setDefault).toEqual({
+            success: true,
+            reason: null,
+            defaultProviderId: 'kilo',
+            defaultModelId: 'anthropic/claude-sonnet-4.5',
+        });
     });
 
     it('starts direct Anthropic models on an Anthropic-compatible custom provider path', async () => {

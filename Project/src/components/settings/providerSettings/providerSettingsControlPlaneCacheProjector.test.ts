@@ -7,7 +7,7 @@ import type { ProviderControlSnapshot, ProviderListItem } from '@/app/backend/pr
 
 import type { RuntimeProviderId } from '@/shared/contracts';
 import type { ModelRoleDefaultRecord } from '@/shared/contracts/types/modelOptimization';
-import type { WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
+import type { ProviderModelFavoriteRecord, WorkflowRoutingPreferenceRecord } from '@/shared/contracts/types/provider';
 
 function createInternalModelRoleDiagnostics(): ProviderControlSnapshot['internalModelRoleDiagnostics'] {
     return {
@@ -101,6 +101,7 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                 modelId: string;
             }>;
             workflowRoutingPreferences: WorkflowRoutingPreferenceRecord[];
+            modelFavorites: ProviderModelFavoriteRecord[];
             modelRoleDefaults: ModelRoleDefaultRecord[];
         }>();
         const controlPlaneStore = createSetDataSpy<{
@@ -196,6 +197,7 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                         modelId: 'kilo/frontier',
                     },
                 ],
+                modelFavorites: [],
             }
         );
 
@@ -265,6 +267,7 @@ describe('projectProviderSettingsControlPlaneCache', () => {
                     modelId: 'kilo/frontier',
                 },
             ],
+            modelFavorites: [],
             modelRoleDefaults: [
                 {
                     role: 'apply',

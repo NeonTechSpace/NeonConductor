@@ -1,23 +1,25 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const reactState = vi.hoisted(() => ({
-    currentModelPreferenceDrafts: {} as {
-        utilityModelDraft?:
-            | {
-                  profileId: string;
-                  providerId?: 'openai';
-                  modelId?: string;
-              }
-            | undefined;
-        memoryRetrievalModelDraft?:
-            | {
-                  profileId: string;
-                  providerId?: 'openai';
-                  modelId?: string;
-              }
-            | undefined;
-    },
+interface ModelPreferenceDraftState {
+    utilityModelDraft?:
+        | {
+              profileId: string;
+              providerId?: 'openai';
+              modelId?: string;
+          }
+        | undefined;
+    memoryRetrievalModelDraft?:
+        | {
+              profileId: string;
+              providerId?: 'openai';
+              modelId?: string;
+          }
+        | undefined;
+}
+
+const reactState = vi.hoisted((): { currentModelPreferenceDrafts: ModelPreferenceDraftState } => ({
+    currentModelPreferenceDrafts: {},
 }));
 
 vi.mock('react', async (importOriginal) => {

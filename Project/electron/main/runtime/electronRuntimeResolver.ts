@@ -47,7 +47,7 @@ function getRuntimeValue<K extends keyof ElectronRuntimeApi>(value: unknown, key
     }
 
     const runtimeValue = (value as Partial<ElectronRuntimeApi>)[key];
-    return runtimeValue === undefined ? null : (runtimeValue as ElectronRuntimeApi[K]);
+    return runtimeValue === undefined ? null : runtimeValue;
 }
 
 function requireElectronModule(): unknown {
