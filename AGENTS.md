@@ -78,6 +78,7 @@
 - Renderer code must not import `electron` directly.
 - Keep Electron hardening intact: `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`.
 - Route external navigation through centralized guarded helpers.
+- Treat model-generated HTML or artifact payloads as untrusted; do not render them directly in the main React DOM or grant Electron, Node, filesystem, secret, or unrestricted navigation authority.
 
 ## Frontend And React Rules
 
